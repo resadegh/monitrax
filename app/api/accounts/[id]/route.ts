@@ -10,7 +10,7 @@ export async function PUT(
     try {
       const { id } = await params;
       const body = await request.json();
-      const { name, type, balance, interestRate } = body;
+      const { name, type, currentBalance, interestRate } = body;
 
       // Verify ownership
       const existing = await prisma.account.findUnique({
@@ -26,7 +26,7 @@ export async function PUT(
         data: {
           name,
           type,
-          balance,
+          currentBalance,
           interestRate,
         },
       });

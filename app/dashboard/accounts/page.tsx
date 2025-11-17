@@ -8,7 +8,7 @@ interface Account {
   id: string;
   name: string;
   type: 'OFFSET' | 'SAVINGS' | 'TRANSACTIONAL' | 'CREDIT_CARD';
-  balance: number;
+  currentBalance: number;
   interestRate?: number;
 }
 
@@ -21,7 +21,7 @@ export default function AccountsPage() {
   const [formData, setFormData] = useState<Partial<Account>>({
     name: '',
     type: 'TRANSACTIONAL',
-    balance: 0,
+    currentBalance: 0,
     interestRate: 0,
   });
 
@@ -58,7 +58,7 @@ export default function AccountsPage() {
         },
         body: JSON.stringify({
           ...formData,
-          balance: Number(formData.balance),
+          currentBalance: Number(formData.currentBalance),
           interestRate: formData.interestRate ? Number(formData.interestRate) / 100 : null,
         }),
       });
@@ -67,7 +67,7 @@ export default function AccountsPage() {
         await loadAccounts();
         setShowForm(false);
         setEditingId(null);
-        setFormData({ name: '', type: 'TRANSACTIONAL', balance: 0, interestRate: 0 });
+        setFormData({ name: '', type: 'TRANSACTIONAL', currentBalance: 0, interestRate: 0 });
       }
     } catch (error) {
       console.error('Error saving account:', error);
@@ -90,7 +90,7 @@ export default function AccountsPage() {
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
 
-  const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
+  const totalBalance = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
   return (
     <DashboardLayout>
@@ -142,7 +142,7 @@ export default function AccountsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Current Balance</label>
                 <input
                   type="number"
-                  value={formData.balance}
+                  value={formData.currentBalance}
                   onChange={(e) => setFormData({ ...formData, balance: Number(e.target.value) })}
                   required
                   className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500"
@@ -219,8 +219,8 @@ export default function AccountsPage() {
 
                 <div className="mb-4">
                   <p className="text-sm text-gray-600 mb-1">Balance</p>
-                  <p className={`text-2xl font-bold ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(account.balance)}
+                  <p className={`text-2xl font-bold ${account.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(account.currentBalance)}
                   </p>
                 </div>
 

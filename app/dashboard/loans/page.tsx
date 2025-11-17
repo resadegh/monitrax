@@ -30,7 +30,7 @@ interface Account {
   id: string;
   name: string;
   type: string;
-  balance: number;
+  currentBalance: number;
 }
 
 export default function LoansPage() {
@@ -344,7 +344,7 @@ export default function LoansPage() {
                 >
                   <option value="">None</option>
                   {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.balance)})</option>
+                    <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.currentBalance)})</option>
                   ))}
                 </select>
               </div>
@@ -457,7 +457,7 @@ export default function LoansPage() {
                       <div className="flex items-center text-sm">
                         <span className="text-gray-500 mr-2">💰 Offset:</span>
                         <span className="font-medium">
-                          {loan.offsetAccount.name} ({formatCurrency(loan.offsetAccount.balance)})
+                          {loan.offsetAccount.name} ({formatCurrency(loan.offsetAccount.currentBalance)})
                         </span>
                       </div>
                     )}
