@@ -236,6 +236,7 @@ model Expense {
   category         ExpenseCategory
   amount           Float
   frequency        Frequency
+  isEssential      Boolean         @default(true)
   isTaxDeductible  Boolean         @default(false)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
