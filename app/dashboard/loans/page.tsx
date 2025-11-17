@@ -3,6 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/PageHeader';
+import { EmptyState } from '@/components/EmptyState';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown } from 'lucide-react';
 
 interface Loan {
   id: string;
@@ -39,7 +49,7 @@ export default function LoansPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Loan>>({
     name: '',
@@ -112,7 +122,7 @@ export default function LoansPage() {
 
       if (response.ok) {
         await loadData();
-        setShowForm(false);
+        setShowDialog(false);
         setEditingId(null);
         resetForm();
       }
@@ -152,7 +162,7 @@ export default function LoansPage() {
       offsetAccountId: loan.offsetAccountId,
     });
     setEditingId(loan.id);
-    setShowForm(true);
+    setShowDialog(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -185,277 +195,126 @@ export default function LoansPage() {
     return `${(rate * 100).toFixed(2)}%`;
   };
 
+  const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
+
+  const getLoanTypeBadge = (type: Loan['type']) => {
+    switch (type) {
+      case 'HOME':
+        return <Badge variant="default">Home Loan</Badge>;
+      case 'INVESTMENT':
+        return <Badge variant="secondary">Investment</Badge>;
+      case 'PERSONAL':
+        return <Badge variant="outline">Personal</Badge>;
+      default:
+        return <Badge variant="destructive">Credit Card</Badge>;
+    }
+  };
+
   return (
     <DashboardLayout>
-      <div>
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Loans</h1>
-          <button
-            onClick={() => {
-              setShowForm(true);
-              setEditingId(null);
-              resetForm();
-            }}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            + Add Loan
-          </button>
+      <PageHeader
+        title="Loans"
+        description={`Manage your loans and debts • Total debt: ${formatCurrency(totalPrincipal)}`}
+        action={
+          <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Loan
+          </Button>
+        }
+      />
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground">Loading loans...</p>
+          </div>
         </div>
-
-        {/* Add/Edit Form */}
-        {showForm && (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
-              {editingId ? 'Edit Loan' : 'Add New Loan'}
-            </h2>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Loan Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., Home Loan"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as Loan['type'] })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="HOME">Home Loan</option>
-                  <option value="INVESTMENT">Investment Loan</option>
-                  <option value="PERSONAL">Personal Loan</option>
-                  <option value="CREDIT_CARD">Credit Card</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Principal Balance</label>
-                <input
-                  type="number"
-                  value={formData.principal}
-                  onChange={(e) => setFormData({ ...formData, principal: Number(e.target.value) })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                  placeholder="400000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Annual Interest Rate (%)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={(formData.interestRateAnnual || 0) * 100}
-                  onChange={(e) => setFormData({ ...formData, interestRateAnnual: Number(e.target.value) / 100 })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                  placeholder="6.25"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rate Type</label>
-                <select
-                  value={formData.rateType}
-                  onChange={(e) => setFormData({ ...formData, rateType: e.target.value as 'FIXED' | 'VARIABLE' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="VARIABLE">Variable</option>
-                  <option value="FIXED">Fixed</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Loan Type</label>
-                <select
-                  value={formData.isInterestOnly ? 'true' : 'false'}
-                  onChange={(e) => setFormData({ ...formData, isInterestOnly: e.target.value === 'true' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="false">Principal & Interest</option>
-                  <option value="true">Interest Only</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Term Remaining (months)</label>
-                <input
-                  type="number"
-                  value={formData.termMonthsRemaining}
-                  onChange={(e) => setFormData({ ...formData, termMonthsRemaining: Number(e.target.value) })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                  placeholder="300"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Repayment</label>
-                <input
-                  type="number"
-                  value={formData.minRepayment}
-                  onChange={(e) => setFormData({ ...formData, minRepayment: Number(e.target.value) })}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                  placeholder="2500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Repayment Frequency</label>
-                <select
-                  value={formData.repaymentFrequency}
-                  onChange={(e) => setFormData({ ...formData, repaymentFrequency: e.target.value as Loan['repaymentFrequency'] })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="FORTNIGHTLY">Fortnightly</option>
-                  <option value="MONTHLY">Monthly</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Linked Property (Optional)</label>
-                <select
-                  value={formData.propertyId || ''}
-                  onChange={(e) => setFormData({ ...formData, propertyId: e.target.value || undefined })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">None</option>
-                  {properties.map((prop) => (
-                    <option key={prop.id} value={prop.id}>{prop.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Offset Account (Optional)</label>
-                <select
-                  value={formData.offsetAccountId || ''}
-                  onChange={(e) => setFormData({ ...formData, offsetAccountId: e.target.value || undefined })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">None</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>{acc.name} ({formatCurrency(acc.currentBalance)})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="md:col-span-2 flex gap-4">
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                >
-                  {editingId ? 'Update' : 'Add'} Loan
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingId(null);
-                  }}
-                  className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Loans List */}
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading loans...</p>
-          </div>
-        ) : loans.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-600 mb-4">No loans added yet</p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="text-indigo-600 hover:text-indigo-700 font-medium"
-            >
-              Add your first loan
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {loans.map((loan) => (
-              <div key={loan.id} className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800">{loan.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        loan.type === 'HOME' ? 'bg-blue-100 text-blue-800' :
-                        loan.type === 'INVESTMENT' ? 'bg-green-100 text-green-800' :
-                        loan.type === 'PERSONAL' ? 'bg-purple-100 text-purple-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {loan.type}
-                      </span>
-                    </p>
+      ) : loans.length === 0 ? (
+        <EmptyState
+          icon={Landmark}
+          title="No loans yet"
+          description="Start by adding your first loan to track repayments and interest costs."
+          action={{
+            label: 'Add Loan',
+            onClick: () => { setShowDialog(true); resetForm(); },
+          }}
+        />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2">
+          {loans.map((loan) => (
+            <Card key={loan.id}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center gap-2">
+                      <Landmark className="h-5 w-5 text-muted-foreground" />
+                      {loan.name}
+                    </CardTitle>
+                    <div className="flex gap-2 flex-wrap">
+                      {getLoanTypeBadge(loan.type)}
+                      <Badge variant={loan.isInterestOnly ? 'outline' : 'secondary'}>
+                        {loan.isInterestOnly ? 'Interest Only' : 'P&I'}
+                      </Badge>
+                      <Badge variant="outline">{loan.rateType}</Badge>
+                    </div>
                   </div>
                   <div className="flex gap-2">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleEdit(loan)}
-                      className="text-indigo-600 hover:text-indigo-700 text-sm"
                     >
-                      Edit
-                    </button>
-                    <button
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleDelete(loan.id)}
-                      className="text-red-600 hover:text-red-700 text-sm"
                     >
-                      Delete
-                    </button>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Balance</p>
+                    <p className="text-xl font-bold">{formatCurrency(loan.principal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Interest Rate</p>
+                    <p className="text-xl font-bold">{formatPercent(loan.interestRateAnnual)}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-gray-500">Balance</p>
-                    <p className="font-bold text-lg">{formatCurrency(loan.principal)}</p>
+                    <p className="text-xs text-muted-foreground mb-1">Min Repayment</p>
+                    <p className="font-semibold">{formatCurrency(loan.minRepayment)}</p>
+                    <p className="text-xs text-muted-foreground">{loan.repaymentFrequency.toLowerCase()}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Interest Rate</p>
-                    <p className="font-bold text-lg">{formatPercent(loan.interestRateAnnual)}</p>
-                    <p className="text-xs text-gray-500">{loan.rateType}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <p className="text-xs text-gray-500">Min Repayment</p>
-                    <p className="font-medium">{formatCurrency(loan.minRepayment)}</p>
-                    <p className="text-xs text-gray-500">{loan.repaymentFrequency}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Term Remaining</p>
-                    <p className="font-medium">{loan.termMonthsRemaining} months</p>
-                    <p className="text-xs text-gray-500">{(loan.termMonthsRemaining / 12).toFixed(1)} years</p>
+                    <p className="text-xs text-muted-foreground mb-1">Term Remaining</p>
+                    <p className="font-semibold">{loan.termMonthsRemaining} months</p>
+                    <p className="text-xs text-muted-foreground">{(loan.termMonthsRemaining / 12).toFixed(1)} years</p>
                   </div>
                 </div>
 
                 {(loan.property || loan.offsetAccount) && (
-                  <div className="pt-4 border-t border-gray-200 space-y-2">
+                  <div className="pt-4 border-t space-y-2">
                     {loan.property && (
-                      <div className="flex items-center text-sm">
-                        <span className="text-gray-500 mr-2">🏠 Property:</span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <HomeIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Property:</span>
                         <span className="font-medium">{loan.property.name}</span>
                       </div>
                     )}
                     {loan.offsetAccount && (
-                      <div className="flex items-center text-sm">
-                        <span className="text-gray-500 mr-2">💰 Offset:</span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Offset:</span>
                         <span className="font-medium">
                           {loan.offsetAccount.name} ({formatCurrency(loan.offsetAccount.currentBalance)})
                         </span>
@@ -463,21 +322,208 @@ export default function LoansPage() {
                     )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="flex items-center text-sm">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      loan.isInterestOnly ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                    }`}>
-                      {loan.isInterestOnly ? 'Interest Only' : 'Principal & Interest'}
-                    </span>
-                  </div>
-                </div>
+      {/* Add/Edit Dialog */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Edit Loan' : 'Add New Loan'}</DialogTitle>
+            <DialogDescription>
+              {editingId ? 'Update the loan details below.' : 'Enter the details for your new loan.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Loan Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g., Home Loan"
+                  required
+                />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="type">Type</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => setFormData({ ...formData, type: value as Loan['type'] })}
+                >
+                  <SelectTrigger id="type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HOME">Home Loan</SelectItem>
+                    <SelectItem value="INVESTMENT">Investment Loan</SelectItem>
+                    <SelectItem value="PERSONAL">Personal Loan</SelectItem>
+                    <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="principal">Principal Balance</Label>
+                <Input
+                  id="principal"
+                  type="number"
+                  value={formData.principal}
+                  onChange={(e) => setFormData({ ...formData, principal: Number(e.target.value) })}
+                  placeholder="400000"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="interestRateAnnual">Annual Interest Rate (%)</Label>
+                <Input
+                  id="interestRateAnnual"
+                  type="number"
+                  step="0.01"
+                  value={(formData.interestRateAnnual || 0) * 100}
+                  onChange={(e) => setFormData({ ...formData, interestRateAnnual: Number(e.target.value) / 100 })}
+                  placeholder="6.25"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="rateType">Rate Type</Label>
+                <Select
+                  value={formData.rateType}
+                  onValueChange={(value) => setFormData({ ...formData, rateType: value as 'FIXED' | 'VARIABLE' })}
+                >
+                  <SelectTrigger id="rateType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="VARIABLE">Variable</SelectItem>
+                    <SelectItem value="FIXED">Fixed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="isInterestOnly">Loan Type</Label>
+                <Select
+                  value={formData.isInterestOnly ? 'true' : 'false'}
+                  onValueChange={(value) => setFormData({ ...formData, isInterestOnly: value === 'true' })}
+                >
+                  <SelectTrigger id="isInterestOnly">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">Principal & Interest</SelectItem>
+                    <SelectItem value="true">Interest Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="termMonthsRemaining">Term Remaining (months)</Label>
+                <Input
+                  id="termMonthsRemaining"
+                  type="number"
+                  value={formData.termMonthsRemaining}
+                  onChange={(e) => setFormData({ ...formData, termMonthsRemaining: Number(e.target.value) })}
+                  placeholder="300"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="minRepayment">Minimum Repayment</Label>
+                <Input
+                  id="minRepayment"
+                  type="number"
+                  value={formData.minRepayment}
+                  onChange={(e) => setFormData({ ...formData, minRepayment: Number(e.target.value) })}
+                  placeholder="2500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="repaymentFrequency">Repayment Frequency</Label>
+              <Select
+                value={formData.repaymentFrequency}
+                onValueChange={(value) => setFormData({ ...formData, repaymentFrequency: value as Loan['repaymentFrequency'] })}
+              >
+                <SelectTrigger id="repaymentFrequency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WEEKLY">Weekly</SelectItem>
+                  <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="propertyId">Linked Property (Optional)</Label>
+                <Select
+                  value={formData.propertyId || 'none'}
+                  onValueChange={(value) => setFormData({ ...formData, propertyId: value === 'none' ? undefined : value })}
+                >
+                  <SelectTrigger id="propertyId">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {properties.map((prop) => (
+                      <SelectItem key={prop.id} value={prop.id}>{prop.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="offsetAccountId">Offset Account (Optional)</Label>
+                <Select
+                  value={formData.offsetAccountId || 'none'}
+                  onValueChange={(value) => setFormData({ ...formData, offsetAccountId: value === 'none' ? undefined : value })}
+                >
+                  <SelectTrigger id="offsetAccountId">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {accounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.name} ({formatCurrency(acc.currentBalance)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editingId ? 'Update Loan' : 'Add Loan'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

@@ -3,6 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/PageHeader';
+import { EmptyState } from '@/components/EmptyState';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Expense {
   id: string;
@@ -17,7 +28,7 @@ export default function ExpensesPage() {
   const { token } = useAuth();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Expense>>({
     name: '',
@@ -63,17 +74,34 @@ export default function ExpensesPage() {
 
       if (response.ok) {
         await loadExpenses();
-        setShowForm(false);
+        setShowDialog(false);
         setEditingId(null);
-        setFormData({ name: '', category: 'OTHER', amount: 0, frequency: 'MONTHLY', isEssential: true });
+        resetForm();
       }
     } catch (error) {
       console.error('Error saving expense:', error);
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      category: 'OTHER',
+      amount: 0,
+      frequency: 'MONTHLY',
+      isEssential: true,
+    });
+  };
+
+  const handleEdit = (item: Expense) => {
+    setFormData(item);
+    setEditingId(item.id);
+    setShowDialog(true);
+  };
+
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure?')) return;
+    if (!confirm('Are you sure you want to delete this expense?')) return;
+
     try {
       await fetch(`/api/expenses/${id}`, {
         method: 'DELETE',
@@ -86,7 +114,12 @@ export default function ExpensesPage() {
   };
 
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
+    new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
 
   const convertToMonthly = (amount: number, frequency: string) => {
     switch (frequency) {
@@ -100,159 +133,214 @@ export default function ExpensesPage() {
 
   const totalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
 
+  const getCategoryBadge = (category: Expense['category']) => {
+    const variants: Record<Expense['category'], { variant: 'default' | 'secondary' | 'outline' | 'destructive'; label: string }> = {
+      HOUSING: { variant: 'default', label: 'Housing' },
+      TRANSPORT: { variant: 'secondary', label: 'Transport' },
+      FOOD: { variant: 'outline', label: 'Food' },
+      UTILITIES: { variant: 'secondary', label: 'Utilities' },
+      INSURANCE: { variant: 'default', label: 'Insurance' },
+      ENTERTAINMENT: { variant: 'outline', label: 'Entertainment' },
+      OTHER: { variant: 'outline', label: 'Other' },
+    };
+
+    const { variant, label } = variants[category];
+    return <Badge variant={variant}>{label}</Badge>;
+  };
+
   return (
     <DashboardLayout>
-      <div>
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Expenses</h1>
-            <p className="text-gray-600 mt-1">Total Monthly: {formatCurrency(totalMonthly)}</p>
+      <PageHeader
+        title="Expenses"
+        description={`Manage your expenses • Total monthly: ${formatCurrency(totalMonthly)}`}
+        action={
+          <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Expense
+          </Button>
+        }
+      />
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground">Loading expenses...</p>
           </div>
-          <button
-            onClick={() => { setShowForm(true); setEditingId(null); }}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-          >
-            + Add Expense
-          </button>
         </div>
+      ) : expenses.length === 0 ? (
+        <EmptyState
+          icon={CreditCard}
+          title="No expenses yet"
+          description="Start by adding your first expense to track your spending and budget."
+          action={{
+            label: 'Add Expense',
+            onClick: () => { setShowDialog(true); resetForm(); },
+          }}
+        />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {expenses.map((item) => {
+            const monthlyAmount = convertToMonthly(item.amount, item.frequency);
 
-        {showForm && (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-xl font-bold mb-4">{editingId ? 'Edit' : 'Add'} Expense</h2>
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 md:col-span-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+            return (
+              <Card key={item.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingDown className="h-5 w-5 text-muted-foreground" />
+                        {item.name}
+                      </CardTitle>
+                      <div className="flex gap-2 flex-wrap">
+                        {getCategoryBadge(item.category)}
+                        {!item.isEssential && (
+                          <Badge variant="outline">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Non-essential
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Amount</p>
+                    <p className="text-xl font-bold text-red-600">{formatCurrency(item.amount)}</p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {item.frequency.toLowerCase()}
+                    </p>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Monthly Equivalent</p>
+                        <p className="font-semibold">{formatCurrency(monthlyAmount)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
+            <DialogDescription>
+              {editingId ? 'Update the expense details below.' : 'Enter the details for your new expense.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Rent"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
                   value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value as Expense['category'] })}
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500"
+                  onValueChange={(value) => setFormData({ ...formData, category: value as Expense['category'] })}
                 >
-                  <option value="HOUSING">Housing</option>
-                  <option value="TRANSPORT">Transport</option>
-                  <option value="FOOD">Food</option>
-                  <option value="UTILITIES">Utilities</option>
-                  <option value="INSURANCE">Insurance</option>
-                  <option value="ENTERTAINMENT">Entertainment</option>
-                  <option value="OTHER">Other</option>
-                </select>
+                  <SelectTrigger id="category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HOUSING">Housing</SelectItem>
+                    <SelectItem value="TRANSPORT">Transport</SelectItem>
+                    <SelectItem value="FOOD">Food</SelectItem>
+                    <SelectItem value="UTILITIES">Utilities</SelectItem>
+                    <SelectItem value="INSURANCE">Insurance</SelectItem>
+                    <SelectItem value="ENTERTAINMENT">Entertainment</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                <input
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount</Label>
+                <Input
+                  id="amount"
                   type="number"
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
+                  placeholder="500"
                   required
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
-                <select
-                  value={formData.frequency}
-                  onChange={(e) => setFormData({ ...formData, frequency: e.target.value as Expense['frequency'] })}
-                  className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="WEEKLY">Weekly</option>
-                  <option value="FORTNIGHTLY">Fortnightly</option>
-                  <option value="MONTHLY">Monthly</option>
-                  <option value="ANNUALLY">Annually</option>
-                </select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="frequency">Frequency</Label>
+              <Select
+                value={formData.frequency}
+                onValueChange={(value) => setFormData({ ...formData, frequency: value as Expense['frequency'] })}
+              >
+                <SelectTrigger id="frequency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WEEKLY">Weekly</SelectItem>
+                  <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  <SelectItem value="ANNUALLY">Annually</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.isEssential}
-                  onChange={(e) => setFormData({ ...formData, isEssential: e.target.checked })}
-                  className="h-4 w-4 text-indigo-600 rounded"
-                />
-                <label className="ml-2 text-sm text-gray-700">Essential Expense</label>
-              </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isEssential"
+                checked={formData.isEssential}
+                onCheckedChange={(checked) => setFormData({ ...formData, isEssential: checked as boolean })}
+              />
+              <Label htmlFor="isEssential" className="text-sm font-normal cursor-pointer">
+                This is an essential expense
+              </Label>
+            </div>
 
-              <div className="col-span-2 flex gap-4">
-                <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                  {editingId ? 'Update' : 'Add'}
-                </button>
-                <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 bg-gray-300 rounded-md">
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {isLoading ? (
-          <div className="text-center py-12">Loading...</div>
-        ) : expenses.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-600 mb-4">No expenses added yet</p>
-            <button onClick={() => setShowForm(true)} className="text-indigo-600 hover:text-indigo-700 font-medium">
-              Add your first expense
-            </button>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Frequency</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monthly</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {expenses.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800">{item.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">
-                        {item.category}
-                      </span>
-                      {!item.isEssential && <span className="ml-2 text-xs text-gray-500">(Non-essential)</span>}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-right">{formatCurrency(item.amount)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{item.frequency}</td>
-                    <td className="px-6 py-4 text-sm text-right font-medium">
-                      {formatCurrency(convertToMonthly(item.amount, item.frequency))}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-right">
-                      <button
-                        onClick={() => { setFormData(item); setEditingId(item.id); setShowForm(true); }}
-                        className="text-indigo-600 hover:text-indigo-700 mr-3"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editingId ? 'Update Expense' : 'Add Expense'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
