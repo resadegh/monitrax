@@ -171,7 +171,7 @@ export default function DashboardPage() {
               value={formatCurrency(stats.totalLoanBalance)}
               description={`Across ${stats.totalLoans} loan${stats.totalLoans !== 1 ? 's' : ''}`}
               icon={Banknote}
-              variant="pink"
+              variant="orange"
             />
           </div>
 
