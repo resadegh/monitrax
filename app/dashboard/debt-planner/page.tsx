@@ -3,6 +3,26 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/PageHeader';
+import { StatCard } from '@/components/StatCard';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import {
+  Receipt,
+  TrendingDown,
+  Target,
+  DollarSign,
+  Clock,
+  AlertCircle,
+  Info,
+  Calculator
+} from 'lucide-react';
 
 interface DebtPlanSettings {
   strategy: 'TAX_AWARE_MINIMUM_INTEREST' | 'AVALANCHE' | 'SNOWBALL';
@@ -90,147 +110,172 @@ export default function DebtPlannerPage() {
     TAX_AWARE_MINIMUM_INTEREST: {
       name: 'Tax-Aware Strategy',
       description: 'Prioritize non-tax-deductible debt (home loans) over tax-deductible debt (investment loans) to minimize total interest cost after tax benefits.',
-      icon: '🧾',
+      icon: Receipt,
     },
     AVALANCHE: {
       name: 'Avalanche Strategy',
       description: 'Pay off loans with the highest interest rates first to minimize total interest cost.',
-      icon: '⛰️',
+      icon: TrendingDown,
     },
     SNOWBALL: {
       name: 'Snowball Strategy',
       description: 'Pay off loans with the smallest balances first for psychological wins and motivation.',
-      icon: '⚪',
+      icon: Target,
     },
   };
 
   return (
     <DashboardLayout>
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Debt Planner</h1>
-        <p className="text-gray-600 mb-8">
-          Optimize your debt repayment strategy and see how much you can save
-        </p>
+      <PageHeader
+        title="Debt Planner"
+        description="Optimize your debt repayment strategy and see how much you can save"
+      />
 
+      <div className="space-y-6">
         {/* Strategy Selection */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Select Your Strategy</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Object.entries(strategyDescriptions).map(([key, info]) => (
-              <button
-                key={key}
-                onClick={() => setSettings({ ...settings, strategy: key as DebtPlanSettings['strategy'] })}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  settings.strategy === key
-                    ? 'border-indigo-600 bg-indigo-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-3xl mb-2">{info.icon}</div>
-                <h3 className="font-bold text-gray-800 mb-2">{info.name}</h3>
-                <p className="text-sm text-gray-600">{info.description}</p>
-              </button>
-            ))}
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Your Strategy</CardTitle>
+            <CardDescription>Choose a debt repayment approach that works for you</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Object.entries(strategyDescriptions).map(([key, info]) => {
+                const Icon = info.icon;
+                const isSelected = settings.strategy === key;
+                return (
+                  <Card
+                    key={key}
+                    className={`cursor-pointer transition-all hover:shadow-md ${
+                      isSelected ? 'border-primary bg-primary/5' : ''
+                    }`}
+                    onClick={() => setSettings({ ...settings, strategy: key as DebtPlanSettings['strategy'] })}
+                  >
+                    <CardHeader>
+                      <div className="flex items-start gap-3">
+                        <div className={`rounded-full p-2 ${isSelected ? 'bg-primary/10' : 'bg-muted'}`}>
+                          <Icon className={`h-5 w-5 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </div>
+                        <div className="flex-1">
+                          <CardTitle className="text-base mb-1">{info.name}</CardTitle>
+                          <CardDescription className="text-xs">{info.description}</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Settings Configuration */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Configuration</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Extra Payment Amount
-              </label>
-              <input
-                type="number"
-                value={settings.surplusPerPeriod}
-                onChange={(e) => setSettings({ ...settings, surplusPerPeriod: Number(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                placeholder="1000"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Additional amount you can pay towards debt each period
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Frequency
-              </label>
-              <select
-                value={settings.surplusFrequency}
-                onChange={(e) => setSettings({ ...settings, surplusFrequency: e.target.value as DebtPlanSettings['surplusFrequency'] })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="WEEKLY">Weekly</option>
-                <option value="FORTNIGHTLY">Fortnightly</option>
-                <option value="MONTHLY">Monthly</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Emergency Buffer
-              </label>
-              <input
-                type="number"
-                value={settings.emergencyBuffer}
-                onChange={(e) => setSettings({ ...settings, emergencyBuffer: Number(e.target.value) })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500"
-                placeholder="5000"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Reserve amount to keep in accounts for emergencies
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="respectFixedCaps"
-                  checked={settings.respectFixedCaps}
-                  onChange={(e) => setSettings({ ...settings, respectFixedCaps: e.target.checked })}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+        <Card>
+          <CardHeader>
+            <CardTitle>Configuration</CardTitle>
+            <CardDescription>Set your repayment parameters</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="surplusPerPeriod">Extra Payment Amount</Label>
+                <Input
+                  id="surplusPerPeriod"
+                  type="number"
+                  value={settings.surplusPerPeriod}
+                  onChange={(e) => setSettings({ ...settings, surplusPerPeriod: Number(e.target.value) })}
+                  placeholder="1000"
                 />
-                <label htmlFor="respectFixedCaps" className="ml-2 block text-sm text-gray-700">
-                  Respect fixed loan payment caps
-                </label>
+                <p className="text-xs text-muted-foreground">
+                  Additional amount you can pay towards debt each period
+                </p>
               </div>
 
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="rolloverRepayments"
-                  checked={settings.rolloverRepayments}
-                  onChange={(e) => setSettings({ ...settings, rolloverRepayments: e.target.checked })}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              <div className="space-y-2">
+                <Label htmlFor="surplusFrequency">Payment Frequency</Label>
+                <Select
+                  value={settings.surplusFrequency}
+                  onValueChange={(value) => setSettings({ ...settings, surplusFrequency: value as DebtPlanSettings['surplusFrequency'] })}
+                >
+                  <SelectTrigger id="surplusFrequency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="WEEKLY">Weekly</SelectItem>
+                    <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                    <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="emergencyBuffer">Emergency Buffer</Label>
+                <Input
+                  id="emergencyBuffer"
+                  type="number"
+                  value={settings.emergencyBuffer}
+                  onChange={(e) => setSettings({ ...settings, emergencyBuffer: Number(e.target.value) })}
+                  placeholder="5000"
                 />
-                <label htmlFor="rolloverRepayments" className="ml-2 block text-sm text-gray-700">
-                  Roll over payments when loans are paid off
-                </label>
+                <p className="text-xs text-muted-foreground">
+                  Reserve amount to keep in accounts for emergencies
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="respectFixedCaps" className="cursor-pointer">
+                    Respect fixed loan payment caps
+                  </Label>
+                  <Switch
+                    id="respectFixedCaps"
+                    checked={settings.respectFixedCaps}
+                    onCheckedChange={(checked) => setSettings({ ...settings, respectFixedCaps: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="rolloverRepayments" className="cursor-pointer">
+                    Roll over payments when loans are paid off
+                  </Label>
+                  <Switch
+                    id="rolloverRepayments"
+                    checked={settings.rolloverRepayments}
+                    onCheckedChange={(checked) => setSettings({ ...settings, rolloverRepayments: checked })}
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-6">
-            <button
-              onClick={runPlan}
-              disabled={isLoading}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-            >
-              {isLoading ? 'Calculating...' : 'Calculate Debt Plan'}
-            </button>
-          </div>
-        </div>
+            <Separator />
+
+            <div className="flex items-center gap-4">
+              <Button onClick={runPlan} disabled={isLoading} size="lg" className="gap-2">
+                <Calculator className="h-4 w-4" />
+                {isLoading ? 'Calculating...' : 'Calculate Debt Plan'}
+              </Button>
+              {planResult && (
+                <p className="text-sm text-muted-foreground">
+                  Last calculated using {strategyDescriptions[settings.strategy].name}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-6">
-            <p className="font-medium">Error</p>
-            <p className="text-sm">{error}</p>
-          </div>
+          <Card className="border-destructive">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                <CardTitle className="text-destructive">Error</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-destructive/90">{error}</p>
+            </CardContent>
+          </Card>
         )}
 
         {/* Results Display */}
@@ -238,100 +283,113 @@ export default function DebtPlannerPage() {
           <div className="space-y-6">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-green-800">Total Interest Saved</h3>
-                  <span className="text-3xl">💰</span>
-                </div>
-                <p className="text-3xl font-bold text-green-700">
-                  {formatCurrency(planResult.totalInterestSavedVsBaseline)}
-                </p>
-                <p className="text-sm text-green-600 mt-2">
-                  Compared to minimum payments only
-                </p>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-blue-800">Time Saved</h3>
-                  <span className="text-3xl">⏱️</span>
-                </div>
-                <p className="text-3xl font-bold text-blue-700">
-                  {planResult.totalMonthsSaved} months
-                </p>
-                <p className="text-sm text-blue-600 mt-2">
-                  {(planResult.totalMonthsSaved / 12).toFixed(1)} years earlier
-                </p>
-              </div>
+              <StatCard
+                title="Total Interest Saved"
+                value={formatCurrency(planResult.totalInterestSavedVsBaseline)}
+                description="Compared to minimum payments only"
+                icon={DollarSign}
+              />
+              <StatCard
+                title="Time Saved"
+                value={`${planResult.totalMonthsSaved} months`}
+                description={`${(planResult.totalMonthsSaved / 12).toFixed(1)} years earlier`}
+                icon={Clock}
+              />
             </div>
 
             {/* Loan Details */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Loan Payoff Details</h2>
-              <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Loan Payoff Details</CardTitle>
+                <CardDescription>Projected payoff dates and savings for each loan</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 {planResult.loans.map((loan) => (
-                  <div key={loan.loanId} className="border border-gray-200 rounded-lg p-4">
-                    <h3 className="font-bold text-gray-800 mb-3">{loan.loanName}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-xs text-gray-500">Baseline Payoff</p>
-                        <p className="font-medium">{formatDate(loan.baselinePayoffDate)}</p>
+                  <Card key={loan.loanId} className="border-muted">
+                    <CardContent className="pt-6">
+                      <h3 className="font-semibold mb-4">{loan.loanName}</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Baseline Payoff</p>
+                          <p className="font-medium">{formatDate(loan.baselinePayoffDate)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Strategy Payoff</p>
+                          <p className="font-medium text-green-600">{formatDate(loan.strategyPayoffDate)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Savings</p>
+                          <p className="font-medium text-green-600">
+                            {formatCurrency(loan.interestSavedVsBaseline)}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            {loan.monthsSaved} months earlier
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Strategy Payoff</p>
-                        <p className="font-medium text-green-600">{formatDate(loan.strategyPayoffDate)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Savings</p>
-                        <p className="font-medium text-green-600">
-                          {formatCurrency(loan.interestSavedVsBaseline)}
-                        </p>
-                        <p className="text-xs text-green-600">
-                          {loan.monthsSaved} months earlier
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 ))}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Strategy Info */}
-            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
-              <div className="flex items-start">
-                <span className="text-4xl mr-4">{strategyDescriptions[settings.strategy].icon}</span>
-                <div>
-                  <h3 className="font-bold text-indigo-900 text-lg mb-2">
-                    {strategyDescriptions[settings.strategy].name}
-                  </h3>
-                  <p className="text-indigo-800 mb-4">
-                    {strategyDescriptions[settings.strategy].description}
-                  </p>
-                  <div className="text-sm text-indigo-700">
-                    <p><strong>Extra Payment:</strong> {formatCurrency(settings.surplusPerPeriod)} {settings.surplusFrequency.toLowerCase()}</p>
-                    <p><strong>Emergency Buffer:</strong> {formatCurrency(settings.emergencyBuffer)}</p>
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <div className="flex items-start gap-3">
+                  {(() => {
+                    const Icon = strategyDescriptions[settings.strategy].icon;
+                    return <Icon className="h-6 w-6 text-primary mt-1" />;
+                  })()}
+                  <div className="flex-1">
+                    <CardTitle>{strategyDescriptions[settings.strategy].name}</CardTitle>
+                    <CardDescription className="mt-2">
+                      {strategyDescriptions[settings.strategy].description}
+                    </CardDescription>
                   </div>
                 </div>
-              </div>
-            </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1 text-sm">
+                  <p>
+                    <span className="font-medium">Extra Payment:</span>{' '}
+                    {formatCurrency(settings.surplusPerPeriod)} {settings.surplusFrequency.toLowerCase()}
+                  </p>
+                  <p>
+                    <span className="font-medium">Emergency Buffer:</span>{' '}
+                    {formatCurrency(settings.emergencyBuffer)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* Getting Started Message */}
         {!planResult && !isLoading && !error && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <h3 className="font-bold text-blue-900 mb-2">How to use the Debt Planner</h3>
-            <ol className="list-decimal list-inside space-y-2 text-blue-800 text-sm">
-              <li>Choose your preferred debt repayment strategy</li>
-              <li>Enter how much extra you can pay towards your debts</li>
-              <li>Set your emergency buffer amount</li>
-              <li>Click "Calculate Debt Plan" to see your personalized payoff plan</li>
-              <li>Compare the savings between strategies to find the best approach</li>
-            </ol>
-            <p className="mt-4 text-sm text-blue-700">
-              <strong>Note:</strong> Make sure you've added your loans before running the debt planner.
-            </p>
-          </div>
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <div className="flex items-start gap-2">
+                <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <CardTitle className="text-blue-900">How to use the Debt Planner</CardTitle>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ol className="list-decimal list-inside space-y-2 text-sm text-blue-800">
+                <li>Choose your preferred debt repayment strategy</li>
+                <li>Enter how much extra you can pay towards your debts</li>
+                <li>Set your emergency buffer amount</li>
+                <li>Click "Calculate Debt Plan" to see your personalized payoff plan</li>
+                <li>Compare the savings between strategies to find the best approach</li>
+              </ol>
+              <Separator className="my-4" />
+              <p className="text-sm text-blue-700">
+                <strong>Note:</strong> Make sure you've added your loans before running the debt planner.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </DashboardLayout>
