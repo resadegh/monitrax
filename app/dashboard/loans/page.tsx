@@ -18,7 +18,7 @@ interface Loan {
   propertyId?: string;
   offsetAccountId?: string;
   property?: { name: string };
-  offsetAccount?: { name: string; balance: number };
+  offsetAccount?: { name: string; currentBalance: number };
 }
 
 interface Property {
