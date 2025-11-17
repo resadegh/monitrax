@@ -3,6 +3,21 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { PageHeader } from '@/components/PageHeader';
+import { StatCard } from '@/components/StatCard';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import {
+  TrendingUp,
+  Wallet,
+  Home,
+  Banknote,
+  ArrowUpRight,
+  ArrowDownRight,
+  Calculator,
+  Receipt,
+} from 'lucide-react';
 
 interface DashboardStats {
   totalProperties: number;
@@ -114,139 +129,172 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">Dashboard</h1>
+      <PageHeader
+        title="Dashboard"
+        description="Welcome to your financial overview"
+      />
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading dashboard data...</p>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground">Loading dashboard...</p>
           </div>
-        ) : (
-          <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {/* Net Worth */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-600">Net Worth</h3>
-                  <span className="text-2xl">💎</span>
-                </div>
-                <p className={`text-2xl font-bold ${stats.netWorth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(stats.netWorth)}
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Assets: {formatCurrency(stats.totalPropertyValue)} | Debts: {formatCurrency(stats.totalLoanBalance)}
-                </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Summary Stats */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Net Worth"
+              value={formatCurrency(stats.netWorth)}
+              description={`${formatCurrency(stats.totalPropertyValue)} in assets`}
+              icon={Wallet}
+            />
+            <StatCard
+              title="Monthly Cash Flow"
+              value={formatCurrency(stats.monthlyFlow)}
+              description={stats.monthlyFlow >= 0 ? 'Positive cash flow' : 'Negative cash flow'}
+              icon={stats.monthlyFlow >= 0 ? ArrowUpRight : ArrowDownRight}
+            />
+            <StatCard
+              title="Properties"
+              value={stats.totalProperties}
+              description={formatCurrency(stats.totalPropertyValue)}
+              icon={Home}
+            />
+            <StatCard
+              title="Total Debt"
+              value={formatCurrency(stats.totalLoanBalance)}
+              description={`Across ${stats.totalLoans} loan${stats.totalLoans !== 1 ? 's' : ''}`}
+              icon={Banknote}
+            />
+          </div>
+
+          {/* Monthly Overview */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                  Monthly Income
+                </CardTitle>
+                <CardDescription>Total income per month</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-semibold">{formatCurrency(stats.totalIncome)}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowDownRight className="h-5 w-5 text-red-600" />
+                  Monthly Expenses
+                </CardTitle>
+                <CardDescription>Total expenses per month</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-semibold">{formatCurrency(stats.totalExpenses)}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>
+                Common tasks and tools
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Link href="/dashboard/properties">
+                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4">
+                    <Home className="h-5 w-5" />
+                    <div className="text-left">
+                      <div className="font-semibold">Properties</div>
+                      <div className="text-xs text-muted-foreground">Manage your properties</div>
+                    </div>
+                  </Button>
+                </Link>
+
+                <Link href="/dashboard/loans">
+                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4">
+                    <Banknote className="h-5 w-5" />
+                    <div className="text-left">
+                      <div className="font-semibold">Loans</div>
+                      <div className="text-xs text-muted-foreground">Track your loans</div>
+                    </div>
+                  </Button>
+                </Link>
+
+                <Link href="/dashboard/debt-planner">
+                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4">
+                    <Calculator className="h-5 w-5" />
+                    <div className="text-left">
+                      <div className="font-semibold">Debt Planner</div>
+                      <div className="text-xs text-muted-foreground">Optimize repayments</div>
+                    </div>
+                  </Button>
+                </Link>
+
+                <Link href="/dashboard/tax">
+                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4">
+                    <Receipt className="h-5 w-5" />
+                    <div className="text-left">
+                      <div className="font-semibold">Tax Calculator</div>
+                      <div className="text-xs text-muted-foreground">View estimates</div>
+                    </div>
+                  </Button>
+                </Link>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Monthly Cash Flow */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-600">Monthly Cash Flow</h3>
-                  <span className="text-2xl">💸</span>
-                </div>
-                <p className={`text-2xl font-bold ${stats.monthlyFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(stats.monthlyFlow)}
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Income: {formatCurrency(stats.totalIncome)} | Expenses: {formatCurrency(stats.totalExpenses)}
-                </p>
-              </div>
-
-              {/* Properties */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-600">Properties</h3>
-                  <span className="text-2xl">🏠</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-800">{stats.totalProperties}</p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Total Value: {formatCurrency(stats.totalPropertyValue)}
-                </p>
-              </div>
-
-              {/* Loans */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-gray-600">Loans</h3>
-                  <span className="text-2xl">💰</span>
-                </div>
-                <p className="text-2xl font-bold text-gray-800">{stats.totalLoans}</p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Total Balance: {formatCurrency(stats.totalLoanBalance)}
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a
-                  href="/dashboard/properties"
-                  className="flex items-center p-4 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
-                >
-                  <span className="text-2xl mr-3">🏠</span>
-                  <div>
-                    <h3 className="font-medium text-gray-800">Manage Properties</h3>
-                    <p className="text-xs text-gray-600">Add or edit properties</p>
-                  </div>
-                </a>
-
-                <a
-                  href="/dashboard/loans"
-                  className="flex items-center p-4 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
-                >
-                  <span className="text-2xl mr-3">💰</span>
-                  <div>
-                    <h3 className="font-medium text-gray-800">Manage Loans</h3>
-                    <p className="text-xs text-gray-600">Track and manage loans</p>
-                  </div>
-                </a>
-
-                <a
-                  href="/dashboard/debt-planner"
-                  className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-                >
-                  <span className="text-2xl mr-3">📈</span>
-                  <div>
-                    <h3 className="font-medium text-gray-800">Debt Planner</h3>
-                    <p className="text-xs text-gray-600">Optimize repayments</p>
-                  </div>
-                </a>
-
-                <a
-                  href="/dashboard/tax"
-                  className="flex items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-                >
-                  <span className="text-2xl mr-3">🧾</span>
-                  <div>
-                    <h3 className="font-medium text-gray-800">Tax Calculator</h3>
-                    <p className="text-xs text-gray-600">View tax estimates</p>
-                  </div>
-                </a>
-              </div>
-            </div>
-
-            {/* Getting Started */}
-            {stats.totalProperties === 0 && stats.totalLoans === 0 && (
-              <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h2 className="text-xl font-bold text-blue-900 mb-4">🚀 Getting Started</h2>
-                <p className="text-blue-800 mb-4">
-                  Welcome to Monitrax! Start by adding your financial information:
-                </p>
-                <ol className="list-decimal list-inside space-y-2 text-blue-800">
-                  <li>Add your properties (home, investments)</li>
-                  <li>Add your loans and link them to properties</li>
-                  <li>Add your income sources</li>
-                  <li>Add your expenses</li>
-                  <li>Use the Debt Planner to optimize your repayments</li>
+          {/* Getting Started */}
+          {stats.totalProperties === 0 && stats.totalLoans === 0 && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle>Getting Started with Monitrax</CardTitle>
+                <CardDescription>
+                  Set up your financial profile to get the most out of Monitrax
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-2 text-sm">
+                  <li className="flex gap-2">
+                    <span className="font-semibold text-primary">1.</span>
+                    <span>Add your properties (home, investments)</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-semibold text-primary">2.</span>
+                    <span>Add your loans and link them to properties</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-semibold text-primary">3.</span>
+                    <span>Add your income sources</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-semibold text-primary">4.</span>
+                    <span>Add your expenses</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="font-semibold text-primary">5.</span>
+                    <span>Use the Debt Planner to optimize your repayments</span>
+                  </li>
                 </ol>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+                <div className="mt-4">
+                  <Link href="/dashboard/properties">
+                    <Button>Get Started</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </DashboardLayout>
   );
 }
