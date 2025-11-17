@@ -4,16 +4,17 @@ import { withAuth } from '@/lib/middleware';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(request, async (authReq) => {
     try {
+      const { id } = await params;
       const body = await request.json();
       const { name, category, amount, frequency, isEssential } = body;
 
       // Verify ownership
       const existing = await prisma.expense.findUnique({
-        where: { id: params.id },
+        where: { id },
       });
 
       if (!existing || existing.userId !== authReq.user!.userId) {
@@ -21,7 +22,7 @@ export async function PUT(
       }
 
       const expense = await prisma.expense.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           name,
           category,
@@ -41,13 +42,14 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(request, async (authReq) => {
     try {
+      const { id } = await params;
       // Verify ownership
       const existing = await prisma.expense.findUnique({
-        where: { id: params.id },
+        where: { id },
       });
 
       if (!existing || existing.userId !== authReq.user!.userId) {
@@ -55,7 +57,7 @@ export async function DELETE(
       }
 
       await prisma.expense.delete({
-        where: { id: params.id },
+        where: { id },
       });
 
       return NextResponse.json({ message: 'Expense deleted successfully' });
