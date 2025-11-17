@@ -143,7 +143,7 @@ export default function AccountsPage() {
                 <input
                   type="number"
                   value={formData.currentBalance}
-                  onChange={(e) => setFormData({ ...formData, balance: Number(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, currentBalance: Number(e.target.value) })}
                   required
                   className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500"
                   placeholder="10000"
