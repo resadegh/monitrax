@@ -1,0 +1,337 @@
+// Monitrax Database Schema
+// This is the single source of truth for all financial data
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum PropertyType {
+  HOME
+  INVESTMENT
+}
+
+enum LoanType {
+  HOME
+  INVESTMENT
+}
+
+enum RateType {
+  VARIABLE
+  FIXED
+}
+
+enum RepaymentFrequency {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+}
+
+enum AccountType {
+  OFFSET
+  SAVINGS
+  TRANSACTIONAL
+  CREDIT_CARD
+}
+
+enum IncomeType {
+  SALARY
+  RENT
+  OTHER
+}
+
+enum ExpenseCategory {
+  RATES
+  INSURANCE
+  MAINTENANCE
+  PERSONAL
+  UTILITIES
+  FOOD
+  TRANSPORT
+  STRATA
+  LAND_TAX
+  LOAN_INTEREST
+  OTHER
+}
+
+enum Frequency {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+  ANNUAL
+}
+
+enum TransactionDirection {
+  IN
+  OUT
+}
+
+enum UserRole {
+  OWNER
+  PARTNER
+  ACCOUNTANT
+}
+
+enum DebtStrategy {
+  TAX_AWARE_MINIMUM_INTEREST
+  AVALANCHE
+  SNOWBALL
+}
+
+// =============================================================================
+// USER
+// =============================================================================
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(OWNER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  properties  Property[]
+  loans       Loan[]
+  accounts    Account[]
+  income      Income[]
+  expenses    Expense[]
+  transactions Transaction[]
+  debtPlans   DebtPlan[]
+
+  @@map("users")
+}
+
+// =============================================================================
+// PROPERTY
+// =============================================================================
+
+model Property {
+  id             String       @id @default(uuid())
+  userId         String
+  name           String
+  type           PropertyType
+  address        String?
+  purchasePrice  Float
+  purchaseDate   DateTime
+  currentValue   Float
+  valuationDate  DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relationships
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loans     Loan[]
+  income    Income[]
+  expenses  Expense[]
+
+  @@index([userId])
+  @@map("properties")
+}
+
+// =============================================================================
+// LOAN
+// =============================================================================
+
+model Loan {
+  id                   String              @id @default(uuid())
+  userId               String
+  propertyId           String?
+  offsetAccountId      String?             @unique
+  name                 String
+  type                 LoanType
+  principal            Float               // Current balance
+  interestRateAnnual   Float               // e.g., 0.0625 for 6.25%
+  rateType             RateType
+  fixedExpiry          DateTime?           // When fixed rate expires
+  isInterestOnly       Boolean             @default(false)
+  termMonthsRemaining  Int
+  minRepayment         Float               // Current required payment
+  repaymentFrequency   RepaymentFrequency
+  extraRepaymentCap    Float?              // Annual cap for extra repayments on fixed loans
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  // Relationships
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property       Property?    @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  offsetAccount  Account?     @relation(fields: [offsetAccountId], references: [id], onDelete: SetNull)
+  expenses       Expense[]
+  debtPlanLoans  DebtPlanLoan[]
+
+  @@index([userId])
+  @@index([propertyId])
+  @@map("loans")
+}
+
+// =============================================================================
+// ACCOUNT
+// =============================================================================
+
+model Account {
+  id             String       @id @default(uuid())
+  userId         String
+  name           String
+  type           AccountType
+  institution    String?
+  currentBalance Float
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relationships
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  linkedLoan   Loan?         // One-to-one: this account can be an offset for one loan
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+// =============================================================================
+// INCOME
+// =============================================================================
+
+model Income {
+  id          String      @id @default(uuid())
+  userId      String
+  propertyId  String?
+  name        String
+  type        IncomeType
+  amount      Float
+  frequency   Frequency
+  isTaxable   Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relationships
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property?   @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([propertyId])
+  @@map("income")
+}
+
+// =============================================================================
+// EXPENSE
+// =============================================================================
+
+model Expense {
+  id               String          @id @default(uuid())
+  userId           String
+  propertyId       String?
+  loanId           String?
+  name             String
+  category         ExpenseCategory
+  amount           Float
+  frequency        Frequency
+  isTaxDeductible  Boolean         @default(false)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Relationships
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property     Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  loan         Loan?         @relation(fields: [loanId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([loanId])
+  @@map("expenses")
+}
+
+// =============================================================================
+// TRANSACTION
+// =============================================================================
+
+model Transaction {
+  id          String               @id @default(uuid())
+  userId      String
+  accountId   String
+  propertyId  String?
+  loanId      String?
+  incomeId    String?
+  expenseId   String?
+  date        DateTime
+  description String
+  amount      Float
+  direction   TransactionDirection
+  category    String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  // Relationships
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  income   Income?   @relation(fields: [incomeId], references: [id], onDelete: SetNull)
+  expense  Expense?  @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([date])
+  @@map("transactions")
+}
+
+// =============================================================================
+// DEBT PLAN (Optional storage of debt planner results)
+// =============================================================================
+
+model DebtPlan {
+  id                    String        @id @default(uuid())
+  userId                String
+  name                  String
+  strategy              DebtStrategy
+  surplusPerPeriod      Float
+  surplusFrequency      Frequency
+  emergencyBuffer       Float         @default(0)
+  respectFixedCaps      Boolean       @default(true)
+  rolloverRepayments    Boolean       @default(true)
+  totalInterestPaid     Float
+  totalInterestSaved    Float
+  debtFreeDate          DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Relationships
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loanDetails DebtPlanLoan[]
+
+  @@index([userId])
+  @@map("debt_plans")
+}
+
+// =============================================================================
+// DEBT PLAN LOAN (Per-loan results from debt planner)
+// =============================================================================
+
+model DebtPlanLoan {
+  id                String    @id @default(uuid())
+  debtPlanId        String
+  loanId            String
+  loanName          String
+  originalPrincipal Float
+  payoffDate        DateTime
+  totalInterestPaid Float
+  monthsSaved       Int
+  interestSaved     Float
+  createdAt         DateTime  @default(now())
+
+  // Relationships
+  debtPlan DebtPlan @relation(fields: [debtPlanId], references: [id], onDelete: Cascade)
+  loan     Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([debtPlanId])
+  @@index([loanId])
+  @@map("debt_plan_loans")
+}
