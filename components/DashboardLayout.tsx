@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface NavItem {
   name: string;
@@ -63,11 +64,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950">
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 w-64 border-r bg-white/80 backdrop-blur-sm shadow-lg">
+      <aside className="fixed inset-y-0 left-0 w-64 border-r border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-lg">
         {/* Logo/Brand */}
-        <div className="flex h-16 items-center border-b px-6 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-800 px-4 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700">
           <Link href="/dashboard" className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <Wallet className="h-5 w-5 text-white" />
@@ -77,6 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-xs text-blue-100">Financial Planning</p>
             </div>
           </Link>
+          <ThemeToggle />
         </div>
 
         {/* Navigation */}
@@ -90,8 +92,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
-                    : 'text-muted-foreground hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-foreground'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700 text-white shadow-md'
+                    : 'text-muted-foreground hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-950/50 dark:hover:to-purple-950/50 hover:text-foreground'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -102,13 +104,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* User Section */}
-        <div className="border-t p-4">
-          <div className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 p-3 mb-2 border border-blue-100">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+        <div className="border-t border-slate-200 dark:border-slate-800 p-4">
+          <div className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 p-3 mb-2 border border-blue-100 dark:border-blue-900">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700 text-white">
               <User className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.name}</p>
+              <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{user.name}</p>
               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
           </div>
@@ -116,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onClick={logout}
             variant="ghost"
             size="sm"
-            className="w-full justify-start hover:bg-red-50 hover:text-red-600"
+            className="w-full justify-start hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-400"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Sign Out

@@ -177,33 +177,33 @@ export default function DashboardPage() {
 
           {/* Monthly Overview */}
           <div className="grid gap-6 md:grid-cols-2">
-            <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50 to-white hover:shadow-lg hover:shadow-green-100 transition-all duration-300">
+            <Card className="border-l-4 border-l-green-500 dark:border-l-green-400 bg-gradient-to-br from-green-50 to-white dark:from-green-950/50 dark:to-slate-800 hover:shadow-lg hover:shadow-green-100 dark:hover:shadow-green-900/50 transition-all duration-300">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-green-100">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/50">
+                    <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <span>Monthly Income</span>
                 </CardTitle>
                 <CardDescription>Total income per month</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-green-700">{formatCurrency(stats.totalIncome)}</div>
+                <div className="text-3xl font-bold text-green-700 dark:text-green-400">{formatCurrency(stats.totalIncome)}</div>
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50 to-white hover:shadow-lg hover:shadow-orange-100 transition-all duration-300">
+            <Card className="border-l-4 border-l-orange-500 dark:border-l-orange-400 bg-gradient-to-br from-orange-50 to-white dark:from-orange-950/50 dark:to-slate-800 hover:shadow-lg hover:shadow-orange-100 dark:hover:shadow-orange-900/50 transition-all duration-300">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-orange-100">
-                    <ArrowDownRight className="h-5 w-5 text-orange-600" />
+                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/50">
+                    <ArrowDownRight className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                   </div>
                   <span>Monthly Expenses</span>
                 </CardTitle>
                 <CardDescription>Total expenses per month</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-700">{formatCurrency(stats.totalExpenses)}</div>
+                <div className="text-3xl font-bold text-orange-700 dark:text-orange-400">{formatCurrency(stats.totalExpenses)}</div>
               </CardContent>
             </Card>
           </div>

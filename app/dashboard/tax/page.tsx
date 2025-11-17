@@ -139,18 +139,18 @@ export default function TaxPage() {
                 icon={Calculator}
                 variant="blue"
               />
-              <Card className="border-l-4 border-l-red-500 bg-gradient-to-br from-red-50 to-white hover:shadow-lg hover:shadow-red-100 transition-all duration-300">
+              <Card className="border-l-4 border-l-red-500 dark:border-l-red-400 bg-gradient-to-br from-red-50 to-white dark:from-red-950/50 dark:to-slate-800 hover:shadow-lg hover:shadow-red-100 dark:hover:shadow-red-900/50 transition-all duration-300">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-medium text-muted-foreground">Tax Payable</CardTitle>
-                    <div className="p-2 rounded-lg bg-red-100">
-                      <Receipt className="h-4 w-4 text-red-600" />
+                    <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/50">
+                      <Receipt className="h-4 w-4 text-red-600 dark:text-red-400" />
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-700">{formatCurrency(taxResult.taxPayable)}</div>
-                  <p className="text-xs text-red-600 mt-1">{formatPercent(taxResult.effectiveRate)} effective rate</p>
+                  <div className="text-2xl font-bold text-red-700 dark:text-red-400">{formatCurrency(taxResult.taxPayable)}</div>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">{formatPercent(taxResult.effectiveRate)} effective rate</p>
                 </CardContent>
               </Card>
             </div>
