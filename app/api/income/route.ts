@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
       });
 
-      return NextResponse.json({ income });
+      return NextResponse.json(income);
     } catch (error) {
       console.error('Get income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({ income: incomeRecord }, { status: 201 });
+      return NextResponse.json(incomeRecord, { status: 201 });
     } catch (error) {
       console.error('Create income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

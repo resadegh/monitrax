@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
       });
 
-      return NextResponse.json({ loans });
+      return NextResponse.json(loans);
     } catch (error) {
       console.error('Get loans error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({ loan }, { status: 201 });
+      return NextResponse.json(loan, { status: 201 });
     } catch (error) {
       console.error('Create loan error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

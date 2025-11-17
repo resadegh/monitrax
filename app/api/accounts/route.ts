@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
       });
 
-      return NextResponse.json({ accounts });
+      return NextResponse.json(accounts);
     } catch (error) {
       console.error('Get accounts error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({ account }, { status: 201 });
+      return NextResponse.json(account, { status: 201 });
     } catch (error) {
       console.error('Create account error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
