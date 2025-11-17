@@ -63,18 +63,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 w-64 border-r bg-card">
+      <aside className="fixed inset-y-0 left-0 w-64 border-r bg-white/80 backdrop-blur-sm shadow-lg">
         {/* Logo/Brand */}
-        <div className="flex h-16 items-center border-b px-6">
+        <div className="flex h-16 items-center border-b px-6 bg-gradient-to-r from-blue-600 to-purple-600">
           <Link href="/dashboard" className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <Wallet className="h-5 w-5 text-primary-foreground" />
+            <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <Wallet className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight">Monitrax</h1>
-              <p className="text-xs text-muted-foreground">Financial Planning</p>
+              <h1 className="text-lg font-semibold tracking-tight text-white">Monitrax</h1>
+              <p className="text-xs text-blue-100">Financial Planning</p>
             </div>
           </Link>
         </div>
@@ -88,10 +88,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                    : 'text-muted-foreground hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-foreground'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -103,8 +103,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* User Section */}
         <div className="border-t p-4">
-          <div className="flex items-center gap-3 rounded-lg bg-accent/50 p-3 mb-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <div className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 p-3 mb-2 border border-blue-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white">
               <User className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
@@ -116,7 +116,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onClick={logout}
             variant="ghost"
             size="sm"
-            className="w-full justify-start"
+            className="w-full justify-start hover:bg-red-50 hover:text-red-600"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Sign Out

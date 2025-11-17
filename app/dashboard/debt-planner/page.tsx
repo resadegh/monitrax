@@ -288,12 +288,14 @@ export default function DebtPlannerPage() {
                 value={formatCurrency(planResult.totalInterestSavedVsBaseline)}
                 description="Compared to minimum payments only"
                 icon={DollarSign}
+                variant="green"
               />
               <StatCard
                 title="Time Saved"
                 value={`${planResult.totalMonthsSaved} months`}
                 description={`${(planResult.totalMonthsSaved / 12).toFixed(1)} years earlier`}
                 icon={Clock}
+                variant="blue"
               />
             </div>
 

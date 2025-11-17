@@ -125,26 +125,31 @@ export default function TaxPage() {
                 title="Total Income"
                 value={formatCurrency(taxResult.totalIncome)}
                 icon={DollarSign}
+                variant="green"
               />
               <StatCard
                 title="Deductions"
                 value={formatCurrency(taxResult.totalDeductions)}
                 icon={TrendingDown}
+                variant="teal"
               />
               <StatCard
                 title="Taxable Income"
                 value={formatCurrency(taxResult.taxableIncome)}
                 icon={Calculator}
+                variant="blue"
               />
-              <Card className="border-red-200 bg-red-50/50">
+              <Card className="border-l-4 border-l-red-500 bg-gradient-to-br from-red-50 to-white hover:shadow-lg hover:shadow-red-100 transition-all duration-300">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <Receipt className="h-5 w-5 text-red-600" />
+                  <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-medium text-muted-foreground">Tax Payable</CardTitle>
+                    <div className="p-2 rounded-lg bg-red-100">
+                      <Receipt className="h-4 w-4 text-red-600" />
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-600">{formatCurrency(taxResult.taxPayable)}</div>
+                  <div className="text-2xl font-bold text-red-700">{formatCurrency(taxResult.taxPayable)}</div>
                   <p className="text-xs text-red-600 mt-1">{formatPercent(taxResult.effectiveRate)} effective rate</p>
                 </CardContent>
               </Card>

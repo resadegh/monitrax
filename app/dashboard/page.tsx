@@ -150,52 +150,60 @@ export default function DashboardPage() {
               value={formatCurrency(stats.netWorth)}
               description={`${formatCurrency(stats.totalPropertyValue)} in assets`}
               icon={Wallet}
+              variant="purple"
             />
             <StatCard
               title="Monthly Cash Flow"
               value={formatCurrency(stats.monthlyFlow)}
               description={stats.monthlyFlow >= 0 ? 'Positive cash flow' : 'Negative cash flow'}
               icon={stats.monthlyFlow >= 0 ? ArrowUpRight : ArrowDownRight}
+              variant={stats.monthlyFlow >= 0 ? 'green' : 'orange'}
             />
             <StatCard
               title="Properties"
               value={stats.totalProperties}
               description={formatCurrency(stats.totalPropertyValue)}
               icon={Home}
+              variant="blue"
             />
             <StatCard
               title="Total Debt"
               value={formatCurrency(stats.totalLoanBalance)}
               description={`Across ${stats.totalLoans} loan${stats.totalLoans !== 1 ? 's' : ''}`}
               icon={Banknote}
+              variant="pink"
             />
           </div>
 
           {/* Monthly Overview */}
           <div className="grid gap-6 md:grid-cols-2">
-            <Card>
+            <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50 to-white hover:shadow-lg hover:shadow-green-100 transition-all duration-300">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  Monthly Income
+                  <div className="p-2 rounded-lg bg-green-100">
+                    <TrendingUp className="h-5 w-5 text-green-600" />
+                  </div>
+                  <span>Monthly Income</span>
                 </CardTitle>
                 <CardDescription>Total income per month</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-semibold">{formatCurrency(stats.totalIncome)}</div>
+                <div className="text-3xl font-bold text-green-700">{formatCurrency(stats.totalIncome)}</div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50 to-white hover:shadow-lg hover:shadow-orange-100 transition-all duration-300">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ArrowDownRight className="h-5 w-5 text-red-600" />
-                  Monthly Expenses
+                  <div className="p-2 rounded-lg bg-orange-100">
+                    <ArrowDownRight className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <span>Monthly Expenses</span>
                 </CardTitle>
                 <CardDescription>Total expenses per month</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-semibold">{formatCurrency(stats.totalExpenses)}</div>
+                <div className="text-3xl font-bold text-orange-700">{formatCurrency(stats.totalExpenses)}</div>
               </CardContent>
             </Card>
           </div>
