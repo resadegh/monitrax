@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import {
+  GRDCSLinkedEntity,
+  GRDCSMissingLink,
+  createLinkedEntity,
+  extractPropertyLinks,
+  extractLoanLinks,
+  extractIncomeLinks,
+  extractExpenseLinks,
+  extractAccountLinks,
+  extractInvestmentAccountLinks,
+  extractHoldingLinks,
+} from '@/lib/grdcs';
+
+// ============================================================================
+// SNAPSHOT 2.0 - GRDCS-ENHANCED PORTFOLIO SNAPSHOT
+// ============================================================================
 
 // Helper to normalize amount to annual
 function normalizeToAnnual(amount: number, frequency: string): number {
@@ -30,17 +46,391 @@ function calculateLVR(loanBalance: number, propertyValue: number): number {
   return (loanBalance / propertyValue) * 100;
 }
 
+// ============================================================================
+// LINKAGE HEALTH ENGINE
+// ============================================================================
+
+interface RelationalWarning {
+  type: 'error' | 'warning' | 'info';
+  category: 'orphan' | 'missing_link' | 'inconsistency' | 'completeness';
+  entityType: string;
+  entityId: string;
+  entityName: string;
+  message: string;
+  suggestedAction?: string;
+}
+
+interface LinkageHealth {
+  completenessScore: number;
+  orphanCount: number;
+  missingLinks: GRDCSMissingLink[];
+  crossModuleConsistency: number;
+  warnings: string[];
+  relationalWarnings: RelationalWarning[];
+}
+
+interface ModuleCompleteness {
+  properties: { count: number; linkedCount: number; score: number };
+  loans: { count: number; linkedCount: number; score: number };
+  income: { count: number; linkedCount: number; score: number };
+  expenses: { count: number; linkedCount: number; score: number };
+  accounts: { count: number; linkedCount: number; score: number };
+  investmentAccounts: { count: number; linkedCount: number; score: number };
+  holdings: { count: number; linkedCount: number; score: number };
+  transactions: { count: number; linkedCount: number; score: number };
+}
+
+/**
+ * Calculate linkage health for the portfolio
+ */
+function calculateLinkageHealth(
+  properties: any[],
+  loans: any[],
+  income: any[],
+  expenses: any[],
+  accounts: any[],
+  investmentAccounts: any[],
+  holdings: any[],
+  transactions: any[]
+): { health: LinkageHealth; moduleCompleteness: ModuleCompleteness } {
+  const warnings: string[] = [];
+  const relationalWarnings: RelationalWarning[] = [];
+  const allMissingLinks: GRDCSMissingLink[] = [];
+  let orphanCount = 0;
+
+  // ============================================================================
+  // CANONICAL RELATIONSHIP VALIDATION
+  // ============================================================================
+
+  // Rule 1: Loans must link to exactly 1 property
+  const orphanedLoans = loans.filter(l => !l.propertyId);
+  orphanedLoans.forEach(loan => {
+    orphanCount++;
+    relationalWarnings.push({
+      type: 'warning',
+      category: 'orphan',
+      entityType: 'loan',
+      entityId: loan.id,
+      entityName: loan.name,
+      message: `Loan "${loan.name}" is not linked to any property`,
+      suggestedAction: 'Link this loan to a property for accurate LVR and equity tracking',
+    });
+    allMissingLinks.push({
+      type: 'property',
+      reason: `Loan "${loan.name}" has no property linked`,
+      suggestedAction: 'Link to a property for accurate LVR calculation',
+    });
+  });
+  if (orphanedLoans.length > 0) {
+    warnings.push(`${orphanedLoans.length} loan(s) not linked to any property`);
+  }
+
+  // Rule 2: Holdings must link to exactly 1 investment account
+  const orphanedHoldings = holdings.filter(h => !h.investmentAccountId);
+  orphanedHoldings.forEach(holding => {
+    orphanCount++;
+    relationalWarnings.push({
+      type: 'error',
+      category: 'orphan',
+      entityType: 'investmentHolding',
+      entityId: holding.id,
+      entityName: holding.ticker,
+      message: `Holding "${holding.ticker}" is not linked to any investment account`,
+      suggestedAction: 'Link this holding to an investment account',
+    });
+    allMissingLinks.push({
+      type: 'investmentAccount',
+      reason: `Holding "${holding.ticker}" has no account linked`,
+      suggestedAction: 'Link to an investment account',
+    });
+  });
+  if (orphanedHoldings.length > 0) {
+    warnings.push(`${orphanedHoldings.length} holding(s) not linked to any investment account`);
+  }
+
+  // Rule 3: Transactions must link to exactly 1 holding (if applicable)
+  const transactionsWithoutHolding = transactions.filter(t =>
+    !t.holdingId && ['BUY', 'SELL'].includes(t.type)
+  );
+  transactionsWithoutHolding.forEach(tx => {
+    relationalWarnings.push({
+      type: 'warning',
+      category: 'missing_link',
+      entityType: 'investmentTransaction',
+      entityId: tx.id,
+      entityName: `${tx.type} transaction`,
+      message: `Transaction of type "${tx.type}" is not linked to a holding`,
+      suggestedAction: 'Link buy/sell transactions to holdings for accurate cost base tracking',
+    });
+  });
+  if (transactionsWithoutHolding.length > 0) {
+    warnings.push(`${transactionsWithoutHolding.length} buy/sell transaction(s) not linked to holdings`);
+  }
+
+  // Rule 4: Rental income must link to a property
+  const rentalIncomeWithoutProperty = income.filter(i =>
+    (i.type === 'RENT' || i.type === 'RENTAL') && !i.propertyId
+  );
+  rentalIncomeWithoutProperty.forEach(inc => {
+    orphanCount++;
+    relationalWarnings.push({
+      type: 'warning',
+      category: 'inconsistency',
+      entityType: 'income',
+      entityId: inc.id,
+      entityName: inc.name,
+      message: `Rental income "${inc.name}" is not linked to any property`,
+      suggestedAction: 'Link rental income to the corresponding property',
+    });
+    allMissingLinks.push({
+      type: 'property',
+      reason: `Rental income "${inc.name}" has no property linked`,
+      suggestedAction: 'Link to the property generating this rental income',
+    });
+  });
+  if (rentalIncomeWithoutProperty.length > 0) {
+    warnings.push(`${rentalIncomeWithoutProperty.length} rental income(s) not linked to properties`);
+  }
+
+  // Rule 5: Property expenses should link to their property or loan
+  const propertyExpensesWithoutLink = expenses.filter(e =>
+    e.sourceType === 'PROPERTY' && !e.propertyId && !e.loanId
+  );
+  propertyExpensesWithoutLink.forEach(exp => {
+    relationalWarnings.push({
+      type: 'warning',
+      category: 'missing_link',
+      entityType: 'expense',
+      entityId: exp.id,
+      entityName: exp.name,
+      message: `Property expense "${exp.name}" is not linked to any property or loan`,
+      suggestedAction: 'Link this expense to the relevant property or loan',
+    });
+  });
+  if (propertyExpensesWithoutLink.length > 0) {
+    warnings.push(`${propertyExpensesWithoutLink.length} property expense(s) not linked to properties or loans`);
+  }
+
+  // ============================================================================
+  // ADDITIONAL RELATIONAL INSIGHTS
+  // ============================================================================
+
+  // Properties with no income
+  const propertiesWithoutIncome = properties.filter(p =>
+    p.type === 'INVESTMENT' && !income.some(i => i.propertyId === p.id)
+  );
+  propertiesWithoutIncome.forEach(prop => {
+    relationalWarnings.push({
+      type: 'info',
+      category: 'completeness',
+      entityType: 'property',
+      entityId: prop.id,
+      entityName: prop.name,
+      message: `Investment property "${prop.name}" has no income linked`,
+      suggestedAction: 'Add rental income for accurate cashflow analysis',
+    });
+  });
+
+  // Properties with no expenses
+  const propertiesWithoutExpenses = properties.filter(p =>
+    !expenses.some(e => e.propertyId === p.id)
+  );
+  propertiesWithoutExpenses.forEach(prop => {
+    relationalWarnings.push({
+      type: 'info',
+      category: 'completeness',
+      entityType: 'property',
+      entityId: prop.id,
+      entityName: prop.name,
+      message: `Property "${prop.name}" has no expenses linked`,
+      suggestedAction: 'Add property expenses for accurate cashflow tracking',
+    });
+  });
+
+  // Investment accounts with no holdings
+  const accountsWithoutHoldings = investmentAccounts.filter(a =>
+    !holdings.some(h => h.investmentAccountId === a.id)
+  );
+  accountsWithoutHoldings.forEach(acc => {
+    relationalWarnings.push({
+      type: 'info',
+      category: 'completeness',
+      entityType: 'investmentAccount',
+      entityId: acc.id,
+      entityName: acc.name,
+      message: `Investment account "${acc.name}" has no holdings`,
+      suggestedAction: 'Add holdings to track portfolio value',
+    });
+  });
+
+  // Holdings with no transactions
+  const holdingsWithoutTransactions = holdings.filter(h =>
+    !transactions.some(t => t.holdingId === h.id)
+  );
+  holdingsWithoutTransactions.forEach(holding => {
+    relationalWarnings.push({
+      type: 'info',
+      category: 'completeness',
+      entityType: 'investmentHolding',
+      entityId: holding.id,
+      entityName: holding.ticker,
+      message: `Holding "${holding.ticker}" has no transactions recorded`,
+      suggestedAction: 'Add transactions for accurate cost base tracking',
+    });
+  });
+
+  // Transactions referencing non-existent holdings
+  const holdingIds = new Set(holdings.map(h => h.id));
+  const transactionsWithMissingHoldings = transactions.filter(t =>
+    t.holdingId && !holdingIds.has(t.holdingId)
+  );
+  transactionsWithMissingHoldings.forEach(tx => {
+    orphanCount++;
+    relationalWarnings.push({
+      type: 'error',
+      category: 'inconsistency',
+      entityType: 'investmentTransaction',
+      entityId: tx.id,
+      entityName: `${tx.type} transaction`,
+      message: `Transaction references a holding that no longer exists`,
+      suggestedAction: 'Update or remove this orphaned transaction',
+    });
+  });
+
+  // ============================================================================
+  // COMPLETENESS SCORING
+  // ============================================================================
+
+  const moduleCompleteness: ModuleCompleteness = {
+    properties: {
+      count: properties.length,
+      linkedCount: properties.filter(p =>
+        loans.some(l => l.propertyId === p.id) || income.some(i => i.propertyId === p.id)
+      ).length,
+      score: properties.length > 0
+        ? Math.round((properties.filter(p =>
+            loans.some(l => l.propertyId === p.id)
+          ).length / properties.length) * 100)
+        : 100,
+    },
+    loans: {
+      count: loans.length,
+      linkedCount: loans.filter(l => l.propertyId).length,
+      score: loans.length > 0
+        ? Math.round((loans.filter(l => l.propertyId).length / loans.length) * 100)
+        : 100,
+    },
+    income: {
+      count: income.length,
+      linkedCount: income.filter(i => i.propertyId || i.investmentAccountId).length,
+      score: income.length > 0
+        ? Math.round((income.filter(i => i.propertyId || i.investmentAccountId).length / income.length) * 100)
+        : 100,
+    },
+    expenses: {
+      count: expenses.length,
+      linkedCount: expenses.filter(e => e.propertyId || e.loanId || e.investmentAccountId).length,
+      score: expenses.length > 0
+        ? Math.round((expenses.filter(e => e.propertyId || e.loanId || e.investmentAccountId).length / expenses.length) * 100)
+        : 100,
+    },
+    accounts: {
+      count: accounts.length,
+      linkedCount: accounts.filter(a => a.linkedLoanId).length,
+      score: 100, // Accounts don't require links
+    },
+    investmentAccounts: {
+      count: investmentAccounts.length,
+      linkedCount: investmentAccounts.filter(a => holdings.some(h => h.investmentAccountId === a.id)).length,
+      score: investmentAccounts.length > 0
+        ? Math.round((investmentAccounts.filter(a =>
+            holdings.some(h => h.investmentAccountId === a.id)
+          ).length / investmentAccounts.length) * 100)
+        : 100,
+    },
+    holdings: {
+      count: holdings.length,
+      linkedCount: holdings.filter(h => h.investmentAccountId).length,
+      score: holdings.length > 0
+        ? Math.round((holdings.filter(h => h.investmentAccountId).length / holdings.length) * 100)
+        : 100,
+    },
+    transactions: {
+      count: transactions.length,
+      linkedCount: transactions.filter(t => t.holdingId || !['BUY', 'SELL'].includes(t.type)).length,
+      score: transactions.length > 0
+        ? Math.round((transactions.filter(t =>
+            t.holdingId || !['BUY', 'SELL'].includes(t.type)
+          ).length / transactions.length) * 100)
+        : 100,
+    },
+  };
+
+  // Calculate overall completeness score (weighted average)
+  const weights = {
+    properties: 0.2,
+    loans: 0.2,
+    income: 0.1,
+    expenses: 0.1,
+    accounts: 0.05,
+    investmentAccounts: 0.15,
+    holdings: 0.1,
+    transactions: 0.1,
+  };
+
+  const completenessScore = Math.round(
+    moduleCompleteness.properties.score * weights.properties +
+    moduleCompleteness.loans.score * weights.loans +
+    moduleCompleteness.income.score * weights.income +
+    moduleCompleteness.expenses.score * weights.expenses +
+    moduleCompleteness.accounts.score * weights.accounts +
+    moduleCompleteness.investmentAccounts.score * weights.investmentAccounts +
+    moduleCompleteness.holdings.score * weights.holdings +
+    moduleCompleteness.transactions.score * weights.transactions
+  );
+
+  // Calculate cross-module consistency (based on relationship rules)
+  const totalEntities = properties.length + loans.length + income.length + expenses.length +
+    accounts.length + investmentAccounts.length + holdings.length + transactions.length;
+  const errorCount = relationalWarnings.filter(w => w.type === 'error').length;
+  const warningCount = relationalWarnings.filter(w => w.type === 'warning').length;
+
+  const crossModuleConsistency = totalEntities > 0
+    ? Math.max(0, Math.round(100 - (errorCount * 10) - (warningCount * 3)))
+    : 100;
+
+  return {
+    health: {
+      completenessScore,
+      orphanCount,
+      missingLinks: allMissingLinks,
+      crossModuleConsistency,
+      warnings,
+      relationalWarnings,
+    },
+    moduleCompleteness,
+  };
+}
+
+// ============================================================================
+// SNAPSHOT ROUTE HANDLER
+// ============================================================================
+
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.user!.userId;
 
-      // Fetch all user data in parallel
-      const [properties, loans, accounts, income, expenses, investmentAccounts] = await Promise.all([
+      // Fetch all user data in parallel with full relational includes
+      const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions] = await Promise.all([
         prisma.property.findMany({
           where: { userId },
           include: {
-            loans: true,
+            loans: {
+              include: {
+                offsetAccount: true,
+              },
+            },
             income: true,
             expenses: true,
             depreciationSchedules: true,
@@ -56,6 +446,9 @@ export async function GET(request: NextRequest) {
         }),
         prisma.account.findMany({
           where: { userId },
+          include: {
+            linkedLoan: true,
+          },
         }),
         prisma.income.findMany({
           where: { userId },
@@ -81,17 +474,46 @@ export async function GET(request: NextRequest) {
             expenses: true,
           },
         }),
+        prisma.investmentHolding.findMany({
+          where: {
+            investmentAccount: { userId },
+          },
+          include: {
+            investmentAccount: true,
+            transactions: true,
+          },
+        }),
+        prisma.investmentTransaction.findMany({
+          where: {
+            investmentAccount: { userId },
+          },
+          include: {
+            investmentAccount: true,
+            holding: true,
+          },
+        }),
       ]);
 
-      // Calculate totals
+      // ============================================================================
+      // CALCULATE LINKAGE HEALTH
+      // ============================================================================
+      const { health: linkageHealth, moduleCompleteness } = calculateLinkageHealth(
+        properties,
+        loans,
+        income,
+        expenses,
+        accounts,
+        investmentAccounts,
+        holdings,
+        transactions
+      );
+
+      // ============================================================================
+      // CALCULATE FINANCIAL TOTALS
+      // ============================================================================
       const totalPropertyValue = properties.reduce((sum, p) => sum + p.currentValue, 0);
       const totalAccountBalances = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
-
-      // Calculate investment value (units * averagePrice for each holding)
-      const totalInvestmentValue = investmentAccounts.reduce((sum, acc) => {
-        return sum + acc.holdings.reduce((holdingSum, h) => holdingSum + (h.units * h.averagePrice), 0);
-      }, 0);
-
+      const totalInvestmentValue = holdings.reduce((sum, h) => sum + (h.units * h.averagePrice), 0);
       const totalAssets = totalPropertyValue + totalAccountBalances + totalInvestmentValue;
       const totalLiabilities = loans.reduce((sum, l) => sum + l.principal, 0);
       const netWorth = totalAssets - totalLiabilities;
@@ -102,30 +524,32 @@ export async function GET(request: NextRequest) {
       const monthlyNetCashflow = (totalAnnualIncome - totalAnnualExpenses) / 12;
       const annualNetCashflow = totalAnnualIncome - totalAnnualExpenses;
 
-      // Property details with linked data
+      // ============================================================================
+      // GRDCS-ENHANCED PROPERTY SNAPSHOTS
+      // ============================================================================
       const propertySnapshots = properties.map(property => {
         const propertyLoans = loans.filter(l => l.propertyId === property.id);
         const totalLoanBalance = propertyLoans.reduce((sum, l) => sum + l.principal, 0);
         const equity = property.currentValue - totalLoanBalance;
         const lvr = calculateLVR(totalLoanBalance, property.currentValue);
 
-        // Calculate rental income for this property
         const propertyIncome = income.filter(i => i.propertyId === property.id);
         const annualRentalIncome = propertyIncome
           .filter(i => i.type === 'RENT' || i.type === 'RENTAL')
           .reduce((sum, i) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
         const rentalYield = calculateRentalYield(annualRentalIncome, property.currentValue);
 
-        // Calculate property expenses
         const propertyExpenses = expenses.filter(e => e.propertyId === property.id);
         const annualPropertyExpenses = propertyExpenses.reduce((sum, e) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
 
-        // Calculate loan interest for this property
         const annualInterest = propertyLoans.reduce((sum, l) => {
           return sum + (l.principal * l.interestRateAnnual);
         }, 0);
 
         const propertyCashflow = annualRentalIncome - annualPropertyExpenses - annualInterest;
+
+        // Extract GRDCS links
+        const grdcsLinks = extractPropertyLinks(property);
 
         return {
           id: property.id,
@@ -153,12 +577,24 @@ export async function GET(request: NextRequest) {
             monthlyNet: propertyCashflow / 12,
           },
           depreciationSchedules: property.depreciationSchedules.length,
+          _links: {
+            related: grdcsLinks.linked,
+          },
+          _meta: {
+            linkedCount: grdcsLinks.linked.length,
+            missingLinks: grdcsLinks.missing,
+          },
         };
       });
 
-      // Investment accounts snapshot
+      // ============================================================================
+      // GRDCS-ENHANCED INVESTMENT SNAPSHOTS
+      // ============================================================================
       const investmentSnapshots = investmentAccounts.map(acc => {
-        const accountValue = acc.holdings.reduce((sum, h) => sum + (h.units * h.averagePrice), 0);
+        const accountHoldings = holdings.filter(h => h.investmentAccountId === acc.id);
+        const accountValue = accountHoldings.reduce((sum, h) => sum + (h.units * h.averagePrice), 0);
+        const grdcsLinks = extractInvestmentAccountLinks(acc);
+
         return {
           id: acc.id,
           name: acc.name,
@@ -166,21 +602,65 @@ export async function GET(request: NextRequest) {
           platform: acc.platform,
           currency: acc.currency,
           totalValue: accountValue,
-          holdings: acc.holdings.map(h => ({
-            id: h.id,
-            ticker: h.ticker,
-            type: h.type,
-            units: h.units,
-            averagePrice: h.averagePrice,
-            currentValue: h.units * h.averagePrice,
-            frankingPercentage: h.frankingPercentage,
-          })),
-          transactionCount: acc.transactions.length,
+          holdings: accountHoldings.map(h => {
+            const holdingLinks = extractHoldingLinks(h);
+            return {
+              id: h.id,
+              ticker: h.ticker,
+              type: h.type,
+              units: h.units,
+              averagePrice: h.averagePrice,
+              currentValue: h.units * h.averagePrice,
+              frankingPercentage: h.frankingPercentage,
+              _links: {
+                related: holdingLinks.linked,
+              },
+              _meta: {
+                linkedCount: holdingLinks.linked.length,
+                missingLinks: holdingLinks.missing,
+              },
+            };
+          }),
+          transactionCount: transactions.filter(t => t.investmentAccountId === acc.id).length,
+          _links: {
+            related: grdcsLinks.linked,
+          },
+          _meta: {
+            linkedCount: grdcsLinks.linked.length,
+            missingLinks: grdcsLinks.missing,
+          },
         };
       });
 
-      // Tax exposure (placeholder - would need full tax calculation)
-      // TODO: Integrate with full tax engine when available
+      // ============================================================================
+      // GRDCS-ENHANCED LOAN SNAPSHOTS
+      // ============================================================================
+      const loanSnapshots = loans.map(loan => {
+        const grdcsLinks = extractLoanLinks(loan);
+        return {
+          id: loan.id,
+          name: loan.name,
+          principal: loan.principal,
+          interestRate: loan.interestRateAnnual,
+          rateType: loan.rateType,
+          isInterestOnly: loan.isInterestOnly,
+          propertyId: loan.propertyId,
+          propertyName: loan.property?.name || null,
+          offsetAccountId: loan.offsetAccountId,
+          offsetBalance: loan.offsetAccount?.currentBalance || 0,
+          _links: {
+            related: grdcsLinks.linked,
+          },
+          _meta: {
+            linkedCount: grdcsLinks.linked.length,
+            missingLinks: grdcsLinks.missing,
+          },
+        };
+      });
+
+      // ============================================================================
+      // TAX EXPOSURE
+      // ============================================================================
       const taxableIncome = income
         .filter(i => i.isTaxable)
         .reduce((sum, i) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
@@ -189,13 +669,13 @@ export async function GET(request: NextRequest) {
         .filter(e => e.isTaxDeductible)
         .reduce((sum, e) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
 
-      // Estimated CGT exposure (unrealised gains on investments)
-      // TODO: Implement proper CGT calculation with cost base tracking
-      const estimatedUnrealisedGains = 0; // Placeholder
-
+      // ============================================================================
+      // BUILD SNAPSHOT 2.0 RESPONSE
+      // ============================================================================
       const snapshot = {
         generatedAt: new Date().toISOString(),
         userId,
+        version: '2.0',
 
         // Summary
         netWorth,
@@ -247,8 +727,31 @@ export async function GET(request: NextRequest) {
             : 0,
         },
 
-        // Property details
+        // ============================================================================
+        // GRDCS LINKAGE HEALTH BLOCK
+        // ============================================================================
+        linkageHealth: {
+          completenessScore: linkageHealth.completenessScore,
+          orphanCount: linkageHealth.orphanCount,
+          missingLinks: linkageHealth.missingLinks,
+          crossModuleConsistency: linkageHealth.crossModuleConsistency,
+          warnings: linkageHealth.warnings,
+        },
+
+        // Module-level completeness breakdown
+        moduleCompleteness,
+
+        // Relational warnings for insights engine
+        relationalInsights: {
+          totalWarnings: linkageHealth.relationalWarnings.length,
+          errors: linkageHealth.relationalWarnings.filter(w => w.type === 'error'),
+          warnings: linkageHealth.relationalWarnings.filter(w => w.type === 'warning'),
+          info: linkageHealth.relationalWarnings.filter(w => w.type === 'info'),
+        },
+
+        // GRDCS-enhanced entity details
         properties: propertySnapshots,
+        loans: loanSnapshots,
 
         // Investment details
         investments: {
@@ -262,8 +765,20 @@ export async function GET(request: NextRequest) {
           deductibleExpenses,
           estimatedTaxableIncome: taxableIncome - deductibleExpenses,
           projectedTax: 0, // TODO: Calculate using tax engine
-          cgtExposure: estimatedUnrealisedGains,
+          cgtExposure: 0, // TODO: Implement proper CGT calculation
           _note: 'Tax projections are estimates. Use /api/calculate/tax for accurate calculations.',
+        },
+
+        // Entity counts for quick reference
+        entityCounts: {
+          properties: properties.length,
+          loans: loans.length,
+          income: income.length,
+          expenses: expenses.length,
+          accounts: accounts.length,
+          investmentAccounts: investmentAccounts.length,
+          holdings: holdings.length,
+          transactions: transactions.length,
         },
       };
 
