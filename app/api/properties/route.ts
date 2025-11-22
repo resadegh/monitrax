@@ -8,9 +8,14 @@ export async function GET(request: NextRequest) {
       const properties = await prisma.property.findMany({
         where: { userId: authReq.user!.userId },
         include: {
-          loans: true,
+          loans: {
+            include: {
+              offsetAccount: true,
+            },
+          },
           income: true,
           expenses: true,
+          depreciationSchedules: true,
         },
         orderBy: { createdAt: 'desc' },
       });

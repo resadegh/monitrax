@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
         where: whereClause,
         include: {
           investmentAccount: {
-            select: { id: true, name: true, platform: true },
+            select: { id: true, name: true, platform: true, currency: true },
+          },
+          transactions: {
+            orderBy: { date: 'desc' },
           },
         },
         orderBy: { ticker: 'asc' },

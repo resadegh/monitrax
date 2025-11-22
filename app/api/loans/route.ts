@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
         include: {
           property: true,
           offsetAccount: true,
+          expenses: true,
         },
         orderBy: { createdAt: 'desc' },
       });
