@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
             orderBy: { date: 'desc' },
             take: 10,
           },
+          incomes: true,
+          expenses: true,
         },
         orderBy: { createdAt: 'desc' },
       });
