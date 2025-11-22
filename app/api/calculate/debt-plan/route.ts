@@ -55,21 +55,15 @@ export async function POST(request: NextRequest) {
       const response = {
         totalInterestSavedVsBaseline: planResult.totalInterestSaved,
         totalMonthsSaved,
-        loans: planResult.loanResults.map((loan) => {
-          // Calculate baseline payoff date by adding monthsSaved to strategy payoff date
-          const strategyPayoffDate = new Date(loan.payoffDate);
-          const baselinePayoffDate = new Date(strategyPayoffDate);
-          baselinePayoffDate.setMonth(baselinePayoffDate.getMonth() + loan.monthsSaved);
-
-          return {
-            loanId: loan.loanId,
-            loanName: loan.loanName,
-            baselinePayoffDate: baselinePayoffDate.toISOString(),
-            strategyPayoffDate: strategyPayoffDate.toISOString(),
-            interestSavedVsBaseline: loan.interestSaved,
-            monthsSaved: loan.monthsSaved,
-          };
-        }),
+        loans: planResult.loanResults.map((loan) => ({
+          loanId: loan.loanId,
+          loanName: loan.loanName,
+          baselinePayoffDate: loan.baselinePayoffDate?.toISOString() || null,
+          strategyPayoffDate: loan.payoffDate?.toISOString() || null,
+          interestSavedVsBaseline: loan.interestSaved,
+          monthsSaved: loan.monthsSaved,
+          ioWarning: loan.ioWarning,
+        })),
       };
 
       return NextResponse.json(response);
