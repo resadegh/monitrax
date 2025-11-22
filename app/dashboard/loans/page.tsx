@@ -17,7 +17,7 @@ import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, Tren
 interface Loan {
   id: string;
   name: string;
-  type: 'HOME' | 'INVESTMENT' | 'PERSONAL' | 'CREDIT_CARD';
+  type: 'HOME' | 'INVESTMENT';
   principal: number;
   interestRateAnnual: number;
   rateType: 'FIXED' | 'VARIABLE';
@@ -203,10 +203,8 @@ export default function LoansPage() {
         return <Badge variant="default">Home Loan</Badge>;
       case 'INVESTMENT':
         return <Badge variant="secondary">Investment</Badge>;
-      case 'PERSONAL':
-        return <Badge variant="outline">Personal</Badge>;
       default:
-        return <Badge variant="destructive">Credit Card</Badge>;
+        return <Badge variant="outline">{type}</Badge>;
     }
   };
 
@@ -362,8 +360,6 @@ export default function LoansPage() {
                   <SelectContent>
                     <SelectItem value="HOME">Home Loan</SelectItem>
                     <SelectItem value="INVESTMENT">Investment Loan</SelectItem>
-                    <SelectItem value="PERSONAL">Personal Loan</SelectItem>
-                    <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

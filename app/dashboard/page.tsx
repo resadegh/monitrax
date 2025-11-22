@@ -84,7 +84,7 @@ export default function DashboardPage() {
           case 'WEEKLY': return sum + (amount * 52 / 12);
           case 'FORTNIGHTLY': return sum + (amount * 26 / 12);
           case 'MONTHLY': return sum + amount;
-          case 'ANNUALLY': return sum + (amount / 12);
+          case 'ANNUAL': return sum + (amount / 12);
           default: return sum;
         }
       }, 0);
@@ -96,7 +96,7 @@ export default function DashboardPage() {
           case 'WEEKLY': return sum + (amount * 52 / 12);
           case 'FORTNIGHTLY': return sum + (amount * 26 / 12);
           case 'MONTHLY': return sum + amount;
-          case 'ANNUALLY': return sum + (amount / 12);
+          case 'ANNUAL': return sum + (amount / 12);
           default: return sum;
         }
       }, 0);

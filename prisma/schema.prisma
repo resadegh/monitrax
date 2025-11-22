@@ -45,10 +45,13 @@ enum AccountType {
 enum IncomeType {
   SALARY
   RENT
+  RENTAL
+  INVESTMENT
   OTHER
 }
 
 enum ExpenseCategory {
+  HOUSING
   RATES
   INSURANCE
   MAINTENANCE
@@ -56,6 +59,7 @@ enum ExpenseCategory {
   UTILITIES
   FOOD
   TRANSPORT
+  ENTERTAINMENT
   STRATA
   LAND_TAX
   LOAN_INTEREST

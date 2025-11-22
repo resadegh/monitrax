@@ -18,9 +18,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 interface Income {
   id: string;
   name: string;
-  type: 'SALARY' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
+  type: 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUALLY';
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL';
   isTaxable: boolean;
 }
 
@@ -126,7 +126,7 @@ export default function IncomePage() {
       case 'WEEKLY': return amount * 52 / 12;
       case 'FORTNIGHTLY': return amount * 26 / 12;
       case 'MONTHLY': return amount;
-      case 'ANNUALLY': return amount / 12;
+      case 'ANNUAL': return amount / 12;
       default: return amount;
     }
   };
@@ -137,6 +137,7 @@ export default function IncomePage() {
     switch (type) {
       case 'SALARY':
         return <Badge variant="default">Salary</Badge>;
+      case 'RENT':
       case 'RENTAL':
         return <Badge variant="secondary">Rental</Badge>;
       case 'INVESTMENT':
@@ -273,7 +274,7 @@ export default function IncomePage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="SALARY">Salary</SelectItem>
-                    <SelectItem value="RENTAL">Rental Income</SelectItem>
+                    <SelectItem value="RENT">Rental Income</SelectItem>
                     <SelectItem value="INVESTMENT">Investment Income</SelectItem>
                     <SelectItem value="OTHER">Other</SelectItem>
                   </SelectContent>
@@ -306,7 +307,7 @@ export default function IncomePage() {
                   <SelectItem value="WEEKLY">Weekly</SelectItem>
                   <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
                   <SelectItem value="MONTHLY">Monthly</SelectItem>
-                  <SelectItem value="ANNUALLY">Annually</SelectItem>
+                  <SelectItem value="ANNUAL">Annually</SelectItem>
                 </SelectContent>
               </Select>
             </div>
