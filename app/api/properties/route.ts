@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { extractPropertyLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq) => {
@@ -20,7 +21,19 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
       });
 
-      return NextResponse.json(properties);
+      // Apply GRDCS wrapper to each property
+      const propertiesWithLinks = properties.map(property => {
+        const links = extractPropertyLinks(property);
+        return wrapWithGRDCS(property as Record<string, unknown>, 'property', links);
+      });
+
+      return NextResponse.json({
+        data: propertiesWithLinks,
+        _meta: {
+          count: propertiesWithLinks.length,
+          totalLinkedEntities: propertiesWithLinks.reduce((sum, p) => sum + p._meta.linkedCount, 0),
+        },
+      });
     } catch (error) {
       console.error('Get properties error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

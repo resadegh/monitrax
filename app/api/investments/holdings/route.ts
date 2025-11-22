@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
 import { z } from 'zod';
+import { extractHoldingLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
 const createHoldingSchema = z.object({
   investmentAccountId: z.string().uuid('Invalid account ID'),
@@ -39,7 +40,19 @@ export async function GET(request: NextRequest) {
         orderBy: { ticker: 'asc' },
       });
 
-      return NextResponse.json(holdings);
+      // Apply GRDCS wrapper to each holding
+      const holdingsWithLinks = holdings.map(holding => {
+        const links = extractHoldingLinks(holding);
+        return wrapWithGRDCS(holding as Record<string, unknown>, 'investmentHolding', links);
+      });
+
+      return NextResponse.json({
+        data: holdingsWithLinks,
+        _meta: {
+          count: holdingsWithLinks.length,
+          totalLinkedEntities: holdingsWithLinks.reduce((sum, h) => sum + h._meta.linkedCount, 0),
+        },
+      });
     } catch (error) {
       console.error('Get holdings error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
