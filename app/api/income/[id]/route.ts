@@ -13,6 +13,7 @@ export async function GET(
         where: { id },
         include: {
           property: true,
+          investmentAccount: true,
         },
       });
 
@@ -36,7 +37,7 @@ export async function PUT(
     try {
       const { id } = await params;
       const body = await request.json();
-      const { name, type, amount, frequency, isTaxable, propertyId } = body;
+      const { name, type, amount, frequency, isTaxable, propertyId, investmentAccountId, sourceType } = body;
 
       // Verify ownership
       const existing = await prisma.income.findUnique({
@@ -55,6 +56,13 @@ export async function PUT(
         }
       }
 
+      if (investmentAccountId) {
+        const investmentAccount = await prisma.investmentAccount.findUnique({ where: { id: investmentAccountId } });
+        if (!investmentAccount || investmentAccount.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Investment account not found or unauthorized' }, { status: 403 });
+        }
+      }
+
       const income = await prisma.income.update({
         where: { id },
         data: {
@@ -64,9 +72,12 @@ export async function PUT(
           frequency,
           isTaxable,
           propertyId: propertyId !== undefined ? propertyId : undefined,
+          investmentAccountId: investmentAccountId !== undefined ? investmentAccountId : undefined,
+          sourceType: sourceType !== undefined ? sourceType : undefined,
         },
         include: {
           property: true,
+          investmentAccount: true,
         },
       });
 

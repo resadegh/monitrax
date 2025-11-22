@@ -91,6 +91,23 @@ enum DebtStrategy {
 }
 
 // =============================================================================
+// PHASE 5: SOURCE TYPE ENUMS
+// =============================================================================
+
+enum IncomeSourceType {
+  GENERAL
+  PROPERTY
+  INVESTMENT
+}
+
+enum ExpenseSourceType {
+  GENERAL
+  PROPERTY
+  LOAN
+  INVESTMENT
+}
+
+// =============================================================================
 // USER
 // =============================================================================
 
@@ -208,24 +225,28 @@ model Account {
 // =============================================================================
 
 model Income {
-  id          String      @id @default(uuid())
-  userId      String
-  propertyId  String?
-  name        String
-  type        IncomeType
-  amount      Float
-  frequency   Frequency
-  isTaxable   Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                    String            @id @default(uuid())
+  userId                String
+  propertyId            String?
+  investmentAccountId   String?
+  name                  String
+  type                  IncomeType
+  sourceType            IncomeSourceType  @default(GENERAL)
+  amount                Float
+  frequency             Frequency
+  isTaxable             Boolean           @default(true)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   // Relationships
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property    Property?   @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  transactions Transaction[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property          Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  investmentAccount InvestmentAccount? @relation(fields: [investmentAccountId], references: [id], onDelete: SetNull)
+  transactions      Transaction[]
 
   @@index([userId])
   @@index([propertyId])
+  @@index([investmentAccountId])
   @@map("income")
 }
 
@@ -234,28 +255,33 @@ model Income {
 // =============================================================================
 
 model Expense {
-  id               String          @id @default(uuid())
-  userId           String
-  propertyId       String?
-  loanId           String?
-  name             String
-  category         ExpenseCategory
-  amount           Float
-  frequency        Frequency
-  isEssential      Boolean         @default(true)
-  isTaxDeductible  Boolean         @default(false)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  id                    String             @id @default(uuid())
+  userId                String
+  propertyId            String?
+  loanId                String?
+  investmentAccountId   String?
+  name                  String
+  vendorName            String?
+  category              ExpenseCategory
+  sourceType            ExpenseSourceType  @default(GENERAL)
+  amount                Float
+  frequency             Frequency
+  isEssential           Boolean            @default(true)
+  isTaxDeductible       Boolean            @default(false)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
   // Relationships
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property     Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  loan         Loan?         @relation(fields: [loanId], references: [id], onDelete: SetNull)
-  transactions Transaction[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property          Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  loan              Loan?              @relation(fields: [loanId], references: [id], onDelete: SetNull)
+  investmentAccount InvestmentAccount? @relation(fields: [investmentAccountId], references: [id], onDelete: SetNull)
+  transactions      Transaction[]
 
   @@index([userId])
   @@index([propertyId])
   @@index([loanId])
+  @@index([investmentAccountId])
   @@map("expenses")
 }
 
@@ -399,6 +425,8 @@ model InvestmentAccount {
   user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   holdings     InvestmentHolding[]
   transactions InvestmentTransaction[]
+  incomes      Income[]
+  expenses     Expense[]
 
   @@index([userId])
   @@map("investment_accounts")

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     try {
       const expenses = await prisma.expense.findMany({
         where: { userId: authReq.user!.userId },
-        include: { property: true, loan: true },
+        include: { property: true, loan: true, investmentAccount: true },
         orderBy: { createdAt: 'desc' },
       });
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   return withAuth(request, async (authReq) => {
     try {
       const body = await request.json();
-      const { name, category, amount, frequency, isTaxDeductible, propertyId, loanId } = body;
+      const { name, category, amount, frequency, isTaxDeductible, isEssential, propertyId, loanId, investmentAccountId, vendorName, sourceType } = body;
 
       if (!name || !category || amount === undefined || !frequency) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -44,6 +44,13 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      if (investmentAccountId) {
+        const investmentAccount = await prisma.investmentAccount.findUnique({ where: { id: investmentAccountId } });
+        if (!investmentAccount || investmentAccount.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Investment account not found or unauthorized' }, { status: 403 });
+        }
+      }
+
       const expense = await prisma.expense.create({
         data: {
           userId: authReq.user!.userId,
@@ -52,9 +59,14 @@ export async function POST(request: NextRequest) {
           amount: parseFloat(amount),
           frequency,
           isTaxDeductible: isTaxDeductible !== undefined ? Boolean(isTaxDeductible) : false,
+          isEssential: isEssential !== undefined ? Boolean(isEssential) : true,
           propertyId: propertyId || null,
           loanId: loanId || null,
+          investmentAccountId: investmentAccountId || null,
+          vendorName: vendorName || null,
+          sourceType: sourceType || 'GENERAL',
         },
+        include: { property: true, loan: true, investmentAccount: true },
       });
 
       return NextResponse.json(expense, { status: 201 });
