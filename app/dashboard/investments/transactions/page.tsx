@@ -322,25 +322,25 @@ export default function TransactionsPage() {
             title="Total Purchases"
             value={formatCurrency(stats.totalBuys)}
             description={`${stats.buyCount} buy transaction${stats.buyCount !== 1 ? 's' : ''}`}
-            variant="success"
+            variant="green"
           />
           <StatCard
             title="Total Sales"
             value={formatCurrency(stats.totalSells)}
             description={`${stats.sellCount} sell transaction${stats.sellCount !== 1 ? 's' : ''}`}
-            variant="danger"
+            variant="orange"
           />
           <StatCard
             title="Dividends Received"
             value={formatCurrency(stats.totalDividends)}
             description={`${stats.dividendCount} payment${stats.dividendCount !== 1 ? 's' : ''}`}
-            variant="info"
+            variant="blue"
           />
           <StatCard
             title="Total Fees Paid"
             value={formatCurrency(stats.totalFees)}
             description={`Across all transactions`}
-            variant="warning"
+            variant="purple"
           />
         </div>
       )}
