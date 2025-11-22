@@ -317,7 +317,7 @@ export function extractAccountLinks(account: {
 export function extractInvestmentAccountLinks(account: {
   id: string;
   holdings?: Array<{ id: string; ticker: string; units: number; averagePrice: number }>;
-  transactions?: Array<{ id: string; type: string; date: string; units: number; price: number }>;
+  transactions?: Array<{ id: string; type: string; date: string | Date; units: number; price: number }>;
   incomes?: Array<{ id: string; name: string; amount: number }>;
   expenses?: Array<{ id: string; name: string; amount: number }>;
 }): { linked: GRDCSLinkedEntity[]; missing: GRDCSMissingLink[] } {
@@ -338,7 +338,8 @@ export function extractInvestmentAccountLinks(account: {
   // Recent Transactions
   if (account.transactions && account.transactions.length > 0) {
     account.transactions.slice(0, 5).forEach(tx => {
-      linked.push(createLinkedEntity('investmentTransaction', tx.id, `${tx.type} - ${tx.date}`, {
+      const dateStr = tx.date instanceof Date ? tx.date.toISOString().split('T')[0] : tx.date;
+      linked.push(createLinkedEntity('investmentTransaction', tx.id, `${tx.type} - ${dateStr}`, {
         value: tx.units * tx.price,
         summary: `${tx.units} units @ $${tx.price.toFixed(2)}`,
       }));
@@ -374,7 +375,7 @@ export function extractInvestmentAccountLinks(account: {
 export function extractHoldingLinks(holding: {
   id: string;
   investmentAccount?: { id: string; name: string; platform?: string | null; currency?: string } | null;
-  transactions?: Array<{ id: string; type: string; date: string; units: number; price: number }>;
+  transactions?: Array<{ id: string; type: string; date: string | Date; units: number; price: number }>;
 }): { linked: GRDCSLinkedEntity[]; missing: GRDCSMissingLink[] } {
   const linked: GRDCSLinkedEntity[] = [];
   const missing: GRDCSMissingLink[] = [];
@@ -390,7 +391,8 @@ export function extractHoldingLinks(holding: {
   // Transactions
   if (holding.transactions && holding.transactions.length > 0) {
     holding.transactions.forEach(tx => {
-      linked.push(createLinkedEntity('investmentTransaction', tx.id, `${tx.type} - ${tx.date}`, {
+      const dateStr = tx.date instanceof Date ? tx.date.toISOString().split('T')[0] : tx.date;
+      linked.push(createLinkedEntity('investmentTransaction', tx.id, `${tx.type} - ${dateStr}`, {
         value: tx.units * tx.price,
         summary: `${tx.units} units @ $${tx.price.toFixed(2)}`,
       }));
