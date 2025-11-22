@@ -2,6 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return withAuth(request, async (authReq) => {
+    try {
+      const { id } = await params;
+      const property = await prisma.property.findUnique({
+        where: { id },
+        include: {
+          loans: true,
+          income: true,
+          expenses: true,
+        },
+      });
+
+      if (!property || property.userId !== authReq.user!.userId) {
+        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
+      }
+
+      return NextResponse.json(property);
+    } catch (error) {
+      console.error('Get property error:', error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+  });
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

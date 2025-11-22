@@ -2,6 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return withAuth(request, async (authReq) => {
+    try {
+      const { id } = await params;
+      const expense = await prisma.expense.findUnique({
+        where: { id },
+        include: {
+          property: true,
+          loan: true,
+        },
+      });
+
+      if (!expense || expense.userId !== authReq.user!.userId) {
+        return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
+      }
+
+      return NextResponse.json(expense);
+    } catch (error) {
+      console.error('Get expense error:', error);
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+  });
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -10,7 +37,7 @@ export async function PUT(
     try {
       const { id } = await params;
       const body = await request.json();
-      const { name, category, amount, frequency, isEssential } = body;
+      const { name, category, amount, frequency, isEssential, isTaxDeductible, propertyId, loanId } = body;
 
       // Verify ownership
       const existing = await prisma.expense.findUnique({
@@ -21,6 +48,21 @@ export async function PUT(
         return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
       }
 
+      // Validate ownership of related entities
+      if (propertyId) {
+        const property = await prisma.property.findUnique({ where: { id: propertyId } });
+        if (!property || property.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Property not found or unauthorized' }, { status: 403 });
+        }
+      }
+
+      if (loanId) {
+        const loan = await prisma.loan.findUnique({ where: { id: loanId } });
+        if (!loan || loan.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Loan not found or unauthorized' }, { status: 403 });
+        }
+      }
+
       const expense = await prisma.expense.update({
         where: { id },
         data: {
@@ -29,6 +71,13 @@ export async function PUT(
           amount,
           frequency,
           isEssential,
+          isTaxDeductible,
+          propertyId: propertyId !== undefined ? propertyId : undefined,
+          loanId: loanId !== undefined ? loanId : undefined,
+        },
+        include: {
+          property: true,
+          loan: true,
         },
       });
 

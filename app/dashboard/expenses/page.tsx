@@ -18,9 +18,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 interface Expense {
   id: string;
   name: string;
-  category: 'HOUSING' | 'TRANSPORT' | 'FOOD' | 'UTILITIES' | 'INSURANCE' | 'ENTERTAINMENT' | 'OTHER';
+  category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'OTHER';
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUALLY';
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL';
   isEssential: boolean;
 }
 
@@ -126,7 +126,7 @@ export default function ExpensesPage() {
       case 'WEEKLY': return amount * 52 / 12;
       case 'FORTNIGHTLY': return amount * 26 / 12;
       case 'MONTHLY': return amount;
-      case 'ANNUALLY': return amount / 12;
+      case 'ANNUAL': return amount / 12;
       default: return amount;
     }
   };
@@ -136,15 +136,21 @@ export default function ExpensesPage() {
   const getCategoryBadge = (category: Expense['category']) => {
     const variants: Record<Expense['category'], { variant: 'default' | 'secondary' | 'outline' | 'destructive'; label: string }> = {
       HOUSING: { variant: 'default', label: 'Housing' },
-      TRANSPORT: { variant: 'secondary', label: 'Transport' },
-      FOOD: { variant: 'outline', label: 'Food' },
-      UTILITIES: { variant: 'secondary', label: 'Utilities' },
+      RATES: { variant: 'secondary', label: 'Rates' },
       INSURANCE: { variant: 'default', label: 'Insurance' },
+      MAINTENANCE: { variant: 'secondary', label: 'Maintenance' },
+      PERSONAL: { variant: 'outline', label: 'Personal' },
+      UTILITIES: { variant: 'secondary', label: 'Utilities' },
+      FOOD: { variant: 'outline', label: 'Food' },
+      TRANSPORT: { variant: 'secondary', label: 'Transport' },
       ENTERTAINMENT: { variant: 'outline', label: 'Entertainment' },
+      STRATA: { variant: 'default', label: 'Strata' },
+      LAND_TAX: { variant: 'destructive', label: 'Land Tax' },
+      LOAN_INTEREST: { variant: 'destructive', label: 'Loan Interest' },
       OTHER: { variant: 'outline', label: 'Other' },
     };
 
-    const { variant, label } = variants[category];
+    const { variant, label } = variants[category] || { variant: 'outline', label: category };
     return <Badge variant={variant}>{label}</Badge>;
   };
 
@@ -278,11 +284,17 @@ export default function ExpensesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="HOUSING">Housing</SelectItem>
-                    <SelectItem value="TRANSPORT">Transport</SelectItem>
-                    <SelectItem value="FOOD">Food</SelectItem>
-                    <SelectItem value="UTILITIES">Utilities</SelectItem>
+                    <SelectItem value="RATES">Rates</SelectItem>
                     <SelectItem value="INSURANCE">Insurance</SelectItem>
+                    <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                    <SelectItem value="PERSONAL">Personal</SelectItem>
+                    <SelectItem value="UTILITIES">Utilities</SelectItem>
+                    <SelectItem value="FOOD">Food</SelectItem>
+                    <SelectItem value="TRANSPORT">Transport</SelectItem>
                     <SelectItem value="ENTERTAINMENT">Entertainment</SelectItem>
+                    <SelectItem value="STRATA">Strata</SelectItem>
+                    <SelectItem value="LAND_TAX">Land Tax</SelectItem>
+                    <SelectItem value="LOAN_INTEREST">Loan Interest</SelectItem>
                     <SelectItem value="OTHER">Other</SelectItem>
                   </SelectContent>
                 </Select>
@@ -314,7 +326,7 @@ export default function ExpensesPage() {
                   <SelectItem value="WEEKLY">Weekly</SelectItem>
                   <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
                   <SelectItem value="MONTHLY">Monthly</SelectItem>
-                  <SelectItem value="ANNUALLY">Annually</SelectItem>
+                  <SelectItem value="ANNUAL">Annually</SelectItem>
                 </SelectContent>
               </Select>
             </div>

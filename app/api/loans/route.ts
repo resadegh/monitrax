@@ -58,6 +58,21 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Validate ownership of related entities
+      if (propertyId) {
+        const property = await prisma.property.findUnique({ where: { id: propertyId } });
+        if (!property || property.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Property not found or unauthorized' }, { status: 403 });
+        }
+      }
+
+      if (offsetAccountId) {
+        const account = await prisma.account.findUnique({ where: { id: offsetAccountId } });
+        if (!account || account.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Account not found or unauthorized' }, { status: 403 });
+        }
+      }
+
       const loan = await prisma.loan.create({
         data: {
           userId: authReq.user!.userId,

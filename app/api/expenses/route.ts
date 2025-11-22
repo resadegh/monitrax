@@ -29,6 +29,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
       }
 
+      // Validate ownership of related entities
+      if (propertyId) {
+        const property = await prisma.property.findUnique({ where: { id: propertyId } });
+        if (!property || property.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Property not found or unauthorized' }, { status: 403 });
+        }
+      }
+
+      if (loanId) {
+        const loan = await prisma.loan.findUnique({ where: { id: loanId } });
+        if (!loan || loan.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Loan not found or unauthorized' }, { status: 403 });
+        }
+      }
+
       const expense = await prisma.expense.create({
         data: {
           userId: authReq.user!.userId,
