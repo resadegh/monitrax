@@ -9,7 +9,10 @@
  * $135,001 – $190,000: $32,092 plus 37c for each $1 over $135,000
  * $190,001 and above: $52,442 plus 45c for each $1 over $190,000
  *
- * Medicare Levy: 2% of taxable income (simplified - not including exemptions/reductions)
+ * Medicare Levy: 2% of taxable income with thresholds
+ * - Below threshold: $0
+ * - Shaded-in range: 10% of excess over threshold
+ * - Full levy: 2% of taxable income
  */
 
 export interface TaxBracket {
@@ -27,7 +30,22 @@ export const AU_TAX_BRACKETS_2024_25: TaxBracket[] = [
   { min: 190001, max: null, baseAmount: 52442, rate: 0.45 },
 ];
 
+// Medicare Levy constants for 2024-25 (single, no dependents)
 export const MEDICARE_LEVY_RATE = 0.02;
+export const MEDICARE_LEVY_SHADE_IN_RATE = 0.10; // 10% of excess over threshold
+export const MEDICARE_LEVY_THRESHOLD_SINGLE = 26000; // Below this: no levy
+export const MEDICARE_LEVY_SHADE_OUT_SINGLE = 32500; // Above this: full 2% levy
+
+// Medicare Levy Surcharge thresholds (placeholder - not activated)
+export const MLS_TIER_1_THRESHOLD = 93000; // Base tier for MLS
+export const MLS_TIER_2_THRESHOLD = 108000;
+export const MLS_TIER_3_THRESHOLD = 144000;
+export const MLS_RATES = {
+  tier0: 0, // Below threshold or with PHI
+  tier1: 0.01, // 1%
+  tier2: 0.0125, // 1.25%
+  tier3: 0.015, // 1.5%
+};
 
 export interface IncomeSource {
   name: string;
@@ -56,6 +74,7 @@ export interface TaxCalculationResult {
   assessableIncome: number; // taxableIncome - deductions
   incomeTax: number;
   medicareLevy: number;
+  medicareLevySurcharge: number; // Placeholder - currently always 0
   totalTax: number;
   effectiveTaxRate: number; // as percentage
 
@@ -96,11 +115,78 @@ export function calculateIncomeTax(taxableIncome: number): number {
 }
 
 /**
- * Calculate Medicare Levy
+ * Calculate Medicare Levy with proper thresholds
+ *
+ * For 2024-25 (single, no dependents):
+ * - Below $26,000: No levy
+ * - $26,000 to $32,500: Shaded-in at 10% of excess over $26,000
+ * - Above $32,500: Full 2% of taxable income
+ *
+ * The shade-in ensures a gradual increase rather than a cliff.
  */
 export function calculateMedicareLevy(taxableIncome: number): number {
   if (taxableIncome <= 0) return 0;
-  return taxableIncome * MEDICARE_LEVY_RATE;
+
+  // Below threshold: no levy
+  if (taxableIncome <= MEDICARE_LEVY_THRESHOLD_SINGLE) {
+    return 0;
+  }
+
+  // Above shade-out threshold: full 2% levy
+  if (taxableIncome >= MEDICARE_LEVY_SHADE_OUT_SINGLE) {
+    return taxableIncome * MEDICARE_LEVY_RATE;
+  }
+
+  // Shaded-in range: 10% of (income - threshold)
+  // This formula ensures the levy phases in gradually
+  const excessOverThreshold = taxableIncome - MEDICARE_LEVY_THRESHOLD_SINGLE;
+  const shadedLevy = excessOverThreshold * MEDICARE_LEVY_SHADE_IN_RATE;
+
+  // Cap at what the full 2% would be (shouldn't happen in shade range, but safety check)
+  const fullLevy = taxableIncome * MEDICARE_LEVY_RATE;
+  return Math.min(shadedLevy, fullLevy);
+}
+
+/**
+ * Calculate Medicare Levy Surcharge (placeholder)
+ *
+ * MLS applies to taxpayers without adequate private health insurance
+ * who earn above the threshold. This is a placeholder for future implementation.
+ *
+ * @param taxableIncome - The taxable income
+ * @param hasPrivateHealthInsurance - Whether the taxpayer has PHI (defaults to true to disable MLS)
+ * @returns MLS amount (currently always 0 as placeholder)
+ */
+export function calculateMedicareLevySurcharge(
+  taxableIncome: number,
+  hasPrivateHealthInsurance: boolean = true // Default to true to disable MLS
+): number {
+  // Placeholder: MLS is disabled until PHI tracking is implemented
+  // When enabled, this would return:
+  // - 0% if income <= $93,000 or has PHI
+  // - 1% if income $93,001-$108,000
+  // - 1.25% if income $108,001-$144,000
+  // - 1.5% if income > $144,000
+
+  if (hasPrivateHealthInsurance) {
+    return 0;
+  }
+
+  // MLS calculation (disabled - returns 0)
+  // Uncomment when PHI tracking is available:
+  /*
+  if (taxableIncome <= MLS_TIER_1_THRESHOLD) {
+    return 0;
+  } else if (taxableIncome <= MLS_TIER_2_THRESHOLD) {
+    return taxableIncome * MLS_RATES.tier1;
+  } else if (taxableIncome <= MLS_TIER_3_THRESHOLD) {
+    return taxableIncome * MLS_RATES.tier2;
+  } else {
+    return taxableIncome * MLS_RATES.tier3;
+  }
+  */
+
+  return 0;
 }
 
 /**
@@ -125,13 +211,14 @@ export function calculateTaxPosition(
   // Calculate assessable income (after deductions)
   const assessableIncome = Math.max(0, taxableIncome - taxDeductibleExpenses);
 
-  // Calculate tax
+  // Calculate tax components
   const incomeTax = calculateIncomeTax(assessableIncome);
   const medicareLevy = calculateMedicareLevy(assessableIncome);
-  const totalTax = incomeTax + medicareLevy;
+  const medicareLevySurcharge = calculateMedicareLevySurcharge(assessableIncome);
+  const totalTax = incomeTax + medicareLevy + medicareLevySurcharge;
 
-  // Calculate effective tax rate
-  const effectiveTaxRate = taxableIncome > 0 ? (totalTax / taxableIncome) * 100 : 0;
+  // Calculate effective tax rate (based on assessable income for accuracy)
+  const effectiveTaxRate = assessableIncome > 0 ? (totalTax / assessableIncome) * 100 : 0;
 
   // Breakdown by source (simplified categorization)
   const incomeSources = {
@@ -155,6 +242,7 @@ export function calculateTaxPosition(
     assessableIncome,
     incomeTax,
     medicareLevy,
+    medicareLevySurcharge,
     totalTax,
     effectiveTaxRate,
     incomeSources,
