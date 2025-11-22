@@ -1009,9 +1009,32 @@ Features:
 ### 10.4 Linked Data Tab (All Detail Dialogs)
 Every entity's dialog receives a new tab:
 
-Details | Financials | Linked Data | Notes (future)
+Details | Financials/Data | Linked Data | Notes (future)
 
-The LinkedDataPanel is embedded here.
+The LinkedDataPanel component is embedded in the Linked Data tab.
+
+**Implementation Requirements:**
+- Use LinkedDataPanel from Task 10.3
+- Do NOT fetch nested relational data
+- Use only GRDCS `_links.related[]` and `_meta.missingLinks[]`
+- Follow global UI standard for empty states and warnings
+- Navigation via GRDCS href
+
+**Entities to implement:**
+- Properties detail dialog
+- Loans detail dialog
+- Income detail dialog
+- Expenses detail dialog
+- Accounts detail dialog
+- Investment Accounts detail dialog
+- Investment Holdings detail dialog
+- Investment Transactions detail dialog
+
+**Tab order standard:**
+1. Details (entity-specific fields)
+2. Financials/Data (calculations, metrics)
+3. Linked Data (LinkedDataPanel)
+4. Notes (future phase)
 
 ### 10.5 Portfolio Snapshot Enhancements
 Snapshot response expanded to include:

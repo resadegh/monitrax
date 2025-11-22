@@ -12,8 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Plus, Edit2, Trash2, TrendingUp, Calendar, Home, Briefcase, Building2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DollarSign, Plus, Edit2, Trash2, TrendingUp, Calendar, Home, Briefcase, Building2, Eye, Link2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Property {
   id: string;
@@ -40,6 +43,15 @@ interface Income {
   investmentAccountId: string | null;
   property?: Property | null;
   investmentAccount?: InvestmentAccount | null;
+  // GRDCS fields
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
 }
 
 type IncomeFormData = {
@@ -60,6 +72,8 @@ export default function IncomePage() {
   const [investmentAccounts, setInvestmentAccounts] = useState<InvestmentAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<IncomeFormData>({
     name: '',
@@ -86,7 +100,8 @@ export default function IncomePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setIncome(await response.json());
+        const result = await response.json();
+        setIncome(result.data || result);
       }
     } catch (error) {
       console.error('Error loading income:', error);
@@ -101,7 +116,8 @@ export default function IncomePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setProperties(await response.json());
+        const result = await response.json();
+        setProperties(result.data || result);
       }
     } catch (error) {
       console.error('Error loading properties:', error);
@@ -114,11 +130,17 @@ export default function IncomePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setInvestmentAccounts(await response.json());
+        const result = await response.json();
+        setInvestmentAccounts(result.data || result);
       }
     } catch (error) {
       console.error('Error loading investment accounts:', error);
     }
+  };
+
+  const handleViewDetails = (item: Income) => {
+    setSelectedIncome(item);
+    setShowDetailDialog(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -306,7 +328,7 @@ export default function IncomePage() {
             const monthlyAmount = convertToMonthly(item.amount, item.frequency);
 
             return (
-              <Card key={item.id} className="hover:shadow-md transition-shadow">
+              <Card key={item.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => handleViewDetails(item)}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
@@ -321,7 +343,14 @@ export default function IncomePage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleViewDetails(item)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -570,6 +599,157 @@ export default function IncomePage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              {selectedIncome?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Income details and linked data
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedIncome && (
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="linked" className="gap-1">
+                  <Link2 className="h-3 w-3" />
+                  Linked
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="space-y-4 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Amount</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedIncome.amount)}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{selectedIncome.frequency.toLowerCase()}</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Equivalent</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{formatCurrency(convertToMonthly(selectedIncome.amount, selectedIncome.frequency))}</p>
+                      <p className="text-sm text-muted-foreground">per month</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Annual Total</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{formatCurrency(convertToMonthly(selectedIncome.amount, selectedIncome.frequency) * 12)}</p>
+                      <p className="text-sm text-muted-foreground">per year</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Tax Status</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2">
+                        {selectedIncome.isTaxable ? (
+                          <Badge variant="secondary">Taxable</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-green-600">Tax-free</Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Income Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Type</span>
+                      <span className="font-medium">{getIncomeTypeBadge(selectedIncome.type)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Source</span>
+                      <div className="flex items-center gap-2">
+                        {getSourceTypeIcon(selectedIncome.sourceType || 'GENERAL')}
+                        <span className="font-medium">{getSourceLabel(selectedIncome)}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Frequency</span>
+                      <span className="font-medium capitalize">{selectedIncome.frequency.toLowerCase()}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {selectedIncome.property && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <Home className="h-4 w-4 text-blue-500" />
+                        Linked Property
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="font-medium">{selectedIncome.property.name}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{selectedIncome.property.type?.toLowerCase() || 'Property'}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {selectedIncome.investmentAccount && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <Briefcase className="h-4 w-4 text-purple-500" />
+                        Linked Investment Account
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="font-medium">{selectedIncome.investmentAccount.name}</p>
+                      {selectedIncome.investmentAccount.platform && (
+                        <p className="text-sm text-muted-foreground">{selectedIncome.investmentAccount.platform}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="linked" className="mt-4">
+                <LinkedDataPanel
+                  linkedEntities={selectedIncome._links?.related || []}
+                  missingLinks={selectedIncome._meta?.missingLinks || []}
+                  entityType="income"
+                  entityName={selectedIncome.name}
+                  showHealthScore={true}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setShowDetailDialog(false); if (selectedIncome) handleEdit(selectedIncome); }}>
+              <Edit2 className="h-4 w-4 mr-2" />
+              Edit Income
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

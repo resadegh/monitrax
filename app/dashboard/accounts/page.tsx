@@ -13,7 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wallet, Plus, Edit2, Trash2, Percent, Eye, Landmark, ArrowUpRight, ArrowDownRight, Building } from 'lucide-react';
+import { Wallet, Plus, Edit2, Trash2, Percent, Eye, Landmark, ArrowUpRight, ArrowDownRight, Building, Link2 } from 'lucide-react';
+import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Transaction {
   id: string;
@@ -42,6 +44,15 @@ interface Account {
   interestRate?: number;
   transactions?: Transaction[];
   linkedLoan?: LinkedLoan;
+  // GRDCS fields
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
 }
 
 export default function AccountsPage() {
@@ -70,7 +81,8 @@ export default function AccountsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setAccounts(await response.json());
+        const result = await response.json();
+        setAccounts(result.data || result);
       }
     } catch (error) {
       console.error('Error loading accounts:', error);
@@ -412,12 +424,16 @@ export default function AccountsPage() {
 
           {selectedAccount && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className={`grid w-full ${selectedAccount.type === 'OFFSET' ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
                 {selectedAccount.type === 'OFFSET' && (
                   <TabsTrigger value="offset">Offset Details</TabsTrigger>
                 )}
+                <TabsTrigger value="linked" className="gap-1">
+                  <Link2 className="h-3 w-3" />
+                  Linked
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4 pt-4">
@@ -621,6 +637,16 @@ export default function AccountsPage() {
                   )}
                 </TabsContent>
               )}
+
+              <TabsContent value="linked" className="mt-4">
+                <LinkedDataPanel
+                  linkedEntities={selectedAccount._links?.related || []}
+                  missingLinks={selectedAccount._meta?.missingLinks || []}
+                  entityType="account"
+                  entityName={selectedAccount.name}
+                  showHealthScore={true}
+                />
+              </TabsContent>
             </Tabs>
           )}
 
