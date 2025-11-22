@@ -1,7 +1,7 @@
-MONITRAX MASTER BLUEPRINT — v1.2
+MONITRAX MASTER BLUEPRINT — v1.3
 Official Architecture, Financial Engine, Product Specification & System Bible
 
-Version 1.2 — Wealth Intelligence Engine
+Version 1.3 — Portfolio Unification Layer
 
 Authoritative Source of Truth — November 2025
 Owner: ReNew (Newsha & Reza)
@@ -503,7 +503,46 @@ Central aggregation and analysis module for wealth intelligence.
 - Authenticated access only
 - Complete wealth snapshot generation
 
-4.12 AI Strategy Engine (Phase 5)
+4.12 Portfolio Unification Layer (Phase 5) — IMPLEMENTED
+
+Unified relational data model connecting all financial entities.
+
+**Schema Enhancements:**
+- IncomeSourceType enum: GENERAL, PROPERTY, INVESTMENT
+- ExpenseSourceType enum: GENERAL, PROPERTY, LOAN, INVESTMENT
+- Income.investmentAccountId - links income to investment accounts
+- Income.sourceType - categorizes income source
+- Expense.investmentAccountId - links expenses to investment accounts
+- Expense.vendorName - tracks vendor/payee
+- Expense.sourceType - categorizes expense source
+- InvestmentAccount.incomes[] - reverse relation
+- InvestmentAccount.expenses[] - reverse relation
+
+**API Enhancements:**
+- All CRUD endpoints updated for new fields
+- Foreign key ownership validation on all relations
+- Normalized response shapes with nested includes
+- Full backward compatibility maintained
+
+**Portfolio Snapshot API:**
+- Endpoint: `GET /api/portfolio/snapshot`
+- Returns comprehensive wealth summary:
+  - Net worth, total assets, total liabilities
+  - Cashflow analysis (income, expenses, savings rate)
+  - Property details (equity, LVR, rental yield, cashflow)
+  - Investment accounts and holdings
+  - Gearing metrics (portfolio LVR, debt-to-income)
+  - Tax exposure estimates
+
+**Database Indexes:**
+All foreign keys indexed for query performance:
+- userId on all user-owned entities
+- propertyId on Loan, Income, Expense, DepreciationSchedule
+- loanId on Expense, DebtPlanLoan
+- investmentAccountId on Income, Expense, InvestmentHolding, InvestmentTransaction
+- holdingId on InvestmentTransaction
+
+4.13 AI Strategy Engine (Phase 6)
 
 Will provide:
 
@@ -866,7 +905,18 @@ Wealth Intelligence Engine:
 - Portfolio Intelligence (net worth, cashflow, gearing, risk analysis)
 - Debug API endpoint (/api/debug/intelligence)
 
-Phase 5 — NEXT
+Phase 5 — COMPLETE
+
+Portfolio Unification & Relational Integrity Layer:
+- Income/Expense sourceType enums (GENERAL, PROPERTY, LOAN, INVESTMENT)
+- Income linked to InvestmentAccount
+- Expense linked to InvestmentAccount with vendorName
+- Full relational graph connecting all financial entities
+- Portfolio Snapshot API (/api/portfolio/snapshot)
+- Complete database indexes for all foreign keys
+- Ownership validation on all CRUD operations
+
+Phase 6 — NEXT
 
 AI strategy engine
 Advisor-grade intelligence
@@ -933,6 +983,28 @@ Future plans
 
 13. CHANGELOG
 
+v1.3 (November 2025)
+- Added Portfolio Unification & Relational Integrity Layer
+- Schema enhancements:
+  - IncomeSourceType enum (GENERAL, PROPERTY, INVESTMENT)
+  - ExpenseSourceType enum (GENERAL, PROPERTY, LOAN, INVESTMENT)
+  - Income.investmentAccountId and Income.sourceType fields
+  - Expense.investmentAccountId, Expense.vendorName, Expense.sourceType fields
+  - InvestmentAccount reverse relations (incomes[], expenses[])
+- API layer updates:
+  - All Income/Expense CRUD endpoints support new fields
+  - Foreign key ownership validation on all relations
+  - Normalized response shapes with nested includes
+- Added Portfolio Snapshot API (/api/portfolio/snapshot)
+  - Net worth, total assets, total liabilities
+  - Cashflow analysis with savings rate
+  - Property details (equity, LVR, rental yield)
+  - Investment accounts and holdings summary
+  - Gearing metrics (portfolio LVR, debt-to-income)
+  - Tax exposure estimates
+- Complete database indexes on all foreign keys
+- Updated roadmap: Phase 5 marked COMPLETE
+
 v1.2 (November 2025)
 - Added Wealth Intelligence Engine
 - Enhanced Investment Analytics:
@@ -973,4 +1045,4 @@ v1.0 (November 2025)
 - Initial blueprint release
 - Phase 1 & 2 complete
 
-END OF BLUEPRINT v1.2
+END OF BLUEPRINT v1.3
