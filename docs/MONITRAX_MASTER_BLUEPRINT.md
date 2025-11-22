@@ -981,6 +981,51 @@ Current roadmap
 
 Future plans
 
+### AI-Powered Expense Optimisation Engine (Future Phase)
+
+**Purpose:**
+Automatically analyse all recurring expenses, compare them to Australian market prices, and identify cheaper or better-value alternatives.
+
+**Scope:**
+- Mobile phone plans (Telstra, Optus, Vodafone, MVNOs)
+- Internet & NBN
+- Energy (electricity & gas)
+- Insurance (home, car, landlord, contents, health)
+- Streaming subscriptions (Netflix, Stan, Spotify, etc.)
+- Banking products (credit cards, savings accounts, fees)
+- Property-related recurring expenses (rates, water, strata)
+
+**Core Components:**
+1. **Recurring Expense Detection Engine**
+   - Automatically classifies recurring vs one-off expenses
+   - Extracts vendor name, frequency, average spend
+   - Categorises spending into industry types
+
+2. **Market Price Aggregation Layer**
+   - Integrations with comparison sites (WhistleOut, CompareTheMarket, Canstar, EnergyMadeEasy)
+   - Optional: Custom scraping microservice
+
+3. **AI Deal Comparison Module**
+   - Maps user's current plan/product to equivalent market options
+   - Normalises features (data, speed, usage, policy coverage)
+   - Generates ranked savings opportunities
+
+4. **Savings Opportunity Engine**
+   - Estimates annual savings
+   - Calculates switching costs or exit fees
+   - Suggests negotiation strategies with current provider
+
+5. **User Notifications & Reports**
+   - Alerts for better deals
+   - Monthly "Savings Review" summary
+   - Integration into Portfolio Snapshot
+
+**Value:**
+- Saves users thousands annually
+- Adds highly visible recurring value
+- Differentiates Monitrax from all competitors
+- Opens affiliate revenue channels
+
 13. CHANGELOG
 
 v1.3 (November 2025)

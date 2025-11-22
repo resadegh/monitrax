@@ -12,34 +12,72 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Plus, Edit2, Trash2, TrendingUp, Calendar } from 'lucide-react';
+import { DollarSign, Plus, Edit2, Trash2, TrendingUp, Calendar, Home, Briefcase, Building2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+
+interface Property {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface InvestmentAccount {
+  id: string;
+  name: string;
+  type: string;
+  platform: string | null;
+}
 
 interface Income {
   id: string;
   name: string;
   type: 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
+  sourceType: 'GENERAL' | 'PROPERTY' | 'INVESTMENT';
   amount: number;
   frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL';
   isTaxable: boolean;
+  propertyId: string | null;
+  investmentAccountId: string | null;
+  property?: Property | null;
+  investmentAccount?: InvestmentAccount | null;
 }
+
+type IncomeFormData = {
+  name: string;
+  type: Income['type'];
+  sourceType: Income['sourceType'];
+  amount: number;
+  frequency: Income['frequency'];
+  isTaxable: boolean;
+  propertyId: string | null;
+  investmentAccountId: string | null;
+};
 
 export default function IncomePage() {
   const { token } = useAuth();
   const [income, setIncome] = useState<Income[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [investmentAccounts, setInvestmentAccounts] = useState<InvestmentAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<Partial<Income>>({
+  const [formData, setFormData] = useState<IncomeFormData>({
     name: '',
     type: 'SALARY',
+    sourceType: 'GENERAL',
     amount: 0,
     frequency: 'MONTHLY',
     isTaxable: true,
+    propertyId: null,
+    investmentAccountId: null,
   });
 
   useEffect(() => {
-    if (token) loadIncome();
+    if (token) {
+      loadIncome();
+      loadProperties();
+      loadInvestmentAccounts();
+    }
   }, [token]);
 
   const loadIncome = async () => {
@@ -57,10 +95,44 @@ export default function IncomePage() {
     }
   };
 
+  const loadProperties = async () => {
+    try {
+      const response = await fetch('/api/properties', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        setProperties(await response.json());
+      }
+    } catch (error) {
+      console.error('Error loading properties:', error);
+    }
+  };
+
+  const loadInvestmentAccounts = async () => {
+    try {
+      const response = await fetch('/api/investments/accounts', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        setInvestmentAccounts(await response.json());
+      }
+    } catch (error) {
+      console.error('Error loading investment accounts:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const url = editingId ? `/api/income/${editingId}` : '/api/income';
     const method = editingId ? 'PUT' : 'POST';
+
+    // Clear unrelated foreign keys based on sourceType
+    const submitData = {
+      ...formData,
+      amount: Number(formData.amount),
+      propertyId: formData.sourceType === 'PROPERTY' ? formData.propertyId : null,
+      investmentAccountId: formData.sourceType === 'INVESTMENT' ? formData.investmentAccountId : null,
+    };
 
     try {
       const response = await fetch(url, {
@@ -69,7 +141,7 @@ export default function IncomePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ ...formData, amount: Number(formData.amount) }),
+        body: JSON.stringify(submitData),
       });
 
       if (response.ok) {
@@ -87,14 +159,26 @@ export default function IncomePage() {
     setFormData({
       name: '',
       type: 'SALARY',
+      sourceType: 'GENERAL',
       amount: 0,
       frequency: 'MONTHLY',
       isTaxable: true,
+      propertyId: null,
+      investmentAccountId: null,
     });
   };
 
   const handleEdit = (item: Income) => {
-    setFormData(item);
+    setFormData({
+      name: item.name,
+      type: item.type,
+      sourceType: item.sourceType || 'GENERAL',
+      amount: item.amount,
+      frequency: item.frequency,
+      isTaxable: item.isTaxable,
+      propertyId: item.propertyId,
+      investmentAccountId: item.investmentAccountId,
+    });
     setEditingId(item.id);
     setShowDialog(true);
   };
@@ -147,6 +231,45 @@ export default function IncomePage() {
     }
   };
 
+  const getSourceTypeIcon = (sourceType: Income['sourceType']) => {
+    switch (sourceType) {
+      case 'PROPERTY':
+        return <Home className="h-4 w-4 text-blue-500" />;
+      case 'INVESTMENT':
+        return <Briefcase className="h-4 w-4 text-purple-500" />;
+      default:
+        return <DollarSign className="h-4 w-4 text-green-500" />;
+    }
+  };
+
+  const getSourceLabel = (item: Income) => {
+    if (item.sourceType === 'PROPERTY' && item.property) {
+      return item.property.name;
+    }
+    if (item.sourceType === 'INVESTMENT' && item.investmentAccount) {
+      return item.investmentAccount.name;
+    }
+    return 'General';
+  };
+
+  // Auto-set income type based on source type selection
+  const handleSourceTypeChange = (value: Income['sourceType']) => {
+    const updates: Partial<IncomeFormData> = { sourceType: value };
+
+    if (value === 'PROPERTY') {
+      updates.type = 'RENT';
+      updates.investmentAccountId = null;
+    } else if (value === 'INVESTMENT') {
+      updates.type = 'INVESTMENT';
+      updates.propertyId = null;
+    } else {
+      updates.propertyId = null;
+      updates.investmentAccountId = null;
+    }
+
+    setFormData({ ...formData, ...updates });
+  };
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -183,7 +306,7 @@ export default function IncomePage() {
             const monthlyAmount = convertToMonthly(item.amount, item.frequency);
 
             return (
-              <Card key={item.id}>
+              <Card key={item.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
@@ -225,6 +348,15 @@ export default function IncomePage() {
                     </p>
                   </div>
 
+                  {/* Source Type Display */}
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                    {getSourceTypeIcon(item.sourceType || 'GENERAL')}
+                    <div>
+                      <p className="text-xs text-muted-foreground">Source</p>
+                      <p className="text-sm font-medium">{getSourceLabel(item)}</p>
+                    </div>
+                  </div>
+
                   <div className="pt-4 border-t">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -243,7 +375,7 @@ export default function IncomePage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Edit Income' : 'Add New Income'}</DialogTitle>
             <DialogDescription>
@@ -261,6 +393,110 @@ export default function IncomePage() {
                 required
               />
             </div>
+
+            {/* Source Type Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="sourceType">Income Source</Label>
+              <Select
+                value={formData.sourceType}
+                onValueChange={handleSourceTypeChange}
+              >
+                <SelectTrigger id="sourceType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GENERAL">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-green-500" />
+                      General Income
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="PROPERTY">
+                    <div className="flex items-center gap-2">
+                      <Home className="h-4 w-4 text-blue-500" />
+                      Property Income
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="INVESTMENT">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-purple-500" />
+                      Investment Income
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Property Selector - shown when sourceType is PROPERTY */}
+            {formData.sourceType === 'PROPERTY' && (
+              <div className="space-y-2">
+                <Label htmlFor="propertyId">Linked Property</Label>
+                <Select
+                  value={formData.propertyId || ''}
+                  onValueChange={(value) => setFormData({ ...formData, propertyId: value || null })}
+                >
+                  <SelectTrigger id="propertyId">
+                    <SelectValue placeholder="Select a property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.length === 0 ? (
+                      <SelectItem value="" disabled>No properties available</SelectItem>
+                    ) : (
+                      properties.map((property) => (
+                        <SelectItem key={property.id} value={property.id}>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            {property.name}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {properties.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Add properties first to link rental income.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Investment Account Selector - shown when sourceType is INVESTMENT */}
+            {formData.sourceType === 'INVESTMENT' && (
+              <div className="space-y-2">
+                <Label htmlFor="investmentAccountId">Linked Investment Account</Label>
+                <Select
+                  value={formData.investmentAccountId || ''}
+                  onValueChange={(value) => setFormData({ ...formData, investmentAccountId: value || null })}
+                >
+                  <SelectTrigger id="investmentAccountId">
+                    <SelectValue placeholder="Select an investment account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {investmentAccounts.length === 0 ? (
+                      <SelectItem value="" disabled>No investment accounts available</SelectItem>
+                    ) : (
+                      investmentAccounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="h-4 w-4" />
+                            {account.name}
+                            {account.platform && (
+                              <span className="text-xs text-muted-foreground">({account.platform})</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {investmentAccounts.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Add investment accounts first to link investment income.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -289,6 +525,8 @@ export default function IncomePage() {
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
                   placeholder="5000"
+                  min="0"
+                  step="0.01"
                   required
                 />
               </div>
