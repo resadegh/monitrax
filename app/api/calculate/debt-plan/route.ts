@@ -58,10 +58,11 @@ export async function POST(request: NextRequest) {
         loans: planResult.loanResults.map((loan) => ({
           loanId: loan.loanId,
           loanName: loan.loanName,
-          baselinePayoffDate: loan.baselinePayoffDate.toISOString(),
-          strategyPayoffDate: loan.payoffDate.toISOString(),
+          baselinePayoffDate: loan.baselinePayoffDate?.toISOString() || null,
+          strategyPayoffDate: loan.payoffDate?.toISOString() || null,
           interestSavedVsBaseline: loan.interestSaved,
           monthsSaved: loan.monthsSaved,
+          ioWarning: loan.ioWarning,
         })),
       };
 
