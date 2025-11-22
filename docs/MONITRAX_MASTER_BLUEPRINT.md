@@ -1,7 +1,7 @@
-MONITRAX MASTER BLUEPRINT — v1.3
+MONITRAX MASTER BLUEPRINT — v1.4
 Official Architecture, Financial Engine, Product Specification & System Bible
 
-Version 1.3 — Portfolio Unification Layer
+Version 1.4 — Cross-Module Linking & Data Consistency
 
 Authoritative Source of Truth — November 2025
 Owner: ReNew (Newsha & Reza)
@@ -916,11 +916,162 @@ Portfolio Unification & Relational Integrity Layer:
 - Complete database indexes for all foreign keys
 - Ownership validation on all CRUD operations
 
-Phase 6 — NEXT
+Phase 6 — COMPLETE
 
-AI strategy engine
-Advisor-grade intelligence
-Forecasting engine
+UI Integration & Enhancement:
+- Task 1: Income UI — Detail dialog with tabs, stat cards, linked data display
+- Task 2: Expenses UI — Detail dialog with tabs, stat cards, category breakdown
+- Task 3: Properties UI — Detail dialog with tabs (Details, Loans, Income, Expenses, Depreciation)
+- Task 4: Loans UI — Detail dialog with tabs, offset account display, repayment calculations
+- Task 5: Investment Accounts UI — Detail dialog with tabs, holdings summary
+- Task 6: Accounts UI — Detail dialog with tabs, linked loan display
+- Task 7: Investment Holdings UI — Detail dialog with tabs, transaction history
+- Task 8: Investment Transactions UI — Detail dialog with CGT considerations, stat cards
+
+Phase 7 — COMPLETE
+
+Dashboard Redesign:
+- Task 9: Complete dashboard overhaul with global UI standard
+  - Portfolio Snapshot API integration (single unified data source)
+  - Stat cards for Net Worth, Cash Flow, Savings Rate, Portfolio LVR
+  - SVG Donut Chart for asset allocation visualization
+  - Progress bars for asset breakdown (Properties, Cash, Investments)
+  - Dynamic Insights Panel with portfolio health indicators
+  - Tabbed detail panels (Properties, Investments)
+  - Enhanced empty state with onboarding guidance
+  - Quick actions with hover states
+
+Phase 8 — IN PROGRESS
+
+Global Data Consistency & Cross-Module Linking Upgrade:
+
+**Task 10: Cross-Module Linking & Data Consistency Layer**
+
+Goal: Ensure all modules display linked/related data consistently, enable seamless
+cross-module navigation, and provide comprehensive relationship visibility.
+
+**10.1 Backend Relational Expansion**
+
+Enhance API responses to include all related entities:
+- Properties API: Include loans[], income[], expenses[], depreciationSchedules[]
+- Loans API: Include property, offsetAccount, expenses[]
+- Income API: Include property, investmentAccount
+- Expenses API: Include property, loan, investmentAccount
+- Investment Accounts API: Include holdings[], transactions[], incomes[], expenses[]
+- Investment Holdings API: Include investmentAccount, transactions[]
+- Accounts API: Include linkedLoan
+
+**10.2 Standardized Relational Payload Format**
+
+Create consistent response structure across all endpoints:
+```typescript
+interface RelationalPayload<T> {
+  data: T;
+  _links: {
+    properties?: { id: string; name: string }[];
+    loans?: { id: string; name: string; principal: number }[];
+    income?: { id: string; name: string; amount: number }[];
+    expenses?: { id: string; name: string; amount: number }[];
+    accounts?: { id: string; name: string; balance: number }[];
+    investments?: { id: string; name: string; value: number }[];
+  };
+  _meta: {
+    linkedCount: number;
+    missingLinks: string[];
+  };
+}
+```
+
+**10.3 LinkedDataPanel UI Component**
+
+Create reusable component for displaying linked entities:
+```
+components/LinkedDataPanel.tsx
+- Props: entityType, entityId, linkedData
+- Displays linked items in a consistent card format
+- Shows count badges for each linked category
+- Click-to-navigate to linked entity detail view
+- Empty state for unlinked entities with "Add Link" CTA
+```
+
+**10.4 Linked Data Tab in Every Detail Dialog**
+
+Add "Linked Data" tab to all entity detail dialogs:
+- Properties: Show linked loans, income sources, expenses
+- Loans: Show linked property, offset account, interest expenses
+- Income: Show linked property or investment account
+- Expenses: Show linked property, loan, or investment account
+- Investment Accounts: Show linked holdings, income, expenses
+- Investment Holdings: Show linked transactions, account
+- Accounts: Show linked loan (if offset)
+
+**10.5 Portfolio Snapshot Enhancements**
+
+Extend /api/portfolio/snapshot to include:
+- Cross-entity relationship graph
+- Orphaned entity detection (unlinked income/expenses)
+- Linkage completeness score (0-100%)
+- Missing critical links warnings
+
+**10.6 Insights Engine Enhancements**
+
+Add new insight types based on linkage data:
+- "X income sources are not linked to any property or investment"
+- "X expenses could be tax-deductible if linked to investment property"
+- "Loan [name] has no linked property - consider linking for accurate LVR"
+- "Investment account [name] has income but no linked dividends recorded"
+
+**10.7 Linkage Health & Missing Data Detection**
+
+Create LinkageHealth service:
+```typescript
+interface LinkageHealthReport {
+  score: number; // 0-100
+  totalEntities: number;
+  linkedEntities: number;
+  orphanedEntities: {
+    income: { id: string; name: string }[];
+    expenses: { id: string; name: string }[];
+    loans: { id: string; name: string }[];
+  };
+  suggestions: string[];
+}
+```
+
+Add endpoint: GET /api/portfolio/linkage-health
+
+**10.8 Cross-Module Navigation Improvements**
+
+- Add breadcrumb navigation showing entity relationships
+- Add "View in [Module]" quick links from detail dialogs
+- Add hover tooltips showing linked entity summaries
+- Add keyboard shortcuts for navigating between linked entities
+
+**Implementation Order:**
+1. Backend relational expansion (all APIs return linked data)
+2. LinkedDataPanel UI component
+3. Add Linked Data tab to all detail dialogs
+4. Portfolio snapshot linkage enhancements
+5. Linkage health endpoint and service
+6. Insights engine linkage-based insights
+7. Cross-module navigation improvements
+
+**Files to Create/Modify:**
+- NEW: components/LinkedDataPanel.tsx
+- NEW: lib/services/linkageHealth.ts
+- NEW: app/api/portfolio/linkage-health/route.ts
+- MODIFY: All API route files to expand includes
+- MODIFY: All detail dialog components to add Linked Data tab
+- MODIFY: app/api/portfolio/snapshot/route.ts
+- MODIFY: Dashboard insights generation
+
+Phase 9 — PLANNED
+
+AI Strategy Engine:
+- Advisor-grade intelligence
+- Buy/Hold/Sell recommendations
+- Forecasting engine
+- Multi-year wealth planning
 
 11. COLLABORATION RULESET
 ChatGPT Responsibilities
@@ -1028,6 +1179,27 @@ Automatically analyse all recurring expenses, compare them to Australian market 
 
 13. CHANGELOG
 
+v1.4 (November 2025)
+- Added Phase 6: UI Integration & Enhancement (Tasks 1-8) — COMPLETE
+  - Detail dialogs with tabs for all entity pages
+  - Stat cards and summary statistics
+  - Linked data display in entity views
+- Added Phase 7: Dashboard Redesign (Task 9) — COMPLETE
+  - Portfolio Snapshot API integration
+  - SVG charts for asset allocation
+  - Dynamic insights panel
+  - Tabbed detail panels
+- Added Phase 8: Global Data Consistency & Cross-Module Linking (Task 10) — IN PROGRESS
+  - Backend relational expansion specification
+  - Standardized relational payload format
+  - LinkedDataPanel UI component specification
+  - Linked Data tab for all detail dialogs
+  - Portfolio snapshot linkage enhancements
+  - Insights engine linkage-based insights
+  - Linkage health service and endpoint
+  - Cross-module navigation improvements
+- Updated roadmap: Phase 6 & 7 marked COMPLETE, Phase 8 IN PROGRESS
+
 v1.3 (November 2025)
 - Added Portfolio Unification & Relational Integrity Layer
 - Schema enhancements:
@@ -1090,4 +1262,4 @@ v1.0 (November 2025)
 - Initial blueprint release
 - Phase 1 & 2 complete
 
-END OF BLUEPRINT v1.3
+END OF BLUEPRINT v1.4
