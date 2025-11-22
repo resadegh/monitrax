@@ -1,5 +1,7 @@
-MONITRAX MASTER BLUEPRINT — v1.0
+MONITRAX MASTER BLUEPRINT — v1.1
 Official Architecture, Financial Engine, Product Specification & System Bible
+
+Version 1.1 — Investments, Depreciation & CGT Foundation
 
 Authoritative Source of Truth — November 2025
 Owner: ReNew (Newsha & Reza)
@@ -348,17 +350,27 @@ Multi-strategy evaluation (AI)
 
 Ten-year debt elimination strategy
 
-4.8 Investment Engine (Phase 3)
+4.8 Investment Engine (Phase 3) — IMPLEMENTED
 
-Will support:
+Now supports:
 
-Shares / ETFs
+Investment Accounts (Brokerage, Super, Fund, Trust, ETF/Crypto)
 
-Dollar-cost averaging
+Investment Holdings (Shares, ETFs, Managed Funds, Crypto)
 
-Dividend yield simulation
+Investment Transactions (Buy, Sell, Dividend, Distribution, DRP)
 
-Capital gains
+Franking credit calculations (Australian)
+
+Dividend yield calculations (gross and net)
+
+Cost base tracking for CGT
+
+Portfolio performance metrics
+
+Planned (Phase 4+):
+
+Dollar-cost averaging analysis
 
 Risk-weighting
 
@@ -366,7 +378,61 @@ Portfolio correlation
 
 Monte Carlo forecasting
 
-4.9 AI Strategy Engine (Phase 5)
+4.9 Depreciation Engine (Phase 3) — IMPLEMENTED
+
+Now supports:
+
+Division 40 (Plant & Equipment)
+
+Division 43 (Capital Works)
+
+Prime Cost method
+
+Diminishing Value method
+
+Per-property depreciation schedules
+
+Annual depreciation calculations
+
+Multi-year forecasting
+
+Pro-rata first year calculations
+
+Planned (Phase 4):
+
+Automatic effective life lookups
+
+Integration with Tax Engine
+
+Depreciation report exports
+
+4.10 CGT Engine Foundation (Phase 3) — IMPLEMENTED
+
+Foundation stubs for:
+
+Cost base calculation (5 elements)
+
+CGT discount (50% for >12 months)
+
+Capital gain/loss tracking
+
+Main residence exemption (partial)
+
+Property CGT helpers
+
+Share/ETF CGT helpers
+
+Planned (Phase 4):
+
+Full Tax Engine integration
+
+CGT event summary reports
+
+Prior year loss carry-forward
+
+Small business concessions
+
+4.11 AI Strategy Engine (Phase 5)
 
 Will provide:
 
@@ -520,6 +586,76 @@ currentBalance
 
 linkedLoanId?
 
+InvestmentAccount (Phase 3)
+
+id
+
+userId
+
+name
+
+type (BROKERAGE/SUPERS/FUND/TRUST/ETF_CRYPTO)
+
+platform
+
+currency (default: AUD)
+
+InvestmentHolding (Phase 3)
+
+id
+
+investmentAccountId
+
+ticker
+
+units
+
+averagePrice
+
+frankingPercentage
+
+type (SHARE/ETF/MANAGED_FUND/CRYPTO)
+
+InvestmentTransaction (Phase 3)
+
+id
+
+investmentAccountId
+
+holdingId
+
+date
+
+type (BUY/SELL/DIVIDEND/DISTRIBUTION/DRP)
+
+price
+
+units
+
+fees
+
+notes
+
+DepreciationSchedule (Phase 3)
+
+id
+
+propertyId
+
+category (DIV40/DIV43)
+
+assetName
+
+cost
+
+startDate
+
+rate
+
+method (PRIME_COST/DIMINISHING_VALUE)
+
+notes
+
 6. FINANCIAL LOGIC BLUEPRINT
 6.1 Income Normalisation
 
@@ -639,13 +775,16 @@ Business logic fixes
 Debt planner corrections
 Tax engine corrections
 
-Phase 3 — NEXT
+Phase 3 — COMPLETE
 
-Investment engine
-Depreciation modelling
-CGT foundations
+Investment engine (accounts, holdings, transactions)
+Depreciation modelling (Div 40, Div 43)
+CGT foundations (cost base, discount calculations)
+Investment performance calculations
+Franking credit calculations (Australian)
+UI pages for all new modules
 
-Phase 4 — LATER
+Phase 4 — NEXT
 
 Forecasting engine
 Capital event modelling
@@ -700,7 +839,7 @@ Business direction
 
 12. VERSIONING
 
-This document is v1.0
+This document is v1.1
 Every major design change increments version:
 v1.1, v1.2 … v2.0 … v3.0
 
@@ -714,4 +853,22 @@ Current roadmap
 
 Future plans
 
-END OF BLUEPRINT v1.0
+13. CHANGELOG
+
+v1.1 (November 2025)
+- Added Investment Engine (accounts, holdings, transactions)
+- Added Depreciation Engine (Div 40, Div 43)
+- Added CGT Foundation (cost base, discount calculations)
+- Added 4 new Prisma models
+- Added 8 new API routes
+- Added 4 new UI pages
+- Added investment logic stubs (lib/investments/)
+- Added depreciation logic stubs (lib/depreciation/)
+- Added CGT logic stubs (lib/cgt/)
+- Updated roadmap: Phase 3 marked COMPLETE
+
+v1.0 (November 2025)
+- Initial blueprint release
+- Phase 1 & 2 complete
+
+END OF BLUEPRINT v1.1
