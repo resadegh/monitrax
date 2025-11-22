@@ -104,13 +104,14 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  properties  Property[]
-  loans       Loan[]
-  accounts    Account[]
-  income      Income[]
-  expenses    Expense[]
-  transactions Transaction[]
-  debtPlans   DebtPlan[]
+  properties          Property[]
+  loans               Loan[]
+  accounts            Account[]
+  income              Income[]
+  expenses            Expense[]
+  transactions        Transaction[]
+  debtPlans           DebtPlan[]
+  investmentAccounts  InvestmentAccount[]
 
   @@map("users")
 }
@@ -133,10 +134,11 @@ model Property {
   updatedAt      DateTime     @updatedAt
 
   // Relationships
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  loans     Loan[]
-  income    Income[]
-  expenses  Expense[]
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loans                 Loan[]
+  income                Income[]
+  expenses              Expense[]
+  depreciationSchedules DepreciationSchedule[]
 
   @@index([userId])
   @@map("properties")
@@ -340,4 +342,137 @@ model DebtPlanLoan {
   @@index([debtPlanId])
   @@index([loanId])
   @@map("debt_plan_loans")
+}
+
+// =============================================================================
+// PHASE 3: INVESTMENT ENUMS
+// =============================================================================
+
+enum InvestmentAccountType {
+  BROKERAGE
+  SUPERS
+  FUND
+  TRUST
+  ETF_CRYPTO
+}
+
+enum HoldingType {
+  SHARE
+  ETF
+  MANAGED_FUND
+  CRYPTO
+}
+
+enum InvestmentTransactionType {
+  BUY
+  SELL
+  DIVIDEND
+  DISTRIBUTION
+  DRP
+}
+
+enum DepreciationCategory {
+  DIV40
+  DIV43
+}
+
+enum DepreciationMethod {
+  PRIME_COST
+  DIMINISHING_VALUE
+}
+
+// =============================================================================
+// PHASE 3: INVESTMENT ACCOUNT
+// =============================================================================
+
+model InvestmentAccount {
+  id           String                @id @default(uuid())
+  userId       String
+  name         String
+  type         InvestmentAccountType
+  platform     String?               // e.g. CommSec, SelfWealth, Betashares app
+  currency     String                @default("AUD")
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  // Relationships
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings     InvestmentHolding[]
+  transactions InvestmentTransaction[]
+
+  @@index([userId])
+  @@map("investment_accounts")
+}
+
+// =============================================================================
+// PHASE 3: INVESTMENT HOLDING
+// =============================================================================
+
+model InvestmentHolding {
+  id                  String            @id @default(uuid())
+  investmentAccountId String
+  ticker              String            // VAS, A200, VGS, BHP
+  units               Float
+  averagePrice        Float
+  frankingPercentage  Float?            // AU feature for franking credits
+  type                HoldingType
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  // Relationships
+  investmentAccount   InvestmentAccount       @relation(fields: [investmentAccountId], references: [id], onDelete: Cascade)
+  transactions        InvestmentTransaction[]
+
+  @@index([investmentAccountId])
+  @@map("investment_holdings")
+}
+
+// =============================================================================
+// PHASE 3: INVESTMENT TRANSACTION
+// =============================================================================
+
+model InvestmentTransaction {
+  id                  String                    @id @default(uuid())
+  investmentAccountId String
+  holdingId           String?
+  date                DateTime
+  type                InvestmentTransactionType
+  price               Float
+  units               Float
+  fees                Float?
+  notes               String?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  // Relationships
+  investmentAccount   InvestmentAccount   @relation(fields: [investmentAccountId], references: [id], onDelete: Cascade)
+  holding             InvestmentHolding?  @relation(fields: [holdingId], references: [id], onDelete: SetNull)
+
+  @@index([investmentAccountId])
+  @@index([holdingId])
+  @@map("investment_transactions")
+}
+
+// =============================================================================
+// PHASE 3: DEPRECIATION SCHEDULE
+// =============================================================================
+
+model DepreciationSchedule {
+  id         String               @id @default(uuid())
+  propertyId String
+  category   DepreciationCategory
+  assetName  String
+  cost       Float
+  startDate  DateTime
+  rate       Float                // 2.5% for Div43, or effective life rate
+  method     DepreciationMethod   // PRIME_COST | DIMINISHING_VALUE
+  notes      String?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  // Relationships
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("depreciation_schedules")
 }
