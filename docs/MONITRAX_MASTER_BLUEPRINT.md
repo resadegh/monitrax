@@ -943,127 +943,264 @@ Dashboard Redesign:
 
 Phase 8 — IN PROGRESS
 
-Global Data Consistency & Cross-Module Linking Upgrade:
+Global Data Consistency, Cross-Module Linking & Security Upgrade (Expanded Specification)
 
-**Task 10: Cross-Module Linking & Data Consistency Layer**
+### Overview
+Phase 8 is the consolidation layer that unifies Monitrax's backend, frontend,
+navigation intelligence, relational model, insights engine, and security posture.
+This phase ensures that every entity in the system communicates through a single
+relational contract, while the UI adopts a universal pattern for linked-data visibility.
+It also introduces enterprise-grade authentication and authorisation.
 
-Goal: Ensure all modules display linked/related data consistently, enable seamless
-cross-module navigation, and provide comprehensive relationship visibility.
+------------------------------------------------------------------------
+## 8.1 Global Data Consistency & Cross-Module Linking
+------------------------------------------------------------------------
 
-**10.1 Backend Relational Expansion**
+### 10.1 Backend Relational Expansion (Completed)
+Document-only summary:
+- Ensure every API exposes complete relational context.
+- Properties expose loans, income, expenses, depreciation schedules.
+- Loans expose property, offset accounts, expenses.
+- Investment accounts expose holdings, income, expenses.
+- Holdings expose transactions & parent account.
 
-Enhance API responses to include all related entities:
-- Properties API: Include loans[], income[], expenses[], depreciationSchedules[]
-- Loans API: Include property, offsetAccount, expenses[]
-- Income API: Include property, investmentAccount
-- Expenses API: Include property, loan, investmentAccount
-- Investment Accounts API: Include holdings[], transactions[], incomes[], expenses[]
-- Investment Holdings API: Include investmentAccount, transactions[]
-- Accounts API: Include linkedLoan
+### 10.2 Standardised Relational Payload Format (GRDCS)
+(Completed but must be documented in the blueprint.)
 
-**10.2 Standardized Relational Payload Format**
+GRDCS is the universal relational contract across ALL Monitrax API endpoints.
 
-Create consistent response structure across all endpoints:
-```typescript
-interface RelationalPayload<T> {
-  data: T;
-  _links: {
-    properties?: { id: string; name: string }[];
-    loans?: { id: string; name: string; principal: number }[];
-    income?: { id: string; name: string; amount: number }[];
-    expenses?: { id: string; name: string; amount: number }[];
-    accounts?: { id: string; name: string; balance: number }[];
-    investments?: { id: string; name: string; value: number }[];
-  };
-  _meta: {
-    linkedCount: number;
-    missingLinks: string[];
-  };
+Every relational object MUST include:
+- id
+- type
+- name
+- primaryValue
+- secondaryValue
+- relatedIds[]
+- href
+- missingLinks[]
+
+Every API must return:
+```
+{
+  entity: { ...raw entity fields... },
+  linked: GRDCS[],
+  missing: GRDCS[]
 }
 ```
 
-**10.3 LinkedDataPanel UI Component**
+Strict rules:
+- No nested objects
+- Normalised relations only
+- href must map to detail pages
+- relatedIds must be accurately populated
+- missingLinks identifies incomplete data chains
 
-Create reusable component for displaying linked entities:
+### 10.3 LinkedDataPanel UI Component
+A universal UI module used across all entity detail dialogs.
+
+Features:
+- Related entities list with icons
+- One-click navigation across modules
+- Missing-link warnings
+- Relationship health score
+- Value summaries
+- Empty-state suggestions
+
+### 10.4 Linked Data Tab (All Detail Dialogs)
+Every entity's dialog receives a new tab:
+
+Details | Financials/Data | Linked Data | Notes (future)
+
+The LinkedDataPanel component is embedded in the Linked Data tab.
+
+**Implementation Requirements:**
+- Use LinkedDataPanel from Task 10.3
+- Do NOT fetch nested relational data
+- Use only GRDCS `_links.related[]` and `_meta.missingLinks[]`
+- Follow global UI standard for empty states and warnings
+- Navigation via GRDCS href
+
+**Entities to implement:**
+- Properties detail dialog
+- Loans detail dialog
+- Income detail dialog
+- Expenses detail dialog
+- Accounts detail dialog
+- Investment Accounts detail dialog
+- Investment Holdings detail dialog
+- Investment Transactions detail dialog
+
+**Tab order standard:**
+1. Details (entity-specific fields)
+2. Financials/Data (calculations, metrics)
+3. Linked Data (LinkedDataPanel)
+4. Notes (future phase)
+
+### 10.5 Portfolio Snapshot Enhancements
+Snapshot response expanded to include:
+- linkedEntities[]
+- missingEntities[]
+- linkageScore (0–100)
+- orphanedEntities[]
+- moduleCompleteness breakdown
+
+Dashboard shows:
+- orphan detection
+- missing income/loan/property links
+- relationship health warnings
+
+### 10.6 Insights Engine Enhancements
+Add relational intelligence to insights:
+
+Examples:
+- Property has loan but no income
+- Loan expenses without a linked loan
+- Holding missing cost base → CGT warning
+- Investment account missing holdings
+- Duplicate/inconsistent relationships
+
+New Insight Categories:
+- Linkage Errors
+- Data Health
+- Completeness Gaps
+- Risk Signals
+- Opportunity Insights
+
+### 10.7 Linkage Health Service (NEW ENDPOINT)
+/api/portfolio/linkage-health
+
+Returns:
+- EntityHealth[]
+- MissingLink[]
+- SuggestedFix[]
+- LinkageHeatmap
+
+Used by dashboard, insights engine, and LinkedDataPanel.
+
+### 10.8 Cross-Module Navigation Framework
+Universal navigation design:
+- Every entity exposes a predictable href
+- Navigation breadcrumbs
+- Hover tooltips explaining relationships
+- Quick-switch panel for mobile
+- Global entity-to-entity deep linking
+
+------------------------------------------------------------------------
+## 8.2 Authentication, Security, Authorisation & Access Control
+------------------------------------------------------------------------
+
+### 11.1 Identity Provider Integration
+Monitrax will NOT build full auth in-house.
+
+Supported providers:
+- Clerk.dev (recommended)
+- Supabase Auth (cost effective)
+- Auth0 (enterprise-level)
+
+Clerk.dev provides:
+- Email verification
+- MFA (email, TOTP, SMS optional)
+- Magic links
+- OAuth/social login
+- Device and session management
+- Audit trail support
+
+Monitrax wraps the provider via:
 ```
-components/LinkedDataPanel.tsx
-- Props: entityType, entityId, linkedData
-- Displays linked items in a consistent card format
-- Shows count badges for each linked category
-- Click-to-navigate to linked entity detail view
-- Empty state for unlinked entities with "Add Link" CTA
+/lib/auth
+  - getUser()
+  - requireUser()
+  - requireRole()
+  - getSession()
 ```
 
-**10.4 Linked Data Tab in Every Detail Dialog**
+Keeps auth provider-agnostic.
 
-Add "Linked Data" tab to all entity detail dialogs:
-- Properties: Show linked loans, income sources, expenses
-- Loans: Show linked property, offset account, interest expenses
-- Income: Show linked property or investment account
-- Expenses: Show linked property, loan, or investment account
-- Investment Accounts: Show linked holdings, income, expenses
-- Investment Holdings: Show linked transactions, account
-- Accounts: Show linked loan (if offset)
+### 11.2 Authentication Rules
+- Email + password
+- Optional passwordless login
+- Mandatory email verification
+- Optional MFA:
+    - Email OTP
+    - authenticator app (TOTP)
+    - SMS (optional)
+- Trusted device tracking
+- Session expiry + refresh token handling
 
-**10.5 Portfolio Snapshot Enhancements**
+### 11.3 RBAC (Role-Based Access Control)
 
-Extend /api/portfolio/snapshot to include:
-- Cross-entity relationship graph
-- Orphaned entity detection (unlinked income/expenses)
-- Linkage completeness score (0-100%)
-- Missing critical links warnings
+Roles:
+- owner
+- member
+- accountant
+- viewer
+- admin (internal only)
 
-**10.6 Insights Engine Enhancements**
+Applied to:
+- CRUD on all financial entities
+- Access to investment modules
+- Access to tax/debt tools
+- Export functionality
+- Viewing insights / sensitive summaries
 
-Add new insight types based on linkage data:
-- "X income sources are not linked to any property or investment"
-- "X expenses could be tax-deductible if linked to investment property"
-- "Loan [name] has no linked property - consider linking for accurate LVR"
-- "Investment account [name] has income but no linked dividends recorded"
-
-**10.7 Linkage Health & Missing Data Detection**
-
-Create LinkageHealth service:
-```typescript
-interface LinkageHealthReport {
-  score: number; // 0-100
-  totalEntities: number;
-  linkedEntities: number;
-  orphanedEntities: {
-    income: { id: string; name: string }[];
-    expenses: { id: string; name: string }[];
-    loans: { id: string; name: string }[];
-  };
-  suggestions: string[];
-}
+Middleware:
+```
+withRole(['owner', 'accountant'])
+withRole(['viewer'])
 ```
 
-Add endpoint: GET /api/portfolio/linkage-health
+UI-level enforcement:
+- Disabled buttons when lacking permissions
+- Tooltip explaining required role
+- "Request Access" future feature
 
-**10.8 Cross-Module Navigation Improvements**
+### 11.4 Security Controls
+- Rate limiting on all API routes
+- Brute-force protection (via auth provider)
+- Suspicious login alerts
+- Prisma encryption for sensitive fields
+- HTTPS required
+- Secure cookies
+- CSRF protection
+- IP throttling for abuse detection
 
-- Add breadcrumb navigation showing entity relationships
-- Add "View in [Module]" quick links from detail dialogs
-- Add hover tooltips showing linked entity summaries
-- Add keyboard shortcuts for navigating between linked entities
+### 11.5 Audit Logging
+New table: AuditLog
 
-**Implementation Order:**
-1. Backend relational expansion (all APIs return linked data)
-2. LinkedDataPanel UI component
-3. Add Linked Data tab to all detail dialogs
-4. Portfolio snapshot linkage enhancements
-5. Linkage health endpoint and service
-6. Insights engine linkage-based insights
-7. Cross-module navigation improvements
+Tracks:
+- Login + logout
+- Failed login attempts
+- MFA enable/disable
+- Role change events
+- CRUD operations on entities
+- Access denials
+- Security events
 
-**Files to Create/Modify:**
-- NEW: components/LinkedDataPanel.tsx
-- NEW: lib/services/linkageHealth.ts
-- NEW: app/api/portfolio/linkage-health/route.ts
-- MODIFY: All API route files to expand includes
-- MODIFY: All detail dialog components to add Linked Data tab
-- MODIFY: app/api/portfolio/snapshot/route.ts
-- MODIFY: Dashboard insights generation
+Retention: 12 months
+Export: CSV from dashboard settings (v2.0)
+
+### 11.6 User Security Settings UI
+Route: /dashboard/settings/security
+
+Includes:
+- Change password
+- Enable/disable MFA
+- Email verification status
+- Active session list
+- Terminate session
+- Security alerts
+- Audit log export
+
+### 11.7 Architecture Notes
+- Monitrax frontend structure unchanged
+- Auth provider integrated via unified wrapper
+- All security logic declarative
+- RBAC checks at API + UI layer
+- Security model scalable for shared portfolios (future)
+
+------------------------------------------------------------------------
+## END OF PHASE 8 — FINAL ARCHITECTURE
+------------------------------------------------------------------------
 
 Phase 9 — PLANNED
 

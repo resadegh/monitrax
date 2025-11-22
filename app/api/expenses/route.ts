@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { extractExpenseLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq) => {
@@ -11,7 +12,19 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
       });
 
-      return NextResponse.json(expenses);
+      // Apply GRDCS wrapper to each expense
+      const expensesWithLinks = expenses.map(expense => {
+        const links = extractExpenseLinks(expense);
+        return wrapWithGRDCS(expense as Record<string, unknown>, 'expense', links);
+      });
+
+      return NextResponse.json({
+        data: expensesWithLinks,
+        _meta: {
+          count: expensesWithLinks.length,
+          totalLinkedEntities: expensesWithLinks.reduce((sum, e) => sum + e._meta.linkedCount, 0),
+        },
+      });
     } catch (error) {
       console.error('Get expenses error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

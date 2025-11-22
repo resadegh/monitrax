@@ -16,8 +16,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Home, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   Landmark, DollarSign, Receipt, Calendar, Building2,
-  ChevronRight, Percent, PiggyBank, FileText, Eye
+  ChevronRight, Percent, PiggyBank, FileText, Eye, Link2
 } from 'lucide-react';
+import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Loan {
   id: string;
@@ -67,6 +69,15 @@ interface Property {
   income?: Income[];
   expenses?: Expense[];
   depreciationSchedules?: DepreciationSchedule[];
+  // GRDCS fields
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
 }
 
 type PropertyFormData = {
@@ -109,7 +120,9 @@ export default function PropertiesPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        const data = await response.json();
+        const result = await response.json();
+        // Handle GRDCS format: { data: [...], _meta: {...} }
+        const data = result.data || result;
         setProperties(data);
       }
     } catch (error) {
@@ -593,10 +606,14 @@ export default function PropertiesPage() {
               </DialogHeader>
 
               <Tabs defaultValue="overview" className="mt-4">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="overview">Details</TabsTrigger>
+                  <TabsTrigger value="cashflow">Financials</TabsTrigger>
                   <TabsTrigger value="loans">Loans</TabsTrigger>
-                  <TabsTrigger value="cashflow">Cashflow</TabsTrigger>
+                  <TabsTrigger value="linked">
+                    <Link2 className="h-3 w-3 mr-1" />
+                    Linked
+                  </TabsTrigger>
                   <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
                 </TabsList>
 
@@ -759,6 +776,16 @@ export default function PropertiesPage() {
                       </p>
                     </div>
                   )}
+                </TabsContent>
+
+                <TabsContent value="linked" className="mt-4">
+                  <LinkedDataPanel
+                    linkedEntities={selectedProperty._links?.related || []}
+                    missingLinks={selectedProperty._meta?.missingLinks || []}
+                    entityType="property"
+                    entityName={selectedProperty.name}
+                    showHealthScore={true}
+                  />
                 </TabsContent>
               </Tabs>
             </>

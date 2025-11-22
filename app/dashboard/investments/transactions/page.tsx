@@ -16,8 +16,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowUpDown, Plus, Edit2, Trash2, Eye, TrendingUp, TrendingDown,
-  DollarSign, Receipt, Wallet, BarChart3, Calendar, FileText, Briefcase
+  DollarSign, Receipt, Wallet, BarChart3, Calendar, FileText, Briefcase, Link2
 } from 'lucide-react';
+import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface InvestmentAccount {
   id: string;
@@ -52,6 +54,15 @@ interface InvestmentTransaction {
   updatedAt: string;
   investmentAccount?: InvestmentAccount;
   holding?: InvestmentHolding | null;
+  // GRDCS fields
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
 }
 
 export default function TransactionsPage() {
@@ -89,7 +100,8 @@ export default function TransactionsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setTransactions(await response.json());
+        const result = await response.json();
+        setTransactions(result.data || result);
       }
     } catch (error) {
       console.error('Error loading transactions:', error);
@@ -104,7 +116,8 @@ export default function TransactionsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setAccounts(await response.json());
+        const result = await response.json();
+        setAccounts(result.data || result);
       }
     } catch (error) {
       console.error('Error loading accounts:', error);
@@ -117,7 +130,8 @@ export default function TransactionsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setHoldings(await response.json());
+        const result = await response.json();
+        setHoldings(result.data || result);
       }
     } catch (error) {
       console.error('Error loading holdings:', error);
@@ -467,10 +481,14 @@ export default function TransactionsPage() {
 
           {selectedTransaction && (
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="holding" disabled={!selectedTransaction.holding}>Holding</TabsTrigger>
                 <TabsTrigger value="account">Account</TabsTrigger>
+                <TabsTrigger value="linked" className="gap-1">
+                  <Link2 className="h-3 w-3" />
+                  Linked
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="space-y-4 mt-4">
@@ -719,6 +737,16 @@ export default function TransactionsPage() {
                     <p>Account information not available</p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="linked" className="mt-4">
+                <LinkedDataPanel
+                  linkedEntities={selectedTransaction._links?.related || []}
+                  missingLinks={selectedTransaction._meta?.missingLinks || []}
+                  entityType="investmentTransaction"
+                  entityName={`${selectedTransaction.type} - ${selectedTransaction.holding?.ticker || 'Transaction'}`}
+                  showHealthScore={true}
+                />
               </TabsContent>
             </Tabs>
           )}

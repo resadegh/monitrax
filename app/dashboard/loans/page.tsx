@@ -13,7 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building } from 'lucide-react';
+import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building, Link2 } from 'lucide-react';
+import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Expense {
   id: string;
@@ -43,6 +45,15 @@ interface Loan {
   property?: { id: string; name: string; currentValue: number; address?: string };
   offsetAccount?: { id: string; name: string; currentBalance: number; institution?: string };
   expenses?: Expense[];
+  // GRDCS fields
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
 }
 
 interface Property {
@@ -99,10 +110,17 @@ export default function LoansPage() {
         fetch('/api/accounts', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
-      if (loansRes.ok) setLoans(await loansRes.json());
-      if (propertiesRes.ok) setProperties(await propertiesRes.json());
+      if (loansRes.ok) {
+        const result = await loansRes.json();
+        setLoans(result.data || result);
+      }
+      if (propertiesRes.ok) {
+        const result = await propertiesRes.json();
+        setProperties(result.data || result);
+      }
       if (accountsRes.ok) {
-        const allAccounts = await accountsRes.json();
+        const result = await accountsRes.json();
+        const allAccounts = result.data || result;
         // Filter to show only OFFSET accounts
         setAccounts(allAccounts.filter((a: Account) => a.type === 'OFFSET'));
       }
@@ -679,11 +697,15 @@ export default function LoansPage() {
 
           {selectedLoan && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="property">Property</TabsTrigger>
                 <TabsTrigger value="offset">Offset</TabsTrigger>
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
+                <TabsTrigger value="linked" className="gap-1">
+                  <Link2 className="h-3 w-3" />
+                  Linked
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
@@ -944,6 +966,16 @@ export default function LoansPage() {
                     <p className="text-sm">Link expenses from the Expenses page</p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="linked" className="mt-4">
+                <LinkedDataPanel
+                  linkedEntities={selectedLoan._links?.related || []}
+                  missingLinks={selectedLoan._meta?.missingLinks || []}
+                  entityType="loan"
+                  entityName={selectedLoan.name}
+                  showHealthScore={true}
+                />
               </TabsContent>
             </Tabs>
           )}

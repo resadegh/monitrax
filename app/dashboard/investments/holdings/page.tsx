@@ -13,7 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Plus, Edit2, Trash2, Eye, TrendingUp, ArrowUpRight, ArrowDownRight, DollarSign, Percent } from 'lucide-react';
+import { BarChart3, Plus, Edit2, Trash2, Eye, TrendingUp, ArrowUpRight, ArrowDownRight, DollarSign, Percent, Link2 } from 'lucide-react';
+import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface InvestmentAccount {
   id: string;
@@ -41,6 +43,15 @@ interface InvestmentHolding {
   type: 'SHARE' | 'ETF' | 'MANAGED_FUND' | 'CRYPTO';
   investmentAccount?: { id: string; name: string; currency?: string };
   transactions?: Transaction[];
+  // GRDCS fields
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
 }
 
 export default function HoldingsPage() {
@@ -74,7 +85,8 @@ export default function HoldingsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setHoldings(await response.json());
+        const result = await response.json();
+        setHoldings(result.data || result);
       }
     } catch (error) {
       console.error('Error loading holdings:', error);
@@ -89,7 +101,8 @@ export default function HoldingsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setAccounts(await response.json());
+        const result = await response.json();
+        setAccounts(result.data || result);
       }
     } catch (error) {
       console.error('Error loading accounts:', error);
@@ -469,9 +482,13 @@ export default function HoldingsPage() {
 
           {selectedHolding && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="linked" className="gap-1">
+                  <Link2 className="h-3 w-3" />
+                  Linked
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4 pt-4">
@@ -603,6 +620,16 @@ export default function HoldingsPage() {
                     <p className="text-sm">Add transactions from the Transactions page</p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="linked" className="mt-4">
+                <LinkedDataPanel
+                  linkedEntities={selectedHolding._links?.related || []}
+                  missingLinks={selectedHolding._meta?.missingLinks || []}
+                  entityType="investmentHolding"
+                  entityName={selectedHolding.ticker}
+                  showHealthScore={true}
+                />
               </TabsContent>
             </Tabs>
           )}

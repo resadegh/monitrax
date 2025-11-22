@@ -13,7 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, Plus, Edit2, Trash2, Eye, BarChart3, ArrowUpRight, ArrowDownRight, DollarSign, Receipt, Wallet } from 'lucide-react';
+import { TrendingUp, Plus, Edit2, Trash2, Eye, BarChart3, ArrowUpRight, ArrowDownRight, DollarSign, Receipt, Wallet, Link2 } from 'lucide-react';
+import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface InvestmentHolding {
   id: string;
@@ -62,6 +64,15 @@ interface InvestmentAccount {
   transactions?: InvestmentTransaction[];
   incomes?: Income[];
   expenses?: Expense[];
+  // GRDCS fields
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
 }
 
 export default function InvestmentAccountsPage() {
@@ -89,7 +100,8 @@ export default function InvestmentAccountsPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setAccounts(await response.json());
+        const result = await response.json();
+        setAccounts(result.data || result);
       }
     } catch (error) {
       console.error('Error loading investment accounts:', error);
@@ -469,11 +481,15 @@ export default function InvestmentAccountsPage() {
 
           {selectedAccount && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="holdings">Holdings</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
                 <TabsTrigger value="cashflow">Cashflow</TabsTrigger>
+                <TabsTrigger value="linked" className="gap-1">
+                  <Link2 className="h-3 w-3" />
+                  Linked
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4 pt-4">
@@ -730,6 +746,16 @@ export default function InvestmentAccountsPage() {
                     <p className="text-sm">Link from the Income or Expenses pages</p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="linked" className="mt-4">
+                <LinkedDataPanel
+                  linkedEntities={selectedAccount._links?.related || []}
+                  missingLinks={selectedAccount._meta?.missingLinks || []}
+                  entityType="investmentAccount"
+                  entityName={selectedAccount.name}
+                  showHealthScore={true}
+                />
               </TabsContent>
             </Tabs>
           )}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
 import { z } from 'zod';
+import { extractInvestmentAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
 const createAccountSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -27,7 +28,19 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
       });
 
-      return NextResponse.json(accounts);
+      // Apply GRDCS wrapper to each investment account
+      const accountsWithLinks = accounts.map(account => {
+        const links = extractInvestmentAccountLinks(account);
+        return wrapWithGRDCS(account as Record<string, unknown>, 'investmentAccount', links);
+      });
+
+      return NextResponse.json({
+        data: accountsWithLinks,
+        _meta: {
+          count: accountsWithLinks.length,
+          totalLinkedEntities: accountsWithLinks.reduce((sum, a) => sum + a._meta.linkedCount, 0),
+        },
+      });
     } catch (error) {
       console.error('Get investment accounts error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -12,8 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Property {
   id: string;
@@ -51,6 +54,15 @@ interface Expense {
   property?: Property | null;
   loan?: Loan | null;
   investmentAccount?: InvestmentAccount | null;
+  // GRDCS fields
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
 }
 
 type ExpenseFormData = {
@@ -75,6 +87,8 @@ export default function ExpensesPage() {
   const [investmentAccounts, setInvestmentAccounts] = useState<InvestmentAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<ExpenseFormData>({
     name: '',
@@ -105,7 +119,8 @@ export default function ExpensesPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setExpenses(await response.json());
+        const result = await response.json();
+        setExpenses(result.data || result);
       }
     } catch (error) {
       console.error('Error loading expenses:', error);
@@ -120,7 +135,8 @@ export default function ExpensesPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setProperties(await response.json());
+        const result = await response.json();
+        setProperties(result.data || result);
       }
     } catch (error) {
       console.error('Error loading properties:', error);
@@ -133,7 +149,8 @@ export default function ExpensesPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setLoans(await response.json());
+        const result = await response.json();
+        setLoans(result.data || result);
       }
     } catch (error) {
       console.error('Error loading loans:', error);
@@ -146,11 +163,17 @@ export default function ExpensesPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        setInvestmentAccounts(await response.json());
+        const result = await response.json();
+        setInvestmentAccounts(result.data || result);
       }
     } catch (error) {
       console.error('Error loading investment accounts:', error);
     }
+  };
+
+  const handleViewDetails = (item: Expense) => {
+    setSelectedExpense(item);
+    setShowDetailDialog(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -360,7 +383,7 @@ export default function ExpensesPage() {
             const monthlyAmount = convertToMonthly(item.amount, item.frequency);
 
             return (
-              <Card key={item.id} className="hover:shadow-md transition-shadow">
+              <Card key={item.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => handleViewDetails(item)}>
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
@@ -384,7 +407,14 @@ export default function ExpensesPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleViewDetails(item)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -718,6 +748,181 @@ export default function ExpensesPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingDown className="h-5 w-5" />
+              {selectedExpense?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Expense details and linked data
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedExpense && (
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="linked" className="gap-1">
+                  <Link2 className="h-3 w-3" />
+                  Linked
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="space-y-4 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Amount</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold text-red-600">{formatCurrency(selectedExpense.amount)}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{selectedExpense.frequency.toLowerCase()}</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Equivalent</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{formatCurrency(convertToMonthly(selectedExpense.amount, selectedExpense.frequency))}</p>
+                      <p className="text-sm text-muted-foreground">per month</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Annual Total</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-2xl font-bold">{formatCurrency(convertToMonthly(selectedExpense.amount, selectedExpense.frequency) * 12)}</p>
+                      <p className="text-sm text-muted-foreground">per year</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Category</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {getCategoryBadge(selectedExpense.category)}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Expense Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Source</span>
+                      <div className="flex items-center gap-2">
+                        {getSourceTypeIcon(selectedExpense.sourceType || 'GENERAL')}
+                        <span className="font-medium">{getSourceLabel(selectedExpense)}</span>
+                      </div>
+                    </div>
+                    {selectedExpense.vendorName && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Vendor</span>
+                        <div className="flex items-center gap-2">
+                          <Store className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{selectedExpense.vendorName}</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Frequency</span>
+                      <span className="font-medium capitalize">{selectedExpense.frequency.toLowerCase()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Essential</span>
+                      <span className="font-medium">{selectedExpense.isEssential ? 'Yes' : 'No'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Tax Deductible</span>
+                      <span className={`font-medium ${selectedExpense.isTaxDeductible ? 'text-green-600' : ''}`}>
+                        {selectedExpense.isTaxDeductible ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {selectedExpense.property && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <Home className="h-4 w-4 text-blue-500" />
+                        Linked Property
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="font-medium">{selectedExpense.property.name}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{selectedExpense.property.type?.toLowerCase() || 'Property'}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {selectedExpense.loan && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <Landmark className="h-4 w-4 text-orange-500" />
+                        Linked Loan
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="font-medium">{selectedExpense.loan.name}</p>
+                      <p className="text-sm text-muted-foreground">{formatCurrency(selectedExpense.loan.principal)} principal</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {selectedExpense.investmentAccount && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <Briefcase className="h-4 w-4 text-purple-500" />
+                        Linked Investment Account
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="font-medium">{selectedExpense.investmentAccount.name}</p>
+                      {selectedExpense.investmentAccount.platform && (
+                        <p className="text-sm text-muted-foreground">{selectedExpense.investmentAccount.platform}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="linked" className="mt-4">
+                <LinkedDataPanel
+                  linkedEntities={selectedExpense._links?.related || []}
+                  missingLinks={selectedExpense._meta?.missingLinks || []}
+                  entityType="expense"
+                  entityName={selectedExpense.name}
+                  showHealthScore={true}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
+              Close
+            </Button>
+            <Button onClick={() => { setShowDetailDialog(false); if (selectedExpense) handleEdit(selectedExpense); }}>
+              <Edit2 className="h-4 w-4 mr-2" />
+              Edit Expense
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
