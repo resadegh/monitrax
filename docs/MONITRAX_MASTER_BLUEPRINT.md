@@ -1,7 +1,7 @@
-MONITRAX MASTER BLUEPRINT — v1.1
+MONITRAX MASTER BLUEPRINT — v1.2
 Official Architecture, Financial Engine, Product Specification & System Bible
 
-Version 1.1 — Investments, Depreciation & CGT Foundation
+Version 1.2 — Wealth Intelligence Engine
 
 Authoritative Source of Truth — November 2025
 Owner: ReNew (Newsha & Reza)
@@ -350,7 +350,7 @@ Multi-strategy evaluation (AI)
 
 Ten-year debt elimination strategy
 
-4.8 Investment Engine (Phase 3) — IMPLEMENTED
+4.8 Investment Engine (Phase 3+4) — ENHANCED
 
 Now supports:
 
@@ -368,71 +368,142 @@ Cost base tracking for CGT
 
 Portfolio performance metrics
 
-Planned (Phase 4+):
+**Phase 4 Additions:**
+
+Performance Analytics:
+- CAGR (Compound Annual Growth Rate)
+- IRR (Internal Rate of Return) with Newton-Raphson
+- TWR (Time-Weighted Return)
+- Volatility (annualized standard deviation)
+- Sharpe Ratio
+- Maximum Drawdown
+
+Cost Base Tracking:
+- FIFO (First In, First Out)
+- LIFO (Last In, First Out)
+- AVG (Average cost - Australian default)
+- Unrealised gains calculation
+
+Yield Analytics:
+- Gross and net dividend yield
+- Franking credit calculations
+- Grossed-up dividend computation
+
+Planned (Phase 5+):
 
 Dollar-cost averaging analysis
-
-Risk-weighting
 
 Portfolio correlation
 
 Monte Carlo forecasting
 
-4.9 Depreciation Engine (Phase 3) — IMPLEMENTED
+4.9 Depreciation Engine (Phase 3+4) — ENHANCED
 
 Now supports:
 
-Division 40 (Plant & Equipment)
+Division 40 (Plant & Equipment):
+- Prime Cost method (1/effective life)
+- Diminishing Value method (200% of prime cost)
+- Low-value pool thresholds ($1,000)
+- Instant asset write-off ($20,000 threshold)
+- Balancing adjustments on disposal
+- Pro-rata first year calculations
+- Multi-year schedule generation
 
-Division 43 (Capital Works)
+Division 43 (Capital Works):
+- 2.5% rate (post-Sept 1987 construction)
+- 4% rate (July 1985 - Sept 1987 construction)
+- Pre-1985 exclusions
+- Pro-rata calculations
+- Undeducted cost tracking for CGT
 
-Prime Cost method
+Combined Schedule Generator:
+- Per-property depreciation aggregation
+- Multi-year forecasting
+- Total deduction summaries
 
-Diminishing Value method
+Planned (Phase 5):
 
-Per-property depreciation schedules
-
-Annual depreciation calculations
-
-Multi-year forecasting
-
-Pro-rata first year calculations
-
-Planned (Phase 4):
-
-Automatic effective life lookups
+Automatic effective life lookups (ATO TR 2023/1)
 
 Integration with Tax Engine
 
-Depreciation report exports
+Depreciation report exports (PDF/CSV)
 
-4.10 CGT Engine Foundation (Phase 3) — IMPLEMENTED
+4.10 CGT Engine (Phase 3+4) — ENHANCED
 
-Foundation stubs for:
+Now supports:
 
-Cost base calculation (5 elements)
+**5-Element Cost Base Calculation:**
+- Element 1: Acquisition price (GST handling)
+- Element 2: Incidental acquisition costs (stamp duty, legal, valuations)
+- Element 3: Non-capital improvement costs (title defence, etc.)
+- Element 4: Capital improvements (renovations, additions)
+- Element 5: Disposal costs (agent fees, legal, advertising)
 
-CGT discount (50% for >12 months)
+**CGT Calculations:**
+- CGT Event A1 (disposal of asset)
+- 50% CGT discount (holdings >12 months)
+- Day counting for discount eligibility
+- Capital gain/loss determination
 
-Capital gain/loss tracking
+**Main Residence Exemption:**
+- Full exemption calculation
+- Partial exemption (absence rule)
+- Income-producing period adjustments
+- Pro-rata exemption percentages
 
-Main residence exemption (partial)
+**CGT Summary Reports:**
+- Financial year aggregation
+- Prior year loss carry-forward
+- Net capital gain computation
+- Discount vs non-discount breakdown
 
-Property CGT helpers
-
-Share/ETF CGT helpers
-
-Planned (Phase 4):
+Planned (Phase 5):
 
 Full Tax Engine integration
 
-CGT event summary reports
-
-Prior year loss carry-forward
-
 Small business concessions
 
-4.11 AI Strategy Engine (Phase 5)
+CGT rollovers
+
+4.11 Portfolio Intelligence Engine (Phase 4) — IMPLEMENTED
+
+Central aggregation and analysis module for wealth intelligence.
+
+**Net Worth Analysis:**
+- Total assets (properties, investments, accounts)
+- Total liabilities (loans)
+- Net worth calculation
+- Asset allocation breakdown by category
+
+**Cashflow Analysis:**
+- Income normalization (monthly)
+- Expense normalization (monthly)
+- Monthly surplus/deficit calculation
+- Savings rate computation
+- Frequency conversion handling
+
+**Gearing Analysis:**
+- Loan-to-Value Ratio (LVR)
+- Portfolio LVR calculation
+- Debt-to-income ratio
+- Interest coverage ratio
+- Serviceability assessment
+
+**Risk Analysis:**
+- Debt stress testing (rate rise scenarios)
+- Buffer adequacy (emergency fund coverage)
+- Concentration risk (single asset exposure)
+- Liquidity assessment
+- Risk rating (LOW/MODERATE/HIGH/CRITICAL)
+
+**Debug API Endpoint:**
+- `/api/debug/intelligence` - Full portfolio intelligence report
+- Authenticated access only
+- Complete wealth snapshot generation
+
+4.12 AI Strategy Engine (Phase 5)
 
 Will provide:
 
@@ -784,15 +855,22 @@ Investment performance calculations
 Franking credit calculations (Australian)
 UI pages for all new modules
 
-Phase 4 — NEXT
+Phase 4 — COMPLETE
 
-Forecasting engine
-Capital event modelling
+Wealth Intelligence Engine:
+- Investment Analytics (CAGR, IRR, TWR, Volatility, Sharpe, Max Drawdown)
+- Cost base tracking (FIFO, LIFO, AVG methods)
+- Yield analytics (dividend yield, franking credits)
+- Depreciation engine integration (Div 40, Div 43, combined schedules)
+- CGT engine (5-element cost base, CGT calculations, main residence exemption)
+- Portfolio Intelligence (net worth, cashflow, gearing, risk analysis)
+- Debug API endpoint (/api/debug/intelligence)
 
-Phase 5 — FINAL
+Phase 5 — NEXT
 
 AI strategy engine
 Advisor-grade intelligence
+Forecasting engine
 
 11. COLLABORATION RULESET
 ChatGPT Responsibilities
@@ -855,6 +933,30 @@ Future plans
 
 13. CHANGELOG
 
+v1.2 (November 2025)
+- Added Wealth Intelligence Engine
+- Enhanced Investment Analytics:
+  - Performance calculations (CAGR, IRR, TWR, Volatility, Sharpe Ratio, Max Drawdown)
+  - Cost base tracking (FIFO, LIFO, AVG methods)
+  - Yield analytics (dividend yield, franking credits)
+- Enhanced Depreciation Engine:
+  - Division 40 full implementation (Prime Cost, Diminishing Value, balancing adjustments)
+  - Division 43 full implementation (2.5%/4% rates, pro-rata)
+  - Combined schedule generator
+- Enhanced CGT Engine:
+  - 5-element cost base calculation
+  - CGT Event A1 calculations
+  - 50% CGT discount logic
+  - Main residence exemption (full and partial)
+  - CGT summary with loss carry-forward
+- Added Portfolio Intelligence Engine:
+  - Net worth analysis
+  - Cashflow analysis (income/expense normalization)
+  - Gearing analysis (LVR, debt-to-income, interest coverage)
+  - Risk analysis (stress testing, buffer adequacy, concentration risk)
+- Added Debug API endpoint (/api/debug/intelligence)
+- Updated roadmap: Phase 4 marked COMPLETE
+
 v1.1 (November 2025)
 - Added Investment Engine (accounts, holdings, transactions)
 - Added Depreciation Engine (Div 40, Div 43)
@@ -871,4 +973,4 @@ v1.0 (November 2025)
 - Initial blueprint release
 - Phase 1 & 2 complete
 
-END OF BLUEPRINT v1.1
+END OF BLUEPRINT v1.2
