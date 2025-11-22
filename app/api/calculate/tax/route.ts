@@ -32,7 +32,29 @@ export async function GET(request: NextRequest) {
       // Calculate tax position
       const taxResult = calculateTaxPosition(incomeSources, expenseSources);
 
-      return NextResponse.json({ tax: taxResult });
+      // Transform to frontend-expected shape
+      const response = {
+        totalIncome: taxResult.totalIncome,
+        totalDeductions: taxResult.taxDeductibleExpenses,
+        taxableIncome: taxResult.assessableIncome,
+        taxPayable: taxResult.totalTax,
+        effectiveRate: taxResult.effectiveTaxRate / 100, // Convert percentage to decimal
+        breakdown: {
+          income: incomeSources.map((i) => ({
+            name: i.name,
+            amount: i.amount,
+            taxable: i.isTaxable,
+          })),
+          deductions: expenseSources
+            .filter((e) => e.isTaxDeductible)
+            .map((e) => ({
+              name: e.name,
+              amount: e.amount,
+            })),
+        },
+      };
+
+      return NextResponse.json(response);
     } catch (error) {
       console.error('Tax calculation error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

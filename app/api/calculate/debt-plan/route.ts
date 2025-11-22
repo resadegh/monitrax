@@ -49,7 +49,30 @@ export async function POST(request: NextRequest) {
       // Run debt planner
       const planResult = runDebtPlan(loanInputs, settings);
 
-      return NextResponse.json({ plan: planResult });
+      // Transform to frontend-expected shape
+      const totalMonthsSaved = planResult.loanResults.reduce((sum, l) => sum + l.monthsSaved, 0);
+
+      const response = {
+        totalInterestSavedVsBaseline: planResult.totalInterestSaved,
+        totalMonthsSaved,
+        loans: planResult.loanResults.map((loan) => {
+          // Calculate baseline payoff date by adding monthsSaved to strategy payoff date
+          const strategyPayoffDate = new Date(loan.payoffDate);
+          const baselinePayoffDate = new Date(strategyPayoffDate);
+          baselinePayoffDate.setMonth(baselinePayoffDate.getMonth() + loan.monthsSaved);
+
+          return {
+            loanId: loan.loanId,
+            loanName: loan.loanName,
+            baselinePayoffDate: baselinePayoffDate.toISOString(),
+            strategyPayoffDate: strategyPayoffDate.toISOString(),
+            interestSavedVsBaseline: loan.interestSaved,
+            monthsSaved: loan.monthsSaved,
+          };
+        }),
+      };
+
+      return NextResponse.json(response);
     } catch (error) {
       console.error('Debt planner error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
