@@ -1077,13 +1077,102 @@ Returns:
 
 Used by dashboard, insights engine, and LinkedDataPanel.
 
-### 10.8 Cross-Module Navigation Framework
-Universal navigation design:
-- Every entity exposes a predictable href
-- Navigation breadcrumbs
-- Hover tooltips explaining relationships
-- Quick-switch panel for mobile
-- Global entity-to-entity deep linking
+### 10.8 Cross-Module Navigation Framework (CMNF)
+
+Objective:
+Create a unified navigation system enabling seamless traversal across relationally-linked entities throughout the entire Monitrax application.
+
+Purpose:
+- Support 1-click navigation from any GRDCS-linked entity.
+- Provide consistent navigation behaviour across all entity dialogs.
+- Enable breadcrumb rebuilding and relational drill-down paths.
+- Serve as the foundation for Phase 9 global nav intelligence.
+
+#### 10.8.1 Core Requirements
+
+1. All entities must expose canonical hrefs:
+   href pattern: /{module}/{id}
+   Modules include:
+   - properties
+   - loans
+   - accounts
+   - offset-accounts
+   - income
+   - expenses
+   - investment-accounts
+   - holdings
+   - transactions
+
+2. LinkedDataPanel must rely entirely on hrefs supplied by GRDCS.
+   No component may hardcode any routing rules.
+
+3. The navigation layer must support:
+   - opening dialogs via href
+   - switching between tabs without losing context
+   - deep relational drill-down:
+     property → loan → expense → account → transaction → holding
+
+4. Navigation state must persist:
+   - tab state
+   - last-opened entity
+   - breadcrumb chain
+   - scroll position (where applicable)
+
+5. Breadcrumb rules:
+   - dynamically generated from GRDCS chain
+   - reflect real relational ancestry (not static hierarchy)
+   - always show the current entity as the final segment
+
+6. Back navigation must respect relational context:
+   - NOT browser-level history
+   - Use a dedicated navigation stack:
+     navStack: Array<{ type: string, id: string, label: string, href: string }>
+
+7. CMNF must be fully client-side.
+   - No server calls required except initial entity fetch.
+
+#### 10.8.2 Technical Components
+
+Implement the following:
+
+1. NavigationContext:
+   Stores:
+   - navStack
+   - lastEntity
+   - activeTab
+   - lastRouteState
+   Must expose:
+   - push(entity)
+   - pop()
+   - reset()
+   - getBreadcrumb()
+
+2. useCrossModuleNavigation():
+   Handles:
+   - navigateToEntity(type, id)
+   - openLinkedEntity(GRDCSLinkedEntity)
+   - restoreContext()
+
+3. Dialog Integration:
+   All dialogs must accept navigation state via props:
+   {
+     fromLinkage?: boolean,
+     breadcrumb?: BreadcrumbItem[]
+   }
+
+4. Route Map Enforcement:
+   A single shared routeMap object must define all entity paths.
+
+#### 10.8.3 Acceptance Criteria
+
+- Every linked entity in LinkedDataPanel is clickable.
+- Clicking opens the correct entity dialog with correct tab pre-selected.
+- Breadcrumb correctly reflects navigation path.
+- Back button respects relational navigation state.
+- No full page reloads.
+- No broken hrefs.
+- No circular navigation loops.
+- CMNF works across ALL entity types.
 
 ------------------------------------------------------------------------
 ## 8.2 Authentication, Security, Authorisation & Access Control
