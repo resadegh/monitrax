@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Convert to LoanInput format
-      const loanInputs: LoanInput[] = loans.map((loan) => ({
+      const loanInputs: LoanInput[] = loans.map((loan: typeof loans[number]) => ({
         id: loan.id,
         name: loan.name,
         type: loan.type,

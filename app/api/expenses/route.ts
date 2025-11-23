@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Apply GRDCS wrapper to each expense
-      const expensesWithLinks = expenses.map(expense => {
+      const expensesWithLinks = expenses.map((expense: typeof expenses[number]) => {
         const links = extractExpenseLinks(expense);
         return wrapWithGRDCS(expense as Record<string, unknown>, 'expense', links);
       });
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         data: expensesWithLinks,
         _meta: {
           count: expensesWithLinks.length,
-          totalLinkedEntities: expensesWithLinks.reduce((sum, e) => sum + e._meta.linkedCount, 0),
+          totalLinkedEntities: expensesWithLinks.reduce((sum: number, e: { _meta: { linkedCount: number } }) => sum + e._meta.linkedCount, 0),
         },
       });
     } catch (error) {

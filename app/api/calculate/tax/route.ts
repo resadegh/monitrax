@@ -17,13 +17,13 @@ export async function GET(request: NextRequest) {
       });
 
       // Convert to annual amounts and prepare for tax calculation
-      const incomeSources = income.map((i) => ({
+      const incomeSources = income.map((i: typeof income[number]) => ({
         name: i.name,
         amount: toAnnual(i.amount, i.frequency),
         isTaxable: i.isTaxable,
       }));
 
-      const expenseSources = expenses.map((e) => ({
+      const expenseSources = expenses.map((e: typeof expenses[number]) => ({
         name: e.name,
         amount: toAnnual(e.amount, e.frequency),
         isTaxDeductible: e.isTaxDeductible,
@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
       const taxResult = calculateTaxPosition(incomeSources, expenseSources);
 
       // Transform to frontend-expected shape
+      type IncomeSource = typeof incomeSources[number];
+      type ExpenseSource = typeof expenseSources[number];
       const response = {
         totalIncome: taxResult.totalIncome,
         totalDeductions: taxResult.taxDeductibleExpenses,
@@ -40,14 +42,14 @@ export async function GET(request: NextRequest) {
         taxPayable: taxResult.totalTax,
         effectiveRate: taxResult.effectiveTaxRate / 100, // Convert percentage to decimal
         breakdown: {
-          income: incomeSources.map((i) => ({
+          income: incomeSources.map((i: IncomeSource) => ({
             name: i.name,
             amount: i.amount,
             taxable: i.isTaxable,
           })),
           deductions: expenseSources
-            .filter((e) => e.isTaxDeductible)
-            .map((e) => ({
+            .filter((e: ExpenseSource) => e.isTaxDeductible)
+            .map((e: ExpenseSource) => ({
               name: e.name,
               amount: e.amount,
             })),

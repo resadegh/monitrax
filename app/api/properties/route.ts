@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Apply GRDCS wrapper to each property
-      const propertiesWithLinks = properties.map(property => {
+      const propertiesWithLinks = properties.map((property: typeof properties[number]) => {
         const links = extractPropertyLinks(property);
         return wrapWithGRDCS(property as Record<string, unknown>, 'property', links);
       });
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         data: propertiesWithLinks,
         _meta: {
           count: propertiesWithLinks.length,
-          totalLinkedEntities: propertiesWithLinks.reduce((sum, p) => sum + p._meta.linkedCount, 0),
+          totalLinkedEntities: propertiesWithLinks.reduce((sum: number, p: { _meta: { linkedCount: number } }) => sum + p._meta.linkedCount, 0),
         },
       });
     } catch (error) {

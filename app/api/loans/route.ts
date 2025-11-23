@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Apply GRDCS wrapper to each loan
-      const loansWithLinks = loans.map(loan => {
+      const loansWithLinks = loans.map((loan: typeof loans[number]) => {
         const links = extractLoanLinks(loan);
         return wrapWithGRDCS(loan as Record<string, unknown>, 'loan', links);
       });
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         data: loansWithLinks,
         _meta: {
           count: loansWithLinks.length,
-          totalLinkedEntities: loansWithLinks.reduce((sum, l) => sum + l._meta.linkedCount, 0),
+          totalLinkedEntities: loansWithLinks.reduce((sum: number, l: { _meta: { linkedCount: number } }) => sum + l._meta.linkedCount, 0),
         },
       });
     } catch (error) {
