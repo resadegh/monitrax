@@ -19,7 +19,7 @@
  * - Proper null handling for non-payoffable loans
  */
 
-import { LoanType, RepaymentFrequency, RateType } from '@prisma/client';
+import { LoanType, RepaymentFrequency, RateType } from '@/lib/types/prisma-enums';
 import { toMonthly } from '../utils/frequencies';
 
 export interface LoanInput {

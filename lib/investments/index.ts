@@ -6,7 +6,7 @@
  * and franking credits according to Australian regulations.
  */
 
-import { InvestmentHolding, InvestmentTransaction } from '@prisma/client';
+import { InvestmentHolding, InvestmentTransaction } from '@/lib/types/prisma-enums';
 
 // =============================================================================
 // TYPES

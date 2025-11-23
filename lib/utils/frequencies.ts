@@ -1,4 +1,4 @@
-import { Frequency, RepaymentFrequency } from '@prisma/client';
+import { Frequency, RepaymentFrequency } from '@/lib/types/prisma-enums';
 
 /**
  * Convert frequency-based amounts to annual equivalent
