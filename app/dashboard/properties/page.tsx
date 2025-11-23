@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -91,7 +91,7 @@ type PropertyFormData = {
   valuationDate: string;
 };
 
-export default function PropertiesPage() {
+function PropertiesPageContent() {
   const { token } = useAuth();
   const { openLinkedEntity } = useCrossModuleNavigation();
   const [properties, setProperties] = useState<Property[]>([]);
@@ -802,5 +802,20 @@ export default function PropertiesPage() {
         </DialogContent>
       </Dialog>
     </DashboardLayout>
+  );
+}
+
+// Wrap in Suspense for useSearchParams (Next.js 15 requirement)
+export default function PropertiesPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    }>
+      <PropertiesPageContent />
+    </Suspense>
   );
 }
