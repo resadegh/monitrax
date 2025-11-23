@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Property {
@@ -81,6 +82,14 @@ type ExpenseFormData = {
 
 export default function ExpensesPage() {
   const { token } = useAuth();
+  const { openLinkedEntity } = useCrossModuleNavigation();
+
+  // CMNF navigation handler for LinkedDataPanel
+  const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
+    setShowDetailDialog(false);
+    openLinkedEntity(entity);
+  };
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
@@ -909,6 +918,7 @@ export default function ExpensesPage() {
                   entityType="expense"
                   entityName={selectedExpense.name}
                   showHealthScore={true}
+                  onNavigate={handleLinkedEntityNavigate}
                 />
               </TabsContent>
             </Tabs>

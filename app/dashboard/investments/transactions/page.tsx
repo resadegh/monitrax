@@ -19,6 +19,7 @@ import {
   DollarSign, Receipt, Wallet, BarChart3, Calendar, FileText, Briefcase, Link2
 } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface InvestmentAccount {
@@ -67,6 +68,14 @@ interface InvestmentTransaction {
 
 export default function TransactionsPage() {
   const { token } = useAuth();
+  const { openLinkedEntity } = useCrossModuleNavigation();
+
+  // CMNF navigation handler for LinkedDataPanel
+  const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
+    setShowDetailDialog(false);
+    openLinkedEntity(entity);
+  };
+
   const [transactions, setTransactions] = useState<InvestmentTransaction[]>([]);
   const [accounts, setAccounts] = useState<InvestmentAccount[]>([]);
   const [holdings, setHoldings] = useState<InvestmentHolding[]>([]);
@@ -746,6 +755,7 @@ export default function TransactionsPage() {
                   entityType="investmentTransaction"
                   entityName={`${selectedTransaction.type} - ${selectedTransaction.holding?.ticker || 'Transaction'}`}
                   showHealthScore={true}
+                  onNavigate={handleLinkedEntityNavigate}
                 />
               </TabsContent>
             </Tabs>

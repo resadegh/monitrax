@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building, Link2 } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Expense {
@@ -72,6 +73,7 @@ interface Account {
 
 export default function LoansPage() {
   const { token } = useAuth();
+  const { openLinkedEntity } = useCrossModuleNavigation();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -80,6 +82,12 @@ export default function LoansPage() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // CMNF navigation handler for LinkedDataPanel
+  const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
+    setShowDetailDialog(false);
+    openLinkedEntity(entity);
+  };
   const [formData, setFormData] = useState<Partial<Loan>>({
     name: '',
     type: 'HOME',
@@ -975,6 +983,7 @@ export default function LoansPage() {
                   entityType="loan"
                   entityName={selectedLoan.name}
                   showHealthScore={true}
+                  onNavigate={handleLinkedEntityNavigate}
                 />
               </TabsContent>
             </Tabs>

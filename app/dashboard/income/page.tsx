@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DollarSign, Plus, Edit2, Trash2, TrendingUp, Calendar, Home, Briefcase, Building2, Eye, Link2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Property {
@@ -67,6 +68,14 @@ type IncomeFormData = {
 
 export default function IncomePage() {
   const { token } = useAuth();
+  const { openLinkedEntity } = useCrossModuleNavigation();
+
+  // CMNF navigation handler for LinkedDataPanel
+  const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
+    setShowDetailDialog(false);
+    openLinkedEntity(entity);
+  };
+
   const [income, setIncome] = useState<Income[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [investmentAccounts, setInvestmentAccounts] = useState<InvestmentAccount[]>([]);
@@ -736,6 +745,7 @@ export default function IncomePage() {
                   entityType="income"
                   entityName={selectedIncome.name}
                   showHealthScore={true}
+                  onNavigate={handleLinkedEntityNavigate}
                 />
               </TabsContent>
             </Tabs>
