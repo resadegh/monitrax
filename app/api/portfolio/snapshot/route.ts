@@ -103,8 +103,8 @@ function calculateLinkageHealth(
   // ============================================================================
 
   // Rule 1: Loans must link to exactly 1 property
-  const orphanedLoans = loans.filter(l => !l.propertyId);
-  orphanedLoans.forEach(loan => {
+  const orphanedLoans = loans.filter((l: any) => !l.propertyId);
+  orphanedLoans.forEach((loan: any) => {
     orphanCount++;
     relationalWarnings.push({
       type: 'warning',
@@ -126,8 +126,8 @@ function calculateLinkageHealth(
   }
 
   // Rule 2: Holdings must link to exactly 1 investment account
-  const orphanedHoldings = holdings.filter(h => !h.investmentAccountId);
-  orphanedHoldings.forEach(holding => {
+  const orphanedHoldings = holdings.filter((h: any) => !h.investmentAccountId);
+  orphanedHoldings.forEach((holding: any) => {
     orphanCount++;
     relationalWarnings.push({
       type: 'error',
@@ -149,10 +149,10 @@ function calculateLinkageHealth(
   }
 
   // Rule 3: Transactions must link to exactly 1 holding (if applicable)
-  const transactionsWithoutHolding = transactions.filter(t =>
+  const transactionsWithoutHolding = transactions.filter((t: any) =>
     !t.holdingId && ['BUY', 'SELL'].includes(t.type)
   );
-  transactionsWithoutHolding.forEach(tx => {
+  transactionsWithoutHolding.forEach((tx: any) => {
     relationalWarnings.push({
       type: 'warning',
       category: 'missing_link',
@@ -168,10 +168,10 @@ function calculateLinkageHealth(
   }
 
   // Rule 4: Rental income must link to a property
-  const rentalIncomeWithoutProperty = income.filter(i =>
+  const rentalIncomeWithoutProperty = income.filter((i: any) =>
     (i.type === 'RENT' || i.type === 'RENTAL') && !i.propertyId
   );
-  rentalIncomeWithoutProperty.forEach(inc => {
+  rentalIncomeWithoutProperty.forEach((inc: any) => {
     orphanCount++;
     relationalWarnings.push({
       type: 'warning',
@@ -193,10 +193,10 @@ function calculateLinkageHealth(
   }
 
   // Rule 5: Property expenses should link to their property or loan
-  const propertyExpensesWithoutLink = expenses.filter(e =>
+  const propertyExpensesWithoutLink = expenses.filter((e: any) =>
     e.sourceType === 'PROPERTY' && !e.propertyId && !e.loanId
   );
-  propertyExpensesWithoutLink.forEach(exp => {
+  propertyExpensesWithoutLink.forEach((exp: any) => {
     relationalWarnings.push({
       type: 'warning',
       category: 'missing_link',
@@ -216,10 +216,10 @@ function calculateLinkageHealth(
   // ============================================================================
 
   // Properties with no income
-  const propertiesWithoutIncome = properties.filter(p =>
-    p.type === 'INVESTMENT' && !income.some(i => i.propertyId === p.id)
+  const propertiesWithoutIncome = properties.filter((p: any) =>
+    p.type === 'INVESTMENT' && !income.some((i: any) => i.propertyId === p.id)
   );
-  propertiesWithoutIncome.forEach(prop => {
+  propertiesWithoutIncome.forEach((prop: any) => {
     relationalWarnings.push({
       type: 'info',
       category: 'completeness',
@@ -232,10 +232,10 @@ function calculateLinkageHealth(
   });
 
   // Properties with no expenses
-  const propertiesWithoutExpenses = properties.filter(p =>
-    !expenses.some(e => e.propertyId === p.id)
+  const propertiesWithoutExpenses = properties.filter((p: any) =>
+    !expenses.some((e: any) => e.propertyId === p.id)
   );
-  propertiesWithoutExpenses.forEach(prop => {
+  propertiesWithoutExpenses.forEach((prop: any) => {
     relationalWarnings.push({
       type: 'info',
       category: 'completeness',
@@ -248,10 +248,10 @@ function calculateLinkageHealth(
   });
 
   // Investment accounts with no holdings
-  const accountsWithoutHoldings = investmentAccounts.filter(a =>
-    !holdings.some(h => h.investmentAccountId === a.id)
+  const accountsWithoutHoldings = investmentAccounts.filter((a: any) =>
+    !holdings.some((h: any) => h.investmentAccountId === a.id)
   );
-  accountsWithoutHoldings.forEach(acc => {
+  accountsWithoutHoldings.forEach((acc: any) => {
     relationalWarnings.push({
       type: 'info',
       category: 'completeness',
@@ -264,10 +264,10 @@ function calculateLinkageHealth(
   });
 
   // Holdings with no transactions
-  const holdingsWithoutTransactions = holdings.filter(h =>
-    !transactions.some(t => t.holdingId === h.id)
+  const holdingsWithoutTransactions = holdings.filter((h: any) =>
+    !transactions.some((t: any) => t.holdingId === h.id)
   );
-  holdingsWithoutTransactions.forEach(holding => {
+  holdingsWithoutTransactions.forEach((holding: any) => {
     relationalWarnings.push({
       type: 'info',
       category: 'completeness',
@@ -280,11 +280,11 @@ function calculateLinkageHealth(
   });
 
   // Transactions referencing non-existent holdings
-  const holdingIds = new Set(holdings.map(h => h.id));
-  const transactionsWithMissingHoldings = transactions.filter(t =>
+  const holdingIds = new Set(holdings.map((h: any) => h.id));
+  const transactionsWithMissingHoldings = transactions.filter((t: any) =>
     t.holdingId && !holdingIds.has(t.holdingId)
   );
-  transactionsWithMissingHoldings.forEach(tx => {
+  transactionsWithMissingHoldings.forEach((tx: any) => {
     orphanCount++;
     relationalWarnings.push({
       type: 'error',
@@ -304,62 +304,62 @@ function calculateLinkageHealth(
   const moduleCompleteness: ModuleCompleteness = {
     properties: {
       count: properties.length,
-      linkedCount: properties.filter(p =>
-        loans.some(l => l.propertyId === p.id) || income.some(i => i.propertyId === p.id)
+      linkedCount: properties.filter((p: any) =>
+        loans.some((l: any) => l.propertyId === p.id) || income.some((i: any) => i.propertyId === p.id)
       ).length,
       score: properties.length > 0
-        ? Math.round((properties.filter(p =>
-            loans.some(l => l.propertyId === p.id)
+        ? Math.round((properties.filter((p: any) =>
+            loans.some((l: any) => l.propertyId === p.id)
           ).length / properties.length) * 100)
         : 100,
     },
     loans: {
       count: loans.length,
-      linkedCount: loans.filter(l => l.propertyId).length,
+      linkedCount: loans.filter((l: any) => l.propertyId).length,
       score: loans.length > 0
-        ? Math.round((loans.filter(l => l.propertyId).length / loans.length) * 100)
+        ? Math.round((loans.filter((l: any) => l.propertyId).length / loans.length) * 100)
         : 100,
     },
     income: {
       count: income.length,
-      linkedCount: income.filter(i => i.propertyId || i.investmentAccountId).length,
+      linkedCount: income.filter((i: any) => i.propertyId || i.investmentAccountId).length,
       score: income.length > 0
-        ? Math.round((income.filter(i => i.propertyId || i.investmentAccountId).length / income.length) * 100)
+        ? Math.round((income.filter((i: any) => i.propertyId || i.investmentAccountId).length / income.length) * 100)
         : 100,
     },
     expenses: {
       count: expenses.length,
-      linkedCount: expenses.filter(e => e.propertyId || e.loanId || e.investmentAccountId).length,
+      linkedCount: expenses.filter((e: any) => e.propertyId || e.loanId || e.investmentAccountId).length,
       score: expenses.length > 0
-        ? Math.round((expenses.filter(e => e.propertyId || e.loanId || e.investmentAccountId).length / expenses.length) * 100)
+        ? Math.round((expenses.filter((e: any) => e.propertyId || e.loanId || e.investmentAccountId).length / expenses.length) * 100)
         : 100,
     },
     accounts: {
       count: accounts.length,
-      linkedCount: accounts.filter(a => a.linkedLoanId).length,
+      linkedCount: accounts.filter((a: any) => a.linkedLoanId).length,
       score: 100, // Accounts don't require links
     },
     investmentAccounts: {
       count: investmentAccounts.length,
-      linkedCount: investmentAccounts.filter(a => holdings.some(h => h.investmentAccountId === a.id)).length,
+      linkedCount: investmentAccounts.filter((a: any) => holdings.some((h: any) => h.investmentAccountId === a.id)).length,
       score: investmentAccounts.length > 0
-        ? Math.round((investmentAccounts.filter(a =>
-            holdings.some(h => h.investmentAccountId === a.id)
+        ? Math.round((investmentAccounts.filter((a: any) =>
+            holdings.some((h: any) => h.investmentAccountId === a.id)
           ).length / investmentAccounts.length) * 100)
         : 100,
     },
     holdings: {
       count: holdings.length,
-      linkedCount: holdings.filter(h => h.investmentAccountId).length,
+      linkedCount: holdings.filter((h: any) => h.investmentAccountId).length,
       score: holdings.length > 0
-        ? Math.round((holdings.filter(h => h.investmentAccountId).length / holdings.length) * 100)
+        ? Math.round((holdings.filter((h: any) => h.investmentAccountId).length / holdings.length) * 100)
         : 100,
     },
     transactions: {
       count: transactions.length,
-      linkedCount: transactions.filter(t => t.holdingId || !['BUY', 'SELL'].includes(t.type)).length,
+      linkedCount: transactions.filter((t: any) => t.holdingId || !['BUY', 'SELL'].includes(t.type)).length,
       score: transactions.length > 0
-        ? Math.round((transactions.filter(t =>
+        ? Math.round((transactions.filter((t: any) =>
             t.holdingId || !['BUY', 'SELL'].includes(t.type)
           ).length / transactions.length) * 100)
         : 100,
@@ -511,38 +511,38 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // CALCULATE FINANCIAL TOTALS
       // ============================================================================
-      const totalPropertyValue = properties.reduce((sum, p) => sum + p.currentValue, 0);
-      const totalAccountBalances = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
-      const totalInvestmentValue = holdings.reduce((sum, h) => sum + (h.units * h.averagePrice), 0);
+      const totalPropertyValue = properties.reduce((sum: number, p: any) => sum + p.currentValue, 0);
+      const totalAccountBalances = accounts.reduce((sum: number, a: any) => sum + a.currentBalance, 0);
+      const totalInvestmentValue = holdings.reduce((sum: number, h: any) => sum + (h.units * h.averagePrice), 0);
       const totalAssets = totalPropertyValue + totalAccountBalances + totalInvestmentValue;
-      const totalLiabilities = loans.reduce((sum, l) => sum + l.principal, 0);
+      const totalLiabilities = loans.reduce((sum: number, l: any) => sum + l.principal, 0);
       const netWorth = totalAssets - totalLiabilities;
 
       // Cashflow calculations
-      const totalAnnualIncome = income.reduce((sum, i) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
-      const totalAnnualExpenses = expenses.reduce((sum, e) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
+      const totalAnnualIncome = income.reduce((sum: number, i: any) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
+      const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
       const monthlyNetCashflow = (totalAnnualIncome - totalAnnualExpenses) / 12;
       const annualNetCashflow = totalAnnualIncome - totalAnnualExpenses;
 
       // ============================================================================
       // GRDCS-ENHANCED PROPERTY SNAPSHOTS
       // ============================================================================
-      const propertySnapshots = properties.map(property => {
-        const propertyLoans = loans.filter(l => l.propertyId === property.id);
-        const totalLoanBalance = propertyLoans.reduce((sum, l) => sum + l.principal, 0);
+      const propertySnapshots = properties.map((property: any) => {
+        const propertyLoans = loans.filter((l: any) => l.propertyId === property.id);
+        const totalLoanBalance = propertyLoans.reduce((sum: number, l: any) => sum + l.principal, 0);
         const equity = property.currentValue - totalLoanBalance;
         const lvr = calculateLVR(totalLoanBalance, property.currentValue);
 
-        const propertyIncome = income.filter(i => i.propertyId === property.id);
+        const propertyIncome = income.filter((i: any) => i.propertyId === property.id);
         const annualRentalIncome = propertyIncome
-          .filter(i => i.type === 'RENT' || i.type === 'RENTAL')
-          .reduce((sum, i) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
+          .filter((i: any) => i.type === 'RENT' || i.type === 'RENTAL')
+          .reduce((sum: number, i: any) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
         const rentalYield = calculateRentalYield(annualRentalIncome, property.currentValue);
 
-        const propertyExpenses = expenses.filter(e => e.propertyId === property.id);
-        const annualPropertyExpenses = propertyExpenses.reduce((sum, e) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
+        const propertyExpenses = expenses.filter((e: any) => e.propertyId === property.id);
+        const annualPropertyExpenses = propertyExpenses.reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
 
-        const annualInterest = propertyLoans.reduce((sum, l) => {
+        const annualInterest = propertyLoans.reduce((sum: number, l: any) => {
           return sum + (l.principal * l.interestRateAnnual);
         }, 0);
 
@@ -558,7 +558,7 @@ export async function GET(request: NextRequest) {
           address: property.address,
           marketValue: property.currentValue,
           purchasePrice: property.purchasePrice,
-          loans: propertyLoans.map(l => ({
+          loans: propertyLoans.map((l: any) => ({
             id: l.id,
             name: l.name,
             principal: l.principal,
@@ -590,9 +590,9 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // GRDCS-ENHANCED INVESTMENT SNAPSHOTS
       // ============================================================================
-      const investmentSnapshots = investmentAccounts.map(acc => {
-        const accountHoldings = holdings.filter(h => h.investmentAccountId === acc.id);
-        const accountValue = accountHoldings.reduce((sum, h) => sum + (h.units * h.averagePrice), 0);
+      const investmentSnapshots = investmentAccounts.map((acc: any) => {
+        const accountHoldings = holdings.filter((h: any) => h.investmentAccountId === acc.id);
+        const accountValue = accountHoldings.reduce((sum: number, h: any) => sum + (h.units * h.averagePrice), 0);
         const grdcsLinks = extractInvestmentAccountLinks(acc);
 
         return {
@@ -602,7 +602,7 @@ export async function GET(request: NextRequest) {
           platform: acc.platform,
           currency: acc.currency,
           totalValue: accountValue,
-          holdings: accountHoldings.map(h => {
+          holdings: accountHoldings.map((h: any) => {
             const holdingLinks = extractHoldingLinks(h);
             return {
               id: h.id,
@@ -621,7 +621,7 @@ export async function GET(request: NextRequest) {
               },
             };
           }),
-          transactionCount: transactions.filter(t => t.investmentAccountId === acc.id).length,
+          transactionCount: transactions.filter((t: any) => t.investmentAccountId === acc.id).length,
           _links: {
             related: grdcsLinks.linked,
           },
@@ -635,7 +635,7 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // GRDCS-ENHANCED LOAN SNAPSHOTS
       // ============================================================================
-      const loanSnapshots = loans.map(loan => {
+      const loanSnapshots = loans.map((loan: any) => {
         const grdcsLinks = extractLoanLinks(loan);
         return {
           id: loan.id,
@@ -662,12 +662,12 @@ export async function GET(request: NextRequest) {
       // TAX EXPOSURE
       // ============================================================================
       const taxableIncome = income
-        .filter(i => i.isTaxable)
-        .reduce((sum, i) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
+        .filter((i: any) => i.isTaxable)
+        .reduce((sum: number, i: any) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
 
       const deductibleExpenses = expenses
-        .filter(e => e.isTaxDeductible)
-        .reduce((sum, e) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
+        .filter((e: any) => e.isTaxDeductible)
+        .reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
 
       // ============================================================================
       // BUILD SNAPSHOT 2.0 RESPONSE
@@ -744,9 +744,9 @@ export async function GET(request: NextRequest) {
         // Relational warnings for insights engine
         relationalInsights: {
           totalWarnings: linkageHealth.relationalWarnings.length,
-          errors: linkageHealth.relationalWarnings.filter(w => w.type === 'error'),
-          warnings: linkageHealth.relationalWarnings.filter(w => w.type === 'warning'),
-          info: linkageHealth.relationalWarnings.filter(w => w.type === 'info'),
+          errors: linkageHealth.relationalWarnings.filter((w: RelationalWarning) => w.type === 'error'),
+          warnings: linkageHealth.relationalWarnings.filter((w: RelationalWarning) => w.type === 'warning'),
+          info: linkageHealth.relationalWarnings.filter((w: RelationalWarning) => w.type === 'info'),
         },
 
         // GRDCS-enhanced entity details

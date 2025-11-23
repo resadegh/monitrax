@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Apply GRDCS wrapper to each holding
-      const holdingsWithLinks = holdings.map(holding => {
+      const holdingsWithLinks = holdings.map((holding: typeof holdings[number]) => {
         const links = extractHoldingLinks(holding);
         return wrapWithGRDCS(holding as Record<string, unknown>, 'investmentHolding', links);
       });
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         data: holdingsWithLinks,
         _meta: {
           count: holdingsWithLinks.length,
-          totalLinkedEntities: holdingsWithLinks.reduce((sum, h) => sum + h._meta.linkedCount, 0),
+          totalLinkedEntities: holdingsWithLinks.reduce((sum: number, h: { _meta: { linkedCount: number } }) => sum + h._meta.linkedCount, 0),
         },
       });
     } catch (error) {

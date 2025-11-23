@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
       // Transform to PortfolioInput format
       const portfolioInput: PortfolioInput = {
-        properties: properties.map((p): PropertyInput => ({
+        properties: properties.map((p: typeof properties[number]): PropertyInput => ({
           id: p.id,
           name: p.name,
           type: p.type as 'HOME' | 'INVESTMENT',
@@ -55,10 +55,10 @@ export async function GET(request: NextRequest) {
           purchaseDate: p.purchaseDate
         })),
 
-        loans: loans.map((l): LoanInput => {
+        loans: loans.map((l: typeof loans[number]): LoanInput => {
           // Find offset account balance if linked
           const offsetAccount = l.offsetAccountId
-            ? accounts.find(a => a.id === l.offsetAccountId)
+            ? accounts.find((a: typeof accounts[number]) => a.id === l.offsetAccountId)
             : null;
 
           return {
@@ -73,14 +73,14 @@ export async function GET(request: NextRequest) {
           };
         }),
 
-        accounts: accounts.map((a): AccountInput => ({
+        accounts: accounts.map((a: typeof accounts[number]): AccountInput => ({
           id: a.id,
           name: a.name,
           type: a.type as 'OFFSET' | 'SAVINGS' | 'TRANSACTIONAL' | 'CREDIT_CARD',
           currentBalance: a.currentBalance
         })),
 
-        income: income.map((i): IncomeInput => ({
+        income: income.map((i: typeof income[number]): IncomeInput => ({
           id: i.id,
           name: i.name,
           type: i.type as 'SALARY' | 'RENT' | 'INVESTMENT' | 'OTHER',
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
           propertyId: i.propertyId || undefined
         })),
 
-        expenses: expenses.map((e): ExpenseInput => ({
+        expenses: expenses.map((e: typeof expenses[number]): ExpenseInput => ({
           id: e.id,
           name: e.name,
           amount: e.amount,
@@ -100,8 +100,8 @@ export async function GET(request: NextRequest) {
           propertyId: e.propertyId || undefined
         })),
 
-        investments: investmentAccounts.flatMap(account =>
-          account.holdings.map((h): InvestmentInput => ({
+        investments: investmentAccounts.flatMap((account: typeof investmentAccounts[number]) =>
+          account.holdings.map((h: typeof account.holdings[number]): InvestmentInput => ({
             id: h.id,
             ticker: h.ticker,
             units: h.units,

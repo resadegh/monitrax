@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Apply GRDCS wrapper to each income
-      const incomeWithLinks = income.map(inc => {
+      const incomeWithLinks = income.map((inc: typeof income[number]) => {
         const links = extractIncomeLinks(inc);
         return wrapWithGRDCS(inc as Record<string, unknown>, 'income', links);
       });
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         data: incomeWithLinks,
         _meta: {
           count: incomeWithLinks.length,
-          totalLinkedEntities: incomeWithLinks.reduce((sum, i) => sum + i._meta.linkedCount, 0),
+          totalLinkedEntities: incomeWithLinks.reduce((sum: number, i: { _meta: { linkedCount: number } }) => sum + i._meta.linkedCount, 0),
         },
       });
     } catch (error) {
