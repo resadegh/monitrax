@@ -12,3 +12,11 @@ export type {
   CrossModuleNavigation,
   RestorationState,
 } from './useCrossModuleNavigation';
+
+// Insights hooks (Phase 9 Task 9.3)
+export {
+  useInsights,
+  useEntityInsights,
+  useCriticalInsights,
+  useModuleInsights,
+} from './useInsights';
