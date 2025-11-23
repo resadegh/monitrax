@@ -15,10 +15,14 @@ import {
   Receipt,
   LogOut,
   User,
+  PieChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useUISyncEngine } from '@/hooks/useUISyncEngine';
+import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
+import { HealthSummaryWidget } from '@/components/health/HealthSummaryWidget';
 
 interface NavItem {
   name: string;
@@ -33,6 +37,7 @@ const navItems: NavItem[] = [
   { name: 'Accounts', href: '/dashboard/accounts', icon: Wallet },
   { name: 'Income', href: '/dashboard/income', icon: TrendingUp },
   { name: 'Expenses', href: '/dashboard/expenses', icon: TrendingDown },
+  { name: 'Investments', href: '/dashboard/investments/accounts', icon: PieChart },
   { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator },
   { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt },
 ];
@@ -41,6 +46,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Phase 9.4 - Real-Time Global Health Feed
+  const {
+    state: syncState,
+    refresh: refreshHealth,
+    isPolling,
+  } = useUISyncEngine({
+    enabled: true,
+    pollingInterval: 30000, // 30 seconds
+  });
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -65,6 +80,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950">
+      {/* Phase 9.5 - Global Warning Ribbon */}
+      {syncState.warningRibbon.show && (
+        <GlobalWarningRibbon
+          config={syncState.warningRibbon}
+          health={syncState.health}
+          dismissible={true}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className="fixed inset-y-0 left-0 w-64 border-r border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-lg">
         {/* Logo/Brand */}
@@ -82,9 +106,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
             const Icon = item.icon;
             return (
               <Link
@@ -101,6 +125,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
+
+          {/* Phase 9.5 - Health Summary Widget in Sidebar */}
+          <div className="pt-4">
+            <HealthSummaryWidget
+              health={syncState.health}
+              isLoading={syncState.isFetching}
+              compact={true}
+              showModules={false}
+              showRefresh={true}
+              onRefresh={refreshHealth}
+            />
+          </div>
         </nav>
 
         {/* User Section */}
