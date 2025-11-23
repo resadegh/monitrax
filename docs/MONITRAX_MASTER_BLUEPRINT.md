@@ -1291,7 +1291,43 @@ Includes:
 ## END OF PHASE 8 — FINAL ARCHITECTURE
 ------------------------------------------------------------------------
 
-Phase 9 — PLANNED
+------------------------------------------------------------------------
+## PHASE 9 — SYSTEM INTELLIGENCE & GLOBAL NAVIGATION
+------------------------------------------------------------------------
+
+### Objective
+Introduce a unified global navigation experience, integrate insights into all UI modules, and create a real-time global health feed powered by Snapshot 2.0, LinkageHealth, GRDCS, and the Insights Engine.
+
+### 9.1 Unified Navigation Layer (UI)
+- Implement global breadcrumb system using CMNF
+- Add global header health indicator using /api/linkage/health
+- Add entity-to-entity navigation entrypoints throughout the UI
+- Support CMNF-based back-navigation stack restoration
+- Provide invalid path resolution for missing or deleted entities
+- All navigation must be consistent across modules
+
+### 9.2 Insights Integration Across UI
+- Dashboard insights feed consuming Insights Engine 2.0
+- Module-level insights cards (Properties, Loans, Investments, etc.)
+- Entity detail dialog insights displayed inside new "Insights" tab
+- Insights must be grouped by severity and sorted accordingly
+- Insight entries must contain CTA buttons for navigation/fixes
+
+### 9.3 Real-time Global Health Feed (UI)
+- Real-time updates reflecting:
+  - Snapshot 2.0 metrics
+  - LinkageHealth status
+  - GRDCS missing links
+  - Orphans & cross-module inconsistencies
+- Display:
+  - Global health badge
+  - Module warning ribbons
+  - Cross-entity relational warnings
+  - Missing-link banners inside detail dialogs
+
+------------------------------------------------------------------------
+
+Phase 10 — PLANNED
 
 AI Strategy Engine:
 - Advisor-grade intelligence
