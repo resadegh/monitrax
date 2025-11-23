@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -66,7 +66,7 @@ type IncomeFormData = {
   investmentAccountId: string | null;
 };
 
-export default function IncomePage() {
+function IncomePageContent() {
   const { token } = useAuth();
   const { openLinkedEntity } = useCrossModuleNavigation();
 
@@ -763,5 +763,20 @@ export default function IncomePage() {
         </DialogContent>
       </Dialog>
     </DashboardLayout>
+  );
+}
+
+// Wrap in Suspense for useSearchParams (Next.js 15 requirement)
+export default function IncomePage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    }>
+      <IncomePageContent />
+    </Suspense>
   );
 }
