@@ -201,3 +201,121 @@ npx prisma generate --dry-run
 - Production builds require these to be resolved
 - All new Phase 9 components (Task 9.4 & 9.5) compile successfully
 - These errors are pre-existing infrastructure issues, not introduced by recent changes
+
+---
+
+## System Audit Findings (2025-11-23)
+
+Added from comprehensive system-wide audit.
+
+### CRITICAL: Phase 9.5 UI Components Not Integrated
+
+**Issue ID:** AUD-001
+**Severity:** CRITICAL
+**Status:** OPEN
+
+The following Phase 9.5 components are fully implemented but NOT mounted in any page:
+
+#### Health Components (0% Integration)
+| Component | File | Impact |
+|-----------|------|--------|
+| HealthSummaryWidget | `components/health/HealthSummaryWidget.tsx` | Health status not visible |
+| ModuleHealthBlock | `components/health/ModuleHealthBlock.tsx` | Module health not visible |
+| ModuleHealthGrid | `components/health/ModuleHealthBlock.tsx` | Grid view not visible |
+
+#### Warning Components (0% Integration)
+| Component | File | Impact |
+|-----------|------|--------|
+| GlobalWarningRibbon | `components/warnings/GlobalWarningRibbon.tsx` | Global warnings not shown |
+| DialogWarningBanner | `components/warnings/DialogWarningBanner.tsx` | Dialog warnings not shown |
+| EntityWarningBanner | `components/warnings/EntityWarningBanner.tsx` | Entity warnings not shown |
+| WarningBanner | `components/warnings/WarningBanner.tsx` | Warning banners not shown |
+| HealthAwareWarning | `components/warnings/HealthAwareWarning.tsx` | Health warnings not shown |
+
+#### Insight Components (0% Integration)
+| Component | File | Impact |
+|-----------|------|--------|
+| InsightCard | `components/insights/InsightCard.tsx` | Insights not using new cards |
+| InsightList | `components/insights/InsightList.tsx` | Insights list not integrated |
+| InsightSeverityMeter | `components/insights/InsightSeverityMeter.tsx` | Severity meter not shown |
+
+**Fix Required:**
+1. Add `useUISyncEngine` hook to DashboardLayout or main dashboard
+2. Mount `GlobalWarningRibbon` at top of DashboardLayout
+3. Add `HealthSummaryWidget` to dashboard
+4. Integrate `InsightCard` and `InsightList` in insights panel
+5. Add `DialogWarningBanner` to entity detail dialogs
+
+---
+
+### HIGH: useUISyncEngine Hook Not Used
+
+**Issue ID:** AUD-002
+**Severity:** HIGH
+**Status:** OPEN
+
+The `useUISyncEngine` hook (Task 9.4) is implemented but not used in any page.
+
+**Location:** `hooks/useUISyncEngine.ts`
+**Impact:** No real-time health/insight updates in UI
+
+**Fix Required:**
+```typescript
+// In DashboardLayout.tsx or dashboard/page.tsx
+import { useUISyncEngine } from '@/hooks/useUISyncEngine';
+
+const { health, insights, isLoading, refresh } = useUISyncEngine({
+  autoRefresh: true,
+  refreshInterval: 30000,
+});
+```
+
+---
+
+### MEDIUM: InsightBadges Invalid Default Export
+
+**Issue ID:** AUD-004
+**Severity:** MEDIUM
+**Status:** OPEN
+
+**File:** `components/insights/InsightBadges.tsx` (Line 273)
+
+**Issue:** Exports an object as default instead of a React component:
+```typescript
+export default {
+  SeverityBadge,
+  CategoryBadge,
+  // ...
+};
+```
+
+**Impact:** `import InsightBadges from '...'` returns an object, not a component.
+**Workaround:** Use named imports (which the codebase already does).
+
+---
+
+### LOW: TODOs in Codebase
+
+**Issue ID:** AUD-006
+**Severity:** LOW
+**Status:** ACKNOWLEDGED
+
+| Location | Description |
+|----------|-------------|
+| `lib/planning/debtPlanner.ts:125` | Phase 3 calculation enhancement |
+| `app/api/portfolio/snapshot/route.ts:767` | Tax engine calculation |
+| `app/api/portfolio/snapshot/route.ts:768` | CGT calculation |
+
+---
+
+## Audit Summary
+
+| Category | Status | Issues Found |
+|----------|--------|--------------|
+| Source Code | ⚠️ | 8 Prisma errors (pre-existing) |
+| UI Integration | ❌ | 15+ components not mounted |
+| API Endpoints | ✅ | All 27 routes functional |
+| CMNF Navigation | ✅ | Working in all 8 module pages |
+| Blueprint Compliance | ⚠️ | Phase 9.5 incomplete |
+
+**Full Report:** `docs/SYSTEM_AUDIT_REPORT.md`
