@@ -5,59 +5,30 @@
  * Used when @prisma/client types are not available (e.g., before prisma generate).
  *
  * IMPORTANT: Keep these in sync with prisma/schema.prisma
+ *
+ * Note: Using string literal union types instead of TypeScript enums
+ * for structural compatibility with Prisma's generated types.
  */
 
 // =============================================================================
-// ENUMS
+// ENUMS (as string literal union types for Prisma compatibility)
 // =============================================================================
 
-export enum Frequency {
-  WEEKLY = 'WEEKLY',
-  FORTNIGHTLY = 'FORTNIGHTLY',
-  MONTHLY = 'MONTHLY',
-  ANNUAL = 'ANNUAL',
-}
+export type Frequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL';
 
-export enum RepaymentFrequency {
-  WEEKLY = 'WEEKLY',
-  FORTNIGHTLY = 'FORTNIGHTLY',
-  MONTHLY = 'MONTHLY',
-}
+export type RepaymentFrequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY';
 
-export enum LoanType {
-  HOME = 'HOME',
-  INVESTMENT = 'INVESTMENT',
-}
+export type LoanType = 'HOME' | 'INVESTMENT';
 
-export enum RateType {
-  VARIABLE = 'VARIABLE',
-  FIXED = 'FIXED',
-}
+export type RateType = 'VARIABLE' | 'FIXED';
 
-export enum DepreciationCategory {
-  DIV40 = 'DIV40',
-  DIV43 = 'DIV43',
-}
+export type DepreciationCategory = 'DIV40' | 'DIV43';
 
-export enum DepreciationMethod {
-  PRIME_COST = 'PRIME_COST',
-  DIMINISHING_VALUE = 'DIMINISHING_VALUE',
-}
+export type DepreciationMethod = 'PRIME_COST' | 'DIMINISHING_VALUE';
 
-export enum HoldingType {
-  SHARE = 'SHARE',
-  ETF = 'ETF',
-  MANAGED_FUND = 'MANAGED_FUND',
-  CRYPTO = 'CRYPTO',
-}
+export type HoldingType = 'SHARE' | 'ETF' | 'MANAGED_FUND' | 'CRYPTO';
 
-export enum InvestmentTransactionType {
-  BUY = 'BUY',
-  SELL = 'SELL',
-  DIVIDEND = 'DIVIDEND',
-  DISTRIBUTION = 'DISTRIBUTION',
-  DRP = 'DRP',
-}
+export type InvestmentTransactionType = 'BUY' | 'SELL' | 'DIVIDEND' | 'DISTRIBUTION' | 'DRP';
 
 // =============================================================================
 // MODEL INTERFACES
