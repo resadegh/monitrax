@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { NavigationProvider } from "@/contexts/NavigationContext";
 
 export const metadata: Metadata = {
   title: "Monitrax - Personal Finance & Debt Planning",
@@ -23,7 +24,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
+            <NavigationProvider>
+              {children}
+            </NavigationProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
