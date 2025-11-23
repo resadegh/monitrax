@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { GlobalBreadcrumbBar, GlobalHealthIndicator } from '@/components/navigation';
 
 interface NavItem {
   name: string;
@@ -128,6 +129,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main Content */}
       <div className="pl-64">
+        {/* Top Bar with Health Indicator */}
+        <header className="sticky top-0 z-40 flex items-center justify-between h-14 px-6 border-b bg-background/95 backdrop-blur-sm">
+          <div className="flex-1">
+            {/* Breadcrumb will show when navigating entities */}
+          </div>
+          <GlobalHealthIndicator />
+        </header>
+
+        {/* Global Breadcrumb Bar */}
+        <GlobalBreadcrumbBar />
+
         <main className="min-h-screen p-8">
           <div className="mx-auto max-w-7xl">
             {children}

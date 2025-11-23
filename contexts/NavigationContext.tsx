@@ -20,6 +20,8 @@ export interface NavStackItem {
   label: string;
   href: string;
   tab?: string;
+  scrollPosition?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface BreadcrumbItem {
@@ -49,7 +51,9 @@ type NavigationAction =
   | { type: 'SET_TAB'; payload: string }
   | { type: 'SET_LAST_ENTITY'; payload: LastEntity }
   | { type: 'UPDATE_ROUTE_STATE'; payload: Record<string, unknown> }
-  | { type: 'REPLACE_TOP'; payload: NavStackItem };
+  | { type: 'REPLACE_TOP'; payload: NavStackItem }
+  | { type: 'SAVE_SCROLL_POSITION'; payload: number }
+  | { type: 'UPDATE_METADATA'; payload: Record<string, unknown> };
 
 export interface NavigationContextValue {
   state: NavigationState;
@@ -63,6 +67,9 @@ export interface NavigationContextValue {
   getBreadcrumb: () => BreadcrumbItem[];
   canGoBack: () => boolean;
   getCurrentEntity: () => NavStackItem | null;
+  saveScrollPosition: (position: number) => void;
+  updateMetadata: (metadata: Record<string, unknown>) => void;
+  getRestorationState: () => { tab?: string; scrollPosition?: number; metadata?: Record<string, unknown> } | null;
 }
 
 // =============================================================================
@@ -140,6 +147,25 @@ function navigationReducer(state: NavigationState, action: NavigationAction): Na
       newStack[newStack.length - 1] = action.payload;
       return { ...state, navStack: newStack, activeTab: action.payload.tab || null };
     }
+    case 'SAVE_SCROLL_POSITION': {
+      if (state.navStack.length === 0) return state;
+      const newStack = [...state.navStack];
+      newStack[newStack.length - 1] = {
+        ...newStack[newStack.length - 1],
+        scrollPosition: action.payload,
+      };
+      return { ...state, navStack: newStack };
+    }
+    case 'UPDATE_METADATA': {
+      if (state.navStack.length === 0) return state;
+      const newStack = [...state.navStack];
+      const currentItem = newStack[newStack.length - 1];
+      newStack[newStack.length - 1] = {
+        ...currentItem,
+        metadata: { ...currentItem.metadata, ...action.payload },
+      };
+      return { ...state, navStack: newStack };
+    }
     default:
       return state;
   }
@@ -189,7 +215,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getBreadcrumb = useCallback((): BreadcrumbItem[] => {
-    return state.navStack.map(item => ({
+    return state.navStack.map((item: NavStackItem) => ({
       type: item.type,
       id: item.id,
       label: item.label,
@@ -205,6 +231,24 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     return state.navStack[state.navStack.length - 1] || null;
   }, [state.navStack]);
 
+  const saveScrollPosition = useCallback((position: number) => {
+    dispatch({ type: 'SAVE_SCROLL_POSITION', payload: position });
+  }, []);
+
+  const updateMetadata = useCallback((metadata: Record<string, unknown>) => {
+    dispatch({ type: 'UPDATE_METADATA', payload: metadata });
+  }, []);
+
+  const getRestorationState = useCallback((): { tab?: string; scrollPosition?: number; metadata?: Record<string, unknown> } | null => {
+    const currentEntity = state.navStack[state.navStack.length - 1];
+    if (!currentEntity) return null;
+    return {
+      tab: currentEntity.tab,
+      scrollPosition: currentEntity.scrollPosition,
+      metadata: currentEntity.metadata,
+    };
+  }, [state.navStack]);
+
   const value: NavigationContextValue = {
     state,
     push,
@@ -217,6 +261,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     getBreadcrumb,
     canGoBack,
     getCurrentEntity,
+    saveScrollPosition,
+    updateMetadata,
+    getRestorationState,
   };
 
   return (

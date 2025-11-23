@@ -19,15 +19,24 @@ export interface NavigateOptions {
   fromLinkage?: boolean;
 }
 
+export interface RestorationState {
+  tab?: string;
+  scrollPosition?: number;
+  metadata?: Record<string, unknown>;
+}
+
 export interface CrossModuleNavigation {
   navigateToEntity: (type: GRDCSEntityType, id: string, name: string, options?: NavigateOptions) => void;
   openLinkedEntity: (entity: GRDCSLinkedEntity, options?: NavigateOptions) => void;
   goBack: () => void;
+  goBackWithRestore: () => RestorationState | null;
   restoreContext: () => void;
+  saveCurrentState: (scrollPosition?: number, metadata?: Record<string, unknown>) => void;
   canGoBack: boolean;
   breadcrumb: Array<{ type: GRDCSEntityType; id: string; label: string; href: string }>;
   currentEntity: NavStackItem | null;
   activeTab: string | null;
+  restorationState: RestorationState | null;
 }
 
 export function useCrossModuleNavigation(): CrossModuleNavigation {
@@ -42,6 +51,9 @@ export function useCrossModuleNavigation(): CrossModuleNavigation {
     canGoBack: checkCanGoBack,
     getCurrentEntity,
     setActiveTab,
+    saveScrollPosition,
+    updateMetadata,
+    getRestorationState,
   } = useNavigationContext();
 
   /**
@@ -109,6 +121,36 @@ export function useCrossModuleNavigation(): CrossModuleNavigation {
   }, [pop, router]);
 
   /**
+   * Go back and return restoration state for the previous entity
+   * This allows the caller to restore tab, scroll position, and metadata
+   */
+  const goBackWithRestore = useCallback((): RestorationState | null => {
+    const previous = pop();
+    if (previous) {
+      router.push(previous.href, { scroll: false });
+      // Return the restoration state from the previous entity
+      return {
+        tab: previous.tab,
+        scrollPosition: previous.scrollPosition,
+        metadata: previous.metadata,
+      };
+    }
+    return null;
+  }, [pop, router]);
+
+  /**
+   * Save current state (scroll position, metadata) for restoration on back navigation
+   */
+  const saveCurrentState = useCallback((scrollPosition?: number, metadata?: Record<string, unknown>) => {
+    if (scrollPosition !== undefined) {
+      saveScrollPosition(scrollPosition);
+    }
+    if (metadata) {
+      updateMetadata(metadata);
+    }
+  }, [saveScrollPosition, updateMetadata]);
+
+  /**
    * Restore navigation context (e.g., after page refresh)
    */
   const restoreContext = useCallback(() => {
@@ -124,10 +166,13 @@ export function useCrossModuleNavigation(): CrossModuleNavigation {
     navigateToEntity,
     openLinkedEntity,
     goBack,
+    goBackWithRestore,
     restoreContext,
+    saveCurrentState,
     canGoBack: checkCanGoBack(),
     breadcrumb: getBreadcrumb(),
     currentEntity: getCurrentEntity(),
     activeTab: state.activeTab,
+    restorationState: getRestorationState(),
   };
 }

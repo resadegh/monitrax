@@ -10,4 +10,5 @@ export {
 export type {
   NavigateOptions,
   CrossModuleNavigation,
+  RestorationState,
 } from './useCrossModuleNavigation';
