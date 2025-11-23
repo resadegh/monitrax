@@ -1299,6 +1299,160 @@ AI Strategy Engine:
 - Forecasting engine
 - Multi-year wealth planning
 
+------------------------------------------------------------------------
+## PHASE 11 — TASK 3: FINANCIAL HEALTH ENGINE & AI ADVISOR
+------------------------------------------------------------------------
+
+### Overview
+Implement a comprehensive Financial Health Engine that calculates user financial health scores and provides AI-powered advisory insights for wealth optimization.
+
+### 11.1 Financial Health Score Calculator
+
+#### Core Metrics
+```typescript
+interface FinancialHealthScore {
+  overall: number;              // 0-100 composite score
+  breakdown: {
+    debtToIncome: number;       // Lower is better
+    savingsRate: number;        // Higher is better
+    emergencyFund: number;      // Months of expenses covered
+    investmentDiversity: number; // Portfolio diversification score
+    cashFlowHealth: number;     // Income vs expenses ratio
+    propertyEquity: number;     // Equity percentage across properties
+    loanHealth: number;         // Weighted by interest rates & terms
+  };
+  trend: 'improving' | 'stable' | 'declining';
+  lastCalculated: Date;
+}
+```
+
+#### Score Calculation Rules
+- **Debt-to-Income Ratio**: (Total monthly debt payments / Gross monthly income) × 100
+  - Excellent: < 20% → 100 points
+  - Good: 20-35% → 80 points
+  - Fair: 36-50% → 60 points
+  - Poor: > 50% → 40 points
+
+- **Savings Rate**: (Monthly savings / Net income) × 100
+  - Excellent: > 20% → 100 points
+  - Good: 10-20% → 80 points
+  - Fair: 5-10% → 60 points
+  - Poor: < 5% → 40 points
+
+- **Emergency Fund Coverage**: Available liquid assets / Monthly expenses
+  - Excellent: 6+ months → 100 points
+  - Good: 3-6 months → 80 points
+  - Fair: 1-3 months → 60 points
+  - Poor: < 1 month → 40 points
+
+### 11.2 AI Advisor Service
+
+#### Advisory Categories
+```typescript
+type AdvisoryCategory =
+  | 'debt_optimization'      // Loan refinancing, payoff strategies
+  | 'investment_opportunity' // Asset allocation suggestions
+  | 'expense_reduction'      // Cost-cutting recommendations
+  | 'income_enhancement'     // Income diversification ideas
+  | 'risk_mitigation'        // Insurance, emergency fund advice
+  | 'tax_efficiency'         // Tax-advantaged strategies
+  | 'property_strategy'      // Buy/sell/hold recommendations
+  | 'retirement_planning';   // Long-term wealth building
+
+interface AdvisoryInsight {
+  id: string;
+  category: AdvisoryCategory;
+  title: string;
+  description: string;
+  impact: 'high' | 'medium' | 'low';
+  confidence: number;           // 0-100%
+  potentialSavings?: number;    // Estimated annual impact
+  actionItems: ActionItem[];
+  relatedEntities: GRDCSLinkedEntity[];
+  expiresAt?: Date;
+}
+```
+
+#### Intelligence Rules Engine
+- **Debt Avalanche Detection**: Identify high-interest loans for priority payoff
+- **Refinancing Opportunities**: Flag loans where market rates are significantly lower
+- **Surplus Cash Detection**: Identify excess funds in low-yield accounts
+- **Expense Anomaly Detection**: Unusual spending patterns vs historical averages
+- **Portfolio Rebalancing**: Asset allocation drift from target
+- **Rental Yield Optimization**: Property performance vs market benchmarks
+
+### 11.3 API Endpoints
+
+#### GET /api/health/score
+Returns current financial health score with breakdown.
+
+```typescript
+interface HealthScoreResponse {
+  score: FinancialHealthScore;
+  comparisonBenchmark: {
+    percentile: number;        // vs other users (anonymized)
+    ageGroupAverage: number;
+  };
+  improvementPotential: number; // Points gainable with advisor actions
+}
+```
+
+#### GET /api/advisor/insights
+Returns personalized AI advisory insights.
+
+```typescript
+interface AdvisorInsightsResponse {
+  insights: AdvisoryInsight[];
+  summary: {
+    totalPotentialSavings: number;
+    highPriorityCount: number;
+    completedThisMonth: number;
+  };
+  nextReviewDate: Date;
+}
+```
+
+#### POST /api/advisor/insights/:id/dismiss
+Dismiss or snooze an insight.
+
+#### POST /api/advisor/insights/:id/complete
+Mark an action item as completed.
+
+### 11.4 UI Components
+
+#### FinancialHealthDashboard
+- Circular gauge showing overall score
+- Breakdown bars for each metric
+- Trend indicator with sparkline
+- Quick action buttons
+
+#### AdvisorPanel
+- Prioritized insight cards
+- Expandable action items
+- Progress tracking
+- Dismissal/snooze controls
+
+#### ScoreHistoryChart
+- Line chart showing score over time
+- Milestone markers for significant changes
+- Benchmark comparison overlay
+
+### 11.5 Integration Points
+- GRDCS: All entities feed into health calculations
+- Snapshot 2.0: Real-time data source for scoring
+- Insights Engine: Advisory insights extend existing insight system
+- CMNF: One-click navigation to related entities
+
+### 11.6 Implementation Order
+1. Create health score calculation service
+2. Implement scoring API endpoints
+3. Build advisory rules engine
+4. Create UI dashboard components
+5. Add insight management features
+6. Integration testing with GRDCS
+
+------------------------------------------------------------------------
+
 11. COLLABORATION RULESET
 ChatGPT Responsibilities
 
