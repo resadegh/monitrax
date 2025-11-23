@@ -9,7 +9,7 @@
  * Division 43: Capital works (building structure at 2.5% or 4%)
  */
 
-import { DepreciationSchedule } from '@prisma/client';
+import { DepreciationSchedule } from '@/lib/types/prisma-enums';
 
 // =============================================================================
 // TYPES
