@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Wallet, Plus, Edit2, Trash2, Percent, Eye, Landmark, ArrowUpRight, ArrowDownRight, Building, Link2 } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Transaction {
@@ -57,6 +58,14 @@ interface Account {
 
 export default function AccountsPage() {
   const { token } = useAuth();
+  const { openLinkedEntity } = useCrossModuleNavigation();
+
+  // CMNF navigation handler for LinkedDataPanel
+  const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
+    setShowDetailDialog(false);
+    openLinkedEntity(entity);
+  };
+
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -645,6 +654,7 @@ export default function AccountsPage() {
                   entityType="account"
                   entityName={selectedAccount.name}
                   showHealthScore={true}
+                  onNavigate={handleLinkedEntityNavigate}
                 />
               </TabsContent>
             </Tabs>

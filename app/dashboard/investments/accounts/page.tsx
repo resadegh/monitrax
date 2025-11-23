@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, Plus, Edit2, Trash2, Eye, BarChart3, ArrowUpRight, ArrowDownRight, DollarSign, Receipt, Wallet, Link2 } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface InvestmentHolding {
@@ -77,6 +78,14 @@ interface InvestmentAccount {
 
 export default function InvestmentAccountsPage() {
   const { token } = useAuth();
+  const { openLinkedEntity } = useCrossModuleNavigation();
+
+  // CMNF navigation handler for LinkedDataPanel
+  const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
+    setShowDetailDialog(false);
+    openLinkedEntity(entity);
+  };
+
   const [accounts, setAccounts] = useState<InvestmentAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -755,6 +764,7 @@ export default function InvestmentAccountsPage() {
                   entityType="investmentAccount"
                   entityName={selectedAccount.name}
                   showHealthScore={true}
+                  onNavigate={handleLinkedEntityNavigate}
                 />
               </TabsContent>
             </Tabs>

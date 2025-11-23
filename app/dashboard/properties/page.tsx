@@ -19,6 +19,7 @@ import {
   ChevronRight, Percent, PiggyBank, FileText, Eye, Link2
 } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface Loan {
@@ -92,12 +93,19 @@ type PropertyFormData = {
 
 export default function PropertiesPage() {
   const { token } = useAuth();
+  const { openLinkedEntity } = useCrossModuleNavigation();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // CMNF navigation handler for LinkedDataPanel
+  const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
+    setShowDetailDialog(false); // Close current dialog
+    openLinkedEntity(entity);
+  };
   const [formData, setFormData] = useState<PropertyFormData>({
     name: '',
     type: 'HOME',
@@ -785,6 +793,7 @@ export default function PropertiesPage() {
                     entityType="property"
                     entityName={selectedProperty.name}
                     showHealthScore={true}
+                    onNavigate={handleLinkedEntityNavigate}
                   />
                 </TabsContent>
               </Tabs>
