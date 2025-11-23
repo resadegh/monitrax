@@ -9,6 +9,11 @@
 
 import React, { createContext, useContext, useReducer, useCallback, ReactNode } from 'react';
 import { GRDCSEntityType, GRDCSLinkedEntity } from '@/lib/grdcs';
+import {
+  recordEntityView,
+  recordEntityNavigation,
+  recordBackNavigation,
+} from '@/lib/analytics';
 
 // =============================================================================
 // TYPES
@@ -159,13 +164,38 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(navigationReducer, initialState);
 
   const push = useCallback((item: NavStackItem) => {
+    // Record analytics before dispatching
+    const currentEntity = state.navStack[state.navStack.length - 1];
+    if (currentEntity) {
+      // Record navigation from current to new entity
+      recordEntityNavigation(
+        { type: currentEntity.type, id: currentEntity.id },
+        { type: item.type, id: item.id },
+        'click'
+      );
+    }
+    // Record entity view
+    recordEntityView(item.type, item.id, item.label, item.tab);
+
     dispatch({ type: 'PUSH', payload: item });
-  }, []);
+  }, [state.navStack]);
 
   const pop = useCallback((): NavStackItem | undefined => {
     const current = state.navStack[state.navStack.length - 1];
+    const previous = state.navStack[state.navStack.length - 2];
+
+    // Record back navigation analytics
+    recordBackNavigation(state.navStack.length);
+    if (current && previous) {
+      recordEntityNavigation(
+        { type: current.type, id: current.id },
+        { type: previous.type, id: previous.id },
+        'back'
+      );
+    }
+
     dispatch({ type: 'POP' });
-    return state.navStack[state.navStack.length - 2];
+    return previous;
   }, [state.navStack]);
 
   const reset = useCallback(() => {
