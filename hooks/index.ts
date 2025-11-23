@@ -22,3 +22,11 @@ export type {
   UseUISyncEngineReturn,
   EntityHealthInfo,
 } from './useUISyncEngine';
+
+export {
+  useNavigationAnalytics,
+} from './useNavigationAnalytics';
+
+export type {
+  UseNavigationAnalyticsReturn,
+} from './useNavigationAnalytics';
