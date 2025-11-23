@@ -41,3 +41,16 @@ export type {
   InsightsResult,
   SnapshotV2,
 } from './insightsEngine';
+
+// Linkage Health Service (Phase 8 Task 10.7)
+export {
+  calculateLinkageHealth,
+  clearLinkageHealthCache,
+  clearAllLinkageHealthCache,
+} from './linkageHealthService';
+
+export type {
+  HealthMetrics,
+  ModuleBreakdown,
+  LinkageHealthResponse,
+} from './linkageHealthService';

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,6 +86,8 @@ interface LinkedDataPanelProps {
   entityName: string;
   showHealthScore?: boolean;
   compact?: boolean;
+  /** Callback when a linked entity is clicked (for CMNF navigation) */
+  onNavigate?: (entity: GRDCSLinkedEntity) => void;
 }
 
 /**
@@ -105,7 +108,20 @@ export function LinkedDataPanel({
   entityName,
   showHealthScore = true,
   compact = false,
+  onNavigate,
 }: LinkedDataPanelProps) {
+  const router = useRouter();
+
+  // Handle entity click with CMNF navigation
+  const handleEntityClick = (entity: GRDCSLinkedEntity, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onNavigate) {
+      onNavigate(entity);
+    } else {
+      // Default: use router navigation (no full page reload)
+      router.push(entity.href);
+    }
+  };
   // Calculate health score
   const totalPossibleLinks = linkedEntities.length + missingLinks.length;
   const healthScore = totalPossibleLinks > 0
@@ -216,7 +232,11 @@ export function LinkedDataPanel({
           {linkedEntities.slice(0, 5).map((entity) => {
             const Icon = ENTITY_ICONS[entity.type];
             return (
-              <Link key={entity.id} href={entity.href}>
+              <button
+                key={entity.id}
+                onClick={(e) => handleEntityClick(entity, e)}
+                className="inline-flex"
+              >
                 <Badge
                   variant="secondary"
                   className="gap-1 cursor-pointer hover:bg-secondary/80"
@@ -224,7 +244,7 @@ export function LinkedDataPanel({
                   <Icon className="h-3 w-3" />
                   {entity.name}
                 </Badge>
-              </Link>
+              </button>
             );
           })}
           {linkedEntities.length > 5 && (
@@ -304,10 +324,10 @@ export function LinkedDataPanel({
             <CardContent className="pt-0">
               <div className="space-y-2">
                 {entities.map((entity) => (
-                  <Link
+                  <button
                     key={entity.id}
-                    href={entity.href}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors group"
+                    onClick={(e) => handleEntityClick(entity, e)}
+                    className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors group text-left"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate group-hover:text-primary">
@@ -327,7 +347,7 @@ export function LinkedDataPanel({
                       )}
                       <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
                     </div>
-                  </Link>
+                  </button>
                 ))}
               </div>
             </CardContent>
