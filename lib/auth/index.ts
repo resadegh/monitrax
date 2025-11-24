@@ -21,3 +21,9 @@ export * from './context';
 
 // Route guards
 export * from './guards';
+
+// Refresh token rotation (Phase 05)
+export * from './refreshToken';
+
+// OAuth providers (Phase 05)
+export * from './oauth';
