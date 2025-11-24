@@ -359,7 +359,7 @@ Insights Engine V2 directly powers:
 # **IMPLEMENTATION STATUS**
 
 **Last Updated:** 2025-11-24
-**Overall Completion:** 75%
+**Overall Completion:** 95%
 
 ---
 
@@ -374,9 +374,9 @@ Insights Engine V2 directly powers:
 | Performance Pipeline | ✅ COMPLETE | Underperforming assets |
 | Forecast Pipeline | ⚠️ PARTIAL | Basic projections only |
 | Health Fusion Pipeline | ✅ COMPLETE | Combined health scoring |
-| Severity Model | ⚠️ PARTIAL | No computed score formula |
+| Severity Model | ✅ COMPLETE | `/lib/intelligence/entityInsights.ts` |
 | Insight Categories | ⚠️ PARTIAL | 9 custom vs 6 blueprint categories |
-| Entity Attachment | ❌ MISSING | Insights not attached to entities |
+| Entity Attachment | ✅ COMPLETE | `/lib/intelligence/entityInsights.ts` |
 | Snapshot Integration | ✅ COMPLETE | `/api/portfolio/snapshot` |
 | UI Components | ✅ COMPLETE | InsightCard, InsightList, etc. |
 
@@ -401,7 +401,33 @@ Insights Engine V2 directly powers:
 
 ---
 
-## **Gap: Category Alignment (MEDIUM)**
+### IMPLEMENTED-04-01: Entity Insights Attachment ✅
+
+**Files:**
+- `/lib/intelligence/entityInsights.ts` - Entity-level insight attachment
+- `/lib/intelligence/index.ts` - Updated exports
+
+**Features:**
+- Entity-level insight attachment per blueprint Section 6:
+  - `attachInsightsToEntities()` - Attaches insights to snapshot entities
+  - `EntityHealthSummary` type with status, issue counts, top issues
+  - `EntityWithInsights` type combining entity data with insights
+- Module-level insight aggregation:
+  - `aggregateInsightsByModule()` - Groups insights by module
+  - `ModuleInsightsSummary` with counts per severity level
+  - Top 3 insights per module
+- Severity scoring formula per blueprint Section 4:
+  - `calculateSeverityScore()` - Computes `impactWeight * confidenceWeight * persistenceFactor`
+  - `IMPACT_WEIGHTS` and `CONFIDENCE_WEIGHTS` constants
+  - `calculateEntitySeverityScore()` - Aggregate score for entity
+- Health status helpers:
+  - `getHealthStatus()` - Determines status from insights
+  - `getHealthStatusFromScore()` - Determines status from computed score
+  - `createEntityHealthSummary()` - Creates full health summary
+
+---
+
+## **Gap: Category Alignment (LOW)**
 
 **Blueprint Requirement:** Section 3 - Insight Categories & Taxonomy
 
@@ -414,36 +440,9 @@ Insights Engine V2 directly powers:
 - HEALTH
 
 **Current Implementation Categories (9):**
-Custom categories used in codebase
+Custom categories used in codebase (more granular than blueprint)
 
-**Action:** Align insight categories with blueprint specification.
-
----
-
-## **Gap: Severity Scoring Formula (MEDIUM)**
-
-**Blueprint Requirement:** Section 4 - Insight Severity Model
-
-**Required Formula:**
-```typescript
-severityScore = impactWeight * confidenceWeight * persistenceFactor
-```
-
-**Current State:** Severity is assigned directly (critical, high, medium, low) without computed score.
-
----
-
-## **Gap: Entity-Level Insight Attachment (HIGH)**
-
-**Blueprint Requirement:** Section 6 - Entity-Level Insight Attachment
-
-**Required:**
-```typescript
-entity.insights = InsightItem[]
-entity.health = EntityHealthSummary
-```
-
-**Current State:** Insights are generated but not attached directly to entities in snapshot response.
+**Note:** Current categories provide more detail than blueprint specification.
 
 ---
 
@@ -455,9 +454,19 @@ entity.health = EntityHealthSummary
 | Performance, forecast pipelines | ⚠️ Partial |
 | Health Fusion Pipeline | ✅ |
 | Snapshot endpoint returns insights | ✅ |
-| Entity insights correctly attached | ❌ |
+| Entity insights correctly attached | ✅ |
+| Module insights aggregation | ✅ |
+| Severity scoring formula | ✅ |
 | UI components read insights | ✅ |
 | Performance thresholds met | ✅ |
 | GRDCS integration | ✅ |
+
+---
+
+## **Priority Actions**
+
+1. ~~**HIGH**: Implement entity-level insight attachment~~ ✅ DONE
+2. ~~**MEDIUM**: Add severity scoring formula~~ ✅ DONE
+3. **LOW**: Align insight categories with blueprint specification
 
 ---
