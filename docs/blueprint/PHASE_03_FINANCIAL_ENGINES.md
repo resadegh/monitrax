@@ -330,7 +330,7 @@ Phase 03 is complete when:
 # **IMPLEMENTATION STATUS**
 
 **Last Updated:** 2025-11-24
-**Overall Completion:** 60%
+**Overall Completion:** 95%
 
 ---
 
@@ -343,17 +343,17 @@ Phase 03 is complete when:
 | Income/Expense Engine | ✅ COMPLETE | `/lib/intelligence/portfolioEngine.ts` |
 | Depreciation Engine | ✅ COMPLETE | `/lib/depreciation/index.ts` |
 | Investment Engine | ✅ COMPLETE | `/lib/investments/index.ts` |
-| Property ROI Engine | ⚠️ PARTIAL | Basic ROI in portfolio engine |
+| Property ROI Engine | ✅ COMPLETE | `/api/calculate/property-roi` |
 | Frequency Harmonisation | ✅ COMPLETE | `/lib/utils/frequencies.ts` |
-| Time-Series Generator | ❌ MISSING | `/lib/utils/timeSeries.ts` needed |
+| Time-Series Generator | ✅ COMPLETE | `/lib/utils/timeSeries.ts` |
 | `/api/calculate/debt-plan` | ✅ COMPLETE | Operational |
 | `/api/calculate/tax` | ✅ COMPLETE | Operational |
-| `/api/calculate/loan` | ❌ MISSING | API endpoint needed |
-| `/api/calculate/cashflow` | ❌ MISSING | API endpoint needed |
-| `/api/calculate/property-roi` | ❌ MISSING | API endpoint needed |
-| `/api/calculate/investment` | ❌ MISSING | API endpoint needed |
-| `/api/calculate/depreciation` | ❌ MISSING | API endpoint needed |
-| Engine Diagnostics | ❌ MISSING | No diagnostics in responses |
+| `/api/calculate/loan` | ✅ COMPLETE | `/app/api/calculate/loan/route.ts` |
+| `/api/calculate/cashflow` | ✅ COMPLETE | `/app/api/calculate/cashflow/route.ts` |
+| `/api/calculate/property-roi` | ✅ COMPLETE | `/app/api/calculate/property-roi/route.ts` |
+| `/api/calculate/investment` | ✅ COMPLETE | `/app/api/calculate/investment/route.ts` |
+| `/api/calculate/depreciation` | ✅ COMPLETE | `/app/api/calculate/depreciation/route.ts` |
+| Engine Diagnostics | ✅ COMPLETE | All endpoints include diagnostics |
 
 ---
 
@@ -378,68 +378,37 @@ Phase 03 is complete when:
 
 ---
 
-## **Gap: Missing Calculate API Endpoints (CRITICAL)**
+## **Gap: Missing Calculate API Endpoints - RESOLVED**
 
-**Blueprint Requirement:** Section 6 - Engine API Endpoints
+**Status:** ✅ COMPLETE (Build 4)
 
-**Required Endpoints:**
+All required endpoints have been implemented:
+- ✅ `/app/api/calculate/loan/route.ts` - Loan amortisation with Zod validation
+- ✅ `/app/api/calculate/cashflow/route.ts` - Cashflow analysis (GET/POST)
+- ✅ `/app/api/calculate/property-roi/route.ts` - Property ROI metrics
+- ✅ `/app/api/calculate/investment/route.ts` - Investment performance & franking
+- ✅ `/app/api/calculate/depreciation/route.ts` - Depreciation schedules & forecasts
 
-```typescript
-// /app/api/calculate/loan/route.ts
-export async function POST(request: Request) {
-  const { principal, rate, term, type, offset } = await request.json();
-
-  // Validate with Zod
-  // Call loan engine
-  // Return with diagnostics
-
-  return Response.json({
-    input: { principal, rate, term, type, offset },
-    output: {
-      monthlyRepayment: number,
-      totalInterest: number,
-      amortisationSchedule: [...],
-    },
-    diagnostics: {
-      warnings: [],
-      assumptions: [],
-    },
-  });
-}
-```
-
-**Files to create:**
-- `/app/api/calculate/loan/route.ts`
-- `/app/api/calculate/cashflow/route.ts`
-- `/app/api/calculate/property-roi/route.ts`
-- `/app/api/calculate/investment/route.ts`
-- `/app/api/calculate/depreciation/route.ts`
+All endpoints follow the contract-first design with:
+- Zod schema validation
+- `input`, `output`, `diagnostics` response structure
+- Warnings and assumptions tracking
 
 ---
 
-## **Gap: Time-Series Generator (HIGH)**
+## **Gap: Time-Series Generator - RESOLVED**
 
-**Blueprint Requirement:** Section 5 - Time-Series Engine
+**Status:** ✅ COMPLETE (Build 4)
 
-**Required Implementation:** `/lib/utils/timeSeries.ts`
+Implemented: `/lib/utils/timeSeries.ts`
 
-```typescript
-export function generateSeries(
-  start: Date,
-  end: Date,
-  step: 'day' | 'week' | 'month' | 'year'
-): Date[];
-
-export function interpolate(
-  valueA: number,
-  valueB: number,
-  t: number
-): number;
-
-export function mergeSchedules(
-  ...schedules: TimeSeriesEvent[][]
-): TimeSeriesEvent[];
-```
+Features:
+- `generateSeries()` - Date series generation
+- `interpolate()` / `interpolateAtDate()` - Linear interpolation
+- `mergeSchedules()` - Multi-schedule merging
+- `generateProjection()` - Value projection with growth
+- `generateScenarios()` - Multi-scenario forecasting
+- Australian financial year utilities
 
 ---
 
@@ -451,10 +420,12 @@ export function mergeSchedules(
 | Cashflow normalisation | ✅ |
 | Depreciation (SL, DV) | ✅ |
 | Investment engine | ✅ |
-| Property ROI engine | ⚠️ Partial |
-| All `/api/calculate/*` implemented | ❌ 2/7 |
-| Zod validation schemas | ❌ |
+| Property ROI engine | ✅ |
+| All `/api/calculate/*` implemented | ✅ 7/7 |
+| Zod validation schemas | ✅ |
 | Snapshot Engine integration | ✅ |
+| Engine Diagnostics | ✅ |
+| Time-Series Generator | ✅ |
 
 ---
 
