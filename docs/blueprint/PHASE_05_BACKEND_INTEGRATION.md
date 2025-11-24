@@ -436,7 +436,7 @@ Monitrax must defend against:
 # **IMPLEMENTATION STATUS**
 
 **Last Updated:** 2025-11-24
-**Overall Completion:** 20% (CRITICAL GAPS)
+**Overall Completion:** 55%
 
 ---
 
@@ -452,10 +452,10 @@ Monitrax must defend against:
 | Access Tokens (JWT) | ✅ COMPLETE | 7-day expiry |
 | Refresh Tokens | ❌ MISSING | No refresh token rotation |
 | Session Management | ❌ MISSING | No session records |
-| RBAC Permissions | ❌ MISSING | Roles in schema only |
-| Tenant Isolation | ❌ MISSING | No tenant filtering |
+| RBAC Permissions | ✅ COMPLETE | `/lib/auth/permissions.ts` |
+| Tenant Isolation | ✅ COMPLETE | `/lib/db/tenant.ts` |
 | Rate Limiting | ❌ MISSING | No rate limits |
-| Audit Logging | ❌ MISSING | No audit trail |
+| Audit Logging | ✅ COMPLETE | `/lib/audit/logger.ts` |
 | Email Verification | ❌ MISSING | No verification flow |
 | Security Settings UI | ❌ MISSING | No settings page |
 
@@ -492,123 +492,53 @@ enum UserRole {
 
 ---
 
-## **CRITICAL GAPS**
+## **IMPLEMENTED COMPONENTS**
 
-### GAP-05-01: RBAC Permission System (CRITICAL)
+### IMPLEMENTED-05-01: RBAC Permission System ✅
 
-**Blueprint Requirement:** Section 6 - Authorization Model
+**Files:**
+- `/lib/auth/permissions.ts` - Permission definitions and checking
+- `/lib/auth/context.ts` - Auth context extraction
+- `/lib/auth/guards.ts` - Route-level permission guards
+- `/lib/auth/index.ts` - Barrel export
 
-**Required Implementation:**
-
-```typescript
-// /lib/auth/permissions.ts
-export const PERMISSIONS = {
-  'property.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'property.write': ['OWNER', 'PARTNER'],
-  'loan.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'loan.write': ['OWNER', 'PARTNER'],
-  'settings.manage': ['OWNER'],
-  'user.manage': ['OWNER'],
-} as const;
-
-export function hasPermission(
-  userRole: UserRole,
-  permission: keyof typeof PERMISSIONS
-): boolean {
-  return PERMISSIONS[permission].includes(userRole);
-}
-
-// Middleware
-export async function withPermission(
-  permission: keyof typeof PERMISSIONS,
-  handler: (req: Request) => Promise<Response>
-) {
-  return async (req: Request) => {
-    const user = await getAuthUser(req);
-    if (!hasPermission(user.role, permission)) {
-      return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    return handler(req);
-  };
-}
-```
+**Features:**
+- Full RBAC permission matrix for all entities
+- `hasPermission()`, `hasAllPermissions()`, `hasAnyPermission()` checks
+- `withAuth()`, `withPermission()`, `withOwnerOnly()` route guards
+- Entity-based permission helpers
 
 ---
 
-### GAP-05-02: Tenant Isolation (CRITICAL)
+### IMPLEMENTED-05-02: Tenant Isolation ✅
 
-**Blueprint Requirement:** Section 7 - Tenant Isolation Model
+**Files:**
+- `/lib/db/tenant.ts` - Tenant-scoped database operations
 
-**Required Implementation:**
-
-```typescript
-// All Prisma queries must include tenant filter
-const properties = await prisma.property.findMany({
-  where: {
-    userId: tenantId, // REQUIRED on every query
-  },
-});
-
-// Middleware to extract tenant from token
-export async function getTenantId(request: Request): Promise<string> {
-  const token = extractToken(request);
-  const payload = verifyToken(token);
-  return payload.userId;
-}
-```
+**Features:**
+- `withTenant()` utility for query filtering
+- Tenant-scoped operations for all entities (property, loan, account, income, expense, investmentAccount)
+- `verifyTenantOwnership()` for access validation
+- Automatic userId injection on all queries
 
 ---
 
-### GAP-05-03: Audit Logging (CRITICAL)
+### IMPLEMENTED-05-03: Audit Logging ✅
 
-**Blueprint Requirement:** Section 9 - Audit Logging Architecture
+**Files:**
+- `/lib/audit/logger.ts` - Audit event logging
 
-**Required Schema:**
-
-```prisma
-model AuditLog {
-  id           String   @id @default(cuid())
-  eventType    String   // LOGIN, LOGOUT, CREATE, UPDATE, DELETE
-  principalId  String
-  tenantId     String
-  targetEntity String?
-  targetId     String?
-  timestamp    DateTime @default(now())
-  ip           String?
-  userAgent    String?
-  severity     String   @default("INFO")
-  metadata     Json?
-}
-```
-
-**Required Implementation:**
-
-```typescript
-// /lib/audit/logger.ts
-export async function logAuditEvent(event: {
-  type: AuditEventType;
-  principalId: string;
-  tenantId: string;
-  target?: { entity: string; id: string };
-  metadata?: Record<string, unknown>;
-  request?: Request;
-}) {
-  await prisma.auditLog.create({
-    data: {
-      eventType: event.type,
-      principalId: event.principalId,
-      tenantId: event.tenantId,
-      targetEntity: event.target?.entity,
-      targetId: event.target?.id,
-      ip: getClientIp(event.request),
-      userAgent: event.request?.headers.get('user-agent'),
-      metadata: event.metadata,
-    },
-  });
-}
-```
+**Features:**
+- Comprehensive audit event types (LOGIN, CREATE, UPDATE, DELETE, EXPORT, etc.)
+- Request metadata extraction (IP, user agent)
+- Convenience functions: `logLogin()`, `logCreate()`, `logUpdate()`, `logDelete()`
+- `logPermissionDenied()` for security tracking
 
 ---
+
+## **REMAINING GAPS**
+
+
 
 ### GAP-05-04: Rate Limiting (HIGH)
 
@@ -641,10 +571,10 @@ export async function checkRateLimit(identifier: string): Promise<boolean> {
 | Full IAM framework | ❌ |
 | Local + OAuth + passwordless auth | ⚠️ Local only |
 | MFA ready | ❌ |
-| RBAC implemented | ❌ |
-| Tenant isolation enforced | ❌ |
+| RBAC implemented | ✅ |
+| Tenant isolation enforced | ✅ |
 | Secure API layer | ⚠️ Basic |
-| Audit logging operational | ❌ |
+| Audit logging operational | ✅ |
 | Email verification flow | ❌ |
 | Zero-trust principles | ❌ |
 | All endpoints protected | ⚠️ Basic auth only |
@@ -653,9 +583,9 @@ export async function checkRateLimit(identifier: string): Promise<boolean> {
 
 ## **Priority Actions**
 
-1. **IMMEDIATE**: Implement tenant isolation (query filtering)
-2. **IMMEDIATE**: Add RBAC permission checks to API routes
-3. **HIGH**: Create audit logging infrastructure
+1. ~~**IMMEDIATE**: Implement tenant isolation (query filtering)~~ ✅ DONE
+2. ~~**IMMEDIATE**: Add RBAC permission checks to API routes~~ ✅ DONE
+3. ~~**HIGH**: Create audit logging infrastructure~~ ✅ DONE
 4. **HIGH**: Implement rate limiting
 5. **MEDIUM**: Add OAuth providers
 6. **MEDIUM**: Implement MFA
