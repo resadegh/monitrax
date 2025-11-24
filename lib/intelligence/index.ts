@@ -54,3 +54,29 @@ export type {
   ModuleBreakdown,
   LinkageHealthResponse,
 } from './linkageHealthService';
+
+// Entity Insights Attachment (Phase 04 Gap Fix)
+export {
+  enhanceInsightsWithEntityAttachment,
+  getEntityInsights,
+  getModuleInsights,
+  calculateSeverityScore,
+  calculateEntitySeverityScore,
+  getHealthStatus,
+  getHealthStatusFromScore,
+  createEntityHealthSummary,
+  groupInsightsByEntity,
+  attachInsightsToEntities,
+  aggregateInsightsByModule,
+  IMPACT_WEIGHTS,
+  CONFIDENCE_WEIGHTS,
+} from './entityInsights';
+
+export type {
+  EntityHealthStatus,
+  EntityHealthSummary,
+  EntityWithInsights,
+  ModuleInsightsSummary,
+  InsightsByModule,
+  EnhancedInsightsResult,
+} from './entityInsights';
