@@ -1,11 +1,12 @@
 /**
  * RBAC Permission System
  * Role-based access control for Monitrax entities
+ * Phase 10: Updated for enterprise-grade authorization
  */
 
 // Define UserRole locally to avoid Prisma client dependency
 // Must match the enum in prisma/schema.prisma
-export type UserRole = 'OWNER' | 'PARTNER' | 'ACCOUNTANT';
+export type UserRole = 'OWNER' | 'ADMIN' | 'CONTRIBUTOR' | 'VIEWER';
 
 // ============================================
 // PERMISSION DEFINITIONS
@@ -13,50 +14,83 @@ export type UserRole = 'OWNER' | 'PARTNER' | 'ACCOUNTANT';
 
 export const PERMISSIONS = {
   // Properties
-  'property.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'property.write': ['OWNER', 'PARTNER'],
-  'property.delete': ['OWNER'],
+  'property.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'property.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+  'property.delete': ['OWNER', 'ADMIN'],
+  'property.export': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
 
   // Loans
-  'loan.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'loan.write': ['OWNER', 'PARTNER'],
-  'loan.delete': ['OWNER'],
+  'loan.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'loan.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+  'loan.delete': ['OWNER', 'ADMIN'],
+  'loan.export': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
 
   // Accounts
-  'account.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'account.write': ['OWNER', 'PARTNER'],
-  'account.delete': ['OWNER'],
+  'account.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'account.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+  'account.delete': ['OWNER', 'ADMIN'],
+  'account.export': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
 
   // Income
-  'income.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'income.write': ['OWNER', 'PARTNER'],
-  'income.delete': ['OWNER'],
+  'income.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'income.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+  'income.delete': ['OWNER', 'ADMIN'],
+  'income.export': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
 
   // Expenses
-  'expense.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'expense.write': ['OWNER', 'PARTNER'],
-  'expense.delete': ['OWNER'],
+  'expense.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'expense.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+  'expense.delete': ['OWNER', 'ADMIN'],
+  'expense.export': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
 
   // Investments
-  'investment.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'investment.write': ['OWNER', 'PARTNER'],
-  'investment.delete': ['OWNER'],
+  'investment.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'investment.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+  'investment.delete': ['OWNER', 'ADMIN'],
+  'investment.export': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+
+  // Holdings
+  'holding.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'holding.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+  'holding.delete': ['OWNER', 'ADMIN'],
 
   // Transactions
-  'transaction.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'transaction.write': ['OWNER', 'PARTNER'],
-  'transaction.delete': ['OWNER'],
+  'transaction.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'transaction.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+  'transaction.delete': ['OWNER', 'ADMIN'],
+  'transaction.export': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
 
   // Reports & Analytics
-  'report.read': ['OWNER', 'PARTNER', 'ACCOUNTANT'],
-  'report.export': ['OWNER', 'PARTNER'],
+  'report.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'report.export': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
 
   // Settings & User Management
-  'settings.read': ['OWNER', 'PARTNER'],
+  'settings.read': ['OWNER', 'ADMIN'],
   'settings.write': ['OWNER'],
-  'user.read': ['OWNER'],
-  'user.invite': ['OWNER'],
-  'user.manage': ['OWNER'],
+  'user.read': ['OWNER', 'ADMIN'],
+  'user.invite': ['OWNER', 'ADMIN'],
+  'user.manage': ['OWNER', 'ADMIN'],
+  'user.delete': ['OWNER'],
+
+  // Organization Management
+  'org.read': ['OWNER', 'ADMIN'],
+  'org.update': ['OWNER', 'ADMIN'],
+  'org.delete': ['OWNER'],
+  'org.billing': ['OWNER'],
+
+  // Audit Logs
+  'audit.read': ['OWNER', 'ADMIN'],
+  'audit.export': ['OWNER', 'ADMIN'],
+
+  // Security Settings
+  'security.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'security.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'], // Users can manage their own MFA
+  'security.enforce': ['OWNER', 'ADMIN'], // Enforce MFA org-wide
+
+  // Session Management
+  'session.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'session.revoke': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'], // Users can revoke their own sessions
+  'session.revokeAll': ['OWNER', 'ADMIN'], // Admins can revoke other users' sessions
 } as const;
 
 // ============================================
@@ -119,9 +153,16 @@ export type EntityType =
   | 'income'
   | 'expense'
   | 'investment'
-  | 'transaction';
+  | 'holding'
+  | 'transaction'
+  | 'report'
+  | 'user'
+  | 'org'
+  | 'audit'
+  | 'security'
+  | 'session';
 
-export type ActionType = 'read' | 'write' | 'delete';
+export type ActionType = 'read' | 'write' | 'delete' | 'export' | 'update' | 'invite' | 'manage' | 'enforce' | 'revoke' | 'revokeAll' | 'billing';
 
 /**
  * Build a permission string for an entity action
