@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
             ticker: h.ticker,
             units: h.units,
             averagePrice: h.averagePrice,
-            currentPrice: h.currentPrice || h.averagePrice, // Fall back to avg if no current price
+            currentPrice: h.averagePrice, // Use averagePrice as default (currentPrice would need market data)
             annualDividend: 0, // Would need market data
             frankingPercentage: h.frankingPercentage || 100,
           }))
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
           ticker: h.ticker,
           units: h.units,
           averagePrice: h.averagePrice,
-          currentPrice: h.currentPrice || h.averagePrice,
+          currentPrice: h.averagePrice, // Use averagePrice as default
           annualDividend: 0,
           frankingPercentage: h.frankingPercentage || 100,
         }));
