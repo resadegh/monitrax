@@ -14,6 +14,7 @@ import { GRDCSLinkedEntity, GRDCSMissingLink, createLinkedEntity } from '@/lib/g
 
 export type InsightSeverity = 'critical' | 'high' | 'medium' | 'low';
 
+// Granular categories for detailed insight classification
 export type InsightCategory =
   | 'missing_link'
   | 'orphaned_entity'
@@ -25,15 +26,53 @@ export type InsightCategory =
   | 'risk_signal'
   | 'opportunity';
 
+// Blueprint-aligned categories (Phase 04 Section 3)
+export type BlueprintCategory =
+  | 'RELATIONAL'
+  | 'COMPLETENESS'
+  | 'ANOMALY'
+  | 'PERFORMANCE'
+  | 'FORECAST'
+  | 'HEALTH';
+
+// Mapping from granular to blueprint categories
+export const CATEGORY_TO_BLUEPRINT: Record<InsightCategory, BlueprintCategory> = {
+  missing_link: 'RELATIONAL',
+  orphaned_entity: 'RELATIONAL',
+  cross_module_health: 'HEALTH',
+  data_completeness: 'COMPLETENESS',
+  structural_gap: 'RELATIONAL',
+  duplicate_invalid: 'ANOMALY',
+  financial_metric: 'PERFORMANCE',
+  risk_signal: 'FORECAST',
+  opportunity: 'PERFORMANCE',
+};
+
+// Get blueprint category from granular category
+export function getBlueprintCategory(category: InsightCategory): BlueprintCategory {
+  return CATEGORY_TO_BLUEPRINT[category];
+}
+
 export interface InsightItem {
   id: string;
   severity: InsightSeverity;
   category: InsightCategory;
+  blueprintCategory?: BlueprintCategory;
   title: string;
   description: string;
   affectedEntities: GRDCSLinkedEntity[];
   recommendedFix: string;
   metadata?: Record<string, unknown>;
+}
+
+/**
+ * Enrich insight with blueprint category
+ */
+function enrichWithBlueprintCategory(insight: InsightItem): InsightItem {
+  return {
+    ...insight,
+    blueprintCategory: getBlueprintCategory(insight.category),
+  };
 }
 
 export interface InsightsSummary {
@@ -758,21 +797,22 @@ export function getInsightsForDashboard(snapshot: SnapshotV2): InsightsResult {
     low: 3,
   };
 
-  const sortedInsights = allInsights.sort((a, b) => {
-    return severityOrder[a.severity] - severityOrder[b.severity];
-  });
+  // Enrich with blueprint categories and sort by severity
+  const enrichedInsights = allInsights
+    .map(enrichWithBlueprintCategory)
+    .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
   // Calculate summary
   const summary: InsightsSummary = {
-    criticalCount: sortedInsights.filter(i => i.severity === 'critical').length,
-    highCount: sortedInsights.filter(i => i.severity === 'high').length,
-    mediumCount: sortedInsights.filter(i => i.severity === 'medium').length,
-    lowCount: sortedInsights.filter(i => i.severity === 'low').length,
-    totalCount: sortedInsights.length,
+    criticalCount: enrichedInsights.filter(i => i.severity === 'critical').length,
+    highCount: enrichedInsights.filter(i => i.severity === 'high').length,
+    mediumCount: enrichedInsights.filter(i => i.severity === 'medium').length,
+    lowCount: enrichedInsights.filter(i => i.severity === 'low').length,
+    totalCount: enrichedInsights.length,
   };
 
   return {
-    insights: sortedInsights,
+    insights: enrichedInsights,
     summary,
   };
 }
@@ -835,4 +875,28 @@ export function getInsightsBySeverity(
  */
 export function getCriticalInsights(snapshot: SnapshotV2): InsightsResult {
   return getInsightsBySeverity(snapshot, 'high');
+}
+
+/**
+ * Get insights filtered by blueprint category (Phase 04 aligned)
+ */
+export function getInsightsByBlueprintCategory(
+  snapshot: SnapshotV2,
+  blueprintCategories: BlueprintCategory[]
+): InsightsResult {
+  const result = getInsightsForDashboard(snapshot);
+  const filtered = result.insights.filter(
+    i => i.blueprintCategory && blueprintCategories.includes(i.blueprintCategory)
+  );
+
+  return {
+    insights: filtered,
+    summary: {
+      criticalCount: filtered.filter(i => i.severity === 'critical').length,
+      highCount: filtered.filter(i => i.severity === 'high').length,
+      mediumCount: filtered.filter(i => i.severity === 'medium').length,
+      lowCount: filtered.filter(i => i.severity === 'low').length,
+      totalCount: filtered.length,
+    },
+  };
 }

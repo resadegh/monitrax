@@ -31,12 +31,16 @@ export {
   getInsightsByCategory,
   getInsightsBySeverity,
   getCriticalInsights,
+  getInsightsByBlueprintCategory,
+  getBlueprintCategory,
+  CATEGORY_TO_BLUEPRINT,
 } from './insightsEngine';
 
 export type {
   InsightItem,
   InsightSeverity,
   InsightCategory,
+  BlueprintCategory,
   InsightsSummary,
   InsightsResult,
   SnapshotV2,
