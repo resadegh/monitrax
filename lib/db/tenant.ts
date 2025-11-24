@@ -1,30 +1,9 @@
 /**
  * Tenant-Aware Database Operations
  * Ensures data isolation between users/tenants
- *
- * Note: Uses generic types to avoid dependency on Prisma client generation.
- * When Prisma client is regenerated, types will be properly inferred at runtime.
  */
 
 import { prisma } from '@/lib/db';
-
-// ============================================
-// TYPES
-// ============================================
-
-// Generic types for Prisma-like operations
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type WhereInput = Record<string, any>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type CreateInput = Record<string, any>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type UpdateInput = Record<string, any>;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type FindManyArgs = { where?: WhereInput; [key: string]: any };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type FindFirstArgs = { where?: WhereInput; [key: string]: any };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type CountArgs = { where?: WhereInput; [key: string]: any };
 
 // ============================================
 // TENANT ISOLATION UTILITIES
@@ -33,7 +12,7 @@ type CountArgs = { where?: WhereInput; [key: string]: any };
 /**
  * Add tenant filter to a where clause
  */
-export function withTenant<T extends WhereInput | undefined>(
+export function withTenant<T extends Record<string, unknown> | undefined>(
   tenantId: string,
   where?: T
 ): T & { userId: string } {
@@ -44,74 +23,292 @@ export function withTenant<T extends WhereInput | undefined>(
 }
 
 // ============================================
-// GENERIC TENANT-SCOPED OPERATIONS FACTORY
+// TENANT-SCOPED PROPERTY OPERATIONS
 // ============================================
 
-function createTenantOperations<
-  TModel extends {
-    findMany: (args?: FindManyArgs) => Promise<unknown[]>;
-    findFirst: (args?: FindFirstArgs) => Promise<unknown | null>;
-    create: (args: { data: CreateInput }) => Promise<unknown>;
-    updateMany: (args: { where: WhereInput; data: UpdateInput }) => Promise<{ count: number }>;
-    deleteMany: (args: { where: WhereInput }) => Promise<{ count: number }>;
-    count: (args?: CountArgs) => Promise<number>;
-  }
->(model: TModel) {
-  return {
-    findMany: (tenantId: string, args?: FindManyArgs) =>
-      model.findMany({
-        ...args,
-        where: withTenant(tenantId, args?.where),
-      }),
+export const tenantProperty = {
+  findMany: (tenantId: string, args?: Parameters<typeof prisma.property.findMany>[0]) =>
+    prisma.property.findMany({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
 
-    findFirst: (tenantId: string, args?: FindFirstArgs) =>
-      model.findFirst({
-        ...args,
-        where: withTenant(tenantId, args?.where),
-      }),
+  findFirst: (tenantId: string, args?: Parameters<typeof prisma.property.findFirst>[0]) =>
+    prisma.property.findFirst({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
 
-    findUnique: (tenantId: string, id: string) =>
-      model.findFirst({
-        where: { id, userId: tenantId },
-      }),
+  findUnique: (tenantId: string, id: string) =>
+    prisma.property.findFirst({
+      where: { id, userId: tenantId },
+    }),
 
-    create: (tenantId: string, data: CreateInput) =>
-      model.create({
-        data: {
-          ...data,
-          user: { connect: { id: tenantId } },
-        },
-      }),
+  create: (tenantId: string, data: Omit<Parameters<typeof prisma.property.create>[0]['data'], 'user' | 'userId'>) =>
+    prisma.property.create({
+      data: {
+        ...data,
+        user: { connect: { id: tenantId } },
+      },
+    }),
 
-    update: (tenantId: string, id: string, data: UpdateInput) =>
-      model.updateMany({
-        where: { id, userId: tenantId },
-        data,
-      }),
+  update: (tenantId: string, id: string, data: Parameters<typeof prisma.property.update>[0]['data']) =>
+    prisma.property.updateMany({
+      where: { id, userId: tenantId },
+      data,
+    }),
 
-    delete: (tenantId: string, id: string) =>
-      model.deleteMany({
-        where: { id, userId: tenantId },
-      }),
+  delete: (tenantId: string, id: string) =>
+    prisma.property.deleteMany({
+      where: { id, userId: tenantId },
+    }),
 
-    count: (tenantId: string, args?: CountArgs) =>
-      model.count({
-        ...args,
-        where: withTenant(tenantId, args?.where),
-      }),
-  };
-}
+  count: (tenantId: string, args?: Parameters<typeof prisma.property.count>[0]) =>
+    prisma.property.count({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+};
 
 // ============================================
-// TENANT-SCOPED MODEL OPERATIONS
+// TENANT-SCOPED LOAN OPERATIONS
 // ============================================
 
-export const tenantProperty = createTenantOperations(prisma.property);
-export const tenantLoan = createTenantOperations(prisma.loan);
-export const tenantAccount = createTenantOperations(prisma.account);
-export const tenantIncome = createTenantOperations(prisma.income);
-export const tenantExpense = createTenantOperations(prisma.expense);
-export const tenantInvestmentAccount = createTenantOperations(prisma.investmentAccount);
+export const tenantLoan = {
+  findMany: (tenantId: string, args?: Parameters<typeof prisma.loan.findMany>[0]) =>
+    prisma.loan.findMany({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findFirst: (tenantId: string, args?: Parameters<typeof prisma.loan.findFirst>[0]) =>
+    prisma.loan.findFirst({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findUnique: (tenantId: string, id: string) =>
+    prisma.loan.findFirst({
+      where: { id, userId: tenantId },
+    }),
+
+  create: (tenantId: string, data: Omit<Parameters<typeof prisma.loan.create>[0]['data'], 'user' | 'userId'>) =>
+    prisma.loan.create({
+      data: {
+        ...data,
+        user: { connect: { id: tenantId } },
+      },
+    }),
+
+  update: (tenantId: string, id: string, data: Parameters<typeof prisma.loan.update>[0]['data']) =>
+    prisma.loan.updateMany({
+      where: { id, userId: tenantId },
+      data,
+    }),
+
+  delete: (tenantId: string, id: string) =>
+    prisma.loan.deleteMany({
+      where: { id, userId: tenantId },
+    }),
+
+  count: (tenantId: string, args?: Parameters<typeof prisma.loan.count>[0]) =>
+    prisma.loan.count({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+};
+
+// ============================================
+// TENANT-SCOPED ACCOUNT OPERATIONS
+// ============================================
+
+export const tenantAccount = {
+  findMany: (tenantId: string, args?: Parameters<typeof prisma.account.findMany>[0]) =>
+    prisma.account.findMany({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findFirst: (tenantId: string, args?: Parameters<typeof prisma.account.findFirst>[0]) =>
+    prisma.account.findFirst({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findUnique: (tenantId: string, id: string) =>
+    prisma.account.findFirst({
+      where: { id, userId: tenantId },
+    }),
+
+  create: (tenantId: string, data: Omit<Parameters<typeof prisma.account.create>[0]['data'], 'user' | 'userId'>) =>
+    prisma.account.create({
+      data: {
+        ...data,
+        user: { connect: { id: tenantId } },
+      },
+    }),
+
+  update: (tenantId: string, id: string, data: Parameters<typeof prisma.account.update>[0]['data']) =>
+    prisma.account.updateMany({
+      where: { id, userId: tenantId },
+      data,
+    }),
+
+  delete: (tenantId: string, id: string) =>
+    prisma.account.deleteMany({
+      where: { id, userId: tenantId },
+    }),
+
+  count: (tenantId: string, args?: Parameters<typeof prisma.account.count>[0]) =>
+    prisma.account.count({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+};
+
+// ============================================
+// TENANT-SCOPED INCOME OPERATIONS
+// ============================================
+
+export const tenantIncome = {
+  findMany: (tenantId: string, args?: Parameters<typeof prisma.income.findMany>[0]) =>
+    prisma.income.findMany({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findFirst: (tenantId: string, args?: Parameters<typeof prisma.income.findFirst>[0]) =>
+    prisma.income.findFirst({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findUnique: (tenantId: string, id: string) =>
+    prisma.income.findFirst({
+      where: { id, userId: tenantId },
+    }),
+
+  create: (tenantId: string, data: Omit<Parameters<typeof prisma.income.create>[0]['data'], 'user' | 'userId'>) =>
+    prisma.income.create({
+      data: {
+        ...data,
+        user: { connect: { id: tenantId } },
+      },
+    }),
+
+  update: (tenantId: string, id: string, data: Parameters<typeof prisma.income.update>[0]['data']) =>
+    prisma.income.updateMany({
+      where: { id, userId: tenantId },
+      data,
+    }),
+
+  delete: (tenantId: string, id: string) =>
+    prisma.income.deleteMany({
+      where: { id, userId: tenantId },
+    }),
+
+  count: (tenantId: string, args?: Parameters<typeof prisma.income.count>[0]) =>
+    prisma.income.count({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+};
+
+// ============================================
+// TENANT-SCOPED EXPENSE OPERATIONS
+// ============================================
+
+export const tenantExpense = {
+  findMany: (tenantId: string, args?: Parameters<typeof prisma.expense.findMany>[0]) =>
+    prisma.expense.findMany({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findFirst: (tenantId: string, args?: Parameters<typeof prisma.expense.findFirst>[0]) =>
+    prisma.expense.findFirst({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findUnique: (tenantId: string, id: string) =>
+    prisma.expense.findFirst({
+      where: { id, userId: tenantId },
+    }),
+
+  create: (tenantId: string, data: Omit<Parameters<typeof prisma.expense.create>[0]['data'], 'user' | 'userId'>) =>
+    prisma.expense.create({
+      data: {
+        ...data,
+        user: { connect: { id: tenantId } },
+      },
+    }),
+
+  update: (tenantId: string, id: string, data: Parameters<typeof prisma.expense.update>[0]['data']) =>
+    prisma.expense.updateMany({
+      where: { id, userId: tenantId },
+      data,
+    }),
+
+  delete: (tenantId: string, id: string) =>
+    prisma.expense.deleteMany({
+      where: { id, userId: tenantId },
+    }),
+
+  count: (tenantId: string, args?: Parameters<typeof prisma.expense.count>[0]) =>
+    prisma.expense.count({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+};
+
+// ============================================
+// TENANT-SCOPED INVESTMENT ACCOUNT OPERATIONS
+// ============================================
+
+export const tenantInvestmentAccount = {
+  findMany: (tenantId: string, args?: Parameters<typeof prisma.investmentAccount.findMany>[0]) =>
+    prisma.investmentAccount.findMany({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findFirst: (tenantId: string, args?: Parameters<typeof prisma.investmentAccount.findFirst>[0]) =>
+    prisma.investmentAccount.findFirst({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+
+  findUnique: (tenantId: string, id: string) =>
+    prisma.investmentAccount.findFirst({
+      where: { id, userId: tenantId },
+    }),
+
+  create: (tenantId: string, data: Omit<Parameters<typeof prisma.investmentAccount.create>[0]['data'], 'user' | 'userId'>) =>
+    prisma.investmentAccount.create({
+      data: {
+        ...data,
+        user: { connect: { id: tenantId } },
+      },
+    }),
+
+  update: (tenantId: string, id: string, data: Parameters<typeof prisma.investmentAccount.update>[0]['data']) =>
+    prisma.investmentAccount.updateMany({
+      where: { id, userId: tenantId },
+      data,
+    }),
+
+  delete: (tenantId: string, id: string) =>
+    prisma.investmentAccount.deleteMany({
+      where: { id, userId: tenantId },
+    }),
+
+  count: (tenantId: string, args?: Parameters<typeof prisma.investmentAccount.count>[0]) =>
+    prisma.investmentAccount.count({
+      ...args,
+      where: { ...args?.where, userId: tenantId },
+    }),
+};
 
 // ============================================
 // COMBINED TENANT PRISMA
