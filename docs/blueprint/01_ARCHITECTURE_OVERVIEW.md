@@ -1,505 +1,385 @@
-01 — ARCHITECTURE OVERVIEW
-Monitrax Enterprise Architecture — System-Level Blueprint
-1. Purpose
+# 🏛️ **01 — ARCHITECTURE OVERVIEW**  
+### *High-Level System Architecture for Monitrax*
 
-This document provides a high-level architectural map of the Monitrax platform.
-It defines how the system is structured, how its components interact, and the architectural conventions that every future phase must follow.
+---
 
-This is the master reference for:
+## **1. Purpose**
 
-Engineers
+This document describes the **high-level architecture** of the entire Monitrax platform — backend, frontend, engines, UI, navigation, security, and intelligence systems.
 
-System architects
+It provides a **holistic, top-down blueprint** used by engineers, product teams, and AI agents (ChatGPT / Claude) to ensure consistent implementation across all phases.
 
-Product designers
+---
 
-AI copilots
+# **2. Core Architecture Philosophy**
 
-Future contributors
+Monitrax architecture is based on three strategic pillars:
 
-2. System Architecture Summary
+## **2.1 Canonical Data**
+There must always be exactly one source of truth for:
 
-Monitrax is a modular financial intelligence platform built as a structured modular monolith, designed for:
+- Entity shapes  
+- Relationships  
+- Financial outputs  
+- Navigation paths  
+- Insights and health metrics  
 
-high consistency
+This ensures predictability, reliability, and AI-friendly consistency.
 
-strict relational integrity
+## **2.2 Separation of Concerns**
+Distinct functional layers handle:
 
-cross-module cohesion
+- **Data storage** (Prisma + Database)  
+- **Business logic** (Financial Engines)  
+- **Data transformation** (Snapshot Engine)  
+- **Meaning extraction** (Insights Engine)  
+- **UI rendering & navigation** (Next.js + CMNF)  
 
-AI-ready data flows
+No layer bleeds into another.
 
-long-term extensibility
+## **2.3 Extensibility**
+Every module must be easy to extend without restructuring core architecture.
 
-It consists of the following major layers:
+Examples:
 
-UI Layer (Next.js + React)
+- Adding a new financial module  
+- Adding new insight rules  
+- Adding new entity types  
+- Multi-tenant scaling  
+- Multi-currency support  
 
-Navigation Layer (CMNF + NavigationContext)
+---
 
-API Layer (REST module APIs)
+# **3. System Architecture Layers**
 
-Canonicalisation Layer (GRDCS)
+Monitrax consists of **7 major layers**, each with strict boundaries.
 
-Intelligence Layer (Snapshot Engine, Insights Engine, LinkageHealth)
+---
 
-Domain Engines (Depreciation, Lending, Offset, etc.)
+## **3.1 Database Layer (Prisma ORM + PostgreSQL)**
 
-ORM Layer (Prisma)
+The database stores:
 
-Database Layer (PostgreSQL)
+- Core modules  
+- Domain entities  
+- Historical records  
+- Normalized financial data  
+- Relational links  
 
-Security Layer (Phase 10)
+Prisma acts as the ORM with:
 
-AI Systems Layer (Phase 11)
+- Strong typing  
+- Safe migrations  
+- Model-level validation  
 
-Financial Health Layer (Phase 12)
+### **Key Models**
 
-3. Conceptual Architecture Diagram
-                           ┌──────────────────────────────┐
-                           │         UI LAYER             │
-                           │   Next.js + React Client     │
-                           └─────────────┬────────────────┘
-                                         │
-                     CMNF + UI Sync Engine + Navigation Context
-                                         │
-              ┌──────────────────────────┴──────────────────────────┐
-              │                                                     │
- ┌────────────▼────────────┐                       ┌──────────────────────────┐
- │   Financial Modules     │                       │ Cross-Module Intelligence │
- │ (properties, loans...)  │                       │ Snapshot / Insights / LHS │
- └────────────┬────────────┘                       └───────────────┬──────────┘
-              │                                                    │
-        GRDCS Canonical Layer                             Data Engines Layer
-              │                                                    │
- ┌────────────▼────────────┐                       ┌──────────────▼──────────┐
- │       ORM Layer         │                       │    Domain Engines        │
- │       Prisma Client     │                       │ Depreciation, Lending... │
- └────────────┬────────────┘                       └──────────────┬──────────┘
-              │                                                    │
-           PostgreSQL                                   External Integrations
+- Property  
+- Loan  
+- Account  
+- Transaction  
+- Income  
+- Expense  
+- InvestmentAccount  
+- Holding  
 
-4. Architectural Layers
-4.1 UI Layer
+---
 
-The UI is implemented using:
+## **3.2 API Layer (Next.js Route Handlers)**
 
-Next.js App Router (v15+)
+Responsibility:
 
-React Server & Client Components
+- Act as the *contract boundary*  
+- Validate payloads using Zod  
+- Return canonical data shapes  
+- Never perform business logic  
+- Never compute financial values directly  
 
-Component composition model
+All business logic lives inside engines.
 
-TailwindCSS
+### **Types of API Routes**
 
-Radix UI primitives
+- `/api/properties` (CRUD)  
+- `/api/loans` (CRUD)  
+- `/api/portfolio/snapshot`  
+- `/api/linkage/health`  
+- `/api/insights`  
+- `/api/calculate/*`  
 
-Custom Monitrax UI components
+The API surface is intentionally thin.
 
-Responsibilities:
+---
 
-Dashboard pages
+## **3.3 Financial Engines Layer**
 
-Dialogs for every financial entity
+These are **pure functions**, deterministic and testable.
 
-Data visualisation
+### Includes:
 
-Insight feeds
+- Loan repayment engine  
+- Investment engine  
+- Depreciation engine  
+- Debt planner  
+- Cashflow projections  
+- Aggregation & summaries  
 
-Navigation patterns
+Engines must:
 
-Error and warning ribbons
+- Accept raw data  
+- Perform calculations  
+- Return structured outputs  
+- Never mutate global state  
+- Never fetch from external sources  
 
-4.2 Navigation Layer
+---
 
-Navigation is entirely handled through:
+## **3.4 GRDCS Layer (Global Relational Data Consistency System)**
 
-NavigationContext
+The central canonical graph that stabilizes the entire app.
 
-useCrossModuleNavigation hook
+### GRDCS Provides:
 
-navStack
+- Entity → Entity relationships  
+- Canonical IDs  
+- Canonical hrefs  
+- Relationship metadata  
+- Cross-module linking rules  
 
-breadcrumb generator
+### GRDCS Enables:
 
-context restoration engine
+- LinkedDataPanel  
+- CMNF (Cross-Module Navigation Framework)  
+- Breadcrumb generation  
+- Linkage Health  
+- Insights Engine relational metrics  
 
-deep relational navigation
+GRDCS is one of the most critical architectural layers.
 
-Rules:
+---
 
-No direct router.push from components
+## **3.5 Portfolio Snapshot Engine (Financial Truth Layer)**
 
-All entity navigation routed through CMNF
+This layer produces the system-wide financial snapshot:
 
-Breadcrumbs always reflect relational ancestry
+- Aggregated balances  
+- Cashflow summaries  
+- Total portfolio metrics  
+- Multi-module rolled-up values  
+- Derived calculations  
+- Insights Engine inputs  
 
-Back button manipulates navStack (NOT browser history)
+It powers:
 
-This ensures no broken context and persistent state across modules.
+- Dashboard summaries  
+- Financial health metrics  
+- Insights Engine severity  
+- Global Health Indicator  
 
-4.3 API Layer
+Snapshot must be:
 
-Each module exposes a REST namespace:
+- Fast  
+- Deterministic  
+- Rebuildable at any time  
 
-/api/properties
+---
 
-/api/loans
+## **3.6 Insights Engine v2**
 
-/api/accounts
+The meaning extraction layer.
 
-/api/expenses
+### Responsibilities:
 
-/api/income
+- Identify issues  
+- Detect anomalies  
+- Surface opportunities  
+- Highlight inconsistencies  
+- Provide recommended actions  
 
-/api/investments/accounts
+### Insight Types:
 
-/api/investments/holdings
+- Critical  
+- High  
+- Medium  
+- Low  
 
-/api/investments/transactions
+### Engine Inputs:
 
-System intelligence APIs:
+- GRDCS graph  
+- Linkage Health  
+- Portfolio snapshot metrics  
 
-/api/portfolio/snapshot
+### Engine Outputs:
 
-/api/insights
+- Insight cards  
+- Entity-level insights  
+- Dashboard feed  
+- Severity summaries  
 
-/api/linkage/health
+---
 
-/api/calculate/*
+## **3.7 Client Layer (Next.js App Router + React)**
 
-All API responses must return GRDCS-compliant canonical entity shapes.
+The presentation and interaction layer.
 
-4.4 Canonicalisation Layer (GRDCS)
+### Components:
 
-The Global Relational Data Consistency System standardises:
+- DashboardLayout  
+- Module tables  
+- Entity dialogs  
+- LinkedDataPanel  
+- Insight components  
+- Health summary widgets  
+- Global breadcrumb  
+- Navigation context  
+- Global health indicator  
 
-entity types
+### Core UX Concepts:
 
-entity core fields
+- Dialog-first architecture  
+- Cross-module navigation  
+- State restoration  
+- Suspense boundaries  
+- Real-time UI sync engine  
 
-linkedEntities[]
+The client layer must be:
 
-relation metadata
+- Fast  
+- Predictable  
+- Accessible  
+- Mobile-friendly  
+- Consistent  
 
-canonical IDs
+---
 
-canonical href patterns
+# **4. Navigation Architecture**
 
-cross-module referential integrity
+Monitrax uses a custom navigation framework:
 
-GRDCS is the single source of truth for:
+## **4.1 CMNF — Cross-Module Navigation Framework**
 
-UI dialogs
+CMNF handles:
 
-tables
+- Navigating between modules  
+- Opening entity dialogs  
+- Maintaining tab state  
+- Breadcrumb management  
+- Back-navigation with restoration  
+- Deep relational drill-down  
 
-insights
+CMNF operates entirely client-side.
 
-linkage-health
+---
 
-navigation
+## **4.2 Navigation Context**
 
-snapshot engine inputs
+Stores:
 
-Every engine must consume GRDCS-formatted entities only.
+- navStack  
+- scroll positions  
+- active tabs  
+- last opened entity  
 
-4.5 Intelligence Layer
+Exposes methods:
 
-Contains the data-driven logic that powers Monitrax’s “brain”.
+- push()  
+- pop()  
+- reset()  
+- getBreadcrumb()  
 
-Includes:
+---
 
-4.5.1 Snapshot Engine v2
+# **5. Real-Time Sync Architecture**
 
-Produces the full financial profile:
+## **5.1 UI Sync Engine**
 
-Net worth
+Polls:
 
-Cashflow position
+- `/api/portfolio/snapshot`  
+- `/api/linkage/health`  
+- `/api/insights`  
 
-Loan exposure
+On diff detection:
 
-Asset depreciation
+- Refresh UI components  
+- Update health indicator  
+- Update insights feed  
+- Trigger warning ribbons  
 
-Investment performance
+---
 
-Offsets, accounts, valuations
+# **6. Security Architecture**
 
-Used by dashboard KPIs & forecasting.
+Security will be finalized in Phase 10.
 
-4.5.2 Insights Engine v2
+High-level goals:
 
-Computes:
+- External identity provider (Clerk / Auth0 / Supabase Auth)  
+- MFA and passwordless options  
+- Session hardening  
+- RBAC  
+- Full audit logging  
+- Rate limiting  
+- API shielding  
 
-relational issues
+---
 
-financial warnings
+# **7. Intelligence Architecture (Future)**
 
-optimisation suggestions
+Coming in Phase 11:
 
-entity-level insights
-
-module-level insights
-
-global dashboard suggestions
-
-Outputs grouped insight feeds.
-
-4.5.3 LinkageHealth Service
-
-Evaluates relational quality:
-
-missing links
-
-orphans
-
-incorrect relationships
-
-cross-module mismatches
-
-completeness scoring
-
-Outputs a global healthScore (0–100).
-
-4.6 UI Sync Engine
-
-Runs every 15 seconds.
-
-Pulls:
-
-snapshot
-
-insights
-
-linkageHealth
-
-Pushes updates to:
-
-global header
-
-insight feeds
-
-entity dialog insights
-
-dashboard metrics
-
-ribbon warnings
-
-module summary blocks
-
-Core requirement: no page reload needed.
-
-4.7 Domain Engines
-
-These are pure computation engines:
-
-Depreciation Engine
-
-Lending Engine
-
-Offset Engine
-
-Cashflow Engine
-
-Investment Engine
-
-CGT Engine
-
-Tax Engine
-
-Constraints:
-
-Cannot fetch data directly
-
-Must accept canonical GRDCS entities
-
-Must be fully deterministic
-
-4.8 ORM Layer
-
-Prisma schema defines all:
-
-models
-
-relations
-
-enums
-
-cascading rules
-
-unique constraints
-
-Functions purely as:
-
-persistence
-
-querying
-
-relation resolution
-
-No business logic allowed here.
-
-4.9 Database Layer
-
-Primary data store:
-
-PostgreSQL
-
-Supports:
-
-foreign keys
-
-relational integrity
-
-composite indexes
-
-efficient joins
-
-Future support planned:
-
-tenant segregation
-
-audit tables
-
-event sourcing
-
-encryption policies
-
-4.10 Security & Authentication Layer (Phase 10)
-
-Modular and provider-agnostic.
-
-Supports:
-
-Clerk / Supabase / Auth0
-
-MFA
-
-Passwordless
-
-Session security
-
-RBAC
-
-Per-entity access policy
-
-User security settings
-
-Audit logs
-
-This layer will enforce all cross-application access control rules.
-
-4.11 AI Strategy Engine (Phase 11)
-
-Provides:
-
-buy/hold/sell intelligence
-
-multi-year projections
-
-risk scoring
-
-financial optimisation
-
-automated wealth plans
-
-scenario modelling
+- AI Strategy Engine  
+- Recommendation algorithms  
+- Multi-year projections  
+- Advisor-grade reasoning  
+- Explainable AI outputs  
 
 Built on top of:
 
-Snapshot Engine v2
+- GRDCS  
+- Snapshot Engine  
+- Insights Engine  
 
-GRDCS canonical formats
+---
 
-4.12 Financial Health Engine (Phase 12)
+# **8. System-Level Diagram (Conceptual)**
 
-Computes a unified “Financial Health Score” based on:
+```
+┌──────────────────────────────────────────────┐
+│                 CLIENT LAYER                 │
+│   Next.js + React + CMNF + Real-Time UI Sync │
+└──────────────────────────────────────────────┘
+                       ▲
+                       │
+┌──────────────────────────────────────────────┐
+│            INSIGHTS ENGINE (v2)              │
+└──────────────────────────────────────────────┘
+                       ▲
+                       │
+┌──────────────────────────────────────────────┐
+│         PORTFOLIO SNAPSHOT ENGINE            │
+└──────────────────────────────────────────────┘
+                       ▲
+                       │
+┌──────────────────────────────────────────────┐
+│ GRDCS — Global Relational Data Consistency   │
+└──────────────────────────────────────────────┘
+                       ▲
+                       │
+┌──────────────────────────────────────────────┐
+│          FINANCIAL ENGINES (Pure Logic)      │
+└──────────────────────────────────────────────┘
+                       ▲
+                       │
+┌──────────────────────────────────────────────┐
+│             API ROUTE HANDLERS               │
+└──────────────────────────────────────────────┘
+                       ▲
+                       │
+┌──────────────────────────────────────────────┐
+│       PRISMA ORM → DATABASE (PostgreSQL)     │
+└──────────────────────────────────────────────┘
+```
 
-debt risk
+---
 
-investment health
 
-diversification
-
-liquidity
-
-stability metrics
-
-spending efficiency
-
-savings rate
-
-asset performance
-
-Outputs:
-
-a single global score
-
-module-specific sub-scores
-
-AI recommendations for improvement
-
-5. Data Lifecycle
-
-User interacts
-
-Module API fetches data
-
-GRDCS canonicalises
-
-Snapshot Engine recalculates state
-
-Insights Engine + LinkageHealth produce intelligence
-
-UI Sync Engine propagates changes
-
-Navigation layer maintains relational context
-
-This flow is consistent and must remain unchanged across all future phases.
-
-6. Deployment Architecture
-
-Current:
-
-Render.com
-
-Next.js serverless
-
-Postgres managed DB
-
-Prisma generate at build-time
-
-Future:
-
-Vercel
-
-Multi-region
-
-Per-tenant DB shards
-
-Enhanced audit logs
-
-Background workers
-
-7. Extensibility Model
-
-The architecture supports future capabilities:
-
-multi-tenant mode
-
-team-based access
-
-AI-driven workflows
-
-external bank feeds
-
-investment brokerage APIs
-
-rule engines
-
-tax modelling
-
-portfolio optimisation
-
-Monitrax is designed as a long-term financial operating system.
