@@ -353,3 +353,111 @@ Insights Engine V2 directly powers:
 ---
 
 # ✔️ Ready for `/docs/blueprint/PHASE_04_INSIGHTS_ENGINE_V2.md`
+
+---
+
+# **IMPLEMENTATION STATUS**
+
+**Last Updated:** 2025-11-24
+**Overall Completion:** 75%
+
+---
+
+## **Status Summary**
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Insights Engine Core | ✅ COMPLETE | `/lib/intelligence/insightsEngine.ts` |
+| Relational Integrity Pipeline | ✅ COMPLETE | Detects missing links |
+| Completeness Pipeline | ✅ COMPLETE | Detects missing fields |
+| Anomaly Pipeline | ✅ COMPLETE | Detects range violations |
+| Performance Pipeline | ✅ COMPLETE | Underperforming assets |
+| Forecast Pipeline | ⚠️ PARTIAL | Basic projections only |
+| Health Fusion Pipeline | ✅ COMPLETE | Combined health scoring |
+| Severity Model | ⚠️ PARTIAL | No computed score formula |
+| Insight Categories | ⚠️ PARTIAL | 9 custom vs 6 blueprint categories |
+| Entity Attachment | ❌ MISSING | Insights not attached to entities |
+| Snapshot Integration | ✅ COMPLETE | `/api/portfolio/snapshot` |
+| UI Components | ✅ COMPLETE | InsightCard, InsightList, etc. |
+
+---
+
+## **Existing Implementation Files**
+
+### Engine
+```
+/lib/intelligence/insightsEngine.ts      # Main insights engine
+/lib/intelligence/linkageHealthService.ts # Linkage health calculations
+/lib/intelligence/portfolioEngine.ts     # Portfolio metrics
+```
+
+### UI Components
+```
+/components/insights/InsightCard.tsx          # Individual insight display
+/components/insights/InsightList.tsx          # Insights list
+/components/insights/InsightSeverityMeter.tsx # Severity visualization
+/components/insights/InsightBadges.tsx        # Severity/category badges
+```
+
+---
+
+## **Gap: Category Alignment (MEDIUM)**
+
+**Blueprint Requirement:** Section 3 - Insight Categories & Taxonomy
+
+**Blueprint Categories (6):**
+- RELATIONAL
+- COMPLETENESS
+- ANOMALY
+- PERFORMANCE
+- FORECAST
+- HEALTH
+
+**Current Implementation Categories (9):**
+Custom categories used in codebase
+
+**Action:** Align insight categories with blueprint specification.
+
+---
+
+## **Gap: Severity Scoring Formula (MEDIUM)**
+
+**Blueprint Requirement:** Section 4 - Insight Severity Model
+
+**Required Formula:**
+```typescript
+severityScore = impactWeight * confidenceWeight * persistenceFactor
+```
+
+**Current State:** Severity is assigned directly (critical, high, medium, low) without computed score.
+
+---
+
+## **Gap: Entity-Level Insight Attachment (HIGH)**
+
+**Blueprint Requirement:** Section 6 - Entity-Level Insight Attachment
+
+**Required:**
+```typescript
+entity.insights = InsightItem[]
+entity.health = EntityHealthSummary
+```
+
+**Current State:** Insights are generated but not attached directly to entities in snapshot response.
+
+---
+
+## **Acceptance Criteria Checklist**
+
+| Criterion | Status |
+|-----------|--------|
+| Relational, completeness, anomaly pipelines | ✅ |
+| Performance, forecast pipelines | ⚠️ Partial |
+| Health Fusion Pipeline | ✅ |
+| Snapshot endpoint returns insights | ✅ |
+| Entity insights correctly attached | ❌ |
+| UI components read insights | ✅ |
+| Performance thresholds met | ✅ |
+| GRDCS integration | ✅ |
+
+---

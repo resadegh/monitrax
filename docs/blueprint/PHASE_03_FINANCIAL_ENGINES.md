@@ -323,7 +323,138 @@ Phase 03 is complete when:
 ### Integration
 ✔ Snapshot Engine consumes engine outputs  
 ✔ All engines deterministic & repeatable  
-✔ Every module can be recalculated independently  
+✔ Every module can be recalculated independently
+
+---
+
+# **IMPLEMENTATION STATUS**
+
+**Last Updated:** 2025-11-24
+**Overall Completion:** 60%
+
+---
+
+## **Status Summary**
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Loan Amortisation Engine | ✅ COMPLETE | `/lib/planning/debtPlanner.ts` |
+| Cashflow Engine | ✅ COMPLETE | Part of portfolio engine |
+| Income/Expense Engine | ✅ COMPLETE | `/lib/intelligence/portfolioEngine.ts` |
+| Depreciation Engine | ✅ COMPLETE | `/lib/depreciation/index.ts` |
+| Investment Engine | ✅ COMPLETE | `/lib/investments/index.ts` |
+| Property ROI Engine | ⚠️ PARTIAL | Basic ROI in portfolio engine |
+| Frequency Harmonisation | ✅ COMPLETE | `/lib/utils/frequencies.ts` |
+| Time-Series Generator | ❌ MISSING | `/lib/utils/timeSeries.ts` needed |
+| `/api/calculate/debt-plan` | ✅ COMPLETE | Operational |
+| `/api/calculate/tax` | ✅ COMPLETE | Operational |
+| `/api/calculate/loan` | ❌ MISSING | API endpoint needed |
+| `/api/calculate/cashflow` | ❌ MISSING | API endpoint needed |
+| `/api/calculate/property-roi` | ❌ MISSING | API endpoint needed |
+| `/api/calculate/investment` | ❌ MISSING | API endpoint needed |
+| `/api/calculate/depreciation` | ❌ MISSING | API endpoint needed |
+| Engine Diagnostics | ❌ MISSING | No diagnostics in responses |
+
+---
+
+## **Existing Implementation Files**
+
+### Core Engines
+```
+/lib/planning/debtPlanner.ts         # Loan calculations, amortisation
+/lib/depreciation/index.ts           # Depreciation (SL, DV)
+/lib/investments/index.ts            # Investment calculations
+/lib/intelligence/portfolioEngine.ts # Portfolio metrics, cashflow
+/lib/utils/frequencies.ts            # Frequency conversion utilities
+/lib/tax/auTax.ts                    # Australian tax calculations
+/lib/cgt/index.ts                    # Capital gains tax
+```
+
+### Existing API Endpoints
+```
+/app/api/calculate/debt-plan/route.ts  # ✅ Operational
+/app/api/calculate/tax/route.ts        # ✅ Operational
+```
+
+---
+
+## **Gap: Missing Calculate API Endpoints (CRITICAL)**
+
+**Blueprint Requirement:** Section 6 - Engine API Endpoints
+
+**Required Endpoints:**
+
+```typescript
+// /app/api/calculate/loan/route.ts
+export async function POST(request: Request) {
+  const { principal, rate, term, type, offset } = await request.json();
+
+  // Validate with Zod
+  // Call loan engine
+  // Return with diagnostics
+
+  return Response.json({
+    input: { principal, rate, term, type, offset },
+    output: {
+      monthlyRepayment: number,
+      totalInterest: number,
+      amortisationSchedule: [...],
+    },
+    diagnostics: {
+      warnings: [],
+      assumptions: [],
+    },
+  });
+}
+```
+
+**Files to create:**
+- `/app/api/calculate/loan/route.ts`
+- `/app/api/calculate/cashflow/route.ts`
+- `/app/api/calculate/property-roi/route.ts`
+- `/app/api/calculate/investment/route.ts`
+- `/app/api/calculate/depreciation/route.ts`
+
+---
+
+## **Gap: Time-Series Generator (HIGH)**
+
+**Blueprint Requirement:** Section 5 - Time-Series Engine
+
+**Required Implementation:** `/lib/utils/timeSeries.ts`
+
+```typescript
+export function generateSeries(
+  start: Date,
+  end: Date,
+  step: 'day' | 'week' | 'month' | 'year'
+): Date[];
+
+export function interpolate(
+  valueA: number,
+  valueB: number,
+  t: number
+): number;
+
+export function mergeSchedules(
+  ...schedules: TimeSeriesEvent[][]
+): TimeSeriesEvent[];
+```
+
+---
+
+## **Acceptance Criteria Checklist**
+
+| Criterion | Status |
+|-----------|--------|
+| Loan amortisation (IO, PI, mixed) | ✅ |
+| Cashflow normalisation | ✅ |
+| Depreciation (SL, DV) | ✅ |
+| Investment engine | ✅ |
+| Property ROI engine | ⚠️ Partial |
+| All `/api/calculate/*` implemented | ❌ 2/7 |
+| Zod validation schemas | ❌ |
+| Snapshot Engine integration | ✅ |
 
 ---
 
