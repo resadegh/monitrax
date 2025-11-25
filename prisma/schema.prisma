@@ -175,6 +175,8 @@ model User {
   emailVerifiedAt   DateTime?
   mfaEnabled        Boolean   @default(false)
   mfaEnforcedByOrg  Boolean   @default(false)
+  accountLocked     Boolean   @default(false)
+  accountLockedUntil DateTime?
   lastLoginAt       DateTime?
   lastLoginIp       String?
   createdAt         DateTime  @default(now())
@@ -198,6 +200,8 @@ model User {
   passkeyCredentials      PasskeyCredential[]
   magicLinks              MagicLink[]
   oauthAccounts           OAuthAccount[]
+  loginAttempts           LoginAttempt[]
+  emailMFACodes           EmailMFACode[]
 
   @@map("users")
 }
@@ -762,4 +766,48 @@ model OAuthAccount {
   @@unique([provider, providerUserId])
   @@index([userId])
   @@map("oauth_accounts")
+}
+// =============================================================================
+// PHASE 10: LOGIN ATTEMPTS (for account lockout)
+// =============================================================================
+
+model LoginAttempt {
+  id          String    @id @default(uuid())
+  userId      String
+  email       String
+  success     Boolean
+  ipAddress   String?
+  userAgent   String?
+  attemptedAt DateTime  @default(now())
+
+  // Relationships
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([email])
+  @@index([attemptedAt])
+  @@map("login_attempts")
+}
+
+// =============================================================================
+// PHASE 10: EMAIL MFA CODES
+// =============================================================================
+
+model EmailMFACode {
+  id          String    @id @default(uuid())
+  userId      String
+  code        String    // SHA-256 hashed
+  expiresAt   DateTime
+  verified    Boolean   @default(false)
+  verifiedAt  DateTime?
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  // Relationships
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([code])
+  @@index([expiresAt])
+  @@map("email_mfa_codes")
 }
