@@ -391,7 +391,7 @@ export async function generateAuthenticationOptions(
     // Look up user by email
     const user = await prisma.user.findUnique({
       where: { email: userEmail },
-      include: { passkeys: { select: { credentialId: true } } },
+      include: { passkeyCredentials: { select: { credentialId: true } } },
     });
 
     if (user && user.passkeyCredentials.length > 0) {
