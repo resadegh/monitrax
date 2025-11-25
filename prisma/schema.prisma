@@ -83,6 +83,10 @@ enum UserRole {
   ADMIN       // Manage users and data, no billing/org deletion
   CONTRIBUTOR // Full access to financial entities, no user management
   VIEWER      // Read-only access
+
+  // Legacy roles - kept for backward compatibility during migration
+  PARTNER     // @deprecated - use CONTRIBUTOR instead
+  ACCOUNTANT  // @deprecated - use VIEWER instead
 }
 
 enum DebtStrategy {

@@ -6,7 +6,20 @@
 
 // Define UserRole locally to avoid Prisma client dependency
 // Must match the enum in prisma/schema.prisma
-export type UserRole = 'OWNER' | 'ADMIN' | 'CONTRIBUTOR' | 'VIEWER';
+export type UserRole = 'OWNER' | 'ADMIN' | 'CONTRIBUTOR' | 'VIEWER' | 'PARTNER' | 'ACCOUNTANT';
+
+// Legacy role mapping for backward compatibility
+const LEGACY_ROLE_MAP: Record<string, UserRole> = {
+  PARTNER: 'CONTRIBUTOR',
+  ACCOUNTANT: 'VIEWER',
+};
+
+/**
+ * Normalize legacy roles to new roles
+ */
+function normalizeRole(role: UserRole): UserRole {
+  return LEGACY_ROLE_MAP[role] || role;
+}
 
 // ============================================
 // PERMISSION DEFINITIONS
@@ -108,8 +121,9 @@ export type PermissionRole = (typeof PERMISSIONS)[Permission][number];
  * Check if a user role has a specific permission
  */
 export function hasPermission(userRole: UserRole, permission: Permission): boolean {
+  const normalizedRole = normalizeRole(userRole);
   const allowedRoles = PERMISSIONS[permission];
-  return (allowedRoles as readonly string[]).includes(userRole);
+  return (allowedRoles as readonly string[]).includes(normalizedRole);
 }
 
 /**
@@ -130,8 +144,9 @@ export function hasAnyPermission(userRole: UserRole, permissions: Permission[]):
  * Get all permissions for a specific role
  */
 export function getPermissionsForRole(userRole: UserRole): Permission[] {
+  const normalizedRole = normalizeRole(userRole);
   return (Object.keys(PERMISSIONS) as Permission[]).filter((permission) =>
-    (PERMISSIONS[permission] as readonly string[]).includes(userRole)
+    (PERMISSIONS[permission] as readonly string[]).includes(normalizedRole)
   );
 }
 
