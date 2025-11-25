@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthContext, type AuthContext } from '@/lib/auth/context';
 import { hasPermission, type Permission } from '@/lib/auth/permissions';
 import { checkRateLimit } from '@/lib/security/rateLimit';
-import { logSecurity, logCRUD, type AuditLogEntry } from '@/lib/security/auditLog';
+import { logSecurity, createAuditLog, type AuditLogEntry } from '@/lib/security/auditLog';
 import { isMFARequired } from '@/lib/security/mfa';
 import { validateTrackedSession, checkSessionSecurity } from '@/lib/session';
 import { errors, formatErrorResponse } from '@/lib/utils/errors';
@@ -297,7 +297,7 @@ export function withSecurity<T = unknown>(
       if (options.logSuccess && response.ok) {
         const entityId = params && typeof params === 'object' ? (params as { id?: string }).id : undefined;
 
-        await logCRUD({
+        await createAuditLog({
           userId: auth.userId,
           organizationId: auth.tenantId,
           action: options.auditAction || 'READ',
@@ -313,8 +313,9 @@ export function withSecurity<T = unknown>(
     } catch (error) {
       // 9. Failure Audit Logging
       if (options.logFailure) {
-        await logSecurity({
+        await createAuditLog({
           action: options.auditAction || 'UNAUTHORIZED_ACCESS',
+          status: 'FAILURE',
           ipAddress,
           userAgent,
           metadata: {
