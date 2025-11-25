@@ -27,6 +27,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user has a password (not passwordless account)
+    if (!user.password) {
+      return NextResponse.json(
+        { error: 'This account uses passwordless authentication. Please use magic link or OAuth to sign in.' },
+        { status: 401 }
+      );
+    }
+
     // Verify password
     const isValidPassword = await verifyPassword(password, user.password);
 
