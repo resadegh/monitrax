@@ -8,9 +8,12 @@ import { getAuthContext } from '@/lib/auth/context';
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Await params in Next.js 15
+    const { id } = await params;
+
     // Get authenticated user
     const auth = await getAuthContext(request);
 
@@ -21,7 +24,7 @@ export async function DELETE(
       );
     }
 
-    const passkeyId = params.id;
+    const passkeyId = id;
 
     // Get client info
     const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0] ||
@@ -57,9 +60,12 @@ export async function DELETE(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Await params in Next.js 15
+    const { id } = await params;
+
     // Get authenticated user
     const auth = await getAuthContext(request);
 
@@ -70,7 +76,7 @@ export async function PATCH(
       );
     }
 
-    const passkeyId = params.id;
+    const passkeyId = id;
     const body = await request.json();
     const { deviceName } = body;
 

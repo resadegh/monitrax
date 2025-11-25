@@ -9,9 +9,12 @@ import { hasPermission } from '@/lib/auth/permissions';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    // Await params in Next.js 15
+    const { userId } = await params;
+
     // Verify admin authentication
     const auth = await getAuthContext(request);
 
@@ -29,7 +32,7 @@ export async function GET(
       );
     }
 
-    const lockoutInfo = await getLockoutInfo(params.userId);
+    const lockoutInfo = await getLockoutInfo(userId);
 
     if (!lockoutInfo) {
       return NextResponse.json(
