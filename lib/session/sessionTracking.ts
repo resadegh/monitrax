@@ -7,7 +7,7 @@ import { prisma } from '@/lib/db';
 import { generateToken, type JWTPayload } from '@/lib/auth';
 import * as crypto from 'crypto';
 import { log } from '@/lib/utils/logger';
-import { logAuth, logSecurity } from '@/lib/security/auditLog';
+import { logAuth, logSecurity, logAdmin } from '@/lib/security/auditLog';
 
 // ============================================
 // TYPES
