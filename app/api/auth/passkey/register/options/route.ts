@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Generate registration options
     const options = await generateRegistrationOptions({
       userId: auth.userId,
-      userName: auth.user?.name || auth.email,
+      userName: auth.name || auth.email,
       userEmail: auth.email,
       requireResidentKey,
       authenticatorAttachment,
