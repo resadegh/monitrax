@@ -388,7 +388,7 @@ export function isProviderConfigured(provider: OAuthProvider): boolean {
  * Get list of configured providers
  */
 export function getConfiguredProviders(): OAuthProvider[] {
-  return (['google', 'apple', 'microsoft'] as OAuthProvider[]).filter(isProviderConfigured);
+  return (['google', 'apple', 'microsoft', 'facebook'] as OAuthProvider[]).filter(isProviderConfigured);
 }
 
 /**
