@@ -468,7 +468,7 @@ export async function getLockedAccounts(): Promise<LockoutInfo[]> {
     });
 
     const lockoutInfos = await Promise.all(
-      lockedUsers.map(async (user: { id: string; email: string; name: string; accountLocked: boolean; accountLockedUntil: Date | null }) => {
+      lockedUsers.map(async (user: { id: string; email: string; accountLockedUntil: Date | null }) => {
         const windowStart = new Date(Date.now() - ATTEMPT_WINDOW_MINUTES * 60 * 1000);
 
         const [failedAttempts, lastAttempt] = await Promise.all([
