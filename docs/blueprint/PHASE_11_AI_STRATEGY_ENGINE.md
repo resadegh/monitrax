@@ -554,7 +554,7 @@ lib/strategy/
 ## STAGE 2: LAYER 1 - DATA COLLECTION
 **Effort:** 8-10 hours
 **Type:** Backend - Data Layer
-**Status:** NOT STARTED
+**Status:** ✅ COMPLETE
 
 ### Deliverables
 
@@ -1392,12 +1392,12 @@ Phase 11 is complete when:
 
 ## 13.5 PROGRESS TRACKING
 
-**Status:** 11% Complete (Stage 1/9)
+**Status:** 22% Complete (Stage 2/9)
 
 | Stage | Status | Completion |
 |-------|--------|------------|
 | 1. Database Schema | ✅ COMPLETE | 100% |
-| 2. Data Collection | NOT STARTED | 0% |
+| 2. Data Collection | ✅ COMPLETE | 100% |
 | 3. Analysis Engines | NOT STARTED | 0% |
 | 4. Strategy Synthesis | NOT STARTED | 0% |
 | 5. Forecasting | NOT STARTED | 0% |
@@ -1407,6 +1407,36 @@ Phase 11 is complete when:
 | 9. Documentation | NOT STARTED | 0% |
 
 **Last Updated:** 2025-11-25
+
+### Stage 2 Implementation Details (COMPLETE)
+
+**Commit:** `af7a2d7` - feat(phase-11): implement Stage 2 - Data Collection Layer
+
+**Files Implemented:**
+- ✅ `lib/strategy/core/dataCollector.ts` (520 lines)
+  - `collectStrategyData()` - Main data collection from 5 sources
+  - `validateDataCompleteness()` - Data quality scoring (0-100)
+  - `isLimitedMode()` - Limited mode detection (<60% quality)
+  - `getQualityStatus()` - Human-readable quality labels
+  - Individual fetchers for each data source
+  - Completeness calculators with weighted scoring
+  - Missing data detection and recommendations
+
+- ✅ `lib/strategy/index.ts` - Updated to export data collection functions
+
+**Technical Implementation:**
+- Parallel data fetching using `Promise.all()` for performance
+- Dynamic imports to avoid circular dependencies
+- Weighted quality scoring: Snapshot (35%), Insights (20%), Health/GRDCS/Prefs (15% each)
+- Graceful error handling with fallback to null/empty arrays
+- Type-safe integration with existing Prisma models
+
+**Validation Results:**
+- ✅ Data collector fetches from all 5 sources
+- ✅ Data quality scoring works correctly
+- ✅ Limited mode detection functional
+- ✅ Handles missing data gracefully
+- ✅ All TypeScript types defined
 
 ---
 
