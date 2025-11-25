@@ -299,7 +299,7 @@ export async function verifyTOTPMFA(
   if (code.includes('-') && verifyBackupCode(code, mfaMethod.backupCodes)) {
     // Remove used backup code
     const hashedCode = hashBackupCode(code);
-    const updatedBackupCodes = mfaMethod.backupCodes.filter((bc) => bc !== hashedCode);
+    const updatedBackupCodes = mfaMethod.backupCodes.filter((bc: string) => bc !== hashedCode);
 
     await prisma.mFAMethod.update({
       where: { id: mfaMethod.id },

@@ -395,7 +395,7 @@ export async function getAuditLogStats(params: {
   ]);
 
   const statusMap = statusCounts.reduce(
-    (acc, item) => {
+    (acc: Record<string, number>, item: { status: string; _count: { status: number } }) => {
       acc[item.status] = item._count.status;
       return acc;
     },
@@ -403,7 +403,7 @@ export async function getAuditLogStats(params: {
   );
 
   const actionBreakdown = actionCounts.reduce(
-    (acc, item) => {
+    (acc: Record<string, number>, item: { action: string; _count: { action: number } }) => {
       acc[item.action] = item._count.action;
       return acc;
     },
