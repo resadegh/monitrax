@@ -319,7 +319,6 @@ export async function verifyRegistration(params: {
         publicKey,
         counter: 0,
         deviceName: deviceName || 'Unknown Device',
-        backedUp: false,
       },
     });
 
