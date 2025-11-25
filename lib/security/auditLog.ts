@@ -109,7 +109,7 @@ export async function logBlocked(entry: Omit<AuditLogEntry, 'status'>): Promise<
  */
 export async function logAuth(params: {
   userId?: string;
-  action: 'LOGIN' | 'LOGOUT' | 'MFA_CHALLENGE' | 'MFA_SUCCESS' | 'MFA_FAILURE' | 'PASSWORD_CHANGE' | 'PASSWORD_RESET';
+  action: 'LOGIN' | 'LOGOUT' | 'MFA_CHALLENGE' | 'MFA_SUCCESS' | 'MFA_FAILURE' | 'PASSWORD_CHANGE' | 'PASSWORD_RESET' | 'PASSKEY_REGISTER' | 'PASSKEY_UPDATE' | 'PASSKEY_DELETE';
   status?: AuditStatus;
   ipAddress?: string;
   userAgent?: string;
@@ -185,7 +185,7 @@ export async function logExport(params: {
 export async function logAdmin(params: {
   userId: string;
   organizationId?: string;
-  action: 'ROLE_CHANGE' | 'ORG_MEMBER_ADD' | 'ORG_MEMBER_REMOVE' | 'ORG_SETTINGS_UPDATE' | 'SESSION_REVOKE';
+  action: 'ROLE_CHANGE' | 'ORG_MEMBER_ADD' | 'ORG_MEMBER_REMOVE' | 'ORG_SETTINGS_UPDATE' | 'SESSION_REVOKE' | 'ACCOUNT_LOCK' | 'ACCOUNT_UNLOCK';
   targetUserId?: string;
   status?: AuditStatus;
   ipAddress?: string;
@@ -211,7 +211,7 @@ export async function logAdmin(params: {
 export async function logSecurity(params: {
   userId?: string;
   organizationId?: string;
-  action: 'RATE_LIMIT_HIT' | 'UNAUTHORIZED_ACCESS' | 'FORBIDDEN_ACCESS';
+  action: 'RATE_LIMIT_HIT' | 'UNAUTHORIZED_ACCESS' | 'FORBIDDEN_ACCESS' | 'ACCOUNT_LOCKED' | 'ACCOUNT_UNLOCKED';
   entityType?: string;
   entityId?: string;
   ipAddress?: string;
