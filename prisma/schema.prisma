@@ -79,9 +79,10 @@ enum TransactionDirection {
 }
 
 enum UserRole {
-  OWNER
-  PARTNER
-  ACCOUNTANT
+  OWNER       // Full permissions, billing, member management
+  ADMIN       // Manage users and data, no billing/org deletion
+  CONTRIBUTOR // Full access to financial entities, no user management
+  VIEWER      // Read-only access
 }
 
 enum DebtStrategy {
@@ -108,17 +109,72 @@ enum ExpenseSourceType {
 }
 
 // =============================================================================
+// PHASE 10: AUTH & SECURITY ENUMS
+// =============================================================================
+
+enum MFAType {
+  TOTP        // Google Authenticator, Authy
+  SMS         // SMS fallback
+  WEBAUTHN    // FIDO2, Passkeys, hardware keys
+}
+
+enum AuditAction {
+  // Auth
+  LOGIN
+  LOGOUT
+  MFA_CHALLENGE
+  MFA_SUCCESS
+  MFA_FAILURE
+  PASSWORD_CHANGE
+  PASSWORD_RESET
+
+  // CRUD operations
+  CREATE
+  READ
+  UPDATE
+  DELETE
+
+  // Special operations
+  EXPORT
+  BULK_DELETE
+
+  // Admin operations
+  ROLE_CHANGE
+  ORG_MEMBER_ADD
+  ORG_MEMBER_REMOVE
+  ORG_SETTINGS_UPDATE
+  SESSION_REVOKE
+
+  // Security
+  RATE_LIMIT_HIT
+  UNAUTHORIZED_ACCESS
+  FORBIDDEN_ACCESS
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+  BLOCKED
+}
+
+// =============================================================================
 // USER
 // =============================================================================
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      UserRole @default(OWNER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String?   // Nullable for passwordless accounts
+  name              String
+  role              UserRole  @default(OWNER)
+  emailVerified     Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+  mfaEnabled        Boolean   @default(false)
+  mfaEnforcedByOrg  Boolean   @default(false)
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   // Relationships
   properties          Property[]
@@ -129,6 +185,13 @@ model User {
   transactions        Transaction[]
   debtPlans           DebtPlan[]
   investmentAccounts  InvestmentAccount[]
+
+  // Phase 10: Auth & Security
+  organizationMemberships OrganizationMember[]
+  mfaMethods              MFAMethod[]
+  sessions                UserSession[]
+  auditLogs               AuditLog[]
+  passkeyCredentials      PasskeyCredential[]
 
   @@map("users")
 }
@@ -503,4 +566,143 @@ model DepreciationSchedule {
 
   @@index([propertyId])
   @@map("depreciation_schedules")
+}
+
+// =============================================================================
+// PHASE 10: ORGANIZATION & MULTI-TENANT
+// =============================================================================
+
+model Organization {
+  id                    String               @id @default(uuid())
+  name                  String
+  slug                  String               @unique
+  description           String?
+  mfaEnforced           Boolean              @default(false)
+  sessionDurationHours  Int                  @default(168) // 7 days
+  allowedDomains        String[]             // Email domain restrictions
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  // Relationships
+  members               OrganizationMember[]
+  auditLogs             AuditLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String        @id @default(uuid())
+  organizationId String
+  userId         String
+  role           UserRole      @default(VIEWER)
+  invitedBy      String?       // User ID who sent the invitation
+  invitedAt      DateTime      @default(now())
+  joinedAt       DateTime?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relationships
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("organization_members")
+}
+
+// =============================================================================
+// PHASE 10: MFA & AUTHENTICATION
+// =============================================================================
+
+model MFAMethod {
+  id              String    @id @default(uuid())
+  userId          String
+  type            MFAType
+  isEnabled       Boolean   @default(true)
+  isPrimary       Boolean   @default(false)
+  secret          String?   // For TOTP: encrypted secret
+  phoneNumber     String?   // For SMS: phone number
+  backupCodes     String[]  // Encrypted backup codes
+  lastUsedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relationships
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("mfa_methods")
+}
+
+model PasskeyCredential {
+  id                String    @id @default(uuid())
+  userId            String
+  credentialId      String    @unique // WebAuthn credential ID
+  publicKey         String    // Public key for verification
+  counter           Int       @default(0)
+  deviceName        String?
+  transports        String[]  // e.g., ["usb", "nfc", "ble"]
+  lastUsedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("passkey_credentials")
+}
+
+model UserSession {
+  id              String    @id @default(uuid())
+  userId          String
+  token           String    @unique
+  deviceName      String?
+  deviceFingerprint String?
+  ipAddress       String?
+  userAgent       String?
+  isActive        Boolean   @default(true)
+  expiresAt       DateTime
+  lastActivityAt  DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relationships
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+// =============================================================================
+// PHASE 10: AUDIT LOGGING
+// =============================================================================
+
+model AuditLog {
+  id              String         @id @default(uuid())
+  userId          String?
+  organizationId  String?
+  action          AuditAction
+  status          AuditStatus    @default(SUCCESS)
+  entityType      String?        // "Property", "Loan", "User", etc.
+  entityId        String?        // ID of the affected entity
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?          // Additional context (old/new values, error details)
+  createdAt       DateTime       @default(now())
+
+  // Relationships
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
 }
