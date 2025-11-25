@@ -104,6 +104,10 @@ export const PERMISSIONS = {
   'session.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
   'session.revoke': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'], // Users can revoke their own sessions
   'session.revokeAll': ['OWNER', 'ADMIN'], // Admins can revoke other users' sessions
+
+  // Account Lockout Management
+  'lockout.view': ['OWNER', 'ADMIN'], // View locked accounts
+  'lockout.manage': ['OWNER', 'ADMIN'], // Lock/unlock accounts
 } as const;
 
 // ============================================
@@ -175,9 +179,10 @@ export type EntityType =
   | 'org'
   | 'audit'
   | 'security'
-  | 'session';
+  | 'session'
+  | 'lockout';
 
-export type ActionType = 'read' | 'write' | 'delete' | 'export' | 'update' | 'invite' | 'manage' | 'enforce' | 'revoke' | 'revokeAll' | 'billing';
+export type ActionType = 'read' | 'write' | 'delete' | 'export' | 'update' | 'invite' | 'manage' | 'enforce' | 'revoke' | 'revokeAll' | 'billing' | 'view';
 
 /**
  * Build a permission string for an entity action

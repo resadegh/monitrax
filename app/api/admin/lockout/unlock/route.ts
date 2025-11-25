@@ -1,14 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { unlockAccount } from '@/lib/security/accountLockout';
-import { secureAdminAPI } from '@/lib/middleware/apiSecurity';
-import type { AuthContext } from '@/lib/auth/context';
+import { getAuthContext } from '@/lib/auth/context';
+import { hasPermission } from '@/lib/auth/permissions';
 
 /**
  * POST /api/admin/lockout/unlock
  * Unlock a user's account (admin only)
  */
-async function handler(request: NextRequest, context: AuthContext) {
+export async function POST(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const auth = await getAuthContext(request);
+
+    if (!auth) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    if (!hasPermission(auth.role, 'lockout.manage')) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { userId, reason } = body;
 
@@ -23,7 +40,7 @@ async function handler(request: NextRequest, context: AuthContext) {
                       request.headers.get('x-real-ip') ||
                       'unknown';
 
-    const result = await unlockAccount(userId, context.userId, ipAddress, reason);
+    const result = await unlockAccount(userId, auth.userId, ipAddress, reason);
 
     if (!result.success) {
       return NextResponse.json(
@@ -43,5 +60,3 @@ async function handler(request: NextRequest, context: AuthContext) {
     );
   }
 }
-
-export const POST = secureAdminAPI(handler, 'ACCOUNT_UNLOCK');

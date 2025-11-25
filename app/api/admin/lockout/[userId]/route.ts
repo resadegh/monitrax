@@ -25,7 +25,7 @@ export async function GET(
       );
     }
 
-    if (!hasPermission(auth.role, 'LOCKOUT_VIEW')) {
+    if (!hasPermission(auth.role, 'lockout.view')) {
       return NextResponse.json(
         { error: 'Insufficient permissions' },
         { status: 403 }
