@@ -1,14 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lockAccount } from '@/lib/security/accountLockout';
-import { secureAdminAPI } from '@/lib/middleware/apiSecurity';
-import type { AuthContext } from '@/lib/auth/context';
+import { getAuthContext } from '@/lib/auth/context';
+import { hasPermission } from '@/lib/auth/permissions';
 
 /**
  * POST /api/admin/lockout/lock
  * Manually lock a user's account (admin only)
  */
-async function handler(request: NextRequest, context: AuthContext) {
+export async function POST(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const auth = await getAuthContext(request);
+
+    if (!auth) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    if (!hasPermission(auth.role, 'lockout.manage')) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { userId, durationMinutes, reason } = body;
 
@@ -25,7 +42,7 @@ async function handler(request: NextRequest, context: AuthContext) {
 
     const result = await lockAccount(
       userId,
-      context.userId,
+      auth.userId,
       durationMinutes,
       ipAddress,
       reason
@@ -49,5 +66,3 @@ async function handler(request: NextRequest, context: AuthContext) {
     );
   }
 }
-
-export const POST = secureAdminAPI(handler, 'ACCOUNT_LOCK');
