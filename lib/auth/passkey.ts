@@ -199,7 +199,7 @@ export async function generateRegistrationOptions(
   const challenge = generateChallenge();
 
   // Get user's existing credentials to exclude
-  const existingCredentials = await prisma.passkey.findMany({
+  const existingCredentials = await prisma.passkeyCredential.findMany({
     where: { userId },
     select: { credentialId: true },
   });
@@ -303,7 +303,7 @@ export async function verifyRegistration(params: {
     const publicKey = credential.rawId; // In production, extract from attestationObject
 
     // Check if credential already exists
-    const existing = await prisma.passkey.findUnique({
+    const existing = await prisma.passkeyCredential.findUnique({
       where: { credentialId },
     });
 
@@ -312,7 +312,7 @@ export async function verifyRegistration(params: {
     }
 
     // Store passkey
-    const passkey = await prisma.passkey.create({
+    const passkey = await prisma.passkeyCredential.create({
       data: {
         userId,
         credentialId,
@@ -377,7 +377,7 @@ export async function generateAuthenticationOptions(
 
   // If user is specified, only allow their credentials
   if (userId) {
-    const userCredentials = await prisma.passkey.findMany({
+    const userCredentials = await prisma.passkeyCredential.findMany({
       where: { userId },
       select: { credentialId: true },
     });
@@ -395,8 +395,8 @@ export async function generateAuthenticationOptions(
       include: { passkeys: { select: { credentialId: true } } },
     });
 
-    if (user && user.passkeys.length > 0) {
-      allowCredentials = user.passkeys.map((cred) => ({
+    if (user && user.passkeyCredentials.length > 0) {
+      allowCredentials = user.passkeyCredentials.map((cred) => ({
         type: 'public-key' as const,
         id: cred.credentialId,
       }));
@@ -470,7 +470,7 @@ export async function verifyAuthentication(params: {
     }
 
     // Find passkey by credential ID
-    const passkey = await prisma.passkey.findUnique({
+    const passkey = await prisma.passkeyCredential.findUnique({
       where: { credentialId: credential.id },
       include: { user: true },
     });
@@ -491,7 +491,7 @@ export async function verifyAuthentication(params: {
     // For now, we'll do basic validation
 
     // Update passkey usage
-    await prisma.passkey.update({
+    await prisma.passkeyCredential.update({
       where: { id: passkey.id },
       data: {
         counter: { increment: 1 },
@@ -551,7 +551,7 @@ export async function verifyAuthentication(params: {
  * Get all passkeys for a user
  */
 export async function getUserPasskeys(userId: string): Promise<PasskeyCredential[]> {
-  const passkeys = await prisma.passkey.findMany({
+  const passkeys = await prisma.passkeyCredential.findMany({
     where: { userId },
     orderBy: { lastUsedAt: 'desc' },
   });
@@ -569,7 +569,7 @@ export async function deletePasskey(
   userAgent?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const passkey = await prisma.passkey.findUnique({
+    const passkey = await prisma.passkeyCredential.findUnique({
       where: { id: passkeyId },
     });
 
@@ -593,7 +593,7 @@ export async function deletePasskey(
       return { success: false, error: 'Unauthorized' };
     }
 
-    await prisma.passkey.delete({
+    await prisma.passkeyCredential.delete({
       where: { id: passkeyId },
     });
 
@@ -627,7 +627,7 @@ export async function updatePasskeyName(
   userAgent?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const passkey = await prisma.passkey.findUnique({
+    const passkey = await prisma.passkeyCredential.findUnique({
       where: { id: passkeyId },
     });
 
@@ -640,7 +640,7 @@ export async function updatePasskeyName(
       return { success: false, error: 'Unauthorized' };
     }
 
-    await prisma.passkey.update({
+    await prisma.passkeyCredential.update({
       where: { id: passkeyId },
       data: { deviceName },
     });
@@ -673,7 +673,7 @@ export async function getPasskeyStats(userId: string): Promise<{
   lastUsed: Date | null;
   devices: string[];
 }> {
-  const passkeys = await prisma.passkey.findMany({
+  const passkeys = await prisma.passkeyCredential.findMany({
     where: { userId },
     select: {
       deviceName: true,
@@ -700,7 +700,7 @@ export async function cleanupUnusedPasskeys(
 ): Promise<number> {
   const cutoffDate = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
 
-  const result = await prisma.passkey.deleteMany({
+  const result = await prisma.passkeyCredential.deleteMany({
     where: {
       OR: [
         { lastUsedAt: { lt: cutoffDate } },
