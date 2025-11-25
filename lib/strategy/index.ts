@@ -13,8 +13,21 @@
  * - Layer 4: Presentation (API routes + UI components)
  */
 
-// TODO: Export main strategy generation function
-// export { generateStrategies } from './synthesizers/strategySynthesizer';
+// Strategy Synthesizers (Stage 4)
+export {
+  generateStrategies,
+  type GenerateStrategiesOptions,
+  type StrategyGenerationResult,
+} from './synthesizers/strategySynthesizer';
+export {
+  detectConflicts,
+  autoResolveConflicts,
+  hasConflict,
+} from './synthesizers/conflictResolver';
+export {
+  generateAlternatives,
+  type Alternative,
+} from './synthesizers/alternativeGenerator';
 
 // Data Collection (Stage 2)
 export {
