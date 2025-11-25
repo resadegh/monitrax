@@ -9,7 +9,7 @@
 // TYPES
 // =============================================================================
 
-export type OAuthProvider = 'google' | 'apple' | 'microsoft';
+export type OAuthProvider = 'google' | 'apple' | 'microsoft' | 'facebook';
 
 export interface OAuthConfig {
   clientId: string;
@@ -79,6 +79,15 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthConfig> = {
     authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
     userInfoUrl: 'https://graph.microsoft.com/v1.0/me',
+  },
+  facebook: {
+    clientId: process.env.FACEBOOK_CLIENT_ID || '',
+    clientSecret: process.env.FACEBOOK_CLIENT_SECRET || '',
+    redirectUri: process.env.FACEBOOK_REDIRECT_URI || '/api/auth/callback/facebook',
+    scopes: ['email', 'public_profile'],
+    authorizationUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
+    userInfoUrl: 'https://graph.facebook.com/v18.0/me?fields=id,name,email,first_name,last_name,picture',
   },
 };
 
@@ -265,6 +274,18 @@ export async function getOAuthUserInfo(
         firstName: data.givenName,
         lastName: data.surname,
         provider: 'microsoft',
+        providerAccountId: data.id,
+      };
+    } else if (provider === 'facebook') {
+      user = {
+        id: data.id,
+        email: data.email,
+        emailVerified: true, // Facebook accounts are verified
+        name: data.name,
+        firstName: data.first_name,
+        lastName: data.last_name,
+        picture: data.picture?.data?.url,
+        provider: 'facebook',
         providerAccountId: data.id,
       };
     } else {
