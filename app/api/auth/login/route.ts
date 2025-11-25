@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { verifyPassword, generateToken } from '@/lib/auth';
+import { createTrackedSession } from '@/lib/session';
+import {
+  isAccountLocked,
+  recordFailedLoginAttempt,
+  recordSuccessfulLogin,
+} from '@/lib/security/accountLockout';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,12 +21,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get client info
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0] ||
+                      request.headers.get('x-real-ip') ||
+                      'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+
+    // Check if account is locked
+    const lockoutStatus = await isAccountLocked(email);
+
+    if (lockoutStatus.isLocked) {
+      const minutesRemaining = lockoutStatus.lockoutExpiresAt
+        ? Math.ceil((lockoutStatus.lockoutExpiresAt.getTime() - Date.now()) / (60 * 1000))
+        : 0;
+
+      return NextResponse.json(
+        {
+          error: `Account locked due to too many failed login attempts. Please try again in ${minutesRemaining} minutes.`,
+          lockoutExpiresAt: lockoutStatus.lockoutExpiresAt,
+        },
+        { status: 423 } // 423 Locked
+      );
+    }
+
     // Find user
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
+      // Record failed attempt (don't reveal if user exists)
+      await recordFailedLoginAttempt(email, ipAddress, userAgent);
+
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
@@ -39,16 +71,47 @@ export async function POST(request: NextRequest) {
     const isValidPassword = await verifyPassword(password, user.password);
 
     if (!isValidPassword) {
+      // Record failed attempt
+      const lockoutResult = await recordFailedLoginAttempt(email, ipAddress, userAgent);
+
+      if (lockoutResult.isLocked) {
+        const minutesRemaining = lockoutResult.lockoutExpiresAt
+          ? Math.ceil((lockoutResult.lockoutExpiresAt.getTime() - Date.now()) / (60 * 1000))
+          : 0;
+
+        return NextResponse.json(
+          {
+            error: `Account locked due to too many failed login attempts. Please try again in ${minutesRemaining} minutes.`,
+            lockoutExpiresAt: lockoutResult.lockoutExpiresAt,
+          },
+          { status: 423 }
+        );
+      }
+
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        {
+          error: 'Invalid email or password',
+          remainingAttempts: lockoutResult.remainingAttempts,
+        },
         { status: 401 }
       );
     }
+
+    // Record successful login
+    await recordSuccessfulLogin(user.id, email, ipAddress, userAgent);
 
     // Generate token
     const token = generateToken({
       userId: user.id,
       email: user.email,
+    });
+
+    // Create tracked session
+    await createTrackedSession({
+      userId: user.id,
+      ipAddress,
+      userAgent,
+      deviceName: userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop',
     });
 
     // Return user (without password) and token

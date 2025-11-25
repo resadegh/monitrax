@@ -12,7 +12,7 @@ import { logAuth } from './auditLog';
 // TYPES
 // ============================================
 
-export type MFAType = 'TOTP' | 'SMS' | 'WEBAUTHN';
+export type MFAType = 'TOTP' | 'SMS' | 'EMAIL' | 'WEBAUTHN';
 
 export interface MFASetupResult {
   id: string;
@@ -442,6 +442,253 @@ export async function regenerateBackupCodes(
   });
 
   return backupCodes;
+}
+
+// ============================================
+// EMAIL MFA CODES
+// ============================================
+
+/**
+ * Generate a 6-digit email MFA code
+ */
+export function generateEmailMFACode(): string {
+  const code = crypto.randomInt(100000, 999999).toString();
+  return code;
+}
+
+/**
+ * Send email MFA code (in production, integrate with email service)
+ */
+export async function sendEmailMFACode(
+  userId: string,
+  email: string,
+  ipAddress?: string
+): Promise<{ success: boolean; expiresAt: Date; error?: string }> {
+  try {
+    const code = generateEmailMFACode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Hash the code for storage
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+
+    // Store in database
+    await prisma.emailMFACode.create({
+      data: {
+        userId,
+        code: hashedCode,
+        expiresAt,
+        attempts: 0,
+      },
+    });
+
+    // Log the generation
+    await logAuth({
+      userId,
+      action: 'MFA_CHALLENGE',
+      status: 'SUCCESS',
+      ipAddress,
+      metadata: {
+        type: 'email_code_sent',
+        email,
+        expiresAt: expiresAt.toISOString(),
+      },
+    });
+
+    // In production, send actual email
+    log.info('Email MFA code generated', {
+      userId,
+      email,
+      expiresAt,
+      code: process.env.NODE_ENV === 'development' ? code : '******',
+    });
+
+    // In development, log the code for testing
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`\n🔐 Email MFA Code for ${email}: ${code}\n`);
+    }
+
+    // TODO: Integrate with email service (SendGrid, AWS SES, etc.)
+    // await emailService.send({
+    //   to: email,
+    //   subject: 'Your verification code',
+    //   template: 'mfa-code',
+    //   data: { code, expiresInMinutes: 10 },
+    // });
+
+    return { success: true, expiresAt };
+  } catch (error) {
+    console.error('[MFA] Failed to send email code:', error);
+    return {
+      success: false,
+      expiresAt: new Date(),
+      error: 'Failed to send verification code',
+    };
+  }
+}
+
+/**
+ * Verify email MFA code
+ */
+export async function verifyEmailMFACode(
+  userId: string,
+  code: string,
+  ipAddress?: string
+): Promise<MFAVerificationResult> {
+  try {
+    // Hash the provided code
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+
+    // Find the most recent valid code
+    const storedCode = await prisma.emailMFACode.findFirst({
+      where: {
+        userId,
+        code: hashedCode,
+        expiresAt: { gt: new Date() },
+        verified: false,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!storedCode) {
+      // Check if code was already used or expired
+      const anyCode = await prisma.emailMFACode.findFirst({
+        where: {
+          userId,
+          code: hashedCode,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (anyCode) {
+        if (anyCode.verified) {
+          await logAuth({
+            userId,
+            action: 'MFA_FAILURE',
+            status: 'FAILURE',
+            ipAddress,
+            metadata: { reason: 'code_already_used' },
+          });
+          return { success: false, error: 'Code has already been used' };
+        }
+
+        if (anyCode.expiresAt < new Date()) {
+          await logAuth({
+            userId,
+            action: 'MFA_FAILURE',
+            status: 'FAILURE',
+            ipAddress,
+            metadata: { reason: 'code_expired' },
+          });
+          return { success: false, error: 'Code has expired' };
+        }
+      }
+
+      await logAuth({
+        userId,
+        action: 'MFA_FAILURE',
+        status: 'FAILURE',
+        ipAddress,
+        metadata: { reason: 'invalid_email_code' },
+      });
+      return { success: false, error: 'Invalid verification code' };
+    }
+
+    // Check attempt limit
+    if (storedCode.attempts >= 3) {
+      await prisma.emailMFACode.update({
+        where: { id: storedCode.id },
+        data: { verified: true }, // Mark as used to prevent further attempts
+      });
+
+      await logAuth({
+        userId,
+        action: 'MFA_FAILURE',
+        status: 'FAILURE',
+        ipAddress,
+        metadata: { reason: 'max_attempts_exceeded' },
+      });
+
+      return {
+        success: false,
+        error: 'Maximum verification attempts exceeded',
+      };
+    }
+
+    // Mark code as verified
+    await prisma.emailMFACode.update({
+      where: { id: storedCode.id },
+      data: {
+        verified: true,
+        verifiedAt: new Date(),
+      },
+    });
+
+    // Delete old codes for this user
+    await prisma.emailMFACode.deleteMany({
+      where: {
+        userId,
+        id: { not: storedCode.id },
+      },
+    });
+
+    await logAuth({
+      userId,
+      action: 'MFA_SUCCESS',
+      status: 'SUCCESS',
+      ipAddress,
+      metadata: { type: 'email_code' },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('[MFA] Email code verification error:', error);
+    return {
+      success: false,
+      error: 'Verification failed',
+    };
+  }
+}
+
+/**
+ * Record failed email MFA attempt
+ */
+export async function recordEmailMFAAttempt(userId: string, code: string): Promise<void> {
+  try {
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+
+    await prisma.emailMFACode.updateMany({
+      where: {
+        userId,
+        code: hashedCode,
+        verified: false,
+      },
+      data: {
+        attempts: { increment: 1 },
+      },
+    });
+  } catch (error) {
+    console.error('[MFA] Failed to record email MFA attempt:', error);
+  }
+}
+
+/**
+ * Cleanup expired email MFA codes
+ */
+export async function cleanupExpiredEmailMFACodes(): Promise<number> {
+  try {
+    const result = await prisma.emailMFACode.deleteMany({
+      where: {
+        expiresAt: { lt: new Date() },
+      },
+    });
+
+    log.info('Cleaned up expired email MFA codes', { count: result.count });
+
+    return result.count;
+  } catch (error) {
+    console.error('[MFA] Failed to cleanup expired email codes:', error);
+    return 0;
+  }
 }
 
 // ============================================
