@@ -196,6 +196,8 @@ model User {
   sessions                UserSession[]
   auditLogs               AuditLog[]
   passkeyCredentials      PasskeyCredential[]
+  magicLinks              MagicLink[]
+  oauthAccounts           OAuthAccount[]
 
   @@map("users")
 }
@@ -709,4 +711,55 @@ model AuditLog {
   @@index([createdAt])
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+// =============================================================================
+// PHASE 10: MAGIC LINK AUTHENTICATION
+// =============================================================================
+
+model MagicLink {
+  id          String    @id @default(uuid())
+  userId      String
+  token       String    @unique
+  email       String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  redirectTo  String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  // Relationships
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("magic_links")
+}
+
+// =============================================================================
+// PHASE 10: OAUTH ACCOUNTS
+// =============================================================================
+
+model OAuthAccount {
+  id              String    @id @default(uuid())
+  userId          String
+  provider        String    // google, apple, microsoft
+  providerUserId  String    // ID from OAuth provider
+  email           String?
+  accessToken     String?   @db.Text
+  refreshToken    String?   @db.Text
+  expiresAt       DateTime?
+  scope           String?
+  tokenType       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relationships
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("oauth_accounts")
 }

@@ -167,14 +167,45 @@ export async function exchangeCodeForTokens(
     return { success: false, error: `${provider} OAuth not configured` };
   }
 
-  // TODO: Implement actual token exchange
-  // This is a stub - in production, make HTTP request to tokenUrl
-  console.log(`[OAuth] Token exchange for ${provider} with code: ${code.substring(0, 10)}...`);
+  try {
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      code,
+      redirect_uri: config.redirectUri,
+      grant_type: 'authorization_code',
+    });
 
-  return {
-    success: false,
-    error: `${provider} OAuth token exchange not yet implemented`,
-  };
+    const response = await fetch(config.tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`[OAuth] Token exchange failed for ${provider}:`, error);
+      return { success: false, error: `Token exchange failed: ${response.statusText}` };
+    }
+
+    const data = await response.json();
+
+    return {
+      success: true,
+      tokens: {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        idToken: data.id_token,
+        expiresIn: data.expires_in || 3600,
+        tokenType: data.token_type || 'Bearer',
+      },
+    };
+  } catch (error) {
+    console.error(`[OAuth] Token exchange error for ${provider}:`, error);
+    return { success: false, error: `Token exchange failed: ${(error as Error).message}` };
+  }
 }
 
 /**
@@ -182,22 +213,97 @@ export async function exchangeCodeForTokens(
  */
 export async function getOAuthUserInfo(
   provider: OAuthProvider,
-  accessToken: string
+  accessToken: string,
+  idToken?: string
 ): Promise<{ success: boolean; user?: OAuthUser; error?: string }> {
   const config = OAUTH_PROVIDERS[provider];
 
-  if (!config.userInfoUrl && provider !== 'apple') {
-    return { success: false, error: `${provider} user info URL not configured` };
+  try {
+    // Apple returns user info in ID token
+    if (provider === 'apple' && idToken) {
+      return parseAppleIdToken(idToken);
+    }
+
+    if (!config.userInfoUrl) {
+      return { success: false, error: `${provider} user info URL not configured` };
+    }
+
+    const response = await fetch(config.userInfoUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`[OAuth] User info fetch failed for ${provider}:`, response.statusText);
+      return { success: false, error: `User info fetch failed: ${response.statusText}` };
+    }
+
+    const data = await response.json();
+
+    // Parse provider-specific response
+    let user: OAuthUser;
+
+    if (provider === 'google') {
+      user = {
+        id: data.sub,
+        email: data.email,
+        emailVerified: data.email_verified || false,
+        name: data.name,
+        firstName: data.given_name,
+        lastName: data.family_name,
+        picture: data.picture,
+        provider: 'google',
+        providerAccountId: data.sub,
+      };
+    } else if (provider === 'microsoft') {
+      user = {
+        id: data.id,
+        email: data.mail || data.userPrincipalName,
+        emailVerified: true, // Microsoft accounts are verified
+        name: data.displayName,
+        firstName: data.givenName,
+        lastName: data.surname,
+        provider: 'microsoft',
+        providerAccountId: data.id,
+      };
+    } else {
+      return { success: false, error: 'Unsupported provider' };
+    }
+
+    return { success: true, user };
+  } catch (error) {
+    console.error(`[OAuth] User info error for ${provider}:`, error);
+    return { success: false, error: `User info fetch failed: ${(error as Error).message}` };
   }
+}
 
-  // TODO: Implement actual user info fetch
-  // This is a stub - in production, make HTTP request to userInfoUrl
-  console.log(`[OAuth] Fetching user info for ${provider}`);
+/**
+ * Parse Apple ID token to extract user info
+ */
+function parseAppleIdToken(idToken: string): { success: boolean; user?: OAuthUser; error?: string } {
+  try {
+    // ID token is a JWT - decode the payload
+    const parts = idToken.split('.');
+    if (parts.length !== 3) {
+      return { success: false, error: 'Invalid ID token format' };
+    }
 
-  return {
-    success: false,
-    error: `${provider} OAuth user info fetch not yet implemented`,
-  };
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+
+    const user: OAuthUser = {
+      id: payload.sub,
+      email: payload.email,
+      emailVerified: payload.email_verified === 'true' || payload.email_verified === true,
+      provider: 'apple',
+      providerAccountId: payload.sub,
+    };
+
+    return { success: true, user };
+  } catch (error) {
+    console.error('[OAuth] Apple ID token parsing error:', error);
+    return { success: false, error: 'Failed to parse Apple ID token' };
+  }
 }
 
 // =============================================================================
@@ -229,7 +335,11 @@ export async function handleOAuthCallback(
   }
 
   // Get user info
-  const userResult = await getOAuthUserInfo(provider, tokenResult.tokens.accessToken);
+  const userResult = await getOAuthUserInfo(
+    provider,
+    tokenResult.tokens.accessToken,
+    tokenResult.tokens.idToken
+  );
   if (!userResult.success || !userResult.user) {
     return { success: false, error: userResult.error };
   }
@@ -265,16 +375,69 @@ export function getConfiguredProviders(): OAuthProvider[] {
  */
 export async function linkOAuthAccount(
   userId: string,
-  oauthUser: OAuthUser
+  oauthUser: OAuthUser,
+  tokens: OAuthTokens
 ): Promise<{ success: boolean; error?: string }> {
-  // TODO: Implement account linking logic
-  // Store OAuth account association in database
-  console.log(`[OAuth] Linking ${oauthUser.provider} account to user ${userId}`);
+  try {
+    const { prisma } = await import('@/lib/db');
 
-  return {
-    success: false,
-    error: 'OAuth account linking not yet implemented',
-  };
+    // Check if OAuth account already linked to another user
+    const existing = await prisma.oAuthAccount.findUnique({
+      where: {
+        provider_providerUserId: {
+          provider: oauthUser.provider,
+          providerUserId: oauthUser.providerAccountId,
+        },
+      },
+    });
+
+    if (existing && existing.userId !== userId) {
+      return {
+        success: false,
+        error: 'This OAuth account is already linked to another user',
+      };
+    }
+
+    if (existing) {
+      // Update existing link
+      await prisma.oAuthAccount.update({
+        where: { id: existing.id },
+        data: {
+          email: oauthUser.email,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: tokens.expiresIn
+            ? new Date(Date.now() + tokens.expiresIn * 1000)
+            : null,
+          tokenType: tokens.tokenType,
+        },
+      });
+    } else {
+      // Create new link
+      await prisma.oAuthAccount.create({
+        data: {
+          userId,
+          provider: oauthUser.provider,
+          providerUserId: oauthUser.providerAccountId,
+          email: oauthUser.email,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: tokens.expiresIn
+            ? new Date(Date.now() + tokens.expiresIn * 1000)
+            : null,
+          tokenType: tokens.tokenType,
+        },
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[OAuth] Account linking error:', error);
+    return {
+      success: false,
+      error: `Failed to link ${oauthUser.provider} account`,
+    };
+  }
 }
 
 /**
@@ -284,11 +447,139 @@ export async function unlinkOAuthAccount(
   userId: string,
   provider: OAuthProvider
 ): Promise<{ success: boolean; error?: string }> {
-  // TODO: Implement account unlinking logic
-  console.log(`[OAuth] Unlinking ${provider} account from user ${userId}`);
+  try {
+    const { prisma } = await import('@/lib/db');
 
-  return {
-    success: false,
-    error: 'OAuth account unlinking not yet implemented',
-  };
+    const result = await prisma.oAuthAccount.deleteMany({
+      where: {
+        userId,
+        provider,
+      },
+    });
+
+    if (result.count === 0) {
+      return {
+        success: false,
+        error: 'OAuth account not found or already unlinked',
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[OAuth] Account unlinking error:', error);
+    return {
+      success: false,
+      error: `Failed to unlink ${provider} account`,
+    };
+  }
+}
+
+/**
+ * Find or create user from OAuth account
+ */
+export async function findOrCreateOAuthUser(
+  oauthUser: OAuthUser,
+  tokens: OAuthTokens
+): Promise<{ userId: string; isNewUser: boolean; error?: string }> {
+  try {
+    const { prisma } = await import('@/lib/db');
+    const { generateToken, hashPassword } = await import('@/lib/auth');
+
+    // Check if OAuth account already exists
+    const oauthAccount = await prisma.oAuthAccount.findUnique({
+      where: {
+        provider_providerUserId: {
+          provider: oauthUser.provider,
+          providerUserId: oauthUser.providerAccountId,
+        },
+      },
+      include: { user: true },
+    });
+
+    if (oauthAccount) {
+      // Update tokens
+      await prisma.oAuthAccount.update({
+        where: { id: oauthAccount.id },
+        data: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: tokens.expiresIn
+            ? new Date(Date.now() + tokens.expiresIn * 1000)
+            : null,
+        },
+      });
+
+      return {
+        userId: oauthAccount.userId,
+        isNewUser: false,
+      };
+    }
+
+    // Check if user exists by email
+    let user = await prisma.user.findUnique({
+      where: { email: oauthUser.email },
+    });
+
+    if (user) {
+      // Link OAuth account to existing user
+      await prisma.oAuthAccount.create({
+        data: {
+          userId: user.id,
+          provider: oauthUser.provider,
+          providerUserId: oauthUser.providerAccountId,
+          email: oauthUser.email,
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: tokens.expiresIn
+            ? new Date(Date.now() + tokens.expiresIn * 1000)
+            : null,
+          tokenType: tokens.tokenType,
+        },
+      });
+
+      return {
+        userId: user.id,
+        isNewUser: false,
+      };
+    }
+
+    // Create new user
+    user = await prisma.user.create({
+      data: {
+        email: oauthUser.email,
+        name: oauthUser.name || oauthUser.email.split('@')[0],
+        password: null, // OAuth users don't have passwords
+        emailVerified: oauthUser.emailVerified,
+        emailVerifiedAt: oauthUser.emailVerified ? new Date() : null,
+      },
+    });
+
+    // Create OAuth account link
+    await prisma.oAuthAccount.create({
+      data: {
+        userId: user.id,
+        provider: oauthUser.provider,
+        providerUserId: oauthUser.providerAccountId,
+        email: oauthUser.email,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: tokens.expiresIn
+          ? new Date(Date.now() + tokens.expiresIn * 1000)
+          : null,
+        tokenType: tokens.tokenType,
+      },
+    });
+
+    return {
+      userId: user.id,
+      isNewUser: true,
+    };
+  } catch (error) {
+    console.error('[OAuth] Find or create user error:', error);
+    return {
+      userId: '',
+      isNewUser: false,
+      error: 'Failed to find or create user',
+    };
+  }
 }
