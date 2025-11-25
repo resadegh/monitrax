@@ -24,8 +24,27 @@ export {
   getQualityStatus,
 } from './core/dataCollector';
 
-// TODO: Export scoring
-// export { calculateSBS } from './core/scoringEngine';
+// Scoring Engine (Stage 3C)
+export {
+  calculateSBS,
+  rankRecommendations,
+  scoreAndRankFindings,
+  scoreAllFindings,
+  explainScore,
+  getSBSRating,
+  getPriority,
+  type ScoreComponents,
+} from './core/scoringEngine';
+
+// Analyzers (Stage 3)
+export { analyzeDebt } from './analyzers/debtAnalyzer';
+export { analyzeCashflow } from './analyzers/cashflowAnalyzer';
+export { analyzeInvestments } from './analyzers/investmentAnalyzer';
+export { analyzeProperties } from './analyzers/propertyAnalyzer';
+export { analyzeRisk } from './analyzers/riskAnalyzer';
+export { analyzeLiquidity } from './analyzers/liquidityAnalyzer';
+export { analyzeTax } from './analyzers/taxAnalyzer';
+export { analyzeTimeHorizon } from './analyzers/timeHorizonAnalyzer';
 
 // TODO: Export forecasting
 // export { generateForecast } from './forecasting/forecastEngine';
