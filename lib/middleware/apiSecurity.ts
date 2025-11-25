@@ -127,14 +127,11 @@ export function withSecurity<T = unknown>(
 
       // 2. Rate Limiting
       if (options.rateLimit) {
-        const rateLimitKey = `api:${request.nextUrl.pathname}:${ipAddress}`;
-        const rateLimit = checkRateLimit(
-          rateLimitKey,
-          options.rateLimit.maxRequests,
-          options.rateLimit.windowMs
-        );
+        // Use predefined 'api' config which has 100 req/min
+        // For custom limits, consider adding to RATE_LIMITS in rateLimit.ts
+        const rateLimitResult = checkRateLimit(ipAddress, 'api');
 
-        if (!rateLimit.allowed) {
+        if (!rateLimitResult.success) {
           await logSecurity({
             action: 'RATE_LIMIT_HIT',
             ipAddress,
@@ -149,14 +146,14 @@ export function withSecurity<T = unknown>(
           return new NextResponse(
             JSON.stringify({
               error: 'Too many requests',
-              retryAfter: rateLimit.retryAfter,
+              retryAfter: rateLimitResult.retryAfter,
             }),
             {
               status: 429,
               headers: {
-                'Retry-After': rateLimit.retryAfter?.toString() || '60',
+                'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
                 'X-RateLimit-Limit': options.rateLimit.maxRequests.toString(),
-                'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+                'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
               },
             }
           );
