@@ -221,7 +221,7 @@ export async function generateRegistrationOptions(
       { type: 'public-key', alg: -257 }, // RS256
     ],
     timeout: TIMEOUT_MS,
-    excludeCredentials: existingCredentials.map((cred) => ({
+    excludeCredentials: existingCredentials.map((cred: { credentialId: string }) => ({
       type: 'public-key' as const,
       id: cred.credentialId,
     })),
@@ -382,7 +382,7 @@ export async function generateAuthenticationOptions(
     });
 
     if (userCredentials.length > 0) {
-      allowCredentials = userCredentials.map((cred) => ({
+      allowCredentials = userCredentials.map((cred: { credentialId: string }) => ({
         type: 'public-key' as const,
         id: cred.credentialId,
       }));
@@ -395,7 +395,7 @@ export async function generateAuthenticationOptions(
     });
 
     if (user && user.passkeyCredentials.length > 0) {
-      allowCredentials = user.passkeyCredentials.map((cred) => ({
+      allowCredentials = user.passkeyCredentials.map((cred: { credentialId: string }) => ({
         type: 'public-key' as const,
         id: cred.credentialId,
       }));
@@ -681,7 +681,7 @@ export async function getPasskeyStats(userId: string): Promise<{
     orderBy: { lastUsedAt: 'desc' },
   });
 
-  const devices = [...new Set(passkeys.map((p) => p.deviceName))];
+  const devices = [...new Set(passkeys.map((p: { deviceName: string | null }) => p.deviceName).filter((name): name is string => name !== null))];
   const lastUsed = passkeys[0]?.lastUsedAt ?? null;
 
   return {

@@ -287,7 +287,7 @@ export async function getUserSessionStats(userId: string): Promise<{
   ]);
 
   const uniqueDevices = new Set(
-    sessions.filter((s) => s.deviceName).map((s) => s.deviceName)
+    sessions.filter((s: { deviceName: string | null }) => s.deviceName).map((s: { deviceName: string | null }) => s.deviceName)
   );
 
   return {
