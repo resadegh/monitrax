@@ -1,21 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLockoutInfo } from '@/lib/security/accountLockout';
-import { secureAdminAPI } from '@/lib/middleware/apiSecurity';
+import { getAuthContext } from '@/lib/auth/context';
+import { hasPermission } from '@/lib/auth/permissions';
 
 /**
- * GET /api/admin/lockout/:userId
+ * GET /api/admin/lockout/[userId]
  * Get lockout information for a specific user (admin only)
  */
-async function handler(
+export async function GET(
   request: NextRequest,
-  context: any,
-  params?: { userId: string }
+  { params }: { params: { userId: string } }
 ) {
   try {
-    if (!params?.userId) {
+    // Verify admin authentication
+    const auth = await getAuthContext(request);
+
+    if (!auth) {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    if (!hasPermission(auth.role, 'LOCKOUT_VIEW')) {
+      return NextResponse.json(
+        { error: 'Insufficient permissions' },
+        { status: 403 }
       );
     }
 
@@ -37,5 +47,3 @@ async function handler(
     );
   }
 }
-
-export const GET = secureAdminAPI(handler, 'LOCKOUT_VIEW');
