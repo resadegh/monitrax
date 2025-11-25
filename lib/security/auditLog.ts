@@ -70,7 +70,7 @@ export async function createAuditLog(entry: AuditLogEntry): Promise<void> {
         entityId: entry.entityId,
         ipAddress: entry.ipAddress,
         userAgent: entry.userAgent,
-        metadata: entry.metadata ?? {},
+        metadata: entry.metadata ? (entry.metadata as any) : undefined,
       },
     });
   } catch (error) {
