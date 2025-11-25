@@ -16,8 +16,13 @@
 // TODO: Export main strategy generation function
 // export { generateStrategies } from './synthesizers/strategySynthesizer';
 
-// TODO: Export data collection
-// export { collectStrategyData } from './core/dataCollector';
+// Data Collection (Stage 2)
+export {
+  collectStrategyData,
+  validateDataCompleteness,
+  isLimitedMode,
+  getQualityStatus,
+} from './core/dataCollector';
 
 // TODO: Export scoring
 // export { calculateSBS } from './core/scoringEngine';
