@@ -124,31 +124,11 @@ async function fetchGlobalHealth(
   userId: string
 ): Promise<HealthMetrics | null> {
   try {
-    const healthData = await prisma.globalHealthReport.findFirst({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        orphans: true,
-        missingLinks: true,
-        consistencyScore: true,
-        moduleHealth: true,
-      },
-    });
-
-    if (!healthData) {
-      return null;
-    }
-
-    return {
-      orphans: Array.isArray(healthData.orphans)
-        ? (healthData.orphans as string[])
-        : [],
-      missingLinks: Array.isArray(healthData.missingLinks)
-        ? (healthData.missingLinks as string[])
-        : [],
-      consistencyScore: healthData.consistencyScore,
-      moduleHealth: (healthData.moduleHealth as Record<string, number>) || {},
-    };
+    // TODO: globalHealthReport model doesn't exist yet
+    // Health metrics are not critical for Phase 11 strategy engine
+    // Will implement when global health tracking is added
+    console.log(`[DataCollector] Health metrics requested for user ${userId} - returning null (not implemented)`);
+    return null;
   } catch (error) {
     console.error('[DataCollector] Failed to fetch health metrics:', error);
     return null;
