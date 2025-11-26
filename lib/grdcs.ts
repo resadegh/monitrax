@@ -439,7 +439,7 @@ export async function getRelationalGraph(userId: string) {
       prisma.loan.findMany({ where: { userId } }),
       prisma.income.findMany({ where: { userId } }),
       prisma.expense.findMany({ where: { userId } }),
-      prisma.bankAccount.findMany({ where: { userId } }),
+      prisma.account.findMany({ where: { userId } }),
       prisma.investment.findMany({ where: { userId } }),
     ]);
 
@@ -457,7 +457,7 @@ export async function getRelationalGraph(userId: string) {
       ...expenses.map((e: any) => createLinkedEntity('expense', e.id, e.category || e.id, {
         value: Number(e.amount || 0),
       })),
-      ...accounts.map((a: any) => createLinkedEntity('account', a.id, a.accountName || a.id, {
+      ...accounts.map((a: any) => createLinkedEntity('account', a.id, a.name || a.id, {
         value: Number(a.currentBalance || 0),
       })),
       ...investments.map((inv: any) => createLinkedEntity('investmentHolding', inv.id, inv.ticker || inv.id, {

@@ -557,7 +557,7 @@ export async function generatePortfolioSnapshot(userId: string) {
   const [properties, loans, accounts, income, expenses, investments] = await Promise.all([
     prisma.property.findMany({ where: { userId } }),
     prisma.loan.findMany({ where: { userId } }),
-    prisma.bankAccount.findMany({ where: { userId } }),
+    prisma.account.findMany({ where: { userId } }),
     prisma.income.findMany({ where: { userId } }),
     prisma.expense.findMany({ where: { userId } }),
     prisma.investment.findMany({ where: { userId } }),
@@ -585,8 +585,8 @@ export async function generatePortfolioSnapshot(userId: string) {
     })),
     accounts: accounts.map((a: any) => ({
       id: a.id,
-      name: a.accountName || a.id,
-      type: (a.accountType as any) || 'TRANSACTIONAL',
+      name: a.name || a.id,
+      type: (a.type as any) || 'TRANSACTIONAL',
       currentBalance: Number(a.currentBalance || 0),
     })),
     income: income.map((i: any) => ({
