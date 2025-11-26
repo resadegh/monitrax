@@ -565,7 +565,7 @@ export async function generatePortfolioSnapshot(userId: string) {
 
   // Transform to PortfolioInput format
   const portfolioInput: PortfolioInput = {
-    properties: properties.map(p => ({
+    properties: properties.map((p: any) => ({
       id: p.id,
       name: p.address || p.id,
       type: p.propertyType === 'INVESTMENT' ? 'INVESTMENT' : 'HOME',
@@ -573,7 +573,7 @@ export async function generatePortfolioSnapshot(userId: string) {
       purchasePrice: Number(p.purchasePrice || 0),
       purchaseDate: p.purchaseDate || new Date(),
     })),
-    loans: loans.map(l => ({
+    loans: loans.map((l: any) => ({
       id: l.id,
       name: l.lender || l.id,
       type: l.loanType === 'INVESTMENT' ? 'INVESTMENT' : 'HOME',
@@ -583,13 +583,13 @@ export async function generatePortfolioSnapshot(userId: string) {
       propertyId: l.propertyId || undefined,
       offsetBalance: l.offsetBalance ? Number(l.offsetBalance) : undefined,
     })),
-    accounts: accounts.map(a => ({
+    accounts: accounts.map((a: any) => ({
       id: a.id,
       name: a.accountName || a.id,
       type: (a.accountType as any) || 'TRANSACTIONAL',
       currentBalance: Number(a.currentBalance || 0),
     })),
-    income: income.map(i => ({
+    income: income.map((i: any) => ({
       id: i.id,
       name: i.source || i.id,
       type: (i.incomeType as any) || 'OTHER',
@@ -598,7 +598,7 @@ export async function generatePortfolioSnapshot(userId: string) {
       isTaxable: true,
       propertyId: i.propertyId || undefined,
     })),
-    expenses: expenses.map(e => ({
+    expenses: expenses.map((e: any) => ({
       id: e.id,
       name: e.category || e.id,
       amount: Number(e.amount || 0),
@@ -607,7 +607,7 @@ export async function generatePortfolioSnapshot(userId: string) {
       isTaxDeductible: false,
       propertyId: e.propertyId || undefined,
     })),
-    investments: investments.map(inv => ({
+    investments: investments.map((inv: any) => ({
       id: inv.id,
       ticker: inv.ticker || inv.id,
       units: Number(inv.units || 0),
