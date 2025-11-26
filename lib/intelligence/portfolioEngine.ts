@@ -554,14 +554,20 @@ export async function generatePortfolioSnapshot(userId: string) {
   const { default: prisma } = await import('@/lib/db');
 
   // Fetch all user's financial data
-  const [properties, loans, accounts, income, expenses, investments] = await Promise.all([
+  const [properties, loans, accounts, income, expenses, investmentAccounts] = await Promise.all([
     prisma.property.findMany({ where: { userId } }),
     prisma.loan.findMany({ where: { userId } }),
     prisma.account.findMany({ where: { userId } }),
     prisma.income.findMany({ where: { userId } }),
     prisma.expense.findMany({ where: { userId } }),
-    prisma.investment.findMany({ where: { userId } }),
+    prisma.investmentAccount.findMany({
+      where: { userId },
+      include: { holdings: true }
+    }),
   ]);
+
+  // Flatten investment holdings
+  const investments = investmentAccounts.flatMap((acc: any) => acc.holdings || []);
 
   // Transform to PortfolioInput format
   const portfolioInput: PortfolioInput = {
@@ -612,8 +618,8 @@ export async function generatePortfolioSnapshot(userId: string) {
       ticker: inv.ticker || inv.id,
       units: Number(inv.units || 0),
       averagePrice: Number(inv.averagePrice || 0),
-      currentPrice: Number(inv.currentPrice || 0),
-      type: (inv.investmentType as any) || 'SHARE',
+      currentPrice: Number(inv.averagePrice || 0), // Use averagePrice as currentPrice since no market data yet
+      type: (inv.type as any) || 'SHARE',
     })),
   };
 
