@@ -434,14 +434,22 @@ export async function getRelationalGraph(userId: string) {
     const { default: prisma } = await import('@/lib/db');
 
     // Fetch all user entities
-    const [properties, loans, income, expenses, accounts, investments] = await Promise.all([
+    const [properties, loans, income, expenses, accounts, investmentAccounts] = await Promise.all([
       prisma.property.findMany({ where: { userId } }),
       prisma.loan.findMany({ where: { userId } }),
       prisma.income.findMany({ where: { userId } }),
       prisma.expense.findMany({ where: { userId } }),
       prisma.account.findMany({ where: { userId } }),
-      prisma.investment.findMany({ where: { userId } }),
+      prisma.investmentAccount.findMany({
+        where: { userId },
+        include: { holdings: true }
+      }),
     ]);
+
+    // Flatten investment holdings
+    const holdings = investmentAccounts.flatMap((acc: any) =>
+      acc.holdings.map((h: any) => ({ ...h, accountName: acc.name }))
+    );
 
     // Build entities array
     const entities: GRDCSLinkedEntity[] = [
@@ -460,8 +468,12 @@ export async function getRelationalGraph(userId: string) {
       ...accounts.map((a: any) => createLinkedEntity('account', a.id, a.name || a.id, {
         value: Number(a.currentBalance || 0),
       })),
-      ...investments.map((inv: any) => createLinkedEntity('investmentHolding', inv.id, inv.ticker || inv.id, {
-        value: Number(inv.currentPrice || 0) * Number(inv.units || 0),
+      ...investmentAccounts.map((acc: any) => createLinkedEntity('investmentAccount', acc.id, acc.name || acc.id, {
+        value: 0, // Account value calculated from holdings
+      })),
+      ...holdings.map((h: any) => createLinkedEntity('investmentHolding', h.id, h.ticker || h.id, {
+        value: Number(h.averagePrice || 0) * Number(h.units || 0),
+        metadata: { accountName: h.accountName },
       })),
     ];
 
