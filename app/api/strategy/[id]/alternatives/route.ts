@@ -10,8 +10,9 @@ import { generateAlternatives } from '@/lib/strategy';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   return withAuth(request, async (authReq: AuthenticatedRequest) => {
     try {
       const userId = authReq.user!.userId;
