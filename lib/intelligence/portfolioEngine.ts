@@ -543,6 +543,102 @@ function calculateDebtStressTest(input: PortfolioInput, cashflow: CashflowAnalys
 }
 
 // =============================================================================
+// DATABASE WRAPPER
+// =============================================================================
+
+/**
+ * Generate portfolio snapshot from database for a user
+ */
+export async function generatePortfolioSnapshot(userId: string) {
+  // Import prisma dynamically to avoid circular dependencies
+  const { default: prisma } = await import('@/lib/db');
+
+  // Fetch all user's financial data
+  const [properties, loans, accounts, income, expenses, investments] = await Promise.all([
+    prisma.property.findMany({ where: { userId } }),
+    prisma.loan.findMany({ where: { userId } }),
+    prisma.bankAccount.findMany({ where: { userId } }),
+    prisma.income.findMany({ where: { userId } }),
+    prisma.expense.findMany({ where: { userId } }),
+    prisma.investment.findMany({ where: { userId } }),
+  ]);
+
+  // Transform to PortfolioInput format
+  const portfolioInput: PortfolioInput = {
+    properties: properties.map(p => ({
+      id: p.id,
+      name: p.address || p.id,
+      type: p.propertyType === 'INVESTMENT' ? 'INVESTMENT' : 'HOME',
+      currentValue: Number(p.currentValue || 0),
+      purchasePrice: Number(p.purchasePrice || 0),
+      purchaseDate: p.purchaseDate || new Date(),
+    })),
+    loans: loans.map(l => ({
+      id: l.id,
+      name: l.lender || l.id,
+      type: l.loanType === 'INVESTMENT' ? 'INVESTMENT' : 'HOME',
+      principal: Number(l.currentBalance || 0),
+      interestRate: Number(l.interestRate || 0) / 100,
+      isInterestOnly: l.isInterestOnly || false,
+      propertyId: l.propertyId || undefined,
+      offsetBalance: l.offsetBalance ? Number(l.offsetBalance) : undefined,
+    })),
+    accounts: accounts.map(a => ({
+      id: a.id,
+      name: a.accountName || a.id,
+      type: (a.accountType as any) || 'TRANSACTIONAL',
+      currentBalance: Number(a.currentBalance || 0),
+    })),
+    income: income.map(i => ({
+      id: i.id,
+      name: i.source || i.id,
+      type: (i.incomeType as any) || 'OTHER',
+      amount: Number(i.amount || 0),
+      frequency: (i.frequency as any) || 'MONTHLY',
+      isTaxable: true,
+      propertyId: i.propertyId || undefined,
+    })),
+    expenses: expenses.map(e => ({
+      id: e.id,
+      name: e.category || e.id,
+      amount: Number(e.amount || 0),
+      frequency: (e.frequency as any) || 'MONTHLY',
+      isEssential: true,
+      isTaxDeductible: false,
+      propertyId: e.propertyId || undefined,
+    })),
+    investments: investments.map(inv => ({
+      id: inv.id,
+      ticker: inv.ticker || inv.id,
+      units: Number(inv.units || 0),
+      averagePrice: Number(inv.averagePrice || 0),
+      currentPrice: Number(inv.currentPrice || 0),
+      type: (inv.investmentType as any) || 'SHARE',
+    })),
+  };
+
+  // Generate intelligence
+  const intelligence = generatePortfolioIntelligence(portfolioInput);
+
+  // Return in expected format for dataCollector
+  return {
+    summary: {
+      totalNetWorth: intelligence.netWorth.netWorth,
+      totalAssets: intelligence.netWorth.totalAssets,
+      totalLiabilities: intelligence.netWorth.totalLiabilities,
+    },
+    properties: intelligence.propertyAnalysis,
+    loans: portfolioInput.loans,
+    investments: [intelligence.investmentAnalysis],
+    cashflow: intelligence.cashflow,
+    trends: {
+      netWorth: [],
+      cashflow: [],
+    },
+  };
+}
+
+// =============================================================================
 // MAIN ENGINE
 // =============================================================================
 
