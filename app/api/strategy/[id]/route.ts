@@ -76,16 +76,23 @@ export async function PATCH(
       }
 
       // Update recommendation
+      const updateData: any = { status };
+
+      if (status === 'ACCEPTED') {
+        updateData.acceptedAt = new Date();
+      } else if (status === 'DISMISSED') {
+        updateData.dismissedAt = new Date();
+        if (notes) {
+          updateData.dismissReason = notes;
+        }
+      }
+
       const recommendation = await prisma.strategyRecommendation.updateMany({
         where: {
           id: params.id,
           userId,
         },
-        data: {
-          status,
-          userNotes: notes,
-          actionedAt: new Date(),
-        },
+        data: updateData,
       });
 
       if (recommendation.count === 0) {
