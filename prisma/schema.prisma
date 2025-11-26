@@ -212,6 +212,11 @@ model User {
   loginAttempts           LoginAttempt[]
   emailMFACodes           EmailMFACode[]
 
+  // Phase 11: AI Strategy Engine
+  strategyRecommendations StrategyRecommendation[]
+  strategySessions        StrategySession[]
+  strategyForecasts       StrategyForecast[]
+
   @@map("users")
 }
 
@@ -605,6 +610,7 @@ model Organization {
   // Relationships
   members               OrganizationMember[]
   auditLogs             AuditLog[]
+  strategyRecommendations StrategyRecommendation[]
 
   @@map("organizations")
 }
@@ -819,4 +825,201 @@ model EmailMFACode {
   @@index([code])
   @@index([expiresAt])
   @@map("email_mfa_codes")
+}
+
+// =============================================================================
+// PHASE 11: AI STRATEGY ENGINE ENUMS
+// =============================================================================
+
+enum StrategyCategory {
+  GROWTH
+  DEBT
+  CASHFLOW
+  INVESTMENT
+  PROPERTY
+  RISK_RESILIENCE
+}
+
+enum StrategyType {
+  TACTICAL        // Immediate action
+  OPERATIONAL     // 3-12 months
+  STRATEGIC       // 1-5 years
+  LONG_TERM       // 5-30 years
+}
+
+enum RecommendationStatus {
+  PENDING
+  ACCEPTED
+  DISMISSED
+  EXPIRED
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum RiskAppetite {
+  CONSERVATIVE
+  MODERATE
+  AGGRESSIVE
+}
+
+enum DebtComfort {
+  DEBT_AVERSE
+  MODERATE
+  LEVERAGE_COMFORTABLE
+}
+
+enum InvestmentStyle {
+  PASSIVE
+  BALANCED
+  ACTIVE
+}
+
+enum ScenarioType {
+  DEFAULT
+  CONSERVATIVE
+  AGGRESSIVE
+  CUSTOM
+}
+
+// =============================================================================
+// PHASE 11: STRATEGY RECOMMENDATION
+// =============================================================================
+
+model StrategyRecommendation {
+  id                String               @id @default(uuid())
+  userId            String
+  organizationId    String?
+
+  // Classification
+  category          StrategyCategory
+  type              StrategyType
+  severity          String               // 'critical' | 'high' | 'medium' | 'low' (from InsightSeverity)
+
+  // Content
+  title             String
+  summary           String               @db.Text
+  detail            String               @db.Text
+
+  // Scoring
+  sbsScore          Float                // Strategic Benefit Score (0-100)
+  confidence        ConfidenceLevel
+
+  // Impact Analysis (stored as JSON for flexibility)
+  financialImpact   Json                 // { min, max, currency, timeframe, monthlySavings, totalSavings, breakEven }
+  riskImpact        Json                 // { current, projected, factors[] }
+  liquidityImpact   Json?                // { currentLiquidity, projectedLiquidity, impact }
+  taxImpact         Json?                // { currentTax, projectedTax, savings }
+
+  // Evidence & Explainability
+  reasoning         String               @db.Text  // Step-by-step reasoning trace
+  evidenceGraph     Json                 // { dataPoints[], historicalTrend[], snapshotValues, insightFlags[], healthIssues[], calculations }
+  alternativeIds    String[]             // IDs of alternative strategies
+
+  // Affected Entities (GRDCS format)
+  affectedEntities  Json                 // GRDCSLinkedEntity[] - entities impacted by this recommendation
+
+  // Forecast Projection (optional)
+  forecastData      Json?                // Multi-year projection if applicable
+
+  // User Interaction
+  status            RecommendationStatus @default(PENDING)
+  dismissedAt       DateTime?
+  acceptedAt        DateTime?
+  dismissReason     String?
+
+  // Metadata
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  expiresAt         DateTime?            // When this recommendation becomes stale
+
+  // Relationships
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization      Organization?        @relation(fields: [organizationId], references: [id])
+
+  @@index([userId, status])
+  @@index([organizationId])
+  @@index([category, status])
+  @@index([sbsScore])
+  @@index([createdAt])
+  @@map("strategy_recommendations")
+}
+
+// =============================================================================
+// PHASE 11: STRATEGY SESSION (User Preferences)
+// =============================================================================
+
+model StrategySession {
+  id                String            @id @default(uuid())
+  userId            String
+
+  version           Int               @default(1)
+
+  // User Input Parameters
+  riskAppetite      RiskAppetite?
+  timeHorizon       Int?              // Years (e.g., 5, 10, 20, 30)
+  debtComfort       DebtComfort?
+  investmentStyle   InvestmentStyle?
+  retirementAge     Int?              // Target retirement age
+
+  // Scenario Selection
+  scenarioType      ScenarioType      @default(DEFAULT)
+  customParameters  Json?             // Custom forecast parameters if scenarioType = CUSTOM
+
+  // Tracking
+  acceptedCount     Int               @default(0)
+  dismissedCount    Int               @default(0)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relationships
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("strategy_sessions")
+}
+
+// =============================================================================
+// PHASE 11: STRATEGY FORECAST (Multi-Year Projections)
+// =============================================================================
+
+model StrategyForecast {
+  id                String        @id @default(uuid())
+  userId            String
+
+  // Forecast Parameters
+  startYear         Int           // Starting year (e.g., 2025)
+  endYear           Int           // Ending year (e.g., 2055 for 30-year forecast)
+  scenarioType      ScenarioType
+
+  // Input Assumptions
+  incomeGrowthRate  Float         // Annual income growth rate (e.g., 0.03 for 3%)
+  expenseInflation  Float         // Annual expense inflation (e.g., 0.025 for 2.5%)
+  investmentReturn  Float         // Expected annual investment return (e.g., 0.07 for 7%)
+  rentalYield       Float         // Expected rental yield (e.g., 0.04 for 4%)
+  cpiProjection     Float         // CPI inflation projection (e.g., 0.025 for 2.5%)
+
+  // Yearly Projections (array of year data stored as JSON)
+  projections       Json          // [{ year, netWorth, debt, cashflow, income, expenses, investments, properties }]
+
+  // Risk Bands (best/worst case scenarios)
+  worstCase         Json          // Worst case projection array
+  bestCase          Json          // Best case projection array
+
+  // Target Achievement
+  targetProbability Float?        // Probability of achieving retirement/goal target (0-1)
+
+  createdAt         DateTime      @default(now())
+
+  // Relationships
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([scenarioType])
+  @@index([createdAt])
+  @@map("strategy_forecasts")
 }
