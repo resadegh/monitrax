@@ -423,3 +423,94 @@ export function wrapWithGRDCS<T extends Record<string, unknown>>(
     },
   };
 }
+
+/**
+ * Get complete relational graph for a user
+ * Returns all entities and their relationships
+ */
+export async function getRelationalGraph(userId: string) {
+  try {
+    // Import prisma dynamically to avoid circular dependencies
+    const { default: prisma } = await import('@/lib/db');
+
+    // Fetch all user entities
+    const [properties, loans, income, expenses, accounts, investments] = await Promise.all([
+      prisma.property.findMany({ where: { userId } }),
+      prisma.loan.findMany({ where: { userId } }),
+      prisma.income.findMany({ where: { userId } }),
+      prisma.expense.findMany({ where: { userId } }),
+      prisma.bankAccount.findMany({ where: { userId } }),
+      prisma.investment.findMany({ where: { userId } }),
+    ]);
+
+    // Build entities array
+    const entities: GRDCSLinkedEntity[] = [
+      ...properties.map((p: any) => createLinkedEntity('property', p.id, p.address || p.id, {
+        value: Number(p.currentValue || 0),
+      })),
+      ...loans.map((l: any) => createLinkedEntity('loan', l.id, l.lender || l.id, {
+        value: Number(l.currentBalance || 0),
+      })),
+      ...income.map((i: any) => createLinkedEntity('income', i.id, i.source || i.id, {
+        value: Number(i.amount || 0),
+      })),
+      ...expenses.map((e: any) => createLinkedEntity('expense', e.id, e.category || e.id, {
+        value: Number(e.amount || 0),
+      })),
+      ...accounts.map((a: any) => createLinkedEntity('account', a.id, a.accountName || a.id, {
+        value: Number(a.currentBalance || 0),
+      })),
+      ...investments.map((inv: any) => createLinkedEntity('investmentHolding', inv.id, inv.ticker || inv.id, {
+        value: Number(inv.currentPrice || 0) * Number(inv.units || 0),
+      })),
+    ];
+
+    // Build relationships array (entities linked to properties)
+    const relationships: Array<{
+      from: string;
+      to: string;
+      type: string;
+    }> = [];
+
+    // Loans to properties
+    loans.forEach((l: any) => {
+      if (l.propertyId) {
+        relationships.push({
+          from: l.id,
+          to: l.propertyId,
+          type: 'secures',
+        });
+      }
+    });
+
+    // Income to properties
+    income.forEach((i: any) => {
+      if (i.propertyId) {
+        relationships.push({
+          from: i.id,
+          to: i.propertyId,
+          type: 'generated_by',
+        });
+      }
+    });
+
+    // Expenses to properties
+    expenses.forEach((e: any) => {
+      if (e.propertyId) {
+        relationships.push({
+          from: e.id,
+          to: e.propertyId,
+          type: 'related_to',
+        });
+      }
+    });
+
+    return {
+      entities,
+      relationships,
+    };
+  } catch (error) {
+    console.error('[GRDCS] Failed to get relational graph:', error);
+    return null;
+  }
+}
