@@ -64,7 +64,8 @@ export async function GET(request: NextRequest) {
           title: true,
           status: true,
           createdAt: true,
-          actionedAt: true,
+          acceptedAt: true,
+          dismissedAt: true,
         },
       });
 
