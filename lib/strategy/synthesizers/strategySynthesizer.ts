@@ -280,7 +280,7 @@ async function saveRecommendations(
 
           // Evidence & Explainability
           reasoning: buildReasoningTrace(finding, data),
-          evidenceGraph: buildEvidenceGraph(finding, data),
+          evidenceGraph: buildEvidenceGraph(finding, data) as any, // Cast to Json for Prisma
           alternativeIds: [], // Will be populated by Alternative Generator
 
           // Affected Entities (from evidence)
