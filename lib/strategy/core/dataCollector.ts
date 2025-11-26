@@ -10,7 +10,7 @@
  * 5. User Preferences (StrategySession)
  */
 
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/db';
 import type {
   StrategyDataPacket,
   SnapshotData,
