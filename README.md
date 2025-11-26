@@ -13,6 +13,12 @@ A comprehensive personal finance application focused on property investment, loa
   - Snowball (smallest balance first)
 - **Income & Expense Tracking**: Categorize and track recurring income and expenses
 - **Account Management**: Track offset, savings, transactional accounts, and credit cards
+- **Multiple Authentication Methods**:
+  - Email/Password login with JWT tokens
+  - OAuth 2.0 (Google, Facebook, Microsoft, Apple)
+  - Magic link (passwordless email login)
+  - Passkey/WebAuthn support
+  - Multi-factor authentication (TOTP, Email OTP, Backup codes)
 
 ## Tech Stack
 
@@ -56,6 +62,7 @@ A comprehensive personal finance application focused on property investment, loa
 4. Edit `.env` and set:
    - `DATABASE_URL`: Your PostgreSQL connection string
    - `JWT_SECRET`: A secure random string for JWT signing
+   - (Optional) OAuth credentials - see [OAuth Quick Start](docs/OAUTH-QUICKSTART.md)
 
 5. Initialize the database:
    ```bash
@@ -91,6 +98,11 @@ All entities have proper foreign key relationships and cascade deletes.
 - `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - Login user
 - `GET /api/auth/me` - Get current user (requires auth)
+- `GET /api/auth/providers` - Get configured OAuth providers
+- `GET /api/auth/oauth/{provider}` - Initiate OAuth flow (Google, Facebook, Microsoft, Apple)
+- `GET /api/auth/callback/{provider}` - OAuth callback handler
+- `POST /api/auth/magic-link/send` - Send passwordless magic link
+- `GET /api/auth/magic-link/verify` - Verify magic link token
 
 ### Data Management
 - `GET /api/properties` - List user properties
