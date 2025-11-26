@@ -59,7 +59,13 @@ export { analyzeLiquidity } from './analyzers/liquidityAnalyzer';
 export { analyzeTax } from './analyzers/taxAnalyzer';
 export { analyzeTimeHorizon } from './analyzers/timeHorizonAnalyzer';
 
-// TODO: Export forecasting
-// export { generateForecast } from './forecasting/forecastEngine';
+// Forecasting (Stage 5)
+export {
+  generateForecast,
+  generateAllScenarios,
+  type ForecastAssumptions,
+  type YearlyProjection,
+  type ForecastResult,
+} from './forecasting';
 
 export const STRATEGY_ENGINE_VERSION = '1.0.0';

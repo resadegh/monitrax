@@ -1,6 +1,6 @@
 /**
  * FORECASTING ENGINE
- * Phase 11 - Stage 5 (to be implemented)
+ * Phase 11 - Stage 5: Multi-Year Forecasting
  *
  * Multi-Year Forecasting:
  * 1. Forecast Engine - 5, 10, 20, 30 year projections
@@ -8,4 +8,10 @@
  * 3. Projection Calculator - Financial calculation helpers
  */
 
-// TODO: Implement in Stage 5
+export {
+  generateForecast,
+  generateAllScenarios,
+  type ForecastAssumptions,
+  type YearlyProjection,
+  type ForecastResult,
+} from './forecastEngine';
