@@ -900,3 +900,35 @@ export function getInsightsByBlueprintCategory(
     },
   };
 }
+
+/**
+ * Generate insights for a user from their latest snapshot
+ * Wrapper function for strategy engine data collection
+ */
+export async function generateInsights(userId: string): Promise<InsightItem[]> {
+  try {
+    // Import prisma dynamically to avoid circular dependencies
+    const { default: prisma } = await import('@/lib/db');
+
+    // Fetch latest snapshot for user
+    const snapshot = await prisma.portfolioSnapshot.findFirst({
+      where: { userId },
+      orderBy: { generatedAt: 'desc' },
+    });
+
+    if (!snapshot || !snapshot.snapshotData) {
+      return [];
+    }
+
+    // Parse snapshot data
+    const snapshotV2 = snapshot.snapshotData as unknown as SnapshotV2;
+
+    // Generate insights from snapshot
+    const result = getInsightsForDashboard(snapshotV2);
+
+    return result.insights;
+  } catch (error) {
+    console.error('[InsightsEngine] Failed to generate insights:', error);
+    return [];
+  }
+}
