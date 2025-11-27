@@ -12,6 +12,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import DashboardLayout from '@/components/DashboardLayout';
 import {
   Activity,
   TrendingUp,
@@ -302,6 +303,7 @@ export default function HealthDashboard() {
   const [report, setReport] = useState<HealthReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchHealthReport();
@@ -310,13 +312,20 @@ export default function HealthDashboard() {
   async function fetchHealthReport() {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch('/api/financial-health');
-      if (response.ok) {
-        const json = await response.json();
+      const json = await response.json();
+
+      if (response.ok && json.success) {
         setReport(json.data);
+      } else {
+        setError(json.error || json.details || 'Failed to load health data');
+        console.error('Health API error:', json);
       }
-    } catch (error) {
-      console.error('Failed to fetch health report:', error);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Network error';
+      setError(errorMessage);
+      console.error('Failed to fetch health report:', err);
     } finally {
       setLoading(false);
     }
@@ -330,33 +339,50 @@ export default function HealthDashboard() {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="h-64 bg-gray-200 rounded"></div>
-            <div className="h-64 bg-gray-200 rounded col-span-2"></div>
+      <DashboardLayout>
+        <div className="p-6">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="h-64 bg-gray-200 rounded"></div>
+              <div className="h-64 bg-gray-200 rounded col-span-2"></div>
+            </div>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (!report) {
     return (
-      <div className="p-6">
-        <div className="text-center py-12">
-          <Activity className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No Health Data Available</h3>
-          <p className="text-gray-500 mt-2">Add financial data to see your health score.</p>
+      <DashboardLayout>
+        <div className="p-6">
+          <div className="text-center py-12">
+            <Activity className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">
+              {error ? 'Error Loading Health Data' : 'No Health Data Available'}
+            </h3>
+            <p className="text-gray-500 mt-2">
+              {error || 'Add financial data to see your health score.'}
+            </p>
+            {error && (
+              <button
+                onClick={fetchHealthReport}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Try Again
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   const { healthScore, categories, riskSignals, improvementActions } = report;
 
   return (
+    <DashboardLayout>
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
@@ -495,5 +521,6 @@ export default function HealthDashboard() {
         </div>
       )}
     </div>
+    </DashboardLayout>
   );
 }

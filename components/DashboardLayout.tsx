@@ -16,6 +16,7 @@ import {
   LogOut,
   User,
   PieChart,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
   { name: 'Income', href: '/dashboard/income', icon: TrendingUp },
   { name: 'Expenses', href: '/dashboard/expenses', icon: TrendingDown },
   { name: 'Investments', href: '/dashboard/investments/accounts', icon: PieChart },
+  { name: 'Financial Health', href: '/health', icon: Activity },
   { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator },
   { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt },
 ];
