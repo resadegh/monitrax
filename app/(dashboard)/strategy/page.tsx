@@ -9,6 +9,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import ForecastChart from '@/components/strategy/ForecastChart';
+import ConflictResolver from '@/components/strategy/ConflictResolver';
+import { Settings, LineChart, AlertTriangle } from 'lucide-react';
 
 // =============================================================================
 // TYPES
@@ -44,6 +47,7 @@ export default function StrategyDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [activeTab, setActiveTab] = useState<'recommendations' | 'conflicts' | 'forecast'>('recommendations');
   const [filter, setFilter] = useState({
     status: '',
     category: '',
@@ -206,7 +210,65 @@ export default function StrategyDashboard() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b border-gray-200">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setActiveTab('recommendations')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'recommendations'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Settings className="inline-block h-4 w-4 mr-2" />
+              Recommendations
+            </button>
+            <button
+              onClick={() => setActiveTab('conflicts')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'conflicts'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <AlertTriangle className="inline-block h-4 w-4 mr-2" />
+              Conflicts
+            </button>
+            <button
+              onClick={() => setActiveTab('forecast')}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'forecast'
+                  ? 'border-purple-500 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <LineChart className="inline-block h-4 w-4 mr-2" />
+              30-Year Forecast
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Tab Content: Conflicts */}
+      {activeTab === 'conflicts' && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <ConflictResolver onResolved={fetchData} />
+        </div>
+      )}
+
+      {/* Tab Content: Forecast */}
+      {activeTab === 'forecast' && (
+        <div className="bg-white p-6 rounded-lg shadow">
+          <ForecastChart />
+        </div>
+      )}
+
+      {/* Tab Content: Recommendations */}
+      {activeTab === 'recommendations' && (
+        <>
+          {/* Filters */}
       <div className="flex gap-4 bg-white p-4 rounded-lg shadow">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -305,6 +367,8 @@ export default function StrategyDashboard() {
           ))
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

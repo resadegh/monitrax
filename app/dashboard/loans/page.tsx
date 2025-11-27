@@ -13,8 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building, Link2 } from 'lucide-react';
+import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building, Link2, Lightbulb } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
@@ -705,11 +706,15 @@ function LoansPageContent() {
 
           {selectedLoan && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="property">Property</TabsTrigger>
                 <TabsTrigger value="offset">Offset</TabsTrigger>
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
+                <TabsTrigger value="strategy" className="gap-1">
+                  <Lightbulb className="h-3 w-3" />
+                  Strategy
+                </TabsTrigger>
                 <TabsTrigger value="linked" className="gap-1">
                   <Link2 className="h-3 w-3" />
                   Linked
@@ -974,6 +979,14 @@ function LoansPageContent() {
                     <p className="text-sm">Link expenses from the Expenses page</p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="strategy" className="mt-4">
+                <EntityStrategyTab
+                  entityType="loan"
+                  entityId={selectedLoan.id}
+                  entityName={selectedLoan.name}
+                />
               </TabsContent>
 
               <TabsContent value="linked" className="mt-4">

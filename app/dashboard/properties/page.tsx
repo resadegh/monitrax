@@ -16,9 +16,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Home, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   Landmark, DollarSign, Receipt, Calendar, Building2,
-  ChevronRight, Percent, PiggyBank, FileText, Eye, Link2
+  ChevronRight, Percent, PiggyBank, FileText, Eye, Link2, Lightbulb
 } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
@@ -614,15 +615,19 @@ function PropertiesPageContent() {
               </DialogHeader>
 
               <Tabs defaultValue="overview" className="mt-4">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="overview">Details</TabsTrigger>
                   <TabsTrigger value="cashflow">Financials</TabsTrigger>
                   <TabsTrigger value="loans">Loans</TabsTrigger>
+                  <TabsTrigger value="strategy">
+                    <Lightbulb className="h-3 w-3 mr-1" />
+                    Strategy
+                  </TabsTrigger>
                   <TabsTrigger value="linked">
                     <Link2 className="h-3 w-3 mr-1" />
                     Linked
                   </TabsTrigger>
-                  <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
+                  <TabsTrigger value="depreciation">Depr.</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4 mt-4">
@@ -784,6 +789,14 @@ function PropertiesPageContent() {
                       </p>
                     </div>
                   )}
+                </TabsContent>
+
+                <TabsContent value="strategy" className="mt-4">
+                  <EntityStrategyTab
+                    entityType="property"
+                    entityId={selectedProperty.id}
+                    entityName={selectedProperty.name}
+                  />
                 </TabsContent>
 
                 <TabsContent value="linked" className="mt-4">
