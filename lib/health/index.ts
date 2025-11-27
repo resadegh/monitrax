@@ -8,4 +8,5 @@
 // Types
 export * from './types';
 
-// Engine functions will be added in subsequent tasks
+// Layer 1: Metric Aggregation
+export * from './metricAggregation';
