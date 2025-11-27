@@ -13,3 +13,6 @@ export * from './metricAggregation';
 
 // Layer 2: Category Scoring
 export * from './categoryScoring';
+
+// Layer 3: Aggregate Health Engine
+export * from './aggregateEngine';
