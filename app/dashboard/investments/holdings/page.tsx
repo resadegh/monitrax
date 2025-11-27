@@ -13,8 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, Plus, Edit2, Trash2, Eye, TrendingUp, ArrowUpRight, ArrowDownRight, DollarSign, Percent, Link2 } from 'lucide-react';
+import { BarChart3, Plus, Edit2, Trash2, Eye, TrendingUp, ArrowUpRight, ArrowDownRight, DollarSign, Percent, Link2, Lightbulb } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
@@ -491,9 +492,13 @@ function HoldingsPageContent() {
 
           {selectedHolding && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                <TabsTrigger value="strategy" className="gap-1">
+                  <Lightbulb className="h-3 w-3" />
+                  Strategy
+                </TabsTrigger>
                 <TabsTrigger value="linked" className="gap-1">
                   <Link2 className="h-3 w-3" />
                   Linked
@@ -629,6 +634,14 @@ function HoldingsPageContent() {
                     <p className="text-sm">Add transactions from the Transactions page</p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="strategy" className="mt-4">
+                <EntityStrategyTab
+                  entityType="investment"
+                  entityId={selectedHolding.id}
+                  entityName={selectedHolding.ticker}
+                />
               </TabsContent>
 
               <TabsContent value="linked" className="mt-4">
