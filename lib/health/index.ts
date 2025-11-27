@@ -10,3 +10,6 @@ export * from './types';
 
 // Layer 1: Metric Aggregation
 export * from './metricAggregation';
+
+// Layer 2: Category Scoring
+export * from './categoryScoring';
