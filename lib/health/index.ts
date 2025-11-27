@@ -16,3 +16,6 @@ export * from './categoryScoring';
 
 // Layer 3: Aggregate Health Engine
 export * from './aggregateEngine';
+
+// Risk Modelling System
+export * from './riskModelling';

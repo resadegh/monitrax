@@ -25,6 +25,7 @@ import {
 
 import { aggregateMetrics, calculateDataConfidence } from './metricAggregation';
 import { scoreAllCategories, getConcerningCategories } from './categoryScoring';
+import { analyzeAllRisks, generateImprovementActions } from './riskModelling';
 
 // =============================================================================
 // SCORE MODIFIER CALCULATION
@@ -346,10 +347,9 @@ export function generateHealthReport(input: FinancialHealthInput): FinancialHeal
   const healthScore = generateHealthScore(input, categories, modifiers, metrics);
   const evidence = generateEvidencePack(input, categories, healthScore.trend);
 
-  // Placeholders for risk signals and improvement actions
-  // These will be implemented in Task 5
-  const riskSignals: any[] = [];
-  const improvementActions: any[] = [];
+  // Risk analysis and improvement actions
+  const riskSignals = analyzeAllRisks(metrics, input);
+  const improvementActions = generateImprovementActions(riskSignals, categories);
 
   return {
     healthScore,
