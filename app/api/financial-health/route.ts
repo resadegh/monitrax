@@ -16,6 +16,7 @@ import { withAuth } from '@/lib/middleware';
 import {
   generateHealthReport,
   quickHealthCheck,
+  scoreToRiskBand,
   FinancialHealthInput,
   PropertyData,
   LoanData,
@@ -281,7 +282,7 @@ export async function GET(request: NextRequest) {
           healthScore: {
             score: report.healthScore.score,
             confidence: report.healthScore.confidence,
-            riskBand: report.healthScore.breakdown[0]?.riskBand || 'MODERATE',
+            riskBand: scoreToRiskBand(report.healthScore.score),
             trend: report.healthScore.trend,
           },
 
