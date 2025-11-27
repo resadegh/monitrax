@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useAuth } from '@/lib/context/AuthContext';
 import {
   Activity,
   TrendingUp,
@@ -300,21 +301,26 @@ function ImprovementCard({ action }: { action: ImprovementAction }) {
 // =============================================================================
 
 export default function HealthDashboard() {
+  const { token } = useAuth();
   const [report, setReport] = useState<HealthReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchHealthReport();
-  }, []);
+    if (token) {
+      fetchHealthReport();
+    }
+  }, [token]);
 
   async function fetchHealthReport() {
+    if (!token) return;
+
     try {
       setLoading(true);
       setError(null);
       const response = await fetch('/api/financial-health', {
-        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` },
       });
       const json = await response.json();
 
