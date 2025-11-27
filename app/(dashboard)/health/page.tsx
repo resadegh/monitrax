@@ -313,7 +313,9 @@ export default function HealthDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/financial-health');
+      const response = await fetch('/api/financial-health', {
+        credentials: 'include',
+      });
       const json = await response.json();
 
       if (response.ok && json.success) {
