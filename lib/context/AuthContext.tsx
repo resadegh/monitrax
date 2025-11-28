@@ -45,8 +45,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Login failed');
+      const errorData = await response.json();
+      // Build detailed error message
+      let errorMessage = errorData.error || 'Login failed';
+      if (errorData.remainingAttempts !== undefined) {
+        errorMessage += ` (${errorData.remainingAttempts} attempts remaining)`;
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -64,8 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Registration failed');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Registration failed');
     }
 
     const data = await response.json();
