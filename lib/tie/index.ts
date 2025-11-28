@@ -10,3 +10,6 @@ export * from './types';
 
 // Ingestion pipeline
 export * from './ingestion';
+
+// Categorisation engine
+export * from './categorisation';
