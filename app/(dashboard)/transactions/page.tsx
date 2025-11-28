@@ -35,7 +35,9 @@ import {
   Repeat,
   TrendingUp,
   TrendingDown,
+  Upload,
 } from 'lucide-react';
+import { ImportWizard } from '@/components/bank/ImportWizard';
 
 // =============================================================================
 // TYPES
@@ -490,12 +492,22 @@ function SummaryCards({ summary }: { summary: AnalyticsSummary }) {
 // MAIN COMPONENT
 // =============================================================================
 
+interface ImportAccount {
+  id: string;
+  name: string;
+  type: string;
+}
+
 export default function TransactionExplorer() {
   const { token } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Import wizard state
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  const [accounts, setAccounts] = useState<ImportAccount[]>([]);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -566,10 +578,32 @@ export default function TransactionExplorer() {
     }
   }, [token]);
 
+  const fetchAccounts = useCallback(async () => {
+    if (!token) return;
+    try {
+      const response = await fetch('/api/accounts', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await response.json();
+      if (response.ok && json.success) {
+        // Map accounts to ImportAccount format
+        const mappedAccounts: ImportAccount[] = (json.data || []).map((acc: { id: string; name: string; type?: string; institution?: string }) => ({
+          id: acc.id,
+          name: acc.name,
+          type: acc.type || acc.institution || 'Bank',
+        }));
+        setAccounts(mappedAccounts);
+      }
+    } catch (err) {
+      console.error('Failed to fetch accounts:', err);
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchTransactions();
     fetchSummary();
-  }, [fetchTransactions, fetchSummary]);
+    fetchAccounts();
+  }, [fetchTransactions, fetchSummary, fetchAccounts]);
 
   async function handleSaveCorrection(updates: {
     categoryLevel1: string;
@@ -624,11 +658,20 @@ export default function TransactionExplorer() {
     <DashboardLayout>
       <div className="p-6">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Transaction Explorer</h1>
-          <p className="text-gray-500 text-sm">
-            Search, filter, and categorise your transactions
-          </p>
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Transaction Explorer</h1>
+            <p className="text-gray-500 text-sm">
+              Search, filter, and categorise your transactions
+            </p>
+          </div>
+          <button
+            onClick={() => setShowImportWizard(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Import Transactions
+          </button>
         </div>
 
         {/* Summary Cards */}
@@ -809,6 +852,29 @@ export default function TransactionExplorer() {
             onClose={() => setEditingTransaction(null)}
             onSave={handleSaveCorrection}
           />
+        </>
+      )}
+
+      {/* Import Wizard Modal */}
+      {showImportWizard && (
+        <>
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setShowImportWizard(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <ImportWizard
+                accounts={accounts}
+                onComplete={() => {
+                  setShowImportWizard(false);
+                  fetchTransactions();
+                  fetchSummary();
+                }}
+                onClose={() => setShowImportWizard(false)}
+              />
+            </div>
+          </div>
         </>
       )}
     </DashboardLayout>
