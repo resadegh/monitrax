@@ -1,0 +1,274 @@
+{
+  "description": "Golden baseline for investment portfolio calculations",
+  "generated": "2024-06-01T00:00:00.000Z",
+  "version": "1.0.0",
+
+  "portfolioA": {
+    "userId": "00000000-0000-0000-0000-000000000001",
+
+    "investmentAccounts": {
+      "brokerage": {
+        "id": "77777777-0000-0000-0000-000000000001",
+        "platform": "SelfWealth",
+        "type": "BROKERAGE"
+      }
+    },
+
+    "holdings": {
+      "VAS": {
+        "holdingId": "88888888-0000-0000-0000-000000000001",
+        "ticker": "VAS",
+        "name": "Vanguard Australian Shares ETF",
+        "type": "ETF",
+        "units": 450,
+        "currentPrice": 90,
+        "frankingPercentage": 0.80,
+
+        "transactions": [
+          {
+            "date": "2022-03-15",
+            "type": "BUY",
+            "units": 200,
+            "price": 82.00,
+            "fees": 9.50,
+            "totalCost": {
+              "expected": 16409.50,
+              "formula": "(200 * 82) + 9.50"
+            }
+          },
+          {
+            "date": "2023-06-20",
+            "type": "BUY",
+            "units": 250,
+            "price": 88.50,
+            "fees": 9.50,
+            "totalCost": {
+              "expected": 22134.50,
+              "formula": "(250 * 88.50) + 9.50"
+            }
+          },
+          {
+            "date": "2024-03-15",
+            "type": "DIVIDEND",
+            "units": 450,
+            "perUnit": 0.85,
+            "totalDividend": {
+              "expected": 382.50,
+              "formula": "450 * 0.85"
+            }
+          }
+        ],
+
+        "calculations": {
+          "costBase": {
+            "expected": 38544,
+            "tolerance": 10,
+            "formula": "16409.50 + 22134.50 = 38544 (including brokerage fees)"
+          },
+          "averageCost": {
+            "expected": 85.65,
+            "tolerance": 0.1,
+            "formula": "costBase / units = 38544 / 450"
+          },
+          "currentValue": {
+            "expected": 40500,
+            "tolerance": 0,
+            "formula": "units * currentPrice = 450 * 90"
+          },
+          "unrealisedGain": {
+            "expected": 1956,
+            "tolerance": 20,
+            "formula": "currentValue - costBase = 40500 - 38544"
+          },
+          "unrealisedGainPercentage": {
+            "expected": 0.0507,
+            "tolerance": 0.005,
+            "formula": "unrealisedGain / costBase = 1956 / 38544"
+          },
+          "cgtDiscount": {
+            "eligible": true,
+            "holdingPeriod": "12+ months for all parcels",
+            "taxableGain": {
+              "expected": 978,
+              "tolerance": 10,
+              "formula": "unrealisedGain * 0.5 = 1956 * 0.5"
+            }
+          }
+        }
+      },
+
+      "VGS": {
+        "holdingId": "88888888-0000-0000-0000-000000000002",
+        "ticker": "VGS",
+        "name": "Vanguard International Shares ETF",
+        "type": "ETF",
+        "units": 280,
+        "currentPrice": 115,
+        "frankingPercentage": 0,
+
+        "transactions": [
+          {
+            "date": "2022-08-10",
+            "type": "BUY",
+            "units": 150,
+            "price": 98.00,
+            "fees": 9.50,
+            "totalCost": {
+              "expected": 14709.50,
+              "formula": "(150 * 98) + 9.50"
+            }
+          },
+          {
+            "date": "2024-01-08",
+            "type": "BUY",
+            "units": 130,
+            "price": 113.50,
+            "fees": 9.50,
+            "totalCost": {
+              "expected": 14764.50,
+              "formula": "(130 * 113.50) + 9.50"
+            }
+          }
+        ],
+
+        "calculations": {
+          "costBase": {
+            "expected": 29474,
+            "tolerance": 10,
+            "formula": "14709.50 + 14764.50 = 29474"
+          },
+          "averageCost": {
+            "expected": 105.26,
+            "tolerance": 0.1,
+            "formula": "costBase / units = 29474 / 280"
+          },
+          "currentValue": {
+            "expected": 32200,
+            "tolerance": 0,
+            "formula": "units * currentPrice = 280 * 115"
+          },
+          "unrealisedGain": {
+            "expected": 2726,
+            "tolerance": 20,
+            "formula": "currentValue - costBase = 32200 - 29474"
+          },
+          "unrealisedGainPercentage": {
+            "expected": 0.0925,
+            "tolerance": 0.005,
+            "formula": "unrealisedGain / costBase = 2726 / 29474"
+          },
+          "cgtDiscount": {
+            "parcel1": {
+              "units": 150,
+              "eligible": true,
+              "holdingPeriod": "12+ months"
+            },
+            "parcel2": {
+              "units": 130,
+              "eligible": false,
+              "holdingPeriod": "< 12 months (purchased Jan 2024)"
+            },
+            "notes": "Mixed eligibility - need parcel-by-parcel CGT calculation"
+          }
+        }
+      }
+    },
+
+    "portfolioTotals": {
+      "totalValue": {
+        "expected": 72700,
+        "tolerance": 0,
+        "formula": "VAS 40500 + VGS 32200"
+      },
+      "totalCostBase": {
+        "expected": 68018,
+        "tolerance": 20
+      },
+      "totalUnrealisedGain": {
+        "expected": 4682,
+        "tolerance": 30
+      },
+      "overallReturn": {
+        "expected": 0.0688,
+        "tolerance": 0.005,
+        "formula": "totalUnrealisedGain / totalCostBase"
+      }
+    },
+
+    "assetAllocation": {
+      "australian": {
+        "value": 40500,
+        "percentage": {
+          "expected": 0.557,
+          "tolerance": 0.01
+        }
+      },
+      "international": {
+        "value": 32200,
+        "percentage": {
+          "expected": 0.443,
+          "tolerance": 0.01
+        }
+      }
+    }
+  },
+
+  "portfolioB": {
+    "userId": "00000000-0000-0000-0000-000000000002",
+
+    "investmentAccounts": {
+      "super": {
+        "id": "B7777777-0000-0000-0000-000000000001",
+        "platform": "AustralianSuper",
+        "type": "SUPERS"
+      },
+      "crypto": {
+        "id": "B7777777-0000-0000-0000-000000000002",
+        "platform": "CoinSpot",
+        "type": "ETF_CRYPTO"
+      }
+    },
+
+    "holdings": {
+      "BTC": {
+        "holdingId": "B8888888-0000-0000-0000-000000000001",
+        "ticker": "BTC",
+        "type": "CRYPTO",
+        "units": 0.15,
+        "averagePrice": 45000,
+
+        "calculations": {
+          "costBase": {
+            "expected": 6750,
+            "tolerance": 0,
+            "formula": "units * averagePrice = 0.15 * 45000"
+          },
+          "currentValueScenarios": {
+            "at60000": {
+              "value": 9000,
+              "gain": 2250,
+              "gainPercentage": 0.333
+            },
+            "at100000": {
+              "value": 15000,
+              "gain": 8250,
+              "gainPercentage": 1.222
+            },
+            "at30000": {
+              "value": 4500,
+              "loss": -2250,
+              "lossPercentage": -0.333
+            }
+          },
+          "volatilityNote": "Crypto holdings have high volatility - value can change significantly"
+        }
+      }
+    },
+
+    "riskProfile": {
+      "concentration": "HIGH - 100% in single crypto asset",
+      "volatility": "EXTREME",
+      "recommendation": "Consider diversification into traditional ETFs"
+    }
+  }
+}

@@ -1,0 +1,294 @@
+{
+  "description": "Golden baseline for tax calculations (depreciation, deductions, franking)",
+  "generated": "2024-06-01T00:00:00.000Z",
+  "version": "1.0.0",
+
+  "portfolioA": {
+    "userId": "00000000-0000-0000-0000-000000000001",
+    "taxYear": "2024-25",
+
+    "income": {
+      "salary": {
+        "primarySalary": {
+          "monthly": 7500,
+          "annual": {
+            "expected": 90000,
+            "tolerance": 0
+          },
+          "isTaxable": true
+        },
+        "partnerSalary": {
+          "monthly": 5500,
+          "annual": {
+            "expected": 66000,
+            "tolerance": 0
+          },
+          "isTaxable": true
+        },
+        "totalSalaryIncome": {
+          "expected": 156000,
+          "tolerance": 0
+        }
+      },
+      "rentalIncome": {
+        "weeklyRent": 550,
+        "annual": {
+          "expected": 28600,
+          "tolerance": 0,
+          "formula": "550 * 52"
+        },
+        "isTaxable": true
+      },
+      "dividendIncome": {
+        "vasGrossDividend": {
+          "perUnit": 0.85,
+          "units": 450,
+          "expected": 382.50,
+          "tolerance": 0.1
+        },
+        "frankingPercentage": 0.80
+      },
+      "totalTaxableIncome": {
+        "expected": 184982.50,
+        "tolerance": 50
+      }
+    },
+
+    "deductions": {
+      "investmentPropertyDeductions": {
+        "loanInterest": {
+          "expected": 30140,
+          "tolerance": 10,
+          "formula": "440000 * 0.0685",
+          "notes": "Investment loan is fully tax deductible"
+        },
+        "councilRates": {
+          "expected": 1800,
+          "tolerance": 0
+        },
+        "insurance": {
+          "expected": 1600,
+          "tolerance": 0
+        },
+        "strata": {
+          "expected": 7800,
+          "tolerance": 0,
+          "formula": "650 * 12"
+        },
+        "propertyManagement": {
+          "expected": 7436,
+          "tolerance": 10,
+          "formula": "143 * 52"
+        },
+        "totalPropertyDeductions": {
+          "expected": 48776,
+          "tolerance": 50
+        }
+      },
+
+      "depreciation": {
+        "div43CapitalWorks": {
+          "buildingStructure": {
+            "cost": 350000,
+            "rate": 0.025,
+            "method": "PRIME_COST",
+            "annualDeduction": {
+              "expected": 8750,
+              "tolerance": 0,
+              "formula": "cost * rate = 350000 * 0.025"
+            }
+          },
+          "totalDiv43": {
+            "expected": 8750,
+            "tolerance": 0
+          }
+        },
+
+        "div40PlantEquipment": {
+          "carpet": {
+            "cost": 8000,
+            "rate": 0.125,
+            "method": "DIMINISHING_VALUE",
+            "year1Deduction": {
+              "expected": 1000,
+              "tolerance": 50,
+              "formula": "cost * rate * 1.5 (DV multiplier) but capped at remaining value, typically ~12.5% for year 1"
+            },
+            "note": "DV method for year 3 (2024): base * (1-0.125)^2 * 0.125 * 1.5"
+          },
+          "airConditioning": {
+            "cost": 6500,
+            "rate": 0.1,
+            "method": "PRIME_COST",
+            "annualDeduction": {
+              "expected": 650,
+              "tolerance": 0,
+              "formula": "cost * rate = 6500 * 0.1"
+            }
+          },
+          "hotWaterSystem": {
+            "cost": 2500,
+            "rate": 0.1,
+            "method": "PRIME_COST",
+            "annualDeduction": {
+              "expected": 250,
+              "tolerance": 0,
+              "formula": "cost * rate = 2500 * 0.1"
+            }
+          },
+          "totalDiv40": {
+            "expected": 1900,
+            "tolerance": 100,
+            "notes": "Varies based on diminishing value calculations for carpet"
+          }
+        },
+
+        "totalDepreciation": {
+          "expected": 10650,
+          "tolerance": 100,
+          "formula": "div43 + div40 = 8750 + 1900"
+        }
+      },
+
+      "totalDeductions": {
+        "expected": 59426,
+        "tolerance": 200,
+        "formula": "propertyDeductions + depreciation = 48776 + 10650"
+      }
+    },
+
+    "frankingCredits": {
+      "vasDividend": {
+        "grossDividend": 382.50,
+        "frankingPercentage": 0.80,
+        "frankingCredit": {
+          "expected": 131.22,
+          "tolerance": 1,
+          "formula": "grossDividend * frankingPercentage * (companyTaxRate / (1 - companyTaxRate))",
+          "detailedFormula": "382.50 * 0.80 * (0.30 / 0.70) = 382.50 * 0.80 * 0.4286 = 131.22"
+        }
+      },
+      "totalFrankingCredits": {
+        "expected": 131.22,
+        "tolerance": 1
+      }
+    },
+
+    "negativeGearing": {
+      "rentalIncome": 28600,
+      "totalDeductions": 59426,
+      "netRentalLoss": {
+        "expected": -30826,
+        "tolerance": 200,
+        "formula": "rentalIncome - totalDeductions = 28600 - 59426"
+      },
+      "taxBenefitAt37PercentRate": {
+        "expected": 11405,
+        "tolerance": 100,
+        "formula": "netRentalLoss * 0.37 (assuming 37% marginal rate on $156k income)"
+      }
+    }
+  },
+
+  "portfolioB": {
+    "userId": "00000000-0000-0000-0000-000000000002",
+    "taxYear": "2024-25",
+
+    "income": {
+      "salary": {
+        "partTimeSalary": {
+          "monthly": 3200,
+          "annual": {
+            "expected": 38400,
+            "tolerance": 0
+          },
+          "isTaxable": true
+        }
+      },
+      "rentalIncome": {
+        "weeklyRent": 380,
+        "annual": {
+          "expected": 19760,
+          "tolerance": 0,
+          "formula": "380 * 52"
+        }
+      },
+      "totalTaxableIncome": {
+        "expected": 58160,
+        "tolerance": 0
+      }
+    },
+
+    "deductions": {
+      "investmentPropertyDeductions": {
+        "variableLoanInterest": {
+          "expected": 16541,
+          "tolerance": 10,
+          "formula": "(250000 - 12000) * 0.0695"
+        },
+        "fixedLoanInterest": {
+          "expected": 10602,
+          "tolerance": 10,
+          "formula": "180000 * 0.0589"
+        },
+        "strata": {
+          "expected": 10200,
+          "tolerance": 0,
+          "formula": "850 * 12"
+        },
+        "totalPropertyDeductions": {
+          "expected": 37343,
+          "tolerance": 50
+        }
+      },
+
+      "depreciation": {
+        "div43CapitalWorks": {
+          "totalDiv43": {
+            "expected": 0,
+            "notes": "No depreciation schedules set up for this property"
+          }
+        },
+        "div40PlantEquipment": {
+          "totalDiv40": {
+            "expected": 0
+          }
+        },
+        "totalDepreciation": {
+          "expected": 0
+        }
+      },
+
+      "totalDeductions": {
+        "expected": 37343,
+        "tolerance": 50
+      }
+    },
+
+    "negativeGearing": {
+      "rentalIncome": 19760,
+      "totalDeductions": 37343,
+      "netRentalLoss": {
+        "expected": -17583,
+        "tolerance": 50,
+        "formula": "rentalIncome - totalDeductions = 19760 - 37343"
+      },
+      "taxBenefitAt32_5PercentRate": {
+        "expected": 5714,
+        "tolerance": 50,
+        "formula": "netRentalLoss * 0.325 (32.5% marginal rate for $38.4k income)"
+      },
+      "effectiveCostAfterTax": {
+        "expected": -11869,
+        "tolerance": 100,
+        "formula": "netRentalLoss + taxBenefit = -17583 + 5714"
+      }
+    },
+
+    "notes": {
+      "creditCardInterest": "Credit card interest of $1,869/year is NOT tax deductible as it's personal debt",
+      "offsetBenefit": "Offset saves interest but doesn't generate deductions",
+      "recommendation": "Consider getting a depreciation schedule - could add $5-10k in deductions"
+    }
+  }
+}

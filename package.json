@@ -7,7 +7,17 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:validation": "npm run seed:validation && vitest run --reporter=verbose",
+    "test:regression": "vitest run tests/regression",
+    "test:sanity": "vitest run tests/sanity",
+    "test:calculations": "vitest run tests/calculations",
+    "seed:validation": "npx ts-node prisma/seed-validation.ts",
+    "validate": "npm run seed:validation && npm run test && npm run generate:report",
+    "generate:report": "npx ts-node tests/validation/generate-report.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -43,8 +53,11 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.0",
     "eslint": "^8",
     "eslint-config-next": "15.1.4",
-    "prisma": "^5.22.0"
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "vitest": "^1.6.0"
   }
 }
