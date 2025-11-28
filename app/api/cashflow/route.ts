@@ -380,10 +380,7 @@ export async function GET(request: NextRequest) {
           },
           insights: insights.slice(0, 20),
           generatedAt: new Date(),
-          metadata: {
-            forecastDays: days,
-            ...forecast.metadata,
-          },
+          metadata: forecast.metadata,
         },
       });
     } catch (error) {
