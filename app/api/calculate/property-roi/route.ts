@@ -177,26 +177,26 @@ export async function POST(request: NextRequest) {
 
         // Calculate annual rent
         const annualRent = property.income.reduce(
-          (sum, i) => sum + toAnnual(i.amount, i.frequency as Frequency),
+          (sum: number, i: any) => sum + toAnnual(i.amount, i.frequency as Frequency),
           0
         );
 
         // Calculate annual expenses
         const annualExpenses = property.expenses.reduce(
-          (sum, e) => sum + toAnnual(e.amount, e.frequency as Frequency),
+          (sum: number, e: any) => sum + toAnnual(e.amount, e.frequency as Frequency),
           0
         );
 
         // Calculate loan balance and interest
-        const loanBalance = property.loans.reduce((sum, l) => sum + l.principal, 0);
-        const annualInterest = property.loans.reduce((sum, l) => {
+        const loanBalance = property.loans.reduce((sum: number, l: any) => sum + l.principal, 0);
+        const annualInterest = property.loans.reduce((sum: number, l: any) => {
           const effectivePrincipal = Math.max(0, l.principal - (l.offsetAccount?.currentBalance || 0));
           return sum + effectivePrincipal * l.interestRateAnnual;
         }, 0);
 
         // Calculate depreciation
         const annualDepreciation = property.depreciationSchedules.reduce(
-          (sum, d) => sum + d.cost * (d.rate / 100),
+          (sum: number, d: any) => sum + d.cost * (d.rate / 100),
           0
         );
 

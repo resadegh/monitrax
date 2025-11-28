@@ -17,6 +17,10 @@ import {
   User,
   PieChart,
   Activity,
+  ArrowLeftRight,
+  RefreshCw,
+  LineChart,
+  Lightbulb,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -39,7 +43,11 @@ const navItems: NavItem[] = [
   { name: 'Income', href: '/dashboard/income', icon: TrendingUp },
   { name: 'Expenses', href: '/dashboard/expenses', icon: TrendingDown },
   { name: 'Investments', href: '/dashboard/investments/accounts', icon: PieChart },
+  { name: 'Transactions', href: '/transactions', icon: ArrowLeftRight },
+  { name: 'Recurring', href: '/recurring', icon: RefreshCw },
+  { name: 'Cashflow', href: '/cashflow', icon: LineChart },
   { name: 'Financial Health', href: '/health', icon: Activity },
+  { name: 'Strategy', href: '/strategy', icon: Lightbulb },
   { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator },
   { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt },
 ];

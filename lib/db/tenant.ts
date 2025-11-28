@@ -1,39 +1,24 @@
 /**
- * Tenant-Aware Database Operations
- * Ensures data isolation between users/tenants
+ * Tenant-scoped Prisma operations
+ * Ensures all queries are filtered by userId (tenant isolation)
+ * 
+ * Phase 3: Multi-tenant data isolation layer
  */
 
-import { prisma } from '@/lib/db';
-
-// ============================================
-// TENANT ISOLATION UTILITIES
-// ============================================
-
-/**
- * Add tenant filter to a where clause
- */
-export function withTenant<T extends Record<string, unknown> | undefined>(
-  tenantId: string,
-  where?: T
-): T & { userId: string } {
-  return {
-    ...where,
-    userId: tenantId,
-  } as T & { userId: string };
-}
+import prisma from '@/lib/db';
 
 // ============================================
 // TENANT-SCOPED PROPERTY OPERATIONS
 // ============================================
 
 export const tenantProperty = {
-  findMany: (tenantId: string, args?: Parameters<typeof prisma.property.findMany>[0]) =>
+  findMany: (tenantId: string, args?: any) =>
     prisma.property.findMany({
       ...args,
       where: { ...args?.where, userId: tenantId },
     }),
 
-  findFirst: (tenantId: string, args?: Parameters<typeof prisma.property.findFirst>[0]) =>
+  findFirst: (tenantId: string, args?: any) =>
     prisma.property.findFirst({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -44,17 +29,12 @@ export const tenantProperty = {
       where: { id, userId: tenantId },
     }),
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  create: (tenantId: string, data: Record<string, any>) =>
+  create: (tenantId: string, data: any) =>
     prisma.property.create({
-      data: {
-        ...data,
-        userId: tenantId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      data: { ...data, userId: tenantId },
     }),
 
-  update: (tenantId: string, id: string, data: Parameters<typeof prisma.property.update>[0]['data']) =>
+  update: (tenantId: string, id: string, data: any) =>
     prisma.property.updateMany({
       where: { id, userId: tenantId },
       data,
@@ -65,7 +45,7 @@ export const tenantProperty = {
       where: { id, userId: tenantId },
     }),
 
-  count: (tenantId: string, args?: Parameters<typeof prisma.property.count>[0]) =>
+  count: (tenantId: string, args?: any) =>
     prisma.property.count({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -77,13 +57,13 @@ export const tenantProperty = {
 // ============================================
 
 export const tenantLoan = {
-  findMany: (tenantId: string, args?: Parameters<typeof prisma.loan.findMany>[0]) =>
+  findMany: (tenantId: string, args?: any) =>
     prisma.loan.findMany({
       ...args,
       where: { ...args?.where, userId: tenantId },
     }),
 
-  findFirst: (tenantId: string, args?: Parameters<typeof prisma.loan.findFirst>[0]) =>
+  findFirst: (tenantId: string, args?: any) =>
     prisma.loan.findFirst({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -94,17 +74,12 @@ export const tenantLoan = {
       where: { id, userId: tenantId },
     }),
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  create: (tenantId: string, data: Record<string, any>) =>
+  create: (tenantId: string, data: any) =>
     prisma.loan.create({
-      data: {
-        ...data,
-        userId: tenantId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      data: { ...data, userId: tenantId },
     }),
 
-  update: (tenantId: string, id: string, data: Parameters<typeof prisma.loan.update>[0]['data']) =>
+  update: (tenantId: string, id: string, data: any) =>
     prisma.loan.updateMany({
       where: { id, userId: tenantId },
       data,
@@ -115,7 +90,7 @@ export const tenantLoan = {
       where: { id, userId: tenantId },
     }),
 
-  count: (tenantId: string, args?: Parameters<typeof prisma.loan.count>[0]) =>
+  count: (tenantId: string, args?: any) =>
     prisma.loan.count({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -127,13 +102,13 @@ export const tenantLoan = {
 // ============================================
 
 export const tenantAccount = {
-  findMany: (tenantId: string, args?: Parameters<typeof prisma.account.findMany>[0]) =>
+  findMany: (tenantId: string, args?: any) =>
     prisma.account.findMany({
       ...args,
       where: { ...args?.where, userId: tenantId },
     }),
 
-  findFirst: (tenantId: string, args?: Parameters<typeof prisma.account.findFirst>[0]) =>
+  findFirst: (tenantId: string, args?: any) =>
     prisma.account.findFirst({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -144,17 +119,12 @@ export const tenantAccount = {
       where: { id, userId: tenantId },
     }),
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  create: (tenantId: string, data: Record<string, any>) =>
+  create: (tenantId: string, data: any) =>
     prisma.account.create({
-      data: {
-        ...data,
-        userId: tenantId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      data: { ...data, userId: tenantId },
     }),
 
-  update: (tenantId: string, id: string, data: Parameters<typeof prisma.account.update>[0]['data']) =>
+  update: (tenantId: string, id: string, data: any) =>
     prisma.account.updateMany({
       where: { id, userId: tenantId },
       data,
@@ -165,7 +135,7 @@ export const tenantAccount = {
       where: { id, userId: tenantId },
     }),
 
-  count: (tenantId: string, args?: Parameters<typeof prisma.account.count>[0]) =>
+  count: (tenantId: string, args?: any) =>
     prisma.account.count({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -177,13 +147,13 @@ export const tenantAccount = {
 // ============================================
 
 export const tenantIncome = {
-  findMany: (tenantId: string, args?: Parameters<typeof prisma.income.findMany>[0]) =>
+  findMany: (tenantId: string, args?: any) =>
     prisma.income.findMany({
       ...args,
       where: { ...args?.where, userId: tenantId },
     }),
 
-  findFirst: (tenantId: string, args?: Parameters<typeof prisma.income.findFirst>[0]) =>
+  findFirst: (tenantId: string, args?: any) =>
     prisma.income.findFirst({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -194,17 +164,12 @@ export const tenantIncome = {
       where: { id, userId: tenantId },
     }),
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  create: (tenantId: string, data: Record<string, any>) =>
+  create: (tenantId: string, data: any) =>
     prisma.income.create({
-      data: {
-        ...data,
-        userId: tenantId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      data: { ...data, userId: tenantId },
     }),
 
-  update: (tenantId: string, id: string, data: Parameters<typeof prisma.income.update>[0]['data']) =>
+  update: (tenantId: string, id: string, data: any) =>
     prisma.income.updateMany({
       where: { id, userId: tenantId },
       data,
@@ -215,7 +180,7 @@ export const tenantIncome = {
       where: { id, userId: tenantId },
     }),
 
-  count: (tenantId: string, args?: Parameters<typeof prisma.income.count>[0]) =>
+  count: (tenantId: string, args?: any) =>
     prisma.income.count({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -227,13 +192,13 @@ export const tenantIncome = {
 // ============================================
 
 export const tenantExpense = {
-  findMany: (tenantId: string, args?: Parameters<typeof prisma.expense.findMany>[0]) =>
+  findMany: (tenantId: string, args?: any) =>
     prisma.expense.findMany({
       ...args,
       where: { ...args?.where, userId: tenantId },
     }),
 
-  findFirst: (tenantId: string, args?: Parameters<typeof prisma.expense.findFirst>[0]) =>
+  findFirst: (tenantId: string, args?: any) =>
     prisma.expense.findFirst({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -244,17 +209,12 @@ export const tenantExpense = {
       where: { id, userId: tenantId },
     }),
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  create: (tenantId: string, data: Record<string, any>) =>
+  create: (tenantId: string, data: any) =>
     prisma.expense.create({
-      data: {
-        ...data,
-        userId: tenantId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      data: { ...data, userId: tenantId },
     }),
 
-  update: (tenantId: string, id: string, data: Parameters<typeof prisma.expense.update>[0]['data']) =>
+  update: (tenantId: string, id: string, data: any) =>
     prisma.expense.updateMany({
       where: { id, userId: tenantId },
       data,
@@ -265,7 +225,7 @@ export const tenantExpense = {
       where: { id, userId: tenantId },
     }),
 
-  count: (tenantId: string, args?: Parameters<typeof prisma.expense.count>[0]) =>
+  count: (tenantId: string, args?: any) =>
     prisma.expense.count({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -277,13 +237,13 @@ export const tenantExpense = {
 // ============================================
 
 export const tenantInvestmentAccount = {
-  findMany: (tenantId: string, args?: Parameters<typeof prisma.investmentAccount.findMany>[0]) =>
+  findMany: (tenantId: string, args?: any) =>
     prisma.investmentAccount.findMany({
       ...args,
       where: { ...args?.where, userId: tenantId },
     }),
 
-  findFirst: (tenantId: string, args?: Parameters<typeof prisma.investmentAccount.findFirst>[0]) =>
+  findFirst: (tenantId: string, args?: any) =>
     prisma.investmentAccount.findFirst({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -294,17 +254,12 @@ export const tenantInvestmentAccount = {
       where: { id, userId: tenantId },
     }),
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  create: (tenantId: string, data: Record<string, any>) =>
+  create: (tenantId: string, data: any) =>
     prisma.investmentAccount.create({
-      data: {
-        ...data,
-        userId: tenantId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      data: { ...data, userId: tenantId },
     }),
 
-  update: (tenantId: string, id: string, data: Parameters<typeof prisma.investmentAccount.update>[0]['data']) =>
+  update: (tenantId: string, id: string, data: any) =>
     prisma.investmentAccount.updateMany({
       where: { id, userId: tenantId },
       data,
@@ -315,7 +270,7 @@ export const tenantInvestmentAccount = {
       where: { id, userId: tenantId },
     }),
 
-  count: (tenantId: string, args?: Parameters<typeof prisma.investmentAccount.count>[0]) =>
+  count: (tenantId: string, args?: any) =>
     prisma.investmentAccount.count({
       ...args,
       where: { ...args?.where, userId: tenantId },
@@ -334,46 +289,3 @@ export const tenantPrisma = {
   expense: tenantExpense,
   investmentAccount: tenantInvestmentAccount,
 };
-
-// ============================================
-// TENANT VALIDATION UTILITIES
-// ============================================
-
-/**
- * Verify that a record belongs to the specified tenant
- * Returns true if the record exists and belongs to the tenant
- */
-export async function verifyTenantOwnership(
-  tenantId: string,
-  entity: 'property' | 'loan' | 'account' | 'income' | 'expense' | 'investmentAccount',
-  recordId: string
-): Promise<boolean> {
-  const operations = tenantPrisma[entity];
-  const record = await operations.findUnique(tenantId, recordId);
-  return record !== null;
-}
-
-/**
- * Verify multiple records belong to the specified tenant
- */
-export async function verifyTenantOwnershipBulk(
-  tenantId: string,
-  entity: 'property' | 'loan' | 'account' | 'income' | 'expense' | 'investmentAccount',
-  recordIds: string[]
-): Promise<{ valid: string[]; invalid: string[] }> {
-  const validIds: string[] = [];
-  const invalidIds: string[] = [];
-
-  await Promise.all(
-    recordIds.map(async (id) => {
-      const isOwned = await verifyTenantOwnership(tenantId, entity, id);
-      if (isOwned) {
-        validIds.push(id);
-      } else {
-        invalidIds.push(id);
-      }
-    })
-  );
-
-  return { valid: validIds, invalid: invalidIds };
-}

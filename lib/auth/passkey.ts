@@ -681,7 +681,7 @@ export async function getPasskeyStats(userId: string): Promise<{
     orderBy: { lastUsedAt: 'desc' },
   });
 
-  const devices = [...new Set(passkeys.map((p: { deviceName: string | null }) => p.deviceName).filter((name): name is string => name !== null))];
+  const devices: string[] = Array.from(new Set(passkeys.map((p: { deviceName: string | null }) => p.deviceName).filter((name: string | null): name is string => name !== null)));
   const lastUsed = passkeys[0]?.lastUsedAt ?? null;
 
   return {

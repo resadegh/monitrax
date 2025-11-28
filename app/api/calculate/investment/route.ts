@@ -121,8 +121,8 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        holdingsData = accounts.flatMap((acc) =>
-          acc.holdings.map((h) => ({
+        holdingsData = accounts.flatMap((acc: any) =>
+          acc.holdings.map((h: any) => ({
             id: h.id,
             ticker: h.ticker,
             units: h.units,
@@ -133,8 +133,8 @@ export async function POST(request: NextRequest) {
           }))
         );
 
-        transactionsData = accounts.flatMap((acc) =>
-          acc.transactions.map((t) => ({
+        transactionsData = accounts.flatMap((acc: any) =>
+          acc.transactions.map((t: any) => ({
             type: t.type as 'BUY' | 'SELL' | 'DIVIDEND' | 'DISTRIBUTION',
             units: t.units,
             price: t.price,
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
         }
 
-        holdingsData = account.holdings.map((h) => ({
+        holdingsData = account.holdings.map((h: any) => ({
           id: h.id,
           ticker: h.ticker,
           units: h.units,
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
           frankingPercentage: h.frankingPercentage || 100,
         }));
 
-        transactionsData = account.transactions.map((t) => ({
+        transactionsData = account.transactions.map((t: any) => ({
           type: t.type as 'BUY' | 'SELL' | 'DIVIDEND' | 'DISTRIBUTION',
           units: t.units,
           price: t.price,
