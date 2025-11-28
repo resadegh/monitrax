@@ -618,7 +618,7 @@ function generateStressSummary(
     shortestSurvivalTime: shortestSurvival,
     averageSurvivalTime: avgSurvival,
     recommendedEmergencyFund,
-    criticalRisks: [...new Set(criticalRisks)], // Deduplicate
+    criticalRisks: Array.from(new Set(criticalRisks)), // Deduplicate
   };
 }
 
