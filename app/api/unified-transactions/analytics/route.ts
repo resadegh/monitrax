@@ -89,15 +89,16 @@ export async function GET(request: NextRequest) {
 
       if (!profile && tieTransactions.length > 0) {
         const profileData = generateSpendingProfile(tieTransactions, userId);
+        // Convert Record types to plain JSON for Prisma
         profile = await prisma.spendingProfile.create({
           data: {
             userId,
-            categoryAverages: profileData.categoryAverages,
-            monthlyPatterns: profileData.monthlyPatterns,
-            seasonalityFactors: profileData.seasonalityFactors,
-            spendingClusters: profileData.spendingClusters,
+            categoryAverages: JSON.parse(JSON.stringify(profileData.categoryAverages)),
+            monthlyPatterns: profileData.monthlyPatterns ? JSON.parse(JSON.stringify(profileData.monthlyPatterns)) : null,
+            seasonalityFactors: profileData.seasonalityFactors ? JSON.parse(JSON.stringify(profileData.seasonalityFactors)) : null,
+            spendingClusters: profileData.spendingClusters ? JSON.parse(JSON.stringify(profileData.spendingClusters)) : null,
             overallVolatility: profileData.overallVolatility,
-            categoryVolatility: profileData.categoryVolatility,
+            categoryVolatility: profileData.categoryVolatility ? JSON.parse(JSON.stringify(profileData.categoryVolatility)) : null,
             predictedMonthlySpend: profileData.predictedMonthlySpend,
             predictionConfidence: profileData.predictionConfidence,
             dataPointCount: profileData.dataPointCount,
