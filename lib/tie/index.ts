@@ -1,0 +1,12 @@
+/**
+ * TRANSACTION INTELLIGENCE ENGINE (TIE)
+ * Phase 13 - Transactional Intelligence
+ *
+ * Main entry point for the TIE module.
+ */
+
+// Types
+export * from './types';
+
+// Ingestion pipeline
+export * from './ingestion';
