@@ -225,12 +225,269 @@ UI shows:
 
 ---
 
-# 14.9 Deliverables  
-- Cashflow Forecasting Engine  
-- Cashflow Optimisation Engine  
-- Stress Testing Simulator  
-- Forecast Dashboard  
-- Strategy Panel  
-- API suite for cashflow datasets  
-- Integration into Insights Engine v3  
+# 14.9 Deliverables
+- Cashflow Forecasting Engine
+- Cashflow Optimisation Engine
+- Stress Testing Simulator
+- Forecast Dashboard
+- Strategy Panel
+- API suite for cashflow datasets
+- Integration into Insights Engine v3
+
+---
+
+# 14.10 Implementation Notes
+
+> **Status: IMPLEMENTED** (November 2025)
+
+## 14.10.1 Database Schema
+
+**Location:** `prisma/schema.prisma`
+
+### New Enums:
+```typescript
+enum CashflowInsightCategory {
+  RECURRING, ANOMALY, INEFFICIENCY, LIQUIDITY_RISK, SUBSCRIPTION, SAVINGS_OPPORTUNITY
+}
+
+enum CashflowStrategyType {
+  OPTIMISE, PREVENT_SHORTFALL, MAXIMISE_OFFSET, REDUCE_WASTE, REBALANCE,
+  REPAYMENT_OPTIMISE, SCHEDULE_OPTIMISE
+}
+
+enum CashflowInsightSeverity {
+  LOW, MEDIUM, HIGH, CRITICAL
+}
+```
+
+### New Models:
+| Model | Description |
+|-------|-------------|
+| `CashflowForecast` | Per-account/global daily balance predictions |
+| `CashflowInsight` | Cashflow-specific insights (extends Insights Engine) |
+| `CashflowStrategy` | Optimisation strategy recommendations |
+
+---
+
+## 14.10.2 Library Structure
+
+**Location:** `lib/cashflow/`
+
+| File | Description |
+|------|-------------|
+| `types.ts` | Complete TypeScript interfaces for CFE, COE, Stress Test |
+| `forecasting.ts` | Cashflow Forecasting Engine (CFE) - predicts future balances |
+| `optimisation.ts` | Cashflow Optimisation Engine (COE) - identifies savings |
+| `stressTesting.ts` | Stress Test Model - what-if scenario simulator |
+| `insightGenerator.ts` | Generates cashflow insights for Insights Engine v3 |
+| `index.ts` | Barrel export for all modules |
+
+---
+
+## 14.10.3 Cashflow Forecasting Engine (CFE)
+
+**File:** `lib/cashflow/forecasting.ts`
+
+### Main Function:
+```typescript
+export async function generateForecast(input: CFEInput): Promise<CFEOutput>
+```
+
+### Process:
+1. Calculate historical spending patterns from transactions
+2. Generate recurring payment timeline from TIE data
+3. Generate income timeline from income streams
+4. Generate loan repayment timeline
+5. Compute per-account forecasts with confidence bands
+6. Aggregate into global forecast
+7. Analyse shortfalls and calculate summary metrics
+
+### Outputs:
+- Daily balance predictions for 90 days
+- Confidence scores with decay over time
+- Upper/lower bounds for volatility
+- Shortfall detection and dates
+- Volatility index
+- Withdrawable cash calculation
+
+---
+
+## 14.10.4 Cashflow Optimisation Engine (COE)
+
+**File:** `lib/cashflow/optimisation.ts`
+
+### Main Function:
+```typescript
+export async function generateOptimisations(input: COEInput): Promise<COEOutput>
+```
+
+### Features:
+- **Inefficiency Detection**: Compares category spending to Australian benchmarks
+- **Subscription Analysis**: Tracks subscriptions, detects price increases (>5%)
+- **Fund Movement**: Recommends offset maximisation, shortfall prevention
+- **Schedule Optimisation**: Aligns payments with income dates
+- **Repayment Optimisation**: Suggests P&I conversion, extra repayments
+
+### Category Benchmarks (Australian household averages):
+```typescript
+const CATEGORY_BENCHMARKS = {
+  'Food & Dining': 800,
+  'Groceries': 600,
+  'Subscriptions': 100,
+  'Utilities': 350,
+  'Transport': 400,
+  // ... etc
+};
+```
+
+---
+
+## 14.10.5 Stress Testing Model
+
+**File:** `lib/cashflow/stressTesting.ts`
+
+### Main Function:
+```typescript
+export async function runStressTests(input: CFEInput, scenarios?: StressScenario[]): Promise<StressTestOutput>
+```
+
+### Predefined Scenarios (9 total):
+1. Income Drop 50% (3 months)
+2. Complete Income Loss (6 months)
+3. Unexpected $5,000 Expense
+4. Major Expense $15,000
+5. Interest Rate +1%
+6. Interest Rate +2%
+7. High Inflation (8%)
+8. Mild Combined Stress
+9. Severe Combined Stress
+
+### Outputs:
+- Survival time (months until shortfall)
+- Balance impact vs baseline
+- Resilience score (0-100)
+- Mitigation strategies
+- Required emergency fund recommendation
+
+---
+
+## 14.10.6 REST API Endpoints
+
+**Location:** `app/api/cashflow/`
+
+### Main Endpoint
+```typescript
+GET /api/cashflow
+Query params:
+  - type: 'forecast' | 'optimisation' | 'full' (default: 'full')
+  - days: number (default: 90)
+
+Response: {
+  success: boolean,
+  data: {
+    forecast: { globalForecast, summary, shortfallAnalysis, volatilityIndex, recurringTimeline },
+    optimisations: { inefficiencies, strategies, breakEvenDay, summary },
+    insights: CashflowInsight[]
+  }
+}
+```
+
+### Stress Test Endpoint
+```typescript
+GET /api/cashflow/stress-test
+Query params:
+  - scenarios: comma-separated scenario IDs
+
+POST /api/cashflow/stress-test
+Body: { name?, description?, parameters: StressParameters }
+```
+
+### Insights Endpoint
+```typescript
+GET /api/cashflow/insights
+Query params: severity?, category?, unread?, limit?
+
+PATCH /api/cashflow/insights
+Body: { insightId, action: 'read' | 'dismiss' | 'action' }
+```
+
+### Strategies Endpoint
+```typescript
+GET /api/cashflow/strategies
+Query params: type?, status?, limit?
+
+PATCH /api/cashflow/strategies
+Body: { strategyId, action: 'accept' | 'dismiss', dismissReason? }
+```
+
+---
+
+## 14.10.7 UI Components
+
+### Cashflow Dashboard
+**File:** `app/(dashboard)/cashflow/page.tsx`
+
+Features:
+- 90-day forecast chart (bar chart with shortfall highlighting)
+- Key metrics: Net Cashflow, Burn Rate, Withdrawable Cash, Potential Savings
+- Shortfall alert banner
+- Upcoming payments list from recurring timeline
+- Strategy cards with accept/dismiss actions
+- Insight cards with severity badges
+- Break-even day indicator
+- Volatility index warning
+
+---
+
+## 14.10.8 Integration Points
+
+### Consumes:
+- **Phase 13 TIE**: UnifiedTransaction, RecurringPayment, SpendingProfile
+- **Phase 03 Loan Engine**: Loan schedules, offset accounts
+- **Phase 12 Health Engine**: Insight severity affects health score
+
+### Powers:
+- **Insights Engine v3**: Generates cashflow-specific insights
+- **Phase 17 Personal CFO**: Future integration point
+
+---
+
+## 14.10.9 ML Configuration
+
+Following Phase 11 pattern, ML models are stubbed for future implementation:
+- Recurrence classifier (uses rule-based detection from Phase 13)
+- Category-level spend predictor (uses historical averages)
+- Cashflow volatility estimator (coefficient of variation)
+- Shortfall predictor (linear projection with confidence decay)
+
+**Future AI Integration**: Same OpenAI configuration pattern as Phase 13 for:
+- Enhanced anomaly detection
+- Predictive spend forecasting
+- Personalised strategy recommendations
+
+---
+
+## 14.10.10 Confidence Calculation
+
+```typescript
+const CONFIDENCE_BASE = 0.95;
+const CONFIDENCE_DECAY_RATE = 0.002; // per day
+const VOLATILITY_WEIGHT = 0.3;
+
+confidence = CONFIDENCE_BASE * exp(-DECAY_RATE * days) * (1 - volatility * WEIGHT)
+```
+
+Confidence bands (upper/lower bounds):
+```typescript
+volatilityAdjustment = dailyAverage * volatility * sqrt(day + 1)
+upperBound = predictedBalance + volatilityAdjustment
+lowerBound = predictedBalance - volatilityAdjustment
+```
+
+---
+
+## 14.10.11 Authentication
+
+All endpoints use `Authorization: Bearer ${token}` header pattern.
+Implemented via `withAuth()` middleware from `lib/middleware`.  
 
