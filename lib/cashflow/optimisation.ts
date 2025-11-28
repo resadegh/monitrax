@@ -276,11 +276,12 @@ function analyseSubscriptions(
   recurringPayments
     .filter((rp) => rp.isActive && rp.pattern === 'MONTHLY')
     .forEach((rp) => {
-      const hasPriceIncrease =
+      const hasPriceIncrease: boolean = Boolean(
         rp.priceIncreaseAlert &&
         rp.lastPriceChange &&
         Math.abs(rp.lastPriceChange / rp.expectedAmount) >
-          SUBSCRIPTION_PRICE_INCREASE_THRESHOLD;
+          SUBSCRIPTION_PRICE_INCREASE_THRESHOLD
+      );
 
       const analysis: SubscriptionAnalysis = {
         merchantStandardised: rp.merchantStandardised,
