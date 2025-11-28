@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
           id: randomUUID(),
           importFileId: importFile.id,
           rowNumber: tx.rowNumber,
-          rawData: tx.rawData as Record<string, unknown>,
+          rawData: JSON.parse(JSON.stringify(tx.rawData)),
           date: tx.date,
           description: tx.description,
           amount: tx.amount,
