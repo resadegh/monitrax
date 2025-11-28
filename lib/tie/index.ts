@@ -13,3 +13,6 @@ export * from './ingestion';
 
 // Categorisation engine
 export * from './categorisation';
+
+// Behavioural engine
+export * from './behavioural';
