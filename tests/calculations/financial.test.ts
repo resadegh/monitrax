@@ -223,7 +223,7 @@ describe('Interest Calculations', () => {
     expect(calculateMonthlyInterest(440000, 0.0685)).toBeCloseTo(2511.67, 2);
 
     // Variable loan with offset: $238k @ 6.95%
-    expect(calculateMonthlyInterest(238000, 0.0695)).toBeCloseTo(1378.59, 2);
+    expect(calculateMonthlyInterest(238000, 0.0695)).toBeCloseTo(1378.42, 2);
 
     // Fixed loan: $180k @ 5.89%
     expect(calculateMonthlyInterest(180000, 0.0589)).toBeCloseTo(883.50, 2);
