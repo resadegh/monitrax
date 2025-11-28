@@ -102,6 +102,10 @@ export interface RecurringPaymentData {
   nextExpected?: Date;
   lastOccurrence: Date;
   isActive: boolean;
+  // Price tracking (optional - from TIE)
+  priceIncreaseAlert?: boolean;
+  lastPriceChange?: number;
+  lastPriceChangeDate?: Date;
 }
 
 export interface IncomeStream {
