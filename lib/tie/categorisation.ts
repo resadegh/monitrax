@@ -855,7 +855,7 @@ export function createMerchantMappingFromCorrection(
     userId: tx.userId,
     merchantRaw: merchantRaw.toLowerCase().trim(),
     merchantStandardised: tx.merchantStandardised || merchantRaw,
-    merchantCategoryCode: tx.merchantCategoryCode,
+    merchantCategoryCode: tx.merchantCategoryCode ?? null,
     categoryLevel1: correction.categoryLevel1,
     categoryLevel2: correction.categoryLevel2 || null,
     subcategory: correction.subcategory || null,
