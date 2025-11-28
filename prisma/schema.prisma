@@ -222,6 +222,11 @@ model User {
   recurringPayments       RecurringPayment[]
   spendingProfile         SpendingProfile?
 
+  // Phase 14: Cashflow Optimisation Engine
+  cashflowForecasts       CashflowForecast[]
+  cashflowInsights        CashflowInsight[]
+  cashflowStrategies      CashflowStrategy[]
+
   @@map("users")
 }
 
@@ -311,6 +316,9 @@ model Account {
   // Phase 13: Transactional Intelligence
   unifiedTransactions UnifiedTransaction[] @relation("UnifiedTransactions")
   recurringPayments   RecurringPayment[]   @relation("RecurringPayments")
+
+  // Phase 14: Cashflow Optimisation Engine
+  cashflowForecasts   CashflowForecast[]
 
   @@index([userId])
   @@map("accounts")
@@ -1056,6 +1064,36 @@ model SpendingProfile {
 }
 
 // =============================================================================
+// PHASE 14: CASHFLOW OPTIMISATION ENGINE ENUMS
+// =============================================================================
+
+enum CashflowInsightCategory {
+  RECURRING           // Recurring payment insights
+  ANOMALY             // Unusual spending detected
+  INEFFICIENCY        // Wasteful spending identified
+  LIQUIDITY_RISK      // Cash shortage risk
+  SUBSCRIPTION        // Subscription-related insight
+  SAVINGS_OPPORTUNITY // Potential savings found
+}
+
+enum CashflowStrategyType {
+  OPTIMISE            // General optimisation
+  PREVENT_SHORTFALL   // Avoid cash shortage
+  MAXIMISE_OFFSET     // Maximise offset benefits
+  REDUCE_WASTE        // Cut wasteful spending
+  REBALANCE           // Rebalance cash allocation
+  REPAYMENT_OPTIMISE  // Optimise loan repayments
+  SCHEDULE_OPTIMISE   // Optimise payment scheduling
+}
+
+enum CashflowInsightSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// =============================================================================
 // PHASE 11: AI STRATEGY ENGINE ENUMS
 // =============================================================================
 
@@ -1250,4 +1288,166 @@ model StrategyForecast {
   @@index([scenarioType])
   @@index([createdAt])
   @@map("strategy_forecasts")
+}
+
+// =============================================================================
+// PHASE 14: CASHFLOW FORECAST
+// =============================================================================
+
+model CashflowForecast {
+  id                  String    @id @default(uuid())
+  userId              String
+  accountId           String?   // Null = global forecast across all accounts
+
+  // Forecast date
+  date                DateTime  // The date this forecast is for
+
+  // Predicted values
+  predictedBalance    Float     // Predicted balance on this date
+  predictedIncome     Float     // Predicted income for this date
+  predictedExpenses   Float     // Predicted expenses for this date
+
+  // Confidence metrics
+  confidenceScore     Float     // 0-1 confidence in this prediction
+  volatilityFactor    Float     @default(0) // Volatility index (0 = stable)
+
+  // Confidence bands (upper/lower bounds)
+  upperBound          Float?    // Optimistic scenario
+  lowerBound          Float?    // Pessimistic scenario
+
+  // Additional metadata
+  predictedRecurring  Float     @default(0) // Recurring payments expected
+  predictedNonRecurring Float   @default(0) // Non-recurring expected
+  shortfallRisk       Boolean   @default(false) // Is shortfall predicted?
+  shortfallAmount     Float?    // Amount of predicted shortfall
+
+  // Calculation metadata
+  metadata            Json?     // { calculationMethod, inputCount, anomaliesDetected }
+
+  // Timestamps
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relationships
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account             Account?  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, accountId, date])
+  @@index([userId])
+  @@index([accountId])
+  @@index([date])
+  @@index([shortfallRisk])
+  @@map("cashflow_forecasts")
+}
+
+// =============================================================================
+// PHASE 14: CASHFLOW INSIGHT
+// =============================================================================
+
+model CashflowInsight {
+  id                  String                    @id @default(uuid())
+  userId              String
+
+  // Classification
+  severity            CashflowInsightSeverity
+  category            CashflowInsightCategory
+
+  // Content
+  title               String
+  description         String                    @db.Text
+  recommendedAction   String                    @db.Text
+
+  // Impact tracking
+  impactedAccountIds  String[]                  // Account IDs affected
+  impactedCategories  String[]                  // Spending categories affected
+
+  // Financial estimate
+  valueEstimate       Float?                    // Estimated dollar impact
+  savingsPotential    Float?                    // Potential savings if actioned
+  confidenceScore     Float                     @default(0.8) // 0-1
+
+  // Linked entities (for GRDCS compatibility)
+  linkedEntities      Json?                     // { loans: [], accounts: [], recurring: [] }
+
+  // User interaction
+  isRead              Boolean                   @default(false)
+  isDismissed         Boolean                   @default(false)
+  isActioned          Boolean                   @default(false)
+  dismissedAt         DateTime?
+  actionedAt          DateTime?
+
+  // Validity
+  expiresAt           DateTime?                 // When this insight becomes stale
+
+  // Metadata
+  metadata            Json?                     // Additional context
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  // Relationships
+  user                User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([severity])
+  @@index([category])
+  @@index([isRead, isDismissed])
+  @@index([createdAt])
+  @@map("cashflow_insights")
+}
+
+// =============================================================================
+// PHASE 14: CASHFLOW STRATEGY
+// =============================================================================
+
+model CashflowStrategy {
+  id                  String                @id @default(uuid())
+  userId              String
+
+  // Strategy classification
+  type                CashflowStrategyType
+  priority            Int                   @default(50) // 1-100, higher = more important
+
+  // Content
+  title               String
+  summary             String                @db.Text
+  detail              String?               @db.Text
+
+  // Scoring
+  confidence          Float                 // 0-1 confidence in this strategy
+  projectedBenefit    Float                 // Estimated dollar benefit
+
+  // Implementation steps (JSON array)
+  recommendedSteps    Json                  // [{ order, action, description, optional }]
+
+  // Impact analysis
+  impactAnalysis      Json?                 // { cashflowImpact, riskReduction, timeToRealize }
+
+  // Affected entities
+  affectedAccountIds  String[]
+  affectedLoanIds     String[]
+  affectedRecurringIds String[]
+
+  // User interaction
+  status              RecommendationStatus  @default(PENDING)
+  acceptedAt          DateTime?
+  dismissedAt         DateTime?
+  dismissReason       String?
+
+  // Validity
+  expiresAt           DateTime?
+
+  // Metadata
+  metadata            Json?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  // Relationships
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("cashflow_strategies")
 }
