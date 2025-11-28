@@ -416,16 +416,267 @@ Users can expand to see:
 
 Phase 12 completes when:
 
-- Full Financial Health Engine implemented  
-- Category scoring implemented  
-- Aggregate score stable  
-- Risk system operational  
-- Forecast-integrated scoring functional  
-- UI shows health score + categories  
-- Explainability available for each category  
-- Improvement plan generated  
-- Links to insights + strategy validated  
-- Trends displayed across history  
+- Full Financial Health Engine implemented
+- Category scoring implemented
+- Aggregate score stable
+- Risk system operational
+- Forecast-integrated scoring functional
+- UI shows health score + categories
+- Explainability available for each category
+- Improvement plan generated
+- Links to insights + strategy validated
+- Trends displayed across history
+
+---
+
+# 11. IMPLEMENTATION NOTES
+
+> **Status: IMPLEMENTED** (November 2025)
+
+## 11.1 Library Structure
+
+**Location:** `lib/health/`
+
+| File | Description |
+|------|-------------|
+| `types.ts` | Complete TypeScript interfaces for all health engine types |
+| `metricAggregation.ts` | Layer 1 - Collects metrics from all sources |
+| `categoryScoring.ts` | Layer 2 - Calculates category scores with weighted formulas |
+| `aggregateEngine.ts` | Layer 3 - Computes final health score with modifiers |
+| `riskModelling.ts` | Risk signal detection and classification |
+| `index.ts` | Barrel export for all modules |
+
+---
+
+## 11.2 Type Definitions
+
+**File:** `lib/health/types.ts` (~500 lines)
+
+### Enums:
+```typescript
+type RiskBand = 'EXCELLENT' | 'GOOD' | 'MODERATE' | 'CONCERNING' | 'CRITICAL';
+type RiskSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+type HealthCategoryName = 'LIQUIDITY' | 'CASHFLOW' | 'DEBT' | 'INVESTMENTS' | 'PROPERTY' | 'RISK_EXPOSURE' | 'LONG_TERM_OUTLOOK';
+type RiskSignalCategory = 'SPENDING' | 'BORROWING' | 'LIQUIDITY' | 'CONCENTRATION' | 'MARKET' | 'LONGEVITY';
+```
+
+### Core Interfaces:
+- `BaseMetric` - Standard metric structure (value, benchmark, riskBand, confidence)
+- `LiquidityMetrics`, `CashflowMetrics`, `DebtMetrics`, `InvestmentMetrics`, `PropertyMetrics`, `RiskMetrics`, `ForecastMetrics`
+- `AggregatedMetrics` - All metrics combined (Layer 1 output)
+- `HealthCategory` - Category score with contributing metrics
+- `RiskSignal` - Risk detection with evidence
+- `ImprovementAction` - Actionable improvement with impact estimate
+- `FinancialHealthScore` - Main output (score, confidence, breakdown, trend)
+- `FinancialHealthReport` - Complete report with all data
+- `ScoreModifiers` - Penalty calculations
+
+### Utility Functions:
+- `scoreToRiskBand(score)` - Converts 0-100 score to risk band
+- `riskBandToSeverity(band)` - Maps risk band to severity level
+
+---
+
+## 11.3 Category Weights
+
+As defined in blueprint Section 5.2:
+
+```typescript
+const CATEGORY_WEIGHTS = {
+  LIQUIDITY: 0.20,        // 20%
+  CASHFLOW: 0.20,         // 20%
+  DEBT: 0.15,             // 15%
+  INVESTMENTS: 0.15,      // 15%
+  PROPERTY: 0.10,         // 10%
+  RISK_EXPOSURE: 0.10,    // 10%
+  LONG_TERM_OUTLOOK: 0.10 // 10%
+};
+```
+
+---
+
+## 11.4 Layer 1 - Metric Aggregation
+
+**File:** `lib/health/metricAggregation.ts`
+
+Collects metrics from portfolio snapshot:
+- Emergency buffer calculation (months of expenses in liquid assets)
+- Savings rate (income - expenses / income)
+- Debt-to-income ratio
+- Loan-to-value ratio
+- Investment diversification index
+- Property valuation health
+- Forecast metrics from strategy engine
+
+---
+
+## 11.5 Layer 2 - Category Scoring
+
+**File:** `lib/health/categoryScoring.ts`
+
+Each category uses weighted sub-metrics:
+
+**Liquidity (20%):**
+- Emergency Buffer: 40%
+- Liquid Net Worth Ratio: 40%
+- Savings Rate: 20%
+
+**Cashflow (20%):**
+- Cashflow Surplus: 35%
+- Cashflow Volatility: 35%
+- Fixed Cost Load: 30%
+
+**Debt (15%):**
+- DTI: 40%
+- LVR: 40%
+- Repayment Load: 20%
+
+**Investments (15%):**
+- Diversification: 30%
+- Return Consistency: 40%
+- Cost Efficiency: 30%
+
+**Property (10%):**
+- Equity Strength: 40%
+- Yield: 30%
+- Market Risk: 30%
+
+**Risk Exposure (10%):**
+- Buffering: 40%
+- Policy Coverage Gaps: 30%
+- Spending Sensitivity: 30%
+
+**Long-Term Outlook (10%):**
+- Forecast Runway: 50%
+- Retirement Gap: 50%
+
+---
+
+## 11.6 Layer 3 - Aggregate Engine
+
+**File:** `lib/health/aggregateEngine.ts`
+
+**Main Function:**
+```typescript
+export async function generateHealthReport(userId: string): Promise<FinancialHealthReport>
+```
+
+**Process:**
+1. Fetch portfolio snapshot
+2. Aggregate all metrics (Layer 1)
+3. Calculate category scores (Layer 2)
+4. Apply modifiers (data confidence, insight severity, linkage issues)
+5. Generate risk signals
+6. Create improvement actions
+7. Build evidence pack
+8. Return complete report
+
+**Score Modifiers:**
+- Data confidence penalty (if < 80%)
+- Insight severity penalty (critical insights reduce score)
+- Linkage issues penalty (orphans, missing links)
+- Strategy conflicts penalty (unresolved recommendations)
+
+---
+
+## 11.7 Risk Modelling
+
+**File:** `lib/health/riskModelling.ts`
+
+Detects and classifies risks across 6 categories:
+
+| Risk Category | Detection Logic |
+|---------------|-----------------|
+| SPENDING | Expenses > 80% of income |
+| BORROWING | DTI > 43% or LVR > 80% |
+| LIQUIDITY | Emergency buffer < 3 months |
+| CONCENTRATION | Single investment > 20% of portfolio |
+| MARKET | High volatility exposure |
+| LONGEVITY | Retirement shortfall detected |
+
+Each risk includes:
+- Severity tier (1-5)
+- Evidence (current value vs threshold)
+- Trend direction (IMPROVING, STABLE, WORSENING)
+
+---
+
+## 11.8 REST API Endpoint
+
+**File:** `app/api/financial-health/route.ts`
+
+```typescript
+GET /api/financial-health
+
+Response: {
+  success: boolean,
+  data: {
+    healthScore: {
+      score: number,           // 0-100
+      riskBand: string,        // EXCELLENT, GOOD, etc.
+      confidence: number,
+      trend: {
+        direction: string,     // IMPROVING, STABLE, DECLINING
+        changePercent: number
+      },
+      breakdown: HealthCategory[]
+    },
+    riskSignals: RiskSignal[],
+    improvementActions: ImprovementAction[],
+    generatedAt: string
+  }
+}
+```
+
+**Authentication:** Uses `Authorization: Bearer ${token}` header.
+
+---
+
+## 11.9 UI Components
+
+### Financial Health Dashboard
+**File:** `app/(dashboard)/health/page.tsx`
+
+Features:
+- Large score display with risk band color
+- Trend indicator (improving/stable/declining)
+- Category breakdown bars (7 categories)
+- Risk signals section
+- Improvement actions list
+- Evidence/explainability panel
+
+### Financial Health Mini Widget
+**File:** `components/health/FinancialHealthMiniWidget.tsx`
+
+Compact sidebar widget showing:
+- Health score (0-100)
+- Risk band with color coding
+- Progress bar
+- Trend indicator
+- Click to navigate to full dashboard
+- Auto-refresh every 60 seconds
+
+---
+
+## 11.10 Risk Band Thresholds
+
+```typescript
+EXCELLENT: score >= 80
+GOOD:      score >= 60 && score < 80
+MODERATE:  score >= 40 && score < 60
+CONCERNING: score >= 20 && score < 40
+CRITICAL:  score < 20
+```
+
+---
+
+## 11.11 Integration Points
+
+- **Portfolio Snapshot Engine**: Primary data source
+- **Insights Engine v2**: Insight severity affects score
+- **AI Strategy Engine (Phase 11)**: Strategy conflicts penalty
+- **GRDCS/Linkage Health**: Data quality affects confidence
+- **Phase 13 TIE**: Spending patterns feed into cashflow metrics
 
 ---
 
