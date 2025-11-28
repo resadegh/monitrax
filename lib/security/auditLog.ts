@@ -68,8 +68,8 @@ export async function createAuditLog(entry: AuditLogEntry): Promise<void> {
       data: {
         userId: entry.userId,
         organizationId: entry.organizationId,
-        action: entry.action,
-        status: entry.status ?? 'SUCCESS',
+        action: entry.action as any,
+        status: (entry.status ?? 'SUCCESS') as any,
         entityType: entry.entityType,
         entityId: entry.entityId,
         ipAddress: entry.ipAddress,
@@ -250,8 +250,8 @@ export async function queryAuditLogs(query: AuditLogQuery): Promise<{
   const where = {
     ...(query.userId && { userId: query.userId }),
     ...(query.organizationId && { organizationId: query.organizationId }),
-    ...(query.action && { action: query.action }),
-    ...(query.status && { status: query.status }),
+    ...(query.action && { action: query.action as any }),
+    ...(query.status && { status: query.status as any }),
     ...(query.entityType && { entityType: query.entityType }),
     ...(query.entityId && { entityId: query.entityId }),
     ...(query.startDate || query.endDate
@@ -337,7 +337,7 @@ export async function getRecentSecurityEvents(
   limit = 100,
   organizationId?: string
 ): Promise<AuditLogResult[]> {
-  const securityActions: AuditAction[] = [
+  const securityActions = [
     'RATE_LIMIT_HIT',
     'UNAUTHORIZED_ACCESS',
     'FORBIDDEN_ACCESS',
@@ -346,7 +346,7 @@ export async function getRecentSecurityEvents(
 
   const logs = await prisma.auditLog.findMany({
     where: {
-      action: { in: securityActions },
+      action: { in: securityActions as any },
       ...(organizationId && { organizationId }),
     },
     orderBy: { createdAt: 'desc' },
