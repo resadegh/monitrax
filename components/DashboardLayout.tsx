@@ -23,7 +23,6 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useUISyncEngine } from '@/hooks/useUISyncEngine';
 import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
-import { HealthSummaryWidget } from '@/components/health/HealthSummaryWidget';
 import { FinancialHealthMiniWidget } from '@/components/health/FinancialHealthMiniWidget';
 
 interface NavItem {
@@ -51,11 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   // Phase 9.4 - Real-Time Global Health Feed
-  const {
-    state: syncState,
-    refresh: refreshHealth,
-    isPolling,
-  } = useUISyncEngine({
+  const { state: syncState } = useUISyncEngine({
     enabled: true,
     pollingInterval: 30000, // 30 seconds
   });
@@ -132,18 +127,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Phase 12 - Financial Health Widget */}
           <div className="pt-4">
             <FinancialHealthMiniWidget />
-          </div>
-
-          {/* Phase 9.5 - Health Summary Widget in Sidebar */}
-          <div className="pt-2">
-            <HealthSummaryWidget
-              health={syncState.health}
-              isLoading={syncState.isFetching}
-              compact={true}
-              showModules={false}
-              showRefresh={true}
-              onRefresh={refreshHealth}
-            />
           </div>
         </nav>
 
