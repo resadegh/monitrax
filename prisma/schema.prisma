@@ -227,6 +227,10 @@ model User {
   cashflowInsights        CashflowInsight[]
   cashflowStrategies      CashflowStrategy[]
 
+  // Phase 18: Bank Transaction Import
+  bankImportFiles         BankImportFile[]
+  budgetTargets           BudgetTarget[]
+
   @@map("users")
 }
 
@@ -1393,6 +1397,184 @@ model CashflowInsight {
   @@index([isRead, isDismissed])
   @@index([createdAt])
   @@map("cashflow_insights")
+}
+
+// =============================================================================
+// PHASE 18: BANK TRANSACTION IMPORT
+// =============================================================================
+
+enum ImportFileFormat {
+  CSV
+  OFX
+  QIF
+  JSON
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum DuplicatePolicy {
+  REJECT
+  MARK_DUPLICATE
+  MERGE
+  SKIP
+}
+
+model BankImportFile {
+  id                String           @id @default(uuid())
+  userId            String
+
+  // File info
+  filename          String
+  format            ImportFileFormat
+  fileSize          Int              // Bytes
+  fileHash          String           // SHA-256 of file content for duplicate detection
+
+  // Import status
+  status            ImportStatus     @default(PENDING)
+  errorMessage      String?
+
+  // Statistics
+  totalRows         Int              @default(0)
+  importedCount     Int              @default(0)
+  duplicateCount    Int              @default(0)
+  errorCount        Int              @default(0)
+
+  // Settings used for this import
+  accountId         String?          // Target account for import
+  duplicatePolicy   DuplicatePolicy  @default(REJECT)
+  dateFormat        String?          // Date format used in file
+
+  // Timestamps
+  uploadedAt        DateTime         @default(now())
+  processedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relationships
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rawTransactions   BankTransactionRaw[]
+
+  @@index([userId])
+  @@index([fileHash])
+  @@index([status])
+  @@map("bank_import_files")
+}
+
+model BankTransactionRaw {
+  id                String           @id @default(uuid())
+  importFileId      String
+
+  // Raw data from file
+  rowNumber         Int              // Row number in source file
+  rawData           Json             // Original row data as JSON
+
+  // Parsed fields
+  date              DateTime?
+  description       String?
+  amount            Float?
+  direction         TransactionDirection?
+  balance           Float?           // Running balance if provided
+  reference         String?
+
+  // Processing status
+  isProcessed       Boolean          @default(false)
+  isDuplicate       Boolean          @default(false)
+  hasError          Boolean          @default(false)
+  errorMessage      String?
+
+  // Hash for duplicate detection
+  transactionHash   String           // SHA-256(date + amount + description)
+
+  // Link to normalised transaction if created
+  unifiedTransactionId String?       @unique
+
+  createdAt         DateTime         @default(now())
+
+  // Relationships
+  importFile        BankImportFile   @relation(fields: [importFileId], references: [id], onDelete: Cascade)
+
+  @@index([importFileId])
+  @@index([transactionHash])
+  @@index([isProcessed])
+  @@index([isDuplicate])
+  @@map("bank_transactions_raw")
+}
+
+model CategoryRule {
+  id                String    @id @default(uuid())
+  userId            String?   // Null = system rule, set = user rule
+
+  // Rule matching
+  ruleType          String    // MERCHANT, KEYWORD, MCC, BPAY, AMOUNT_RANGE
+  pattern           String    // Pattern to match (regex or exact)
+  isRegex           Boolean   @default(false)
+  caseSensitive     Boolean   @default(false)
+
+  // Category assignment
+  categoryLevel1    String
+  categoryLevel2    String?
+  subcategory       String?
+
+  // Entity linking (optional)
+  linkToPropertyId  String?
+  linkToLoanId      String?
+  linkToExpenseId   String?
+
+  // Rule metadata
+  priority          Int       @default(50)  // Higher = checked first
+  isActive          Boolean   @default(true)
+  matchCount        Int       @default(0)   // Times this rule matched
+
+  // Audit
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([ruleType])
+  @@index([priority])
+  @@index([isActive])
+  @@map("category_rules")
+}
+
+model BudgetTarget {
+  id                String    @id @default(uuid())
+  userId            String
+
+  // Category targeting
+  categoryLevel1    String
+  categoryLevel2    String?
+
+  // Budget amounts
+  monthlyTarget     Float     // Target monthly spend
+  warningThreshold  Float     @default(0.8)  // Warn at 80% of target
+
+  // Tracking period
+  effectiveFrom     DateTime  @default(now())
+  effectiveTo       DateTime?
+
+  // Flexibility
+  allowRollover     Boolean   @default(false)  // Can unspent roll to next month?
+  isEssential       Boolean   @default(false)  // Is this an essential expense?
+
+  // Notes
+  notes             String?
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relationships
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryLevel1, categoryLevel2])
+  @@index([userId])
+  @@index([categoryLevel1])
+  @@map("budget_targets")
 }
 
 // =============================================================================
