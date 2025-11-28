@@ -1,0 +1,145 @@
+{
+  "description": "Golden baseline for portfolio snapshot calculations",
+  "generated": "2024-06-01T00:00:00.000Z",
+  "version": "1.0.0",
+
+  "portfolioA": {
+    "userId": "00000000-0000-0000-0000-000000000001",
+    "description": "Standard portfolio - 2 properties, 2 loans, offset, investments",
+
+    "netWorth": {
+      "expected": 757700,
+      "tolerance": 100,
+      "breakdown": {
+        "totalAssets": 1717700,
+        "totalLiabilities": 960000,
+        "calculation": "totalAssets - totalLiabilities"
+      }
+    },
+
+    "assets": {
+      "properties": {
+        "home": {
+          "id": "11111111-0000-0000-0000-000000000001",
+          "currentValue": 950000
+        },
+        "investment": {
+          "id": "11111111-0000-0000-0000-000000000002",
+          "currentValue": 620000
+        },
+        "total": 1570000
+      },
+      "accounts": {
+        "offset": 45000,
+        "savings": 25000,
+        "transaction": 5000,
+        "total": 75000
+      },
+      "investments": {
+        "vas": {
+          "units": 450,
+          "currentPrice": 90,
+          "value": 40500
+        },
+        "vgs": {
+          "units": 280,
+          "currentPrice": 115,
+          "value": 32200
+        },
+        "total": 72700
+      },
+      "total": 1717700
+    },
+
+    "liabilities": {
+      "homeLoan": {
+        "id": "33333333-0000-0000-0000-000000000001",
+        "principal": 520000
+      },
+      "investmentLoan": {
+        "id": "33333333-0000-0000-0000-000000000002",
+        "principal": 440000
+      },
+      "total": 960000
+    },
+
+    "grdcsEntityCount": {
+      "properties": 2,
+      "loans": 2,
+      "accounts": 3,
+      "investmentAccounts": 1,
+      "investmentHoldings": 2,
+      "incomeStreams": 3,
+      "expenses": 11,
+      "depreciationSchedules": 4
+    }
+  },
+
+  "portfolioB": {
+    "userId": "00000000-0000-0000-0000-000000000002",
+    "description": "Edge-case portfolio - high LVR, split loans, credit card, underwater property",
+
+    "netWorth": {
+      "expected": 33500,
+      "tolerance": 100,
+      "breakdown": {
+        "totalAssets": 472000,
+        "totalLiabilities": 438500,
+        "calculation": "property $460k + offset $12k - (variable $250k + fixed $180k + CC $8.5k)"
+      }
+    },
+
+    "assets": {
+      "properties": {
+        "investment": {
+          "id": "B1111111-0000-0000-0000-000000000001",
+          "currentValue": 460000,
+          "purchasePrice": 480000,
+          "isUnderwater": true,
+          "paperLoss": 20000
+        },
+        "total": 460000
+      },
+      "accounts": {
+        "offset": 12000,
+        "creditCard": -8500,
+        "total": 12000
+      },
+      "investments": {
+        "crypto": {
+          "ticker": "BTC",
+          "units": 0.15,
+          "avgPrice": 45000
+        }
+      },
+      "total": 472000
+    },
+
+    "liabilities": {
+      "variableLoan": {
+        "id": "B3333333-0000-0000-0000-000000000001",
+        "principal": 250000
+      },
+      "fixedLoan": {
+        "id": "B3333333-0000-0000-0000-000000000002",
+        "principal": 180000
+      },
+      "creditCard": {
+        "id": "B2222222-0000-0000-0000-000000000002",
+        "balance": 8500
+      },
+      "total": 438500
+    },
+
+    "grdcsEntityCount": {
+      "properties": 1,
+      "loans": 2,
+      "accounts": 2,
+      "investmentAccounts": 2,
+      "investmentHoldings": 1,
+      "incomeStreams": 2,
+      "expenses": 3,
+      "depreciationSchedules": 0
+    }
+  }
+}

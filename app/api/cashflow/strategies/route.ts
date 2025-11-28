@@ -60,14 +60,14 @@ export async function GET(request: NextRequest) {
 
       // Calculate total potential benefit
       const totalBenefit = strategies.reduce(
-        (sum, s) => sum + Number(s.projectedBenefit),
+        (sum: number, s: any) => sum + Number(s.projectedBenefit),
         0
       );
 
       return NextResponse.json({
         success: true,
         data: {
-          strategies: strategies.map((s) => ({
+          strategies: strategies.map((s: any) => ({
             id: s.id,
             type: s.type,
             priority: s.priority,
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
             total: strategies.length,
             totalPotentialBenefit: totalBenefit,
             byType: Object.fromEntries(
-              typeCounts.map((t) => [t.type, t._count.type])
+              typeCounts.map((t: any) => [t.type, t._count.type])
             ),
           },
         },

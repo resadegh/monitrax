@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Property not found' }, { status: 404 });
         }
 
-        schedulesData = property.depreciationSchedules.map((s) => ({
+        schedulesData = property.depreciationSchedules.map((s: any) => ({
           id: s.id,
           assetName: s.assetName,
           category: s.category as 'DIV40' | 'DIV43',

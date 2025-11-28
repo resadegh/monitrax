@@ -1,0 +1,198 @@
+{
+  "description": "Golden baseline for debt and loan calculations",
+  "generated": "2024-06-01T00:00:00.000Z",
+  "version": "1.0.0",
+
+  "portfolioA": {
+    "loans": {
+      "homeLoan": {
+        "id": "33333333-0000-0000-0000-000000000001",
+        "propertyId": "11111111-0000-0000-0000-000000000001",
+        "principal": 520000,
+        "interestRate": 0.0625,
+        "rateType": "VARIABLE",
+        "isInterestOnly": false,
+        "termMonthsRemaining": 324,
+        "minRepayment": 3450,
+
+        "calculations": {
+          "lvr": {
+            "expected": 0.5474,
+            "tolerance": 0.001,
+            "formula": "principal / propertyValue = 520000 / 950000"
+          },
+          "effectivePrincipal": {
+            "expected": 475000,
+            "tolerance": 0,
+            "formula": "principal - offsetBalance = 520000 - 45000"
+          },
+          "monthlyInterest": {
+            "expected": 2473.96,
+            "tolerance": 1,
+            "formula": "effectivePrincipal * interestRate / 12 = 475000 * 0.0625 / 12"
+          },
+          "annualInterest": {
+            "expected": 29687.50,
+            "tolerance": 10,
+            "formula": "effectivePrincipal * interestRate = 475000 * 0.0625"
+          },
+          "interestSavedByOffset": {
+            "expected": 2812.50,
+            "tolerance": 5,
+            "formula": "offsetBalance * interestRate = 45000 * 0.0625"
+          }
+        }
+      },
+
+      "investmentLoan": {
+        "id": "33333333-0000-0000-0000-000000000002",
+        "propertyId": "11111111-0000-0000-0000-000000000002",
+        "principal": 440000,
+        "interestRate": 0.0685,
+        "rateType": "VARIABLE",
+        "isInterestOnly": true,
+        "termMonthsRemaining": 60,
+        "minRepayment": 2512,
+
+        "calculations": {
+          "lvr": {
+            "expected": 0.7097,
+            "tolerance": 0.001,
+            "formula": "principal / propertyValue = 440000 / 620000"
+          },
+          "monthlyInterest": {
+            "expected": 2511.67,
+            "tolerance": 1,
+            "formula": "principal * interestRate / 12 = 440000 * 0.0685 / 12"
+          },
+          "annualInterest": {
+            "expected": 30140,
+            "tolerance": 10,
+            "formula": "principal * interestRate = 440000 * 0.0685"
+          },
+          "isTaxDeductible": true
+        }
+      }
+    },
+
+    "offsetAnalysis": {
+      "accountId": "22222222-0000-0000-0000-000000000001",
+      "linkedLoanId": "33333333-0000-0000-0000-000000000001",
+      "balance": 45000,
+      "effectiveSavingsRate": 0.0625,
+      "annualInterestSaved": 2812.50,
+      "equivalentPreTaxReturn": {
+        "expected": 0.0893,
+        "tolerance": 0.001,
+        "formula": "effectiveSavingsRate / (1 - marginalTaxRate) assuming 30% tax"
+      }
+    },
+
+    "aggregates": {
+      "totalDebt": 960000,
+      "totalMonthlyRepayments": 5962,
+      "weightedAverageInterestRate": 0.0651,
+      "totalAnnualInterest": 59827.50
+    }
+  },
+
+  "portfolioB": {
+    "loans": {
+      "variableLoan": {
+        "id": "B3333333-0000-0000-0000-000000000001",
+        "propertyId": "B1111111-0000-0000-0000-000000000001",
+        "principal": 250000,
+        "interestRate": 0.0695,
+        "rateType": "VARIABLE",
+        "isInterestOnly": true,
+        "offsetAccountId": "B2222222-0000-0000-0000-000000000001",
+
+        "calculations": {
+          "effectivePrincipal": {
+            "expected": 238000,
+            "tolerance": 0,
+            "formula": "principal - offsetBalance = 250000 - 12000"
+          },
+          "monthlyInterest": {
+            "expected": 1378.59,
+            "tolerance": 1,
+            "formula": "effectivePrincipal * interestRate / 12 = 238000 * 0.0695 / 12"
+          },
+          "annualInterest": {
+            "expected": 16541,
+            "tolerance": 10,
+            "formula": "effectivePrincipal * interestRate = 238000 * 0.0695"
+          }
+        }
+      },
+
+      "fixedLoan": {
+        "id": "B3333333-0000-0000-0000-000000000002",
+        "propertyId": "B1111111-0000-0000-0000-000000000001",
+        "principal": 180000,
+        "interestRate": 0.0589,
+        "rateType": "FIXED",
+        "fixedExpiry": "2026-09-01",
+        "isInterestOnly": false,
+        "extraRepaymentCap": 10000,
+
+        "calculations": {
+          "monthlyInterest": {
+            "expected": 883.50,
+            "tolerance": 1,
+            "formula": "principal * interestRate / 12 = 180000 * 0.0589 / 12"
+          },
+          "annualInterest": {
+            "expected": 10602,
+            "tolerance": 10,
+            "formula": "principal * interestRate = 180000 * 0.0589"
+          }
+        }
+      }
+    },
+
+    "splitLoanAnalysis": {
+      "combinedPrincipal": 430000,
+      "combinedLVR": {
+        "expected": 0.9348,
+        "tolerance": 0.001,
+        "formula": "(250000 + 180000) / 460000",
+        "riskLevel": "HIGH"
+      },
+      "weightedInterestRate": {
+        "expected": 0.0651,
+        "tolerance": 0.001,
+        "formula": "(250000 * 0.0695 + 180000 * 0.0589) / 430000"
+      }
+    },
+
+    "creditCard": {
+      "id": "B2222222-0000-0000-0000-000000000002",
+      "balance": 8500,
+      "interestRate": 0.2199,
+      "calculations": {
+        "monthlyInterest": {
+          "expected": 155.76,
+          "tolerance": 1,
+          "formula": "balance * interestRate / 12 = 8500 * 0.2199 / 12"
+        },
+        "annualInterest": {
+          "expected": 1869.15,
+          "tolerance": 5,
+          "formula": "balance * interestRate = 8500 * 0.2199"
+        }
+      },
+      "priority": "HIGH - Pay off first due to high interest rate"
+    },
+
+    "aggregates": {
+      "totalDebt": 438500,
+      "totalAnnualInterest": 29012,
+      "riskIndicators": {
+        "highLVR": true,
+        "underwaterProperty": true,
+        "highInterestDebt": true
+      }
+    }
+  }
+}

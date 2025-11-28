@@ -4,8 +4,12 @@
  */
 
 import { prisma } from '@/lib/db';
-import type { AuditAction, AuditStatus } from '@prisma/client';
 import { log } from '@/lib/utils/logger';
+
+// Define types locally to avoid Prisma client generation issues
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+type AuditAction = string;
+type AuditStatus = 'SUCCESS' | 'FAILURE' | 'BLOCKED';
 
 // ============================================
 // TYPES

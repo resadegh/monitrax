@@ -1,0 +1,262 @@
+{
+  "description": "Golden baseline for property calculations (yield, cashflow, LVR)",
+  "generated": "2024-06-01T00:00:00.000Z",
+  "version": "1.0.0",
+
+  "portfolioA": {
+    "properties": {
+      "home": {
+        "id": "11111111-0000-0000-0000-000000000001",
+        "type": "HOME",
+        "purchasePrice": 800000,
+        "purchaseDate": "2020-01-15",
+        "currentValue": 950000,
+
+        "calculations": {
+          "capitalGain": {
+            "expected": 150000,
+            "tolerance": 0,
+            "formula": "currentValue - purchasePrice = 950000 - 800000"
+          },
+          "capitalGainPercentage": {
+            "expected": 0.1875,
+            "tolerance": 0.001,
+            "formula": "capitalGain / purchasePrice = 150000 / 800000"
+          },
+          "annualisedReturn": {
+            "expected": 0.0406,
+            "tolerance": 0.005,
+            "formula": "(currentValue / purchasePrice)^(1/years) - 1, ~4.4 years"
+          },
+          "lvr": {
+            "expected": 0.5474,
+            "tolerance": 0.001,
+            "formula": "loanPrincipal / currentValue = 520000 / 950000"
+          },
+          "equity": {
+            "expected": 430000,
+            "tolerance": 0,
+            "formula": "currentValue - loanPrincipal = 950000 - 520000"
+          }
+        },
+
+        "cgtExempt": true,
+        "notes": "Primary residence - CGT exempt under main residence exemption"
+      },
+
+      "investment": {
+        "id": "11111111-0000-0000-0000-000000000002",
+        "type": "INVESTMENT",
+        "purchasePrice": 550000,
+        "purchaseDate": "2021-06-01",
+        "currentValue": 620000,
+
+        "calculations": {
+          "capitalGain": {
+            "expected": 70000,
+            "tolerance": 0,
+            "formula": "currentValue - purchasePrice = 620000 - 550000"
+          },
+          "capitalGainPercentage": {
+            "expected": 0.1273,
+            "tolerance": 0.001,
+            "formula": "capitalGain / purchasePrice = 70000 / 550000"
+          },
+          "lvr": {
+            "expected": 0.7097,
+            "tolerance": 0.001,
+            "formula": "loanPrincipal / currentValue = 440000 / 620000"
+          },
+          "equity": {
+            "expected": 180000,
+            "tolerance": 0,
+            "formula": "currentValue - loanPrincipal = 620000 - 440000"
+          }
+        },
+
+        "rentalAnalysis": {
+          "weeklyRent": 550,
+          "annualRentalIncome": {
+            "expected": 28600,
+            "tolerance": 0,
+            "formula": "weeklyRent * 52 = 550 * 52"
+          },
+          "grossYield": {
+            "expected": 0.0461,
+            "tolerance": 0.001,
+            "formula": "annualRentalIncome / currentValue = 28600 / 620000"
+          },
+          "grossYieldOnPurchase": {
+            "expected": 0.052,
+            "tolerance": 0.001,
+            "formula": "annualRentalIncome / purchasePrice = 28600 / 550000"
+          }
+        },
+
+        "cashflowAnalysis": {
+          "annualIncome": 28600,
+          "annualExpenses": {
+            "loanInterest": {
+              "expected": 30140,
+              "formula": "440000 * 0.0685",
+              "isTaxDeductible": true
+            },
+            "councilRates": {
+              "expected": 1800,
+              "isTaxDeductible": true
+            },
+            "insurance": {
+              "expected": 1600,
+              "isTaxDeductible": true
+            },
+            "strata": {
+              "expected": 7800,
+              "formula": "650 * 12",
+              "isTaxDeductible": true
+            },
+            "propertyManagement": {
+              "expected": 7436,
+              "formula": "143 * 52 (5% of weekly rent)",
+              "isTaxDeductible": true
+            },
+            "total": {
+              "expected": 48776,
+              "tolerance": 50
+            }
+          },
+          "annualCashflow": {
+            "expected": -20176,
+            "tolerance": 50,
+            "formula": "income - expenses = 28600 - 48776",
+            "isNegativelyGeared": true
+          },
+          "monthlyCashflow": {
+            "expected": -1681,
+            "tolerance": 10
+          }
+        },
+
+        "cgtAnalysis": {
+          "cgtExempt": false,
+          "holdingPeriod": "3+ years",
+          "eligibleForDiscount": true,
+          "discountPercentage": 0.50,
+          "unrealisedGain": 70000,
+          "taxableGainAfterDiscount": {
+            "expected": 35000,
+            "formula": "unrealisedGain * 0.5 = 70000 * 0.5"
+          }
+        }
+      }
+    },
+
+    "portfolioTotals": {
+      "totalPropertyValue": 1570000,
+      "totalEquity": 610000,
+      "totalDebt": 960000,
+      "averageLVR": 0.6115
+    }
+  },
+
+  "portfolioB": {
+    "properties": {
+      "investment": {
+        "id": "B1111111-0000-0000-0000-000000000001",
+        "type": "INVESTMENT",
+        "purchasePrice": 480000,
+        "purchaseDate": "2023-09-01",
+        "currentValue": 460000,
+
+        "calculations": {
+          "capitalGain": {
+            "expected": -20000,
+            "tolerance": 0,
+            "formula": "currentValue - purchasePrice = 460000 - 480000",
+            "isLoss": true
+          },
+          "lvr": {
+            "expected": 0.9348,
+            "tolerance": 0.001,
+            "formula": "(variableLoan + fixedLoan) / currentValue = 430000 / 460000",
+            "riskLevel": "CRITICAL"
+          },
+          "equity": {
+            "expected": 30000,
+            "tolerance": 0,
+            "formula": "currentValue - totalLoans = 460000 - 430000"
+          },
+          "isUnderwater": true,
+          "underwaterAmount": {
+            "expected": 20000,
+            "formula": "purchasePrice - currentValue"
+          }
+        },
+
+        "rentalAnalysis": {
+          "weeklyRent": 380,
+          "annualRentalIncome": {
+            "expected": 19760,
+            "tolerance": 0,
+            "formula": "weeklyRent * 52 = 380 * 52"
+          },
+          "grossYield": {
+            "expected": 0.043,
+            "tolerance": 0.001,
+            "formula": "annualRentalIncome / currentValue = 19760 / 460000"
+          },
+          "grossYieldOnPurchase": {
+            "expected": 0.0412,
+            "tolerance": 0.001,
+            "formula": "annualRentalIncome / purchasePrice = 19760 / 480000"
+          },
+          "yieldAssessment": "BELOW_AVERAGE"
+        },
+
+        "cashflowAnalysis": {
+          "annualIncome": 19760,
+          "annualExpenses": {
+            "variableLoanInterest": {
+              "expected": 16541,
+              "formula": "(250000 - 12000) * 0.0695",
+              "isTaxDeductible": true
+            },
+            "fixedLoanInterest": {
+              "expected": 10602,
+              "formula": "180000 * 0.0589",
+              "isTaxDeductible": true
+            },
+            "strata": {
+              "expected": 10200,
+              "formula": "850 * 12",
+              "isTaxDeductible": true
+            },
+            "total": {
+              "expected": 37343,
+              "tolerance": 50
+            }
+          },
+          "annualCashflow": {
+            "expected": -17583,
+            "tolerance": 50,
+            "formula": "income - expenses = 19760 - 37343",
+            "isNegativelyGeared": true
+          },
+          "negativeGearingBenefit": {
+            "taxSavingAt32_5PercentRate": {
+              "expected": 5714,
+              "tolerance": 50,
+              "formula": "loss * marginalTaxRate = 17583 * 0.325"
+            }
+          }
+        },
+
+        "riskIndicators": {
+          "highLVR": true,
+          "underwater": true,
+          "negativeCashflow": true,
+          "overallRisk": "HIGH"
+        }
+      }
+    }
+  }
+}

@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          insights: insights.map((i) => ({
+          insights: insights.map((i: any) => ({
             id: i.id,
             severity: i.severity,
             category: i.category,
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
             total: insights.length,
             unread: unreadCount,
             bySeverity: Object.fromEntries(
-              severityCounts.map((s) => [s.severity, s._count.severity])
+              severityCounts.map((s: any) => [s.severity, s._count.severity])
             ),
           },
         },

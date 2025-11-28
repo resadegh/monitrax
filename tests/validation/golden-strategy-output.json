@@ -1,0 +1,292 @@
+{
+  "description": "Golden baseline for strategy engine and optimisation recommendations",
+  "generated": "2024-06-01T00:00:00.000Z",
+  "version": "1.0.0",
+
+  "portfolioA": {
+    "userId": "00000000-0000-0000-0000-000000000001",
+    "description": "Standard portfolio - moderate leverage, good income",
+
+    "expectedStrategies": {
+      "offsetOptimisation": {
+        "shouldRecommend": true,
+        "priority": "HIGH",
+        "currentOffsetBalance": 45000,
+        "linkedLoanRate": 0.0625,
+        "savingsAccountBalance": 25000,
+        "savingsAccountRate": 0.045,
+        "recommendation": {
+          "action": "Move savings to offset",
+          "amount": 25000,
+          "calculation": {
+            "currentSavingsInterest": {
+              "expected": 1125,
+              "formula": "25000 * 0.045"
+            },
+            "interestSavedInOffset": {
+              "expected": 1562.50,
+              "formula": "25000 * 0.0625"
+            },
+            "netBenefit": {
+              "expected": 437.50,
+              "tolerance": 5,
+              "formula": "interestSaved - currentInterest = 1562.50 - 1125"
+            },
+            "postTaxBenefit": {
+              "expected": 802.50,
+              "tolerance": 10,
+              "formula": "At 37% tax rate: 1562.50 vs (1125 * 0.63 after-tax) = 1562.50 - 709 = 853.50"
+            }
+          }
+        }
+      },
+
+      "debtRecycling": {
+        "shouldRecommend": true,
+        "priority": "MEDIUM",
+        "nonDeductibleDebt": 520000,
+        "availableEquity": {
+          "home": {
+            "currentValue": 950000,
+            "currentLoan": 520000,
+            "maxLVR": 0.80,
+            "maxLoan": 760000,
+            "availableEquity": 240000
+          }
+        },
+        "recommendation": {
+          "strategy": "Convert non-deductible home loan to deductible investment debt",
+          "steps": [
+            "Redraw against home equity for investment purposes",
+            "Use funds to invest in income-producing assets",
+            "New debt becomes tax-deductible"
+          ],
+          "potentialTaxSaving": {
+            "at37PercentRate": {
+              "expected": 8880,
+              "tolerance": 100,
+              "formula": "If convert $100k at 6.25%: $6,250 interest * 37% = $2,312 per $100k"
+            }
+          }
+        }
+      },
+
+      "extraRepayments": {
+        "shouldRecommend": true,
+        "priority": "MEDIUM",
+        "analysis": {
+          "homeLoan": {
+            "canMakeExtra": true,
+            "rateType": "VARIABLE",
+            "currentRate": 0.0625,
+            "effectiveReturnOnRepayment": 0.0625,
+            "preferencOver": "savings at 4.5%"
+          },
+          "investmentLoan": {
+            "canMakeExtra": true,
+            "isInterestOnly": true,
+            "recommendation": "Keep IO while negatively geared for tax efficiency"
+          }
+        }
+      },
+
+      "cashflowOptimisation": {
+        "shouldRecommend": true,
+        "analysis": {
+          "monthlyIncome": {
+            "salary": 13000,
+            "rental": 2383,
+            "total": 15383
+          },
+          "monthlyExpenses": {
+            "homeLoanRepayment": 3450,
+            "investmentLoanIO": 2512,
+            "utilities": 450,
+            "groceries": 1083,
+            "transport": 400,
+            "rates": 350,
+            "insurance": 317,
+            "strata": 650,
+            "propertyMgmt": 620,
+            "total": 9832
+          },
+          "monthlySurplus": {
+            "expected": 5551,
+            "tolerance": 100
+          },
+          "recommendation": "Direct surplus to offset account for interest savings"
+        }
+      }
+    },
+
+    "riskAnalysis": {
+      "interestRateRisk": {
+        "exposure": 960000,
+        "variableExposure": 960000,
+        "fixedExposure": 0,
+        "impactOf1PercentRise": {
+          "annualCost": {
+            "expected": 9600,
+            "formula": "variableExposure * 0.01"
+          },
+          "monthlyCost": {
+            "expected": 800,
+            "tolerance": 10
+          }
+        }
+      },
+      "concentrationRisk": {
+        "propertyPercentage": 0.914,
+        "recommendation": "Consider increasing investment portfolio diversification"
+      }
+    }
+  },
+
+  "portfolioB": {
+    "userId": "00000000-0000-0000-0000-000000000002",
+    "description": "Edge-case portfolio - high risk, needs immediate attention",
+
+    "expectedStrategies": {
+      "creditCardPayoff": {
+        "shouldRecommend": true,
+        "priority": "CRITICAL",
+        "currentBalance": 8500,
+        "interestRate": 0.2199,
+        "annualInterest": {
+          "expected": 1869,
+          "formula": "8500 * 0.2199"
+        },
+        "recommendation": {
+          "action": "Pay off credit card immediately",
+          "source": "Use offset account funds",
+          "analysis": {
+            "currentOffsetSaving": {
+              "expected": 834,
+              "formula": "12000 * 0.0695"
+            },
+            "creditCardCost": {
+              "expected": 1869,
+              "formula": "8500 * 0.2199"
+            },
+            "netBenefitOfPayoff": {
+              "expected": 1035,
+              "tolerance": 10,
+              "formula": "CC interest saved - offset benefit lost = 1869 - 834"
+            }
+          },
+          "afterPayoff": {
+            "remainingOffset": 3500,
+            "newOffsetSaving": 243
+          }
+        }
+      },
+
+      "lvReduction": {
+        "shouldRecommend": true,
+        "priority": "HIGH",
+        "currentLVR": 0.9348,
+        "targetLVR": 0.80,
+        "requiredReduction": {
+          "expected": 62000,
+          "tolerance": 1000,
+          "formula": "currentLoans - (targetLVR * propertyValue) = 430000 - (0.80 * 460000) = 430000 - 368000"
+        },
+        "recommendation": {
+          "options": [
+            "Build up savings to make lump sum repayment",
+            "Increase regular repayments on variable portion",
+            "Consider selling other assets to pay down debt"
+          ]
+        }
+      },
+
+      "negativeGearingReview": {
+        "shouldRecommend": true,
+        "priority": "MEDIUM",
+        "currentLoss": 17583,
+        "taxBenefit": 5714,
+        "outOfPocketCost": 11869,
+        "analysis": {
+          "isPropertyViable": "QUESTIONABLE",
+          "reasons": [
+            "Property is underwater by $20,000",
+            "High LVR creates refinancing risk",
+            "Yield is below average at 4.3%",
+            "High strata costs ($850/month) reducing returns"
+          ],
+          "recommendation": "Review holding strategy - consider selling if market improves"
+        }
+      },
+
+      "fixedLoanReview": {
+        "shouldRecommend": true,
+        "priority": "LOW",
+        "fixedExpiry": "2026-09-01",
+        "currentFixedRate": 0.0589,
+        "currentVariableRate": 0.0695,
+        "extraRepaymentCap": 10000,
+        "recommendation": {
+          "action": "Maximise extra repayments within cap before fixed period ends",
+          "rationale": "Fixed rate is 1.06% lower than variable - good deal currently"
+        }
+      },
+
+      "emergencyFundWarning": {
+        "shouldRecommend": true,
+        "priority": "HIGH",
+        "analysis": {
+          "liquidAssets": 3500,
+          "monthlyExpenses": {
+            "loanRepayments": 2515,
+            "strata": 850,
+            "other": 1500,
+            "total": 4865
+          },
+          "monthsCoverage": {
+            "expected": 0.72,
+            "tolerance": 0.1,
+            "formula": "liquidAssets / monthlyExpenses = 3500 / 4865"
+          },
+          "recommendation": "Build emergency fund to cover at least 3 months of expenses ($14,595)"
+        }
+      }
+    },
+
+    "riskAnalysis": {
+      "overallRiskLevel": "CRITICAL",
+      "riskFactors": [
+        {
+          "factor": "High LVR",
+          "value": "93.48%",
+          "severity": "HIGH"
+        },
+        {
+          "factor": "Underwater property",
+          "value": "-$20,000",
+          "severity": "HIGH"
+        },
+        {
+          "factor": "High interest debt",
+          "value": "Credit card at 21.99%",
+          "severity": "CRITICAL"
+        },
+        {
+          "factor": "Low emergency fund",
+          "value": "< 1 month expenses",
+          "severity": "HIGH"
+        },
+        {
+          "factor": "Concentrated portfolio",
+          "value": "100% in single property + crypto",
+          "severity": "MEDIUM"
+        }
+      ],
+      "urgentActions": [
+        "Pay off credit card immediately",
+        "Build emergency fund",
+        "Avoid any additional debt",
+        "Review insurance coverage"
+      ]
+    }
+  }
+}

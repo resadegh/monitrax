@@ -253,7 +253,7 @@ async function buildCOEInput(
           : 0,
       };
     })
-    .filter((o) => o.linkedLoanId); // Only include linked offsets
+    .filter((o: any) => o.linkedLoanId); // Only include linked offsets
 
   return {
     userId,

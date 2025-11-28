@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         const dbIncome = await prisma.income.findMany({
           where: { userId: authReq.user!.userId },
         });
-        incomeData = dbIncome.map((i) => ({
+        incomeData = dbIncome.map((i: any) => ({
           name: i.name,
           amount: i.amount,
           frequency: i.frequency,
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
         const dbExpenses = await prisma.expense.findMany({
           where: { userId: authReq.user!.userId },
         });
-        expenseData = dbExpenses.map((e) => ({
+        expenseData = dbExpenses.map((e: any) => ({
           name: e.name,
           amount: e.amount,
           frequency: e.frequency,
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
           where: { userId: authReq.user!.userId },
           include: { offsetAccount: true },
         });
-        loanData = dbLoans.map((l) => ({
+        loanData = dbLoans.map((l: any) => ({
           name: l.name,
           principal: l.principal,
           interestRate: l.interestRateAnnual,
@@ -303,7 +303,7 @@ export async function GET(request: NextRequest) {
         }),
       ]);
 
-      const incomeData = income.map((i) => ({
+      const incomeData = income.map((i: any) => ({
         name: i.name,
         amount: i.amount,
         frequency: i.frequency,
@@ -311,7 +311,7 @@ export async function GET(request: NextRequest) {
         type: i.type,
       }));
 
-      const expenseData = expenses.map((e) => ({
+      const expenseData = expenses.map((e: any) => ({
         name: e.name,
         amount: e.amount,
         frequency: e.frequency,
@@ -320,7 +320,7 @@ export async function GET(request: NextRequest) {
         category: e.category,
       }));
 
-      const loanData = loans.map((l) => ({
+      const loanData = loans.map((l: any) => ({
         name: l.name,
         principal: l.principal,
         interestRate: l.interestRateAnnual,
