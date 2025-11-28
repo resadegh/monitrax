@@ -16,3 +16,6 @@ export * from './categorisation';
 
 // Behavioural engine
 export * from './behavioural';
+
+// Analytics layer
+export * from './analytics';
