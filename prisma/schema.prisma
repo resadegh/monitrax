@@ -217,6 +217,11 @@ model User {
   strategySessions        StrategySession[]
   strategyForecasts       StrategyForecast[]
 
+  // Phase 13: Transactional Intelligence
+  unifiedTransactions     UnifiedTransaction[]
+  recurringPayments       RecurringPayment[]
+  spendingProfile         SpendingProfile?
+
   @@map("users")
 }
 
@@ -302,6 +307,10 @@ model Account {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
   linkedLoan   Loan?         // One-to-one: this account can be an offset for one loan
+
+  // Phase 13: Transactional Intelligence
+  unifiedTransactions UnifiedTransaction[] @relation("UnifiedTransactions")
+  recurringPayments   RecurringPayment[]   @relation("RecurringPayments")
 
   @@index([userId])
   @@map("accounts")
@@ -825,6 +834,225 @@ model EmailMFACode {
   @@index([code])
   @@index([expiresAt])
   @@map("email_mfa_codes")
+}
+
+// =============================================================================
+// PHASE 13: TRANSACTIONAL INTELLIGENCE ENUMS
+// =============================================================================
+
+enum TransactionSource {
+  BANK        // Bank feed integration
+  CSV         // CSV import
+  OFX         // OFX/QFX file import
+  MANUAL      // Manual entry
+}
+
+enum RecurrencePattern {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+  IRREGULAR
+}
+
+enum AnomalyType {
+  DUPLICATE           // Possible duplicate transaction
+  UNUSUAL_AMOUNT      // Amount significantly differs from pattern
+  NEW_MERCHANT        // First time seeing this merchant
+  PRICE_INCREASE      // Recurring payment increased
+  UNEXPECTED_CATEGORY // Category doesn't match merchant history
+  TIMING_ANOMALY      // Transaction at unusual time/day
+}
+
+// =============================================================================
+// PHASE 13: UNIFIED TRANSACTION RECORD (UTR)
+// =============================================================================
+
+model UnifiedTransaction {
+  id                    String               @id @default(uuid())
+  userId                String
+  accountId             String
+
+  // Core transaction data
+  date                  DateTime
+  postDate              DateTime?            // Settlement date
+  amount                Float
+  currency              String               @default("AUD")
+  direction             TransactionDirection
+
+  // Merchant data
+  merchantRaw           String?              // Original merchant string from source
+  merchantStandardised  String?              // Normalised merchant name
+  merchantCategoryCode  String?              // MCC code if available
+  description           String               // Transaction description
+
+  // Category hierarchy (AI + rules populated)
+  categoryLevel1        String?              // Top-level: "Food & Dining"
+  categoryLevel2        String?              // Sub-category: "Groceries"
+  subcategory           String?              // Detailed: "Supermarket"
+
+  // User interaction
+  tags                  String[]             // User/system tags
+  userCorrectedCategory Boolean              @default(false)
+  confidenceScore       Float?               // AI categorisation confidence (0-1)
+
+  // Recurring detection
+  isRecurring           Boolean              @default(false)
+  recurrencePattern     RecurrencePattern?
+  recurrenceGroupId     String?              // Links recurring transactions together
+
+  // Anomaly detection
+  anomalyFlags          AnomalyType[]
+
+  // Source tracking
+  source                TransactionSource    @default(MANUAL)
+  externalId            String?              // ID from external source (bank, CSV row)
+  importBatchId         String?              // Batch ID for grouped imports
+
+  // Entity linking (GRDCS compatible)
+  propertyId            String?
+  loanId                String?
+  incomeId              String?
+  expenseId             String?
+  investmentAccountId   String?
+
+  // Metadata
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  processedAt           DateTime?            // When TIE last processed this
+
+  // Relationships
+  user                  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account               Account              @relation("UnifiedTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([date])
+  @@index([merchantStandardised])
+  @@index([categoryLevel1])
+  @@index([isRecurring])
+  @@index([recurrenceGroupId])
+  @@index([source])
+  @@index([processedAt])
+  @@map("unified_transactions")
+}
+
+// =============================================================================
+// PHASE 13: MERCHANT MAPPING (Learning from corrections)
+// =============================================================================
+
+model MerchantMapping {
+  id                    String    @id @default(uuid())
+  userId                String?   // Null = global mapping, set = user-specific
+
+  // Merchant identification
+  merchantRaw           String    // Original merchant string pattern
+  merchantStandardised  String    // Normalised name
+  merchantCategoryCode  String?   // MCC if known
+
+  // Category mapping
+  categoryLevel1        String
+  categoryLevel2        String?
+  subcategory           String?
+
+  // Learning metadata
+  confidence            Float     @default(1.0)   // How confident this mapping is
+  source                String    @default("RULE") // RULE, USER, AI
+  usageCount            Int       @default(0)     // How many times applied
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([userId, merchantRaw])
+  @@index([merchantRaw])
+  @@index([userId])
+  @@map("merchant_mappings")
+}
+
+// =============================================================================
+// PHASE 13: RECURRING PAYMENT DETECTION
+// =============================================================================
+
+model RecurringPayment {
+  id                    String            @id @default(uuid())
+  userId                String
+
+  // Identification
+  merchantStandardised  String
+  accountId             String
+
+  // Pattern
+  pattern               RecurrencePattern
+  expectedAmount        Float
+  amountVariance        Float             @default(0.05) // 5% variance tolerance
+
+  // Tracking
+  lastOccurrence        DateTime
+  nextExpected          DateTime?
+  occurrenceCount       Int               @default(0)
+
+  // Alerts
+  priceIncreaseAlert    Boolean           @default(false)
+  lastPriceChange       Float?
+  lastPriceChangeDate   DateTime?
+
+  // Status
+  isActive              Boolean           @default(true)
+  isPaused              Boolean           @default(false)
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Relationships
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account               Account           @relation("RecurringPayments", fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchantStandardised, accountId])
+  @@index([userId])
+  @@index([accountId])
+  @@index([nextExpected])
+  @@map("recurring_payments")
+}
+
+// =============================================================================
+// PHASE 13: BEHAVIOURAL PROFILE
+// =============================================================================
+
+model SpendingProfile {
+  id                    String    @id @default(uuid())
+  userId                String    @unique
+
+  // Category averages (JSON: { category: { avgMonthly, trend, volatility } })
+  categoryAverages      Json
+
+  // Monthly patterns (JSON: { month: { totalSpend, categories } })
+  monthlyPatterns       Json?
+
+  // Seasonality detection
+  seasonalityFactors    Json?     // { category: { jan: 1.2, feb: 0.9, ... } }
+
+  // Spending clusters (AI-detected patterns)
+  spendingClusters      Json?     // [{ name, merchants, avgMonthly }]
+
+  // Volatility metrics
+  overallVolatility     Float     @default(0)
+  categoryVolatility    Json?     // { category: volatilityScore }
+
+  // Prediction data
+  predictedMonthlySpend Float?
+  predictionConfidence  Float?
+
+  // Metadata
+  dataPointCount        Int       @default(0)
+  lastCalculated        DateTime  @default(now())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relationships
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("spending_profiles")
 }
 
 // =============================================================================
