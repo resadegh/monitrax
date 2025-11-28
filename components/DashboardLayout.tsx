@@ -24,6 +24,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useUISyncEngine } from '@/hooks/useUISyncEngine';
 import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
 import { HealthSummaryWidget } from '@/components/health/HealthSummaryWidget';
+import { FinancialHealthMiniWidget } from '@/components/health/FinancialHealthMiniWidget';
 
 interface NavItem {
   name: string;
@@ -128,8 +129,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
 
-          {/* Phase 9.5 - Health Summary Widget in Sidebar */}
+          {/* Phase 12 - Financial Health Widget */}
           <div className="pt-4">
+            <FinancialHealthMiniWidget />
+          </div>
+
+          {/* Phase 9.5 - Health Summary Widget in Sidebar */}
+          <div className="pt-2">
             <HealthSummaryWidget
               health={syncState.health}
               isLoading={syncState.isFetching}
