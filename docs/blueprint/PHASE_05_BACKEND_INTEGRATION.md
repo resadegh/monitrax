@@ -595,20 +595,51 @@ enum UserRole {
   - `verifyEmail()` - Complete verification
   - `canResendVerification()` - Check resend eligibility
 
+**Production Email Service:** Resend (https://resend.com)
+- Package: `resend` npm package
+- Environment Variables:
+  - `RESEND_API_KEY` - API key from Resend dashboard
+  - `FROM_EMAIL` - Sender address (default: `Monitrax <onboarding@resend.dev>`)
+  - `NEXT_PUBLIC_APP_URL` - Base URL for email links
+- HTML email templates with branded styling
+- Free tier: 3,000 emails/month
+
 ---
 
 ### IMPLEMENTED-05-07: OAuth Providers ✅
 
 **Files:**
 - `/lib/auth/oauth.ts` - OAuth provider integration
+- `/app/api/auth/oauth/google/route.ts` - Google OAuth initiation
+- `/app/api/auth/callback/google/route.ts` - Google OAuth callback
+- `/app/oauth-callback/page.tsx` - Client-side token storage (Suspense-wrapped)
 
 **Features:**
-- Provider configurations for Google, Apple, Microsoft
+- Provider configurations for Google, Apple, Microsoft, Facebook
 - OAuth state management with CSRF protection
 - Authorization URL generation
-- Token exchange stubs (ready for production implementation)
-- User info fetch stubs
+- Full token exchange implementation
+- User info fetching from providers
 - Account linking/unlinking functions
+- JWT token generation for authenticated users
+
+**Production Configuration (Google OAuth):**
+- Google Cloud Console project required
+- Environment Variables:
+  - `GOOGLE_CLIENT_ID` - OAuth client ID
+  - `GOOGLE_CLIENT_SECRET` - OAuth client secret
+  - `GOOGLE_REDIRECT_URI` - `https://www.monitrax.com.au/api/auth/callback/google`
+- OAuth consent screen configured as External
+- Authorized redirect URI must match exactly
+
+**OAuth Flow:**
+1. User clicks "Continue with Google" → `/api/auth/oauth/google`
+2. Redirects to Google authorization
+3. Google callback → `/api/auth/callback/google`
+4. Creates/updates user, generates JWT
+5. Redirects to `/oauth-callback` with token in URL
+6. Client stores token in localStorage
+7. Redirects to dashboard
 
 ---
 

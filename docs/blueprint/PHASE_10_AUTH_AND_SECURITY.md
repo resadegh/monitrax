@@ -674,6 +674,7 @@ DATABASE_URL=postgresql://...
 # OAuth Providers (optional - dynamic detection)
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=https://www.monitrax.com.au/api/auth/callback/google
 FACEBOOK_CLIENT_ID=...
 FACEBOOK_CLIENT_SECRET=...
 APPLE_CLIENT_ID=...
@@ -681,17 +682,89 @@ APPLE_CLIENT_SECRET=...
 MICROSOFT_CLIENT_ID=...
 MICROSOFT_CLIENT_SECRET=...
 
-# Email (for Magic Links & Email MFA)
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=...
-SMTP_PASSWORD=...
+# Email Service (Resend)
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+FROM_EMAIL=Monitrax <noreply@monitrax.com.au>
+NEXT_PUBLIC_APP_URL=https://www.monitrax.com.au
 
 # Security
 JWT_SECRET=...
 SESSION_SECRET=...
 ENCRYPTION_KEY=... (32 bytes for AES-256)
 ```
+
+---
+
+## 🚀 PRODUCTION DEPLOYMENT CONFIGURATION
+
+### Google OAuth Setup
+
+**Status:** ✅ CONFIGURED & WORKING
+
+1. **Google Cloud Console Setup:**
+   - Project: `Monitrax`
+   - OAuth Consent Screen: External, Production-ready
+   - Application Type: Web application
+
+2. **Authorized Redirect URI:**
+   ```
+   https://www.monitrax.com.au/api/auth/callback/google
+   ```
+
+3. **Required Environment Variables (Vercel):**
+   ```
+   GOOGLE_CLIENT_ID=<from Google Cloud Console>
+   GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
+   GOOGLE_REDIRECT_URI=https://www.monitrax.com.au/api/auth/callback/google
+   ```
+
+4. **OAuth Flow:**
+   - User clicks "Continue with Google" on login page
+   - Redirected to Google for authentication
+   - Google redirects to `/api/auth/callback/google`
+   - Callback creates/updates user, generates JWT
+   - Redirects to `/oauth-callback` page (Suspense-wrapped)
+   - Client stores token in localStorage
+   - Redirects to dashboard
+
+### Resend Email Integration
+
+**Status:** ✅ CONFIGURED & WORKING
+
+1. **Resend Dashboard:**
+   - Account: https://resend.com
+   - Free tier: 3,000 emails/month
+
+2. **Required Environment Variables (Vercel):**
+   ```
+   RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   FROM_EMAIL=Monitrax <onboarding@resend.dev>  # or verified domain
+   NEXT_PUBLIC_APP_URL=https://www.monitrax.com.au
+   ```
+
+3. **Email Templates Implemented:**
+   - **Email Verification:** Branded HTML with verification button
+   - **Password Reset:** Branded HTML with reset button
+   - 24-hour expiry for verification, 1-hour for password reset
+
+4. **To Use Custom Domain (monitrax.com.au):**
+   - Add domain in Resend dashboard
+   - Add DNS records (DKIM, SPF)
+   - Update FROM_EMAIL to `Monitrax <noreply@monitrax.com.au>`
+
+### Vercel Production Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://...` |
+| `JWT_SECRET` | Secret for JWT signing | `your-secure-secret` |
+| `NEXTAUTH_URL` | Production URL | `https://www.monitrax.com.au` |
+| `NEXT_PUBLIC_APP_URL` | Public app URL | `https://www.monitrax.com.au` |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | `xxx.apps.googleusercontent.com` |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | `GOCSPX-xxx` |
+| `GOOGLE_REDIRECT_URI` | OAuth callback URL | `https://www.monitrax.com.au/api/auth/callback/google` |
+| `RESEND_API_KEY` | Resend email API key | `re_xxx` |
+| `FROM_EMAIL` | Email sender address | `Monitrax <onboarding@resend.dev>` |
 
 ---
 
