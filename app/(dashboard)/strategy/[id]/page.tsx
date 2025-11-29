@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -224,28 +225,33 @@ export default function StrategyDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">Loading recommendation...</p>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400">Loading recommendation...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (!recommendation) {
     return (
-      <div className="text-center py-12">
-        <AlertTriangle className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-500 dark:text-gray-400">Recommendation not found.</p>
-        <Link href="/strategy" className="text-blue-600 hover:text-blue-800 mt-4 inline-block">
-          ← Back to Strategies
-        </Link>
-      </div>
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <AlertTriangle className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-500 dark:text-gray-400">Recommendation not found.</p>
+          <Link href="/strategy" className="text-blue-600 hover:text-blue-800 mt-4 inline-block">
+            ← Back to Strategies
+          </Link>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       {/* Back Button */}
       <Link
@@ -588,5 +594,6 @@ export default function StrategyDetailPage() {
         </div>
       </div>
     </div>
+    </DashboardLayout>
   );
 }

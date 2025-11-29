@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
@@ -83,24 +84,28 @@ export default function PropertyStrategyPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500 dark:text-gray-400">Loading property...</p>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400">Loading property...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (!property) {
     return (
-      <div className="text-center py-12">
-        <Building2 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-500 dark:text-gray-400">Property not found.</p>
-        <Link href="/dashboard/properties" className="text-blue-600 hover:text-blue-800 mt-4 inline-block">
-          ← Back to Properties
-        </Link>
-      </div>
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <Building2 className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-500 dark:text-gray-400">Property not found.</p>
+          <Link href="/dashboard/properties" className="text-blue-600 hover:text-blue-800 mt-4 inline-block">
+            ← Back to Properties
+          </Link>
+        </div>
+      </DashboardLayout>
     );
   }
 
@@ -108,6 +113,7 @@ export default function PropertyStrategyPage() {
   const equityGainPercent = ((equityGain / property.purchasePrice) * 100).toFixed(1);
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       {/* Back Link */}
       <Link
@@ -249,5 +255,6 @@ export default function PropertyStrategyPage() {
         )}
       </div>
     </div>
+    </DashboardLayout>
   );
 }
