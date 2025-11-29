@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -278,6 +279,7 @@ export default function StrategyDashboard() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
+    <DashboardLayout>
     <div className="space-y-6">
       {/* Header with Data Quality Badge */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -748,5 +750,6 @@ export default function StrategyDashboard() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }
