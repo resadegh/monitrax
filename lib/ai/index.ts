@@ -15,6 +15,18 @@ export {
   buildFinancialContextFromSnapshot,
 } from './financialAdvisor';
 
+// Entity Context Builders
+export {
+  buildPropertyContext,
+  buildLoanContext,
+  buildInvestmentContext,
+  buildEntityPrompt,
+  logAIRequest,
+  createRequestLog,
+  type EntityContext,
+  type AIRequestLog,
+} from './contextBuilder';
+
 // Strategy Enhancement
 export {
   enhanceRecommendation,
