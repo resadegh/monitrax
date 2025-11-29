@@ -3,9 +3,11 @@
  * Phase 05 - Backend Security
  *
  * Handles email verification tokens and flow.
+ * Uses Resend for email delivery.
  */
 
 import { prisma } from '@/lib/db';
+import { Resend } from 'resend';
 
 // =============================================================================
 // TYPES
@@ -39,6 +41,14 @@ const TOKEN_EXPIRY = {
 
 const RESEND_COOLDOWN = 60 * 1000; // 1 minute between resends
 const MAX_RESENDS_PER_HOUR = 5;
+
+// Initialize Resend client
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Email configuration
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Monitrax <onboarding@resend.dev>';
+const APP_NAME = 'Monitrax';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.monitrax.com.au';
 
 // =============================================================================
 // IN-MEMORY TOKEN STORE (Replace with DB in production)
@@ -186,71 +196,145 @@ export function canResendVerification(email: string): { allowed: boolean; waitSe
 
 /**
  * Send email verification (creates token).
- * In production, this would integrate with an email service.
+ * Uses Resend for email delivery.
  */
 export async function sendVerificationEmail(
   email: string,
   userId: string
 ): Promise<SendVerificationResult> {
-  const canResend = canResendVerification(email);
+  const canResendResult = canResendVerification(email);
 
-  if (!canResend.allowed) {
+  if (!canResendResult.allowed) {
     return {
       success: false,
-      message: `Please wait ${canResend.waitSeconds} seconds before requesting another email.`,
+      message: `Please wait ${canResendResult.waitSeconds} seconds before requesting another email.`,
     };
   }
 
   const token = await createVerificationToken(email, userId, 'EMAIL_VERIFY');
+  const verificationUrl = `${APP_URL}/verify-email?token=${token.token}`;
 
-  // In production, send actual email here
-  // For now, we'll log the verification URL
-  const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/verify-email?token=${token.token}`;
+  try {
+    // Send email via Resend
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `Verify your ${APP_NAME} email address`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #4F46E5;">Welcome to ${APP_NAME}!</h2>
+          <p>Please verify your email address by clicking the button below:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}"
+               style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Verify Email
+            </a>
+          </div>
+          <p style="color: #666;">Or copy and paste this link into your browser:</p>
+          <p style="color: #4F46E5; word-break: break-all;">${verificationUrl}</p>
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            This link will expire in 24 hours. If you didn't create an account with ${APP_NAME}, please ignore this email.
+          </p>
+        </div>
+      `,
+    });
 
-  console.log(`[Email Verification] Send to: ${email}`);
-  console.log(`[Email Verification] URL: ${verificationUrl}`);
+    if (error) {
+      console.error('[Email Verification] Resend error:', error);
+      return {
+        success: false,
+        message: 'Failed to send verification email. Please try again.',
+      };
+    }
 
-  // In dev mode, return the token for testing
-  const isDev = process.env.NODE_ENV === 'development';
+    console.log(`[Email Verification] Sent to: ${email}, ID: ${data?.id}`);
 
-  return {
-    success: true,
-    message: 'Verification email sent. Please check your inbox.',
-    token: isDev ? token.token : undefined,
-  };
+    // In dev mode, return the token for testing
+    const isDev = process.env.NODE_ENV === 'development';
+
+    return {
+      success: true,
+      message: 'Verification email sent. Please check your inbox.',
+      token: isDev ? token.token : undefined,
+    };
+  } catch (error) {
+    console.error('[Email Verification] Send error:', error);
+    return {
+      success: false,
+      message: 'Failed to send verification email. Please try again.',
+    };
+  }
 }
 
 /**
  * Send password reset email (creates token).
+ * Uses Resend for email delivery.
  */
 export async function sendPasswordResetEmail(
   email: string,
   userId: string
 ): Promise<SendVerificationResult> {
-  const canResend = canResendVerification(email);
+  const canResendResult = canResendVerification(email);
 
-  if (!canResend.allowed) {
+  if (!canResendResult.allowed) {
     return {
       success: false,
-      message: `Please wait ${canResend.waitSeconds} seconds before requesting another email.`,
+      message: `Please wait ${canResendResult.waitSeconds} seconds before requesting another email.`,
     };
   }
 
   const token = await createVerificationToken(email, userId, 'PASSWORD_RESET');
+  const resetUrl = `${APP_URL}/reset-password?token=${token.token}`;
 
-  // In production, send actual email here
-  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${token.token}`;
+  try {
+    // Send email via Resend
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `Reset your ${APP_NAME} password`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #4F46E5;">Password Reset Request</h2>
+          <p>We received a request to reset your ${APP_NAME} password. Click the button below to set a new password:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}"
+               style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Reset Password
+            </a>
+          </div>
+          <p style="color: #666;">Or copy and paste this link into your browser:</p>
+          <p style="color: #4F46E5; word-break: break-all;">${resetUrl}</p>
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            This link will expire in 1 hour. If you didn't request a password reset, please ignore this email - your password will remain unchanged.
+          </p>
+        </div>
+      `,
+    });
 
-  console.log(`[Password Reset] Send to: ${email}`);
-  console.log(`[Password Reset] URL: ${resetUrl}`);
+    if (error) {
+      console.error('[Password Reset] Resend error:', error);
+      return {
+        success: false,
+        message: 'Failed to send password reset email. Please try again.',
+      };
+    }
 
-  const isDev = process.env.NODE_ENV === 'development';
+    console.log(`[Password Reset] Sent to: ${email}, ID: ${data?.id}`);
 
-  return {
-    success: true,
-    message: 'Password reset email sent. Please check your inbox.',
-    token: isDev ? token.token : undefined,
-  };
+    const isDev = process.env.NODE_ENV === 'development';
+
+    return {
+      success: true,
+      message: 'Password reset email sent. Please check your inbox.',
+      token: isDev ? token.token : undefined,
+    };
+  } catch (error) {
+    console.error('[Password Reset] Send error:', error);
+    return {
+      success: false,
+      message: 'Failed to send password reset email. Please try again.',
+    };
+  }
 }
 
 /**
