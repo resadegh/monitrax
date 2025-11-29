@@ -443,7 +443,218 @@ Each recommendation includes an evidence graph showing:
 
 ---
 
+---
+
+## AI-Powered Endpoints
+
+### 9. POST /api/ai/ask
+
+Ask the AI advisor a specific financial question.
+
+**Request Body:**
+```json
+{
+  "question": "string (required, max 1000 chars)",
+  "entityId": "string (optional)",
+  "entityType": "property" | "loan" | "investment" (optional),
+  "recommendationId": "string (optional)"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "question": "How can I reduce my mortgage interest?",
+    "answer": "Based on your current loan at 5.5%...",
+    "suggestions": [
+      "What about refinancing options?",
+      "How does an offset account help?",
+      "What are the break fees?"
+    ],
+    "dataQualityNote": "Note: Limited financial data available...",
+    "usage": {
+      "model": "gpt-4",
+      "totalTokens": 1250,
+      "estimatedCost": 0.04
+    }
+  }
+}
+```
+
+**Example:**
+```bash
+curl -X POST https://app.monitrax.com/api/ai/ask \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What should be my next financial priority?"}'
+```
+
+**Entity-Specific Question:**
+```bash
+curl -X POST https://app.monitrax.com/api/ai/ask \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "How can I optimize this property?",
+    "entityType": "property",
+    "entityId": "prop-123"
+  }'
+```
+
+---
+
+### 10. POST /api/ai/advice
+
+Generate comprehensive AI-powered financial advice.
+
+**Request Body:**
+```json
+{
+  "mode": "quick" | "detailed" (default: "detailed"),
+  "focusAreas": ["debt", "investment", "property"] (optional),
+  "includeProjections": boolean (optional, default: false)
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "advice": {
+    "summary": "Your financial health is good with a score of 72...",
+    "healthScore": 72,
+    "observations": [
+      {
+        "category": "debt",
+        "finding": "High interest loan detected",
+        "impact": "concern",
+        "details": "Your credit card at 19.9% is costing $200/month extra"
+      }
+    ],
+    "recommendations": [
+      {
+        "id": "rec_1",
+        "title": "Pay off high-interest credit card",
+        "description": "Detailed description...",
+        "category": "debt",
+        "priority": "high",
+        "potentialImpact": "Save $2,400/year in interest",
+        "timeframe": "1-3 months",
+        "steps": ["Step 1", "Step 2"]
+      }
+    ],
+    "riskAssessment": {
+      "overallRisk": "moderate",
+      "riskFactors": [...],
+      "mitigationStrategies": [...]
+    },
+    "prioritizedActions": [
+      {
+        "rank": 1,
+        "action": "Pay off credit card",
+        "reason": "Highest interest cost",
+        "urgency": "immediate",
+        "estimatedImpact": "$2,400/year"
+      }
+    ],
+    "projections": [
+      {
+        "metric": "Net Worth",
+        "currentValue": 500000,
+        "projectedValue": 750000,
+        "timeframeYears": 5,
+        "assumptions": ["7% investment return", "5% property growth"],
+        "confidenceLevel": "medium"
+      }
+    ]
+  },
+  "usage": {
+    "model": "gpt-4",
+    "promptTokens": 2000,
+    "completionTokens": 1500,
+    "totalTokens": 3500,
+    "estimatedCost": 0.12
+  },
+  "generatedAt": "ISO-8601 date"
+}
+```
+
+---
+
+### 11. POST /api/ai/enhance
+
+Enhance a strategy recommendation with AI-powered explanations.
+
+**Request Body:**
+```json
+{
+  "recommendationId": "uuid"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "recommendationId": "uuid",
+    "enhancement": {
+      "summary": "Plain language explanation...",
+      "detailedExplanation": "Comprehensive analysis...",
+      "riskAnalysis": {
+        "riskLevel": "medium",
+        "factors": [...],
+        "mitigations": [...]
+      },
+      "alternativeApproaches": [
+        {
+          "approach": "Conservative",
+          "description": "...",
+          "tradeoffs": { "pros": [...], "cons": [...] }
+        }
+      ],
+      "actionSteps": ["Step 1", "Step 2", "Step 3"],
+      "disclaimer": "This is AI-generated advice..."
+    }
+  }
+}
+```
+
+---
+
+## AI Configuration
+
+The AI features require OpenAI API configuration:
+
+### Environment Variables
+```env
+OPENAI_API_KEY=sk-...your-api-key
+OPENAI_MODEL=gpt-4  # Optional, default: gpt-4
+```
+
+### Model Selection
+- **Quick queries** use `gpt-3.5-turbo` for faster responses
+- **Detailed analysis** uses `gpt-4` for comprehensive advice
+- **Projections** use `gpt-3.5-turbo` with conservative prompts
+
+### AI Response Guidelines
+All AI responses include:
+- Clear financial advice tailored to Australian context
+- Consideration of user's risk appetite and preferences
+- Disclaimers about seeking professional financial advice
+- Follow-up question suggestions
+
+---
+
 ## Changelog
+
+### v1.1.0 (2025-11-29)
+- Added AI-powered `/api/ai/ask` endpoint
+- Added AI advice generation `/api/ai/advice`
+- Added recommendation enhancement `/api/ai/enhance`
+- Entity-specific AI context support
 
 ### v1.0.0 (2025-01-26)
 - Initial release
