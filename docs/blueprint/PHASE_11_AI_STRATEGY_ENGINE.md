@@ -1769,4 +1769,261 @@ Phase 11 is complete when:
 
 ---
 
+# 14. AI/LLM INTEGRATION (ENHANCEMENT)
+
+**Status:** COMPLETE
+**Added:** 2025-11-29
+**Purpose:** Enhance the rule-based strategy engine with OpenAI GPT-4 for natural language advice, scenario analysis, and personalized financial coaching.
+
+## 14.1 OVERVIEW
+
+While the core Strategy Engine (Stages 1-9) uses deterministic business rules for consistency and explainability, this enhancement adds optional AI-powered features using OpenAI's GPT-4 models:
+
+1. **AI Financial Advisor** - Natural language financial analysis and advice
+2. **Question & Answer** - Ask specific financial questions with context-aware answers
+3. **Scenario Analysis** - "What-if" scenario evaluation with pros/cons
+4. **Goal Analysis** - Progress assessment toward financial goals
+5. **Recommendation Enhancement** - AI-generated explanations for rule-based recommendations
+
+## 14.2 ARCHITECTURE
+
+```
+lib/ai/
+├── index.ts               # Main export file
+├── types.ts               # TypeScript interfaces
+├── openai.ts              # OpenAI client and utilities
+├── financialAdvisor.ts    # Main AI advisor service
+└── strategyEnhancer.ts    # AI enhancement for strategy recommendations
+
+app/api/ai/
+├── status/route.ts        # Check AI configuration status
+├── advisor/route.ts       # Generate comprehensive AI advice
+├── ask/route.ts           # Ask specific questions
+├── scenario/route.ts      # Scenario analysis
+└── goal/route.ts          # Goal progress analysis
+```
+
+## 14.3 CONFIGURATION
+
+**Required Environment Variable:**
+```
+OPENAI_API_KEY=sk-...
+```
+
+**Models Used:**
+- `gpt-4-turbo-preview` - Comprehensive financial analysis
+- `gpt-4o-mini` - Quick responses and scenario analysis
+
+**Cost Control:**
+- Token limits per request (1000-3000 tokens)
+- Usage tracking with cost estimates
+- Optional mode selection (quick vs detailed)
+
+## 14.4 API ENDPOINTS
+
+### GET /api/ai/status
+Check if AI features are configured and available.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "configured": true,
+    "version": "1.0.0",
+    "features": {
+      "financialAdvisor": true,
+      "chatAssistant": true,
+      "projections": true
+    }
+  }
+}
+```
+
+### POST /api/ai/advisor
+Generate comprehensive AI-powered financial advice.
+
+**Request:**
+```json
+{
+  "query": "How can I optimize my debt structure?",
+  "mode": "detailed",
+  "focusAreas": ["debt", "investment"],
+  "includeProjections": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "advice": {
+      "summary": "Your debt-to-income ratio is healthy at 32%...",
+      "healthScore": 72,
+      "observations": [...],
+      "recommendations": [...],
+      "riskAssessment": {...},
+      "prioritizedActions": [...]
+    },
+    "dataQuality": { "score": 78, "status": "good" },
+    "usage": { "totalTokens": 2450, "estimatedCost": 0.048 }
+  }
+}
+```
+
+### POST /api/ai/ask
+Ask specific financial questions.
+
+**Request:**
+```json
+{
+  "question": "Should I refinance my mortgage?"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "question": "Should I refinance my mortgage?",
+    "answer": "Based on your current loan at 5.2% and market rates...",
+    "suggestions": [
+      "What savings could I expect from refinancing?",
+      "How does refinancing affect my tax position?",
+      "What's the break-even period for refinancing costs?"
+    ]
+  }
+}
+```
+
+### POST /api/ai/scenario
+Analyze "what-if" financial scenarios.
+
+**Request:**
+```json
+{
+  "type": "extra_payment",
+  "amount": 500,
+  "description": "Pay an extra $500/month toward my mortgage"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "scenario": {...},
+    "analysis": "Adding $500/month would reduce your loan term by 4.5 years...",
+    "pros": ["Save $47,000 in interest", "Build equity faster"],
+    "cons": ["Reduced emergency fund buffer", "Less investment flexibility"],
+    "recommendation": "Consider this after reaching 6-month emergency fund..."
+  }
+}
+```
+
+### POST /api/ai/goal
+Analyze progress toward financial goals.
+
+**Request:**
+```json
+{
+  "type": "retirement",
+  "targetAmount": 2000000,
+  "targetDate": "2045-01-01",
+  "description": "Retire at 55 with $2M net worth"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "goal": {...},
+    "feasibility": "achievable",
+    "analysis": "Based on your current trajectory...",
+    "adjustments": [
+      "Increase monthly savings by $400",
+      "Consider salary sacrifice to super"
+    ],
+    "milestones": [
+      "Reach $500K net worth by 2030",
+      "Pay off mortgage by 2035"
+    ]
+  }
+}
+```
+
+## 14.5 AI CONTEXT BUILDING
+
+The AI receives comprehensive financial context from:
+- Portfolio Snapshot (net worth, assets, liabilities)
+- Property Portfolio (value, equity, rental income)
+- Loan Structure (balances, rates, payments)
+- Investment Holdings (value, type, performance)
+- Cash Flow (income, expenses, surplus)
+- User Preferences (risk appetite, time horizon)
+- Existing Insights (critical issues, health warnings)
+
+## 14.6 STRATEGY ENHANCER
+
+The `strategyEnhancer.ts` module can enhance rule-based recommendations with:
+- **Enhanced Explanations** - Natural language clarity
+- **Personalized Advice** - Context-specific guidance
+- **Action Steps** - Concrete implementation steps
+- **Potential Challenges** - Obstacles to anticipate
+- **Success Metrics** - How to measure progress
+
+## 14.7 DATA QUALITY REQUIREMENTS
+
+AI advice quality depends on data completeness:
+- **Score > 80%**: Full AI analysis available
+- **Score 60-80%**: AI analysis with caveats
+- **Score 40-60%**: Limited AI analysis
+- **Score < 40%**: AI advice unavailable
+
+## 14.8 SAFETY & DISCLAIMERS
+
+All AI-generated advice includes:
+- Not a substitute for professional financial advice
+- Based on provided data only
+- Market conditions may change
+- Past performance ≠ future results
+- Australian context assumptions
+
+## 14.9 FILES CREATED
+
+```
+lib/ai/
+├── index.ts               # 70 lines
+├── types.ts               # 200 lines
+├── openai.ts              # 150 lines
+├── financialAdvisor.ts    # 400 lines
+└── strategyEnhancer.ts    # 350 lines
+
+app/api/ai/
+├── status/route.ts        # 40 lines
+├── advisor/route.ts       # 120 lines
+├── ask/route.ts           # 100 lines
+├── scenario/route.ts      # 100 lines
+└── goal/route.ts          # 100 lines
+```
+
+**Total Lines Added:** ~1,630 lines
+
+## 14.10 VALIDATION RESULTS
+
+- ✅ TypeScript compilation passes
+- ✅ OpenAI package installed
+- ✅ AI module exports correctly
+- ✅ API routes created and structured
+- ✅ Error handling for missing API key
+- ✅ Usage tracking implemented
+- ✅ Australian financial context in prompts
+
+---
+
 # END OF PHASE 11 — AI STRATEGY ENGINE
