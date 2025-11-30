@@ -30,6 +30,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useUISyncEngine } from '@/hooks/useUISyncEngine';
 import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
 import { FinancialHealthMiniWidget } from '@/components/health/FinancialHealthMiniWidget';
+import AiChatButton from '@/components/AiChatButton';
 
 interface NavItem {
   name: string;
@@ -239,6 +240,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </main>
       </div>
+
+      {/* AI Chat Floating Button */}
+      <AiChatButton />
     </div>
   );
 }
