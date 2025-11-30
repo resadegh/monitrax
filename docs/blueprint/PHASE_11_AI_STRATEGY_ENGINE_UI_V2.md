@@ -458,44 +458,52 @@ All AI interactions are logged:
 ## Stage 1: Blueprint Creation ✅
 - Create this blueprint document
 
-## Stage 2: Strategy Dashboard Enhancement
+## Stage 2: Strategy Dashboard Enhancement ✅
 - Refactor dashboard with new layout
 - Add filters and sorting
 - Integrate data quality badge
 - Add AI entry points
+- Add DashboardLayout wrapper for sidebar navigation
 
-## Stage 3: Strategy Detail View Enhancement
+## Stage 3: Strategy Detail View Enhancement ✅
 - Add linked entities panel
 - Integrate AI Advisor panel
 - Show alternatives section
 - Add conflict resolver integration
 
-## Stage 4: AI Advisor Panel
-- Create reusable chat component
+## Stage 4: AI Advisor Panel ✅
+- Create reusable chat component (`components/strategy/AiAdvisorPanel.tsx`)
 - Implement quick actions
 - Add markdown rendering
 - Include safety disclaimers
+- Add auth token for API calls
 
-## Stage 5: Entity Strategy Tabs
-- Create property strategy page
-- Create loan strategy page
-- Create investment strategy page
+## Stage 5: Entity Strategy Tabs ✅
+- Create property strategy page (`app/dashboard/properties/[id]/strategy/page.tsx`)
+- Create loan strategy page (`app/dashboard/loans/[id]/strategy/page.tsx`)
+- Create investment strategy page (`app/dashboard/investments/holdings/[id]/strategy/page.tsx`)
 - Filter recommendations by entity
 
-## Stage 6: Conflict Resolver UI
-- Create comparison component
+## Stage 6: Conflict Resolver UI ✅
+- Create comparison component (`components/strategy/ConflictResolver.tsx`)
 - Show pros/cons
 - Display suggested resolution
+- Add "Ask AI" button for each option
+- Dark mode support
 
-## Stage 7: Context Builder
-- Create context builder module
-- Optimize data fetching
+## Stage 7: Context Builder ✅
+- Create context builder module (`lib/ai/contextBuilder.ts`)
+- Entity-specific context builders (property, loan, investment)
 - Add usage logging
 
-## Stage 8: Documentation
-- Update user guide
-- Document API changes
+## Stage 8: Documentation ✅
+- Update `docs/api/STRATEGY_API.md` with AI endpoints
 - Add integration examples
+
+## Stage 9: Floating AI Chat Button ✅ (Added 2025-11-30)
+- Create `components/AiChatButton.tsx` for global AI access
+- Add to `DashboardLayout.tsx` for all dashboard pages
+- Brand-aligned styling (emerald primary, navy header)
 
 ---
 
@@ -503,17 +511,19 @@ All AI interactions are logged:
 
 Phase 11 UI V2 is complete when:
 
-- [ ] Strategy Dashboard shows top opportunities and full list
-- [ ] Filters and sorting work correctly
-- [ ] Data quality badge displays accurately
-- [ ] Strategy detail view shows all sections
-- [ ] AI Advisor panel responds to queries
-- [ ] Entity strategy tabs filter correctly
-- [ ] Conflict resolver displays comparisons
-- [ ] All safety disclaimers are shown
-- [ ] Mobile responsive design works
-- [ ] TypeScript compilation passes
-- [ ] No console errors in browser
+- [x] Strategy Dashboard shows top opportunities and full list
+- [x] Filters and sorting work correctly
+- [x] Data quality badge displays accurately
+- [x] Strategy detail view shows all sections
+- [x] AI Advisor panel responds to queries
+- [x] Entity strategy tabs filter correctly
+- [x] Conflict resolver displays comparisons
+- [x] All safety disclaimers are shown
+- [x] Mobile responsive design works
+- [x] TypeScript compilation passes
+- [x] No console errors in browser
+- [x] Floating AI chat button on all dashboard pages (added 2025-11-30)
+- [x] Auth tokens added to all API calls
 
 ---
 
