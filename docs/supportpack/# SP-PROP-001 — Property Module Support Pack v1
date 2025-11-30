@@ -5,7 +5,7 @@
 - **Pack ID:** SP-PROP-001
 - **Name:** Property Module – Linked Data & UX Harmonisation
 - **Version:** v1.0.0
-- **Status:** Draft
+- **Status:** Complete
 - **Author:** RS
 - **Date:** 2025-11-30
 - **Target App Version:** Monitrax v1.4 (post Phase 8 Task 10)
@@ -371,3 +371,87 @@ If this support pack needs to be rolled back:
     - Key UI/behaviour changes.
   - Provide the suggested commit message (and, where possible, show the actual diff).
   - STOP and wait for my explicit approval before moving to the next block.
+
+---
+
+## 9. Implementation Notes (Completed 2025-11-30)
+
+### Block 1: Properties List Enhancements
+**Status:** Complete
+**Files Changed:** `app/dashboard/properties/page.tsx`
+
+**Changes Made:**
+- Added purchase price display below current value on property cards
+- Property cards already had: current value, equity, LVR, linked counts (loans, income, expenses, depreciation)
+- Most Block 1 requirements were already implemented in prior phases
+
+**Commit:** `feat(properties): enhance properties list with linked metrics`
+
+---
+
+### Block 2: Linked Data Tab & Cross-Navigation
+**Status:** Complete (Pre-existing)
+**Files Changed:** None
+
+**Findings:**
+- `LinkedDataPanel` component already fully implemented with:
+  - Health score indicator
+  - Grouped linked entities (Loans, Income, Expenses, Properties)
+  - Cross-navigation links to entity detail pages
+  - Empty state handling
+- Property detail dialog already uses LinkedDataPanel
+- No code changes required; verified TypeScript compilation
+
+---
+
+### Block 3: Depreciation UX Alignment
+**Status:** Complete
+**Files Changed:** `app/dashboard/properties/[id]/depreciation/page.tsx` (+94 lines)
+
+**Changes Made:**
+1. **Summary StatCards Section** (brand-aligned variants):
+   - Annual Deductions (green) - total yearly tax deduction
+   - Total Asset Cost (blue) - original cost of all assets
+   - Remaining Value (purple) - value yet to be depreciated
+   - Avg. Remaining Life (orange) - with active/completed counts
+
+2. **Breadcrumb Navigation:**
+   - Properties → Property Name → Depreciation
+   - Links back to both properties list and property detail
+
+3. **Enhanced Schedule Cards:**
+   - Expanded from 4 to 6 columns
+   - Added "Remaining Life" (years or "Completed")
+   - Added "Remaining Value" calculation
+   - Responsive grid (3 cols mobile, 6 cols desktop)
+
+4. **New Calculation Functions:**
+   - `calculateRemainingYears()` - based on start date and rate
+   - `calculateRemainingValue()` - Prime Cost vs Diminishing Value methods
+
+**Commit:** `feat(properties): align depreciation UI with global pattern`
+
+---
+
+### Block 4: Documentation
+**Status:** Complete
+**Files Changed:** This file
+
+**Changes Made:**
+- Updated Status from "Draft" to "Complete"
+- Added this Implementation Notes section
+
+**Commit:** `docs: finalize SP-PROP-001 property module support pack`
+
+---
+
+### Summary
+
+| Block | Description | Status | Files Changed |
+|-------|-------------|--------|---------------|
+| 1 | Properties List Enhancements | Complete | 1 file |
+| 2 | Linked Data Tab | Pre-existing | 0 files |
+| 3 | Depreciation UX | Complete | 1 file |
+| 4 | Documentation | Complete | 1 file |
+
+**Total Changes:** 3 commits, ~100 lines added across 2 code files + docs
