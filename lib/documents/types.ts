@@ -3,38 +3,14 @@
  * Type definitions for the document management system
  */
 
-// Define enums locally to avoid Prisma client generation dependency
-// These match the enums defined in prisma/schema.prisma
-export enum DocumentCategory {
-  CONTRACT = 'CONTRACT',
-  STATEMENT = 'STATEMENT',
-  RECEIPT = 'RECEIPT',
-  TAX = 'TAX',
-  PDS = 'PDS',
-  VALUATION = 'VALUATION',
-  INSURANCE = 'INSURANCE',
-  MORTGAGE = 'MORTGAGE',
-  LEASE = 'LEASE',
-  INVOICE = 'INVOICE',
-  OTHER = 'OTHER',
-}
+// Import enums from Prisma client and re-export
+import {
+  DocumentCategory,
+  StorageProviderType,
+  LinkedEntityType,
+} from '@prisma/client';
 
-export enum StorageProviderType {
-  MONITRAX = 'MONITRAX',
-  GOOGLE_DRIVE = 'GOOGLE_DRIVE',
-}
-
-export enum LinkedEntityType {
-  PROPERTY = 'PROPERTY',
-  LOAN = 'LOAN',
-  EXPENSE = 'EXPENSE',
-  INCOME = 'INCOME',
-  ACCOUNT = 'ACCOUNT',
-  OFFSET_ACCOUNT = 'OFFSET_ACCOUNT',
-  INVESTMENT_ACCOUNT = 'INVESTMENT_ACCOUNT',
-  INVESTMENT_HOLDING = 'INVESTMENT_HOLDING',
-  TRANSACTION = 'TRANSACTION',
-}
+export { DocumentCategory, StorageProviderType, LinkedEntityType };
 
 // ============================================================================
 // Core Document Types
@@ -266,5 +242,5 @@ export const MIME_TO_EXTENSION: Record<string, string> = {
   'image/heif': '.heif',
 };
 
-// Note: DocumentCategory, StorageProviderType, and LinkedEntityType are defined
-// at the top of this file to avoid Prisma client generation dependency.
+// Note: DocumentCategory, StorageProviderType, and LinkedEntityType are imported
+// from @prisma/client and re-exported for convenience.
