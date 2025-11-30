@@ -171,6 +171,63 @@ enum AuditStatus {
 }
 
 // =============================================================================
+// PHASE 20: AUSTRALIAN TAX INTELLIGENCE ENGINE ENUMS
+// =============================================================================
+
+enum SalaryType {
+  GROSS     // Before tax
+  NET       // After tax (take-home)
+}
+
+enum PayFrequency {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+enum TaxCategory {
+  // Employment Income
+  SALARY_WAGES           // Fully taxable
+  ALLOWANCES             // Taxable unless specific exemptions
+  BONUSES                // Fully taxable
+  TERMINATION            // Special tax treatment
+
+  // Investment Income
+  DIVIDENDS_FRANKED      // Taxable with franking credits
+  DIVIDENDS_UNFRANKED    // Fully taxable
+  INTEREST               // Fully taxable
+  CAPITAL_GAINS          // CGT rules apply
+
+  // Property Income
+  RENTAL                 // Fully taxable
+
+  // Government Payments
+  GOVERNMENT_TAXABLE     // Most are taxable
+  GOVERNMENT_EXEMPT      // Some are exempt
+
+  // Other
+  GIFTS                  // Generally exempt
+  INHERITANCE            // Generally exempt
+  INSURANCE_PAYOUT       // Generally exempt
+  HOBBY_INCOME           // May be taxable if profit-making
+
+  // Exempt
+  TAX_EXEMPT             // Confirmed exempt
+}
+
+enum SuperContributionType {
+  EMPLOYER_SG           // Super Guarantee (mandatory)
+  SALARY_SACRIFICE      // Pre-tax voluntary
+  PERSONAL_DEDUCTIBLE   // Personal contribution claiming deduction
+  PERSONAL_NON_DEDUCT   // After-tax personal contribution
+  SPOUSE                // Spouse contribution
+  GOVERNMENT_COCONTRIB  // Government co-contribution
+  DOWNSIZER             // Downsizer contribution (65+)
+}
+
+// =============================================================================
 // USER
 // =============================================================================
 
@@ -234,6 +291,10 @@ model User {
   // Phase 19: Document Management
   documents               Document[]
   storageProviderConfig   StorageProviderConfig?
+
+  // Phase 20: Australian Tax Intelligence Engine
+  superannuationAccounts  SuperannuationAccount[]
+  taxPositions            TaxPosition[]
 
   @@map("users")
 }
@@ -346,7 +407,34 @@ model Income {
   sourceType            IncomeSourceType  @default(GENERAL)
   amount                Float
   frequency             Frequency
+
+  // Phase 20: Salary-specific fields (only applicable when type = SALARY)
+  salaryType            SalaryType?       // GROSS or NET (null for non-salary)
+  payFrequency          PayFrequency?     // Pay cycle frequency
+
+  // Phase 20: Calculated fields for salary
+  grossAmount           Float?            // If NET entered, calculated GROSS
+  netAmount             Float?            // If GROSS entered, calculated NET
+  paygWithholding       Float?            // Calculated PAYG withholding (annual)
+
+  // Phase 20: Superannuation (for SALARY type)
+  superGuaranteeRate    Float?            // e.g., 0.115 for 11.5%
+  superGuaranteeAmount  Float?            // Calculated SG amount (annual)
+  salarySacrifice       Float?            // Pre-tax super sacrifice (annual)
+
+  // Phase 20: Tax determination (auto-calculated, replaces isTaxable)
+  taxCategory           TaxCategory?      // System-determined category
+  taxableAmount         Float?            // The taxable portion
+  taxExemptAmount       Float?            // Any exempt portion
+  frankingCredits       Float?            // For dividends
+  frankingPercentage    Float?            // Franking percentage (0-100)
+  taxNotes              String?           // Explanation of tax treatment
+
+  // Legacy field - kept for backward compatibility, will be deprecated
   isTaxable             Boolean           @default(true)
+
+  startDate             DateTime?
+  endDate               DateTime?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
@@ -355,6 +443,7 @@ model Income {
   property          Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   investmentAccount InvestmentAccount? @relation(fields: [investmentAccountId], references: [id], onDelete: SetNull)
   transactions      Transaction[]
+  superContributions SuperContribution[]
 
   @@index([userId])
   @@index([propertyId])
@@ -1760,4 +1849,147 @@ model StorageProviderConfig {
   user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("storage_provider_configs")
+}
+
+// =============================================================================
+// PHASE 20: SUPERANNUATION ACCOUNT
+// =============================================================================
+
+model SuperannuationAccount {
+  id                    String   @id @default(uuid())
+  userId                String
+
+  // Account details
+  name                  String
+  fundName              String?
+  memberNumber          String?
+  fundABN               String?
+
+  // Balances
+  currentBalance        Float    @default(0)
+  taxableComponent      Float    @default(0)
+  taxFreeComponent      Float    @default(0)
+
+  // Contribution tracking (current FY)
+  concessionalYTD       Float    @default(0)   // SG + Salary Sacrifice + Personal deductible
+  nonConcessionalYTD    Float    @default(0)   // After-tax contributions
+  financialYear         String?               // e.g., "2024-25"
+
+  // Contribution caps (updated annually)
+  concessionalCap       Float    @default(27500)
+  nonConcessionalCap    Float    @default(110000)
+
+  // Carry-forward tracking (unused concessional caps from prior 5 years)
+  carryForwardAvailable Float    @default(0)
+
+  // Investment options / performance (optional)
+  investmentOption      String?
+  returns1Year          Float?
+  returns5Year          Float?
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relationships
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions         SuperContribution[]
+
+  @@index([userId])
+  @@map("superannuation_accounts")
+}
+
+// =============================================================================
+// PHASE 20: SUPER CONTRIBUTION
+// =============================================================================
+
+model SuperContribution {
+  id                    String                @id @default(uuid())
+  superAccountId        String
+  incomeId              String?               // Link to salary income if applicable
+
+  type                  SuperContributionType
+  amount                Float
+  date                  DateTime
+  financialYear         String                // e.g., "2024-25"
+
+  // Additional tracking
+  employerName          String?               // For SG contributions
+  notes                 String?
+
+  createdAt             DateTime              @default(now())
+
+  // Relationships
+  superAccount          SuperannuationAccount @relation(fields: [superAccountId], references: [id], onDelete: Cascade)
+  income                Income?               @relation(fields: [incomeId], references: [id], onDelete: SetNull)
+
+  @@index([superAccountId])
+  @@index([incomeId])
+  @@index([financialYear])
+  @@map("super_contributions")
+}
+
+// =============================================================================
+// PHASE 20: TAX POSITION (Annual Tax Summary)
+// =============================================================================
+
+model TaxPosition {
+  id                    String   @id @default(uuid())
+  userId                String
+  financialYear         String   // e.g., "2024-25"
+
+  // Income aggregation
+  grossIncome           Float    @default(0)
+  assessableIncome      Float    @default(0)
+
+  // Income breakdown
+  salaryIncome          Float    @default(0)
+  rentalIncome          Float    @default(0)
+  dividendIncome        Float    @default(0)
+  interestIncome        Float    @default(0)
+  capitalGains          Float    @default(0)
+  otherIncome           Float    @default(0)
+
+  // Deductions
+  totalDeductions       Float    @default(0)
+  workRelatedDeductions Float    @default(0)
+  propertyDeductions    Float    @default(0)
+  investmentDeductions  Float    @default(0)
+  depreciationClaims    Float    @default(0)
+  otherDeductions       Float    @default(0)
+
+  // Taxable income
+  taxableIncome         Float    @default(0)
+
+  // Tax calculations
+  taxOnIncome           Float    @default(0)
+  medicareLevy          Float    @default(0)
+  medicareSurcharge     Float    @default(0)
+
+  // Tax offsets
+  litoOffset            Float    @default(0)   // Low Income Tax Offset
+  saptoOffset           Float    @default(0)   // Senior Australians
+  frankingCreditsOffset Float    @default(0)
+  foreignTaxCredits     Float    @default(0)
+  otherOffsets          Float    @default(0)
+
+  // Final position
+  totalTaxPayable       Float    @default(0)
+  totalPaygWithheld     Float    @default(0)
+  estimatedRefund       Float    @default(0)   // Positive = refund, Negative = owing
+
+  // Super contributions (for reference)
+  superContributions    Float    @default(0)
+  division293Tax        Float    @default(0)   // High earner super tax
+
+  // Metadata
+  calculatedAt          DateTime @default(now())
+  isProjection          Boolean  @default(true) // false when actual lodgement
+
+  // Relationships
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, financialYear])
+  @@index([userId])
+  @@index([financialYear])
+  @@map("tax_positions")
 }
