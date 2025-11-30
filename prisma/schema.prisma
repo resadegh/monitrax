@@ -231,6 +231,10 @@ model User {
   bankImportFiles         BankImportFile[]
   budgetTargets           BudgetTarget[]
 
+  // Phase 19: Document Management
+  documents               Document[]
+  storageProviderConfig   StorageProviderConfig?
+
   @@map("users")
 }
 
@@ -1632,4 +1636,128 @@ model CashflowStrategy {
   @@index([priority])
   @@index([createdAt])
   @@map("cashflow_strategies")
+}
+
+// =============================================================================
+// PHASE 19: DOCUMENT MANAGEMENT ENUMS
+// =============================================================================
+
+enum DocumentCategory {
+  CONTRACT
+  STATEMENT
+  RECEIPT
+  TAX
+  PDS           // Product Disclosure Statement
+  VALUATION
+  INSURANCE
+  MORTGAGE
+  LEASE
+  INVOICE
+  OTHER
+}
+
+enum StorageProviderType {
+  MONITRAX
+  GOOGLE_DRIVE
+  // Future: ONEDRIVE, ICLOUD, S3
+}
+
+enum LinkedEntityType {
+  PROPERTY
+  LOAN
+  EXPENSE
+  INCOME
+  ACCOUNT
+  OFFSET_ACCOUNT
+  INVESTMENT_ACCOUNT
+  INVESTMENT_HOLDING
+  TRANSACTION
+}
+
+// =============================================================================
+// PHASE 19: DOCUMENT MODEL
+// =============================================================================
+
+model Document {
+  id                String              @id @default(uuid())
+  userId            String
+
+  // File metadata
+  filename          String              // Generated filename in storage
+  originalFilename  String              // Original uploaded filename
+  mimeType          String
+  size              Int                 // Size in bytes
+  category          DocumentCategory
+
+  // Storage reference
+  storageProvider   StorageProviderType @default(MONITRAX)
+  storagePath       String              // Key/path in storage
+  storageUrl        String?             // External URL for Google Drive etc.
+
+  // User metadata
+  description       String?
+  tags              String[]
+
+  // Timestamps
+  uploadedAt        DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedAt         DateTime?           // Soft delete
+
+  // Relationships
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links             DocumentLink[]
+
+  @@index([userId])
+  @@index([category])
+  @@index([storageProvider])
+  @@index([deletedAt])
+  @@map("documents")
+}
+
+// =============================================================================
+// PHASE 19: DOCUMENT LINK (Polymorphic Entity Linking)
+// =============================================================================
+
+model DocumentLink {
+  id            String           @id @default(uuid())
+  documentId    String
+  entityType    LinkedEntityType
+  entityId      String
+
+  createdAt     DateTime         @default(now())
+
+  // Relationships
+  document      Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, entityType, entityId])
+  @@index([entityType, entityId])
+  @@index([documentId])
+  @@map("document_links")
+}
+
+// =============================================================================
+// PHASE 19: STORAGE PROVIDER CONFIG (Per-user OAuth)
+// =============================================================================
+
+model StorageProviderConfig {
+  id            String              @id @default(uuid())
+  userId        String              @unique
+  provider      StorageProviderType
+  isActive      Boolean             @default(true)
+
+  // Encrypted OAuth credentials
+  accessToken   String?             @db.Text
+  refreshToken  String?             @db.Text
+  tokenExpiry   DateTime?
+
+  // Provider-specific config (folder IDs, preferences, etc.)
+  config        Json?
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // Relationships
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("storage_provider_configs")
 }

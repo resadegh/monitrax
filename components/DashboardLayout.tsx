@@ -25,6 +25,7 @@ import {
   X,
   FileText,
   Brain,
+  FolderOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -57,6 +58,7 @@ const navItems: NavItem[] = [
   { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator },
   { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt },
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
+  { name: 'Documents', href: '/dashboard/documents', icon: FolderOpen },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
