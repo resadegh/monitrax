@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, Plus, Edit2, Trash2, ArrowLeft } from 'lucide-react';
+import { Calculator, Plus, Edit2, Trash2, ArrowLeft, Home, TrendingDown, Clock, DollarSign } from 'lucide-react';
+import { StatCard } from '@/components/StatCard';
 
 interface Property {
   id: string;
@@ -207,18 +208,59 @@ export default function DepreciationPage() {
 
   const totalAnnualDepreciation = schedules.reduce((sum, s) => sum + calculateAnnualDepr(s), 0);
 
+  // Calculate remaining years for a schedule
+  const calculateRemainingYears = (schedule: DepreciationSchedule) => {
+    const startDate = new Date(schedule.startDate);
+    const now = new Date();
+    const yearsElapsed = (now.getTime() - startDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+    const totalYears = 100 / schedule.rate; // e.g., 10% rate = 10 years
+    const remaining = Math.max(0, totalYears - yearsElapsed);
+    return Math.round(remaining * 10) / 10; // Round to 1 decimal
+  };
+
+  // Calculate remaining value for a schedule
+  const calculateRemainingValue = (schedule: DepreciationSchedule) => {
+    const remainingYears = calculateRemainingYears(schedule);
+    const totalYears = 100 / schedule.rate;
+    if (schedule.method === 'PRIME_COST') {
+      // Straight line: remaining value = cost * (remaining years / total years)
+      return schedule.cost * (remainingYears / totalYears);
+    } else {
+      // Diminishing value: approximate remaining value
+      const yearsElapsed = totalYears - remainingYears;
+      const effectiveRate = (schedule.rate / 100) * (schedule.category === 'DIV40' ? 2 : 1);
+      return schedule.cost * Math.pow(1 - effectiveRate, yearsElapsed);
+    }
+  };
+
+  // Summary calculations
+  const totalCost = schedules.reduce((sum, s) => sum + s.cost, 0);
+  const totalRemainingValue = schedules.reduce((sum, s) => sum + calculateRemainingValue(s), 0);
+  const activeSchedules = schedules.filter(s => calculateRemainingYears(s) > 0).length;
+  const completedSchedules = schedules.length - activeSchedules;
+  const avgRemainingYears = schedules.length > 0
+    ? schedules.reduce((sum, s) => sum + calculateRemainingYears(s), 0) / schedules.length
+    : 0;
+
   return (
     <DashboardLayout>
-      <div className="mb-6">
+      <div className="mb-6 flex items-center gap-2">
         <Button variant="ghost" onClick={() => router.push('/dashboard/properties')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Properties
+          Properties
         </Button>
+        <span className="text-muted-foreground">/</span>
+        <Button variant="ghost" onClick={() => router.push(`/dashboard/properties?view=${propertyId}`)}>
+          <Home className="mr-2 h-4 w-4" />
+          {property?.name || 'Property'}
+        </Button>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-sm text-muted-foreground">Depreciation</span>
       </div>
 
       <PageHeader
         title={`Depreciation - ${property?.name || 'Loading...'}`}
-        description={`Manage depreciation schedules • Total annual: ${formatCurrency(totalAnnualDepreciation)}`}
+        description="Manage depreciation schedules for tax deductions"
         action={
           <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
             <Plus className="mr-2 h-4 w-4" />
@@ -226,6 +268,40 @@ export default function DepreciationPage() {
           </Button>
         }
       />
+
+      {/* Summary Stats */}
+      {!isLoading && schedules.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatCard
+            title="Annual Deductions"
+            value={formatCurrency(totalAnnualDepreciation)}
+            icon={DollarSign}
+            description={`${schedules.length} schedule${schedules.length !== 1 ? 's' : ''}`}
+            variant="green"
+          />
+          <StatCard
+            title="Total Asset Cost"
+            value={formatCurrency(totalCost)}
+            icon={Calculator}
+            description="Original cost of all assets"
+            variant="blue"
+          />
+          <StatCard
+            title="Remaining Value"
+            value={formatCurrency(totalRemainingValue)}
+            icon={TrendingDown}
+            description="Value yet to be depreciated"
+            variant="purple"
+          />
+          <StatCard
+            title="Avg. Remaining Life"
+            value={`${avgRemainingYears.toFixed(1)} yrs`}
+            icon={Clock}
+            description={`${activeSchedules} active, ${completedSchedules} completed`}
+            variant="orange"
+          />
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -271,7 +347,7 @@ export default function DepreciationPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Cost</p>
                     <p className="font-medium">{formatCurrency(schedule.cost)}</p>
@@ -285,12 +361,24 @@ export default function DepreciationPage() {
                     <p className="font-medium">{formatDate(schedule.startDate)}</p>
                   </div>
                   <div>
+                    <p className="text-xs text-muted-foreground">Remaining Life</p>
+                    <p className={`font-medium ${calculateRemainingYears(schedule) === 0 ? 'text-muted-foreground' : ''}`}>
+                      {calculateRemainingYears(schedule) > 0
+                        ? `${calculateRemainingYears(schedule)} yrs`
+                        : 'Completed'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Remaining Value</p>
+                    <p className="font-medium">{formatCurrency(calculateRemainingValue(schedule))}</p>
+                  </div>
+                  <div>
                     <p className="text-xs text-muted-foreground">Annual Deduction</p>
                     <p className="font-medium text-green-600">{formatCurrency(calculateAnnualDepr(schedule))}</p>
                   </div>
                 </div>
                 {schedule.notes && (
-                  <p className="text-sm text-muted-foreground mt-2 pt-2 border-t">{schedule.notes}</p>
+                  <p className="text-sm text-muted-foreground mt-3 pt-3 border-t">{schedule.notes}</p>
                 )}
               </CardContent>
             </Card>
