@@ -8,3 +8,4 @@
 export { default as ForecastChart } from './ForecastChart';
 export { default as EntityStrategyTab } from './EntityStrategyTab';
 export { default as ConflictResolver } from './ConflictResolver';
+export { default as AiAdvisorPanel } from './AiAdvisorPanel';
