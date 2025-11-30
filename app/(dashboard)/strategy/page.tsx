@@ -10,6 +10,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
+import { useAuth } from '@/lib/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -133,6 +134,7 @@ function formatDate(dateString: string) {
 // =============================================================================
 
 export default function StrategyDashboard() {
+  const { token } = useAuth();
   const [recommendations, setRecommendations] = useState<StrategyRecommendation[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQuality | null>(null);
@@ -152,6 +154,8 @@ export default function StrategyDashboard() {
 
   // Fetch recommendations and stats
   const fetchData = useCallback(async () => {
+    if (!token) return;
+
     try {
       setLoading(true);
 
@@ -163,10 +167,12 @@ export default function StrategyDashboard() {
       params.append('limit', String(pageSize));
       params.append('offset', String((page - 1) * pageSize));
 
+      const headers = { Authorization: `Bearer ${token}` };
+
       // Fetch recommendations and stats in parallel
       const [recsResponse, statsResponse] = await Promise.all([
-        fetch(`/api/strategy?${params}`),
-        fetch('/api/strategy/stats'),
+        fetch(`/api/strategy?${params}`, { headers }),
+        fetch('/api/strategy/stats', { headers }),
       ]);
 
       if (recsResponse.ok) {
@@ -200,7 +206,7 @@ export default function StrategyDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [filter, page, sortBy]);
+  }, [filter, page, sortBy, token]);
 
   useEffect(() => {
     fetchData();
@@ -208,11 +214,16 @@ export default function StrategyDashboard() {
 
   // Generate new strategies
   async function generateStrategies() {
+    if (!token) return;
+
     try {
       setGenerating(true);
       const response = await fetch('/api/strategy/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ forceRefresh: true }),
       });
 
@@ -238,10 +249,15 @@ export default function StrategyDashboard() {
   async function acceptRecommendation(id: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!token) return;
+
     try {
       const response = await fetch(`/api/strategy/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ status: 'ACCEPTED' }),
       });
 
@@ -257,13 +273,18 @@ export default function StrategyDashboard() {
   async function dismissRecommendation(id: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (!token) return;
+
     const reason = prompt('Why are you dismissing this recommendation?');
     if (!reason) return;
 
     try {
       const response = await fetch(`/api/strategy/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ status: 'DISMISSED', notes: reason }),
       });
 

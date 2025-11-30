@@ -8,6 +8,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   Bot,
@@ -81,6 +82,7 @@ export default function AiAdvisorPanel({
   recommendationId,
   onConversationUpdated,
 }: AiAdvisorPanelProps) {
+  const { token } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -101,7 +103,7 @@ export default function AiAdvisorPanel({
 
   // Send a message to the AI
   async function sendMessage(question: string) {
-    if (!question.trim() || loading) return;
+    if (!question.trim() || loading || !token) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -131,7 +133,10 @@ export default function AiAdvisorPanel({
 
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(body),
       });
 
