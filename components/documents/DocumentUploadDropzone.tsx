@@ -66,7 +66,7 @@ function formatFileSize(bytes: number): string {
 
 export function DocumentUploadDropzone({
   onUpload,
-  defaultCategory = 'OTHER',
+  defaultCategory = DocumentCategory.OTHER,
   maxFiles = 5,
   className = '',
   disabled = false,

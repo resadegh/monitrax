@@ -229,7 +229,7 @@ export default function DocumentsLibraryPage() {
             <CardContent>
               <DocumentUploadDropzone
                 onUpload={handleUpload}
-                defaultCategory="OTHER"
+                defaultCategory={DocumentCategory.OTHER}
               />
             </CardContent>
           </Card>

@@ -4,7 +4,6 @@
  */
 
 import { prisma } from '@/lib/db';
-import { DocumentCategory, LinkedEntityType, StorageProviderType } from '@prisma/client';
 import { getStorageProvider } from './storage';
 import {
   DocumentMetadata,
@@ -20,7 +19,45 @@ import {
   SUPPORTED_MIME_TYPES,
   MAX_FILE_SIZE,
   MIME_TO_EXTENSION,
+  DocumentCategory,
+  LinkedEntityType,
+  StorageProviderType,
 } from './types';
+
+// Type definitions for Prisma document link records
+interface PrismaDocumentLink {
+  id: string;
+  documentId: string;
+  entityType: LinkedEntityType;
+  entityId: string;
+  createdAt: Date;
+}
+
+// Type for document with links from Prisma
+interface PrismaDocumentWithLinks {
+  id: string;
+  userId: string;
+  filename: string;
+  originalFilename: string;
+  mimeType: string;
+  size: number;
+  category: DocumentCategory;
+  storageProvider: StorageProviderType;
+  storagePath: string;
+  storageUrl: string | null;
+  description: string | null;
+  tags: string[];
+  uploadedAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+  links: PrismaDocumentLink[];
+}
+
+// Type for document stats query
+interface DocumentStatRow {
+  size: number;
+  category: DocumentCategory;
+}
 
 // ============================================================================
 // Document Upload
@@ -139,7 +176,7 @@ export async function getDocumentById(
 
   return {
     ...document,
-    links: document.links.map(link => ({
+    links: document.links.map((link: PrismaDocumentLink) => ({
       id: link.id,
       entityType: link.entityType,
       entityId: link.entityId,
@@ -173,7 +210,15 @@ export async function getDocumentWithSignedUrl(
 }
 
 export async function listDocuments(query: DocumentQuery): Promise<DocumentListResult> {
-  const where: Parameters<typeof prisma.document.findMany>[0]['where'] = {
+  // Build where clause dynamically
+  const where: {
+    userId: string;
+    deletedAt?: null;
+    category?: DocumentCategory;
+    tags?: { hasSome: string[] };
+    OR?: Array<{ originalFilename?: { contains: string; mode: 'insensitive' }; description?: { contains: string; mode: 'insensitive' } }>;
+    links?: { some: { entityType?: LinkedEntityType; entityId?: string } };
+  } = {
     userId: query.userId,
   };
 
@@ -220,9 +265,9 @@ export async function listDocuments(query: DocumentQuery): Promise<DocumentListR
     skip: query.offset || 0,
   });
 
-  const documentsWithLinks: DocumentWithLinks[] = documents.map(doc => ({
+  const documentsWithLinks: DocumentWithLinks[] = documents.map((doc: PrismaDocumentWithLinks) => ({
     ...doc,
-    links: doc.links.map(link => ({
+    links: doc.links.map((link: PrismaDocumentLink) => ({
       id: link.id,
       entityType: link.entityType,
       entityId: link.entityId,
@@ -533,14 +578,14 @@ export async function getDocumentStats(userId: string): Promise<{
     select: { size: true, category: true },
   });
 
-  const byCategory = documents.reduce((acc, doc) => {
+  const byCategory = documents.reduce((acc: Record<DocumentCategory, number>, doc: DocumentStatRow) => {
     acc[doc.category] = (acc[doc.category] || 0) + 1;
     return acc;
   }, {} as Record<DocumentCategory, number>);
 
   return {
     totalDocuments: documents.length,
-    totalSize: documents.reduce((sum, doc) => sum + doc.size, 0),
+    totalSize: documents.reduce((sum: number, doc: DocumentStatRow) => sum + doc.size, 0),
     byCategory,
   };
 }

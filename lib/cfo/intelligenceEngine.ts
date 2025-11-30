@@ -19,6 +19,54 @@ import {
   CFOPreferences,
 } from './types';
 
+// Type definitions for Prisma models (to avoid Prisma client generation dependency)
+interface AccountRecord {
+  id: string;
+  userId: string;
+  name: string;
+  type: string;
+  currentBalance: number;
+}
+
+interface LoanRecord {
+  id: string;
+  userId: string;
+  principal: number;
+}
+
+interface PropertyRecord {
+  id: string;
+  userId: string;
+  currentValue: number;
+}
+
+interface HoldingRecord {
+  id: string;
+  units: number;
+  averagePrice: number;
+}
+
+interface InvestmentAccountRecord {
+  id: string;
+  userId: string;
+  holdings: HoldingRecord[];
+}
+
+interface IncomeRecord {
+  id: string;
+  userId: string;
+  amount: number;
+  frequency: string;
+}
+
+interface ExpenseRecord {
+  id: string;
+  userId: string;
+  amount: number;
+  frequency: string;
+  isEssential: boolean;
+}
+
 // ============================================================================
 // Main Dashboard Data Generator
 // ============================================================================
@@ -82,12 +130,12 @@ async function calculateMonthlyProgress(userId: string): Promise<MonthlyProgress
   ]);
 
   // Calculate current net worth
-  const accountBalances = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
-  const propertyValues = properties.reduce((sum, p) => sum + p.currentValue, 0);
-  const investmentValues = investments.reduce((sum, inv) => {
-    return sum + inv.holdings.reduce((h, hold) => h + hold.units * hold.averagePrice, 0);
+  const accountBalances = accounts.reduce((sum: number, a: AccountRecord) => sum + a.currentBalance, 0);
+  const propertyValues = properties.reduce((sum: number, p: PropertyRecord) => sum + p.currentValue, 0);
+  const investmentValues = investments.reduce((sum: number, inv: InvestmentAccountRecord) => {
+    return sum + inv.holdings.reduce((h: number, hold: HoldingRecord) => h + hold.units * hold.averagePrice, 0);
   }, 0);
-  const totalDebt = loans.reduce((sum, l) => sum + l.principal, 0);
+  const totalDebt = loans.reduce((sum: number, l: LoanRecord) => sum + l.principal, 0);
 
   const currentNetWorth = accountBalances + propertyValues + investmentValues - totalDebt;
 
@@ -99,8 +147,8 @@ async function calculateMonthlyProgress(userId: string): Promise<MonthlyProgress
     : 0;
 
   // Calculate savings rate
-  const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
-  const monthlyExpenses = expenses.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
+  const monthlyIncome = incomes.reduce((sum: number, i: IncomeRecord) => sum + monthlyize(i.amount, i.frequency), 0);
+  const monthlyExpenses = expenses.reduce((sum: number, e: ExpenseRecord) => sum + monthlyize(e.amount, e.frequency), 0);
   const savingsRate = monthlyIncome > 0
     ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100
     : 0;
@@ -160,17 +208,17 @@ async function calculateQuickStats(userId: string): Promise<CFOQuickStats> {
 
   // Calculate projected month-end balance
   const totalLiquid = accounts
-    .filter(a => ['SAVINGS', 'TRANSACTIONAL', 'OFFSET'].includes(a.type))
-    .reduce((sum, a) => sum + a.currentBalance, 0);
+    .filter((a: AccountRecord) => ['SAVINGS', 'TRANSACTIONAL', 'OFFSET'].includes(a.type))
+    .reduce((sum: number, a: AccountRecord) => sum + a.currentBalance, 0);
 
   const now = new Date();
   const daysRemaining = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
-  const dailyBurn = expenses.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0) / 30;
+  const dailyBurn = expenses.reduce((sum: number, e: ExpenseRecord) => sum + monthlyize(e.amount, e.frequency), 0) / 30;
 
   const projectedMonthEndBalance = totalLiquid - (dailyBurn * daysRemaining);
 
   // Count subscription-like expenses
-  const subscriptions = expenses.filter(e =>
+  const subscriptions = expenses.filter((e: ExpenseRecord) =>
     !e.isEssential &&
     ['MONTHLY', 'ANNUAL'].includes(e.frequency.toUpperCase()) &&
     monthlyize(e.amount, e.frequency) < 100
@@ -197,7 +245,7 @@ async function getActiveAlerts(userId: string): Promise<CFOAlert[]> {
 
   // Check for any critical conditions
   const accounts = await prisma.account.findMany({ where: { userId } });
-  const lowBalanceAccounts = accounts.filter(a =>
+  const lowBalanceAccounts = accounts.filter((a: AccountRecord) =>
     ['TRANSACTIONAL', 'SAVINGS'].includes(a.type) && a.currentBalance < 500
   );
 

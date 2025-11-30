@@ -3,7 +3,14 @@
  * Type definitions for the document management system
  */
 
-import { DocumentCategory, StorageProviderType, LinkedEntityType } from '@prisma/client';
+// Import enums from Prisma client and re-export
+import {
+  DocumentCategory,
+  StorageProviderType,
+  LinkedEntityType,
+} from '@prisma/client';
+
+export { DocumentCategory, StorageProviderType, LinkedEntityType };
 
 // ============================================================================
 // Core Document Types
@@ -235,8 +242,5 @@ export const MIME_TO_EXTENSION: Record<string, string> = {
   'image/heif': '.heif',
 };
 
-// ============================================================================
-// Re-export Prisma enums for convenience
-// ============================================================================
-
-export { DocumentCategory, StorageProviderType, LinkedEntityType };
+// Note: DocumentCategory, StorageProviderType, and LinkedEntityType are imported
+// from @prisma/client and re-exported for convenience.
