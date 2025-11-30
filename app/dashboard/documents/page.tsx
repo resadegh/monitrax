@@ -26,7 +26,6 @@ import {
   Upload,
   Search,
   Filter,
-  FolderOpen,
   HardDrive,
   RefreshCw,
   Plus,
@@ -183,7 +182,6 @@ export default function DocumentsLibraryPage() {
         <PageHeader
           title="Documents"
           description="Manage all your financial documents in one place"
-          icon={<FolderOpen className="h-8 w-8" />}
         />
 
         {/* Stats Row */}

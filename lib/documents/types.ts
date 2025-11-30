@@ -44,7 +44,7 @@ export interface DocumentLinkInfo {
 // ============================================================================
 
 export interface UploadRequest {
-  file: File | Buffer;
+  file: Blob | Buffer;
   filename: string;
   mimeType: string;
   category: DocumentCategory;
