@@ -84,7 +84,10 @@ export async function GET(request: NextRequest) {
     headers.set('Content-Disposition', `inline; filename="${filename}"`);
     headers.set('Cache-Control', 'private, max-age=300'); // Cache for 5 minutes
 
-    return new NextResponse(fileBuffer, {
+    // Convert Buffer to Uint8Array for NextResponse compatibility
+    const uint8Array = new Uint8Array(fileBuffer);
+
+    return new NextResponse(uint8Array, {
       status: 200,
       headers,
     });
