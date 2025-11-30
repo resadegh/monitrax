@@ -18,6 +18,9 @@ export * from './income';
 // Superannuation
 export * from './super';
 
+// Tax Position
+export * from './position';
+
 // =============================================================================
 // Convenience re-exports for common use cases
 // =============================================================================
@@ -43,6 +46,11 @@ import {
   getOptimalContributionStrategy,
   getSuperContributionSummary,
 } from './super';
+import {
+  calculateTaxPosition,
+  compareTaxPositions,
+  calculateQuickTaxPosition,
+} from './position';
 
 // Main API object for easy access
 export const TaxEngine = {
@@ -85,6 +93,11 @@ export const TaxEngine = {
   trackContributionCaps,
   getOptimalContributionStrategy,
   getSuperContributionSummary,
+
+  // Tax Position
+  calculateTaxPosition,
+  compareTaxPositions,
+  calculateQuickTaxPosition,
 };
 
 export default TaxEngine;
