@@ -26,7 +26,7 @@ export default function AiChatButton() {
           transition-all duration-300 ease-in-out
           ${isOpen
             ? 'bg-gray-600 hover:bg-gray-700 rotate-0'
-            : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'
+            : 'bg-primary hover:bg-primary/90'
           }
           hover:scale-110 active:scale-95
           group
@@ -39,7 +39,7 @@ export default function AiChatButton() {
           <>
             <Bot className="h-6 w-6 text-white" />
             {/* Pulse animation when closed */}
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-success rounded-full animate-pulse" />
           </>
         )}
       </button>
@@ -69,14 +69,14 @@ export default function AiChatButton() {
         `}
       >
         {/* Panel Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-600 to-blue-600 rounded-t-2xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-brand-primary rounded-t-2xl">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-white/20 rounded-lg">
+            <div className="p-1.5 bg-brand-secondary rounded-lg">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <div>
               <h3 className="text-white font-semibold text-sm">AI Financial Advisor</h3>
-              <p className="text-white/70 text-xs">Ask me anything about your finances</p>
+              <p className="text-emerald-200 text-xs">Ask me anything about your finances</p>
             </div>
           </div>
           <button
