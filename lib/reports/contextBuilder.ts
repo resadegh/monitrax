@@ -120,15 +120,15 @@ async function calculateFinancialSummary(userId: string) {
     }),
     prisma.loan.findMany({
       where: { userId },
-      select: { currentBalance: true },
+      select: { principal: true },
     }),
     prisma.account.findMany({
       where: { userId },
-      select: { balance: true },
+      select: { currentBalance: true },
     }),
     prisma.investmentAccount.findMany({
       where: { userId },
-      include: { holdings: true },
+      include: { holdings: { select: { units: true, averagePrice: true } } },
     }),
   ]);
 
@@ -140,13 +140,13 @@ async function calculateFinancialSummary(userId: string) {
 
   let accountBalances = 0;
   for (const a of accounts) {
-    accountBalances += a.balance || 0;
+    accountBalances += a.currentBalance || 0;
   }
 
   let investmentValue = 0;
   for (const acc of investmentAccounts) {
     for (const h of acc.holdings) {
-      investmentValue += (h.currentPrice || 0) * h.units;
+      investmentValue += h.averagePrice * h.units;
     }
   }
 
@@ -154,7 +154,7 @@ async function calculateFinancialSummary(userId: string) {
 
   let totalLiabilities = 0;
   for (const l of loans) {
-    totalLiabilities += l.currentBalance || 0;
+    totalLiabilities += l.principal || 0;
   }
   const netWorth = totalAssets - totalLiabilities;
 
@@ -245,10 +245,10 @@ async function fetchPropertyData(userId: string): Promise<PropertyReportData[]> 
   const properties = await prisma.property.findMany({
     where: { userId },
     include: {
-      loans: { select: { currentBalance: true } },
-      incomes: { select: { id: true } },
+      loans: { select: { principal: true } },
+      income: { select: { id: true } },
       expenses: { select: { id: true } },
-      depreciationSchedules: { select: { rate: true, cost: true, method: true } },
+      depreciationSchedules: { select: { rate: true, cost: true, method: true, category: true } },
     },
   });
 
@@ -257,7 +257,7 @@ async function fetchPropertyData(userId: string): Promise<PropertyReportData[]> 
   for (const p of properties) {
     let totalLoanBalance = 0;
     for (const l of p.loans) {
-      totalLoanBalance += l.currentBalance || 0;
+      totalLoanBalance += l.principal || 0;
     }
 
     const equity = (p.currentValue || 0) - totalLoanBalance;
@@ -286,7 +286,7 @@ async function fetchPropertyData(userId: string): Promise<PropertyReportData[]> 
       equity,
       lvr: Math.round(lvr * 10) / 10,
       linkedLoansCount: p.loans.length,
-      linkedIncomesCount: p.incomes.length,
+      linkedIncomesCount: p.income.length,
       linkedExpensesCount: p.expenses.length,
       annualDepreciation: Math.round(annualDepreciation),
       rentalYield: null,
@@ -310,13 +310,13 @@ async function fetchLoanData(userId: string): Promise<LoanReportData[]> {
       id: l.id,
       name: l.name,
       type: l.type,
-      lender: l.lender,
+      lender: null, // Not in schema
       principal: l.principal,
-      currentBalance: l.currentBalance || l.principal,
-      interestRate: l.interestRate,
+      currentBalance: l.principal, // principal is the current balance
+      interestRate: l.interestRateAnnual,
       rateType: l.rateType,
-      monthlyRepayment: l.monthlyRepayment || 0,
-      remainingTerm: l.remainingTerm,
+      monthlyRepayment: l.minRepayment || 0,
+      remainingTerm: l.termMonthsRemaining,
       linkedPropertyName: l.property?.name || null,
     });
   }
@@ -335,7 +335,7 @@ async function fetchAccountData(userId: string): Promise<AccountReportData[]> {
       name: a.name,
       type: a.type,
       institution: a.institution,
-      balance: a.balance || 0,
+      balance: a.currentBalance || 0,
       interestRate: a.interestRate,
     });
   }
@@ -353,23 +353,22 @@ async function fetchInvestmentData(userId: string): Promise<InvestmentReportData
   const investments: InvestmentReportData[] = [];
   for (const account of investmentAccounts) {
     for (const holding of account.holdings) {
-      const currentValue = holding.units * (holding.currentPrice || 0);
-      const costBasis = holding.units * holding.averageCost;
-      const gainLoss = currentValue - costBasis;
-      const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
+      // Note: Schema has averagePrice only, no currentPrice for market value
+      const costBasis = holding.units * holding.averagePrice;
+      const currentValue = costBasis; // No market price available
 
       investments.push({
         id: holding.id,
         accountName: account.name,
-        symbol: holding.symbol,
-        name: holding.name,
+        symbol: holding.ticker,
+        name: holding.ticker, // Schema doesn't have name field
         units: holding.units,
-        averageCost: holding.averageCost,
-        currentPrice: holding.currentPrice || 0,
+        averageCost: holding.averagePrice,
+        currentPrice: holding.averagePrice, // Using averagePrice as proxy
         currentValue,
-        totalGainLoss: gainLoss,
-        totalGainLossPercent: Math.round(gainLossPercent * 100) / 100,
-        sector: undefined, // Could be added if available
+        totalGainLoss: 0, // Cannot calculate without market price
+        totalGainLossPercent: 0,
+        sector: undefined,
       });
     }
   }
@@ -389,8 +388,8 @@ async function fetchIncomeData(userId: string): Promise<IncomeReportData[]> {
   for (const i of incomes) {
     results.push({
       id: i.id,
-      source: i.source,
-      category: i.category,
+      source: i.name,
+      category: i.type,
       amount: i.amount,
       frequency: i.frequency,
       annualAmount: calculateAnnualAmount(i.amount, i.frequency),
@@ -413,13 +412,13 @@ async function fetchExpenseData(userId: string): Promise<ExpenseReportData[]> {
   for (const e of expenses) {
     results.push({
       id: e.id,
-      description: e.description,
+      description: e.name,
       category: e.category,
       amount: e.amount,
       frequency: e.frequency,
       annualAmount: calculateAnnualAmount(e.amount, e.frequency),
       linkedPropertyName: e.property?.name || null,
-      isDeductible: e.isDeductible,
+      isDeductible: e.isTaxDeductible,
     });
   }
   return results;
