@@ -4,8 +4,8 @@
  */
 
 import { prisma } from '@/lib/db';
-import { StorageProviderType } from '@prisma/client';
 import { IStorageProvider, IStorageProviderFactory } from './interface';
+import { StorageProviderType } from '../types';
 import { getMonitraxStorageProvider, MonitraxStorageProvider } from './monitraxProvider';
 
 export class StorageProviderFactory implements IStorageProviderFactory {
