@@ -6,10 +6,12 @@
 import type { Report, ExportOptions, ExportFormat, GeneratedReport } from '../types';
 import { exportToCSV } from './csv';
 import { exportToJSON, exportToFlatJSON } from './json';
+import { exportToXLSX } from './xlsx';
 
 // Re-export individual exporters
 export { exportToCSV } from './csv';
 export { exportToJSON, exportToFlatJSON } from './json';
+export { exportToXLSX } from './xlsx';
 
 /**
  * Export a report to the specified format
@@ -30,13 +32,7 @@ export function exportReport(
       break;
 
     case 'xlsx':
-      // Excel export - placeholder for now
-      // Will require xlsx or exceljs library
-      exportData = {
-        filename: `${report.metadata.type}_${Date.now()}.xlsx`,
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        data: 'Excel export not yet implemented',
-      };
+      exportData = exportToXLSX(report, options);
       break;
 
     case 'pdf':

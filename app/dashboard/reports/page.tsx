@@ -30,7 +30,7 @@ type ReportType =
   | 'investment'
   | 'tax-time';
 
-type ExportFormat = 'csv' | 'json';
+type ExportFormat = 'csv' | 'json' | 'xlsx';
 
 interface ReportTypeInfo {
   id: ReportType;
@@ -97,7 +97,7 @@ const variantStyles = {
 export default function ReportsPage() {
   const { token } = useAuth();
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('csv');
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('xlsx');
   const [isGenerating, setIsGenerating] = useState(false);
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -235,10 +235,16 @@ export default function ReportsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="xlsx">
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet className="h-4 w-4" />
+                          Excel (.xlsx)
+                        </div>
+                      </SelectItem>
                       <SelectItem value="csv">
                         <div className="flex items-center gap-2">
                           <FileSpreadsheet className="h-4 w-4" />
-                          CSV (Excel compatible)
+                          CSV (Comma separated)
                         </div>
                       </SelectItem>
                       <SelectItem value="json">

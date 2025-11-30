@@ -23,6 +23,7 @@ import {
   Lightbulb,
   Menu,
   X,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
   { name: 'Strategy', href: '/strategy', icon: Lightbulb },
   { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator },
   { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt },
+  { name: 'Reports', href: '/dashboard/reports', icon: FileText },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
