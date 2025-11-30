@@ -1,0 +1,373 @@
+# SP-PROP-001 — Property Module Support Pack v1
+
+## 0. Metadata
+
+- **Pack ID:** SP-PROP-001
+- **Name:** Property Module – Linked Data & UX Harmonisation
+- **Version:** v1.0.0
+- **Status:** Draft
+- **Author:** RS
+- **Date:** 2025-11-30
+- **Target App Version:** Monitrax v1.4 (post Phase 8 Task 10)
+- **Target Area(s):** Properties Dashboard + Detail + Depreciation
+- **Risk Level:** Medium (UI + API usage changes, no DB changes)
+- **AI Executor:** Claude (per-block execution)
+
+---
+
+## 1. Purpose & Outcomes
+
+**Goal in one sentence:**
+Bring the Property module up to the latest global UI and linked-data standard, so properties surface all their loans, incomes, expenses and depreciation consistently and navigably across the app.
+
+**Key Outcomes:**
+- A consistent Property detail view using the global **Linked Data** pattern.
+- Clear visibility of:
+  - Linked loans (counts + key metrics).
+  - Linked income streams and expenses.
+  - Depreciation schedules and remaining balances.
+- Smooth cross-navigation between Property detail and:
+  - Loans detail.
+  - Income/Expenses detail.
+  - Depreciation management screens.
+- Documentation updated to describe the Property module behaviour.
+
+**Non-goals:**
+- No changes to financial formulas (LVR, yield, equity, cashflow).
+- No changes to Prisma schema or migrations.
+- No changes to auth, permissions, or multi-tenant behaviour.
+- No new external APIs or third-party dependencies.
+
+---
+
+## 2. System Invariants (Must NOT Break)
+
+- **Prisma schema** must remain exactly as-is for all property-related models:
+  - `Property`, `Loan`, `Income`, `Expense`, `DepreciationSchedule`, etc.
+- Existing **API contracts** for property endpoints must remain compatible:
+  - `GET /api/properties`
+  - `GET /api/properties/:id`
+  - `GET /api/properties/:id/depreciation`
+  - Any existing related endpoints
+- Existing **URLs/routes** must remain valid:
+  - `/dashboard/properties`
+  - `/dashboard/properties/[id]` (if present)
+  - `/dashboard/properties/[id]/depreciation`
+- Existing tests (if any) must still pass.
+- Deployment build (`prisma generate && next build`) must succeed.
+
+If an invariant must be relaxed for a change, it must be explicitly documented in this pack *before* being implemented.
+
+---
+
+## 3. Scope & Impact
+
+**In scope:**
+- Enhancing UI for:
+  - `app/dashboard/properties/page.tsx`
+  - `app/dashboard/properties/[id]/depreciation/page.tsx`
+- Adding/using a **LinkedDataPanel**-style UI (if part of Phase 8 global pattern).
+- Improving cross-navigation between properties and:
+  - Loans
+  - Income
+  - Expenses
+  - Depreciation
+
+**Out of scope:**
+- Any changes to tax logic, CGT rules, or depreciation calculation formulas.
+- Any database schema or migration changes.
+- Any backend changes outside property-related API routes.
+
+**Impacted Modules (expected):**
+- UI:
+  - `app/dashboard/properties/page.tsx`
+  - `app/dashboard/properties/[id]/depreciation/page.tsx`
+  - Optionally `components/properties/*` (new shared components)
+- API Usage (read-only):
+  - `app/api/properties/route.ts`
+  - `app/api/properties/[id]/route.ts`
+  - `app/api/properties/[id]/depreciation/route.ts`
+- Docs:
+  - `docs/support-packs/properties/SP-PROP-001_property-module-support-pack.md`
+  - Optionally main blueprint references to this pack
+
+---
+
+## 4. Dependencies & Preconditions
+
+- Phase 6 & 7 UI patterns are already in place:
+  - Detail dialogs with tabs.
+  - StatCards, linked counts, and metrics in other modules (Loans, Accounts, Investments).
+- Phase 8 Task 10 global **LinkedDataPanel** spec exists in:
+  - `docs/MONITRAX_MASTER_BLUEPRINT.md` (Phase 8 section)
+- Backend property, loan, income, expense, and depreciation endpoints are working and returning the linked relationships used in the UI.
+
+**Branching Strategy:**
+
+- Create a feature branch from main:
+  - `feature/sp-prop-001`
+- All work for this support pack must be on this branch.
+
+---
+
+## 5. Execution Blocks (for Claude)
+
+> **Important:** Each block is meant to be executed in a separate “run” by Claude.  
+> After finishing a block and validating, Claude must STOP and wait for human approval.
+
+---
+
+### Block 1: Properties List – Surface Linked Data & Metrics
+
+**Objective:**
+Enhance the main Properties dashboard page so each property card or row shows key linked data counts and core metrics in a consistent global style.
+
+**Allowed Files/Areas:**
+- `app/dashboard/properties/page.tsx`
+- Optional new components:
+  - `components/properties/PropertyCard.tsx`
+- Optional style tweaks in:
+  - `components/ui/*` (only if absolutely necessary and shared)
+
+**Forbidden Changes:**
+- No changes to `prisma/schema.prisma`.
+- No changes to any `app/api/*` route signatures.
+- No changes to authentication logic.
+
+**High-Level Steps:**
+1. Read existing `properties/page.tsx` to understand current layout and data loading.
+2. Refactor the property card/list item into a dedicated `PropertyCard` component **if it improves clarity**, otherwise keep inline but modernise layout.
+3. Ensure each property item displays:
+   - Address / name.
+   - Current value and purchase price (if available).
+   - Equity (current value – total linked loans).
+   - LVR (if any loans are linked).
+   - Summary counts:
+     - `N` linked loans.
+     - `N` linked incomes (rent etc.).
+     - `N` linked expenses (rates, strata, etc.).
+     - `N` depreciation schedules.
+4. Align styling with global card style used by other modules:
+   - Use `StatCard`-like metrics or badges, but keep layout lightweight.
+5. Add a clear **“View details”** interaction (click / button) that opens or navigates to the Property detail/dialog view.
+
+**Implementation Notes (for Claude):**
+- Prefer reusing existing helper functions for LVR, equity, yield, and cashflow.
+- Use existing icons and design tokens to keep consistent look & feel.
+- Avoid introducing new dependencies or fully new design systems.
+
+**Validation Checks:**
+- `npm run lint` passes.
+- `npm run typecheck` passes (if available).
+- `/dashboard/properties` loads without runtime errors.
+- When sample data exists:
+  - Cards show metrics and counts as expected.
+  - No layout breakage on mobile and desktop widths.
+
+**Git Requirements:**
+- Commit message:  
+  `feat(properties): enhance properties list with linked metrics`
+
+**Stop Condition:**
+> After completing Block 1 and passing validations, stop and wait for approval.
+
+---
+
+### Block 2: Property Detail – Linked Data Tab & Cross-Navigation
+
+**Objective:**
+Introduce / refine a **Linked Data** tab in the Property detail view that consolidates loans, incomes, expenses and depreciation entries, and enables cross-navigation.
+
+**Allowed Files/Areas:**
+- `app/dashboard/properties/page.tsx` (for detail dialog or navigation integration)
+- `components/properties/PropertyDetailDialog.tsx` (if present/created)
+- `components/LinkedDataPanel.tsx` or equivalent global component
+- Route wiring in `app/dashboard/properties/[id]/page.tsx` if such a route exists
+
+**Forbidden Changes:**
+- No backend changes beyond adjusting **which existing fields** are read.
+- No changes to loan/income/expense detail pages (only linking to them).
+
+**High-Level Steps:**
+1. Implement or update a Property detail dialog/page with tabs:
+   - `Overview`
+   - `Cashflow` or `Performance` (if already in place)
+   - `Depreciation`
+   - **`Linked Data` (new/updated)**
+2. In the **Linked Data** tab, use the global `LinkedDataPanel` pattern (from Phase 8) to show:
+   - Linked Loans:
+     - Name, balance/principal, rate type, LVR snippet.
+     - “View loan” link to the Loans detail UI.
+   - Linked Income:
+     - Source type (Rent, Other), amount, frequency.
+     - “View income” link to Income detail.
+   - Linked Expenses:
+     - Category (Rates, Strata, Maintenance, etc.), amount, frequency, tax deductible flag.
+     - “View expense” link to Expenses detail.
+   - Depreciation:
+     - Schedule name, type (building, fixtures), annual amount, remaining years.
+     - “Manage depreciation” link to depreciation page.
+3. Make sure clicking any “View …” link uses existing routes:
+   - `/dashboard/loans`
+   - `/dashboard/income`
+   - `/dashboard/expenses`
+   - `/dashboard/properties/[id]/depreciation`
+4. Respect the app’s **dark/light mode** and design language.
+
+**Implementation Notes (for Claude):**
+- Use the Phase 8 LinkedDataPanel spec from the Master Blueprint for consistent layout.
+- Avoid duplicating complex business logic in the UI; just display what the APIs give.
+- Be defensive if some linked collections are empty (show “0 items” / empty state).
+
+**Validation Checks:**
+- `npm run lint` passes.
+- `npm run typecheck` passes.
+- Property detail view opens correctly from:
+  - `/dashboard/properties` card click.
+- Linked Data tab shows the four categories, even when some are empty.
+- Links navigate to expected pages without errors.
+
+**Git Requirements:**
+- Commit message:  
+  `feat(properties): add linked data tab with cross-navigation`
+
+**Stop Condition:**
+> After completing Block 2 and passing validations, stop and wait for approval.
+
+---
+
+### Block 3: Depreciation UX – Cohesive with Detail View
+
+**Objective:**
+Align the `/dashboard/properties/[id]/depreciation` page with the rest of the UI and ensure it’s smoothly integrated with the Property detail view.
+
+**Allowed Files/Areas:**
+- `app/dashboard/properties/[id]/depreciation/page.tsx`
+- Optional:
+  - `components/properties/DepreciationTable.tsx`
+  - `components/properties/DepreciationSummary.tsx`
+
+**Forbidden Changes:**
+- No change to depreciation formulas or schedules in backend.
+- No schema changes or new APIs.
+
+**High-Level Steps:**
+1. Refactor the depreciation page UI (if needed) to:
+   - Show a summary card:
+     - Total annual depreciation amount.
+     - Remaining years across schedules.
+     - Count of active vs completed schedules.
+   - Show a table/list of schedules:
+     - Name, type, start date, end date/years, annual amount, remaining balance.
+2. Add clear navigation back to:
+   - Parent Property detail.
+   - Linked Data tab (if appropriate).
+3. Ensure consistent use of typography, buttons, and empty states.
+
+**Implementation Notes (for Claude):**
+- Reuse stat cards/summary components from other areas where suitable.
+- If editing/adding schedules is already implemented, preserve that behaviour and only improve the presentation.
+
+**Validation Checks:**
+- `npm run lint` passes.
+- `npm run typecheck` passes.
+- `/dashboard/properties/[id]/depreciation` loads correctly for a sample property.
+- Navigation back to property detail is obvious and functional.
+
+**Git Requirements:**
+- Commit message:  
+  `feat(properties): align depreciation UI with global pattern`
+
+**Stop Condition:**
+> After completing Block 3 and passing validations, stop and wait for approval.
+
+---
+
+### Block 4: Documentation & Support Pack Finalisation
+
+**Objective:**
+Document the behaviour of the Property module after this pack, and ensure the pack itself is updated to “Complete”.
+
+**Allowed Files/Areas:**
+- `docs/support-packs/properties/SP-PROP-001_property-module-support-pack.md`
+- Optionally:
+  - `docs/MONITRAX_MASTER_BLUEPRINT.md` (Phase 8, Properties references only)
+
+**Forbidden Changes:**
+- No code changes outside docs in this block.
+
+**High-Level Steps:**
+1. Update this support pack file:
+   - Change Status from `Draft` to `Complete` (after approval).
+   - Add a short “Implementation Notes” section summarising real changes.
+2. If desired, add a brief pointer in the Master Blueprint Phase 8:
+   - “Property module: see SP-PROP-001 for UI/linked data details”.
+
+**Validation Checks:**
+- Markdown renders cleanly (headings, lists, code blocks).
+- Support pack clearly describes current reality of the Property module.
+
+**Git Requirements:**
+- Commit message:  
+  `docs: finalize SP-PROP-001 property module support pack`
+
+**Stop Condition:**
+> After committing the documentation changes, stop. The pack is complete.
+
+---
+
+## 6. Testing Plan
+
+For this support pack, at minimum:
+
+- Run:
+  - `npm run lint`
+  - `npm run typecheck`
+  - `npm run build` (or CI equivalent)
+- Manual smoke checks:
+  1. `/dashboard/properties` renders property list with metrics & counts.
+  2. Clicking a property shows detail with Linked Data tab.
+  3. Links from Linked Data to Loans / Income / Expenses / Depreciation navigate correctly.
+  4. `/dashboard/properties/[id]/depreciation` displays updated summary and table.
+
+---
+
+## 7. Rollback Plan
+
+If this support pack needs to be rolled back:
+
+1. Identify the commits associated with `SP-PROP-001`:
+   - `feat(properties): enhance properties list with linked metrics`
+   - `feat(properties): add linked data tab with cross-navigation`
+   - `feat(properties): align depreciation UI with global pattern`
+   - `docs: finalize SP-PROP-001 property module support pack`
+2. Revert them in reverse order:
+   - `git revert <docs-commit>`
+   - `git revert <depreciation-ui-commit>`
+   - `git revert <linked-data-tab-commit>`
+   - `git revert <properties-list-metrics-commit>`
+3. Re-run:
+   - `npm run lint`
+   - `npm run build`
+4. Confirm:
+   - Properties list & detail views still work.
+   - No orphaned code or docs references remain.
+
+---
+
+## 8. AI Execution Contract (for Claude)
+
+> When executing this support pack:
+
+- Work **only** on the Execution Block I instruct you to work on.
+- Modify **only** the files listed as “Allowed Files/Areas” for that block.
+- Do **not** modify:
+  - Prisma schema or migrations.
+  - Auth, env vars, or external dependencies.
+- After completing a block:
+  - Run the Validation Checks.
+  - Summarise:
+    - Files changed.
+    - Key UI/behaviour changes.
+  - Provide the suggested commit message (and, where possible, show the actual diff).
+  - STOP and wait for my explicit approval before moving to the next block.
