@@ -4,7 +4,6 @@
  */
 
 import { prisma } from '@/lib/db';
-import { v4 as uuid } from 'uuid';
 import {
   CFOAction,
   ActionPriority,
@@ -468,7 +467,7 @@ interface CreateActionParams {
 
 function createAction(params: CreateActionParams): CFOAction {
   return {
-    id: uuid(),
+    id: crypto.randomUUID(),
     priority: determinePriority(params.severity, params.impact),
     category: params.category,
     title: params.title,

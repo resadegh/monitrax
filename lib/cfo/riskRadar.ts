@@ -4,7 +4,6 @@
  */
 
 import { prisma } from '@/lib/db';
-import { v4 as uuid } from 'uuid';
 import {
   FinancialRisk,
   RiskType,
@@ -595,7 +594,7 @@ interface CreateRiskParams {
 
 function createRisk(params: CreateRiskParams): FinancialRisk {
   return {
-    id: uuid(),
+    id: crypto.randomUUID(),
     type: params.type,
     severity: params.severity,
     timeframe: params.timeframe,
