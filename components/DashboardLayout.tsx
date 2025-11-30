@@ -107,7 +107,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950">
+    <div className="min-h-screen bg-background">
       {/* Phase 9.5 - Global Warning Ribbon */}
       {syncState.warningRibbon.show && (
         <GlobalWarningRibbon
@@ -118,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Phase 14.5 - Mobile Header (visible on mobile only) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700 flex items-center justify-between px-4 shadow-lg">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-brand-primary flex items-center justify-between px-4 shadow-lg">
         <button
           onClick={() => setSidebarOpen(true)}
           className="p-2 rounded-lg hover:bg-white/10 transition-colors"
@@ -127,7 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Menu className="h-6 w-6 text-white" />
         </button>
         <Link href="/dashboard" className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+          <div className="h-8 w-8 rounded-lg bg-brand-secondary flex items-center justify-center">
             <Wallet className="h-5 w-5 text-white" />
           </div>
           <h1 className="text-lg font-semibold tracking-tight text-white">Monitrax</h1>
@@ -149,22 +149,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar - Responsive */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-200 dark:border-slate-800
-          bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-lg flex flex-col
+          fixed inset-y-0 left-0 z-50 w-64 border-r border-border
+          bg-card shadow-lg flex flex-col
           transform transition-transform duration-300 ease-in-out
           lg:translate-x-0 lg:transform-none
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
         {/* Logo/Brand */}
-        <div className="flex h-16 items-center justify-between border-b border-slate-200 dark:border-slate-800 px-4 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700 flex-shrink-0">
+        <div className="flex h-16 items-center justify-between border-b border-border px-4 bg-brand-primary flex-shrink-0">
           <Link href="/dashboard" className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-brand-secondary flex items-center justify-center">
               <Wallet className="h-5 w-5 text-white" />
             </div>
             <div>
               <h1 className="text-lg font-semibold tracking-tight text-white">Monitrax</h1>
-              <p className="text-xs text-blue-100">Financial Planning</p>
+              <p className="text-xs text-emerald-200">Financial Planning</p>
             </div>
           </Link>
           {/* Close button (mobile only) */}
@@ -192,8 +192,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={item.href}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700 text-white shadow-md'
-                    : 'text-muted-foreground hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-950/50 dark:hover:to-purple-950/50 hover:text-foreground'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 <Icon className="h-5 w-5 lg:h-4 lg:w-4" />
@@ -209,13 +209,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* User Section - Fixed at bottom */}
-        <div className="border-t border-slate-200 dark:border-slate-800 p-4 flex-shrink-0">
-          <div className="flex items-center gap-3 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 p-3 mb-2 border border-blue-100 dark:border-blue-900">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-700 dark:to-purple-700 text-white">
+        <div className="border-t border-border p-4 flex-shrink-0">
+          <div className="flex items-center gap-3 rounded-lg bg-muted p-3 mb-2 border border-border">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
               <User className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-slate-900 dark:text-white">{user.name}</p>
+              <p className="text-sm font-medium truncate">{user.name}</p>
               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onClick={logout}
             variant="ghost"
             size="sm"
-            className="w-full justify-start hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-400"
+            className="w-full justify-start hover:bg-destructive/10 hover:text-destructive"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Sign Out

@@ -10,6 +10,18 @@ const config: Config = {
   theme: {
   	extend: {
   		colors: {
+  			// Monitrax Brand Colors
+  			brand: {
+  				primary: 'hsl(var(--color-brand-primary))',      // Deep Navy
+  				secondary: 'hsl(var(--color-brand-secondary))',  // Emerald
+  				accent: 'hsl(var(--color-brand-accent))',        // Amber
+  			},
+  			// Semantic Colors
+  			success: 'hsl(var(--color-success))',
+  			warning: 'hsl(var(--color-warning))',
+  			error: 'hsl(var(--color-error))',
+  			info: 'hsl(var(--color-info))',
+  			// Base Theme
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
