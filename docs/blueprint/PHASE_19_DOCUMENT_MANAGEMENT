@@ -1,0 +1,286 @@
+✅ PHASE 12 — DOCUMENT MANAGEMENT & STORAGE LAYER
+
+Version Introduced: v1.5
+
+⸻
+
+Overview
+
+Monitrax evolves from a pure analytical engine into a single source of truth—not just for financial data, but also for the real documents that support those numbers (PDS, loan contracts, valuation PDFs, rental statements, receipts, etc.).
+
+This phase introduces a fully integrated Document Management System (DMS) that is tightly aligned with Monitrax’s entity architecture:
+	•	Properties
+	•	Loans
+	•	Expenses
+	•	Income
+	•	Bank/Offset Accounts
+	•	Investment Accounts
+	•	Investment Holdings
+	•	(Optional) Tax & Debt Planner modules
+
+Users can upload, preview, organize, and securely store documents in either Monitrax-managed storage or via integration with their own cloud storage providers (Google Drive at launch).
+
+⸻
+
+Objectives
+	•	Add first-class support for document uploads across the entire app.
+	•	Automatically link documents to the correct financial entities.
+	•	Maintain a consistent, extensible organizational scheme.
+	•	Offer both Monitrax’s internal storage OR user-managed cloud storage.
+	•	Provide a global “Documents Library” for universal access, filtering, and management.
+	•	Support previews, metadata, categorization, and multi-entity linking.
+
+No financial logic is changed.
+No UI regressions.
+No breaking changes to existing models.
+
+⸻
+
+Key Principles
+	•	Zero hallucination: All document generation, linking, and metadata derives from real entity relationships.
+	•	Zero duplication: Upload once → link to many entities.
+	•	Auto-organization: Storage paths mirror Monitrax’s financial structure.
+	•	Security-first: Short-lived signed URLs, encrypted credentials, and strict access control.
+	•	Provider-agnostic: Storage provider abstraction allows future expansion to iCloud, OneDrive, S3, etc.
+
+⸻
+
+Core Features
+
+1. Document Uploading
+
+Upload from:
+	•	Detail dialogs (Properties, Loans, Expenses, etc.)
+	•	A new Global Documents screen
+	•	Add/Edit forms (e.g., attaching a PDS when creating an insurance expense)
+
+Supported Types:
+PDF, images, DOCX, XLSX, CSV, TXT; max size configurable.
+
+⸻
+
+2. Document Auto-Linking
+
+Documents automatically link to entities based on upload context.
+
+Example: Uploading an Insurance PDS to an Expense linked to a Property automatically creates:
+DocumentLink (EXPENSE → expenseId)
+DocumentLink (PROPERTY → propertyId)
+
+⸻
+
+3. Storage Provider Abstraction Layer
+
+StorageProvider API ensures the system can swap storage backends without code changes.
+
+Supported in Phase 12:
+	•	Monitrax Managed Storage (S3 or supabase or Render blob)
+
+Planned:
+	•	Google Drive Integration (Phase 12B)
+	•	(Future) iCloud Drive, OneDrive
+
+⸻
+
+4. Global Documents Library
+
+New screen:
+/dashboard/documents
+Capabilities:
+	•	Filter by linked entity
+	•	Filter by category (PDS, Contract, Statement, Tax, etc.)
+	•	Preview documents
+	•	Open in external providers (Google Drive)
+	•	Delete/unlink documents
+
+⸻
+
+5. Entity “Documents” Tab
+
+Every detail dialog receives a new tab:
+Overview | Loans | Cashflow | Depreciation | Documents
+
+Or in Phase 8 style:
+Overview | Linked Data | Documents
+Each Documents tab includes:
+	•	DocumentUploadDropzone
+	•	DocumentList with previews, metadata, and linked-entity chips
+
+⸻
+
+Data Model Additions (Prisma)
+
+Document
+
+Stores metadata (not the binary file).
+
+DocumentLink
+
+Polymorphic relationship connecting documents to ANY Monitrax entity.
+
+StorageProviderConfig
+
+Per-user configuration for storage provider + OAuth tokens.
+
+Enums
+	•	DocumentCategory
+	•	StorageProviderType
+	•	LinkedEntityType
+
+⸻
+
+Backend Architecture
+
+API Endpoints
+
+POST /api/documents/upload
+Uploads + auto-links files.
+
+GET /api/documents
+Search, filter, list.
+
+GET /api/documents/[id]
+Returns metadata + signed/view URL.
+
+DELETE /api/documents/[id]
+Soft or hard delete.
+
+Optional Helpers:
+/api/properties/[id]/documents, etc.
+
+Storage Providers
+
+MonitraxStorageProvider
+	•	S3/supabase/blob storage
+	•	Signed URLs
+	•	Organized hierarchical key paths
+
+GoogleDriveStorageProvider (Phase 12B)
+	•	OAuth
+	•	Upload into structured folder tree
+	•	Use Drive’s webViewLink
+
+⸻
+
+Frontend Components
+
+1. DocumentUploadDropzone
+
+Drag-and-drop + file picker.
+
+2. DocumentList
+
+Preview, metadata, linked chips, provider badges.
+
+3. DocumentBadge
+
+Small badge indicating number of attached documents.
+
+4. Documents Library Page
+
+Browser-like explorer with filters, sorting, search.
+
+5. Entity Tab Integrations
+
+Documents tab added to:
+	•	Properties
+	•	Loans
+	•	Expenses
+	•	Income
+	•	Accounts
+	•	Investment Accounts
+	•	Investment Holdings
+
+⸻
+
+Auto-Organization Logic
+
+Path Rules (Monitrax storage)
+
+Structured by entity:
+
+properties/{propertyId}/expenses/{expenseId}/timestamp_filename.pdf
+loans/{loanId}/contracts/...
+investment/accounts/{accountId}/statements/...
+
+Most specific entity takes precedence.
+
+Link Rules
+	•	Expense with property? → Link to both.
+	•	Holding transaction? → Link to account + holding.
+	•	Income linked to property? → Link to both.
+
+⸻
+
+Security Requirements
+	•	Owner-only access to documents & metadata.
+	•	Encrypted OAuth tokens at rest.
+	•	Signed URLs < 5 minutes.
+	•	Backend-enforced MIME filtering.
+	•	Rate limiting to prevent abuse.
+
+⸻
+
+Implementation Roadmap
+
+A. Schema & Storage Layer
+	•	Add Prisma models + enums
+	•	Implement storage provider abstraction
+	•	Implement MonitraxStorageProvider
+
+B. Core API
+	•	/upload, /list, /delete, /view
+	•	Entity helpers (optional)
+
+C. UI Components
+	•	Dropzone
+	•	List
+	•	Badges
+
+D. Entity Integration
+	•	Add Documents tab to Property
+	•	Add to Expenses (with multi-link automation)
+	•	Add to Loans
+	•	Add to Accounts, Investments, Holdings
+	•	Add synchronized preview system
+
+E. Documents Library
+	•	Full UI explorer
+
+F. Google Drive Integration (12B)
+	•	OAuth flow
+	•	Drive provider implementation
+	•	Storage provider switching UI
+
+⸻
+
+Testing Requirements
+	•	Full upload → link → preview → delete flow across all entity types
+	•	Provider failovers
+	•	Storage path correctness
+	•	Metadata correctness
+	•	DocumentLink relational correctness
+	•	Permissions testing (CANNOT access other user)
+
+⸻
+
+Acceptance Criteria
+
+Phase 12 is complete when:
+	1.	A user can upload a document to ANY entity.
+	2.	The document automatically appears in the correct “Documents” tab.
+	3.	The same document is visible in the Global Documents Library.
+	4.	The document is correctly stored in the cloud backend.
+	5.	The document has correct metadata + linkages.
+	6.	Switching to Google Drive works seamlessly (Phase 12B).
+	7.	Zero regressions to calculations or financial logic.
+
+⸻
+
+Deliverables
+	•	Fully integrated DMS inside Monitrax UI
+	•	Storage abstraction layer
+	•	Complete API suite
+	•	Entity-level Documents tabs
+	•	Global Documents dashboard
+	•	Google Drive integration (sub-phase)
