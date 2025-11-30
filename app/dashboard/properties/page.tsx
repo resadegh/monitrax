@@ -386,6 +386,9 @@ function PropertiesPageContent() {
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Current Value</p>
                       <p className="text-xl font-bold">{formatCurrency(property.currentValue)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Purchased: {formatCurrency(property.purchasePrice)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Equity</p>
