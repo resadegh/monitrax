@@ -1,6 +1,6 @@
 Official brand, visual identity, and UI design specification for Monitrax.
 
-Last updated: 2025-11-XX
+Last updated: 2025-11-30
 
 ⸻
 
@@ -285,14 +285,51 @@ Expose the branding through CSS variables (or Tailwind theme.extend.colors):
   --color-text: #111827;
   --color-text-muted: #6B7280;
 }
-:root {
-  --color-brand-primary: #0B1220;
-  --color-brand-secondary: #16A34A;
-  --color-brand-accent: #F59E0B;
 
-  --color-bg: #F9FAFB;
-  --color-surface: #FFFFFF;
-  --color-border: #E5E7EB;
-  --color-text: #111827;
-  --color-text-muted: #6B7280;
+---
+
+9. Implementation Status
+
+### Completed (2025-11-30)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `app/globals.css` | DONE | Brand colors, semantic colors, light/dark themes |
+| `tailwind.config.ts` | DONE | `brand.*` and semantic color utilities |
+| `DashboardLayout.tsx` | DONE | Navy header, emerald accents, clean sidebar |
+| `StatCard.tsx` | DONE | Brand-aligned variants (green, orange, blue) |
+| `AiChatButton.tsx` | DONE | Brand colors for AI chat panel |
+
+### CSS Variables Implemented
+
+**Light Mode:**
+- `--color-brand-primary: 216 52% 9%` (Navy)
+- `--color-brand-secondary: 142 71% 37%` (Emerald)
+- `--color-brand-accent: 38 92% 50%` (Amber)
+- `--primary: 142 71% 37%` (Emerald for CTAs)
+- Semantic: `--color-success`, `--color-warning`, `--color-error`, `--color-info`
+
+**Dark Mode:**
+- `--background: 222 47% 2%` (Soft slate, not pure black)
+- Colors adjusted for contrast (slightly brighter)
+
+### Tailwind Utilities Added
+
+```typescript
+brand: {
+  primary: 'hsl(var(--color-brand-primary))',
+  secondary: 'hsl(var(--color-brand-secondary))',
+  accent: 'hsl(var(--color-brand-accent))',
 }
+success: 'hsl(var(--color-success))'
+warning: 'hsl(var(--color-warning))'
+error: 'hsl(var(--color-error))'
+info: 'hsl(var(--color-info))'
+```
+
+### Remaining Work
+
+- [ ] Apply brand typography scale consistently across all pages
+- [ ] Update remaining entity cards (Properties, Loans, etc.) with rounded-xl
+- [ ] Audit all buttons for brand secondary (emerald) usage
+- [ ] Update chart components to use `--chart-*` colors
