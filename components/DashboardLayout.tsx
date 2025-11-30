@@ -24,6 +24,7 @@ import {
   Menu,
   X,
   FileText,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -41,6 +42,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Personal CFO', href: '/dashboard/cfo', icon: Brain },
   { name: 'Properties', href: '/dashboard/properties', icon: Home },
   { name: 'Loans', href: '/dashboard/loans', icon: Banknote },
   { name: 'Accounts', href: '/dashboard/accounts', icon: Wallet },
