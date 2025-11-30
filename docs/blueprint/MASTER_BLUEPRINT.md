@@ -160,6 +160,7 @@ Every API response follows a standardised format:
 | **15** | Mobile Companion App | 📋 Planned | Native mobile experience |
 | **18** | Bank Transactions | 📋 Planned | Bank feed integration, transaction sync |
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
+| **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
 
 ---
 
@@ -216,8 +217,13 @@ Every API response follows a standardised format:
 **Features:**
 - Property-linked or general
 - Investment account linking
-- Taxable flag
 - Frequency normalisation
+
+**Phase 20 Enhancements (Planned):**
+- Gross/Net salary with automatic PAYG calculation
+- Superannuation tracking (SG, salary sacrifice)
+- Automatic taxability determination (removes manual toggle)
+- Tax category assignment with ATO references
 
 ### 5.5 Expenses Module
 
@@ -257,11 +263,17 @@ Every API response follows a standardised format:
 - Negative gearing
 - CGT with 50% discount
 
-**Planned:**
-- MLS Surcharge
-- LITO/LMITO
-- Super contributions
-- Small business concessions
+**Phase 20 Enhancements (Planned):**
+- Full PAYG withholding calculator
+- Medicare Levy Surcharge
+- LITO/LMITO offsets
+- Superannuation contribution tracking
+- Automatic income taxability rules
+- AI-powered tax optimization
+- Scenario modelling ("what if" analysis)
+- Tax position dashboard with refund estimation
+
+See: `docs/blueprint/PHASE_20_AUSTRALIAN_TAX_INTELLIGENCE_ENGINE.md`
 
 ### 5.8 Personal CFO Engine
 
