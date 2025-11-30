@@ -3,14 +3,41 @@
  * Type definitions for the document management system
  */
 
-// Import enums from Prisma client and re-export
-import {
-  DocumentCategory,
-  StorageProviderType,
-  LinkedEntityType,
-} from '@prisma/client';
+// =============================================================================
+// Define enums locally for type safety
+// These mirror the Prisma schema enums
+// =============================================================================
 
-export { DocumentCategory, StorageProviderType, LinkedEntityType };
+export enum DocumentCategory {
+  CONTRACT = 'CONTRACT',
+  STATEMENT = 'STATEMENT',
+  RECEIPT = 'RECEIPT',
+  TAX = 'TAX',
+  PDS = 'PDS',
+  VALUATION = 'VALUATION',
+  INSURANCE = 'INSURANCE',
+  MORTGAGE = 'MORTGAGE',
+  LEASE = 'LEASE',
+  INVOICE = 'INVOICE',
+  OTHER = 'OTHER',
+}
+
+export enum StorageProviderType {
+  MONITRAX = 'MONITRAX',
+  GOOGLE_DRIVE = 'GOOGLE_DRIVE',
+}
+
+export enum LinkedEntityType {
+  PROPERTY = 'PROPERTY',
+  LOAN = 'LOAN',
+  EXPENSE = 'EXPENSE',
+  INCOME = 'INCOME',
+  ACCOUNT = 'ACCOUNT',
+  OFFSET_ACCOUNT = 'OFFSET_ACCOUNT',
+  INVESTMENT_ACCOUNT = 'INVESTMENT_ACCOUNT',
+  INVESTMENT_HOLDING = 'INVESTMENT_HOLDING',
+  TRANSACTION = 'TRANSACTION',
+}
 
 // ============================================================================
 // Core Document Types

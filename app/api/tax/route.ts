@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch all income for the user
     const incomes = await prisma.income.findMany({
-      where: { userId: user.id },
+      where: { userId: user.userId },
       include: {
         property: true,
         investmentAccount: true,
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch all expenses for the user
     const expenses = await prisma.expense.findMany({
-      where: { userId: user.id },
+      where: { userId: user.userId },
       include: {
         property: true,
       },

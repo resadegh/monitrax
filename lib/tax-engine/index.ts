@@ -15,6 +15,9 @@ export * from './core';
 // Income processing
 export * from './income';
 
+// Superannuation
+export * from './super';
+
 // =============================================================================
 // Convenience re-exports for common use cases
 // =============================================================================
@@ -32,6 +35,14 @@ import {
   getMarginalRate,
   TAX_YEAR_2024_25
 } from './config/taxYearConfig';
+import {
+  calculateSuperGuarantee,
+  calculateSuperContributions,
+  calculateDivision293Tax,
+  trackContributionCaps,
+  getOptimalContributionStrategy,
+  getSuperContributionSummary,
+} from './super';
 
 // Main API object for easy access
 export const TaxEngine = {
@@ -66,6 +77,14 @@ export const TaxEngine = {
   calculateAllOffsets,
   calculateLITO,
   applyOffsets,
+
+  // Superannuation
+  calculateSuperGuarantee,
+  calculateSuperContributions,
+  calculateDivision293Tax,
+  trackContributionCaps,
+  getOptimalContributionStrategy,
+  getSuperContributionSummary,
 };
 
 export default TaxEngine;

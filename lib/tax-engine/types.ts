@@ -3,15 +3,67 @@
  * Type definitions
  */
 
-// Re-export Prisma enums
-export {
-  SalaryType,
-  PayFrequency,
-  TaxCategory,
-  SuperContributionType,
-  IncomeType,
-  Frequency,
-} from '@prisma/client';
+// =============================================================================
+// Define enums locally for type safety
+// These mirror the Prisma schema enums
+// =============================================================================
+
+export enum SalaryType {
+  GROSS = 'GROSS',
+  NET = 'NET',
+}
+
+export enum PayFrequency {
+  WEEKLY = 'WEEKLY',
+  FORTNIGHTLY = 'FORTNIGHTLY',
+  MONTHLY = 'MONTHLY',
+  QUARTERLY = 'QUARTERLY',
+  ANNUALLY = 'ANNUALLY',
+}
+
+export enum TaxCategory {
+  SALARY_WAGES = 'SALARY_WAGES',
+  ALLOWANCES = 'ALLOWANCES',
+  BONUSES = 'BONUSES',
+  TERMINATION = 'TERMINATION',
+  DIVIDENDS_FRANKED = 'DIVIDENDS_FRANKED',
+  DIVIDENDS_UNFRANKED = 'DIVIDENDS_UNFRANKED',
+  INTEREST = 'INTEREST',
+  CAPITAL_GAINS = 'CAPITAL_GAINS',
+  RENTAL = 'RENTAL',
+  GOVERNMENT_TAXABLE = 'GOVERNMENT_TAXABLE',
+  GOVERNMENT_EXEMPT = 'GOVERNMENT_EXEMPT',
+  GIFTS = 'GIFTS',
+  INHERITANCE = 'INHERITANCE',
+  INSURANCE_PAYOUT = 'INSURANCE_PAYOUT',
+  HOBBY_INCOME = 'HOBBY_INCOME',
+  TAX_EXEMPT = 'TAX_EXEMPT',
+}
+
+export enum SuperContributionType {
+  EMPLOYER_SG = 'EMPLOYER_SG',
+  SALARY_SACRIFICE = 'SALARY_SACRIFICE',
+  PERSONAL_DEDUCTIBLE = 'PERSONAL_DEDUCTIBLE',
+  PERSONAL_NON_DEDUCT = 'PERSONAL_NON_DEDUCT',
+  SPOUSE = 'SPOUSE',
+  GOVERNMENT_COCONTRIB = 'GOVERNMENT_COCONTRIB',
+  DOWNSIZER = 'DOWNSIZER',
+}
+
+export enum IncomeType {
+  SALARY = 'SALARY',
+  RENT = 'RENT',
+  RENTAL = 'RENTAL',
+  INVESTMENT = 'INVESTMENT',
+  OTHER = 'OTHER',
+}
+
+export enum Frequency {
+  WEEKLY = 'WEEKLY',
+  FORTNIGHTLY = 'FORTNIGHTLY',
+  MONTHLY = 'MONTHLY',
+  ANNUAL = 'ANNUAL',
+}
 
 // =============================================================================
 // Tax Year Configuration Types
