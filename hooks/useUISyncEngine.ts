@@ -18,6 +18,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigationContext } from '@/contexts/NavigationContext';
+import { useAuth } from '@/lib/context/AuthContext';
 import {
   UISyncEngineState,
   UISyncEngineConfig,
@@ -248,12 +249,15 @@ export function useUISyncEngine(options: UseUISyncEngineOptions = {}): UseUISync
   // Navigation context integration
   const { state: navState } = useNavigationContext();
 
+  // Auth context for API calls
+  const { token } = useAuth();
+
   /**
    * Fetch all data from APIs
    */
   const fetchData = useCallback(async () => {
-    // Don't fetch if already fetching
-    if (state.isFetching) return;
+    // Don't fetch if already fetching or no token
+    if (state.isFetching || !token) return;
 
     // Cancel previous request if still pending
     if (abortControllerRef.current) {
@@ -269,15 +273,19 @@ export function useUISyncEngine(options: UseUISyncEngineOptions = {}): UseUISync
     setState(prev => ({ ...prev, isFetching: true, error: null }));
 
     try {
-      // Fetch all endpoints in parallel
+      // Fetch all endpoints in parallel with auth header
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
+
       const [snapshotRes, healthRes] = await Promise.all([
         fetch('/api/portfolio/snapshot', {
           signal: abortControllerRef.current.signal,
-          credentials: 'include',
+          headers,
         }),
         fetch('/api/linkage/health', {
           signal: abortControllerRef.current.signal,
-          credentials: 'include',
+          headers,
         }),
       ]);
 
@@ -448,7 +456,7 @@ export function useUISyncEngine(options: UseUISyncEngineOptions = {}): UseUISync
 
       console.error('[UISyncEngine] Fetch error:', error);
     }
-  }, [config, state.isFetching]);
+  }, [config, state.isFetching, token]);
 
   /**
    * Manually refresh data
