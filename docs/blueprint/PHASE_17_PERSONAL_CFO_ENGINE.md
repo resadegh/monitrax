@@ -1,52 +1,52 @@
-# PHASE 17 — PERSONAL CFO ENGINE  
+# PHASE 17 — PERSONAL CFO ENGINE
 **Monitrax Blueprint — Phase 17**
 
-## Purpose  
+## Purpose
 Transform Monitrax from a financial tracker into a **proactive, AI-driven Personal CFO** that anticipates needs, prevents financial issues before they occur, and continuously optimises the user's financial world.
 
 This phase fuses Insights Engine v2, Cashflow Optimization (Phase 14), Transactional Intelligence (Phase 13), Reporting Suite (Phase 16), and the Mobile Companion App (Phase 15).
 
-The core idea:  
-### “Your finances should run themselves — with Monitrax acting as a full-time CFO.”
+The core idea:
+### "Your finances should run themselves — with Monitrax acting as a full-time CFO."
 
 ---
 
 # 17.1 Objectives
 
 1. **Deliver autonomous financial monitoring**
-   - Real-time risk detection  
-   - Cashflow alerts  
-   - Spending anomaly detection  
-   - "Action required" prioritisation engine  
+   - Real-time risk detection
+   - Cashflow alerts
+   - Spending anomaly detection
+   - "Action required" prioritisation engine
 
 2. **Provide high-value financial guidance**
-   - Strategic recommendations  
-   - Automated reminders  
-   - Compliance and tax hints  
-   - Simple language explanations  
+   - Strategic recommendations
+   - Automated reminders
+   - Compliance and tax hints
+   - Simple language explanations
 
 3. **Enable automated financial optimisation**
-   - Debt strategy adjustments  
-   - Savings/investment allocation recommendations  
-   - Subscription cleanup  
-   - Category and vendor insights  
+   - Debt strategy adjustments
+   - Savings/investment allocation recommendations
+   - Subscription cleanup
+   - Category and vendor insights
 
 4. **Create a Personal CFO Dashboard**
-   - Unified risk score  
-   - Immediate actions  
-   - High-impact insights  
-   - Month-to-month progression  
+   - Unified risk score
+   - Immediate actions
+   - High-impact insights
+   - Month-to-month progression
 
 5. **Power mobile-first nudges & notifications**
-   - Real-time event-driven alerts  
-   - Periodic check-ins  
-   - Behavioural finance guardrails  
+   - Real-time event-driven alerts
+   - Periodic check-ins
+   - Behavioural finance guardrails
 
 ---
 
 # 17.2 Core System Components
 
-## 17.2.1 CFO Intelligence Engine  
+## 17.2.1 CFO Intelligence Engine
 A high-level decision layer on top of:
 
 - GRDCS (Phase 08)
@@ -56,52 +56,52 @@ A high-level decision layer on top of:
 - Reporting Engine (Phase 16)
 
 ### Responsibilities:
-- Consolidate all insights from all engines  
-- Prioritise them based on urgency & impact  
-- Recommend clear user actions  
-- Detect financial patterns  
-- Trigger alerts and personal finance workflows  
+- Consolidate all insights from all engines
+- Prioritise them based on urgency & impact
+- Recommend clear user actions
+- Detect financial patterns
+- Trigger alerts and personal finance workflows
 
 ---
 
-## 17.2.2 Financial Risk Radar  
+## 17.2.2 Financial Risk Radar
 A continuous monitoring service that tracks:
 
 ### **Short-term risks**
-- Low balance predictions  
-- Shortfall risk  
-- Spiking expenses  
-- Overdue bills  
-- Loan repayment stress  
+- Low balance predictions
+- Shortfall risk
+- Spiking expenses
+- Overdue bills
+- Loan repayment stress
 
 ### **Medium-term risks**
-- Debt-to-income deterioration  
-- Poor savings trajectory  
-- Rental property underperformance  
+- Debt-to-income deterioration
+- Poor savings trajectory
+- Rental property underperformance
 
 ### **Long-term risks**
-- Retirement gaps  
-- Investment risk misalignment  
-- Mortgage renewal risks  
+- Retirement gaps
+- Investment risk misalignment
+- Mortgage renewal risks
 
 The Risk Radar outputs a **CFO Score** (0–100), generated daily.
 
 ---
 
-## 17.2.3 Action Prioritisation Engine  
+## 17.2.3 Action Prioritisation Engine
 Every day Monitrax assembles a personalised list:
 
-- “Do this now”  
-- “Upcoming risks”  
-- “Consider this soon”  
-- “Background improvements”  
+- "Do this now"
+- "Upcoming risks"
+- "Consider this soon"
+- "Background improvements"
 
 Each action includes:
-- Explanation (simple English)  
-- Severity  
-- Expected financial impact  
-- Time required  
-- Data supporting the recommendation  
+- Explanation (simple English)
+- Severity
+- Expected financial impact
+- Time required
+- Data supporting the recommendation
 
 This becomes the core of the CFO dashboard.
 
@@ -113,98 +113,98 @@ This becomes the core of the CFO dashboard.
 
 ### **1. CFO Score**
 Daily score defined by:
-- Cashflow strength  
-- Debt coverage  
-- Emergency buffer  
-- Investment diversification  
-- Spending control metrics  
+- Cashflow strength
+- Debt coverage
+- Emergency buffer
+- Investment diversification
+- Spending control metrics
 
 ### **2. Daily Prioritised Actions**
 A list of CFO-driven recommendations, such as:
-- “Reduce your spending in Category X by 8% to avoid a cashflow shortfall.”  
-- “You can save $185/month by refinancing Loan A.”  
-- “Two subscriptions increased last month.”  
+- "Reduce your spending in Category X by 8% to avoid a cashflow shortfall."
+- "You can save $185/month by refinancing Loan A."
+- "Two subscriptions increased last month."
 
 ### **3. Monthly Progress Overview**
-- Month-over-month changes  
-- Net worth delta  
-- Top 5 financial improvements  
-- Emerging risks  
+- Month-over-month changes
+- Net worth delta
+- Top 5 financial improvements
+- Emerging risks
 
 ### **4. Deep-Dive Modules**
-- Spending patterns  
-- Debt optimisation  
-- Investment efficiency  
-- Property performance  
+- Spending patterns
+- Debt optimisation
+- Investment efficiency
+- Property performance
 
 ---
 
 # 17.4 AI-Driven Personal Finance Features
 
-## 17.4.1 Proactive Alerts  
+## 17.4.1 Proactive Alerts
 Triggered by transactional and cashflow intelligence, including:
 
-- Payday forecast  
-- Overspending warnings  
-- Vendor price spikes  
-- Duplicate charges  
-- Loan interest rate changes  
+- Payday forecast
+- Overspending warnings
+- Vendor price spikes
+- Duplicate charges
+- Loan interest rate changes
 
 ---
 
-## 17.4.2 Financial Coach Mode  
+## 17.4.2 Financial Coach Mode
 Conversational AI able to:
 
-- Explain insights  
-- Provide budgeting advice  
-- Model future scenarios  
-- Justify decisions  
-- Compare “what if” strategies  
+- Explain insights
+- Provide budgeting advice
+- Model future scenarios
+- Justify decisions
+- Compare "what if" strategies
 
 The system always references real GRDCS-linked data.
 
 ---
 
-## 17.4.3 Auto-Generated Plans  
+## 17.4.3 Auto-Generated Plans
 The engine generates:
 
-- 30-day cashflow plan  
-- Annual savings plan  
-- Debt reduction roadmap  
-- Property portfolio plan  
-- Investment allocation plan  
+- 30-day cashflow plan
+- Annual savings plan
+- Debt reduction roadmap
+- Property portfolio plan
+- Investment allocation plan
 
 Each plan includes steps, milestones, and projections.
 
 ---
 
-# 17.5 Event-Driven Notification System  
+# 17.5 Event-Driven Notification System
 Integrated with Mobile App (Phase 15)
 
 ### Event Categories:
-- Cashflow events  
-- Deposit/withdrawal alerts  
-- Income irregularities  
-- Unexpected large bills  
-- Subscription renewals  
-- Category overspend detection  
+- Cashflow events
+- Deposit/withdrawal alerts
+- Income irregularities
+- Unexpected large bills
+- Subscription renewals
+- Category overspend detection
 
 ### Delivery Channels:
-- Mobile push  
-- Email notifications  
-- In-app alerts  
-- Scheduled morning briefings  
+- Mobile push
+- Email notifications
+- In-app alerts
+- Scheduled morning briefings
 
 ---
 
-# 17.6 CFO Workflow Templates  
+# 17.6 CFO Workflow Templates
 Users can activate workflows such as:
 
-- “Reduce monthly expenses 10%”  
-- “Prepare for tax-time”  
-- “Stabilise cashflow for the next 3 months”  
-- “Optimise property portfolio”  
-- “Debt restructuring plan”  
+- "Reduce monthly expenses 10%"
+- "Prepare for tax-time"
+- "Stabilise cashflow for the next 3 months"
+- "Optimise property portfolio"
+- "Debt restructuring plan"
 
 Each workflow becomes a guided step-by-step program.
 
@@ -212,68 +212,170 @@ Each workflow becomes a guided step-by-step program.
 
 # 17.7 Technical Architecture
 
-## 17.7.1 Data Inputs  
-- GRDCS entities  
-- Transactional intelligence  
-- Cashflow engine outputs  
-- Insights V2 metrics  
-- External vendor data  
-- Linked accounts (Open Banking future phase)  
+## 17.7.1 Data Inputs
+- GRDCS entities
+- Transactional intelligence
+- Cashflow engine outputs
+- Insights V2 metrics
+- External vendor data
+- Linked accounts (Open Banking future phase)
 
-## 17.7.2 Processing Layers  
-1. **Aggregation Layer**  
-   - Collects signals from all modules  
+## 17.7.2 Processing Layers
+1. **Aggregation Layer**
+   - Collects signals from all modules
 
-2. **Inference Layer**  
-   - Decision rules  
-   - Risk scoring  
-   - Impact predictions  
+2. **Inference Layer**
+   - Decision rules
+   - Risk scoring
+   - Impact predictions
 
-3. **Recommendation Layer**  
-   - Generates actions and insights  
+3. **Recommendation Layer**
+   - Generates actions and insights
 
-4. **Delivery Layer**  
-   - Push to UI, mobile, or scheduled feed  
+4. **Delivery Layer**
+   - Push to UI, mobile, or scheduled feed
 
 ---
 
-# 17.8 Dependencies  
+# 17.8 Dependencies
 
 ### Must be completed before Phase 17:
-- Phase 13 (Transactional Intelligence)  
-- Phase 14 (Cashflow Optimisation)  
-- Phase 15 (Mobile Companion App)  
-- Phase 16 (Reporting & Integrations Suite)  
-- Phase 08 (GRDCS)  
+- Phase 13 (Transactional Intelligence)
+- Phase 14 (Cashflow Optimisation)
+- Phase 15 (Mobile Companion App)
+- Phase 16 (Reporting & Integrations Suite)
+- Phase 08 (GRDCS)
 
 ---
 
-# 17.9 Acceptance Criteria  
+# 17.9 Acceptance Criteria
 
 ### Intelligence
-- CFO Score calculates successfully for full portfolio  
-- Alerts trigger correctly for all risk categories  
-- Recommendations have >90% relevance (user testing)  
+- CFO Score calculates successfully for full portfolio
+- Alerts trigger correctly for all risk categories
+- Recommendations have >90% relevance (user testing)
 
 ### Usability
-- Dashboard loads < 500ms  
-- Mobile alerts delivered < 3 seconds  
-- Plans are readable and actionable  
+- Dashboard loads < 500ms
+- Mobile alerts delivered < 3 seconds
+- Plans are readable and actionable
 
-### Integration  
-- All engines contribute data to CFO Engine  
-- No conflicting recommendations  
-- All actions link into CMNF (Phase 9)  
+### Integration
+- All engines contribute data to CFO Engine
+- No conflicting recommendations
+- All actions link into CMNF (Phase 9)
 
 ---
 
-# 17.10 Deliverables  
+# 17.10 Deliverables
 
-- Personal CFO Dashboard (Web + Mobile)  
-- CFO Intelligence Engine  
-- Action Prioritisation Engine  
-- Risk Radar  
-- Event Notification System  
-- Workflow Templates  
-- Long-term planning system  
-- AI financial coach  
+- Personal CFO Dashboard (Web + Mobile)
+- CFO Intelligence Engine
+- Action Prioritisation Engine
+- Risk Radar
+- Event Notification System
+- Workflow Templates
+- Long-term planning system
+- AI financial coach
+
+---
+
+# 17.11 IMPLEMENTATION STATUS
+
+**Status:** ✅ IMPLEMENTED
+**Implemented Date:** 2025-11-30
+**Branch:** `claude/continue-ai-strategy-engine-01Y1tCB7457LqYNMe3hwg1Jk`
+
+## 17.11.1 Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/cfo/types.ts` | Core type definitions (40+ types) |
+| `lib/cfo/scoreCalculator.ts` | CFO Score calculation engine |
+| `lib/cfo/riskRadar.ts` | Risk detection service |
+| `lib/cfo/actionEngine.ts` | Action prioritisation engine |
+| `lib/cfo/intelligenceEngine.ts` | Main orchestrator |
+| `lib/cfo/index.ts` | Public API exports |
+| `app/api/cfo/route.ts` | REST API endpoint |
+| `app/dashboard/cfo/page.tsx` | Dashboard UI |
+
+## 17.11.2 CFO Score Components Implemented
+
+| Component | Weight | Description |
+|-----------|--------|-------------|
+| Cashflow Strength | 25% | Net cashflow vs income ratio |
+| Debt Coverage | 20% | Debt service ratio analysis |
+| Emergency Buffer | 15% | Months of expenses covered by liquid assets |
+| Investment Diversification | 15% | Asset class spread analysis |
+| Spending Control | 15% | Discretionary spending vs income |
+| Savings Rate | 10% | Percentage of income saved |
+
+## 17.11.3 Risk Types Implemented
+
+### Short-term Risks
+- `low_balance` - Account balance below threshold
+- `cashflow_shortfall` - Negative monthly cashflow
+- `expense_spike` - Large single expense detection
+- `loan_stress` - High loan payment ratio
+
+### Medium-term Risks
+- `debt_ratio_deterioration` - DSR above 40%
+- `savings_trajectory` - Savings rate below 5%
+- `property_underperformance` - Yield below 3%
+- `subscription_creep` - Multiple small recurring expenses
+
+### Long-term Risks
+- `concentration_risk` - Portfolio over-concentrated
+- `mortgage_renewal` - Loan term ending within 12 months
+
+## 17.11.4 Action Priority Levels
+
+| Priority | Criteria |
+|----------|----------|
+| `do_now` | Critical severity OR high severity with impact > $500 |
+| `upcoming` | High severity OR medium with impact > $1000 |
+| `consider_soon` | Medium severity |
+| `background` | Low severity optimizations |
+
+## 17.11.5 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/cfo` | Full dashboard data |
+| GET | `/api/cfo?type=score` | CFO Score only |
+| GET | `/api/cfo?type=risks` | Risk Radar output |
+| GET | `/api/cfo?type=actions` | Prioritised actions |
+
+## 17.11.6 Dashboard UI Features
+
+- CFO Score circle with grade (A-F) and trend indicator
+- Component breakdown with progress bars
+- Quick stats cards (5 metrics)
+- Risk radar with severity breakdown
+- Tabbed action list (Do Now, Upcoming, Consider Soon, Background)
+- Monthly progress with net worth and savings rate changes
+- Alert notifications
+
+## 17.11.7 Navigation
+
+Added "Personal CFO" to sidebar navigation with Brain icon, positioned after Dashboard.
+
+## 17.11.8 Technical Notes
+
+- Uses `crypto.randomUUID()` instead of `uuid` package for ID generation
+- All Prisma queries use correct schema field names
+- Score calculations use weighted averages
+- Risk detection runs on-demand (not scheduled)
+
+---
+
+# 17.12 Future Enhancements
+
+The following features from the original blueprint are planned for future iterations:
+
+1. **Workflow Templates** - Guided step-by-step programs
+2. **Auto-Generated Plans** - 30-day cashflow, annual savings, debt reduction plans
+3. **Push Notifications** - Mobile push, email, scheduled briefings
+4. **Financial Coach Mode** - Conversational AI for advice
+5. **Score History Persistence** - Store historical CFO scores for trend analysis
+6. **Alert Management** - Mark as read, dismiss, snooze functionality
