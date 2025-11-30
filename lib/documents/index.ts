@@ -7,9 +7,8 @@
 export * from './types';
 
 // Storage providers
+export type { IStorageProvider, IStorageProviderFactory } from './storage';
 export {
-  IStorageProvider,
-  IStorageProviderFactory,
   MonitraxStorageProvider,
   getMonitraxStorageProvider,
   StorageProviderFactory,

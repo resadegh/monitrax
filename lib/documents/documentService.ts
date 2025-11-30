@@ -44,9 +44,14 @@ export async function uploadDocument(
     const storagePath = generateStoragePath(userId, request);
 
     // Convert file to buffer if needed
-    const fileBuffer = request.file instanceof Buffer
-      ? request.file
-      : Buffer.from(await request.file.arrayBuffer());
+    let fileBuffer: Buffer;
+    if (Buffer.isBuffer(request.file)) {
+      fileBuffer = request.file;
+    } else {
+      // Handle Web API File/Blob type
+      const blob = request.file as Blob;
+      fileBuffer = Buffer.from(await blob.arrayBuffer());
+    }
 
     // Upload to storage
     const uploadResult = await storage.upload({
@@ -495,9 +500,9 @@ function validateUpload(request: UploadRequest): { valid: boolean; error?: strin
   }
 
   // Check file size
-  const fileSize = request.file instanceof Buffer
+  const fileSize = Buffer.isBuffer(request.file)
     ? request.file.length
-    : request.file.size;
+    : (request.file as Blob).size;
 
   if (fileSize > MAX_FILE_SIZE) {
     return {
