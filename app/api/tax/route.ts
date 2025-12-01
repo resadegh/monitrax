@@ -106,8 +106,10 @@ export async function GET(request: NextRequest) {
           totalDividendIncome += taxResult.taxableAmount;
           totalFrankingCredits += taxResult.frankingCredits;
           break;
+        case 'OTHER':
         default:
-          if (income.type === 'INTEREST' || income.name.toLowerCase().includes('interest')) {
+          // Check if this "other" income is interest-related by name
+          if (income.name.toLowerCase().includes('interest')) {
             totalInterestIncome += taxResult.taxableAmount;
           } else {
             totalOtherIncome += taxResult.taxableAmount;
