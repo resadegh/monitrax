@@ -17,6 +17,17 @@ const StorageProviderType = {
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 
+/**
+ * Get the base URL from environment or derive from request
+ */
+function getBaseUrl(request: Request): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -59,6 +70,7 @@ export async function GET(request: Request) {
     }
 
     // Exchange code for tokens
+    const baseUrl = getBaseUrl(request);
     const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -68,7 +80,7 @@ export async function GET(request: Request) {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID!,
         client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/google-drive`,
+        redirect_uri: `${baseUrl}/api/oauth/callback/google-drive`,
         grant_type: 'authorization_code',
       }),
     });
