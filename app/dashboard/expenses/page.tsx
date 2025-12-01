@@ -13,12 +13,23 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X } from 'lucide-react';
+import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { DocumentCategory, LinkedEntityType } from '@/lib/documents/types';
+
+type ViewMode = 'category' | 'property' | 'all';
+
+interface ExpenseGroup {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  expenses: Expense[];
+  totalMonthly: number;
+  count: number;
+}
 
 interface AttachedDocument {
   id: string;
@@ -126,6 +137,8 @@ function ExpensesPageContent() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [attachedDocuments, setAttachedDocuments] = useState<AttachedDocument[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('category');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (token) {
@@ -368,6 +381,105 @@ function ExpensesPageContent() {
 
   const totalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
 
+  const toggleGroupExpanded = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  };
+
+  // Category info with icons and colors
+  const categoryInfo: Record<Expense['category'], { label: string; icon: React.ReactNode; color: string }> = {
+    HOUSING: { label: 'Housing', icon: <Home className="h-5 w-5" />, color: 'text-blue-500' },
+    RATES: { label: 'Rates', icon: <Building2 className="h-5 w-5" />, color: 'text-amber-500' },
+    INSURANCE: { label: 'Insurance', icon: <Receipt className="h-5 w-5" />, color: 'text-green-500' },
+    MAINTENANCE: { label: 'Maintenance', icon: <TrendingDown className="h-5 w-5" />, color: 'text-orange-500' },
+    PERSONAL: { label: 'Personal', icon: <DollarSign className="h-5 w-5" />, color: 'text-purple-500' },
+    UTILITIES: { label: 'Utilities', icon: <Landmark className="h-5 w-5" />, color: 'text-cyan-500' },
+    FOOD: { label: 'Food', icon: <Store className="h-5 w-5" />, color: 'text-rose-500' },
+    TRANSPORT: { label: 'Transport', icon: <Briefcase className="h-5 w-5" />, color: 'text-indigo-500' },
+    ENTERTAINMENT: { label: 'Entertainment', icon: <CreditCard className="h-5 w-5" />, color: 'text-pink-500' },
+    STRATA: { label: 'Strata', icon: <Building2 className="h-5 w-5" />, color: 'text-teal-500' },
+    LAND_TAX: { label: 'Land Tax', icon: <Landmark className="h-5 w-5" />, color: 'text-red-500' },
+    LOAN_INTEREST: { label: 'Loan Interest', icon: <Landmark className="h-5 w-5" />, color: 'text-red-600' },
+    OTHER: { label: 'Other', icon: <CreditCard className="h-5 w-5" />, color: 'text-gray-500' },
+  };
+
+  // Group expenses by category
+  const groupByCategory = (): ExpenseGroup[] => {
+    const groups: Record<string, Expense[]> = {};
+    expenses.forEach(exp => {
+      if (!groups[exp.category]) {
+        groups[exp.category] = [];
+      }
+      groups[exp.category].push(exp);
+    });
+
+    return Object.entries(groups).map(([category, exps]) => {
+      const info = categoryInfo[category as Expense['category']] || categoryInfo.OTHER;
+      const totalMonthly = exps.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+      return {
+        id: `category-${category}`,
+        name: info.label,
+        icon: <span className={info.color}>{info.icon}</span>,
+        expenses: exps,
+        totalMonthly,
+        count: exps.length,
+      };
+    }).sort((a, b) => b.totalMonthly - a.totalMonthly);
+  };
+
+  // Group expenses by property (or General for non-property expenses)
+  const groupByProperty = (): ExpenseGroup[] => {
+    const groups: Record<string, { name: string; expenses: Expense[] }> = {
+      general: { name: 'General Expenses', expenses: [] },
+    };
+
+    // Add property groups
+    properties.forEach(prop => {
+      groups[`property-${prop.id}`] = { name: prop.name, expenses: [] };
+    });
+
+    // Distribute expenses
+    expenses.forEach(exp => {
+      if (exp.sourceType === 'PROPERTY' && exp.propertyId) {
+        const key = `property-${exp.propertyId}`;
+        if (groups[key]) {
+          groups[key].expenses.push(exp);
+        } else {
+          groups.general.expenses.push(exp);
+        }
+      } else {
+        groups.general.expenses.push(exp);
+      }
+    });
+
+    return Object.entries(groups)
+      .filter(([_, group]) => group.expenses.length > 0)
+      .map(([key, group]) => {
+        const totalMonthly = group.expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+        const isProperty = key.startsWith('property-');
+        return {
+          id: key,
+          name: group.name,
+          icon: isProperty
+            ? <Home className="h-5 w-5 text-blue-500" />
+            : <DollarSign className="h-5 w-5 text-gray-500" />,
+          expenses: group.expenses,
+          totalMonthly,
+          count: group.expenses.length,
+        };
+      })
+      .sort((a, b) => b.totalMonthly - a.totalMonthly);
+  };
+
+  const expenseGroups = viewMode === 'category' ? groupByCategory() : viewMode === 'property' ? groupByProperty() : [];
+
   const getCategoryBadge = (category: Expense['category']) => {
     const variants: Record<Expense['category'], { variant: 'default' | 'secondary' | 'outline' | 'destructive'; label: string }> = {
       HOUSING: { variant: 'default', label: 'Housing' },
@@ -448,6 +560,42 @@ function ExpensesPageContent() {
         }
       />
 
+      {/* View Mode Selector */}
+      {expenses.length > 0 && (
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-sm text-muted-foreground">Group by:</span>
+          <div className="flex bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === 'category' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('category')}
+            >
+              <FolderOpen className="h-4 w-4" />
+              Category
+            </Button>
+            <Button
+              variant={viewMode === 'property' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('property')}
+            >
+              <Home className="h-4 w-4" />
+              Property
+            </Button>
+            <Button
+              variant={viewMode === 'all' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('all')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              All
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
@@ -465,7 +613,8 @@ function ExpensesPageContent() {
             onClick: () => { setShowDialog(true); resetForm(); },
           }}
         />
-      ) : (
+      ) : viewMode === 'all' ? (
+        /* All expenses view - individual tiles */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {expenses.map((item) => {
             const monthlyAmount = convertToMonthly(item.amount, item.frequency);
@@ -556,6 +705,135 @@ function ExpensesPageContent() {
                     </div>
                   </div>
                 </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        /* Grouped view - expandable group tiles */
+        <div className="space-y-4">
+          {expenseGroups.map((group) => {
+            const isExpanded = expandedGroups.has(group.id);
+            const deductibleCount = group.expenses.filter(e => e.isTaxDeductible).length;
+            const annualTotal = group.totalMonthly * 12;
+
+            return (
+              <Card key={group.id} className="overflow-hidden">
+                <CardHeader
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleGroupExpanded(group.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {group.icon}
+                      <div>
+                        <CardTitle className="text-lg">{group.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          {group.count} expense{group.count !== 1 ? 's' : ''}
+                          {deductibleCount > 0 && (
+                            <span className="ml-2 text-green-600">
+                              • {deductibleCount} tax deductible
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-red-600">{formatCurrency(group.totalMonthly)}</p>
+                        <p className="text-xs text-muted-foreground">per month • {formatCurrency(annualTotal)}/yr</p>
+                      </div>
+                      {isExpanded ? (
+                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+
+                {isExpanded && (
+                  <CardContent className="border-t pt-4">
+                    <div className="space-y-2">
+                      {/* Table header */}
+                      <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                        <div className="col-span-4">Name</div>
+                        <div className="col-span-2">Amount</div>
+                        <div className="col-span-2">Frequency</div>
+                        <div className="col-span-2">Monthly</div>
+                        <div className="col-span-2 text-right">Actions</div>
+                      </div>
+
+                      {/* Expense rows */}
+                      {group.expenses.map((item) => {
+                        const monthlyAmount = convertToMonthly(item.amount, item.frequency);
+                        return (
+                          <div
+                            key={item.id}
+                            className="grid grid-cols-12 gap-2 px-3 py-3 rounded-lg hover:bg-muted/50 transition-colors items-center"
+                          >
+                            <div className="col-span-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium truncate">{item.name}</span>
+                                {item.isTaxDeductible && (
+                                  <span title="Tax deductible">
+                                    <Receipt className="h-3 w-3 text-green-500 flex-shrink-0" />
+                                  </span>
+                                )}
+                                {!item.isEssential && (
+                                  <span title="Non-essential">
+                                    <AlertCircle className="h-3 w-3 text-yellow-500 flex-shrink-0" />
+                                  </span>
+                                )}
+                              </div>
+                              {item.vendorName && (
+                                <p className="text-xs text-muted-foreground truncate">{item.vendorName}</p>
+                              )}
+                              {viewMode === 'category' && item.property && (
+                                <p className="text-xs text-blue-500 truncate">{item.property.name}</p>
+                              )}
+                            </div>
+                            <div className="col-span-2">
+                              <span className="font-medium text-red-600">{formatCurrency(item.amount)}</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-sm capitalize">{item.frequency.toLowerCase()}</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-sm">{formatCurrency(monthlyAmount)}</span>
+                            </div>
+                            <div className="col-span-2 flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => { e.stopPropagation(); handleViewDetails(item); }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             );
           })}
