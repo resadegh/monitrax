@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Link from 'next/link';
 import {
   TrendingUp,
@@ -32,6 +33,8 @@ import {
   Target,
   Activity,
   ChevronRight,
+  Landmark,
+  X,
 } from 'lucide-react';
 
 interface PortfolioSnapshot {
@@ -40,12 +43,26 @@ interface PortfolioSnapshot {
   totalAssets: number;
   totalLiabilities: number;
   cashflow: {
+    grossIncome?: number;
+    netIncome?: number;
+    paygWithholding?: number;
     totalIncome: number;
     totalExpenses: number;
+    totalLoanRepayments?: number;
+    monthlyLoanRepayments?: number;
     monthlyNetCashflow: number;
     annualNetCashflow: number;
     savingsRate: number;
   };
+  loans?: Array<{
+    id: string;
+    name: string;
+    principal: number;
+    interestRate: number;
+    minRepayment?: number;
+    repaymentFrequency?: string;
+    propertyName?: string | null;
+  }>;
   assets: {
     properties: { count: number; totalValue: number };
     accounts: { count: number; totalValue: number };
@@ -183,10 +200,13 @@ function ProgressBar({
   );
 }
 
+type DetailTileType = 'netWorth' | 'cashflow' | 'savingsRate' | 'lvr' | null;
+
 export default function DashboardPage() {
   const { token } = useAuth();
   const [snapshot, setSnapshot] = useState<PortfolioSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedDetail, setSelectedDetail] = useState<DetailTileType>(null);
 
   useEffect(() => {
     if (token) {
@@ -465,36 +485,44 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Primary Metrics Row */}
+          {/* Primary Metrics Row - Clickable for details */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Net Worth"
-              value={formatCompactCurrency(snapshot.netWorth)}
-              description={`${formatCompactCurrency(snapshot.totalAssets)} assets - ${formatCompactCurrency(snapshot.totalLiabilities)} debt`}
-              icon={Wallet}
-              variant="purple"
-            />
-            <StatCard
-              title="Monthly Cash Flow"
-              value={formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
-              description={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'Positive cash flow' : 'Negative cash flow'}
-              icon={snapshot.cashflow.monthlyNetCashflow >= 0 ? ArrowUpRight : ArrowDownRight}
-              variant={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'green' : 'orange'}
-            />
-            <StatCard
-              title="Savings Rate"
-              value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
-              description={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year saved`}
-              icon={PiggyBank}
-              variant="teal"
-            />
-            <StatCard
-              title="Portfolio LVR"
-              value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
-              description={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
-              icon={Percent}
-              variant={snapshot.gearing.portfolioLVR > 80 ? 'orange' : 'blue'}
-            />
+            <div onClick={() => setSelectedDetail('netWorth')} className="cursor-pointer">
+              <StatCard
+                title="Net Worth"
+                value={formatCompactCurrency(snapshot.netWorth)}
+                description={`${formatCompactCurrency(snapshot.totalAssets)} assets - ${formatCompactCurrency(snapshot.totalLiabilities)} debt`}
+                icon={Wallet}
+                variant="purple"
+              />
+            </div>
+            <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer">
+              <StatCard
+                title="Monthly Cash Flow"
+                value={formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
+                description={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'Positive cash flow' : 'Negative cash flow'}
+                icon={snapshot.cashflow.monthlyNetCashflow >= 0 ? ArrowUpRight : ArrowDownRight}
+                variant={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'green' : 'orange'}
+              />
+            </div>
+            <div onClick={() => setSelectedDetail('savingsRate')} className="cursor-pointer">
+              <StatCard
+                title="Savings Rate"
+                value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
+                description={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year saved`}
+                icon={PiggyBank}
+                variant="teal"
+              />
+            </div>
+            <div onClick={() => setSelectedDetail('lvr')} className="cursor-pointer">
+              <StatCard
+                title="Portfolio LVR"
+                value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
+                description={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
+                icon={Percent}
+                variant={snapshot.gearing.portfolioLVR > 80 ? 'orange' : 'blue'}
+              />
+            </div>
           </div>
 
           {/* Two Column Layout: Charts & Insights */}
@@ -837,6 +865,376 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Detail Breakdown Dialog */}
+          <Dialog open={selectedDetail !== null} onOpenChange={() => setSelectedDetail(null)}>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+              {selectedDetail === 'netWorth' && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Wallet className="h-5 w-5 text-purple-600" />
+                      Net Worth Breakdown
+                    </DialogTitle>
+                    <DialogDescription>
+                      Your total assets minus total liabilities
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6 pt-4">
+                    {/* Summary */}
+                    <div className="text-center p-6 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-1">Total Net Worth</p>
+                      <p className="text-4xl font-bold text-purple-700 dark:text-purple-400">
+                        {formatCurrency(snapshot.netWorth)}
+                      </p>
+                    </div>
+
+                    {/* Assets Breakdown */}
+                    <div>
+                      <h4 className="font-semibold text-green-700 dark:text-green-400 mb-3 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4" />
+                        Total Assets: {formatCurrency(snapshot.totalAssets)}
+                      </h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-blue-600" />
+                            <span>Properties ({snapshot.assets.properties.count})</span>
+                          </div>
+                          <span className="font-semibold">{formatCurrency(snapshot.assets.properties.totalValue)}</span>
+                        </div>
+                        <div className="flex justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Banknote className="h-4 w-4 text-green-600" />
+                            <span>Cash & Accounts ({snapshot.assets.accounts.count})</span>
+                          </div>
+                          <span className="font-semibold">{formatCurrency(snapshot.assets.accounts.totalValue)}</span>
+                        </div>
+                        <div className="flex justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-purple-600" />
+                            <span>Investments ({snapshot.assets.investments.count})</span>
+                          </div>
+                          <span className="font-semibold">{formatCurrency(snapshot.assets.investments.totalValue)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Liabilities Breakdown */}
+                    <div>
+                      <h4 className="font-semibold text-red-700 dark:text-red-400 mb-3 flex items-center gap-2">
+                        <TrendingDown className="h-4 w-4" />
+                        Total Liabilities: {formatCurrency(snapshot.totalLiabilities)}
+                      </h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between p-3 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Landmark className="h-4 w-4 text-orange-600" />
+                            <span>Loans ({snapshot.liabilities.loans.count})</span>
+                          </div>
+                          <span className="font-semibold">{formatCurrency(snapshot.liabilities.loans.totalValue)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {selectedDetail === 'cashflow' && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      {snapshot.cashflow.monthlyNetCashflow >= 0 ? (
+                        <ArrowUpRight className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <ArrowDownRight className="h-5 w-5 text-orange-600" />
+                      )}
+                      Cash Flow Breakdown
+                    </DialogTitle>
+                    <DialogDescription>
+                      Income minus expenses minus loan repayments
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6 pt-4">
+                    {/* Summary */}
+                    <div className={`text-center p-6 rounded-lg ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+                      <p className="text-sm text-muted-foreground mb-1">Monthly Net Cash Flow</p>
+                      <p className={`text-4xl font-bold ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                        {formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {formatCurrency(snapshot.cashflow.annualNetCashflow)}/year
+                      </p>
+                    </div>
+
+                    {/* Cash Flow Calculation */}
+                    <div className="space-y-3">
+                      {/* Income */}
+                      <div className="p-4 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-green-600" />
+                            <span className="font-medium">Annual Income</span>
+                          </div>
+                          <span className="text-xl font-bold text-green-700 dark:text-green-400">
+                            +{formatCurrency(snapshot.cashflow.totalIncome)}
+                          </span>
+                        </div>
+                        {snapshot.cashflow.grossIncome && snapshot.cashflow.paygWithholding && snapshot.cashflow.paygWithholding > 0 && (
+                          <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800 text-sm space-y-1">
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>Gross income</span>
+                              <span>{formatCurrency(snapshot.cashflow.grossIncome)}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>PAYG withheld</span>
+                              <span>-{formatCurrency(snapshot.cashflow.paygWithholding)}</span>
+                            </div>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {formatCurrency(snapshot.cashflow.totalIncome / 12)}/month
+                        </p>
+                      </div>
+
+                      {/* Expenses */}
+                      <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Receipt className="h-5 w-5 text-red-600" />
+                            <span className="font-medium">Annual Expenses</span>
+                          </div>
+                          <span className="text-xl font-bold text-red-700 dark:text-red-400">
+                            -{formatCurrency(snapshot.cashflow.totalExpenses)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {formatCurrency(snapshot.cashflow.totalExpenses / 12)}/month
+                        </p>
+                      </div>
+
+                      {/* Loan Repayments */}
+                      <div className="p-4 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Landmark className="h-5 w-5 text-orange-600" />
+                            <span className="font-medium">Annual Loan Repayments</span>
+                          </div>
+                          <span className="text-xl font-bold text-orange-700 dark:text-orange-400">
+                            -{formatCurrency(snapshot.cashflow.totalLoanRepayments || 0)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {formatCurrency((snapshot.cashflow.totalLoanRepayments || 0) / 12)}/month
+                        </p>
+                        {snapshot.loans && snapshot.loans.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800 space-y-2">
+                            {snapshot.loans.map((loan) => (
+                              <div key={loan.id} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground truncate max-w-[200px]">
+                                  {loan.name}
+                                  {loan.propertyName && <span className="text-xs"> ({loan.propertyName})</span>}
+                                </span>
+                                <span>{formatCurrency((loan.minRepayment || 0) * 12)}/yr</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Net Result */}
+                      <div className={`p-4 rounded-lg border-2 ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'border-green-500 bg-green-100 dark:bg-green-950/50' : 'border-red-500 bg-red-100 dark:bg-red-950/50'}`}>
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold">= Annual Net Cash Flow</span>
+                          <span className={`text-xl font-bold ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                            {formatCurrency(snapshot.cashflow.annualNetCashflow)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {selectedDetail === 'savingsRate' && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <PiggyBank className="h-5 w-5 text-teal-600" />
+                      Savings Rate Breakdown
+                    </DialogTitle>
+                    <DialogDescription>
+                      Percentage of income saved after all expenses and loan repayments
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6 pt-4">
+                    {/* Summary */}
+                    <div className="text-center p-6 bg-teal-50 dark:bg-teal-950/30 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-1">Savings Rate</p>
+                      <p className="text-5xl font-bold text-teal-700 dark:text-teal-400">
+                        {snapshot.cashflow.savingsRate.toFixed(1)}%
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        of net income
+                      </p>
+                    </div>
+
+                    {/* Calculation */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                        <span>Annual Net Income</span>
+                        <span className="font-semibold">{formatCurrency(snapshot.cashflow.totalIncome)}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                        <span>Annual Expenses</span>
+                        <span className="font-semibold text-red-600">-{formatCurrency(snapshot.cashflow.totalExpenses)}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                        <span>Annual Loan Repayments</span>
+                        <span className="font-semibold text-orange-600">-{formatCurrency(snapshot.cashflow.totalLoanRepayments || 0)}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-teal-100 dark:bg-teal-950/50 rounded-lg border-2 border-teal-500">
+                        <span className="font-semibold">= Annual Savings</span>
+                        <span className="font-bold text-teal-700 dark:text-teal-400">{formatCurrency(snapshot.cashflow.annualNetCashflow)}</span>
+                      </div>
+                    </div>
+
+                    {/* Benchmarks */}
+                    <div className="p-4 bg-muted/30 rounded-lg">
+                      <h4 className="font-medium mb-3">Savings Rate Benchmarks</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${snapshot.cashflow.savingsRate >= 20 ? 'bg-green-500' : 'bg-muted'}`} />
+                          <span className={snapshot.cashflow.savingsRate >= 20 ? 'font-medium' : 'text-muted-foreground'}>
+                            20%+ Excellent
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${snapshot.cashflow.savingsRate >= 10 && snapshot.cashflow.savingsRate < 20 ? 'bg-yellow-500' : 'bg-muted'}`} />
+                          <span className={snapshot.cashflow.savingsRate >= 10 && snapshot.cashflow.savingsRate < 20 ? 'font-medium' : 'text-muted-foreground'}>
+                            10-20% Good
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${snapshot.cashflow.savingsRate >= 0 && snapshot.cashflow.savingsRate < 10 ? 'bg-orange-500' : 'bg-muted'}`} />
+                          <span className={snapshot.cashflow.savingsRate >= 0 && snapshot.cashflow.savingsRate < 10 ? 'font-medium' : 'text-muted-foreground'}>
+                            0-10% Needs Improvement
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${snapshot.cashflow.savingsRate < 0 ? 'bg-red-500' : 'bg-muted'}`} />
+                          <span className={snapshot.cashflow.savingsRate < 0 ? 'font-medium' : 'text-muted-foreground'}>
+                            Below 0% Spending More Than Earning
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {selectedDetail === 'lvr' && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Percent className="h-5 w-5 text-blue-600" />
+                      Loan-to-Value Ratio (LVR) Breakdown
+                    </DialogTitle>
+                    <DialogDescription>
+                      Total debt as a percentage of total assets
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6 pt-4">
+                    {/* Summary */}
+                    <div className={`text-center p-6 rounded-lg ${snapshot.gearing.portfolioLVR > 80 ? 'bg-orange-50 dark:bg-orange-950/30' : snapshot.gearing.portfolioLVR > 60 ? 'bg-yellow-50 dark:bg-yellow-950/30' : 'bg-green-50 dark:bg-green-950/30'}`}>
+                      <p className="text-sm text-muted-foreground mb-1">Portfolio LVR</p>
+                      <p className={`text-5xl font-bold ${snapshot.gearing.portfolioLVR > 80 ? 'text-orange-700 dark:text-orange-400' : snapshot.gearing.portfolioLVR > 60 ? 'text-yellow-700 dark:text-yellow-400' : 'text-green-700 dark:text-green-400'}`}>
+                        {snapshot.gearing.portfolioLVR.toFixed(1)}%
+                      </p>
+                    </div>
+
+                    {/* Calculation */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between p-3 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                        <span>Total Debt (Loans)</span>
+                        <span className="font-semibold text-red-600">{formatCurrency(snapshot.totalLiabilities)}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                        <span>Total Assets</span>
+                        <span className="font-semibold text-green-600">{formatCurrency(snapshot.totalAssets)}</span>
+                      </div>
+                      <div className="p-3 bg-blue-100 dark:bg-blue-950/50 rounded-lg border-2 border-blue-500">
+                        <div className="flex justify-between">
+                          <span className="font-semibold">= LVR (Debt ÷ Assets × 100)</span>
+                          <span className="font-bold text-blue-700 dark:text-blue-400">{snapshot.gearing.portfolioLVR.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Equity */}
+                    <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">Total Equity (Assets - Debt)</span>
+                        <span className="text-xl font-bold text-purple-700 dark:text-purple-400">
+                          {formatCurrency(snapshot.totalAssets - snapshot.totalLiabilities)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {((snapshot.totalAssets - snapshot.totalLiabilities) / snapshot.totalAssets * 100).toFixed(1)}% of assets
+                      </p>
+                    </div>
+
+                    {/* Property-level LVRs */}
+                    {snapshot.properties.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-3">Property LVRs</h4>
+                        <div className="space-y-2">
+                          {snapshot.properties.map((property) => (
+                            <div key={property.id} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                              <div>
+                                <p className="font-medium">{property.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Value: {formatCurrency(property.marketValue)} | Equity: {formatCurrency(property.equity)}
+                                </p>
+                              </div>
+                              <span className={`font-bold ${property.lvr > 80 ? 'text-red-600' : property.lvr > 60 ? 'text-yellow-600' : 'text-green-600'}`}>
+                                {property.lvr.toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* LVR Benchmarks */}
+                    <div className="p-4 bg-muted/30 rounded-lg">
+                      <h4 className="font-medium mb-3">LVR Risk Levels</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${snapshot.gearing.portfolioLVR <= 60 ? 'bg-green-500' : 'bg-muted'}`} />
+                          <span className={snapshot.gearing.portfolioLVR <= 60 ? 'font-medium' : 'text-muted-foreground'}>
+                            ≤60% Conservative (Low Risk)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${snapshot.gearing.portfolioLVR > 60 && snapshot.gearing.portfolioLVR <= 80 ? 'bg-yellow-500' : 'bg-muted'}`} />
+                          <span className={snapshot.gearing.portfolioLVR > 60 && snapshot.gearing.portfolioLVR <= 80 ? 'font-medium' : 'text-muted-foreground'}>
+                            60-80% Moderate (Medium Risk)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${snapshot.gearing.portfolioLVR > 80 ? 'bg-red-500' : 'bg-muted'}`} />
+                          <span className={snapshot.gearing.portfolioLVR > 80 ? 'font-medium' : 'text-muted-foreground'}>
+                            &gt;80% High Leverage (High Risk, may require LMI)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </DashboardLayout>
