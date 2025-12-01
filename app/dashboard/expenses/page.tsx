@@ -13,12 +13,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid } from 'lucide-react';
+import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { DocumentCategory, LinkedEntityType } from '@/lib/documents/types';
+import { ExpenseWizard } from '@/components/ExpenseWizard';
 
 type ViewMode = 'category' | 'property' | 'all';
 
@@ -139,6 +140,7 @@ function ExpensesPageContent() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('category');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showWizard, setShowWizard] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -554,10 +556,16 @@ function ExpensesPageContent() {
         title="Expenses"
         description={`Manage your expenses • Total monthly: ${formatCurrency(totalMonthly)}`}
         action={
-          <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Expense
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowWizard(true)}>
+              <Zap className="mr-2 h-4 w-4" />
+              Quick Add
+            </Button>
+            <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Expense
+            </Button>
+          </div>
         }
       />
 
@@ -1413,6 +1421,15 @@ function ExpensesPageContent() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Expense Wizard */}
+      <ExpenseWizard
+        open={showWizard}
+        onOpenChange={setShowWizard}
+        properties={properties}
+        token={token || ''}
+        onSuccess={loadExpenses}
+      />
     </DashboardLayout>
   );
 }
