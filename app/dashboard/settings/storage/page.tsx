@@ -35,6 +35,7 @@ import {
   Lock,
   Loader2,
 } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 // Storage provider configuration
 interface StorageProvider {
@@ -87,6 +88,7 @@ const MonitraxIcon = () => (
 );
 
 export default function StorageSettingsPage() {
+  const { token } = useAuth();
   const [providers, setProviders] = useState<StorageProvider[]>([
     {
       id: 'monitrax',
@@ -138,8 +140,11 @@ export default function StorageSettingsPage() {
   useEffect(() => {
     // Fetch storage provider status from API
     const fetchProviders = async () => {
+      if (!token) return;
       try {
-        const response = await fetch('/api/settings/storage');
+        const response = await fetch('/api/settings/storage', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (response.ok) {
           const data = await response.json();
           // Update providers with API data
@@ -153,7 +158,7 @@ export default function StorageSettingsPage() {
     };
 
     fetchProviders();
-  }, []);
+  }, [token]);
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -170,6 +175,7 @@ export default function StorageSettingsPage() {
       // Redirect to OAuth flow
       const response = await fetch(`/api/settings/storage/connect/${providerId}`, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
@@ -194,6 +200,7 @@ export default function StorageSettingsPage() {
     try {
       const response = await fetch(`/api/settings/storage/disconnect/${providerId}`, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
@@ -224,7 +231,10 @@ export default function StorageSettingsPage() {
     try {
       const response = await fetch('/api/settings/storage/active', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ providerId }),
       });
 
