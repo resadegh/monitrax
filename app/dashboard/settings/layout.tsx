@@ -16,8 +16,11 @@ import {
   Palette,
   CreditCard,
   Key,
+  ArrowLeft,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface SettingsNavItem {
   name: string;
@@ -87,13 +90,31 @@ export default function SettingsLayout({
   return (
     <div className="container mx-auto py-8 max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Settings className="h-8 w-8" />
-          Settings
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your account settings and preferences
-        </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="icon" className="h-10 w-10">
+                <ArrowLeft className="h-5 w-5" />
+                <span className="sr-only">Back to Dashboard</span>
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <Settings className="h-8 w-8" />
+                Settings
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Manage your account settings and preferences
+              </p>
+            </div>
+          </div>
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm" className="gap-2">
+              <X className="h-4 w-4" />
+              Close
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
