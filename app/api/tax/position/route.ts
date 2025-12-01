@@ -47,8 +47,12 @@ interface ExpenseRecord {
 interface DepreciationRecord {
   id: string;
   propertyId: string;
-  currentYearDeduction: number | null;
-  scheduleType: string;
+  category: string;
+  assetName: string;
+  cost: number;
+  startDate: Date;
+  rate: number;
+  method: string;
   property: { id: string; name: string };
 }
 
@@ -147,12 +151,17 @@ export async function GET(request: NextRequest) {
     }));
 
     // Transform depreciations to DepreciationItem format
-    const depreciationItems: DepreciationItem[] = (depreciations as DepreciationRecord[]).map((dep: DepreciationRecord) => ({
-      id: dep.id,
-      propertyId: dep.propertyId,
-      currentYearDeduction: dep.currentYearDeduction || 0,
-      type: dep.scheduleType,
-    }));
+    // Calculate current year deduction from cost and rate
+    const depreciationItems: DepreciationItem[] = (depreciations as unknown as DepreciationRecord[]).map((dep: DepreciationRecord) => {
+      // Calculate annual deduction: cost * rate (rate is stored as decimal, e.g., 0.025 for 2.5%)
+      const annualDeduction = dep.cost * dep.rate;
+      return {
+        id: dep.id,
+        propertyId: dep.propertyId,
+        currentYearDeduction: annualDeduction,
+        type: dep.category, // DIV43 or DIV40
+      };
+    });
 
     // Calculate super contribution totals
     const superTotals = (superAccounts as SuperAccountRecord[]).reduce(

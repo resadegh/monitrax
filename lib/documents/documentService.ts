@@ -174,11 +174,14 @@ export async function getDocumentById(
     return null;
   }
 
+  // Cast Prisma enums to local enums (they have the same values)
   return {
     ...document,
-    links: document.links.map((link: PrismaDocumentLink) => ({
+    category: document.category as unknown as DocumentCategory,
+    storageProvider: document.storageProvider as unknown as StorageProviderType,
+    links: document.links.map((link: { id: string; entityType: string; entityId: string; createdAt: Date }) => ({
       id: link.id,
-      entityType: link.entityType,
+      entityType: link.entityType as unknown as LinkedEntityType,
       entityId: link.entityId,
       createdAt: link.createdAt,
     })),
