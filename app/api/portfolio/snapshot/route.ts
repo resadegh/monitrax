@@ -541,9 +541,14 @@ export async function GET(request: NextRequest) {
       const totalAnnualPaygWithholding = totalAnnualGrossIncome - totalAnnualNetIncome;
 
       const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
+      // Calculate total loan repayments
+      const totalAnnualLoanRepayments = loans.reduce((sum: number, l: any) => {
+        return sum + normalizeToAnnual(l.minRepayment || 0, l.repaymentFrequency || 'MONTHLY');
+      }, 0);
       // Use NET income for cashflow (what's actually available to spend)
-      const monthlyNetCashflow = (totalAnnualNetIncome - totalAnnualExpenses) / 12;
-      const annualNetCashflow = totalAnnualNetIncome - totalAnnualExpenses;
+      // Cashflow = Income - Expenses - Loan Repayments
+      const monthlyNetCashflow = (totalAnnualNetIncome - totalAnnualExpenses - totalAnnualLoanRepayments) / 12;
+      const annualNetCashflow = totalAnnualNetIncome - totalAnnualExpenses - totalAnnualLoanRepayments;
       // Keep gross-based calculation for backward compatibility
       const totalAnnualIncome = totalAnnualNetIncome;
 
@@ -565,11 +570,18 @@ export async function GET(request: NextRequest) {
         const propertyExpenses = expenses.filter((e: any) => e.propertyId === property.id);
         const annualPropertyExpenses = propertyExpenses.reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
 
+        // Calculate interest (for reference/tax purposes)
         const annualInterest = propertyLoans.reduce((sum: number, l: any) => {
           return sum + (l.principal * l.interestRateAnnual);
         }, 0);
 
-        const propertyCashflow = annualRentalIncome - annualPropertyExpenses - annualInterest;
+        // Calculate actual loan repayments
+        const annualLoanRepayments = propertyLoans.reduce((sum: number, l: any) => {
+          return sum + normalizeToAnnual(l.minRepayment || 0, l.repaymentFrequency || 'MONTHLY');
+        }, 0);
+
+        // Use actual loan repayments for cashflow (not just interest)
+        const propertyCashflow = annualRentalIncome - annualPropertyExpenses - annualLoanRepayments;
 
         // Extract GRDCS links
         const grdcsLinks = extractPropertyLinks(property);
@@ -596,6 +608,7 @@ export async function GET(request: NextRequest) {
             annualIncome: annualRentalIncome,
             annualExpenses: annualPropertyExpenses,
             annualInterest,
+            annualLoanRepayments,
             annualNet: propertyCashflow,
             monthlyNet: propertyCashflow / 12,
           },
@@ -712,12 +725,14 @@ export async function GET(request: NextRequest) {
           paygWithholding: Math.round(totalAnnualPaygWithholding * 100) / 100,
           totalIncome: Math.round(totalAnnualNetIncome * 100) / 100, // Net income for cashflow
           totalExpenses: Math.round(totalAnnualExpenses * 100) / 100,
+          totalLoanRepayments: Math.round(totalAnnualLoanRepayments * 100) / 100,
+          monthlyLoanRepayments: Math.round(totalAnnualLoanRepayments / 12 * 100) / 100,
           monthlyNetCashflow: Math.round(monthlyNetCashflow * 100) / 100,
           annualNetCashflow: Math.round(annualNetCashflow * 100) / 100,
           savingsRate: totalAnnualNetIncome > 0
             ? Math.round((annualNetCashflow / totalAnnualNetIncome) * 10000) / 100
             : 0,
-          _note: 'Income figures reflect after-tax (net) amounts for salary income',
+          _note: 'Cashflow = Income - Expenses - Loan Repayments. Income figures reflect after-tax (net) amounts for salary income.',
         },
 
         // Assets breakdown

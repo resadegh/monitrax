@@ -30,6 +30,8 @@ interface Loan {
   interestRateAnnual: number;
   rateType: string;
   isInterestOnly: boolean;
+  minRepayment: number;
+  repaymentFrequency: string;
 }
 
 interface Income {
@@ -283,10 +285,21 @@ function PropertiesPageContent() {
       sum + convertToAnnual(inc.amount, inc.frequency), 0) || 0;
     const annualExpenses = property.expenses?.reduce((sum, exp) =>
       sum + convertToAnnual(exp.amount, exp.frequency), 0) || 0;
-    const annualInterest = property.loans?.reduce((sum, loan) =>
-      sum + (loan.principal * loan.interestRateAnnual), 0) || 0;
+    // Use actual loan repayments instead of just interest
+    const annualLoanRepayments = property.loans?.reduce((sum, loan) =>
+      sum + convertToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY'), 0) || 0;
 
-    return annualIncome - annualExpenses - annualInterest;
+    return annualIncome - annualExpenses - annualLoanRepayments;
+  };
+
+  const calculateAnnualLoanRepayments = (property: Property) => {
+    return property.loans?.reduce((sum, loan) =>
+      sum + convertToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY'), 0) || 0;
+  };
+
+  const calculateAnnualInterest = (property: Property) => {
+    return property.loans?.reduce((sum, loan) =>
+      sum + (loan.principal * loan.interestRateAnnual), 0) || 0;
   };
 
   const totalValue = properties.reduce((sum, p) => sum + p.currentValue, 0);
@@ -700,8 +713,29 @@ function PropertiesPageContent() {
                               </p>
                             </div>
                           </div>
+                          {/* Repayment Info */}
+                          <div className="mt-3 pt-3 border-t flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Repayment</span>
+                            <div className="text-right">
+                              <p className="font-medium text-orange-600">
+                                {formatCurrency(loan.minRepayment || 0)}/{(loan.repaymentFrequency || 'monthly').toLowerCase()}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatCurrency(convertToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY'))}/year
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       ))}
+                      {/* Total Loan Repayments */}
+                      <div className="p-4 bg-orange-50 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Total Annual Repayments</span>
+                          <span className="font-bold text-orange-600">
+                            {formatCurrency(calculateAnnualLoanRepayments(selectedProperty))}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-center text-muted-foreground py-8">
@@ -712,6 +746,40 @@ function PropertiesPageContent() {
 
                 <TabsContent value="cashflow" className="mt-4">
                   <div className="space-y-4">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-green-50 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Annual Income</p>
+                        <p className="text-lg font-bold text-green-600">
+                          {formatCurrency(selectedProperty.income?.reduce((sum, inc) =>
+                            sum + convertToAnnual(inc.amount, inc.frequency), 0) || 0)}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-red-50 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Annual Expenses</p>
+                        <p className="text-lg font-bold text-red-600">
+                          {formatCurrency(selectedProperty.expenses?.reduce((sum, exp) =>
+                            sum + convertToAnnual(exp.amount, exp.frequency), 0) || 0)}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-orange-50 rounded-lg">
+                        <p className="text-xs text-muted-foreground">Annual Loan Repayments</p>
+                        <p className="text-lg font-bold text-orange-600">
+                          {formatCurrency(calculateAnnualLoanRepayments(selectedProperty))}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Interest: {formatCurrency(calculateAnnualInterest(selectedProperty))}
+                        </p>
+                      </div>
+                      <div className={`p-3 rounded-lg ${calculateCashflow(selectedProperty) >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                        <p className="text-xs text-muted-foreground">Net Cashflow</p>
+                        <p className={`text-lg font-bold ${calculateCashflow(selectedProperty) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          {formatCurrency(calculateCashflow(selectedProperty))}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">per year</p>
+                      </div>
+                    </div>
+
                     <div>
                       <h4 className="font-medium mb-2 flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-green-600" />
@@ -756,6 +824,38 @@ function PropertiesPageContent() {
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">No expenses linked.</p>
+                      )}
+                    </div>
+
+                    {/* Loan Repayments Section */}
+                    <div>
+                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                        <Landmark className="h-4 w-4 text-orange-600" />
+                        Loan Repayments
+                      </h4>
+                      {selectedProperty.loans && selectedProperty.loans.length > 0 ? (
+                        <div className="space-y-2">
+                          {selectedProperty.loans.map((loan) => (
+                            <div key={loan.id} className="flex justify-between p-3 bg-orange-50 rounded-lg">
+                              <div>
+                                <span>{loan.name}</span>
+                                <p className="text-xs text-muted-foreground">
+                                  {loan.isInterestOnly ? 'Interest Only' : 'P&I'} • {(loan.interestRateAnnual * 100).toFixed(2)}%
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-medium text-orange-600">
+                                  {formatCurrency(loan.minRepayment || 0)}/{(loan.repaymentFrequency || 'monthly').toLowerCase()}
+                                </span>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatCurrency(convertToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY'))}/yr
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No loans linked.</p>
                       )}
                     </div>
                   </div>
