@@ -1,6 +1,6 @@
 # Monitrax Implementation Changelog
 
-**Last Updated:** 2025-11-30
+**Last Updated:** 2025-12-01
 **Active Branch:** `claude/continue-ai-strategy-engine-01Y1tCB7457LqYNMe3hwg1Jk`
 
 ---
@@ -8,6 +8,64 @@
 ## Summary
 
 This document tracks all implementation changes, features, and bug fixes made to the Monitrax platform.
+
+---
+
+## Recent Changes (December 2025)
+
+### Phase 20: Australian Tax Intelligence Engine ✅
+**Date:** 2025-12-01
+
+#### Phase 20A: Core Tax Engine
+
+**Files Created:**
+| File | Purpose |
+|------|---------|
+| `lib/tax-engine/index.ts` | Public API exports |
+| `lib/tax-engine/types.ts` | Type definitions (TaxYearConfig, TaxBracket, etc.) |
+| `lib/tax-engine/core/taxYearConfig.ts` | FY 2024-25 rates with Stage 3 tax cuts |
+| `lib/tax-engine/core/incomeTaxCalculator.ts` | Tax bracket calculations |
+| `lib/tax-engine/core/medicareLevyCalculator.ts` | Medicare levy + surcharge |
+| `lib/tax-engine/core/paygCalculator.ts` | PAYG withholding tables |
+| `lib/tax-engine/core/taxOffsets.ts` | LITO, SAPTO, franking credit offsets |
+| `lib/cashflow/incomeNormalizer.ts` | Gross-to-net income conversion utility |
+| `app/api/tax/route.ts` | GET/POST tax calculation API |
+| `app/api/tax/position/route.ts` | Tax position calculator API |
+| `app/dashboard/tax/page.tsx` | Tax Dashboard with tabs |
+
+**Files Modified:**
+| File | Changes |
+|------|---------|
+| `app/api/cashflow/route.ts` | Uses net income (after PAYG) for salary types |
+| `app/api/calculate/cashflow/route.ts` | Returns gross, net, PAYG breakdown |
+| `app/api/portfolio/snapshot/route.ts` | Added grossIncome, netIncome, paygWithholding |
+| `app/api/financial-health/route.ts` | Uses net monthly income for health metrics |
+| `app/dashboard/income/page.tsx` | Salary fields: gross/net selector, PAYG preview, super |
+| `lib/documents/documentService.ts` | Fixed Prisma enum type casting |
+
+**Features:**
+- Australian Tax Engine with 2024-25 Stage 3 tax rates
+- PAYG withholding calculation (weekly, fortnightly, monthly)
+- Medicare levy (2%) with thresholds
+- Tax offsets: LITO ($700 max), SAPTO, franking credits
+- Tax Dashboard UI with Overview, Income, Deductions, Super tabs
+- Income form enhancements for salary types (gross/net, PAYG preview)
+- **Tax-Cashflow Integration**: All financial calculations now use after-tax (net) income for salary types
+
+**Tax-Cashflow Integration Details:**
+| API | Change |
+|-----|--------|
+| `/api/cashflow` | Income streams use net amounts after PAYG deduction |
+| `/api/calculate/cashflow` | Returns `grossIncome`, `netIncome`, `paygWithholding` |
+| `/api/portfolio/snapshot` | Cashflow section includes gross/net breakdown |
+| `/api/financial-health` | Health metrics based on actual take-home pay |
+
+**Bug Fixes:**
+- Fixed `DepreciationRecord` type to match Prisma schema (`cost`, `rate`, `category`, `method`)
+- Removed invalid `'DIVIDEND'` case from IncomeType switch (valid: SALARY, RENT, RENTAL, INVESTMENT, OTHER)
+- Removed invalid `'INTEREST'` type comparison in tax API
+- Fixed DocumentCategory Prisma-to-local enum type casting
+- Fixed implicit `any` types in tax position route
 
 ---
 
