@@ -25,6 +25,7 @@ import {
   CategoryAverage,
   TrendDirection,
 } from '@/lib/cashflow';
+import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
 
 // Helper to normalize amount to monthly
 function normalizeToMonthly(amount: number, frequency: string): number {
@@ -116,15 +117,24 @@ async function buildCFEInput(
     isActive: rp.isActive,
   }));
 
-  // Transform income streams
-  const incomeStreams: IncomeStream[] = income.map((i: any) => ({
-    id: i.id,
-    name: i.name,
-    type: i.type,
-    monthlyAmount: normalizeToMonthly(Number(i.amount), i.frequency),
-    frequency: i.frequency,
-    volatility: 0.1, // Default low volatility for regular income
-  }));
+  // Transform income streams with tax-adjusted amounts for salaries
+  const incomeStreams: IncomeStream[] = income.map((i: any) => {
+    const baseStream: IncomeStream = {
+      id: i.id,
+      name: i.name,
+      type: i.type,
+      monthlyAmount: normalizeToMonthly(Number(i.amount), i.frequency),
+      frequency: i.frequency,
+      volatility: 0.1, // Default low volatility for regular income
+    };
+
+    // Apply tax normalization (adjusts salary to net after PAYG)
+    const normalized = normalizeIncomeStream(baseStream);
+    return {
+      ...baseStream,
+      monthlyAmount: normalized.netMonthlyAmount, // Use after-tax amount for cashflow
+    };
+  });
 
   // Transform loan schedules
   const loanSchedules: LoanSchedule[] = loans.map((l: any) => ({
