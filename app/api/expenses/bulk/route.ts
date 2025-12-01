@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { Frequency } from '@/lib/validation/common';
+import { ExpenseCategory, ExpenseSourceType } from '@/lib/validation/expenses';
 
 interface BulkExpenseItem {
   name: string;
@@ -60,10 +62,10 @@ export async function POST(request: NextRequest) {
             data: {
               userId: authReq.user!.userId,
               name: expense.name,
-              category: expense.category,
+              category: expense.category as ExpenseCategory,
               amount: parseFloat(String(expense.amount)),
-              frequency: expense.frequency,
-              sourceType: expense.sourceType || (expense.propertyId ? 'PROPERTY' : 'GENERAL'),
+              frequency: expense.frequency as Frequency,
+              sourceType: (expense.sourceType || (expense.propertyId ? 'PROPERTY' : 'GENERAL')) as ExpenseSourceType,
               propertyId: expense.propertyId || null,
               isTaxDeductible: expense.isTaxDeductible ?? false,
               isEssential: expense.isEssential ?? true,
