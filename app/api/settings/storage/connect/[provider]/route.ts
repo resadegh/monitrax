@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 
-// OAuth configuration (would be in environment variables)
+// OAuth configuration (redirect URIs are built dynamically from request)
 const OAUTH_CONFIG = {
   google_drive: {
     clientId: process.env.GOOGLE_CLIENT_ID,
@@ -15,14 +15,14 @@ const OAUTH_CONFIG = {
       'https://www.googleapis.com/auth/drive.file',
       'https://www.googleapis.com/auth/userinfo.email',
     ],
-    redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/google-drive`,
+    callbackPath: '/api/oauth/callback/google-drive',
   },
   icloud: {
     // iCloud uses Sign in with Apple + CloudKit
     clientId: process.env.APPLE_CLIENT_ID,
     authUrl: 'https://appleid.apple.com/auth/authorize',
     scopes: ['name', 'email'],
-    redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/icloud`,
+    callbackPath: '/api/oauth/callback/icloud',
   },
   onedrive: {
     clientId: process.env.MICROSOFT_CLIENT_ID,
@@ -32,9 +32,23 @@ const OAUTH_CONFIG = {
       'user.read',
       'offline_access',
     ],
-    redirectUri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/onedrive`,
+    callbackPath: '/api/oauth/callback/onedrive',
   },
 };
+
+/**
+ * Get the base URL from environment or derive from request
+ */
+function getBaseUrl(request: Request): string {
+  // First try environment variable
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+
+  // Derive from request URL
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
 
 export async function POST(
   request: Request,
@@ -75,18 +89,22 @@ export async function POST(
       })
     ).toString('base64url');
 
+    // Get base URL for redirect URIs
+    const baseUrl = getBaseUrl(request);
+    const redirectUri = `${baseUrl}${providerConfig.callbackPath}`;
+
     // Build OAuth URL
     let authUrl: string;
 
     switch (provider) {
       case 'google_drive':
-        authUrl = buildGoogleAuthUrl(providerConfig, state);
+        authUrl = buildGoogleAuthUrl(providerConfig, state, redirectUri);
         break;
       case 'icloud':
-        authUrl = buildAppleAuthUrl(providerConfig, state);
+        authUrl = buildAppleAuthUrl(providerConfig, state, redirectUri);
         break;
       case 'onedrive':
-        authUrl = buildMicrosoftAuthUrl(providerConfig, state);
+        authUrl = buildMicrosoftAuthUrl(providerConfig, state, redirectUri);
         break;
       default:
         return NextResponse.json(
@@ -111,11 +129,12 @@ export async function POST(
 
 function buildGoogleAuthUrl(
   config: typeof OAUTH_CONFIG.google_drive,
-  state: string
+  state: string,
+  redirectUri: string
 ): string {
   const params = new URLSearchParams({
     client_id: config.clientId!,
-    redirect_uri: config.redirectUri,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: config.scopes.join(' '),
     state,
@@ -128,11 +147,12 @@ function buildGoogleAuthUrl(
 
 function buildAppleAuthUrl(
   config: typeof OAUTH_CONFIG.icloud,
-  state: string
+  state: string,
+  redirectUri: string
 ): string {
   const params = new URLSearchParams({
     client_id: config.clientId!,
-    redirect_uri: config.redirectUri,
+    redirect_uri: redirectUri,
     response_type: 'code id_token',
     scope: config.scopes.join(' '),
     state,
@@ -144,11 +164,12 @@ function buildAppleAuthUrl(
 
 function buildMicrosoftAuthUrl(
   config: typeof OAUTH_CONFIG.onedrive,
-  state: string
+  state: string,
+  redirectUri: string
 ): string {
   const params = new URLSearchParams({
     client_id: config.clientId!,
-    redirect_uri: config.redirectUri,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: config.scopes.join(' '),
     state,

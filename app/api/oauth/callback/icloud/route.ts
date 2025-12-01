@@ -17,6 +17,17 @@ const StorageProviderType = {
 
 const APPLE_TOKEN_URL = 'https://appleid.apple.com/auth/token';
 
+/**
+ * Get the base URL from environment or derive from request
+ */
+function getBaseUrl(request: Request): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -65,6 +76,7 @@ export async function POST(request: Request) {
     const clientSecret = await generateAppleClientSecret();
 
     // Exchange code for tokens
+    const baseUrl = getBaseUrl(request);
     const tokenResponse = await fetch(APPLE_TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -74,7 +86,7 @@ export async function POST(request: Request) {
         code,
         client_id: process.env.APPLE_CLIENT_ID!,
         client_secret: clientSecret,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/icloud`,
+        redirect_uri: `${baseUrl}/api/oauth/callback/icloud`,
         grant_type: 'authorization_code',
       }),
     });

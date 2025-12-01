@@ -17,6 +17,17 @@ const StorageProviderType = {
 const MICROSOFT_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
 const MICROSOFT_GRAPH_URL = 'https://graph.microsoft.com/v1.0/me';
 
+/**
+ * Get the base URL from environment or derive from request
+ */
+function getBaseUrl(request: Request): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -60,6 +71,7 @@ export async function GET(request: Request) {
     }
 
     // Exchange code for tokens
+    const baseUrl = getBaseUrl(request);
     const tokenResponse = await fetch(MICROSOFT_TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -69,7 +81,7 @@ export async function GET(request: Request) {
         code,
         client_id: process.env.MICROSOFT_CLIENT_ID!,
         client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/oauth/callback/onedrive`,
+        redirect_uri: `${baseUrl}/api/oauth/callback/onedrive`,
         grant_type: 'authorization_code',
         scope: 'files.readwrite user.read offline_access',
       }),
