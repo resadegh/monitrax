@@ -5,8 +5,15 @@
  */
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { StorageProviderType } from '@prisma/client';
+import prisma from '@/lib/db';
+
+// Local enum to avoid Prisma generation issues
+const StorageProviderType = {
+  MONITRAX: 'MONITRAX',
+  GOOGLE_DRIVE: 'GOOGLE_DRIVE',
+  ICLOUD: 'ICLOUD',
+  ONEDRIVE: 'ONEDRIVE',
+} as const;
 
 const APPLE_TOKEN_URL = 'https://appleid.apple.com/auth/token';
 
