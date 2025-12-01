@@ -674,6 +674,7 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       const loanSnapshots = loans.map((loan: any) => {
         const grdcsLinks = extractLoanLinks(loan);
+        const annualRepayment = normalizeToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY');
         return {
           id: loan.id,
           name: loan.name,
@@ -685,6 +686,9 @@ export async function GET(request: NextRequest) {
           propertyName: loan.property?.name || null,
           offsetAccountId: loan.offsetAccountId,
           offsetBalance: loan.offsetAccount?.currentBalance || 0,
+          minRepayment: loan.minRepayment || 0,
+          repaymentFrequency: loan.repaymentFrequency || 'MONTHLY',
+          annualRepayment,
           _links: {
             related: grdcsLinks.linked,
           },
@@ -694,6 +698,24 @@ export async function GET(request: NextRequest) {
           },
         };
       });
+
+      // ============================================================================
+      // EXPENSE SNAPSHOTS FOR CASHFLOW BREAKDOWN
+      // ============================================================================
+      const expenseSnapshots = expenses.map((expense: any) => {
+        const annualAmount = normalizeToAnnual(expense.amount, expense.frequency);
+        return {
+          id: expense.id,
+          name: expense.name,
+          category: expense.category,
+          amount: expense.amount,
+          frequency: expense.frequency,
+          annualAmount,
+          propertyId: expense.propertyId,
+          propertyName: expense.property?.name || null,
+          isTaxDeductible: expense.isTaxDeductible || false,
+        };
+      }).sort((a: any, b: any) => b.annualAmount - a.annualAmount);
 
       // ============================================================================
       // TAX EXPOSURE
@@ -795,6 +817,7 @@ export async function GET(request: NextRequest) {
         // GRDCS-enhanced entity details
         properties: propertySnapshots,
         loans: loanSnapshots,
+        expenses: expenseSnapshots,
 
         // Investment details
         investments: {

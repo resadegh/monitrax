@@ -62,6 +62,17 @@ interface PortfolioSnapshot {
     minRepayment?: number;
     repaymentFrequency?: string;
     propertyName?: string | null;
+    annualRepayment?: number;
+  }>;
+  expenses?: Array<{
+    id: string;
+    name: string;
+    category: string;
+    amount: number;
+    frequency: string;
+    annualAmount: number;
+    propertyName?: string | null;
+    isTaxDeductible?: boolean;
   }>;
   assets: {
     properties: { count: number; totalValue: number };
@@ -1011,6 +1022,24 @@ export default function DashboardPage() {
                         <p className="text-xs text-muted-foreground mt-2">
                           {formatCurrency(snapshot.cashflow.totalExpenses / 12)}/month
                         </p>
+                        {snapshot.expenses && snapshot.expenses.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-800 space-y-2">
+                            {snapshot.expenses.slice(0, 5).map((expense) => (
+                              <div key={expense.id} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground truncate max-w-[200px]">
+                                  {expense.name}
+                                  {expense.propertyName && <span className="text-xs"> ({expense.propertyName})</span>}
+                                </span>
+                                <span>{formatCurrency(expense.annualAmount)}/yr</span>
+                              </div>
+                            ))}
+                            {snapshot.expenses.length > 5 && (
+                              <p className="text-xs text-muted-foreground">
+                                +{snapshot.expenses.length - 5} more expenses
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Loan Repayments */}
@@ -1035,7 +1064,7 @@ export default function DashboardPage() {
                                   {loan.name}
                                   {loan.propertyName && <span className="text-xs"> ({loan.propertyName})</span>}
                                 </span>
-                                <span>{formatCurrency((loan.minRepayment || 0) * 12)}/yr</span>
+                                <span>{formatCurrency(loan.annualRepayment || 0)}/yr</span>
                               </div>
                             ))}
                           </div>
