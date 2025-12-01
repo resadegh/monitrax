@@ -150,7 +150,8 @@ Every API response follows a standardised format:
 
 | Phase | Name | Status | Notes |
 |-------|------|--------|-------|
-| **19** | Document Management | 🔄 In Progress | Core infrastructure complete, entity tabs pending |
+| **19** | Document Management | 🔄 In Progress | Core infrastructure complete |
+| **19.1** | DMS Expansion | 🔄 In Progress | Receipt upload for expenses complete (2025-12-01) |
 
 ### Planned Phases
 
@@ -192,6 +193,7 @@ Every API response follows a standardised format:
 - IO loan simulation
 - Strategy vs baseline payoff comparison
 - Interest savings projections
+- Loan repayments included in cashflow (2025-12-01 fix)
 
 ### 5.3 Accounts Module
 
@@ -233,6 +235,13 @@ Every API response follows a standardised format:
 - Tax-deductibility
 - Property/loan/investment linking
 - Essential vs discretionary
+- Receipt attachments (Phase 19.1)
+
+**UI Features (2025-12-01):**
+- Grouped view by category or property
+- Expandable tiles with expense drill-down
+- Individual tile view option
+- Receipt upload during expense entry
 
 ### 5.6 Investment Module
 

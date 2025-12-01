@@ -1,6 +1,19 @@
-# PHASE 07 — DASHBOARD REBUILD  
-### Unified Financial Command Center  
-Version: 1.0  
+# PHASE 07 — DASHBOARD REBUILD
+### Unified Financial Command Center
+Version: 1.1
+Last Updated: 2025-12-01
+
+---
+
+## Post-Implementation Enhancements
+
+| Feature | Date | Commit | Description |
+|---------|------|--------|-------------|
+| Detail Dialogs | 2025-12-01 | `649db2c` | Click-to-expand detail dialogs for all 4 primary metric tiles |
+| Net Worth Breakdown | 2025-12-01 | `649db2c` | Assets/liabilities detailed view |
+| Cash Flow Breakdown | 2025-12-01 | `649db2c` | Income/expenses/loan repayments with per-loan details |
+| Savings Rate Breakdown | 2025-12-01 | `649db2c` | Calculation display with benchmarks |
+| LVR Breakdown | 2025-12-01 | `649db2c` | Per-property LVR with risk indicators |
 
 ---
 

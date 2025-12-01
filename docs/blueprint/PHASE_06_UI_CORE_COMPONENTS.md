@@ -1,7 +1,43 @@
-# PHASE 06 — UI CORE COMPONENTS  
-### Monitrax Design System & UI Foundations  
-Version: 1.0  
+# PHASE 06 — UI CORE COMPONENTS
+### Monitrax Design System & UI Foundations
+Version: 1.1
 Status: COMPLETE (Blueprint Only)
+Last Updated: 2025-12-01
+
+---
+
+## Post-Implementation Enhancements
+
+| Feature | Date | Commit | Description |
+|---------|------|--------|-------------|
+| Expenses Grouped View | 2025-12-01 | `41e2dce` | Expenses page redesigned with grouped tiles |
+| View Mode Toggle | 2025-12-01 | `41e2dce` | Category / Property / All view modes |
+| Expandable Group Tiles | 2025-12-01 | `41e2dce` | Click to expand groups and see expense details |
+| Settings Navigation | 2025-12-01 | `73c9a11` | Back button and close option for settings layout |
+
+### Expenses Page Grouped View Pattern
+
+New UI pattern introduced for managing large lists of related items:
+
+```typescript
+type ViewMode = 'category' | 'property' | 'all';
+
+interface ExpenseGroup {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  expenses: Expense[];
+  totalMonthly: number;
+  count: number;
+}
+```
+
+**Features:**
+- Toggle between grouping strategies (category, property)
+- Collapsible group tiles showing totals
+- Table view within expanded groups
+- Maintains individual CRUD operations
+- Groups sorted by total monthly amount
 
 ---
 
