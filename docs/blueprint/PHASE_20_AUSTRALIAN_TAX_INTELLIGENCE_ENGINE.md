@@ -1,9 +1,10 @@
 # Phase 20: Australian Tax Intelligence Engine
 
-**Version:** 1.0
-**Status:** Draft
+**Version:** 1.1
+**Status:** Implemented (Phase 20A Complete)
 **Priority:** High
 **Dependencies:** Phase 17 (Personal CFO), Phase 19 (Documents)
+**Last Updated:** 2025-12-01
 
 ---
 
@@ -17,6 +18,83 @@ Phase 20 introduces a comprehensive Australian Tax Intelligence Engine that:
 - Offers AI-powered tax optimization recommendations
 
 **Core Principle:** Users should never have to manually determine if something is taxable. The system knows Australian tax law and applies it automatically.
+
+---
+
+## 1.1 Implementation Status (as of 2025-12-01)
+
+### ✅ Phase 20A: Core Tax Engine - COMPLETE
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Tax year configuration (2024-25) | ✅ Complete | Stage 3 tax cuts applied |
+| Income tax bracket calculator | ✅ Complete | `lib/tax-engine/core/incomeTaxCalculator.ts` |
+| Medicare levy calculator | ✅ Complete | 2% rate with thresholds |
+| PAYG withholding calculator | ✅ Complete | `lib/tax-engine/core/paygCalculator.ts` |
+| Tax position calculation | ✅ Complete | `app/api/tax/position/route.ts` |
+| Tax offsets (LITO, SAPTO) | ✅ Complete | `lib/tax-engine/core/taxOffsets.ts` |
+| Franking credits | ✅ Complete | Dividend grossing-up |
+| Tax Dashboard UI | ✅ Complete | `app/dashboard/tax/page.tsx` |
+| Income form salary enhancements | ✅ Complete | Gross/net, PAYG preview, super |
+
+### ✅ Tax-Cashflow Integration - COMPLETE
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Income Normalizer Utility | ✅ Complete | `lib/cashflow/incomeNormalizer.ts` |
+| Cashflow API net income | ✅ Complete | Uses after-tax amounts for salary |
+| Financial Health net income | ✅ Complete | Health metrics use take-home pay |
+| Portfolio snapshot gross/net | ✅ Complete | Shows both with PAYG breakdown |
+| Calculate cashflow API | ✅ Complete | Returns gross, net, PAYG separately |
+
+### 🔲 Phase 20B: Super Integration - PENDING
+
+- SuperannuationAccount model
+- SuperContribution model
+- Salary sacrifice tracking
+- Contribution cap monitoring
+
+### 🔲 Phase 20C: Income Taxability Automation - PENDING
+
+- Auto-determine taxability rules
+- Remove manual isTaxable toggle
+- TaxCategory enum integration
+
+### 🔲 Phase 20D: AI Tax Optimizer - PENDING
+
+- AI recommendation engine
+- Scenario modelling
+- Year comparison charts
+
+---
+
+## 1.2 Key Files Created/Modified
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `lib/tax-engine/index.ts` | Public API exports |
+| `lib/tax-engine/types.ts` | Type definitions |
+| `lib/tax-engine/core/taxYearConfig.ts` | FY 2024-25 rates |
+| `lib/tax-engine/core/incomeTaxCalculator.ts` | Tax bracket calculations |
+| `lib/tax-engine/core/medicareLevyCalculator.ts` | Medicare levy + surcharge |
+| `lib/tax-engine/core/paygCalculator.ts` | PAYG withholding |
+| `lib/tax-engine/core/taxOffsets.ts` | LITO, SAPTO offsets |
+| `lib/cashflow/incomeNormalizer.ts` | Gross-to-net income conversion |
+| `app/api/tax/route.ts` | Tax calculation API |
+| `app/api/tax/position/route.ts` | Tax position calculator |
+| `app/dashboard/tax/page.tsx` | Tax Dashboard UI |
+
+### Modified Files
+
+| File | Changes |
+|------|---------|
+| `app/api/cashflow/route.ts` | Uses net income for salary types |
+| `app/api/calculate/cashflow/route.ts` | Returns gross, net, PAYG breakdown |
+| `app/api/portfolio/snapshot/route.ts` | Added grossIncome, netIncome, paygWithholding |
+| `app/api/financial-health/route.ts` | Uses net monthly income for health metrics |
+| `app/dashboard/income/page.tsx` | Salary fields: gross/net, PAYG preview, super |
 
 ---
 

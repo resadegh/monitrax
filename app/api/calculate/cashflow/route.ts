@@ -11,6 +11,7 @@ import { withAuth } from '@/lib/middleware';
 import prisma from '@/lib/db';
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 
 // =============================================================================
 // REQUEST SCHEMA
@@ -62,11 +63,17 @@ const cashflowRequestSchema = z.object({
 // =============================================================================
 
 interface CashflowResult {
-  monthlyIncome: number;
+  monthlyGrossIncome: number;
+  monthlyNetIncome: number; // After PAYG withholding
+  monthlyIncome: number; // Alias for monthlyNetIncome (for cashflow purposes)
+  monthlyPaygWithholding: number;
   monthlyExpenses: number;
   monthlyLoanRepayments: number;
   monthlySurplus: number;
-  annualIncome: number;
+  annualGrossIncome: number;
+  annualNetIncome: number;
+  annualIncome: number; // Alias for annualNetIncome
+  annualPaygWithholding: number;
   annualExpenses: number;
   annualLoanRepayments: number;
   annualSurplus: number;
@@ -98,21 +105,41 @@ function calculateCashflow(
     offsetBalance: number;
   }>
 ): CashflowResult {
-  // Calculate monthly income
-  let monthlyIncome = 0;
+  // Calculate monthly income with tax adjustments for salaries
+  let monthlyGrossIncome = 0;
+  let monthlyNetIncome = 0;
+  let monthlyPaygWithholding = 0;
   let taxableIncome = 0;
   const incomeByType: Record<string, number> = {};
 
   for (const inc of income) {
-    const monthly = toMonthly(inc.amount, inc.frequency as Frequency);
-    monthlyIncome += monthly;
+    const monthlyGross = toMonthly(inc.amount, inc.frequency as Frequency);
+    monthlyGrossIncome += monthlyGross;
+
+    // For SALARY income, calculate net after PAYG withholding
+    let monthlyNet = monthlyGross;
+    let monthlyPayg = 0;
+
+    if (inc.type === 'SALARY') {
+      // Calculate take-home pay using tax engine
+      const takeHome = calculateTakeHomePay(
+        inc.amount,
+        inc.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
+      );
+      monthlyNet = toMonthly(takeHome.netAmount, inc.frequency as Frequency);
+      monthlyPayg = toMonthly(takeHome.paygWithholding + takeHome.medicareLevy, inc.frequency as Frequency);
+    }
+
+    monthlyNetIncome += monthlyNet;
+    monthlyPaygWithholding += monthlyPayg;
 
     if (inc.isTaxable) {
-      taxableIncome += monthly * 12;
+      taxableIncome += monthlyGross * 12;
     }
 
     const type = inc.type || 'OTHER';
-    incomeByType[type] = (incomeByType[type] || 0) + monthly;
+    // Store NET amounts in breakdown for cashflow purposes
+    incomeByType[type] = (incomeByType[type] || 0) + monthlyNet;
   }
 
   // Calculate monthly expenses
@@ -147,20 +174,30 @@ function calculateCashflow(
     monthlyLoanRepayments += monthly;
   }
 
-  // Calculate totals
+  // Calculate totals using NET income (what's actually available for spending)
   const totalMonthlyOutflows = monthlyExpenses + monthlyLoanRepayments;
-  const monthlySurplus = monthlyIncome - totalMonthlyOutflows;
-  const savingsRate = monthlyIncome > 0 ? (monthlySurplus / monthlyIncome) * 100 : 0;
+  const monthlySurplus = monthlyNetIncome - totalMonthlyOutflows;
+  const savingsRate = monthlyNetIncome > 0 ? (monthlySurplus / monthlyNetIncome) * 100 : 0;
 
   return {
-    monthlyIncome: Math.round(monthlyIncome * 100) / 100,
+    // Gross and net income separation
+    monthlyGrossIncome: Math.round(monthlyGrossIncome * 100) / 100,
+    monthlyNetIncome: Math.round(monthlyNetIncome * 100) / 100,
+    monthlyIncome: Math.round(monthlyNetIncome * 100) / 100, // Alias - use net for cashflow
+    monthlyPaygWithholding: Math.round(monthlyPaygWithholding * 100) / 100,
+    // Expenses and loans
     monthlyExpenses: Math.round(monthlyExpenses * 100) / 100,
     monthlyLoanRepayments: Math.round(monthlyLoanRepayments * 100) / 100,
     monthlySurplus: Math.round(monthlySurplus * 100) / 100,
-    annualIncome: Math.round(monthlyIncome * 12 * 100) / 100,
+    // Annual figures
+    annualGrossIncome: Math.round(monthlyGrossIncome * 12 * 100) / 100,
+    annualNetIncome: Math.round(monthlyNetIncome * 12 * 100) / 100,
+    annualIncome: Math.round(monthlyNetIncome * 12 * 100) / 100, // Alias - use net for cashflow
+    annualPaygWithholding: Math.round(monthlyPaygWithholding * 12 * 100) / 100,
     annualExpenses: Math.round(monthlyExpenses * 12 * 100) / 100,
     annualLoanRepayments: Math.round(monthlyLoanRepayments * 12 * 100) / 100,
     annualSurplus: Math.round(monthlySurplus * 12 * 100) / 100,
+    // Rates and breakdowns
     savingsRate: Math.round(savingsRate * 100) / 100,
     incomeByType,
     expensesByCategory,

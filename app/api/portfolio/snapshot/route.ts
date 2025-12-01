@@ -13,6 +13,7 @@ import {
   extractInvestmentAccountLinks,
   extractHoldingLinks,
 } from '@/lib/grdcs';
+import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 
 // ============================================================================
 // SNAPSHOT 2.0 - GRDCS-ENHANCED PORTFOLIO SNAPSHOT
@@ -32,6 +33,19 @@ function normalizeToAnnual(amount: number, frequency: string): number {
 // Helper to normalize amount to monthly
 function normalizeToMonthly(amount: number, frequency: string): number {
   return normalizeToAnnual(amount, frequency) / 12;
+}
+
+// Helper to get net income amount after PAYG for salary types
+function getNetIncomeAmount(incomeItem: { amount: number; frequency: string; type: string }): number {
+  if (incomeItem.type === 'SALARY') {
+    const takeHome = calculateTakeHomePay(
+      incomeItem.amount,
+      incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
+    );
+    return normalizeToAnnual(takeHome.netAmount, incomeItem.frequency);
+  }
+  // For non-salary income, use gross amount (tax calculated at year end)
+  return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
 }
 
 // Calculate rental yield
@@ -518,11 +532,20 @@ export async function GET(request: NextRequest) {
       const totalLiabilities = loans.reduce((sum: number, l: any) => sum + l.principal, 0);
       const netWorth = totalAssets - totalLiabilities;
 
-      // Cashflow calculations
-      const totalAnnualIncome = income.reduce((sum: number, i: any) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
+      // Cashflow calculations with tax-adjusted income
+      // Gross income (before tax)
+      const totalAnnualGrossIncome = income.reduce((sum: number, i: any) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
+      // Net income (after PAYG for salaries)
+      const totalAnnualNetIncome = income.reduce((sum: number, i: any) => sum + getNetIncomeAmount(i), 0);
+      // PAYG withholding estimate
+      const totalAnnualPaygWithholding = totalAnnualGrossIncome - totalAnnualNetIncome;
+
       const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
-      const monthlyNetCashflow = (totalAnnualIncome - totalAnnualExpenses) / 12;
-      const annualNetCashflow = totalAnnualIncome - totalAnnualExpenses;
+      // Use NET income for cashflow (what's actually available to spend)
+      const monthlyNetCashflow = (totalAnnualNetIncome - totalAnnualExpenses) / 12;
+      const annualNetCashflow = totalAnnualNetIncome - totalAnnualExpenses;
+      // Keep gross-based calculation for backward compatibility
+      const totalAnnualIncome = totalAnnualNetIncome;
 
       // ============================================================================
       // GRDCS-ENHANCED PROPERTY SNAPSHOTS
@@ -682,15 +705,19 @@ export async function GET(request: NextRequest) {
         totalAssets,
         totalLiabilities,
 
-        // Cashflow
+        // Cashflow (using NET income - what's actually available after tax)
         cashflow: {
-          totalIncome: totalAnnualIncome,
-          totalExpenses: totalAnnualExpenses,
+          grossIncome: Math.round(totalAnnualGrossIncome * 100) / 100,
+          netIncome: Math.round(totalAnnualNetIncome * 100) / 100,
+          paygWithholding: Math.round(totalAnnualPaygWithholding * 100) / 100,
+          totalIncome: Math.round(totalAnnualNetIncome * 100) / 100, // Net income for cashflow
+          totalExpenses: Math.round(totalAnnualExpenses * 100) / 100,
           monthlyNetCashflow: Math.round(monthlyNetCashflow * 100) / 100,
           annualNetCashflow: Math.round(annualNetCashflow * 100) / 100,
-          savingsRate: totalAnnualIncome > 0
-            ? Math.round((annualNetCashflow / totalAnnualIncome) * 10000) / 100
+          savingsRate: totalAnnualNetIncome > 0
+            ? Math.round((annualNetCashflow / totalAnnualNetIncome) * 10000) / 100
             : 0,
+          _note: 'Income figures reflect after-tax (net) amounts for salary income',
         },
 
         // Assets breakdown

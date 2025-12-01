@@ -26,6 +26,7 @@ import {
   ExpenseData,
   InsightData,
 } from '@/lib/health';
+import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 
 // Helper to normalize amount to monthly
 function normalizeToMonthly(amount: number, frequency: string): number {
@@ -41,6 +42,19 @@ function normalizeToMonthly(amount: number, frequency: string): number {
     default:
       return amount;
   }
+}
+
+// Helper to get net income amount (after PAYG for salary types)
+function getNetMonthlyIncome(incomeItem: { amount: number; frequency: string; type: string }): number {
+  if (incomeItem.type === 'SALARY') {
+    const takeHome = calculateTakeHomePay(
+      incomeItem.amount,
+      incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
+    );
+    return normalizeToMonthly(takeHome.netAmount, incomeItem.frequency);
+  }
+  // For non-salary income, use gross amount (tax calculated at year end)
+  return normalizeToMonthly(incomeItem.amount, incomeItem.frequency);
 }
 
 /**
@@ -175,12 +189,13 @@ async function buildHealthInput(userId: string): Promise<FinancialHealthInput> {
     costBase: Number(h.units) * Number(h.averagePrice), // Simplified
   }));
 
-  // Transform income
+  // Transform income with net amounts for salary types
   const incomeData: IncomeData[] = income.map((i: any) => ({
     id: i.id,
     name: i.name,
     type: i.type,
-    monthlyAmount: normalizeToMonthly(Number(i.amount), i.frequency),
+    // Use net income (after PAYG) for salary types - reflects actual available cash
+    monthlyAmount: getNetMonthlyIncome({ amount: Number(i.amount), frequency: i.frequency, type: i.type }),
     isTaxable: i.isTaxable,
   }));
 
