@@ -1,7 +1,20 @@
 # PHASE 19.1 — DOCUMENT MANAGEMENT SYSTEM (DMS) EXPANSION
 Monitrax Blueprint — Phase 19.1
-Version: v1.6
-Status: Design Complete – Ready for Claude Implementation
+Version: v1.7
+Status: Partially Implemented
+Last Updated: 2025-12-01
+
+## Implementation Progress
+
+| Feature | Status | Date | Notes |
+|---------|--------|------|-------|
+| Receipt upload in expense forms | ✅ Implemented | 2025-12-01 | Commit `595f088` |
+| Documents tab in expense detail | ✅ Implemented | 2025-12-01 | View/download attached receipts |
+| Quick upload while viewing | ✅ Implemented | 2025-12-01 | Add receipts from detail view |
+| Cloud storage OAuth | ✅ Fixed | 2025-12-01 | Commit `086fbe0` - redirect_uri fix |
+| Other entity form uploads | 📋 Pending | - | Properties, Loans, Income |
+| Expiration tracking | 📋 Pending | - | Insurance, rates renewal |
+| Repair/renovation tracking | 📋 Pending | - | New entity type |
 
 ---
 

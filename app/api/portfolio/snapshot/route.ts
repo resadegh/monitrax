@@ -25,6 +25,7 @@ function normalizeToAnnual(amount: number, frequency: string): number {
     case 'WEEKLY': return amount * 52;
     case 'FORTNIGHTLY': return amount * 26;
     case 'MONTHLY': return amount * 12;
+    case 'QUARTERLY': return amount * 4;
     case 'ANNUAL': return amount;
     default: return amount * 12;
   }
@@ -40,7 +41,7 @@ function getNetIncomeAmount(incomeItem: { amount: number; frequency: string; typ
   if (incomeItem.type === 'SALARY') {
     const takeHome = calculateTakeHomePay(
       incomeItem.amount,
-      incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
+      incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'
     );
     return normalizeToAnnual(takeHome.netAmount, incomeItem.frequency);
   }
@@ -673,6 +674,7 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       const loanSnapshots = loans.map((loan: any) => {
         const grdcsLinks = extractLoanLinks(loan);
+        const annualRepayment = normalizeToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY');
         return {
           id: loan.id,
           name: loan.name,
@@ -684,6 +686,9 @@ export async function GET(request: NextRequest) {
           propertyName: loan.property?.name || null,
           offsetAccountId: loan.offsetAccountId,
           offsetBalance: loan.offsetAccount?.currentBalance || 0,
+          minRepayment: loan.minRepayment || 0,
+          repaymentFrequency: loan.repaymentFrequency || 'MONTHLY',
+          annualRepayment,
           _links: {
             related: grdcsLinks.linked,
           },
@@ -693,6 +698,44 @@ export async function GET(request: NextRequest) {
           },
         };
       });
+
+      // ============================================================================
+      // EXPENSE SNAPSHOTS FOR CASHFLOW BREAKDOWN
+      // ============================================================================
+      const expenseSnapshots = expenses.map((expense: any) => {
+        const annualAmount = normalizeToAnnual(expense.amount, expense.frequency);
+        return {
+          id: expense.id,
+          name: expense.name,
+          category: expense.category,
+          amount: expense.amount,
+          frequency: expense.frequency,
+          annualAmount,
+          propertyId: expense.propertyId,
+          propertyName: expense.property?.name || null,
+          isTaxDeductible: expense.isTaxDeductible || false,
+        };
+      }).sort((a: any, b: any) => b.annualAmount - a.annualAmount);
+
+      // ============================================================================
+      // INCOME SNAPSHOTS FOR CASHFLOW BREAKDOWN
+      // ============================================================================
+      const incomeSnapshots = income.map((inc: any) => {
+        const grossAnnual = normalizeToAnnual(inc.amount, inc.frequency);
+        const netAnnual = getNetIncomeAmount(inc);
+        return {
+          id: inc.id,
+          name: inc.name,
+          type: inc.type,
+          amount: inc.amount,
+          frequency: inc.frequency,
+          grossAnnual,
+          netAnnual,
+          propertyId: inc.propertyId,
+          propertyName: inc.property?.name || null,
+          isTaxable: inc.isTaxable || true,
+        };
+      }).sort((a: any, b: any) => b.netAnnual - a.netAnnual);
 
       // ============================================================================
       // TAX EXPOSURE
@@ -794,6 +837,8 @@ export async function GET(request: NextRequest) {
         // GRDCS-enhanced entity details
         properties: propertySnapshots,
         loans: loanSnapshots,
+        expenses: expenseSnapshots,
+        income: incomeSnapshots,
 
         // Investment details
         investments: {

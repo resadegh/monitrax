@@ -246,6 +246,7 @@ function PropertiesPageContent() {
       case 'WEEKLY': return amount * 52;
       case 'FORTNIGHTLY': return amount * 26;
       case 'MONTHLY': return amount * 12;
+      case 'QUARTERLY': return amount * 4;
       case 'ANNUAL': return amount;
       default: return amount * 12;
     }

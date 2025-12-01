@@ -68,7 +68,7 @@ interface Expense {
   category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'OTHER';
   sourceType: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT';
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL';
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
   isEssential: boolean;
   isTaxDeductible: boolean;
   propertyId: string | null;
@@ -374,6 +374,7 @@ function ExpensesPageContent() {
       case 'WEEKLY': return amount * 52 / 12;
       case 'FORTNIGHTLY': return amount * 26 / 12;
       case 'MONTHLY': return amount;
+      case 'QUARTERLY': return amount * 4 / 12;
       case 'ANNUAL': return amount / 12;
       default: return amount;
     }
@@ -1076,6 +1077,7 @@ function ExpensesPageContent() {
                   <SelectItem value="WEEKLY">Weekly</SelectItem>
                   <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
                   <SelectItem value="MONTHLY">Monthly</SelectItem>
+                  <SelectItem value="QUARTERLY">Quarterly</SelectItem>
                   <SelectItem value="ANNUAL">Annually</SelectItem>
                 </SelectContent>
               </Select>
