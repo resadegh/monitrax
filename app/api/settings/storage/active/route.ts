@@ -4,11 +4,19 @@
  */
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { StorageProviderType } from '@prisma/client';
 
-const PROVIDER_MAP: Record<string, StorageProviderType> = {
+// Local enum to avoid Prisma generation issues
+const StorageProviderType = {
+  MONITRAX: 'MONITRAX',
+  GOOGLE_DRIVE: 'GOOGLE_DRIVE',
+  ICLOUD: 'ICLOUD',
+  ONEDRIVE: 'ONEDRIVE',
+} as const;
+type StorageProviderTypeValue = (typeof StorageProviderType)[keyof typeof StorageProviderType];
+
+const PROVIDER_MAP: Record<string, StorageProviderTypeValue> = {
   monitrax: StorageProviderType.MONITRAX,
   google_drive: StorageProviderType.GOOGLE_DRIVE,
   icloud: StorageProviderType.ICLOUD,
@@ -17,7 +25,7 @@ const PROVIDER_MAP: Record<string, StorageProviderType> = {
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

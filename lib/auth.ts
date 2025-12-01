@@ -53,3 +53,66 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
   }
   return authHeader.substring(7);
 }
+
+/**
+ * User object returned by getCurrentUser
+ */
+export interface CurrentUser {
+  id: string;
+  email: string;
+}
+
+/**
+ * Get the current user from a request's Authorization header
+ * For use in API routes
+ */
+export async function getCurrentUser(request?: Request): Promise<CurrentUser | null> {
+  try {
+    // If request is provided, use authorization header
+    if (request) {
+      const authHeader = request.headers.get('authorization');
+      const token = extractTokenFromHeader(authHeader);
+
+      if (!token) {
+        return null;
+      }
+
+      const payload = verifyToken(token);
+      if (!payload) {
+        return null;
+      }
+
+      return {
+        id: payload.userId,
+        email: payload.email,
+      };
+    }
+
+    // Fallback: try to get from cookies (for server components)
+    // This requires dynamic import to avoid issues in non-Next.js contexts
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      const token = cookieStore.get('auth_token')?.value;
+
+      if (!token) {
+        return null;
+      }
+
+      const payload = verifyToken(token);
+      if (!payload) {
+        return null;
+      }
+
+      return {
+        id: payload.userId,
+        email: payload.email,
+      };
+    } catch {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    return null;
+  }
+}

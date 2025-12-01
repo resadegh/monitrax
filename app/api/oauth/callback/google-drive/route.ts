@@ -4,8 +4,15 @@
  */
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { StorageProviderType } from '@prisma/client';
+import prisma from '@/lib/db';
+
+// Local enum to avoid Prisma generation issues
+const StorageProviderType = {
+  MONITRAX: 'MONITRAX',
+  GOOGLE_DRIVE: 'GOOGLE_DRIVE',
+  ICLOUD: 'ICLOUD',
+  ONEDRIVE: 'ONEDRIVE',
+} as const;
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';

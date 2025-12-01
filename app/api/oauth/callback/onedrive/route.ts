@@ -4,8 +4,15 @@
  */
 
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { StorageProviderType } from '@prisma/client';
+import prisma from '@/lib/db';
+
+// Local enum to avoid Prisma generation issues
+const StorageProviderType = {
+  MONITRAX: 'MONITRAX',
+  GOOGLE_DRIVE: 'GOOGLE_DRIVE',
+  ICLOUD: 'ICLOUD',
+  ONEDRIVE: 'ONEDRIVE',
+} as const;
 
 const MICROSOFT_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
 const MICROSOFT_GRAPH_URL = 'https://graph.microsoft.com/v1.0/me';
