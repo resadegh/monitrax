@@ -74,6 +74,17 @@ interface PortfolioSnapshot {
     propertyName?: string | null;
     isTaxDeductible?: boolean;
   }>;
+  income?: Array<{
+    id: string;
+    name: string;
+    type: string;
+    amount: number;
+    frequency: string;
+    grossAnnual: number;
+    netAnnual: number;
+    propertyName?: string | null;
+    isTaxable?: boolean;
+  }>;
   assets: {
     properties: { count: number; totalValue: number };
     accounts: { count: number; totalValue: number };
@@ -1006,6 +1017,24 @@ export default function DashboardPage() {
                         <p className="text-xs text-muted-foreground mt-2">
                           {formatCurrency(snapshot.cashflow.totalIncome / 12)}/month
                         </p>
+                        {snapshot.income && snapshot.income.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800 space-y-2">
+                            {snapshot.income.slice(0, 5).map((inc) => (
+                              <div key={inc.id} className="flex justify-between text-sm">
+                                <span className="text-muted-foreground truncate max-w-[200px]">
+                                  {inc.name}
+                                  {inc.propertyName && <span className="text-xs"> ({inc.propertyName})</span>}
+                                </span>
+                                <span>{formatCurrency(inc.netAnnual)}/yr</span>
+                              </div>
+                            ))}
+                            {snapshot.income.length > 5 && (
+                              <p className="text-xs text-muted-foreground">
+                                +{snapshot.income.length - 5} more income sources
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Expenses */}

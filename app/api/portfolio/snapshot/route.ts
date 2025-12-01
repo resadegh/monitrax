@@ -718,6 +718,26 @@ export async function GET(request: NextRequest) {
       }).sort((a: any, b: any) => b.annualAmount - a.annualAmount);
 
       // ============================================================================
+      // INCOME SNAPSHOTS FOR CASHFLOW BREAKDOWN
+      // ============================================================================
+      const incomeSnapshots = income.map((inc: any) => {
+        const grossAnnual = normalizeToAnnual(inc.amount, inc.frequency);
+        const netAnnual = getNetIncomeAmount(inc);
+        return {
+          id: inc.id,
+          name: inc.name,
+          type: inc.type,
+          amount: inc.amount,
+          frequency: inc.frequency,
+          grossAnnual,
+          netAnnual,
+          propertyId: inc.propertyId,
+          propertyName: inc.property?.name || null,
+          isTaxable: inc.isTaxable || true,
+        };
+      }).sort((a: any, b: any) => b.netAnnual - a.netAnnual);
+
+      // ============================================================================
       // TAX EXPOSURE
       // ============================================================================
       const taxableIncome = income
@@ -818,6 +838,7 @@ export async function GET(request: NextRequest) {
         properties: propertySnapshots,
         loans: loanSnapshots,
         expenses: expenseSnapshots,
+        income: incomeSnapshots,
 
         // Investment details
         investments: {
