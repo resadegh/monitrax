@@ -13,11 +13,22 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2 } from 'lucide-react';
+import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
+import { DocumentCategory, LinkedEntityType } from '@/lib/documents/types';
+
+interface AttachedDocument {
+  id: string;
+  filename: string;
+  originalFilename: string;
+  mimeType: string;
+  size: number;
+  category: string;
+  uploadedAt: string;
+}
 
 interface Property {
   id: string;
@@ -112,6 +123,9 @@ function ExpensesPageContent() {
     loanId: null,
     investmentAccountId: null,
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [attachedDocuments, setAttachedDocuments] = useState<AttachedDocument[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -180,9 +194,59 @@ function ExpensesPageContent() {
     }
   };
 
+  const loadAttachedDocuments = async (expenseId: string) => {
+    try {
+      const response = await fetch(`/api/documents?entityType=EXPENSE&entityId=${expenseId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setAttachedDocuments(result.documents || []);
+      }
+    } catch (error) {
+      console.error('Error loading attached documents:', error);
+      setAttachedDocuments([]);
+    }
+  };
+
+  const uploadReceiptFile = async (expenseId: string, file: File) => {
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('category', DocumentCategory.RECEIPT);
+      formData.append('description', `Receipt for ${formData.get('name') || 'expense'}`);
+      formData.append('links', JSON.stringify([
+        { entityType: LinkedEntityType.EXPENSE, entityId: expenseId }
+      ]));
+
+      const response = await fetch('/api/documents', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (response.ok) {
+        setSelectedFile(null);
+        // Reload documents if viewing details
+        if (selectedExpense?.id === expenseId) {
+          await loadAttachedDocuments(expenseId);
+        }
+      } else {
+        const error = await response.json();
+        console.error('Failed to upload receipt:', error);
+      }
+    } catch (error) {
+      console.error('Error uploading receipt:', error);
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
   const handleViewDetails = (item: Expense) => {
     setSelectedExpense(item);
     setShowDetailDialog(true);
+    loadAttachedDocuments(item.id);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -211,6 +275,14 @@ function ExpensesPageContent() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        const savedExpenseId = result.data?.id || result.id || editingId;
+
+        // Upload file if one was selected
+        if (selectedFile && savedExpenseId) {
+          await uploadReceiptFile(savedExpenseId, selectedFile);
+        }
+
         await loadExpenses();
         setShowDialog(false);
         setEditingId(null);
@@ -235,6 +307,13 @@ function ExpensesPageContent() {
       loanId: null,
       investmentAccountId: null,
     });
+    setSelectedFile(null);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const handleEdit = (item: Expense) => {
@@ -748,12 +827,58 @@ function ExpensesPageContent() {
               </div>
             </div>
 
+            {/* Receipt Upload Section */}
+            <div className="space-y-2 border-t pt-4">
+              <Label className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4" />
+                Attach Receipt (optional)
+              </Label>
+              {selectedFile ? (
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedFile(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setSelectedFile(file);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      Click to upload receipt or invoice
+                    </span>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Supported: Images, PDF, Word documents
+              </p>
+            </div>
+
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit">
-                {editingId ? 'Update Expense' : 'Add Expense'}
+              <Button type="submit" disabled={uploadingFile}>
+                {uploadingFile ? 'Uploading...' : editingId ? 'Update Expense' : 'Add Expense'}
               </Button>
             </div>
           </form>
@@ -775,8 +900,12 @@ function ExpensesPageContent() {
 
           {selectedExpense && (
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="documents" className="gap-1">
+                  <Paperclip className="h-3 w-3" />
+                  Receipts {attachedDocuments.length > 0 && `(${attachedDocuments.length})`}
+                </TabsTrigger>
                 <TabsTrigger value="linked" className="gap-1">
                   <Link2 className="h-3 w-3" />
                   Linked
@@ -909,6 +1038,75 @@ function ExpensesPageContent() {
                     </CardContent>
                   </Card>
                 )}
+              </TabsContent>
+
+              <TabsContent value="documents" className="mt-4 space-y-4">
+                {attachedDocuments.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Paperclip className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                    <p className="text-sm text-muted-foreground">No receipts attached</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Edit this expense to attach a receipt
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {attachedDocuments.map((doc) => (
+                      <Card key={doc.id} className="overflow-hidden">
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-md flex items-center justify-center">
+                              <FileText className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{doc.originalFilename}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatFileSize(doc.size)} • {new Date(doc.uploadedAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(`/api/documents/${doc.id}/download`, '_blank')}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                {/* Quick upload while viewing */}
+                <div className="border-t pt-4">
+                  <Label className="text-sm text-muted-foreground mb-2 block">Add another receipt</Label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file && selectedExpense) {
+                          await uploadReceiptFile(selectedExpense.id, file);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={uploadingFile}
+                    />
+                    <div className="flex items-center justify-center gap-2 p-3 border-2 border-dashed rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
+                      {uploadingFile ? (
+                        <span className="text-sm text-muted-foreground">Uploading...</span>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Upload receipt</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="linked" className="mt-4">
