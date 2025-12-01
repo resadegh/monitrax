@@ -25,6 +25,7 @@ function normalizeToAnnual(amount: number, frequency: string): number {
     case 'WEEKLY': return amount * 52;
     case 'FORTNIGHTLY': return amount * 26;
     case 'MONTHLY': return amount * 12;
+    case 'QUARTERLY': return amount * 4;
     case 'ANNUAL': return amount;
     default: return amount * 12;
   }
@@ -40,7 +41,7 @@ function getNetIncomeAmount(incomeItem: { amount: number; frequency: string; typ
   if (incomeItem.type === 'SALARY') {
     const takeHome = calculateTakeHomePay(
       incomeItem.amount,
-      incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
+      incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'
     );
     return normalizeToAnnual(takeHome.netAmount, incomeItem.frequency);
   }

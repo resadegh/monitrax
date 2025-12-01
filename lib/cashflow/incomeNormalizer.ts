@@ -167,7 +167,7 @@ export function getEffectiveMonthlyIncome(income: IncomeStream): number {
  */
 export function calculateTakeHomePay(
   grossAmount: number,
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'
 ): {
   grossAmount: number;
   netAmount: number;
@@ -180,6 +180,7 @@ export function calculateTakeHomePay(
     WEEKLY: 52,
     FORTNIGHTLY: 26,
     MONTHLY: 12,
+    QUARTERLY: 4,
     ANNUAL: 1,
   };
   const annualGross = grossAmount * (multipliers[frequency] || 1);

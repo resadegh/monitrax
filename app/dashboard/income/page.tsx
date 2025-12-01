@@ -55,7 +55,7 @@ interface Income {
   type: 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
   sourceType: 'GENERAL' | 'PROPERTY' | 'INVESTMENT';
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL';
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
@@ -378,6 +378,7 @@ function IncomePageContent() {
       case 'WEEKLY': return amount * 52 / 12;
       case 'FORTNIGHTLY': return amount * 26 / 12;
       case 'MONTHLY': return amount;
+      case 'QUARTERLY': return amount * 4 / 12;
       case 'ANNUAL': return amount / 12;
       default: return amount;
     }
@@ -388,6 +389,7 @@ function IncomePageContent() {
       case 'WEEKLY': return amount * 52;
       case 'FORTNIGHTLY': return amount * 26;
       case 'MONTHLY': return amount * 12;
+      case 'QUARTERLY': return amount * 4;
       case 'ANNUAL': return amount;
       default: return amount;
     }
@@ -703,6 +705,7 @@ function IncomePageContent() {
                     <SelectItem value="WEEKLY">Weekly</SelectItem>
                     <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
                     <SelectItem value="MONTHLY">Monthly</SelectItem>
+                    <SelectItem value="QUARTERLY">Quarterly</SelectItem>
                     <SelectItem value="ANNUAL">Annually</SelectItem>
                   </SelectContent>
                 </Select>

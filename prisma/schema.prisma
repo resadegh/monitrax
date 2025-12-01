@@ -70,6 +70,7 @@ enum Frequency {
   WEEKLY
   FORTNIGHTLY
   MONTHLY
+  QUARTERLY
   ANNUAL
 }
 
