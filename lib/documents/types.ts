@@ -25,6 +25,8 @@ export enum DocumentCategory {
 export enum StorageProviderType {
   MONITRAX = 'MONITRAX',
   GOOGLE_DRIVE = 'GOOGLE_DRIVE',
+  ICLOUD = 'ICLOUD',
+  ONEDRIVE = 'ONEDRIVE',
 }
 
 export enum LinkedEntityType {

@@ -26,6 +26,7 @@ import {
   FileText,
   Brain,
   FolderOpen,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -41,6 +42,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
+// Main navigation items
 const navItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Personal CFO', href: '/dashboard/cfo', icon: Brain },
@@ -60,6 +62,13 @@ const navItems: NavItem[] = [
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Documents', href: '/dashboard/documents', icon: FolderOpen },
 ];
+
+// Settings navigation item (shown separately at bottom)
+const settingsNavItem: NavItem = {
+  name: 'Settings',
+  href: '/dashboard/settings',
+  icon: Settings,
+};
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth();
@@ -215,8 +224,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* User Section - Fixed at bottom */}
-        <div className="border-t border-border p-4 flex-shrink-0">
-          <div className="flex items-center gap-3 rounded-lg bg-muted p-3 mb-2 border border-border">
+        <div className="border-t border-border p-4 flex-shrink-0 space-y-2">
+          {/* Settings Link */}
+          <Link
+            href={settingsNavItem.href}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+              pathname.startsWith(settingsNavItem.href)
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            <Settings className="h-5 w-5 lg:h-4 lg:w-4" />
+            {settingsNavItem.name}
+          </Link>
+
+          {/* User Info */}
+          <div className="flex items-center gap-3 rounded-lg bg-muted p-3 border border-border">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
               <User className="h-4 w-4" />
             </div>
@@ -225,6 +248,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
           </div>
+
+          {/* Sign Out Button */}
           <Button
             onClick={logout}
             variant="ghost"

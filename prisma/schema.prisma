@@ -1748,7 +1748,9 @@ enum DocumentCategory {
 enum StorageProviderType {
   MONITRAX
   GOOGLE_DRIVE
-  // Future: ONEDRIVE, ICLOUD, S3
+  ICLOUD
+  ONEDRIVE
+  // Future: S3, DROPBOX
 }
 
 enum LinkedEntityType {
