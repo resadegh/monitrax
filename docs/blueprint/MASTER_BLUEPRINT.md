@@ -5,7 +5,7 @@
 ---
 
 **Version:** 2.0
-**Last Updated:** 2025-11-30
+**Last Updated:** 2025-12-01
 **Status:** Active Development
 **Owners:** ReNew (Newsha & Reza)
 **Architect:** ChatGPT | **Engineer:** Claude
@@ -42,6 +42,7 @@
 |--------|-------------|
 | **Personal Finance** | Income, expenses, budgeting, cashflow |
 | **Property Investing** | Purchase tracking, rental yield, depreciation |
+| **Asset Management** | Vehicles, equipment, valuables, cost of ownership |
 | **Loan Optimisation** | Debt strategies, offset accounts, refinancing |
 | **Tax Planning** | ATO-compliant calculations, negative gearing, CGT |
 | **Portfolio Strategy** | Investment tracking, performance analytics |
@@ -49,7 +50,7 @@
 
 ### Current State (November 2025)
 
-- **19 Phases** defined in the blueprint
+- **21 Phases** defined in the blueprint
 - **12 Phases** fully implemented
 - **Active Development:** Phase 19 (Document Management)
 - **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel
@@ -162,6 +163,7 @@ Every API response follows a standardised format:
 | **18** | Bank Transactions | 📋 Planned | Bank feed integration, transaction sync |
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
+| **21** | Asset Management Engine | 📋 Planned | Vehicles, equipment, expense linking, cost of ownership tracking |
 
 ---
 
@@ -243,7 +245,31 @@ Every API response follows a standardised format:
 - Individual tile view option
 - Receipt upload during expense entry
 
-### 5.6 Investment Module
+### 5.6 Assets Module (Phase 21 - Planned)
+
+**Asset Types:**
+- Vehicles (cars, motorcycles, boats)
+- Electronics (computers, phones)
+- Furniture and equipment
+- Collectibles (art, watches)
+
+**Features:**
+- Purchase price and current value tracking
+- Depreciation calculation (prime cost/diminishing value)
+- Expense linking for cost of ownership analysis
+- Service and maintenance records (vehicles)
+- Value history over time
+- Integration with Portfolio Snapshot for net worth
+
+**Vehicle-Specific:**
+- Make, model, year, registration
+- Odometer tracking
+- Service history
+- Cost per kilometre calculation
+
+See: `docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md`
+
+### 5.7 Investment Module
 
 **Investment Accounts:**
 - Brokerage, Super, Fund, Trust, ETF/Crypto
@@ -341,6 +367,11 @@ User
 │   │   └── Transactions
 │   ├── Income (dividends)
 │   └── Expenses (fees)
+├── Assets (Phase 21)
+│   ├── Expenses (linked)
+│   ├── AssetValueHistory
+│   ├── AssetServiceRecords
+│   └── Documents
 ├── Income (general)
 ├── Expenses (general)
 ├── DebtPlans
@@ -359,6 +390,7 @@ User
 | Account | Linked Loan |
 | InvestmentAccount | Holdings, Transactions, Income, Expenses |
 | InvestmentHolding | Transactions |
+| Asset | Expenses, ValueHistory, ServiceRecords, Documents |
 | Document | Any entity via DocumentLink |
 
 ---
