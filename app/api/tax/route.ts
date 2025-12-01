@@ -102,7 +102,6 @@ export async function GET(request: NextRequest) {
         case 'RENTAL':
           totalRentalIncome += taxResult.taxableAmount;
           break;
-        case 'DIVIDEND':
         case 'INVESTMENT':
           totalDividendIncome += taxResult.taxableAmount;
           totalFrankingCredits += taxResult.frankingCredits;
