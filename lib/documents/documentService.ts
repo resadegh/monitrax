@@ -268,11 +268,17 @@ export async function listDocuments(query: DocumentQuery): Promise<DocumentListR
     skip: query.offset || 0,
   });
 
-  const documentsWithLinks: DocumentWithLinks[] = documents.map((doc: PrismaDocumentWithLinks) => ({
+  // Type for Prisma document result
+  type PrismaDoc = typeof documents[number];
+  type PrismaLink = PrismaDoc['links'][number];
+
+  const documentsWithLinks: DocumentWithLinks[] = documents.map((doc: PrismaDoc) => ({
     ...doc,
-    links: doc.links.map((link: PrismaDocumentLink) => ({
+    category: doc.category as unknown as DocumentCategory,
+    storageProvider: doc.storageProvider as unknown as StorageProviderType,
+    links: doc.links.map((link: PrismaLink) => ({
       id: link.id,
-      entityType: link.entityType,
+      entityType: link.entityType as unknown as LinkedEntityType,
       entityId: link.entityId,
       createdAt: link.createdAt,
     })),
@@ -581,14 +587,21 @@ export async function getDocumentStats(userId: string): Promise<{
     select: { size: true, category: true },
   });
 
-  const byCategory = documents.reduce((acc: Record<DocumentCategory, number>, doc: DocumentStatRow) => {
-    acc[doc.category] = (acc[doc.category] || 0) + 1;
-    return acc;
-  }, {} as Record<DocumentCategory, number>);
+  // Type for document stats result
+  type DocStats = typeof documents[number];
+
+  const byCategory = documents.reduce(
+    (acc: Record<DocumentCategory, number>, doc: DocStats) => {
+      const category = doc.category as unknown as DocumentCategory;
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    },
+    {} as Record<DocumentCategory, number>
+  );
 
   return {
     totalDocuments: documents.length,
-    totalSize: documents.reduce((sum: number, doc: DocumentStatRow) => sum + doc.size, 0),
+    totalSize: documents.reduce((sum: number, doc: DocStats) => sum + doc.size, 0),
     byCategory,
   };
 }
