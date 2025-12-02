@@ -37,7 +37,28 @@ export async function PUT(
     try {
       const { id } = await params;
       const body = await request.json();
-      const { name, type, amount, frequency, isTaxable, propertyId, investmentAccountId, sourceType } = body;
+      const {
+        name,
+        type,
+        amount,
+        frequency,
+        isTaxable,
+        propertyId,
+        investmentAccountId,
+        sourceType,
+        // Phase 20: Salary-specific fields
+        salaryType,
+        payFrequency,
+        grossAmount,
+        netAmount,
+        paygWithholding,
+        superGuaranteeRate,
+        superGuaranteeAmount,
+        salarySacrifice,
+        // Phase 20: Investment-specific fields
+        frankingPercentage,
+        frankingCredits,
+      } = body;
 
       // Verify ownership
       const existing = await prisma.income.findUnique({
@@ -74,6 +95,18 @@ export async function PUT(
           propertyId: propertyId !== undefined ? propertyId : undefined,
           investmentAccountId: investmentAccountId !== undefined ? investmentAccountId : undefined,
           sourceType: sourceType !== undefined ? sourceType : undefined,
+          // Phase 20: Salary-specific fields
+          salaryType: type === 'SALARY' ? salaryType : null,
+          payFrequency: type === 'SALARY' ? payFrequency : null,
+          grossAmount: grossAmount !== undefined ? (grossAmount ? parseFloat(grossAmount) : null) : undefined,
+          netAmount: netAmount !== undefined ? (netAmount ? parseFloat(netAmount) : null) : undefined,
+          paygWithholding: paygWithholding !== undefined ? (paygWithholding ? parseFloat(paygWithholding) : null) : undefined,
+          superGuaranteeRate: superGuaranteeRate !== undefined ? (superGuaranteeRate ? parseFloat(superGuaranteeRate) : null) : undefined,
+          superGuaranteeAmount: superGuaranteeAmount !== undefined ? (superGuaranteeAmount ? parseFloat(superGuaranteeAmount) : null) : undefined,
+          salarySacrifice: salarySacrifice !== undefined ? (salarySacrifice ? parseFloat(salarySacrifice) : null) : undefined,
+          // Phase 20: Investment-specific fields
+          frankingPercentage: frankingPercentage !== undefined ? (frankingPercentage ? parseFloat(frankingPercentage) : null) : undefined,
+          frankingCredits: frankingCredits !== undefined ? (frankingCredits ? parseFloat(frankingCredits) : null) : undefined,
         },
         include: {
           property: true,
