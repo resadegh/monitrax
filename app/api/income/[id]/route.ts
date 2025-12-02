@@ -84,11 +84,15 @@ export async function PUT(
         }
       }
 
-      // Helper to safely convert to number
-      const toNumber = (val: unknown): number | null => {
-        if (val === null || val === undefined) return null;
+      // Helper to safely convert to number (returns undefined if not provided, null if explicitly null)
+      const toNumber = (val: unknown): number | null | undefined => {
+        if (val === undefined) return undefined; // Not provided - don't update
+        if (val === null) return null; // Explicitly null - set to null
         if (typeof val === 'number') return val;
-        if (typeof val === 'string') return parseFloat(val);
+        if (typeof val === 'string') {
+          const parsed = parseFloat(val);
+          return isNaN(parsed) ? null : parsed;
+        }
         return null;
       };
 
@@ -105,7 +109,7 @@ export async function PUT(
           sourceType: sourceType !== undefined ? sourceType : undefined,
           // Phase 20: Salary-specific fields
           salaryType: type === 'SALARY' ? salaryType : null,
-          payFrequency: type === 'SALARY' ? payFrequency : null,
+          payFrequency: type === 'SALARY' ? (payFrequency !== undefined ? payFrequency : undefined) : null,
           grossAmount: toNumber(grossAmount),
           netAmount: toNumber(netAmount),
           paygWithholding: toNumber(paygWithholding),
