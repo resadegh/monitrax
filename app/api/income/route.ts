@@ -82,8 +82,19 @@ export async function POST(request: NextRequest) {
       const toNumber = (val: unknown): number | null => {
         if (val === null || val === undefined) return null;
         if (typeof val === 'number') return val;
-        if (typeof val === 'string') return parseFloat(val);
+        if (typeof val === 'string') {
+          const parsed = parseFloat(val);
+          return isNaN(parsed) ? null : parsed;
+        }
         return null;
+      };
+
+      // Helper to convert Frequency enum to PayFrequency enum (ANNUAL -> ANNUALLY)
+      const toPayFrequency = (freq: string | undefined | null): string | null => {
+        if (freq === undefined || freq === null) return null;
+        // Map ANNUAL to ANNUALLY (Frequency uses ANNUAL, PayFrequency uses ANNUALLY)
+        if (freq === 'ANNUAL') return 'ANNUALLY';
+        return freq;
       };
 
       const incomeRecord = await prisma.income.create({
@@ -99,7 +110,7 @@ export async function POST(request: NextRequest) {
           sourceType: sourceType || 'GENERAL',
           // Phase 20: Salary-specific fields
           salaryType: type === 'SALARY' ? salaryType : null,
-          payFrequency: type === 'SALARY' ? payFrequency : null,
+          payFrequency: type === 'SALARY' ? toPayFrequency(payFrequency) : null,
           grossAmount: toNumber(grossAmount),
           netAmount: toNumber(netAmount),
           paygWithholding: toNumber(paygWithholding),
