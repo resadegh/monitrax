@@ -54,11 +54,11 @@ export function FeatureGrid() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group relative rounded-2xl border bg-card p-6 shadow-sm transition-all hover:shadow-md hover:border-primary/20"
+              className="group relative rounded-2xl border bg-card p-6 shadow-sm transition-all hover:shadow-md hover:border-brand-secondary/30"
             >
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
-                  <div className="inline-flex rounded-lg bg-primary/10 p-3 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                  <div className="inline-flex rounded-lg bg-brand-secondary/10 p-3 text-brand-secondary group-hover:bg-brand-secondary group-hover:text-white transition-colors">
                     {feature.icon}
                   </div>
                 </div>

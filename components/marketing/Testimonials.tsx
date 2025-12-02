@@ -28,7 +28,7 @@ const testimonials = [
 
 export function Testimonials() {
   return (
-    <section className="py-16 sm:py-24 bg-muted/30">
+    <section className="py-16 sm:py-24 bg-neutral-50 dark:bg-neutral-900/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -47,7 +47,7 @@ export function Testimonials() {
             >
               {/* Quote icon */}
               <svg
-                className="absolute top-4 right-4 h-8 w-8 text-primary/10"
+                className="absolute top-4 right-4 h-8 w-8 text-brand-secondary/10"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >
@@ -59,8 +59,8 @@ export function Testimonials() {
               </blockquote>
 
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-primary">
+                <div className="h-10 w-10 rounded-full bg-brand-secondary/10 flex items-center justify-center">
+                  <span className="text-sm font-semibold text-brand-secondary">
                     {testimonial.author.charAt(0)}
                   </span>
                 </div>

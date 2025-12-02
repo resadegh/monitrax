@@ -24,32 +24,32 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="border-t bg-muted/30">
+    <footer className="border-t border-white/10 bg-brand-primary">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="py-12 md:py-16">
           <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
             {/* Logo and tagline */}
             <div className="col-span-2 md:col-span-1">
               <Link href="/" className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                  <span className="text-lg font-bold text-primary-foreground">M</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-secondary">
+                  <span className="text-lg font-bold text-white">M</span>
                 </div>
-                <span className="text-xl font-bold">Monitrax</span>
+                <span className="text-xl font-bold text-white">Monitrax</span>
               </Link>
-              <p className="mt-4 text-sm text-muted-foreground">
+              <p className="mt-4 text-sm text-white/60">
                 The Australian wealth operating system for property investors and wealth builders.
               </p>
             </div>
 
             {/* App links */}
             <div>
-              <h3 className="text-sm font-semibold">App</h3>
+              <h3 className="text-sm font-semibold text-white">App</h3>
               <ul className="mt-4 space-y-3">
                 {footerLinks.app.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-white/60 hover:text-white transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -60,13 +60,13 @@ export function Footer() {
 
             {/* Resources links */}
             <div>
-              <h3 className="text-sm font-semibold">Resources</h3>
+              <h3 className="text-sm font-semibold text-white">Resources</h3>
               <ul className="mt-4 space-y-3">
                 {footerLinks.resources.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-white/60 hover:text-white transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -77,13 +77,13 @@ export function Footer() {
 
             {/* Legal links */}
             <div>
-              <h3 className="text-sm font-semibold">Legal</h3>
+              <h3 className="text-sm font-semibold text-white">Legal</h3>
               <ul className="mt-4 space-y-3">
                 {footerLinks.legal.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-white/60 hover:text-white transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -94,13 +94,13 @@ export function Footer() {
 
             {/* Company links */}
             <div>
-              <h3 className="text-sm font-semibold">Company</h3>
+              <h3 className="text-sm font-semibold text-white">Company</h3>
               <ul className="mt-4 space-y-3">
                 {footerLinks.company.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-white/60 hover:text-white transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -112,9 +112,9 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t py-6">
+        <div className="border-t border-white/10 py-6">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-white/50">
               © {new Date().getFullYear()} Monitrax. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
@@ -122,7 +122,7 @@ export function Footer() {
                 href="https://linkedin.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-white/50 hover:text-white transition-colors"
                 aria-label="LinkedIn"
               >
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
@@ -133,7 +133,7 @@ export function Footer() {
                 href="https://twitter.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-white/50 hover:text-white transition-colors"
                 aria-label="X (Twitter)"
               >
                 <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">

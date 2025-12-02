@@ -45,9 +45,9 @@ export function ValuePillars() {
           {pillars.map((pillar, index) => (
             <div
               key={index}
-              className="relative rounded-2xl border bg-card p-8 shadow-sm transition-shadow hover:shadow-md"
+              className="relative rounded-2xl border bg-card p-8 shadow-sm transition-all hover:shadow-md hover:border-brand-secondary/30"
             >
-              <div className="mb-4 inline-flex rounded-lg bg-primary/10 p-3 text-primary">
+              <div className="mb-4 inline-flex rounded-lg bg-brand-secondary/10 p-3 text-brand-secondary">
                 {pillar.icon}
               </div>
               <h3 className="text-xl font-semibold mb-2">{pillar.title}</h3>
