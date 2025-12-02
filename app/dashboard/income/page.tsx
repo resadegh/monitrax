@@ -413,7 +413,29 @@ function IncomePageContent() {
     }
   };
 
-  const totalMonthly = income.reduce((sum, i) => sum + convertToMonthly(i.amount, i.frequency), 0);
+  // Get effective (after-tax) annual amount for an income item
+  // For SALARY with GROSS type: use netAmount (already tax-adjusted)
+  // For other income: use the raw amount
+  const getEffectiveAnnualAmount = (item: Income): number => {
+    if (item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount) {
+      // netAmount is already annual and after-tax
+      return item.netAmount;
+    }
+    // For NET salary or other income types, convert amount to annual
+    return convertToAnnual(item.amount, item.frequency);
+  };
+
+  // Get effective monthly amount (after-tax for salaries)
+  const getEffectiveMonthlyAmount = (item: Income): number => {
+    return getEffectiveAnnualAmount(item) / 12;
+  };
+
+  // Calculate totals - use after-tax amounts for salaries
+  const totalNetMonthly = income.reduce((sum, i) => sum + getEffectiveMonthlyAmount(i), 0);
+  const totalGrossMonthly = income.reduce((sum, i) => sum + convertToMonthly(i.amount, i.frequency), 0);
+
+  // Use net monthly for display (matches dashboard)
+  const totalMonthly = totalNetMonthly;
 
   const getIncomeTypeBadge = (type: Income['type']) => {
     switch (type) {
@@ -534,7 +556,8 @@ function IncomePageContent() {
 
     return Object.entries(groups).map(([type, incs]) => {
       const info = typeInfo[type as Income['type']] || typeInfo.OTHER;
-      const totalMonthly = incs.reduce((sum, i) => sum + convertToMonthly(i.amount, i.frequency), 0);
+      // Use after-tax amounts for salaries
+      const totalMonthly = incs.reduce((sum, i) => sum + getEffectiveMonthlyAmount(i), 0);
       return {
         id: `type-${type}`,
         name: info.label,
@@ -594,7 +617,8 @@ function IncomePageContent() {
     return Object.entries(groups)
       .filter(([_, group]) => group.incomes.length > 0)
       .map(([key, group]) => {
-        const totalMonthly = group.incomes.reduce((sum, i) => sum + convertToMonthly(i.amount, i.frequency), 0);
+        // Use after-tax amounts for salaries
+        const totalMonthly = group.incomes.reduce((sum, i) => sum + getEffectiveMonthlyAmount(i), 0);
         return {
           id: key,
           name: group.name,
@@ -613,7 +637,7 @@ function IncomePageContent() {
     <DashboardLayout>
       <PageHeader
         title="Income"
-        description={`Manage your income sources • Total monthly: ${formatCurrency(totalMonthly)}`}
+        description={`Manage your income sources • Net monthly: ${formatCurrency(totalMonthly)}${totalGrossMonthly !== totalNetMonthly ? ` (Gross: ${formatCurrency(totalGrossMonthly)})` : ''}`}
         action={
           <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
             <Plus className="mr-2 h-4 w-4" />
@@ -697,15 +721,17 @@ function IncomePageContent() {
                     <th className="px-4 py-3">Source</th>
                     <th className="px-4 py-3 text-right">Amount</th>
                     <th className="px-4 py-3">Frequency</th>
-                    <th className="px-4 py-3 text-right">Monthly</th>
-                    <th className="px-4 py-3 text-right">Annual</th>
+                    <th className="px-4 py-3 text-right">Net Monthly</th>
+                    <th className="px-4 py-3 text-right">Net Annual</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {income.map((item) => {
-                    const monthlyAmount = convertToMonthly(item.amount, item.frequency);
-                    const annualAmount = convertToAnnual(item.amount, item.frequency);
+                    // Use effective (after-tax for salary) amounts
+                    const effectiveMonthly = getEffectiveMonthlyAmount(item);
+                    const effectiveAnnual = getEffectiveAnnualAmount(item);
+                    const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;
                     return (
                       <tr
                         key={item.id}
@@ -717,6 +743,9 @@ function IncomePageContent() {
                           {item.frankingPercentage && item.frankingPercentage > 0 && (
                             <div className="text-xs text-emerald-600">{item.frankingPercentage}% Franked</div>
                           )}
+                          {isSalaryWithTax && (
+                            <div className="text-xs text-muted-foreground">After tax</div>
+                          )}
                         </td>
                         <td className="px-4 py-3">{getIncomeTypeBadge(item.type)}</td>
                         <td className="px-4 py-3">
@@ -727,10 +756,11 @@ function IncomePageContent() {
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-green-600">
                           {formatCurrency(item.amount)}
+                          {isSalaryWithTax && <span className="text-xs text-muted-foreground block">gross</span>}
                         </td>
                         <td className="px-4 py-3 text-sm capitalize">{item.frequency.toLowerCase()}</td>
-                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(monthlyAmount)}</td>
-                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(annualAmount)}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(effectiveMonthly)}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(effectiveAnnual)}</td>
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetails(item)}>
@@ -750,9 +780,9 @@ function IncomePageContent() {
                 </tbody>
                 <tfoot className="bg-muted/30 border-t">
                   <tr className="font-medium">
-                    <td colSpan={5} className="px-4 py-3 text-right">Total Monthly:</td>
-                    <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalMonthly)}</td>
-                    <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalMonthly * 12)}</td>
+                    <td colSpan={5} className="px-4 py-3 text-right">Net Total:</td>
+                    <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalNetMonthly)}</td>
+                    <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalNetMonthly * 12)}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -764,8 +794,9 @@ function IncomePageContent() {
         /* Tiles view - individual cards */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {income.map((item) => {
-            const monthlyAmount = convertToMonthly(item.amount, item.frequency);
-            const annualAmount = convertToAnnual(item.amount, item.frequency);
+            // Use effective (after-tax for salary) amounts
+            const effectiveAnnual = getEffectiveAnnualAmount(item);
+            const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;
 
             return (
               <Card key={item.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => handleViewDetails(item)}>
@@ -814,7 +845,7 @@ function IncomePageContent() {
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">
-                      {item.type === 'SALARY' && item.salaryType === 'NET' ? 'Net Amount' : 'Amount'}
+                      {isSalaryWithTax ? 'Gross Amount' : item.type === 'SALARY' && item.salaryType === 'NET' ? 'Net Amount' : 'Amount'}
                     </p>
                     <p className="text-xl font-bold text-green-600">{formatCurrency(item.amount)}</p>
                     <p className="text-xs text-muted-foreground capitalize">
@@ -874,8 +905,8 @@ function IncomePageContent() {
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Annual</p>
-                        <p className="font-semibold">{formatCurrency(annualAmount)}</p>
+                        <p className="text-xs text-muted-foreground">{isSalaryWithTax ? 'Net Annual' : 'Annual'}</p>
+                        <p className="font-semibold">{formatCurrency(effectiveAnnual)}</p>
                       </div>
                     </div>
                   </div>
@@ -929,13 +960,15 @@ function IncomePageContent() {
                         <div className="col-span-4">Name</div>
                         <div className="col-span-2">Amount</div>
                         <div className="col-span-2">Frequency</div>
-                        <div className="col-span-2">Monthly</div>
+                        <div className="col-span-2">Net Monthly</div>
                         <div className="col-span-2 text-right">Actions</div>
                       </div>
 
                       {/* Income rows */}
                       {group.incomes.map((item) => {
-                        const monthlyAmount = convertToMonthly(item.amount, item.frequency);
+                        // Use effective (after-tax for salary) amount
+                        const effectiveMonthly = getEffectiveMonthlyAmount(item);
+                        const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;
                         return (
                           <div
                             key={item.id}
@@ -949,6 +982,9 @@ function IncomePageContent() {
                                     <Percent className="h-3 w-3 text-emerald-500 flex-shrink-0" />
                                   </span>
                                 )}
+                                {isSalaryWithTax && (
+                                  <span className="text-xs text-muted-foreground">(after tax)</span>
+                                )}
                               </div>
                               {viewMode === 'type' && item.property && (
                                 <p className="text-xs text-blue-500 truncate">{item.property.name}</p>
@@ -959,12 +995,13 @@ function IncomePageContent() {
                             </div>
                             <div className="col-span-2">
                               <span className="font-medium text-green-600">{formatCurrency(item.amount)}</span>
+                              {isSalaryWithTax && <span className="text-xs text-muted-foreground block">gross</span>}
                             </div>
                             <div className="col-span-2">
                               <span className="text-sm capitalize">{item.frequency.toLowerCase()}</span>
                             </div>
                             <div className="col-span-2">
-                              <span className="text-sm">{formatCurrency(monthlyAmount)}</span>
+                              <span className="text-sm">{formatCurrency(effectiveMonthly)}</span>
                             </div>
                             <div className="col-span-2 flex justify-end gap-1">
                               <Button
