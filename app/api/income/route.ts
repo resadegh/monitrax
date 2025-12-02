@@ -89,12 +89,20 @@ export async function POST(request: NextRequest) {
         return null;
       };
 
+      // Valid PayFrequency enum values
+      type PayFrequencyEnum = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+      const validPayFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
+
       // Helper to convert Frequency enum to PayFrequency enum (ANNUAL -> ANNUALLY)
-      const toPayFrequency = (freq: string | undefined | null): string | null => {
+      const toPayFrequency = (freq: string | undefined | null): PayFrequencyEnum | null => {
         if (freq === undefined || freq === null) return null;
         // Map ANNUAL to ANNUALLY (Frequency uses ANNUAL, PayFrequency uses ANNUALLY)
-        if (freq === 'ANNUAL') return 'ANNUALLY';
-        return freq;
+        const mapped = freq === 'ANNUAL' ? 'ANNUALLY' : freq;
+        // Validate it's a valid PayFrequency value
+        if (validPayFrequencies.includes(mapped)) {
+          return mapped as PayFrequencyEnum;
+        }
+        return null;
       };
 
       const incomeRecord = await prisma.income.create({
