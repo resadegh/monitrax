@@ -78,12 +78,20 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Helper to safely convert to number
+      const toNumber = (val: unknown): number | null => {
+        if (val === null || val === undefined) return null;
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') return parseFloat(val);
+        return null;
+      };
+
       const incomeRecord = await prisma.income.create({
         data: {
           userId: authReq.user!.userId,
           name,
           type,
-          amount: parseFloat(amount),
+          amount: toNumber(amount) ?? 0,
           frequency,
           isTaxable: isTaxable !== undefined ? Boolean(isTaxable) : true,
           propertyId: propertyId || null,
@@ -92,15 +100,15 @@ export async function POST(request: NextRequest) {
           // Phase 20: Salary-specific fields
           salaryType: type === 'SALARY' ? salaryType : null,
           payFrequency: type === 'SALARY' ? payFrequency : null,
-          grossAmount: grossAmount ? parseFloat(grossAmount) : null,
-          netAmount: netAmount ? parseFloat(netAmount) : null,
-          paygWithholding: paygWithholding ? parseFloat(paygWithholding) : null,
-          superGuaranteeRate: superGuaranteeRate ? parseFloat(superGuaranteeRate) : null,
-          superGuaranteeAmount: superGuaranteeAmount ? parseFloat(superGuaranteeAmount) : null,
-          salarySacrifice: salarySacrifice ? parseFloat(salarySacrifice) : null,
+          grossAmount: toNumber(grossAmount),
+          netAmount: toNumber(netAmount),
+          paygWithholding: toNumber(paygWithholding),
+          superGuaranteeRate: toNumber(superGuaranteeRate),
+          superGuaranteeAmount: toNumber(superGuaranteeAmount),
+          salarySacrifice: toNumber(salarySacrifice),
           // Phase 20: Investment-specific fields
-          frankingPercentage: frankingPercentage ? parseFloat(frankingPercentage) : null,
-          frankingCredits: frankingCredits ? parseFloat(frankingCredits) : null,
+          frankingPercentage: toNumber(frankingPercentage),
+          frankingCredits: toNumber(frankingCredits),
         },
         include: { property: true, investmentAccount: true },
       });
