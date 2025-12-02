@@ -23,10 +23,10 @@ function OAuthCallbackContent() {
         router.push('/dashboard');
       } catch (error) {
         console.error('OAuth callback error:', error);
-        router.push('/login?error=oauth_failed');
+        router.push('/signin?error=oauth_failed');
       }
     } else {
-      router.push('/login?error=missing_token');
+      router.push('/signin?error=missing_token');
     }
   }, [searchParams, router]);
 

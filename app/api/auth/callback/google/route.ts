@@ -18,14 +18,14 @@ export async function GET(request: NextRequest) {
     // Handle OAuth errors
     if (error) {
       return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent(error)}`, request.url)
+        new URL(`/signin?error=${encodeURIComponent(error)}`, request.url)
       );
     }
 
     // Validation
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL('/login?error=missing_parameters', request.url)
+        new URL('/signin?error=missing_parameters', request.url)
       );
     }
 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     if (!oauthResult.success || !oauthResult.user || !oauthResult.tokens) {
       return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent(oauthResult.error || 'oauth_failed')}`, request.url)
+        new URL(`/signin?error=${encodeURIComponent(oauthResult.error || 'oauth_failed')}`, request.url)
       );
     }
 
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     if (userResult.error || !userResult.userId) {
       return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent(userResult.error || 'user_creation_failed')}`, request.url)
+        new URL(`/signin?error=${encodeURIComponent(userResult.error || 'user_creation_failed')}`, request.url)
       );
     }
 
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.redirect(
-        new URL('/login?error=user_not_found', request.url)
+        new URL('/signin?error=user_not_found', request.url)
       );
     }
 
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Google OAuth callback error:', error);
     return NextResponse.redirect(
-      new URL('/login?error=internal_error', request.url)
+      new URL('/signin?error=internal_error', request.url)
     );
   }
 }
