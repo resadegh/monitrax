@@ -36,7 +36,28 @@ export async function POST(request: NextRequest) {
   return withAuth(request, async (authReq) => {
     try {
       const body = await request.json();
-      const { name, type, amount, frequency, isTaxable, propertyId, investmentAccountId, sourceType } = body;
+      const {
+        name,
+        type,
+        amount,
+        frequency,
+        isTaxable,
+        propertyId,
+        investmentAccountId,
+        sourceType,
+        // Phase 20: Salary-specific fields
+        salaryType,
+        payFrequency,
+        grossAmount,
+        netAmount,
+        paygWithholding,
+        superGuaranteeRate,
+        superGuaranteeAmount,
+        salarySacrifice,
+        // Phase 20: Investment-specific fields
+        frankingPercentage,
+        frankingCredits,
+      } = body;
 
       if (!name || !type || amount === undefined || !frequency) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -68,6 +89,18 @@ export async function POST(request: NextRequest) {
           propertyId: propertyId || null,
           investmentAccountId: investmentAccountId || null,
           sourceType: sourceType || 'GENERAL',
+          // Phase 20: Salary-specific fields
+          salaryType: type === 'SALARY' ? salaryType : null,
+          payFrequency: type === 'SALARY' ? payFrequency : null,
+          grossAmount: grossAmount ? parseFloat(grossAmount) : null,
+          netAmount: netAmount ? parseFloat(netAmount) : null,
+          paygWithholding: paygWithholding ? parseFloat(paygWithholding) : null,
+          superGuaranteeRate: superGuaranteeRate ? parseFloat(superGuaranteeRate) : null,
+          superGuaranteeAmount: superGuaranteeAmount ? parseFloat(superGuaranteeAmount) : null,
+          salarySacrifice: salarySacrifice ? parseFloat(salarySacrifice) : null,
+          // Phase 20: Investment-specific fields
+          frankingPercentage: frankingPercentage ? parseFloat(frankingPercentage) : null,
+          frankingCredits: frankingCredits ? parseFloat(frankingCredits) : null,
         },
         include: { property: true, investmentAccount: true },
       });
