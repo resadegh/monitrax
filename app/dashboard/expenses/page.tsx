@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap } from 'lucide-react';
+import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap, List } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -21,7 +21,7 @@ import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { DocumentCategory, LinkedEntityType } from '@/lib/documents/types';
 import { ExpenseWizard } from '@/components/ExpenseWizard';
 
-type ViewMode = 'category' | 'property' | 'all';
+type ViewMode = 'category' | 'property' | 'all' | 'list';
 
 interface ExpenseGroup {
   id: string;
@@ -599,7 +599,16 @@ function ExpensesPageContent() {
               onClick={() => setViewMode('all')}
             >
               <LayoutGrid className="h-4 w-4" />
-              All
+              Tiles
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+              List
             </Button>
           </div>
         </div>
@@ -622,6 +631,93 @@ function ExpensesPageContent() {
             onClick: () => { setShowDialog(true); resetForm(); },
           }}
         />
+      ) : viewMode === 'list' ? (
+        /* List view - compact table format */
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr className="text-left text-xs font-medium text-muted-foreground">
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Category</th>
+                    <th className="px-4 py-3">Source</th>
+                    <th className="px-4 py-3 text-right">Amount</th>
+                    <th className="px-4 py-3">Frequency</th>
+                    <th className="px-4 py-3 text-right">Monthly</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {expenses.map((item) => {
+                    const monthlyAmount = convertToMonthly(item.amount, item.frequency);
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => handleViewDetails(item)}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-medium">{item.name}</div>
+                          {item.vendorName && (
+                            <div className="text-xs text-muted-foreground">{item.vendorName}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">{getCategoryBadge(item.category)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {getSourceTypeIcon(item.sourceType || 'GENERAL')}
+                            <span className="text-sm">{getSourceLabel(item)}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-red-600">
+                          {formatCurrency(item.amount)}
+                        </td>
+                        <td className="px-4 py-3 text-sm capitalize">{item.frequency.toLowerCase()}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(monthlyAmount)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            {item.isTaxDeductible && (
+                              <span title="Tax deductible">
+                                <Receipt className="h-4 w-4 text-green-500" />
+                              </span>
+                            )}
+                            {!item.isEssential && (
+                              <span title="Non-essential">
+                                <AlertCircle className="h-4 w-4 text-yellow-500" />
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetails(item)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(item.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-muted/30 border-t">
+                  <tr className="font-medium">
+                    <td colSpan={5} className="px-4 py-3 text-right">Total Monthly:</td>
+                    <td className="px-4 py-3 text-right text-red-600">{formatCurrency(totalMonthly)}</td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       ) : viewMode === 'all' ? (
         /* All expenses view - individual tiles */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

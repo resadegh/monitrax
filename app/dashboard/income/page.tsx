@@ -29,12 +29,28 @@ import {
   Calculator,
   PiggyBank,
   Info,
-  Percent
+  Percent,
+  FolderOpen,
+  LayoutGrid,
+  List,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
+
+type ViewMode = 'type' | 'source' | 'all' | 'list';
+
+interface IncomeGroup {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  incomes: Income[];
+  totalMonthly: number;
+  count: number;
+}
 
 interface Property {
   id: string;
@@ -143,6 +159,8 @@ function IncomePageContent() {
     paygWithholding: number;
     superGuarantee: number;
   } | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('type');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (token) {
@@ -482,6 +500,115 @@ function IncomePageContent() {
     setFormData({ ...formData, ...updates });
   };
 
+  const toggleGroupExpanded = (groupId: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  };
+
+  // Type info with icons and colors
+  const typeInfo: Record<Income['type'], { label: string; icon: React.ReactNode; color: string }> = {
+    SALARY: { label: 'Salary/Wages', icon: <Briefcase className="h-5 w-5" />, color: 'text-blue-500' },
+    RENT: { label: 'Rental', icon: <Home className="h-5 w-5" />, color: 'text-amber-500' },
+    RENTAL: { label: 'Rental', icon: <Home className="h-5 w-5" />, color: 'text-amber-500' },
+    INVESTMENT: { label: 'Investment', icon: <TrendingUp className="h-5 w-5" />, color: 'text-purple-500' },
+    OTHER: { label: 'Other', icon: <DollarSign className="h-5 w-5" />, color: 'text-gray-500' },
+  };
+
+  // Group income by type
+  const groupByType = (): IncomeGroup[] => {
+    const groups: Record<string, Income[]> = {};
+    income.forEach(inc => {
+      const type = inc.type === 'RENTAL' ? 'RENT' : inc.type;
+      if (!groups[type]) {
+        groups[type] = [];
+      }
+      groups[type].push(inc);
+    });
+
+    return Object.entries(groups).map(([type, incs]) => {
+      const info = typeInfo[type as Income['type']] || typeInfo.OTHER;
+      const totalMonthly = incs.reduce((sum, i) => sum + convertToMonthly(i.amount, i.frequency), 0);
+      return {
+        id: `type-${type}`,
+        name: info.label,
+        icon: <span className={info.color}>{info.icon}</span>,
+        incomes: incs,
+        totalMonthly,
+        count: incs.length,
+      };
+    }).sort((a, b) => b.totalMonthly - a.totalMonthly);
+  };
+
+  // Group income by source
+  const groupBySource = (): IncomeGroup[] => {
+    const groups: Record<string, { name: string; icon: React.ReactNode; incomes: Income[] }> = {
+      general: { name: 'General Income', icon: <DollarSign className="h-5 w-5 text-green-500" />, incomes: [] },
+    };
+
+    // Add property groups
+    properties.forEach(prop => {
+      groups[`property-${prop.id}`] = {
+        name: prop.name,
+        icon: <Home className="h-5 w-5 text-blue-500" />,
+        incomes: []
+      };
+    });
+
+    // Add investment account groups
+    investmentAccounts.forEach(acc => {
+      groups[`investment-${acc.id}`] = {
+        name: acc.name,
+        icon: <Briefcase className="h-5 w-5 text-purple-500" />,
+        incomes: []
+      };
+    });
+
+    // Distribute incomes
+    income.forEach(inc => {
+      if (inc.sourceType === 'PROPERTY' && inc.propertyId) {
+        const key = `property-${inc.propertyId}`;
+        if (groups[key]) {
+          groups[key].incomes.push(inc);
+        } else {
+          groups.general.incomes.push(inc);
+        }
+      } else if (inc.sourceType === 'INVESTMENT' && inc.investmentAccountId) {
+        const key = `investment-${inc.investmentAccountId}`;
+        if (groups[key]) {
+          groups[key].incomes.push(inc);
+        } else {
+          groups.general.incomes.push(inc);
+        }
+      } else {
+        groups.general.incomes.push(inc);
+      }
+    });
+
+    return Object.entries(groups)
+      .filter(([_, group]) => group.incomes.length > 0)
+      .map(([key, group]) => {
+        const totalMonthly = group.incomes.reduce((sum, i) => sum + convertToMonthly(i.amount, i.frequency), 0);
+        return {
+          id: key,
+          name: group.name,
+          icon: group.icon,
+          incomes: group.incomes,
+          totalMonthly,
+          count: group.incomes.length,
+        };
+      })
+      .sort((a, b) => b.totalMonthly - a.totalMonthly);
+  };
+
+  const incomeGroups = viewMode === 'type' ? groupByType() : viewMode === 'source' ? groupBySource() : [];
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -494,6 +621,51 @@ function IncomePageContent() {
           </Button>
         }
       />
+
+      {/* View Mode Selector */}
+      {income.length > 0 && (
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-sm text-muted-foreground">Group by:</span>
+          <div className="flex bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === 'type' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('type')}
+            >
+              <FolderOpen className="h-4 w-4" />
+              Type
+            </Button>
+            <Button
+              variant={viewMode === 'source' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('source')}
+            >
+              <Building2 className="h-4 w-4" />
+              Source
+            </Button>
+            <Button
+              variant={viewMode === 'all' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('all')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Tiles
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+              List
+            </Button>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -512,7 +684,84 @@ function IncomePageContent() {
             onClick: () => { setShowDialog(true); resetForm(); },
           }}
         />
-      ) : (
+      ) : viewMode === 'list' ? (
+        /* List view - compact table format */
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr className="text-left text-xs font-medium text-muted-foreground">
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Source</th>
+                    <th className="px-4 py-3 text-right">Amount</th>
+                    <th className="px-4 py-3">Frequency</th>
+                    <th className="px-4 py-3 text-right">Monthly</th>
+                    <th className="px-4 py-3 text-right">Annual</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {income.map((item) => {
+                    const monthlyAmount = convertToMonthly(item.amount, item.frequency);
+                    const annualAmount = convertToAnnual(item.amount, item.frequency);
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => handleViewDetails(item)}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-medium">{item.name}</div>
+                          {item.frankingPercentage && item.frankingPercentage > 0 && (
+                            <div className="text-xs text-emerald-600">{item.frankingPercentage}% Franked</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">{getIncomeTypeBadge(item.type)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {getSourceTypeIcon(item.sourceType || 'GENERAL')}
+                            <span className="text-sm">{getSourceLabel(item)}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-green-600">
+                          {formatCurrency(item.amount)}
+                        </td>
+                        <td className="px-4 py-3 text-sm capitalize">{item.frequency.toLowerCase()}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(monthlyAmount)}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(annualAmount)}</td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetails(item)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(item.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-muted/30 border-t">
+                  <tr className="font-medium">
+                    <td colSpan={5} className="px-4 py-3 text-right">Total Monthly:</td>
+                    <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalMonthly)}</td>
+                    <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalMonthly * 12)}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      ) : viewMode === 'all' ? (
+        /* Tiles view - individual cards */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {income.map((item) => {
             const monthlyAmount = convertToMonthly(item.amount, item.frequency);
@@ -631,6 +880,124 @@ function IncomePageContent() {
                     </div>
                   </div>
                 </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        /* Grouped view - expandable groups (type or source) */
+        <div className="space-y-4">
+          {incomeGroups.map((group) => {
+            const isExpanded = expandedGroups.has(group.id);
+            const annualTotal = group.totalMonthly * 12;
+
+            return (
+              <Card key={group.id} className="overflow-hidden">
+                <CardHeader
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleGroupExpanded(group.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {group.icon}
+                      <div>
+                        <CardTitle className="text-lg">{group.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          {group.count} income source{group.count !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-green-600">{formatCurrency(group.totalMonthly)}</p>
+                        <p className="text-xs text-muted-foreground">per month • {formatCurrency(annualTotal)}/yr</p>
+                      </div>
+                      {isExpanded ? (
+                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+
+                {isExpanded && (
+                  <CardContent className="border-t pt-4">
+                    <div className="space-y-2">
+                      {/* Table header */}
+                      <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                        <div className="col-span-4">Name</div>
+                        <div className="col-span-2">Amount</div>
+                        <div className="col-span-2">Frequency</div>
+                        <div className="col-span-2">Monthly</div>
+                        <div className="col-span-2 text-right">Actions</div>
+                      </div>
+
+                      {/* Income rows */}
+                      {group.incomes.map((item) => {
+                        const monthlyAmount = convertToMonthly(item.amount, item.frequency);
+                        return (
+                          <div
+                            key={item.id}
+                            className="grid grid-cols-12 gap-2 px-3 py-3 rounded-lg hover:bg-muted/50 transition-colors items-center"
+                          >
+                            <div className="col-span-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium truncate">{item.name}</span>
+                                {item.frankingPercentage && item.frankingPercentage > 0 && (
+                                  <span title={`${item.frankingPercentage}% Franked`}>
+                                    <Percent className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                                  </span>
+                                )}
+                              </div>
+                              {viewMode === 'type' && item.property && (
+                                <p className="text-xs text-blue-500 truncate">{item.property.name}</p>
+                              )}
+                              {viewMode === 'type' && item.investmentAccount && (
+                                <p className="text-xs text-purple-500 truncate">{item.investmentAccount.name}</p>
+                              )}
+                            </div>
+                            <div className="col-span-2">
+                              <span className="font-medium text-green-600">{formatCurrency(item.amount)}</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-sm capitalize">{item.frequency.toLowerCase()}</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-sm">{formatCurrency(monthlyAmount)}</span>
+                            </div>
+                            <div className="col-span-2 flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => { e.stopPropagation(); handleViewDetails(item); }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             );
           })}
