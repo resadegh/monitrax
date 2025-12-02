@@ -84,12 +84,20 @@ export async function PUT(
         }
       }
 
+      // Helper to safely convert to number
+      const toNumber = (val: unknown): number | null => {
+        if (val === null || val === undefined) return null;
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') return parseFloat(val);
+        return null;
+      };
+
       const income = await prisma.income.update({
         where: { id },
         data: {
           name,
           type,
-          amount,
+          amount: toNumber(amount) ?? existing.amount,
           frequency,
           isTaxable,
           propertyId: propertyId !== undefined ? propertyId : undefined,
@@ -98,15 +106,15 @@ export async function PUT(
           // Phase 20: Salary-specific fields
           salaryType: type === 'SALARY' ? salaryType : null,
           payFrequency: type === 'SALARY' ? payFrequency : null,
-          grossAmount: grossAmount !== undefined ? (grossAmount ? parseFloat(grossAmount) : null) : undefined,
-          netAmount: netAmount !== undefined ? (netAmount ? parseFloat(netAmount) : null) : undefined,
-          paygWithholding: paygWithholding !== undefined ? (paygWithholding ? parseFloat(paygWithholding) : null) : undefined,
-          superGuaranteeRate: superGuaranteeRate !== undefined ? (superGuaranteeRate ? parseFloat(superGuaranteeRate) : null) : undefined,
-          superGuaranteeAmount: superGuaranteeAmount !== undefined ? (superGuaranteeAmount ? parseFloat(superGuaranteeAmount) : null) : undefined,
-          salarySacrifice: salarySacrifice !== undefined ? (salarySacrifice ? parseFloat(salarySacrifice) : null) : undefined,
+          grossAmount: toNumber(grossAmount),
+          netAmount: toNumber(netAmount),
+          paygWithholding: toNumber(paygWithholding),
+          superGuaranteeRate: toNumber(superGuaranteeRate),
+          superGuaranteeAmount: toNumber(superGuaranteeAmount),
+          salarySacrifice: toNumber(salarySacrifice),
           // Phase 20: Investment-specific fields
-          frankingPercentage: frankingPercentage !== undefined ? (frankingPercentage ? parseFloat(frankingPercentage) : null) : undefined,
-          frankingCredits: frankingCredits !== undefined ? (frankingCredits ? parseFloat(frankingCredits) : null) : undefined,
+          frankingPercentage: toNumber(frankingPercentage),
+          frankingCredits: toNumber(frankingCredits),
         },
         include: {
           property: true,
