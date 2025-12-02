@@ -184,7 +184,7 @@ function IncomePageContent() {
 
     try {
       const annualAmount = convertToAnnual(formData.amount, formData.frequency);
-      const response = await fetch('/api/tax/salary/calculate', {
+      const response = await fetch('/api/tax/salary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,17 +193,20 @@ function IncomePageContent() {
         body: JSON.stringify({
           amount: annualAmount,
           salaryType: formData.salaryType,
+          payFrequency: 'ANNUALLY',
           salarySacrifice: formData.salarySacrifice || 0,
         }),
       });
 
       if (response.ok) {
-        const result = await response.json();
+        const data = await response.json();
+        // API returns nested under 'result'
+        const result = data.result;
         setSalaryPreview({
-          grossAmount: result.grossSalary || annualAmount,
-          netAmount: result.netSalary || annualAmount,
-          paygWithholding: result.paygWithholding || 0,
-          superGuarantee: result.superGuarantee || 0,
+          grossAmount: result?.grossSalary || annualAmount,
+          netAmount: result?.netSalary || annualAmount,
+          paygWithholding: result?.tax?.total || 0,
+          superGuarantee: result?.super?.guarantee || 0,
         });
       }
     } catch (error) {
