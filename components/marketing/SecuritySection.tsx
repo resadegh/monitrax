@@ -44,27 +44,27 @@ export function SecuritySection() {
   return (
     <section className="py-16 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border bg-card p-8 sm:p-12 lg:p-16">
+        <div className="rounded-3xl border border-white/10 bg-brand-primary p-8 sm:p-12 lg:p-16">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             {/* Left - Copy */}
             <div>
-              <div className="inline-flex rounded-lg bg-primary/10 p-3 text-primary mb-6">
+              <div className="inline-flex rounded-lg bg-brand-secondary/20 p-3 text-brand-secondary mb-6">
                 <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
 
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white">
                 Keeping your information secure is non-negotiable
               </h2>
 
-              <p className="mt-4 text-lg text-muted-foreground">
+              <p className="mt-4 text-lg text-white/70">
                 Your financial data is sensitive. We treat it that way with enterprise-grade
                 security at every layer.
               </p>
 
               <div className="mt-8">
-                <Button variant="outline" asChild>
+                <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
                   <Link href="/security">
                     Read our Security & Privacy overview
                     <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,12 +79,12 @@ export function SecuritySection() {
             <div className="grid gap-6 sm:grid-cols-2">
               {securityPoints.map((point, index) => (
                 <div key={index} className="flex gap-4">
-                  <div className="flex-shrink-0 text-primary">
+                  <div className="flex-shrink-0 text-brand-secondary">
                     {point.icon}
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-1">{point.title}</h3>
-                    <p className="text-sm text-muted-foreground">{point.description}</p>
+                    <h3 className="font-semibold mb-1 text-white">{point.title}</h3>
+                    <p className="text-sm text-white/60">{point.description}</p>
                   </div>
                 </div>
               ))}

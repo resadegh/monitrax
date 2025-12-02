@@ -15,7 +15,7 @@ export function ForecastSection() {
 
             <ul className="mt-8 space-y-4">
               <li className="flex items-start gap-3">
-                <svg className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-6 w-6 text-brand-secondary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span className="text-muted-foreground">
@@ -23,7 +23,7 @@ export function ForecastSection() {
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <svg className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-6 w-6 text-brand-secondary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span className="text-muted-foreground">
@@ -31,7 +31,7 @@ export function ForecastSection() {
                 </span>
               </li>
               <li className="flex items-start gap-3">
-                <svg className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-6 w-6 text-brand-secondary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span className="text-muted-foreground">
@@ -51,11 +51,11 @@ export function ForecastSection() {
                 </div>
                 <div className="flex gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-primary" />
+                    <div className="h-3 w-3 rounded-full bg-brand-secondary" />
                     <span className="text-muted-foreground">Projected</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-primary/30" />
+                    <div className="h-3 w-3 rounded-full bg-brand-secondary/30" />
                     <span className="text-muted-foreground">Range</span>
                   </div>
                 </div>
@@ -74,23 +74,24 @@ export function ForecastSection() {
                   {/* Confidence band */}
                   <path
                     d="M0,180 Q100,160 200,120 T400,40 L400,60 Q300,100 200,140 T0,190 Z"
-                    className="fill-primary/10"
+                    fill="rgb(22 163 74 / 0.1)"
                   />
 
                   {/* Main projection line */}
                   <path
                     d="M0,185 Q50,175 100,160 T200,130 T300,80 T400,50"
-                    className="stroke-primary fill-none"
+                    stroke="rgb(22 163 74)"
+                    fill="none"
                     strokeWidth="3"
                     strokeLinecap="round"
                   />
 
                   {/* Data points */}
-                  <circle cx="0" cy="185" r="4" className="fill-primary" />
-                  <circle cx="100" cy="160" r="4" className="fill-primary" />
-                  <circle cx="200" cy="130" r="4" className="fill-primary" />
-                  <circle cx="300" cy="80" r="4" className="fill-primary" />
-                  <circle cx="400" cy="50" r="4" className="fill-primary" />
+                  <circle cx="0" cy="185" r="4" fill="rgb(22 163 74)" />
+                  <circle cx="100" cy="160" r="4" fill="rgb(22 163 74)" />
+                  <circle cx="200" cy="130" r="4" fill="rgb(22 163 74)" />
+                  <circle cx="300" cy="80" r="4" fill="rgb(22 163 74)" />
+                  <circle cx="400" cy="50" r="4" fill="rgb(22 163 74)" />
                 </svg>
 
                 {/* Y-axis labels */}
@@ -118,17 +119,17 @@ export function ForecastSection() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">10 Years</p>
-                  <p className="text-lg font-semibold text-primary">$1.2M</p>
+                  <p className="text-lg font-semibold text-brand-secondary">$1.2M</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">30 Years</p>
-                  <p className="text-lg font-semibold text-primary">$2.8M</p>
+                  <p className="text-lg font-semibold text-brand-secondary">$2.8M</p>
                 </div>
               </div>
             </div>
 
             {/* Decorative blur */}
-            <div className="absolute -z-10 -top-8 -right-8 h-64 w-64 rounded-full bg-primary/5 blur-3xl" />
+            <div className="absolute -z-10 -top-8 -right-8 h-64 w-64 rounded-full bg-brand-secondary/5 blur-3xl" />
           </div>
         </div>
       </div>
