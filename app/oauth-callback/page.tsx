@@ -19,8 +19,8 @@ function OAuthCallbackContent() {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
 
-        // Redirect to dashboard
-        router.push('/dashboard');
+        // Force full page reload to ensure AuthContext reads fresh localStorage
+        window.location.href = '/dashboard';
       } catch (error) {
         console.error('OAuth callback error:', error);
         router.push('/signin?error=oauth_failed');
