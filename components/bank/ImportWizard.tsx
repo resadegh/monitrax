@@ -153,7 +153,7 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
       const formData = new FormData();
       formData.append('file', file);
       formData.append('duplicatePolicy', duplicatePolicy);
-      if (selectedAccount) {
+      if (selectedAccount && selectedAccount !== 'none') {
         formData.append('accountId', selectedAccount);
       }
       if (preview.suggestedMappings) {
@@ -348,7 +348,7 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
                     <SelectValue placeholder="Select an account" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {accounts.map((account) => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name} ({account.type})
