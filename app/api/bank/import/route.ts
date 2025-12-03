@@ -14,6 +14,7 @@ import {
   detectDuplicates,
   applyDuplicatePolicy,
 } from '@/lib/bank';
+import { batchFindMatches } from '@/lib/bank/recurringMatcher';
 import type {
   ImportFileFormat,
   DuplicatePolicy,
@@ -30,6 +31,18 @@ export async function POST(request: NextRequest) {
       const accountId = formData.get('accountId') as string | null;
       const duplicatePolicyStr = formData.get('duplicatePolicy') as string | null;
       const mappingsStr = formData.get('mappings') as string | null;
+      const updateAccountBalance = formData.get('updateAccountBalance') === 'true';
+      const transactionLinksStr = formData.get('transactionLinks') as string | null;
+      const autoLinkRecurring = formData.get('autoLinkRecurring') === 'true';
+
+      // Parse transaction links: { [transactionIndex]: { type: 'income'|'expense', id: string } }
+      interface TransactionLink {
+        type: 'income' | 'expense';
+        id: string;
+      }
+      const transactionLinks: Record<number, TransactionLink> = transactionLinksStr
+        ? JSON.parse(transactionLinksStr)
+        : {};
 
       if (!file) {
         return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -232,27 +245,91 @@ export async function POST(request: NextRequest) {
           }))
         );
 
-        // Create unified transactions
+        // Build auto-links if enabled
+        let effectiveLinks = { ...transactionLinks };
+        let linkedCount = 0;
+
+        if (autoLinkRecurring && Object.keys(transactionLinks).length === 0) {
+          // Fetch income and expense entries for auto-linking
+          const [incomeEntries, expenseEntries] = await Promise.all([
+            prisma.income.findMany({
+              where: { userId },
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                amount: true,
+                frequency: true,
+                netAmount: true,
+              },
+            }),
+            prisma.expense.findMany({
+              where: { userId },
+              select: {
+                id: true,
+                name: true,
+                vendorName: true,
+                category: true,
+                amount: true,
+                frequency: true,
+              },
+            }),
+          ]);
+
+          // Get recurring matches for transactions
+          const transactionsToMatch = categorisationResult.transactions.map(t => ({
+            description: t.description,
+            merchantStandardised: t.merchantStandardised,
+            amount: t.amount,
+            direction: t.direction,
+          }));
+
+          const recurringMatches = batchFindMatches(
+            transactionsToMatch,
+            incomeEntries,
+            expenseEntries
+          );
+
+          // Auto-link high-confidence matches
+          recurringMatches.forEach((match, index) => {
+            if (match.confidence >= 0.7 && match.amountMatch) {
+              effectiveLinks[index] = {
+                type: match.type,
+                id: match.id,
+              };
+            }
+          });
+        }
+
+        // Create unified transactions with links
         if (categorisationResult.transactions.length > 0) {
           await prisma.unifiedTransaction.createMany({
-            data: categorisationResult.transactions.map((tx) => ({
-              id: tx.id,
-              userId,
-              accountId: tx.bankAccountId ?? accountId ?? '',
-              date: tx.date,
-              amount: tx.amount,
-              direction: tx.direction,
-              description: tx.description,
-              merchantRaw: tx.merchantRaw,
-              merchantStandardised: tx.merchantStandardised,
-              categoryLevel1: tx.categoryLevel1,
-              categoryLevel2: tx.categoryLevel2,
-              subcategory: tx.subcategory,
-              confidenceScore: tx.confidenceScore,
-              source: 'CSV' as const,
-              importBatchId: importFile.id,
-              processedAt: new Date(),
-            })),
+            data: categorisationResult.transactions.map((tx, index) => {
+              const link = effectiveLinks[index];
+              if (link) linkedCount++;
+
+              return {
+                id: tx.id,
+                userId,
+                accountId: tx.bankAccountId ?? accountId ?? '',
+                date: tx.date,
+                amount: tx.amount,
+                direction: tx.direction,
+                description: tx.description,
+                merchantRaw: tx.merchantRaw,
+                merchantStandardised: tx.merchantStandardised,
+                categoryLevel1: tx.categoryLevel1,
+                categoryLevel2: tx.categoryLevel2,
+                subcategory: tx.subcategory,
+                confidenceScore: tx.confidenceScore,
+                source: 'CSV' as const,
+                importBatchId: importFile.id,
+                processedAt: new Date(),
+                // Apply income/expense links
+                incomeId: link?.type === 'income' ? link.id : null,
+                expenseId: link?.type === 'expense' ? link.id : null,
+              };
+            }),
           });
         }
 
@@ -275,32 +352,13 @@ export async function POST(request: NextRequest) {
           data: { isProcessed: true },
         });
 
-        // Recalculate account balance if an account was linked
-        if (accountId) {
-          const accountTransactions = await prisma.unifiedTransaction.findMany({
-            where: { accountId },
-            select: { amount: true, direction: true },
-          });
-
-          // Calculate net balance change from transactions
-          const netChange = accountTransactions.reduce((sum: number, tx: { amount: number; direction: string }) => {
-            return sum + (tx.direction === 'IN' ? tx.amount : -tx.amount);
-          }, 0);
-
-          // Get current account to adjust balance
-          const account = await prisma.account.findUnique({
+        // Update account balance if requested and an account was linked
+        if (accountId && updateAccountBalance && parsedFile.closingBalance !== undefined) {
+          // Use the closing balance from the CSV file
+          await prisma.account.update({
             where: { id: accountId },
-            select: { currentBalance: true },
+            data: { currentBalance: parsedFile.closingBalance },
           });
-
-          if (account) {
-            // Update account balance - you may want to adjust this logic
-            // based on whether you want to SET the balance or ADD to it
-            await prisma.account.update({
-              where: { id: accountId },
-              data: { currentBalance: netChange },
-            });
-          }
         }
 
         return NextResponse.json({
@@ -313,6 +371,7 @@ export async function POST(request: NextRequest) {
             errors: normalisationResult.errors.length,
             categorised: categorisationResult.statistics.categorised,
             uncategorised: categorisationResult.statistics.uncategorised,
+            linkedToRecurring: linkedCount,
           },
           errors: normalisationResult.errors.slice(0, 10), // First 10 errors
         });

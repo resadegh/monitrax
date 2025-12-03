@@ -29,6 +29,8 @@ export interface ParsedFile {
   totalRows: number;
   headers?: string[];
   metadata?: Record<string, unknown>;
+  closingBalance?: number; // Last balance value from file
+  openingBalance?: number; // First balance value from file
 }
 
 export interface ParseOptions {

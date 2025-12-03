@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface RecurringMatch {
   type: 'income' | 'expense';
@@ -45,6 +46,11 @@ interface PreviewData {
     totalDebit: number;
     netAmount: number;
   };
+  balanceInfo?: {
+    openingBalance?: number;
+    closingBalance?: number;
+    hasBalance: boolean;
+  };
   dateRange?: {
     from: string;
     to: string;
@@ -67,6 +73,23 @@ interface PreviewData {
     };
     matches: Array<{ index: number; match: RecurringMatch }>;
   };
+  availableRecurring?: {
+    income: Array<{
+      id: string;
+      name: string;
+      type: string;
+      amount: number;
+      frequency: string;
+    }>;
+    expenses: Array<{
+      id: string;
+      name: string;
+      vendorName?: string | null;
+      category: string;
+      amount: number;
+      frequency: string;
+    }>;
+  };
   errors: Array<{
     rowNumber: number;
     field: string;
@@ -84,6 +107,7 @@ interface ImportResult {
     errors: number;
     categorised: number;
     uncategorised: number;
+    linkedToRecurring?: number;
   };
   errors?: Array<{
     rowNumber: number;
@@ -113,6 +137,8 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<string>('');
   const [duplicatePolicy, setDuplicatePolicy] = useState<string>('REJECT');
+  const [updateAccountBalance, setUpdateAccountBalance] = useState<boolean>(false);
+  const [autoLinkRecurring, setAutoLinkRecurring] = useState<boolean>(true);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -183,6 +209,12 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
       }
       if (preview.suggestedMappings) {
         formData.append('mappings', JSON.stringify(preview.suggestedMappings));
+      }
+      if (updateAccountBalance) {
+        formData.append('updateAccountBalance', 'true');
+      }
+      if (autoLinkRecurring) {
+        formData.append('autoLinkRecurring', 'true');
       }
 
       setImportProgress(30);
@@ -439,6 +471,68 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Update account balance from file */}
+              {selectedAccount && selectedAccount !== 'none' && preview.balanceInfo?.hasBalance && (
+                <div className="flex items-start space-x-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <Checkbox
+                    id="updateBalance"
+                    checked={updateAccountBalance}
+                    onCheckedChange={(checked) => setUpdateAccountBalance(checked === true)}
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label
+                      htmlFor="updateBalance"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Update account balance from file
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                      Set account balance to{' '}
+                      <span className="font-semibold text-foreground">
+                        {formatCurrency(preview.balanceInfo.closingBalance ?? 0)}
+                      </span>
+                      {' '}(closing balance from file)
+                    </p>
+                    {preview.balanceInfo.openingBalance !== undefined && (
+                      <p className="text-xs text-muted-foreground">
+                        Opening balance: {formatCurrency(preview.balanceInfo.openingBalance)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Auto-link to recurring income/expenses */}
+              {preview.recurringMatches && preview.recurringMatches.summary.totalMatches > 0 && (
+                <div className="flex items-start space-x-3 p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <Checkbox
+                    id="autoLink"
+                    checked={autoLinkRecurring}
+                    onCheckedChange={(checked) => setAutoLinkRecurring(checked === true)}
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label
+                      htmlFor="autoLink"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Auto-link to recurring entries
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically link{' '}
+                      <span className="font-semibold text-foreground">
+                        {preview.recurringMatches.summary.highConfidenceMatches}
+                      </span>
+                      {' '}transactions to matching Income/Expense entries
+                    </p>
+                    <div className="flex gap-2 text-xs text-muted-foreground">
+                      <span>{preview.recurringMatches.summary.incomeMatches} income matches</span>
+                      <span>•</span>
+                      <span>{preview.recurringMatches.summary.expenseMatches} expense matches</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -472,6 +566,11 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
                 <div className="text-sm text-muted-foreground space-y-1">
                   <p>{result.statistics?.imported} transactions imported</p>
                   <p>{result.statistics?.categorised} automatically categorised</p>
+                  {(result.statistics?.linkedToRecurring ?? 0) > 0 && (
+                    <p className="text-blue-600 dark:text-blue-400">
+                      {result.statistics?.linkedToRecurring} linked to income/expense entries
+                    </p>
+                  )}
                   {(result.statistics?.duplicates ?? 0) > 0 && (
                     <p>{result.statistics?.duplicates} duplicates skipped</p>
                   )}
