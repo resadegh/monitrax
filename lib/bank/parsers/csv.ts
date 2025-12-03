@@ -404,6 +404,14 @@ export function parseCSV(
     });
   }
 
+  // Extract opening and closing balances
+  const balances = transactions
+    .map(t => t.balance)
+    .filter((b): b is number => b !== undefined && !isNaN(b));
+
+  const openingBalance = balances.length > 0 ? balances[0] : undefined;
+  const closingBalance = balances.length > 0 ? balances[balances.length - 1] : undefined;
+
   return {
     format: 'CSV',
     transactions,
@@ -422,6 +430,8 @@ export function parseCSV(
         reference: refCol,
       },
     },
+    openingBalance,
+    closingBalance,
   };
 }
 

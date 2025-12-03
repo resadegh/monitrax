@@ -192,6 +192,12 @@ export async function POST(request: NextRequest) {
           totalDebit,
           netAmount: totalCredit - totalDebit,
         },
+        // Balance information from file
+        balanceInfo: {
+          openingBalance: parsedFile.openingBalance,
+          closingBalance: parsedFile.closingBalance,
+          hasBalance: parsedFile.closingBalance !== undefined,
+        },
         dateRange,
         // Return first 50 transactions for preview with match info
         preview: normalisationResult.transactions.slice(0, 50).map((t, index) => ({
@@ -206,6 +212,24 @@ export async function POST(request: NextRequest) {
         recurringMatches: {
           summary: matchSummary,
           matches: matchesArray,
+        },
+        // Available income and expense entries for linking
+        availableRecurring: {
+          income: incomeEntries.map((i: typeof incomeEntries[number]) => ({
+            id: i.id,
+            name: i.name,
+            type: i.type,
+            amount: i.netAmount || i.amount,
+            frequency: i.frequency,
+          })),
+          expenses: expenseEntries.map((e: typeof expenseEntries[number]) => ({
+            id: e.id,
+            name: e.name,
+            vendorName: e.vendorName,
+            category: e.category,
+            amount: e.amount,
+            frequency: e.frequency,
+          })),
         },
         // Return first 10 errors for display
         errors: normalisationResult.errors.slice(0, 10),
