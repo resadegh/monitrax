@@ -286,7 +286,6 @@ export async function GET(
           amount: true,
           frequency: true,
           netAmount: true,
-          isRecurring: true,
         },
         orderBy: { name: 'asc' },
       });
@@ -301,7 +300,6 @@ export async function GET(
           category: true,
           amount: true,
           frequency: true,
-          isRecurring: true,
         },
         orderBy: { name: 'asc' },
       });
