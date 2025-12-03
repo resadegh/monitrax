@@ -96,19 +96,17 @@ export async function PUT(
         return null;
       };
 
-      // Valid PayFrequency enum values
-      type PayFrequencyEnum = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
-      const validPayFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
-
       // Helper to convert Frequency enum to PayFrequency enum (ANNUAL -> ANNUALLY)
-      const toPayFrequency = (freq: string | undefined | null): PayFrequencyEnum | null | undefined => {
+      // PayFrequency values: WEEKLY, FORTNIGHTLY, MONTHLY, QUARTERLY, ANNUALLY
+      const toPayFrequency = (freq: string | undefined | null): 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | null | undefined => {
         if (freq === undefined) return undefined;
         if (freq === null) return null;
         // Map ANNUAL to ANNUALLY (Frequency uses ANNUAL, PayFrequency uses ANNUALLY)
         const mapped = freq === 'ANNUAL' ? 'ANNUALLY' : freq;
         // Validate it's a valid PayFrequency value
-        if (validPayFrequencies.includes(mapped)) {
-          return mapped as PayFrequencyEnum;
+        const validPayFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'] as const;
+        if (validPayFrequencies.includes(mapped as typeof validPayFrequencies[number])) {
+          return mapped as typeof validPayFrequencies[number];
         }
         return null;
       };

@@ -14,10 +14,12 @@ import { calculateLinkageHealth } from '@/lib/intelligence/linkageHealthService'
 async function fetchSnapshot(request: NextRequest, userId: string): Promise<Response> {
   const baseUrl = request.nextUrl.origin;
   const cookie = request.headers.get('cookie') || '';
+  const authorization = request.headers.get('authorization') || '';
 
   return fetch(`${baseUrl}/api/portfolio/snapshot`, {
     headers: {
       'Cookie': cookie,
+      'Authorization': authorization,
     },
   });
 }

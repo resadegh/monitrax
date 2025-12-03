@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -81,6 +82,7 @@ interface ImportWizardProps {
 type WizardStep = 'upload' | 'preview' | 'settings' | 'importing' | 'complete';
 
 export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProps) {
+  const { token } = useAuth();
   const [step, setStep] = useState<WizardStep>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewData | null>(null);
@@ -122,6 +124,7 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
 
       const response = await fetch('/api/bank/preview', {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
@@ -161,6 +164,7 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
 
       const response = await fetch('/api/bank/import', {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
 
