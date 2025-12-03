@@ -67,15 +67,34 @@ export async function POST(request: NextRequest) {
         where: {
           userId,
           fileHash,
+          status: 'COMPLETED',
+          importedCount: { gt: 0 }, // Only block if actually imported transactions
         },
       });
 
       if (existingFile) {
-        return NextResponse.json(
-          { error: 'This file has already been imported', existingFileId: existingFile.id },
-          { status: 409 }
-        );
+        // Allow re-import if user explicitly chooses to (via duplicatePolicy)
+        const duplicatePolicy = formData.get('duplicatePolicy') as string | null;
+        if (duplicatePolicy !== 'MARK_DUPLICATE') {
+          return NextResponse.json(
+            { error: 'This file has already been imported', existingFileId: existingFile.id },
+            { status: 409 }
+          );
+        }
       }
+
+      // Delete any failed/incomplete previous imports of this file
+      await prisma.bankImportFile.deleteMany({
+        where: {
+          userId,
+          fileHash,
+          OR: [
+            { status: 'FAILED' },
+            { status: 'PROCESSING' },
+            { importedCount: 0 },
+          ],
+        },
+      });
 
       // Parse mappings if provided
       const mappings: ParseOptions | undefined = mappingsStr
