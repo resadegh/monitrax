@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, X, Link2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+
+interface RecurringMatch {
+  type: 'income' | 'expense';
+  id: string;
+  name: string;
+  category?: string;
+  amount: number;
+  frequency: string;
+  confidence: number;
+  amountMatch: boolean;
+  amountDifference?: number;
+  warning?: string;
+}
 
 interface PreviewData {
   filename: string;
@@ -41,7 +55,18 @@ interface PreviewData {
     amount: number;
     direction: 'IN' | 'OUT';
     merchantStandardised?: string;
+    recurringMatch?: RecurringMatch | null;
   }>;
+  recurringMatches?: {
+    summary: {
+      totalMatches: number;
+      incomeMatches: number;
+      expenseMatches: number;
+      amountMismatches: number;
+      highConfidenceMatches: number;
+    };
+    matches: Array<{ index: number; match: RecurringMatch }>;
+  };
   errors: Array<{
     rowNumber: number;
     field: string;
@@ -310,27 +335,71 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
               </Alert>
             )}
 
+            {/* Recurring matches summary */}
+            {preview.recurringMatches && preview.recurringMatches.summary.totalMatches > 0 && (
+              <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                <Link2 className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800 dark:text-blue-200">
+                  <span className="font-medium">{preview.recurringMatches.summary.totalMatches} transactions</span> match your existing income/expense entries
+                  {preview.recurringMatches.summary.amountMismatches > 0 && (
+                    <span className="text-amber-600 dark:text-amber-400 ml-2">
+                      ({preview.recurringMatches.summary.amountMismatches} with amount differences)
+                    </span>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Transaction preview */}
             <div>
               <h4 className="font-medium mb-2">Preview</h4>
-              <div className="max-h-48 overflow-auto border rounded-lg">
+              <div className="max-h-64 overflow-auto border rounded-lg">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
                     <tr>
                       <th className="text-left p-2">Date</th>
                       <th className="text-left p-2">Description</th>
                       <th className="text-right p-2">Amount</th>
+                      <th className="text-center p-2 w-10">Match</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.preview.slice(0, 10).map((tx, i) => (
-                      <tr key={i} className="border-t">
+                    {preview.preview.slice(0, 15).map((tx, i) => (
+                      <tr key={i} className={`border-t ${tx.recurringMatch?.warning ? 'bg-amber-50 dark:bg-amber-950/30' : ''}`}>
                         <td className="p-2">{formatDate(tx.date)}</td>
-                        <td className="p-2 truncate max-w-[200px]">
-                          {tx.merchantStandardised || tx.description}
+                        <td className="p-2">
+                          <div className="truncate max-w-[200px]">
+                            {tx.merchantStandardised || tx.description}
+                          </div>
+                          {tx.recurringMatch && (
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              → Matches: <span className="font-medium">{tx.recurringMatch.name}</span>
+                              <Badge variant="outline" className="ml-1 text-xs py-0">
+                                {tx.recurringMatch.type === 'income' ? 'Income' : 'Expense'}
+                              </Badge>
+                            </div>
+                          )}
+                          {tx.recurringMatch?.warning && (
+                            <div className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                              ⚠ {tx.recurringMatch.warning}
+                            </div>
+                          )}
                         </td>
                         <td className={`p-2 text-right ${tx.direction === 'IN' ? 'text-green-600' : 'text-red-600'}`}>
                           {tx.direction === 'IN' ? '+' : '-'}{formatCurrency(tx.amount)}
+                        </td>
+                        <td className="p-2 text-center">
+                          {tx.recurringMatch && (
+                            <span
+                              title={`Matches: ${tx.recurringMatch.name}\nExpected: $${tx.recurringMatch.amount} (${tx.recurringMatch.frequency})`}
+                            >
+                              {tx.recurringMatch.warning ? (
+                                <AlertTriangle className="h-4 w-4 text-amber-500 inline" />
+                              ) : (
+                                <Link2 className="h-4 w-4 text-blue-500 inline" />
+                              )}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

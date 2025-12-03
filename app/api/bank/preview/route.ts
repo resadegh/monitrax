@@ -8,6 +8,7 @@ import { createHash } from 'crypto';
 import { prisma } from '@/lib/db';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 import { parseCSV, suggestColumnMappings, normaliseTransactions, countPotentialDuplicates } from '@/lib/bank';
+import { batchFindMatches, getMatchSummary, type RecurringMatch } from '@/lib/bank/recurringMatcher';
 import type { ParseOptions } from '@/lib/bank/types';
 
 export async function POST(request: NextRequest) {
@@ -104,6 +105,54 @@ export async function POST(request: NextRequest) {
         existingNormalised
       );
 
+      // Fetch income and expense entries for recurring match detection
+      const [incomeEntries, expenseEntries] = await Promise.all([
+        prisma.income.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            amount: true,
+            frequency: true,
+            netAmount: true,
+          },
+        }),
+        prisma.expense.findMany({
+          where: { userId },
+          select: {
+            id: true,
+            name: true,
+            vendorName: true,
+            category: true,
+            amount: true,
+            frequency: true,
+          },
+        }),
+      ]);
+
+      // Find recurring matches for transactions
+      const transactionsToMatch = normalisationResult.transactions.map(t => ({
+        description: t.description,
+        merchantStandardised: t.merchantStandardised,
+        amount: t.amount,
+        direction: t.direction,
+      }));
+
+      const recurringMatches = batchFindMatches(
+        transactionsToMatch,
+        incomeEntries,
+        expenseEntries
+      );
+
+      const matchSummary = getMatchSummary(recurringMatches);
+
+      // Convert matches map to array for JSON
+      const matchesArray: Array<{ index: number; match: RecurringMatch }> = [];
+      recurringMatches.forEach((match, index) => {
+        matchesArray.push({ index, match });
+      });
+
       // Calculate date range
       const validDates = normalisationResult.transactions
         .map(t => t.date)
@@ -144,14 +193,20 @@ export async function POST(request: NextRequest) {
           netAmount: totalCredit - totalDebit,
         },
         dateRange,
-        // Return first 50 transactions for preview
-        preview: normalisationResult.transactions.slice(0, 50).map(t => ({
+        // Return first 50 transactions for preview with match info
+        preview: normalisationResult.transactions.slice(0, 50).map((t, index) => ({
           date: t.date,
           description: t.description,
           amount: t.amount,
           direction: t.direction,
           merchantStandardised: t.merchantStandardised,
+          recurringMatch: recurringMatches.get(index) || null,
         })),
+        // Recurring match summary
+        recurringMatches: {
+          summary: matchSummary,
+          matches: matchesArray,
+        },
         // Return first 10 errors for display
         errors: normalisationResult.errors.slice(0, 10),
       });
