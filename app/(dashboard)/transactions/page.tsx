@@ -36,8 +36,10 @@ import {
   TrendingUp,
   TrendingDown,
   Upload,
+  Link2,
 } from 'lucide-react';
 import { ImportWizard } from '@/components/bank/ImportWizard';
+import { TransactionLinkDialog } from '@/components/transactions/TransactionLinkDialog';
 
 // =============================================================================
 // TYPES
@@ -58,6 +60,8 @@ interface Transaction {
   confidenceScore: number | null;
   isRecurring: boolean;
   anomalyFlags: string[];
+  incomeId?: string | null;
+  expenseId?: string | null;
   account: {
     id: string;
     name: string;
@@ -152,14 +156,17 @@ function getConfidenceBadge(score: number | null): React.ReactNode {
 function TransactionRow({
   transaction,
   onEdit,
+  onLink,
 }: {
   transaction: Transaction;
   onEdit: (tx: Transaction) => void;
+  onLink: (tx: Transaction) => void;
 }) {
+  const isLinked = transaction.incomeId || transaction.expenseId;
+
   return (
     <div
-      className="flex items-center gap-4 p-4 border-b hover:bg-gray-50 cursor-pointer"
-      onClick={() => onEdit(transaction)}
+      className="flex items-center gap-4 p-4 border-b hover:bg-gray-50"
     >
       {/* Direction Icon */}
       <div
@@ -175,12 +182,17 @@ function TransactionRow({
       </div>
 
       {/* Main Info */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEdit(transaction)}>
         <div className="flex items-center gap-2">
           <span className="font-medium truncate">
             {transaction.merchantStandardised || transaction.description}
           </span>
-          {transaction.isRecurring && (
+          {isLinked && (
+            <span title="Linked to Income/Expense" className="text-blue-500">
+              <Link2 className="h-4 w-4" />
+            </span>
+          )}
+          {transaction.isRecurring && !isLinked && (
             <span title="Recurring">
               <Repeat className="h-4 w-4 text-blue-500" />
             </span>
@@ -212,22 +224,22 @@ function TransactionRow({
         {getConfidenceBadge(transaction.confidenceScore)}
       </div>
 
-      {/* Tags */}
-      {transaction.tags.length > 0 && (
-        <div className="hidden lg:flex items-center gap-1">
-          {transaction.tags.slice(0, 2).map((tag) => (
-            <span
-              key={tag}
-              className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
-            >
-              {tag}
-            </span>
-          ))}
-          {transaction.tags.length > 2 && (
-            <span className="text-xs text-gray-400">+{transaction.tags.length - 2}</span>
-          )}
-        </div>
-      )}
+      {/* Link Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onLink(transaction);
+        }}
+        className={`hidden sm:flex px-3 py-1.5 text-xs rounded-lg items-center gap-1 ${
+          isLinked
+            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        }`}
+        title={isLinked ? 'View/Edit Link' : 'Link to Income/Expense'}
+      >
+        <Link2 className="h-3 w-3" />
+        {isLinked ? 'Linked' : 'Link'}
+      </button>
 
       {/* Amount */}
       <div
@@ -239,7 +251,10 @@ function TransactionRow({
         {formatCurrency(transaction.amount, transaction.currency)}
       </div>
 
-      <ChevronRight className="h-4 w-4 text-gray-400" />
+      <ChevronRight
+        className="h-4 w-4 text-gray-400 cursor-pointer"
+        onClick={() => onEdit(transaction)}
+      />
     </div>
   );
 }
@@ -523,6 +538,10 @@ export default function TransactionExplorer() {
 
   // Edit panel
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  // Link dialog
+  const [linkingTransaction, setLinkingTransaction] = useState<Transaction | null>(null);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
 
   const fetchTransactions = useCallback(async () => {
     if (!token) return;
@@ -811,6 +830,10 @@ export default function TransactionExplorer() {
                     key={tx.id}
                     transaction={tx}
                     onEdit={setEditingTransaction}
+                    onLink={(t) => {
+                      setLinkingTransaction(t);
+                      setShowLinkDialog(true);
+                    }}
                   />
                 ))}
               </div>
@@ -877,6 +900,19 @@ export default function TransactionExplorer() {
           </div>
         </>
       )}
+
+      {/* Transaction Link Dialog */}
+      <TransactionLinkDialog
+        transaction={linkingTransaction}
+        open={showLinkDialog}
+        onOpenChange={(open) => {
+          setShowLinkDialog(open);
+          if (!open) setLinkingTransaction(null);
+        }}
+        onLinked={() => {
+          fetchTransactions();
+        }}
+      />
     </DashboardLayout>
   );
 }
