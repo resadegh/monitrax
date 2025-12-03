@@ -39,6 +39,16 @@ const BANK_MAPPINGS: BankMapping[] = [
     dateFormat: 'DD/MM/YYYY',
   },
   {
+    name: 'CBA Transaction Export',
+    patterns: ['BSB Number', 'Account Number', 'Transaction Date', 'Narration', 'Debit', 'Credit'],
+    dateColumn: 'Transaction Date',
+    descriptionColumn: 'Narration',
+    creditColumn: 'Credit',
+    debitColumn: 'Debit',
+    balanceColumn: 'Balance',
+    dateFormat: 'DD/MM/YYYY',
+  },
+  {
     name: 'ANZ',
     patterns: ['Date', 'Details', 'Amount', 'Type'],
     dateColumn: 'Date',
