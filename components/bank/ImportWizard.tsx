@@ -377,8 +377,8 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
               <Button variant="outline" onClick={() => setStep('upload')}>
                 Back
               </Button>
-              <Button onClick={handleImport} disabled={preview.alreadyImported}>
-                Import {preview.statistics.validTransactions} Transactions
+              <Button onClick={handleImport} disabled={preview.statistics.validTransactions === 0}>
+                {preview.alreadyImported ? 'Re-import' : 'Import'} {preview.statistics.validTransactions} Transactions
               </Button>
             </div>
           </div>
