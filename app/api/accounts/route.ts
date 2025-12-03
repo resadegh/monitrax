@@ -8,12 +8,45 @@ export async function GET(request: NextRequest) {
     try {
       const accounts = await prisma.account.findMany({
         where: { userId: authReq.user!.userId },
-        include: { linkedLoan: true },
+        include: {
+          linkedLoan: true,
+          unifiedTransactions: {
+            orderBy: { date: 'desc' },
+            take: 50, // Limit to recent 50 transactions
+            select: {
+              id: true,
+              date: true,
+              description: true,
+              amount: true,
+              direction: true,
+              categoryLevel1: true,
+              merchantStandardised: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       });
 
+      // Transform unifiedTransactions to match expected format
+      const accountsWithTransactions = accounts.map((account: typeof accounts[number]) => {
+        const transactions = account.unifiedTransactions?.map((tx: typeof account.unifiedTransactions[number]) => ({
+          id: tx.id,
+          date: tx.date.toISOString(),
+          description: tx.merchantStandardised || tx.description,
+          amount: tx.amount,
+          type: tx.direction === 'IN' ? 'CREDIT' : 'DEBIT',
+          category: tx.categoryLevel1,
+        })) || [];
+
+        return {
+          ...account,
+          transactions,
+          unifiedTransactions: undefined, // Remove the raw field
+        };
+      });
+
       // Apply GRDCS wrapper to each account
-      const accountsWithLinks = accounts.map((account: typeof accounts[number]) => {
+      const accountsWithLinks = accountsWithTransactions.map((account: typeof accountsWithTransactions[number]) => {
         const links = extractAccountLinks(account);
         return wrapWithGRDCS(account as Record<string, unknown>, 'account', links);
       });

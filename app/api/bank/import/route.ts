@@ -275,6 +275,34 @@ export async function POST(request: NextRequest) {
           data: { isProcessed: true },
         });
 
+        // Recalculate account balance if an account was linked
+        if (accountId) {
+          const accountTransactions = await prisma.unifiedTransaction.findMany({
+            where: { accountId },
+            select: { amount: true, direction: true },
+          });
+
+          // Calculate net balance change from transactions
+          const netChange = accountTransactions.reduce((sum: number, tx: { amount: number; direction: string }) => {
+            return sum + (tx.direction === 'IN' ? tx.amount : -tx.amount);
+          }, 0);
+
+          // Get current account to adjust balance
+          const account = await prisma.account.findUnique({
+            where: { id: accountId },
+            select: { currentBalance: true },
+          });
+
+          if (account) {
+            // Update account balance - you may want to adjust this logic
+            // based on whether you want to SET the balance or ADD to it
+            await prisma.account.update({
+              where: { id: accountId },
+              data: { currentBalance: netChange },
+            });
+          }
+        }
+
         return NextResponse.json({
           success: true,
           fileId: importFile.id,
