@@ -28,21 +28,22 @@ interface BankMapping {
 }
 
 const BANK_MAPPINGS: BankMapping[] = [
+  // More specific formats first (with more unique patterns)
   {
-    name: 'Commonwealth Bank',
-    patterns: ['Date', 'Description', 'Debit', 'Credit', 'Balance'],
-    dateColumn: 'Date',
-    descriptionColumn: 'Description',
+    name: 'CBA Transaction Export',
+    patterns: ['BSB Number', 'Account Number', 'Transaction Date', 'Narration', 'Debit', 'Credit'],
+    dateColumn: 'Transaction Date',
+    descriptionColumn: 'Narration',
     creditColumn: 'Credit',
     debitColumn: 'Debit',
     balanceColumn: 'Balance',
     dateFormat: 'DD/MM/YYYY',
   },
   {
-    name: 'CBA Transaction Export',
-    patterns: ['BSB Number', 'Account Number', 'Transaction Date', 'Narration', 'Debit', 'Credit'],
-    dateColumn: 'Transaction Date',
-    descriptionColumn: 'Narration',
+    name: 'Commonwealth Bank',
+    patterns: ['Date', 'Description', 'Debit', 'Credit', 'Balance'],
+    dateColumn: 'Date',
+    descriptionColumn: 'Description',
     creditColumn: 'Credit',
     debitColumn: 'Debit',
     balanceColumn: 'Balance',
