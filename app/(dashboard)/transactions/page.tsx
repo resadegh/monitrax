@@ -585,7 +585,7 @@ export default function TransactionExplorer() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await response.json();
-      if (response.ok && json.success) {
+      if (response.ok && json.data) {
         // Map accounts to ImportAccount format
         const mappedAccounts: ImportAccount[] = (json.data || []).map((acc: { id: string; name: string; type?: string; institution?: string }) => ({
           id: acc.id,
