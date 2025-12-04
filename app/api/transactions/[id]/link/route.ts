@@ -117,7 +117,6 @@ export async function POST(
                 type: (body.category as 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER') || 'OTHER',
                 amount: transaction.amount,
                 frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
-                isRecurring: body.isRecurring ?? true,
               },
             });
 
@@ -146,7 +145,6 @@ export async function POST(
                 category: (body.category as 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'OTHER') || 'OTHER',
                 amount: transaction.amount,
                 frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
-                isRecurring: body.isRecurring ?? true,
               },
             });
 
@@ -288,7 +286,6 @@ export async function GET(
           amount: true,
           frequency: true,
           netAmount: true,
-          isRecurring: true,
         },
         orderBy: { name: 'asc' },
       });
@@ -303,7 +300,6 @@ export async function GET(
           category: true,
           amount: true,
           frequency: true,
-          isRecurring: true,
         },
         orderBy: { name: 'asc' },
       });
