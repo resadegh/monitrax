@@ -109,8 +109,8 @@ export default function SignInPage() {
             <h2 className="text-2xl font-bold">Sign in to Monitrax</h2>
             <p className="text-muted-foreground mt-2">
               Don&apos;t have an account?{' '}
-              <Link href="/pricing" className="text-primary hover:underline font-medium">
-                See plans & pricing
+              <Link href="/register" className="text-primary hover:underline font-medium">
+                Sign up
               </Link>
             </p>
           </div>
