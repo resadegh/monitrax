@@ -12,6 +12,19 @@
 
 import { prisma } from '@/lib/db';
 
+// Type aliases for Prisma models (inferred from findMany results)
+// Using `any` for compatibility since Prisma client types are generated at runtime
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Expense = any;
+type Income = any;
+type Property = any;
+type Loan = any;
+type Asset = any;
+type InvestmentAccount = any;
+type InvestmentHolding = any;
+type Document = any;
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -106,25 +119,25 @@ class SearchEngine {
     const searchPromises: Promise<void>[] = [];
 
     if (searchAll || entityTypes.includes('expense')) {
-      searchPromises.push(this.searchExpenses(query, userId, filters, limit).then(r => results.push(...r)));
+      searchPromises.push(this.searchExpenses(query, userId, filters, limit).then(r => { results.push(...r); }));
     }
     if (searchAll || entityTypes.includes('income')) {
-      searchPromises.push(this.searchIncome(query, userId, filters, limit).then(r => results.push(...r)));
+      searchPromises.push(this.searchIncome(query, userId, filters, limit).then(r => { results.push(...r); }));
     }
     if (searchAll || entityTypes.includes('property')) {
-      searchPromises.push(this.searchProperties(query, userId, filters, limit).then(r => results.push(...r)));
+      searchPromises.push(this.searchProperties(query, userId, filters, limit).then(r => { results.push(...r); }));
     }
     if (searchAll || entityTypes.includes('loan')) {
-      searchPromises.push(this.searchLoans(query, userId, filters, limit).then(r => results.push(...r)));
+      searchPromises.push(this.searchLoans(query, userId, filters, limit).then(r => { results.push(...r); }));
     }
     if (searchAll || entityTypes.includes('asset')) {
-      searchPromises.push(this.searchAssets(query, userId, filters, limit).then(r => results.push(...r)));
+      searchPromises.push(this.searchAssets(query, userId, filters, limit).then(r => { results.push(...r); }));
     }
     if (searchAll || entityTypes.includes('investment')) {
-      searchPromises.push(this.searchInvestments(query, userId, filters, limit).then(r => results.push(...r)));
+      searchPromises.push(this.searchInvestments(query, userId, filters, limit).then(r => { results.push(...r); }));
     }
     if (searchAll || entityTypes.includes('document')) {
-      searchPromises.push(this.searchDocuments(query, userId, filters, limit).then(r => results.push(...r)));
+      searchPromises.push(this.searchDocuments(query, userId, filters, limit).then(r => { results.push(...r); }));
     }
 
     await Promise.all(searchPromises);
@@ -189,7 +202,7 @@ class SearchEngine {
       take: limit,
     });
 
-    return expenses.map((expense) => ({
+    return expenses.map((expense: Expense & { property?: { name: string } | null; asset?: { name: string } | null }) => ({
       id: expense.id,
       type: 'expense' as SearchEntityType,
       title: expense.name,
@@ -230,7 +243,7 @@ class SearchEngine {
       take: limit,
     });
 
-    return incomes.map((income) => ({
+    return incomes.map((income: Income & { property?: { name: string } | null; investmentAccount?: { name: string } | null }) => ({
       id: income.id,
       type: 'income' as SearchEntityType,
       title: income.name,
@@ -267,7 +280,7 @@ class SearchEngine {
       take: limit,
     });
 
-    return properties.map((property) => ({
+    return properties.map((property: Property) => ({
       id: property.id,
       type: 'property' as SearchEntityType,
       title: property.name,
@@ -302,7 +315,7 @@ class SearchEngine {
       take: limit,
     });
 
-    return loans.map((loan) => ({
+    return loans.map((loan: Loan & { property?: { name: string } | null }) => ({
       id: loan.id,
       type: 'loan' as SearchEntityType,
       title: loan.name,
@@ -343,7 +356,7 @@ class SearchEngine {
       take: limit,
     });
 
-    return assets.map((asset) => {
+    return assets.map((asset: Asset) => {
       const vehicleInfo = asset.vehicleMake && asset.vehicleModel
         ? `${asset.vehicleYear || ''} ${asset.vehicleMake} ${asset.vehicleModel}`.trim()
         : null;
@@ -384,7 +397,7 @@ class SearchEngine {
       take: limit,
     });
 
-    accounts.forEach((account) => {
+    accounts.forEach((account: InvestmentAccount) => {
       results.push({
         id: account.id,
         type: 'investment',
@@ -410,7 +423,7 @@ class SearchEngine {
       take: limit,
     });
 
-    holdings.forEach((holding) => {
+    holdings.forEach((holding: InvestmentHolding & { investmentAccount: { name: string } }) => {
       results.push({
         id: holding.id,
         type: 'holding',
@@ -452,7 +465,7 @@ class SearchEngine {
       take: limit,
     });
 
-    return documents.map((doc) => ({
+    return documents.map((doc: Document) => ({
       id: doc.id,
       type: 'document' as SearchEntityType,
       title: doc.originalFilename,
