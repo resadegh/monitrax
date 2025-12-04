@@ -1,9 +1,9 @@
 /**
  * Transaction Linking API
- * POST /api/transactions/[id]/link - Link transaction to Income/Expense
+ * POST /api/transactions/[id]/link - Link transaction to Income/Expense/Loan
  *
  * Actions:
- * - link: Link to existing Income or Expense
+ * - link: Link to existing Income, Expense, or Loan
  * - create: Create new Income or Expense from transaction
  * - update: Update existing Income/Expense amount with transaction amount
  * - unlink: Remove link from transaction
@@ -15,7 +15,7 @@ import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 
 interface LinkRequest {
   action: 'link' | 'create' | 'update' | 'unlink';
-  type?: 'income' | 'expense';
+  type?: 'income' | 'expense' | 'loan';
   targetId?: string; // For link/update actions
   // For create action
   name?: string;
@@ -48,7 +48,7 @@ export async function POST(
 
       switch (body.action) {
         case 'link': {
-          // Link to existing Income or Expense
+          // Link to existing Income, Expense, or Loan
           if (!body.type || !body.targetId) {
             return NextResponse.json(
               { error: 'type and targetId required for link action' },
@@ -67,13 +67,23 @@ export async function POST(
                 { status: 404 }
               );
             }
-          } else {
+          } else if (body.type === 'expense') {
             const expense = await prisma.expense.findFirst({
               where: { id: body.targetId, userId },
             });
             if (!expense) {
               return NextResponse.json(
                 { error: 'Expense not found' },
+                { status: 404 }
+              );
+            }
+          } else if (body.type === 'loan') {
+            const loan = await prisma.loan.findFirst({
+              where: { id: body.targetId, userId },
+            });
+            if (!loan) {
+              return NextResponse.json(
+                { error: 'Loan not found' },
                 { status: 404 }
               );
             }
@@ -85,6 +95,7 @@ export async function POST(
             data: {
               incomeId: body.type === 'income' ? body.targetId : null,
               expenseId: body.type === 'expense' ? body.targetId : null,
+              loanId: body.type === 'loan' ? body.targetId : null,
               isRecurring: true,
             },
           });
@@ -225,6 +236,7 @@ export async function POST(
             data: {
               incomeId: null,
               expenseId: null,
+              loanId: null,
               isRecurring: false,
             },
           });
@@ -304,6 +316,20 @@ export async function GET(
         orderBy: { name: 'asc' },
       });
 
+      // Get all loan entries
+      const loanEntries = await prisma.loan.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          principal: true,
+          minRepayment: true,
+          repaymentFrequency: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+
       // Find potential matches using similarity
       const searchText = (transaction.merchantStandardised || transaction.description).toLowerCase();
       const txAmount = transaction.amount;
@@ -311,7 +337,7 @@ export async function GET(
       interface MatchResult {
         id: string;
         name: string;
-        type: 'income' | 'expense';
+        type: 'income' | 'expense' | 'loan';
         category: string;
         amount: number;
         frequency: string;
@@ -369,6 +395,28 @@ export async function GET(
             });
           }
         }
+
+        // Check loan entries (loan repayments are OUT transactions)
+        for (const loan of loanEntries) {
+          const nameText = loan.name.toLowerCase();
+          const similarity = calculateSimilarity(searchText, nameText);
+          const amountDiff = Math.abs(txAmount - loan.minRepayment);
+          const amountMatch = amountDiff < 1 || (loan.minRepayment > 0 && amountDiff / loan.minRepayment < 0.1);
+
+          if (similarity > 0.3 || amountMatch) {
+            matches.push({
+              id: loan.id,
+              name: loan.name,
+              type: 'loan',
+              category: loan.type,
+              amount: loan.minRepayment,
+              frequency: loan.repaymentFrequency,
+              confidence: similarity * (amountMatch ? 1.5 : 1),
+              amountMatch,
+              amountDiff,
+            });
+          }
+        }
       }
 
       // Sort by confidence
@@ -385,6 +433,11 @@ export async function GET(
         const expense = expenseEntries.find((e: typeof expenseEntries[number]) => e.id === transaction.expenseId);
         if (expense) {
           currentLink = { type: 'expense', id: expense.id, name: expense.name };
+        }
+      } else if (transaction.loanId) {
+        const loan = loanEntries.find((l: typeof loanEntries[number]) => l.id === transaction.loanId);
+        if (loan) {
+          currentLink = { type: 'loan', id: loan.id, name: loan.name };
         }
       }
 
@@ -404,6 +457,7 @@ export async function GET(
         availableEntries: {
           income: incomeEntries,
           expenses: expenseEntries,
+          loans: loanEntries,
         },
       });
     } catch (error) {
