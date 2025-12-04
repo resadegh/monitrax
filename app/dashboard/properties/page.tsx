@@ -16,7 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Home, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   Landmark, DollarSign, Receipt, Calendar, Building2,
-  ChevronRight, Percent, PiggyBank, FileText, Eye, Link2, Lightbulb
+  ChevronRight, Percent, PiggyBank, FileText, Eye, Link2, Lightbulb,
+  LayoutGrid, List
 } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
@@ -94,6 +95,8 @@ type PropertyFormData = {
   valuationDate: string;
 };
 
+type ViewMode = 'tiles' | 'list';
+
 function PropertiesPageContent() {
   const { token } = useAuth();
   const { openLinkedEntity } = useCrossModuleNavigation();
@@ -103,6 +106,7 @@ function PropertiesPageContent() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('tiles');
 
   // CMNF navigation handler for LinkedDataPanel
   const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
@@ -319,6 +323,33 @@ function PropertiesPageContent() {
         }
       />
 
+      {/* View Mode Toggle */}
+      {properties.length > 0 && !isLoading && (
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-sm text-muted-foreground">View:</span>
+          <div className="flex bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === 'tiles' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('tiles')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Tiles
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+              List
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
@@ -336,7 +367,94 @@ function PropertiesPageContent() {
             onClick: () => { setShowDialog(true); resetForm(); },
           }}
         />
+      ) : viewMode === 'list' ? (
+        /* List View */
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr className="text-left text-xs font-medium text-muted-foreground">
+                    <th className="px-4 py-3">Property</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3 text-right">Current Value</th>
+                    <th className="px-4 py-3 text-right">Purchase Price</th>
+                    <th className="px-4 py-3 text-right">Equity</th>
+                    <th className="px-4 py-3 text-right">LVR</th>
+                    <th className="px-4 py-3 text-right">Gain</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {properties.map((property) => {
+                    const { gain, percentage } = calculateGain(property);
+                    const lvr = calculateLVR(property);
+                    const equity = calculateEquity(property);
+                    return (
+                      <tr
+                        key={property.id}
+                        className="hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => loadPropertyDetail(property.id)}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Home className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <div className="font-medium">{property.name}</div>
+                              <div className="text-xs text-muted-foreground truncate max-w-[200px]">{property.address}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={property.type === 'HOME' ? 'default' : 'secondary'}>
+                            {property.type === 'HOME' ? 'Home' : 'Investment'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(property.currentValue)}</td>
+                        <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(property.purchasePrice)}</td>
+                        <td className="px-4 py-3 text-right font-medium text-green-600">{formatCurrency(equity)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={lvr > 80 ? 'text-red-600' : lvr > 60 ? 'text-yellow-600' : 'text-green-600'}>
+                            {lvr.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={gain >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {gain >= 0 ? '+' : ''}{percentage.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => loadPropertyDetail(property.id)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(property)}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(property.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-muted/30 border-t">
+                  <tr className="font-medium">
+                    <td colSpan={2} className="px-4 py-3">Total ({properties.length} properties)</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(totalValue)}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(properties.reduce((sum, p) => sum + p.purchasePrice, 0))}</td>
+                    <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalEquity)}</td>
+                    <td colSpan={3}></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
+        /* Tiles View */
         <div className="grid gap-6 md:grid-cols-2">
           {properties.map((property) => {
             const { gain, percentage } = calculateGain(property);

@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, Plus, Edit2, Trash2, Eye, BarChart3, ArrowUpRight, ArrowDownRight, DollarSign, Receipt, Wallet, Link2 } from 'lucide-react';
+import { TrendingUp, Plus, Edit2, Trash2, Eye, BarChart3, ArrowUpRight, ArrowDownRight, DollarSign, Receipt, Wallet, Link2, LayoutGrid, List } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
@@ -76,6 +76,8 @@ interface InvestmentAccount {
   };
 }
 
+type ViewMode = 'tiles' | 'list';
+
 function InvestmentAccountsPageContent() {
   const { token } = useAuth();
   const { openLinkedEntity } = useCrossModuleNavigation();
@@ -92,6 +94,7 @@ function InvestmentAccountsPageContent() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<InvestmentAccount | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('tiles');
   const [formData, setFormData] = useState<Partial<InvestmentAccount>>({
     name: '',
     type: 'BROKERAGE',
@@ -297,6 +300,33 @@ function InvestmentAccountsPageContent() {
         }
       />
 
+      {/* View Mode Toggle */}
+      {accounts.length > 0 && !isLoading && (
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-sm text-muted-foreground">View:</span>
+          <div className="flex bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === 'tiles' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('tiles')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Tiles
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+              List
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
@@ -314,7 +344,75 @@ function InvestmentAccountsPageContent() {
             onClick: () => { setShowDialog(true); resetForm(); },
           }}
         />
+      ) : viewMode === 'list' ? (
+        /* List View */
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr className="text-left text-xs font-medium text-muted-foreground">
+                    <th className="px-4 py-3">Account</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Platform</th>
+                    <th className="px-4 py-3 text-right">Total Value</th>
+                    <th className="px-4 py-3 text-right">Holdings</th>
+                    <th className="px-4 py-3 text-right">Transactions</th>
+                    <th className="px-4 py-3">Currency</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {accounts.map((account) => {
+                    const totalValue = calculateTotalValue(account);
+                    return (
+                      <tr
+                        key={account.id}
+                        className="hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => handleViewDetails(account)}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{account.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">{getAccountTypeBadge(account.type)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{account.platform || '-'}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(totalValue, account.currency)}</td>
+                        <td className="px-4 py-3 text-right">{account.holdings?.length || 0}</td>
+                        <td className="px-4 py-3 text-right">{account.transactions?.length || 0}</td>
+                        <td className="px-4 py-3">{account.currency}</td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetails(account)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(account)}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(account.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-muted/30 border-t">
+                  <tr className="font-medium">
+                    <td colSpan={3} className="px-4 py-3">Total ({accounts.length} accounts)</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(totalPortfolioValue)}</td>
+                    <td colSpan={4}></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
+        /* Tiles View */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {accounts.map((account) => {
             const totalValue = calculateTotalValue(account);
