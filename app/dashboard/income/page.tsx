@@ -178,11 +178,6 @@ function IncomePageContent() {
     }
   }, [token]);
 
-  // Initialize filtered income when income changes
-  useEffect(() => {
-    setFilteredIncome(income);
-  }, [income]);
-
   // Calculate salary preview when relevant fields change
   useEffect(() => {
     if (formData.type === 'SALARY' && formData.amount > 0 && formData.salaryType) {
