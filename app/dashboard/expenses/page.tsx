@@ -80,7 +80,7 @@ interface Expense {
   id: string;
   name: string;
   vendorName: string | null;
-  category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'OTHER';
+  category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
   sourceType: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
   amount: number;
   frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
@@ -447,6 +447,8 @@ function ExpensesPageContent() {
     STRATA: { label: 'Strata', icon: <Building2 className="h-5 w-5" />, color: 'text-teal-500' },
     LAND_TAX: { label: 'Land Tax', icon: <Landmark className="h-5 w-5" />, color: 'text-red-500' },
     LOAN_INTEREST: { label: 'Loan Interest', icon: <Landmark className="h-5 w-5" />, color: 'text-red-600' },
+    REGISTRATION: { label: 'Registration', icon: <FileText className="h-5 w-5" />, color: 'text-sky-500' },
+    MODIFICATIONS: { label: 'Modifications', icon: <TrendingDown className="h-5 w-5" />, color: 'text-violet-500' },
     OTHER: { label: 'Other', icon: <CreditCard className="h-5 w-5" />, color: 'text-gray-500' },
   };
 
@@ -534,6 +536,8 @@ function ExpensesPageContent() {
       STRATA: { variant: 'default', label: 'Strata' },
       LAND_TAX: { variant: 'destructive', label: 'Land Tax' },
       LOAN_INTEREST: { variant: 'destructive', label: 'Loan Interest' },
+      REGISTRATION: { variant: 'default', label: 'Registration' },
+      MODIFICATIONS: { variant: 'secondary', label: 'Modifications' },
       OTHER: { variant: 'outline', label: 'Other' },
     };
 

@@ -63,6 +63,8 @@ enum ExpenseCategory {
   STRATA
   LAND_TAX
   LOAN_INTEREST
+  REGISTRATION    // Vehicle registration, license fees
+  MODIFICATIONS   // Vehicle modifications, upgrades
   OTHER
 }
 
