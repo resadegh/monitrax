@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { hashPassword, generateToken } from '@/lib/auth';
+import { sendVerificationEmail } from '@/lib/security/emailVerification';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,9 +16,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
+        { error: 'Password must be at least 8 characters' },
         { status: 400 }
       );
     }
@@ -37,14 +38,21 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create user
+    // Create user (emailVerified defaults to false)
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name,
+        emailVerified: false,
       },
     });
+
+    // Send verification email
+    const emailResult = await sendVerificationEmail(email, user.id);
+    if (!emailResult.success) {
+      console.warn('[Registration] Failed to send verification email:', emailResult.message);
+    }
 
     // Generate token
     const token = generateToken({
@@ -60,8 +68,10 @@ export async function POST(request: NextRequest) {
           email: user.email,
           name: user.name,
           role: user.role,
+          emailVerified: user.emailVerified,
         },
         token,
+        verificationEmailSent: emailResult.success,
       },
       { status: 201 }
     );
