@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building, Link2, Lightbulb } from 'lucide-react';
+import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building, Link2, Lightbulb, LayoutGrid, List } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -72,6 +72,8 @@ interface Account {
   institution?: string;
 }
 
+type ViewMode = 'tiles' | 'list';
+
 function LoansPageContent() {
   const { token } = useAuth();
   const { openLinkedEntity } = useCrossModuleNavigation();
@@ -83,6 +85,7 @@ function LoansPageContent() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('tiles');
 
   // CMNF navigation handler for LinkedDataPanel
   const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
@@ -320,6 +323,33 @@ function LoansPageContent() {
         }
       />
 
+      {/* View Mode Toggle */}
+      {loans.length > 0 && !isLoading && (
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-sm text-muted-foreground">View:</span>
+          <div className="flex bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === 'tiles' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('tiles')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Tiles
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+              List
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
@@ -337,7 +367,95 @@ function LoansPageContent() {
             onClick: () => { setShowDialog(true); resetForm(); },
           }}
         />
+      ) : viewMode === 'list' ? (
+        /* List View */
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr className="text-left text-xs font-medium text-muted-foreground">
+                    <th className="px-4 py-3">Loan</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3 text-right">Principal</th>
+                    <th className="px-4 py-3 text-right">Rate</th>
+                    <th className="px-4 py-3 text-right">Repayment</th>
+                    <th className="px-4 py-3 text-right">Annual Interest</th>
+                    <th className="px-4 py-3">Property</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {loans.map((loan) => {
+                    const annualInterest = calculateAnnualInterest(loan);
+                    return (
+                      <tr
+                        key={loan.id}
+                        className="hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => handleViewDetails(loan)}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Landmark className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <div className="font-medium">{loan.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {loan.rateType} • {loan.isInterestOnly ? 'IO' : 'P&I'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">{getLoanTypeBadge(loan.type)}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(loan.principal)}</td>
+                        <td className="px-4 py-3 text-right">{formatPercent(loan.interestRateAnnual)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div>{formatCurrency(loan.minRepayment)}</div>
+                          <div className="text-xs text-muted-foreground">{loan.repaymentFrequency.toLowerCase()}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-red-600">{formatCurrency(annualInterest)}</td>
+                        <td className="px-4 py-3">
+                          {loan.property ? (
+                            <div className="flex items-center gap-1 text-sm">
+                              <HomeIcon className="h-3 w-3" />
+                              {loan.property.name}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetails(loan)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(loan)}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(loan.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="bg-muted/30 border-t">
+                  <tr className="font-medium">
+                    <td colSpan={2} className="px-4 py-3">Total ({loans.length} loans)</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(totalPrincipal)}</td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3 text-right text-red-600">{formatCurrency(totalAnnualInterest)}</td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
+        /* Tiles View */
         <div className="grid gap-6 md:grid-cols-2">
           {loans.map((loan) => {
             const effectiveBalance = calculateEffectiveBalance(loan);
