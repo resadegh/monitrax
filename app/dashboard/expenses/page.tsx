@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -20,6 +20,14 @@ import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { DocumentCategory, LinkedEntityType } from '@/lib/documents/types';
 import { ExpenseWizard } from '@/components/ExpenseWizard';
+import {
+  getExpenseCategoryOptions,
+  getDefaultExpenseCategory,
+  isValidExpenseCategory,
+  type AssetType as CategoryAssetType,
+  type ExpenseSourceType,
+  type ExpenseCategory,
+} from '@/lib/categoryFilters';
 
 type ViewMode = 'category' | 'property' | 'all' | 'list';
 
@@ -564,6 +572,19 @@ function ExpensesPageContent() {
     return 'General';
   };
 
+  // Get the selected asset type for category filtering
+  const getSelectedAssetType = (): CategoryAssetType | null => {
+    if (formData.sourceType !== 'ASSET' || !formData.assetId) return null;
+    const selectedAsset = assets.find(a => a.id === formData.assetId);
+    return selectedAsset?.type as CategoryAssetType || null;
+  };
+
+  // Get filtered category options based on source type and asset type
+  const filteredCategoryOptions = useMemo(() => {
+    const assetType = getSelectedAssetType();
+    return getExpenseCategoryOptions(formData.sourceType as ExpenseSourceType, assetType);
+  }, [formData.sourceType, formData.assetId, assets]);
+
   // Auto-set defaults based on source type selection
   const handleSourceTypeChange = (value: Expense['sourceType']) => {
     const updates: Partial<ExpenseFormData> = { sourceType: value };
@@ -574,17 +595,31 @@ function ExpensesPageContent() {
     updates.investmentAccountId = null;
     updates.assetId = null;
 
-    // Set tax deductible based on source type
+    // Set default category and tax deductibility based on source type
+    updates.category = getDefaultExpenseCategory(value as ExpenseSourceType);
+
     if (value === 'PROPERTY') {
       updates.isTaxDeductible = true;
     } else if (value === 'LOAN') {
-      updates.category = 'LOAN_INTEREST';
       updates.isTaxDeductible = true;
-    } else if (value === 'ASSET') {
-      updates.category = 'OTHER';
+    } else if (value === 'GENERAL') {
+      updates.isTaxDeductible = false;
     }
 
     setFormData({ ...formData, ...updates });
+  };
+
+  // Handle asset selection - update category based on asset type
+  const handleAssetChange = (assetId: string | null) => {
+    const selectedAsset = assetId ? assets.find(a => a.id === assetId) : null;
+    const assetType = selectedAsset?.type as CategoryAssetType || null;
+    const newCategory = getDefaultExpenseCategory('ASSET', assetType);
+
+    setFormData({
+      ...formData,
+      assetId: assetId || null,
+      category: newCategory,
+    });
   };
 
   return (
@@ -1174,7 +1209,7 @@ function ExpensesPageContent() {
                 <Label htmlFor="assetId">Linked Asset</Label>
                 <Select
                   value={formData.assetId || ''}
-                  onValueChange={(value) => setFormData({ ...formData, assetId: value || null })}
+                  onValueChange={(value) => handleAssetChange(value || null)}
                 >
                   <SelectTrigger id="assetId">
                     <SelectValue placeholder="Select an asset" />
@@ -1214,21 +1249,21 @@ function ExpensesPageContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="HOUSING">Housing</SelectItem>
-                    <SelectItem value="RATES">Rates</SelectItem>
-                    <SelectItem value="INSURANCE">Insurance</SelectItem>
-                    <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
-                    <SelectItem value="PERSONAL">Personal</SelectItem>
-                    <SelectItem value="UTILITIES">Utilities</SelectItem>
-                    <SelectItem value="FOOD">Food</SelectItem>
-                    <SelectItem value="TRANSPORT">Transport</SelectItem>
-                    <SelectItem value="ENTERTAINMENT">Entertainment</SelectItem>
-                    <SelectItem value="STRATA">Strata</SelectItem>
-                    <SelectItem value="LAND_TAX">Land Tax</SelectItem>
-                    <SelectItem value="LOAN_INTEREST">Loan Interest</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
+                    {filteredCategoryOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {formData.sourceType !== 'GENERAL' && (
+                  <p className="text-xs text-muted-foreground">
+                    Showing categories relevant to {formData.sourceType.toLowerCase()} expenses
+                    {formData.sourceType === 'ASSET' && formData.assetId && (
+                      <> ({assets.find(a => a.id === formData.assetId)?.type?.toLowerCase()})</>
+                    )}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
