@@ -11,12 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Search, Filter, X, SlidersHorizontal } from 'lucide-react';
+import { Search, X, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 
 // =============================================================================
 // TYPES
@@ -54,7 +49,7 @@ export interface ListFilterProps<T> {
 // COMPONENT
 // =============================================================================
 
-export function ListFilter<T extends Record<string, unknown>>({
+export function ListFilter<T extends object>({
   data,
   searchFields,
   searchPlaceholder = 'Search...',
@@ -152,64 +147,73 @@ export function ListFilter<T extends Record<string, unknown>>({
           )}
         </div>
 
-        {/* Filter Button */}
+        {/* Filter Toggle Button */}
         {filters.length > 0 && (
-          <Popover open={showFilters} onOpenChange={setShowFilters}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <SlidersHorizontal className="h-4 w-4" />
-                Filters
-                {activeFilterCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80" align="end">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Filters</h4>
-                  {activeFilterCount > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearAllFilters}
-                      className="h-auto py-1 px-2 text-xs"
-                    >
-                      Clear all
-                    </Button>
-                  )}
-                </div>
-
-                {filters.map((filter) => (
-                  <div key={filter.key} className="space-y-1.5">
-                    <label className="text-sm font-medium">{filter.label}</label>
-                    {filter.type === 'select' && filter.options && (
-                      <Select
-                        value={activeFilters[filter.key] as string || '_all'}
-                        onValueChange={(value) => handleFilterChange(filter.key, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={filter.placeholder || 'All'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="_all">All</SelectItem>
-                          {filter.options.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filters
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                {activeFilterCount}
+              </Badge>
+            )}
+            {showFilters ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
         )}
       </div>
+
+      {/* Collapsible Filter Panel */}
+      {filters.length > 0 && showFilters && (
+        <div className="border rounded-lg p-4 bg-muted/30">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-medium">Filters</h4>
+            {activeFilterCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="h-auto py-1 px-2 text-xs"
+              >
+                Clear all
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filters.map((filter) => (
+              <div key={filter.key} className="space-y-1.5">
+                <label className="text-sm font-medium">{filter.label}</label>
+                {filter.type === 'select' && filter.options && (
+                  <Select
+                    value={activeFilters[filter.key] as string || '_all'}
+                    onValueChange={(value) => handleFilterChange(filter.key, value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={filter.placeholder || 'All'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_all">All</SelectItem>
+                      {filter.options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Active Filters Display */}
       {hasActiveFilters && (

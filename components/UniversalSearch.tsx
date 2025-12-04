@@ -87,7 +87,7 @@ export function UniversalSearch({ open, onOpenChange }: UniversalSearchProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Flatten results for keyboard navigation
   const flatResults = results
@@ -208,7 +208,7 @@ export function UniversalSearch({ open, onOpenChange }: UniversalSearchProps) {
             </div>
           ) : (
             <div className="py-2">
-              {results && Object.entries(results).map(([type, items]) => {
+              {results && (Object.entries(results) as [string, SearchResult[]][]).map(([type, items]) => {
                 if (items.length === 0) return null;
                 const startIdx = flatResults.findIndex(r => r === items[0]);
 
@@ -217,7 +217,7 @@ export function UniversalSearch({ open, onOpenChange }: UniversalSearchProps) {
                     <div className="px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       {typeLabels[type]} ({items.length})
                     </div>
-                    {items.map((result, idx) => {
+                    {items.map((result: SearchResult, idx: number) => {
                       const globalIdx = startIdx + idx;
                       const isSelected = globalIdx === selectedIndex;
 
