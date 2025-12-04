@@ -351,11 +351,19 @@ export async function verifyEmail(token: string): Promise<{
     return { success: false, error: result.error };
   }
 
-  // In production, update user's emailVerified field in DB
-  // await prisma.user.update({
-  //   where: { id: result.userId },
-  //   data: { emailVerified: new Date() }
-  // });
+  // Update user's emailVerified field in DB
+  try {
+    await prisma.user.update({
+      where: { id: result.userId },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error('[Email Verification] DB update error:', error);
+    return { success: false, error: 'Failed to update verification status' };
+  }
 
   return { success: true, userId: result.userId };
 }
