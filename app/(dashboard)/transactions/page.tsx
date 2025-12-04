@@ -25,11 +25,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   AlertTriangle,
-  Tag,
   ChevronRight,
-  X,
-  Check,
-  Edit3,
   Calendar,
   Building,
   Repeat,
@@ -155,18 +151,17 @@ function getConfidenceBadge(score: number | null): React.ReactNode {
 
 function TransactionRow({
   transaction,
-  onEdit,
   onLink,
 }: {
   transaction: Transaction;
-  onEdit: (tx: Transaction) => void;
   onLink: (tx: Transaction) => void;
 }) {
   const isLinked = transaction.incomeId || transaction.expenseId;
 
   return (
     <div
-      className="flex items-center gap-4 p-4 border-b hover:bg-gray-50"
+      className="flex items-center gap-4 p-4 border-b hover:bg-gray-50 cursor-pointer"
+      onClick={() => onLink(transaction)}
     >
       {/* Direction Icon */}
       <div
@@ -182,7 +177,7 @@ function TransactionRow({
       </div>
 
       {/* Main Info */}
-      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onEdit(transaction)}>
+      <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium truncate">
             {transaction.merchantStandardised || transaction.description}
@@ -224,22 +219,13 @@ function TransactionRow({
         {getConfidenceBadge(transaction.confidenceScore)}
       </div>
 
-      {/* Link Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onLink(transaction);
-        }}
-        className={`hidden sm:flex px-3 py-1.5 text-xs rounded-lg items-center gap-1 ${
-          isLinked
-            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-        }`}
-        title={isLinked ? 'View/Edit Link' : 'Link to Income/Expense'}
-      >
-        <Link2 className="h-3 w-3" />
-        {isLinked ? 'Linked' : 'Link'}
-      </button>
+      {/* Link Status Badge */}
+      {isLinked && (
+        <span className="hidden sm:flex px-3 py-1.5 text-xs rounded-lg items-center gap-1 bg-blue-100 text-blue-700">
+          <Link2 className="h-3 w-3" />
+          Linked
+        </span>
+      )}
 
       {/* Amount */}
       <div
@@ -251,216 +237,7 @@ function TransactionRow({
         {formatCurrency(transaction.amount, transaction.currency)}
       </div>
 
-      <ChevronRight
-        className="h-4 w-4 text-gray-400 cursor-pointer"
-        onClick={() => onEdit(transaction)}
-      />
-    </div>
-  );
-}
-
-function CategoryCorrectionPanel({
-  transaction,
-  onClose,
-  onSave,
-}: {
-  transaction: Transaction;
-  onClose: () => void;
-  onSave: (updates: { categoryLevel1: string; categoryLevel2?: string; tags?: string[] }) => void;
-}) {
-  const [selectedCategory, setSelectedCategory] = useState(transaction.categoryLevel1 || '');
-  const [selectedSubcategory, setSelectedSubcategory] = useState(transaction.categoryLevel2 || '');
-  const [tags, setTags] = useState<string[]>(transaction.tags);
-  const [newTag, setNewTag] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const subcategories = CATEGORY_OPTIONS.find((c) => c.level1 === selectedCategory)?.level2 || [];
-
-  async function handleSave() {
-    setSaving(true);
-    await onSave({
-      categoryLevel1: selectedCategory,
-      categoryLevel2: selectedSubcategory || undefined,
-      tags,
-    });
-    setSaving(false);
-  }
-
-  function addTag() {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags([...tags, newTag.trim()]);
-      setNewTag('');
-    }
-  }
-
-  function removeTag(tag: string) {
-    setTags(tags.filter((t) => t !== tag));
-  }
-
-  return (
-    <div className="fixed inset-y-0 right-0 w-full md:w-96 bg-white shadow-xl z-50 overflow-y-auto">
-      <div className="p-4 border-b flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Edit Transaction</h2>
-        <button
-          onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-full"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-
-      <div className="p-4 space-y-6">
-        {/* Transaction Summary */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="font-medium">
-            {transaction.merchantStandardised || transaction.description}
-          </div>
-          <div className="text-sm text-gray-500 mt-1">{transaction.description}</div>
-          <div
-            className={`text-xl font-bold mt-2 ${
-              transaction.direction === 'IN' ? 'text-green-600' : 'text-gray-900'
-            }`}
-          >
-            {transaction.direction === 'IN' ? '+' : '-'}
-            {formatCurrency(transaction.amount)}
-          </div>
-          <div className="text-sm text-gray-500 mt-1">{formatDate(transaction.date)}</div>
-        </div>
-
-        {/* Current Categorisation */}
-        {transaction.confidenceScore !== null && (
-          <div className="text-sm">
-            <span className="text-gray-500">AI Confidence: </span>
-            <span
-              className={
-                transaction.confidenceScore >= 0.9
-                  ? 'text-green-600'
-                  : transaction.confidenceScore >= 0.7
-                  ? 'text-yellow-600'
-                  : 'text-red-600'
-              }
-            >
-              {Math.round(transaction.confidenceScore * 100)}%
-            </span>
-          </div>
-        )}
-
-        {/* Category Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Category
-          </label>
-          <select
-            value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              setSelectedSubcategory('');
-            }}
-            className="w-full border rounded-lg px-3 py-2"
-          >
-            <option value="">Select category</option>
-            {CATEGORY_OPTIONS.map((cat) => (
-              <option key={cat.level1} value={cat.level1}>
-                {cat.level1}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Subcategory Selection */}
-        {subcategories.length > 0 && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subcategory
-            </label>
-            <select
-              value={selectedSubcategory}
-              onChange={(e) => setSelectedSubcategory(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              <option value="">Select subcategory</option>
-              {subcategories.map((sub) => (
-                <option key={sub} value={sub}>
-                  {sub}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Tags */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Tag className="h-4 w-4 inline mr-1" />
-            Tags
-          </label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm"
-              >
-                {tag}
-                <button
-                  onClick={() => removeTag(tag)}
-                  className="hover:text-blue-600"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addTag()}
-              placeholder="Add tag..."
-              className="flex-1 border rounded-lg px-3 py-2 text-sm"
-            />
-            <button
-              onClick={addTag}
-              className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-
-        {/* Anomaly Flags */}
-        {transaction.anomalyFlags.length > 0 && (
-          <div className="bg-orange-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-orange-800 font-medium mb-2">
-              <AlertTriangle className="h-4 w-4" />
-              Anomalies Detected
-            </div>
-            <ul className="text-sm text-orange-700 list-disc list-inside">
-              {transaction.anomalyFlags.map((flag) => (
-                <li key={flag}>{flag.replace(/_/g, ' ')}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Save Button */}
-        <button
-          onClick={handleSave}
-          disabled={saving || !selectedCategory}
-          className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {saving ? (
-            <RefreshCw className="h-4 w-4 animate-spin" />
-          ) : (
-            <Check className="h-4 w-4" />
-          )}
-          Save Changes
-        </button>
-
-        <p className="text-xs text-gray-500 text-center">
-          Your correction will improve future categorisation for similar transactions.
-        </p>
-      </div>
+      <ChevronRight className="h-4 w-4 text-gray-400" />
     </div>
   );
 }
@@ -535,9 +312,6 @@ export default function TransactionExplorer() {
   // Pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
-  // Edit panel
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   // Link dialog
   const [linkingTransaction, setLinkingTransaction] = useState<Transaction | null>(null);
@@ -623,49 +397,6 @@ export default function TransactionExplorer() {
     fetchSummary();
     fetchAccounts();
   }, [fetchTransactions, fetchSummary, fetchAccounts]);
-
-  async function handleSaveCorrection(updates: {
-    categoryLevel1: string;
-    categoryLevel2?: string;
-    tags?: string[];
-  }) {
-    if (!editingTransaction || !token) return;
-
-    try {
-      const response = await fetch(`/api/unified-transactions/${editingTransaction.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updates),
-      });
-
-      const json = await response.json();
-
-      if (response.ok && json.success) {
-        // Update local state
-        setTransactions((prev) =>
-          prev.map((tx) =>
-            tx.id === editingTransaction.id
-              ? {
-                  ...tx,
-                  categoryLevel1: updates.categoryLevel1,
-                  categoryLevel2: updates.categoryLevel2 || null,
-                  tags: updates.tags || tx.tags,
-                  confidenceScore: 1.0,
-                }
-              : tx
-          )
-        );
-        setEditingTransaction(null);
-      } else {
-        alert(json.error || 'Failed to save changes');
-      }
-    } catch (err) {
-      alert('Network error');
-    }
-  }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -829,7 +560,6 @@ export default function TransactionExplorer() {
                   <TransactionRow
                     key={tx.id}
                     transaction={tx}
-                    onEdit={setEditingTransaction}
                     onLink={(t) => {
                       setLinkingTransaction(t);
                       setShowLinkDialog(true);
@@ -862,21 +592,6 @@ export default function TransactionExplorer() {
           )}
         </div>
       </div>
-
-      {/* Category Correction Panel */}
-      {editingTransaction && (
-        <>
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => setEditingTransaction(null)}
-          />
-          <CategoryCorrectionPanel
-            transaction={editingTransaction}
-            onClose={() => setEditingTransaction(null)}
-            onSave={handleSaveCorrection}
-          />
-        </>
-      )}
 
       {/* Import Wizard Modal */}
       {showImportWizard && (
