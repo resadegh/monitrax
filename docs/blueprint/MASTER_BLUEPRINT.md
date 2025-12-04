@@ -166,6 +166,8 @@ Every API response follows a standardised format:
 |-------|------|--------|-------|
 | **19** | Document Management | 🔄 In Progress | Core infrastructure complete |
 | **19.1** | DMS Expansion | 🔄 In Progress | Receipt upload for expenses complete (2025-12-01) |
+| **21** | Asset Management Engine | 🔄 In Progress | Core features complete (2025-12-04), portfolio integration pending |
+| **23** | Investment Capital Gains | 🔄 In Progress | Schema and API complete (2025-12-04), UI pending |
 
 ### Planned Phases
 
@@ -176,7 +178,6 @@ Every API response follows a standardised format:
 | **18** | Bank Transactions | 📋 Planned | Bank feed integration, transaction sync |
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
-| **21** | Asset Management Engine | 📋 Planned | Vehicles, equipment, expense linking, cost of ownership tracking |
 | **22** | Marketing Site & Auth Shell | 📋 Planned | Landing page, sign-in experience, public marketing routes |
 
 ---
@@ -261,25 +262,36 @@ Every API response follows a standardised format:
 
 ### 5.6 Assets Module (Phase 21 - Planned)
 
+**Status:** ✅ Core Features Implemented (2025-12-04)
+
 **Asset Types:**
 - Vehicles (cars, motorcycles, boats)
 - Electronics (computers, phones)
 - Furniture and equipment
 - Collectibles (art, watches)
 
-**Features:**
+**Features (Implemented):**
 - Purchase price and current value tracking
-- Depreciation calculation (prime cost/diminishing value)
-- Expense linking for cost of ownership analysis
+- Depreciation calculation with percentage display
+- Expense linking for cost of ownership analysis (schema ready)
 - Service and maintenance records (vehicles)
-- Value history over time
-- Integration with Portfolio Snapshot for net worth
+- Value history over time (auto-tracked on value changes)
+- Total Cost of Ownership (TCO) calculations
 
 **Vehicle-Specific:**
 - Make, model, year, registration
 - Odometer tracking
 - Service history
 - Cost per kilometre calculation
+- Fuel type tracking
+
+**API Endpoints:**
+- `GET/POST /api/assets` - List and create assets
+- `GET/PUT/DELETE /api/assets/:id` - Asset CRUD operations
+
+**Pending:**
+- Integration with Portfolio Snapshot for net worth
+- Expense form integration for asset linking
 
 See: `docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md`
 
@@ -287,20 +299,38 @@ See: `docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md`
 
 **Investment Accounts:**
 - Brokerage, Super, Fund, Trust, ETF/Crypto
+- Opening date and balance tracking (Phase 23)
+- Cost basis method selection (FIFO, LIFO, HIFO, SPECIFIC, AVERAGE)
 
 **Investment Holdings:**
 - Shares, ETFs, Managed Funds, Crypto
-- Cost base tracking (FIFO, LIFO, AVG)
+- Cost base tracking (FIFO, LIFO, HIFO, SPECIFIC, AVG)
 - Franking credit calculations
+- Current price and unrealized gain tracking (Phase 23)
+- Purchase lot (parcel) tracking for CGT (Phase 23)
 
 **Investment Transactions:**
 - Buy, Sell, Dividend, Distribution, DRP
+- Deposit, Withdrawal, Transfer In/Out (Phase 23)
+- Corporate Action support (Phase 23)
+
+**Capital Gains Tax (Phase 23):**
+- Purchase lot tracking for accurate cost basis
+- CGT discount calculation (50% for assets held 12+ months)
+- Financial year summaries for tax reporting
+- CGT preview before executing sales
 
 **Analytics:**
 - CAGR, IRR, TWR
 - Volatility, Sharpe Ratio
 - Maximum Drawdown
 - Unrealised gains
+
+**API Endpoints (Phase 23):**
+- `GET /api/investments/capital-gains` - CGT summary by financial year
+- `POST /api/investments/capital-gains` - Preview CGT before selling
+
+See: `docs/blueprint/PHASE_23_INVESTMENT_CAPITAL_GAINS.md`
 
 ### 5.7 Tax Engine (Australian)
 
