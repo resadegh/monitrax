@@ -49,7 +49,7 @@ interface Transaction {
 interface MatchResult {
   id: string;
   name: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'loan';
   category: string;
   amount: number;
   frequency: string;
@@ -59,7 +59,7 @@ interface MatchResult {
 }
 
 interface CurrentLink {
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'loan';
   id: string;
   name: string;
 }
@@ -100,6 +100,14 @@ export function TransactionLinkDialog({
     amount: number;
     frequency: string;
   }>>([]);
+  const [availableLoans, setAvailableLoans] = useState<Array<{
+    id: string;
+    name: string;
+    type: string;
+    principal: number;
+    minRepayment: number;
+    repaymentFrequency: string;
+  }>>([]);
 
   // Create new form state
   const [newName, setNewName] = useState('');
@@ -134,6 +142,7 @@ export function TransactionLinkDialog({
       setSuggestedMatches(data.suggestedMatches || []);
       setAvailableIncome(data.availableEntries?.income || []);
       setAvailableExpenses(data.availableEntries?.expenses || []);
+      setAvailableLoans(data.availableEntries?.loans || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load matches');
     } finally {
@@ -141,7 +150,7 @@ export function TransactionLinkDialog({
     }
   };
 
-  const handleLink = async (targetId: string, type: 'income' | 'expense') => {
+  const handleLink = async (targetId: string, type: 'income' | 'expense' | 'loan') => {
     if (!transaction) return;
     setSaving(true);
     setError(null);
@@ -169,7 +178,7 @@ export function TransactionLinkDialog({
     }
   };
 
-  const handleUpdateAmount = async (targetId: string, type: 'income' | 'expense') => {
+  const handleUpdateAmount = async (targetId: string, type: 'income' | 'expense' | 'loan') => {
     if (!transaction) return;
     setSaving(true);
     setError(null);
@@ -287,7 +296,7 @@ export function TransactionLinkDialog({
             Link Transaction
           </DialogTitle>
           <DialogDescription>
-            Link this transaction to an existing {isIncome ? 'income' : 'expense'} entry or create a new one
+            Link this transaction to an existing {isIncome ? 'income' : 'expense or loan repayment'} entry or create a new one
           </DialogDescription>
         </DialogHeader>
 
@@ -430,29 +439,63 @@ export function TransactionLinkDialog({
                   </div>
                 ))
               ) : (
-                availableExpenses.map((expense) => (
-                  <div
-                    key={expense.id}
-                    className="p-3 border rounded-lg flex justify-between items-center"
-                  >
-                    <div>
-                      <p className="font-medium">{expense.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {expense.category} • {expense.frequency}
-                      </p>
+                <>
+                  {/* Expenses */}
+                  {availableExpenses.length > 0 && (
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">Expenses</p>
+                  )}
+                  {availableExpenses.map((expense) => (
+                    <div
+                      key={expense.id}
+                      className="p-3 border rounded-lg flex justify-between items-center"
+                    >
+                      <div>
+                        <p className="font-medium">{expense.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {expense.category} • {expense.frequency}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{formatCurrency(expense.amount)}</span>
+                        <Button
+                          size="sm"
+                          onClick={() => handleLink(expense.id, 'expense')}
+                          disabled={saving}
+                        >
+                          Link
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{formatCurrency(expense.amount)}</span>
-                      <Button
-                        size="sm"
-                        onClick={() => handleLink(expense.id, 'expense')}
-                        disabled={saving}
-                      >
-                        Link
-                      </Button>
+                  ))}
+
+                  {/* Loan Repayments */}
+                  {availableLoans.length > 0 && (
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-2">Loan Repayments</p>
+                  )}
+                  {availableLoans.map((loan) => (
+                    <div
+                      key={loan.id}
+                      className="p-3 border rounded-lg flex justify-between items-center bg-amber-50/50 dark:bg-amber-950/20"
+                    >
+                      <div>
+                        <p className="font-medium">{loan.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {loan.type} • {loan.repaymentFrequency}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{formatCurrency(loan.minRepayment)}</span>
+                        <Button
+                          size="sm"
+                          onClick={() => handleLink(loan.id, 'loan')}
+                          disabled={saving}
+                        >
+                          Link
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </>
               )}
             </TabsContent>
 
