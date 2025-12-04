@@ -42,8 +42,18 @@ const TOKEN_EXPIRY = {
 const RESEND_COOLDOWN = 60 * 1000; // 1 minute between resends
 const MAX_RESENDS_PER_HOUR = 5;
 
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialize Resend client (avoid initialization at build time)
+let resendClient: Resend | null = null;
+function getResendClient(): Resend {
+  if (!resendClient) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable is not set');
+    }
+    resendClient = new Resend(apiKey);
+  }
+  return resendClient;
+}
 
 // Email configuration
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Monitrax <onboarding@resend.dev>';
@@ -216,7 +226,7 @@ export async function sendVerificationEmail(
 
   try {
     // Send email via Resend
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResendClient().emails.send({
       from: FROM_EMAIL,
       to: email,
       subject: `Verify your ${APP_NAME} email address`,
@@ -288,7 +298,7 @@ export async function sendPasswordResetEmail(
 
   try {
     // Send email via Resend
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResendClient().emails.send({
       from: FROM_EMAIL,
       to: email,
       subject: `Reset your ${APP_NAME} password`,
