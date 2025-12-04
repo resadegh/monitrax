@@ -12,6 +12,9 @@ const createAccountSchema = z.object({
   // Phase 23: Opening and balance tracking
   openingDate: z.string().datetime().optional(),
   openingBalance: z.number().min(0).default(0),
+  cashBalance: z.number().default(0),
+  totalDeposits: z.number().min(0).default(0),
+  totalWithdrawals: z.number().min(0).default(0),
   costBasisMethod: z.enum(['FIFO', 'LIFO', 'HIFO', 'SPECIFIC', 'AVERAGE']).default('FIFO'),
 });
 
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { name, type, platform, currency, openingDate, openingBalance, costBasisMethod } = validation.data;
+      const { name, type, platform, currency, openingDate, openingBalance, cashBalance, totalDeposits, totalWithdrawals, costBasisMethod } = validation.data;
 
       const account = await prisma.investmentAccount.create({
         data: {
@@ -77,7 +80,9 @@ export async function POST(request: NextRequest) {
           // Phase 23 fields
           openingDate: openingDate ? new Date(openingDate) : null,
           openingBalance: openingBalance || 0,
-          cashBalance: openingBalance || 0, // Start with opening balance
+          cashBalance: cashBalance ?? openingBalance ?? 0, // Use provided value or fall back to opening balance
+          totalDeposits: totalDeposits || 0,
+          totalWithdrawals: totalWithdrawals || 0,
           costBasisMethod: costBasisMethod || 'FIFO',
         },
       });

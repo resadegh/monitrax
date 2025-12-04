@@ -109,6 +109,9 @@ function InvestmentAccountsPageContent() {
     currency: 'AUD',
     openingDate: '',
     openingBalance: 0,
+    cashBalance: 0,
+    totalDeposits: 0,
+    totalWithdrawals: 0,
     costBasisMethod: 'FIFO',
   });
 
@@ -138,13 +141,27 @@ function InvestmentAccountsPageContent() {
     const method = editingId ? 'PUT' : 'POST';
 
     try {
+      // Clean up form data - convert empty strings to undefined and format date
+      const cleanedData = {
+        name: formData.name,
+        type: formData.type,
+        platform: formData.platform || undefined,
+        currency: formData.currency,
+        openingDate: formData.openingDate ? new Date(formData.openingDate).toISOString() : undefined,
+        openingBalance: formData.openingBalance || 0,
+        cashBalance: formData.cashBalance || 0,
+        totalDeposits: formData.totalDeposits || 0,
+        totalWithdrawals: formData.totalWithdrawals || 0,
+        costBasisMethod: formData.costBasisMethod,
+      };
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(cleanedData),
       });
 
       if (response.ok) {
@@ -166,6 +183,9 @@ function InvestmentAccountsPageContent() {
       currency: 'AUD',
       openingDate: '',
       openingBalance: 0,
+      cashBalance: 0,
+      totalDeposits: 0,
+      totalWithdrawals: 0,
       costBasisMethod: 'FIFO',
     });
   };
@@ -178,6 +198,9 @@ function InvestmentAccountsPageContent() {
       currency: account.currency,
       openingDate: account.openingDate ? new Date(account.openingDate).toISOString().split('T')[0] : '',
       openingBalance: account.openingBalance || 0,
+      cashBalance: account.cashBalance || 0,
+      totalDeposits: account.totalDeposits || 0,
+      totalWithdrawals: account.totalWithdrawals || 0,
       costBasisMethod: account.costBasisMethod || 'FIFO',
     });
     setEditingId(account.id);
@@ -600,6 +623,51 @@ function InvestmentAccountsPageContent() {
                   onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })}
                   placeholder="0.00"
                 />
+              </div>
+            </div>
+
+            {/* Current Balance Section */}
+            <div className="space-y-2">
+              <Label htmlFor="cashBalance">Current Cash Balance</Label>
+              <Input
+                id="cashBalance"
+                type="number"
+                step="0.01"
+                value={formData.cashBalance || 0}
+                onChange={(e) => setFormData({ ...formData, cashBalance: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground">Uninvested cash currently in this account</p>
+            </div>
+
+            {/* Deposits and Withdrawals */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="totalDeposits">Total Deposits</Label>
+                <Input
+                  id="totalDeposits"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.totalDeposits || 0}
+                  onChange={(e) => setFormData({ ...formData, totalDeposits: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-muted-foreground">Total money deposited into account</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="totalWithdrawals">Total Withdrawals</Label>
+                <Input
+                  id="totalWithdrawals"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.totalWithdrawals || 0}
+                  onChange={(e) => setFormData({ ...formData, totalWithdrawals: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-muted-foreground">Total money withdrawn from account</p>
               </div>
             </div>
 
