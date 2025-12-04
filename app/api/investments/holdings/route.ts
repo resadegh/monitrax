@@ -7,10 +7,14 @@ import { extractHoldingLinks, wrapWithGRDCS } from '@/lib/grdcs';
 const createHoldingSchema = z.object({
   investmentAccountId: z.string().uuid('Invalid account ID'),
   ticker: z.string().min(1, 'Ticker is required'),
+  name: z.string().optional(),
   units: z.number().positive('Units must be positive'),
   averagePrice: z.number().positive('Average price must be positive'),
   frankingPercentage: z.number().min(0).max(100).optional(),
   type: z.enum(['SHARE', 'ETF', 'MANAGED_FUND', 'CRYPTO']),
+  // Phase 23: Enhanced tracking
+  firstPurchaseDate: z.string().datetime().optional(),
+  currentPrice: z.number().positive().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -73,7 +77,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { investmentAccountId, ticker, units, averagePrice, frankingPercentage, type } =
+      const { investmentAccountId, ticker, name, units, averagePrice, frankingPercentage, type, firstPurchaseDate, currentPrice } =
         validation.data;
 
       // Verify ownership of the investment account
@@ -85,14 +89,31 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
       }
 
+      // Calculate cost basis and current value
+      const totalCostBasis = units * averagePrice;
+      const currentValue = currentPrice ? units * currentPrice : null;
+      const unrealizedGain = currentValue ? currentValue - totalCostBasis : null;
+      const unrealizedGainPct = unrealizedGain && totalCostBasis > 0
+        ? (unrealizedGain / totalCostBasis) * 100
+        : null;
+
       const holding = await prisma.investmentHolding.create({
         data: {
           investmentAccountId,
           ticker: ticker.toUpperCase(),
+          name: name || null,
           units,
           averagePrice,
           frankingPercentage: frankingPercentage ?? null,
           type,
+          // Phase 23 fields
+          firstPurchaseDate: firstPurchaseDate ? new Date(firstPurchaseDate) : new Date(),
+          totalCostBasis,
+          currentPrice: currentPrice || null,
+          currentValue,
+          priceUpdatedAt: currentPrice ? new Date() : null,
+          unrealizedGain,
+          unrealizedGainPct,
         },
       });
 

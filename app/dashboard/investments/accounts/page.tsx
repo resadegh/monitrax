@@ -61,6 +61,13 @@ interface InvestmentAccount {
   type: 'BROKERAGE' | 'SUPERS' | 'FUND' | 'TRUST' | 'ETF_CRYPTO';
   platform: string | null;
   currency: string;
+  // Phase 23: Opening and balance tracking
+  openingDate?: string;
+  openingBalance?: number;
+  cashBalance?: number;
+  totalDeposits?: number;
+  totalWithdrawals?: number;
+  costBasisMethod?: 'FIFO' | 'LIFO' | 'HIFO' | 'SPECIFIC' | 'AVERAGE';
   holdings?: InvestmentHolding[];
   transactions?: InvestmentTransaction[];
   incomes?: Income[];
@@ -100,6 +107,9 @@ function InvestmentAccountsPageContent() {
     type: 'BROKERAGE',
     platform: '',
     currency: 'AUD',
+    openingDate: '',
+    openingBalance: 0,
+    costBasisMethod: 'FIFO',
   });
 
   useEffect(() => {
@@ -154,6 +164,9 @@ function InvestmentAccountsPageContent() {
       type: 'BROKERAGE',
       platform: '',
       currency: 'AUD',
+      openingDate: '',
+      openingBalance: 0,
+      costBasisMethod: 'FIFO',
     });
   };
 
@@ -163,6 +176,9 @@ function InvestmentAccountsPageContent() {
       type: account.type,
       platform: account.platform || '',
       currency: account.currency,
+      openingDate: account.openingDate ? new Date(account.openingDate).toISOString().split('T')[0] : '',
+      openingBalance: account.openingBalance || 0,
+      costBasisMethod: account.costBasisMethod || 'FIFO',
     });
     setEditingId(account.id);
     setShowDialog(true);
@@ -559,6 +575,52 @@ function InvestmentAccountsPageContent() {
                   <SelectItem value="USD">USD - US Dollar</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Phase 23: Opening Details */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="openingDate">Opening Date (Optional)</Label>
+                <Input
+                  id="openingDate"
+                  type="date"
+                  value={formData.openingDate || ''}
+                  onChange={(e) => setFormData({ ...formData, openingDate: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="openingBalance">Opening Balance</Label>
+                <Input
+                  id="openingBalance"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.openingBalance || 0}
+                  onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="costBasisMethod">CGT Cost Basis Method</Label>
+              <Select
+                value={formData.costBasisMethod || 'FIFO'}
+                onValueChange={(value) => setFormData({ ...formData, costBasisMethod: value as InvestmentAccount['costBasisMethod'] })}
+              >
+                <SelectTrigger id="costBasisMethod">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FIFO">FIFO - First In, First Out (ATO Default)</SelectItem>
+                  <SelectItem value="LIFO">LIFO - Last In, First Out</SelectItem>
+                  <SelectItem value="HIFO">HIFO - Highest In, First Out</SelectItem>
+                  <SelectItem value="AVERAGE">Average Cost</SelectItem>
+                  <SelectItem value="SPECIFIC">Specific Identification</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Method used to calculate capital gains when selling assets</p>
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
