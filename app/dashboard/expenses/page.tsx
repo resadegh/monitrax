@@ -173,11 +173,6 @@ function ExpensesPageContent() {
     }
   }, [token]);
 
-  // Initialize filtered expenses when expenses change
-  useEffect(() => {
-    setFilteredExpenses(expenses);
-  }, [expenses]);
-
   const loadExpenses = async () => {
     try {
       const response = await fetch('/api/expenses', {

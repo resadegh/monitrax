@@ -244,11 +244,6 @@ function AssetsPageContent() {
     }
   }, [token]);
 
-  // Initialize filtered assets when assets change
-  useEffect(() => {
-    setFilteredAssets(assets);
-  }, [assets]);
-
   const loadAssets = async () => {
     try {
       const response = await fetch('/api/assets', {

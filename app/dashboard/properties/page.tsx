@@ -131,11 +131,6 @@ function PropertiesPageContent() {
     }
   }, [token]);
 
-  // Initialize filtered properties when properties change
-  useEffect(() => {
-    setFilteredProperties(properties);
-  }, [properties]);
-
   const loadProperties = async () => {
     try {
       const response = await fetch('/api/properties', {
