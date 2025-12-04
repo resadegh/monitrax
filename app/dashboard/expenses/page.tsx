@@ -62,6 +62,11 @@ interface Loan {
   name: string;
   type: string;
   principal: number;
+  minRepayment: number;
+  repaymentFrequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY';
+  interestRateAnnual: number;
+  isInterestOnly: boolean;
+  property?: { id: string; name: string } | null;
 }
 
 interface InvestmentAccount {
@@ -421,8 +426,27 @@ function ExpensesPageContent() {
     }
   };
 
+  // Convert loan repayment to monthly
+  const convertLoanRepaymentToMonthly = (amount: number, frequency: Loan['repaymentFrequency']): number => {
+    switch (frequency) {
+      case 'WEEKLY': return amount * 52 / 12;
+      case 'FORTNIGHTLY': return amount * 26 / 12;
+      case 'MONTHLY': return amount;
+      default: return amount;
+    }
+  };
+
   const totalMonthly = filteredExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
   const allTotalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+
+  // Calculate total loan repayments (monthly)
+  const totalLoanRepaymentsMonthly = loans.reduce((sum, loan) =>
+    sum + convertLoanRepaymentToMonthly(loan.minRepayment, loan.repaymentFrequency), 0
+  );
+
+  // Total outgoings = expenses + loan repayments
+  const totalOutgoingsMonthly = totalMonthly + totalLoanRepaymentsMonthly;
+  const allTotalOutgoingsMonthly = allTotalMonthly + totalLoanRepaymentsMonthly;
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups(prev => {
@@ -633,7 +657,7 @@ function ExpensesPageContent() {
     <DashboardLayout>
       <PageHeader
         title="Expenses"
-        description={`Manage your expenses • Total monthly: ${formatCurrency(allTotalMonthly)}`}
+        description={`Manage your expenses • Total outgoings: ${formatCurrency(allTotalOutgoingsMonthly)}/month`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowWizard(true)}>
@@ -703,6 +727,100 @@ function ExpensesPageContent() {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Outgoings Summary */}
+      {(expenses.length > 0 || loans.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Regular Expenses */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Regular Expenses</p>
+                  <p className="text-2xl font-bold text-red-600">{formatCurrency(totalMonthly)}</p>
+                  <p className="text-xs text-muted-foreground">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}</p>
+                </div>
+                <TrendingDown className="h-8 w-8 text-red-500/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Loan Repayments */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Loan Repayments</p>
+                  <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalLoanRepaymentsMonthly)}</p>
+                  <p className="text-xs text-muted-foreground">{loans.length} loan{loans.length !== 1 ? 's' : ''}</p>
+                </div>
+                <Landmark className="h-8 w-8 text-orange-500/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Total Outgoings */}
+          <Card className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-red-200 dark:border-red-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Outgoings</p>
+                  <p className="text-2xl font-bold text-red-700 dark:text-red-400">{formatCurrency(totalOutgoingsMonthly)}</p>
+                  <p className="text-xs text-muted-foreground">{formatCurrency(totalOutgoingsMonthly * 12)}/year</p>
+                </div>
+                <DollarSign className="h-8 w-8 text-red-500/30" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Loan Repayments Detail */}
+      {loans.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Landmark className="h-5 w-5 text-orange-500" />
+              Loan Repayments
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {loans.map((loan) => {
+                const monthlyRepayment = convertLoanRepaymentToMonthly(loan.minRepayment, loan.repaymentFrequency);
+                return (
+                  <div
+                    key={loan.id}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                        <Landmark className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{loan.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {loan.property?.name || loan.type} • {loan.isInterestOnly ? 'Interest only' : 'P&I'} • {loan.interestRateAnnual}%
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-orange-600">{formatCurrency(monthlyRepayment)}/mo</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(loan.minRepayment)}/{loan.repaymentFrequency.toLowerCase()}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between pt-2 mt-2 border-t">
+                <p className="font-medium text-muted-foreground">Total Loan Repayments</p>
+                <p className="font-bold text-orange-600">{formatCurrency(totalLoanRepaymentsMonthly)}/mo</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {isLoading ? (
