@@ -111,6 +111,7 @@ enum ExpenseSourceType {
   PROPERTY
   LOAN
   INVESTMENT
+  ASSET       // Phase 21: Link expenses to assets
 }
 
 // =============================================================================
@@ -258,6 +259,7 @@ model User {
   transactions        Transaction[]
   debtPlans           DebtPlan[]
   investmentAccounts  InvestmentAccount[]
+  assets              Asset[]                  // Phase 21: Personal assets
 
   // Phase 10: Auth & Security
   organizationMemberships OrganizationMember[]
@@ -462,6 +464,7 @@ model Expense {
   propertyId            String?
   loanId                String?
   investmentAccountId   String?
+  assetId               String?            // Phase 21: Link to asset
   name                  String
   vendorName            String?
   category              ExpenseCategory
@@ -478,12 +481,14 @@ model Expense {
   property          Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   loan              Loan?              @relation(fields: [loanId], references: [id], onDelete: SetNull)
   investmentAccount InvestmentAccount? @relation(fields: [investmentAccountId], references: [id], onDelete: SetNull)
+  asset             Asset?             @relation(fields: [assetId], references: [id], onDelete: SetNull)
   transactions      Transaction[]
 
   @@index([userId])
   @@index([propertyId])
   @@index([loanId])
   @@index([investmentAccountId])
+  @@index([assetId])
   @@map("expenses")
 }
 
@@ -626,6 +631,34 @@ enum DepreciationCategory {
 enum DepreciationMethod {
   PRIME_COST
   DIMINISHING_VALUE
+}
+
+// =============================================================================
+// PHASE 21: ASSET MANAGEMENT ENUMS
+// =============================================================================
+
+enum AssetType {
+  VEHICLE
+  ELECTRONICS
+  FURNITURE
+  EQUIPMENT
+  COLLECTIBLE
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE        // Currently owned
+  SOLD          // Sold/disposed
+  WRITTEN_OFF   // Written off (damaged/lost)
+}
+
+enum VehicleFuelType {
+  PETROL
+  DIESEL
+  ELECTRIC
+  HYBRID
+  LPG
+  OTHER
 }
 
 // =============================================================================
@@ -2153,4 +2186,109 @@ model TaxPosition {
   @@index([userId])
   @@index([financialYear])
   @@map("tax_positions")
+}
+
+// =============================================================================
+// PHASE 21: ASSET MANAGEMENT
+// =============================================================================
+
+model Asset {
+  id                    String              @id @default(uuid())
+  userId                String
+
+  // Core fields
+  name                  String
+  type                  AssetType
+  status                AssetStatus         @default(ACTIVE)
+  description           String?
+
+  // Value tracking
+  purchasePrice         Float
+  purchaseDate          DateTime
+  currentValue          Float
+  valuationDate         DateTime            // When currentValue was set
+
+  // Sale/disposal tracking
+  salePrice             Float?
+  saleDate              DateTime?
+
+  // Depreciation (optional)
+  depreciationMethod    DepreciationMethod?
+  depreciationRate      Float?              // Annual rate (e.g., 0.15 for 15%)
+  usefulLifeYears       Int?
+  residualValue         Float?              // Expected value at end of useful life
+
+  // Vehicle-specific fields (nullable for non-vehicles)
+  vehicleMake           String?
+  vehicleModel          String?
+  vehicleYear           Int?
+  vehicleRegistration   String?
+  vehicleFuelType       VehicleFuelType?
+  vehicleOdometer       Int?                // Current odometer reading
+  vehicleVin            String?             // Vehicle Identification Number
+
+  // Images
+  imageUrl              String?
+
+  // Metadata
+  serialNumber          String?
+  warrantyExpiry        DateTime?
+  notes                 String?
+
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  // Relationships
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses              Expense[]
+  valueHistory          AssetValueHistory[]
+  serviceRecords        AssetServiceRecord[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@map("assets")
+}
+
+model AssetValueHistory {
+  id          String    @id @default(uuid())
+  assetId     String
+  value       Float
+  valuedAt    DateTime  @default(now())
+  source      String?   // "MANUAL", "REDBOOK", "MARKET", "DEPRECIATION"
+  notes       String?
+
+  createdAt   DateTime  @default(now())
+
+  // Relationships
+  asset       Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([valuedAt])
+  @@map("asset_value_history")
+}
+
+model AssetServiceRecord {
+  id              String    @id @default(uuid())
+  assetId         String
+  expenseId       String?   // Link to associated expense record
+
+  serviceDate     DateTime
+  serviceType     String    // "ROUTINE", "REPAIR", "REGISTRATION", "INSURANCE", etc.
+  description     String
+  provider        String?   // Service provider name
+  cost            Float
+
+  // Vehicle-specific
+  odometerReading Int?
+
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  // Relationships
+  asset           Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@index([serviceDate])
+  @@map("asset_service_records")
 }
