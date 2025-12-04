@@ -64,7 +64,7 @@ export function SecuritySection() {
               </p>
 
               <div className="mt-8">
-                <Button variant="outline" className="border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
+                <Button variant="outline" className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
                   <Link href="/security">
                     Read our Security & Privacy overview
                     <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

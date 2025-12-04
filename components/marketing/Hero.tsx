@@ -35,7 +35,7 @@ export function Hero() {
                 <Button size="lg" className="bg-brand-secondary hover:bg-brand-secondary/90 text-white" asChild>
                   <Link href="/pricing">See plans & pricing</Link>
                 </Button>
-                <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
+                <Button size="lg" variant="outline" className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
                   <Link href="/signin">Sign in</Link>
                 </Button>
               </div>
