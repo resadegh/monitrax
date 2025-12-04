@@ -22,6 +22,8 @@ export type ExpenseCategory =
   | 'STRATA'
   | 'LAND_TAX'
   | 'LOAN_INTEREST'
+  | 'REGISTRATION'
+  | 'MODIFICATIONS'
   | 'OTHER';
 
 export type ExpenseSourceType = 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
@@ -41,6 +43,8 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   STRATA: 'Strata',
   LAND_TAX: 'Land Tax',
   LOAN_INTEREST: 'Loan Interest',
+  REGISTRATION: 'Registration',
+  MODIFICATIONS: 'Modifications',
   OTHER: 'Other',
 };
 
@@ -49,7 +53,7 @@ const EXPENSE_CATEGORIES_BY_SOURCE: Record<ExpenseSourceType, ExpenseCategory[]>
   GENERAL: [
     'HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL',
     'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'STRATA',
-    'LAND_TAX', 'LOAN_INTEREST', 'OTHER'
+    'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'
   ],
   PROPERTY: [
     'HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'UTILITIES',
@@ -70,9 +74,11 @@ const EXPENSE_CATEGORIES_BY_SOURCE: Record<ExpenseSourceType, ExpenseCategory[]>
 // Categories allowed for each asset type
 const EXPENSE_CATEGORIES_BY_ASSET_TYPE: Record<AssetType, ExpenseCategory[]> = {
   VEHICLE: [
-    'TRANSPORT',    // Fuel, tolls, registration
+    'REGISTRATION', // Vehicle registration, license fees
     'INSURANCE',    // Vehicle insurance
+    'TRANSPORT',    // Fuel, tolls
     'MAINTENANCE',  // Servicing, repairs
+    'MODIFICATIONS',// Upgrades, accessories
     'OTHER'
   ],
   ELECTRONICS: [
@@ -158,7 +164,7 @@ export function getDefaultExpenseCategory(
     case 'INVESTMENT':
       return 'PERSONAL';
     case 'ASSET':
-      if (assetType === 'VEHICLE') return 'TRANSPORT';
+      if (assetType === 'VEHICLE') return 'REGISTRATION';
       return 'MAINTENANCE';
     default:
       return 'OTHER';

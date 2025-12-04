@@ -28,6 +28,7 @@ import {
   type ExpenseSourceType,
   type ExpenseCategory,
 } from '@/lib/categoryFilters';
+import { ListFilter, expenseFilterConfigs } from '@/components/ListFilter';
 
 type ViewMode = 'category' | 'property' | 'all' | 'list';
 
@@ -80,7 +81,7 @@ interface Expense {
   id: string;
   name: string;
   vendorName: string | null;
-  category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'OTHER';
+  category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
   sourceType: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
   amount: number;
   frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
@@ -160,6 +161,7 @@ function ExpensesPageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('category');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showWizard, setShowWizard] = useState(false);
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
 
   useEffect(() => {
     if (token) {
@@ -170,6 +172,11 @@ function ExpensesPageContent() {
       loadAssets();
     }
   }, [token]);
+
+  // Initialize filtered expenses when expenses change
+  useEffect(() => {
+    setFilteredExpenses(expenses);
+  }, [expenses]);
 
   const loadExpenses = async () => {
     try {
@@ -419,7 +426,8 @@ function ExpensesPageContent() {
     }
   };
 
-  const totalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+  const totalMonthly = filteredExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+  const allTotalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups(prev => {
@@ -447,13 +455,15 @@ function ExpensesPageContent() {
     STRATA: { label: 'Strata', icon: <Building2 className="h-5 w-5" />, color: 'text-teal-500' },
     LAND_TAX: { label: 'Land Tax', icon: <Landmark className="h-5 w-5" />, color: 'text-red-500' },
     LOAN_INTEREST: { label: 'Loan Interest', icon: <Landmark className="h-5 w-5" />, color: 'text-red-600' },
+    REGISTRATION: { label: 'Registration', icon: <FileText className="h-5 w-5" />, color: 'text-sky-500' },
+    MODIFICATIONS: { label: 'Modifications', icon: <TrendingDown className="h-5 w-5" />, color: 'text-violet-500' },
     OTHER: { label: 'Other', icon: <CreditCard className="h-5 w-5" />, color: 'text-gray-500' },
   };
 
   // Group expenses by category
   const groupByCategory = (): ExpenseGroup[] => {
     const groups: Record<string, Expense[]> = {};
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       if (!groups[exp.category]) {
         groups[exp.category] = [];
       }
@@ -486,7 +496,7 @@ function ExpensesPageContent() {
     });
 
     // Distribute expenses
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       if (exp.sourceType === 'PROPERTY' && exp.propertyId) {
         const key = `property-${exp.propertyId}`;
         if (groups[key]) {
@@ -534,6 +544,8 @@ function ExpensesPageContent() {
       STRATA: { variant: 'default', label: 'Strata' },
       LAND_TAX: { variant: 'destructive', label: 'Land Tax' },
       LOAN_INTEREST: { variant: 'destructive', label: 'Loan Interest' },
+      REGISTRATION: { variant: 'default', label: 'Registration' },
+      MODIFICATIONS: { variant: 'secondary', label: 'Modifications' },
       OTHER: { variant: 'outline', label: 'Other' },
     };
 
@@ -626,7 +638,7 @@ function ExpensesPageContent() {
     <DashboardLayout>
       <PageHeader
         title="Expenses"
-        description={`Manage your expenses • Total monthly: ${formatCurrency(totalMonthly)}`}
+        description={`Manage your expenses • Total monthly: ${formatCurrency(allTotalMonthly)}`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowWizard(true)}>
@@ -640,6 +652,18 @@ function ExpensesPageContent() {
           </div>
         }
       />
+
+      {/* Search and Filter */}
+      {expenses.length > 0 && (
+        <ListFilter
+          data={expenses}
+          searchFields={['name', 'vendorName']}
+          searchPlaceholder="Search expenses..."
+          filters={expenseFilterConfigs}
+          onFilteredData={setFilteredExpenses}
+          className="mb-4"
+        />
+      )}
 
       {/* View Mode Selector */}
       {expenses.length > 0 && (
@@ -722,7 +746,7 @@ function ExpensesPageContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {expenses.map((item) => {
+                  {filteredExpenses.map((item) => {
                     const monthlyAmount = convertToMonthly(item.amount, item.frequency);
                     return (
                       <tr
@@ -793,7 +817,7 @@ function ExpensesPageContent() {
       ) : viewMode === 'all' ? (
         /* All expenses view - individual tiles */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {expenses.map((item) => {
+          {filteredExpenses.map((item) => {
             const monthlyAmount = convertToMonthly(item.amount, item.frequency);
 
             return (

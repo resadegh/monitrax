@@ -32,6 +32,7 @@ import {
   CreditCard,
   BarChart3,
   Car,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -40,6 +41,7 @@ import { useUISyncEngine } from '@/hooks/useUISyncEngine';
 import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
 import { FinancialHealthMiniWidget } from '@/components/health/FinancialHealthMiniWidget';
 import AiChatButton from '@/components/AiChatButton';
+import { UniversalSearch, useUniversalSearch } from '@/components/UniversalSearch';
 
 interface NavItem {
   name: string;
@@ -117,6 +119,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Phase 14.5 - Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Universal search
+  const { open: searchOpen, setOpen: setSearchOpen } = useUniversalSearch();
 
   // Collapsible nav groups state - auto-expand group containing current path
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
@@ -228,6 +233,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <h1 className="text-lg font-semibold tracking-tight text-white">Monitrax</h1>
         </Link>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            aria-label="Search"
+          >
+            <Search className="h-5 w-5 text-white" />
+          </button>
           <ThemeToggle />
         </div>
       </header>
@@ -270,8 +282,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <X className="h-5 w-5 text-white" />
           </button>
-          {/* Theme toggle (desktop only) */}
-          <div className="hidden lg:block">
+          {/* Search and Theme toggle (desktop only) */}
+          <div className="hidden lg:flex items-center gap-1">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              aria-label="Search (⌘K)"
+              title="Search (⌘K)"
+            >
+              <Search className="h-4 w-4 text-white" />
+            </button>
             <ThemeToggle />
           </div>
         </div>
@@ -416,6 +436,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* AI Chat Floating Button */}
       <AiChatButton />
+
+      {/* Universal Search */}
+      <UniversalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }
