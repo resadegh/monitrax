@@ -17,11 +17,23 @@ interface LinkRequest {
   action: 'link' | 'create' | 'update' | 'unlink';
   type?: 'income' | 'expense' | 'loan';
   targetId?: string; // For link/update actions
+  updateAmount?: boolean; // Whether to update the linked entry's amount
   // For create action
   name?: string;
   category?: string; // ExpenseCategory for expense, IncomeType for income
   frequency?: string;
   isRecurring?: boolean;
+  // Source type and entity linking (for expense creation)
+  sourceType?: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT';
+  propertyId?: string;
+  loanId?: string;
+  investmentAccountId?: string;
+  // For income
+  incomeSourceType?: 'GENERAL' | 'PROPERTY' | 'INVESTMENT';
+  isTaxable?: boolean;
+  // For expense
+  isEssential?: boolean;
+  isTaxDeductible?: boolean;
 }
 
 export async function POST(
@@ -56,6 +68,8 @@ export async function POST(
             );
           }
 
+          let targetName = '';
+
           // Verify target exists and belongs to user
           if (body.type === 'income') {
             const income = await prisma.income.findFirst({
@@ -67,6 +81,15 @@ export async function POST(
                 { status: 404 }
               );
             }
+            targetName = income.name;
+
+            // Optionally update the income amount
+            if (body.updateAmount) {
+              await prisma.income.update({
+                where: { id: body.targetId },
+                data: { amount: transaction.amount },
+              });
+            }
           } else if (body.type === 'expense') {
             const expense = await prisma.expense.findFirst({
               where: { id: body.targetId, userId },
@@ -77,6 +100,15 @@ export async function POST(
                 { status: 404 }
               );
             }
+            targetName = expense.name;
+
+            // Optionally update the expense amount
+            if (body.updateAmount) {
+              await prisma.expense.update({
+                where: { id: body.targetId },
+                data: { amount: transaction.amount },
+              });
+            }
           } else if (body.type === 'loan') {
             const loan = await prisma.loan.findFirst({
               where: { id: body.targetId, userId },
@@ -86,6 +118,15 @@ export async function POST(
                 { error: 'Loan not found' },
                 { status: 404 }
               );
+            }
+            targetName = loan.name;
+
+            // Optionally update the loan minRepayment
+            if (body.updateAmount) {
+              await prisma.loan.update({
+                where: { id: body.targetId },
+                data: { minRepayment: transaction.amount },
+              });
             }
           }
 
@@ -103,7 +144,9 @@ export async function POST(
           return NextResponse.json({
             success: true,
             transaction: updated,
-            message: `Transaction linked to ${body.type}`,
+            message: body.updateAmount
+              ? `Linked to ${targetName} and updated amount to $${transaction.amount}`
+              : `Linked to ${targetName}`,
           });
         }
 
@@ -120,15 +163,40 @@ export async function POST(
           const frequency = body.frequency || 'MONTHLY';
 
           if (body.type === 'income') {
-            // Create new Income entry
+            // Create new Income entry with source type support
+            const incomeData: {
+              userId: string;
+              name: string;
+              type: 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
+              amount: number;
+              frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+              sourceType?: 'GENERAL' | 'PROPERTY' | 'INVESTMENT';
+              propertyId?: string;
+              investmentAccountId?: string;
+              isTaxable?: boolean;
+            } = {
+              userId,
+              name,
+              type: (body.category as 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER') || 'OTHER',
+              amount: transaction.amount,
+              frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+            };
+
+            // Add source type and entity linking
+            if (body.incomeSourceType) {
+              incomeData.sourceType = body.incomeSourceType;
+              if (body.incomeSourceType === 'PROPERTY' && body.propertyId) {
+                incomeData.propertyId = body.propertyId;
+              } else if (body.incomeSourceType === 'INVESTMENT' && body.investmentAccountId) {
+                incomeData.investmentAccountId = body.investmentAccountId;
+              }
+            }
+            if (body.isTaxable !== undefined) {
+              incomeData.isTaxable = body.isTaxable;
+            }
+
             const income = await prisma.income.create({
-              data: {
-                userId,
-                name,
-                type: (body.category as 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER') || 'OTHER',
-                amount: transaction.amount,
-                frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
-              },
+              data: incomeData,
             });
 
             // Link transaction to new income
@@ -147,16 +215,52 @@ export async function POST(
               message: 'New income created and linked',
             });
           } else {
-            // Create new Expense entry
+            // Create new Expense entry with source type and entity linking
+            const expenseData: {
+              userId: string;
+              name: string;
+              vendorName?: string | null;
+              category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'OTHER';
+              amount: number;
+              frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+              sourceType?: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT';
+              propertyId?: string;
+              loanId?: string;
+              investmentAccountId?: string;
+              isEssential?: boolean;
+              isTaxDeductible?: boolean;
+            } = {
+              userId,
+              name,
+              vendorName: transaction.merchantStandardised,
+              category: (body.category as 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'OTHER') || 'OTHER',
+              amount: transaction.amount,
+              frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
+            };
+
+            // Add source type and entity linking
+            if (body.sourceType) {
+              expenseData.sourceType = body.sourceType;
+              if (body.sourceType === 'PROPERTY' && body.propertyId) {
+                expenseData.propertyId = body.propertyId;
+                expenseData.isTaxDeductible = true; // Property expenses are typically tax deductible
+              } else if (body.sourceType === 'LOAN' && body.loanId) {
+                expenseData.loanId = body.loanId;
+                expenseData.category = 'LOAN_INTEREST';
+                expenseData.isTaxDeductible = true;
+              } else if (body.sourceType === 'INVESTMENT' && body.investmentAccountId) {
+                expenseData.investmentAccountId = body.investmentAccountId;
+              }
+            }
+            if (body.isEssential !== undefined) {
+              expenseData.isEssential = body.isEssential;
+            }
+            if (body.isTaxDeductible !== undefined) {
+              expenseData.isTaxDeductible = body.isTaxDeductible;
+            }
+
             const expense = await prisma.expense.create({
-              data: {
-                userId,
-                name,
-                vendorName: transaction.merchantStandardised,
-                category: (body.category as 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'OTHER') || 'OTHER',
-                amount: transaction.amount,
-                frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
-              },
+              data: expenseData,
             });
 
             // Link transaction to new expense
@@ -330,6 +434,29 @@ export async function GET(
         orderBy: { name: 'asc' },
       });
 
+      // Get all properties for source linking
+      const properties = await prisma.property.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+
+      // Get all investment accounts for source linking
+      const investmentAccounts = await prisma.investmentAccount.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          platform: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+
       // Find potential matches using similarity
       const searchText = (transaction.merchantStandardised || transaction.description).toLowerCase();
       const txAmount = transaction.amount;
@@ -458,6 +585,12 @@ export async function GET(
           income: incomeEntries,
           expenses: expenseEntries,
           loans: loanEntries,
+        },
+        // For source linking when creating new entries
+        availableSources: {
+          properties,
+          loans: loanEntries,
+          investmentAccounts,
         },
       });
     } catch (error) {
