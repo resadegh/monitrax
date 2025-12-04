@@ -138,13 +138,24 @@ function InvestmentAccountsPageContent() {
     const method = editingId ? 'PUT' : 'POST';
 
     try {
+      // Clean up form data - convert empty strings to undefined and format date
+      const cleanedData = {
+        name: formData.name,
+        type: formData.type,
+        platform: formData.platform || undefined,
+        currency: formData.currency,
+        openingDate: formData.openingDate ? new Date(formData.openingDate).toISOString() : undefined,
+        openingBalance: formData.openingBalance || 0,
+        costBasisMethod: formData.costBasisMethod,
+      };
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(cleanedData),
       });
 
       if (response.ok) {
