@@ -9,6 +9,10 @@ const createAccountSchema = z.object({
   type: z.enum(['BROKERAGE', 'SUPERS', 'FUND', 'TRUST', 'ETF_CRYPTO']),
   platform: z.string().optional(),
   currency: z.string().default('AUD'),
+  // Phase 23: Opening and balance tracking
+  openingDate: z.string().datetime().optional(),
+  openingBalance: z.number().min(0).default(0),
+  costBasisMethod: z.enum(['FIFO', 'LIFO', 'HIFO', 'SPECIFIC', 'AVERAGE']).default('FIFO'),
 });
 
 export async function GET(request: NextRequest) {
@@ -61,7 +65,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { name, type, platform, currency } = validation.data;
+      const { name, type, platform, currency, openingDate, openingBalance, costBasisMethod } = validation.data;
 
       const account = await prisma.investmentAccount.create({
         data: {
@@ -70,6 +74,11 @@ export async function POST(request: NextRequest) {
           type,
           platform: platform || null,
           currency: currency || 'AUD',
+          // Phase 23 fields
+          openingDate: openingDate ? new Date(openingDate) : null,
+          openingBalance: openingBalance || 0,
+          cashBalance: openingBalance || 0, // Start with opening balance
+          costBasisMethod: costBasisMethod || 'FIFO',
         },
       });
 

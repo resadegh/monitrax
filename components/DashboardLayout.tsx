@@ -27,6 +27,10 @@ import {
   Brain,
   FolderOpen,
   Settings,
+  ChevronDown,
+  Briefcase,
+  CreditCard,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -42,25 +46,59 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-// Main navigation items
-const navItems: NavItem[] = [
+interface NavGroup {
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: NavItem[];
+}
+
+// Standalone navigation items (always visible)
+const standaloneItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Personal CFO', href: '/dashboard/cfo', icon: Brain },
-  { name: 'Properties', href: '/dashboard/properties', icon: Home },
-  { name: 'Loans', href: '/dashboard/loans', icon: Banknote },
-  { name: 'Accounts', href: '/dashboard/accounts', icon: Wallet },
-  { name: 'Income', href: '/dashboard/income', icon: TrendingUp },
-  { name: 'Expenses', href: '/dashboard/expenses', icon: TrendingDown },
-  { name: 'Investments', href: '/dashboard/investments/accounts', icon: PieChart },
-  { name: 'Transactions', href: '/transactions', icon: ArrowLeftRight },
-  { name: 'Recurring', href: '/recurring', icon: RefreshCw },
-  { name: 'Cashflow', href: '/cashflow', icon: LineChart },
-  { name: 'Financial Health', href: '/health', icon: Activity },
-  { name: 'Strategy', href: '/strategy', icon: Lightbulb },
-  { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator },
-  { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt },
-  { name: 'Reports', href: '/dashboard/reports', icon: FileText },
-  { name: 'Documents', href: '/dashboard/documents', icon: FolderOpen },
+];
+
+// Grouped navigation items (collapsible)
+const navGroups: NavGroup[] = [
+  {
+    name: 'Portfolio',
+    icon: Briefcase,
+    items: [
+      { name: 'Properties', href: '/dashboard/properties', icon: Home },
+      { name: 'Loans', href: '/dashboard/loans', icon: Banknote },
+      { name: 'Accounts', href: '/dashboard/accounts', icon: Wallet },
+      { name: 'Investments', href: '/dashboard/investments/accounts', icon: PieChart },
+    ],
+  },
+  {
+    name: 'Transactions',
+    icon: CreditCard,
+    items: [
+      { name: 'Income', href: '/dashboard/income', icon: TrendingUp },
+      { name: 'Expenses', href: '/dashboard/expenses', icon: TrendingDown },
+      { name: 'Transactions', href: '/transactions', icon: ArrowLeftRight },
+      { name: 'Recurring', href: '/recurring', icon: RefreshCw },
+    ],
+  },
+  {
+    name: 'Planning',
+    icon: Lightbulb,
+    items: [
+      { name: 'Cashflow', href: '/cashflow', icon: LineChart },
+      { name: 'Financial Health', href: '/health', icon: Activity },
+      { name: 'Strategy', href: '/strategy', icon: Lightbulb },
+      { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator },
+      { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt },
+    ],
+  },
+  {
+    name: 'Reporting',
+    icon: BarChart3,
+    items: [
+      { name: 'Reports', href: '/dashboard/reports', icon: FileText },
+      { name: 'Documents', href: '/dashboard/documents', icon: FolderOpen },
+    ],
+  },
 ];
 
 // Settings navigation item (shown separately at bottom)
@@ -77,6 +115,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Phase 14.5 - Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Collapsible nav groups state - auto-expand group containing current path
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    // Auto-expand group containing current route on initial load
+    navGroups.forEach(group => {
+      if (group.items.some(item => pathname === item.href || pathname.startsWith(item.href))) {
+        initial.add(group.name);
+      }
+    });
+    return initial;
+  });
+
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupName)) {
+        next.delete(groupName);
+      } else {
+        next.add(groupName);
+      }
+      return next;
+    });
+  };
+
+  // Auto-expand group when navigating to a page within it
+  useEffect(() => {
+    navGroups.forEach(group => {
+      if (group.items.some(item => pathname === item.href || pathname.startsWith(item.href))) {
+        setExpandedGroups(prev => {
+          if (!prev.has(group.name)) {
+            const next = new Set(prev);
+            next.add(group.name);
+            return next;
+          }
+          return prev;
+        });
+      }
+    });
+  }, [pathname]);
 
   // Phase 9.4 - Real-Time Global Health Feed
   const { state: syncState } = useUISyncEngine({
@@ -198,7 +276,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Navigation - Scrollable */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {navItems.map((item) => {
+          {/* Standalone items (Dashboard, Personal CFO) */}
+          {standaloneItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
             const Icon = item.icon;
             return (
@@ -214,6 +293,67 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Icon className="h-5 w-5 lg:h-4 lg:w-4" />
                 {item.name}
               </Link>
+            );
+          })}
+
+          {/* Collapsible nav groups */}
+          {navGroups.map((group) => {
+            const GroupIcon = group.icon;
+            const isExpanded = expandedGroups.has(group.name);
+            const hasActiveChild = group.items.some(
+              item => pathname === item.href || pathname.startsWith(item.href)
+            );
+
+            return (
+              <div key={group.name} className="space-y-1">
+                {/* Group header */}
+                <button
+                  onClick={() => toggleGroup(group.name)}
+                  className={`w-full flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                    hasActiveChild
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <GroupIcon className="h-5 w-5 lg:h-4 lg:w-4" />
+                    {group.name}
+                  </div>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      isExpanded ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {/* Group items */}
+                <div
+                  className={`overflow-hidden transition-all duration-200 ${
+                    isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <div className="pl-4 space-y-1">
+                    {group.items.map((item) => {
+                      const isActive = pathname === item.href || pathname.startsWith(item.href);
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {item.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             );
           })}
 

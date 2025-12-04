@@ -597,6 +597,25 @@ enum InvestmentTransactionType {
   DIVIDEND
   DISTRIBUTION
   DRP
+  DEPOSIT           // Cash deposit into account
+  WITHDRAWAL        // Cash withdrawal from account
+  TRANSFER_IN       // Assets transferred in (e.g., from another broker)
+  TRANSFER_OUT      // Assets transferred out
+  CORPORATE_ACTION  // Stock splits, mergers, etc.
+}
+
+// Phase 23: Capital Gains Tax Tracking
+enum CostBasisMethod {
+  FIFO              // First In, First Out
+  LIFO              // Last In, First Out
+  HIFO              // Highest In, First Out (tax optimized)
+  SPECIFIC          // Specific identification
+  AVERAGE           // Average cost (for managed funds)
+}
+
+enum CapitalGainType {
+  SHORT_TERM        // Held < 12 months (no CGT discount)
+  LONG_TERM         // Held >= 12 months (50% CGT discount applies)
 }
 
 enum DepreciationCategory {
@@ -620,6 +639,15 @@ model InvestmentAccount {
   type         InvestmentAccountType
   platform     String?               // e.g. CommSec, SelfWealth, Betashares app
   currency     String                @default("AUD")
+
+  // Phase 23: Opening and balance tracking
+  openingDate         DateTime?      // When account was opened
+  openingBalance      Float          @default(0)  // Initial cash balance
+  cashBalance         Float          @default(0)  // Current uninvested cash
+  totalDeposits       Float          @default(0)  // Sum of all deposits
+  totalWithdrawals    Float          @default(0)  // Sum of all withdrawals
+  costBasisMethod     CostBasisMethod @default(FIFO)  // Default CGT calculation method
+
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
 
@@ -629,6 +657,7 @@ model InvestmentAccount {
   transactions InvestmentTransaction[]
   incomes      Income[]
   expenses     Expense[]
+  capitalGains CapitalGainEvent[]
 
   @@index([userId])
   @@map("investment_accounts")
@@ -642,18 +671,32 @@ model InvestmentHolding {
   id                  String            @id @default(uuid())
   investmentAccountId String
   ticker              String            // VAS, A200, VGS, BHP
+  name                String?           // Full name (e.g., "Vanguard Australian Shares ETF")
   units               Float
   averagePrice        Float
   frankingPercentage  Float?            // AU feature for franking credits
   type                HoldingType
+
+  // Phase 23: Enhanced tracking
+  firstPurchaseDate   DateTime?         // Date of first purchase (for CGT discount)
+  totalCostBasis      Float             @default(0)  // Total amount invested
+  currentPrice        Float?            // Latest market price per unit
+  currentValue        Float?            // units * currentPrice (computed on update)
+  priceUpdatedAt      DateTime?         // When price was last updated
+  unrealizedGain      Float?            // currentValue - totalCostBasis
+  unrealizedGainPct   Float?            // Percentage gain/loss
+
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
   // Relationships
   investmentAccount   InvestmentAccount       @relation(fields: [investmentAccountId], references: [id], onDelete: Cascade)
   transactions        InvestmentTransaction[]
+  purchaseLots        PurchaseLot[]
+  capitalGains        CapitalGainEvent[]
 
   @@index([investmentAccountId])
+  @@index([ticker])
   @@map("investment_holdings")
 }
 
@@ -671,16 +714,131 @@ model InvestmentTransaction {
   units               Float
   fees                Float?
   notes               String?
+
+  // Phase 23: Enhanced transaction tracking
+  ticker              String?                   // For BUY/SELL when holdingId not yet created
+  totalAmount         Float?                    // price * units + fees (for reporting)
+  exchangeRate        Float?                    // For foreign currency transactions
+
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
 
   // Relationships
   investmentAccount   InvestmentAccount   @relation(fields: [investmentAccountId], references: [id], onDelete: Cascade)
   holding             InvestmentHolding?  @relation(fields: [holdingId], references: [id], onDelete: SetNull)
+  purchaseLot         PurchaseLot?        // Created when this is a BUY transaction
+  capitalGainEvent    CapitalGainEvent?   // Created when this is a SELL transaction
 
   @@index([investmentAccountId])
   @@index([holdingId])
+  @@index([date])
   @@map("investment_transactions")
+}
+
+// =============================================================================
+// PHASE 23: PURCHASE LOT (PARCEL) TRACKING FOR CGT
+// =============================================================================
+
+model PurchaseLot {
+  id                  String            @id @default(uuid())
+  holdingId           String
+  transactionId       String            @unique
+
+  // Lot details
+  purchaseDate        DateTime
+  units               Float             // Units in this lot
+  unitCost            Float             // Price per unit at purchase
+  totalCost           Float             // units * unitCost + fees
+  fees                Float             @default(0)
+
+  // Tracking
+  unitsRemaining      Float             // Units not yet sold (starts = units)
+  isFullySold         Boolean           @default(false)
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  // Relationships
+  holding             InvestmentHolding @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  transaction         InvestmentTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  capitalGainAllocations CapitalGainLotAllocation[]
+
+  @@index([holdingId])
+  @@index([purchaseDate])
+  @@map("purchase_lots")
+}
+
+// =============================================================================
+// PHASE 23: CAPITAL GAIN EVENT (REALIZED GAINS/LOSSES)
+// =============================================================================
+
+model CapitalGainEvent {
+  id                    String            @id @default(uuid())
+  investmentAccountId   String
+  holdingId             String
+  transactionId         String            @unique
+
+  // Sale details
+  saleDate              DateTime
+  unitsSold             Float
+  salePrice             Float             // Price per unit at sale
+  saleFees              Float             @default(0)
+  grossProceeds         Float             // unitsSold * salePrice - saleFees
+
+  // Cost basis (calculated from allocated lots)
+  totalCostBasis        Float             // Sum of cost from allocated purchase lots
+
+  // Gain/Loss calculation
+  capitalGain           Float             // grossProceeds - totalCostBasis
+  capitalGainType       CapitalGainType   // SHORT_TERM or LONG_TERM
+  cgtDiscount           Float             @default(0)  // 50% discount if LONG_TERM
+  taxableGain           Float             // capitalGain - cgtDiscount
+
+  // Tax year tracking
+  financialYear         String            // e.g., "2024-25"
+
+  // Additional info
+  notes                 String?
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Relationships
+  investmentAccount     InvestmentAccount @relation(fields: [investmentAccountId], references: [id], onDelete: Cascade)
+  holding               InvestmentHolding @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  transaction           InvestmentTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  lotAllocations        CapitalGainLotAllocation[]
+
+  @@index([investmentAccountId])
+  @@index([holdingId])
+  @@index([financialYear])
+  @@index([saleDate])
+  @@map("capital_gain_events")
+}
+
+// =============================================================================
+// PHASE 23: CAPITAL GAIN LOT ALLOCATION (WHICH LOTS WERE SOLD)
+// =============================================================================
+
+model CapitalGainLotAllocation {
+  id                  String            @id @default(uuid())
+  capitalGainEventId  String
+  purchaseLotId       String
+
+  // Allocation details
+  unitsAllocated      Float             // How many units from this lot were sold
+  costBasisAllocated  Float             // Proportional cost basis
+  holdingPeriodDays   Int               // Days between purchase and sale
+
+  createdAt           DateTime          @default(now())
+
+  // Relationships
+  capitalGainEvent    CapitalGainEvent  @relation(fields: [capitalGainEventId], references: [id], onDelete: Cascade)
+  purchaseLot         PurchaseLot       @relation(fields: [purchaseLotId], references: [id], onDelete: Cascade)
+
+  @@index([capitalGainEventId])
+  @@index([purchaseLotId])
+  @@map("capital_gain_lot_allocations")
 }
 
 // =============================================================================
