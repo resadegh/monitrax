@@ -95,7 +95,7 @@ export function Header() {
                 Security
               </Link>
               <div className="flex flex-col gap-2 pt-4 border-t border-white/10">
-                <Button variant="outline" className="w-full border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
+                <Button variant="outline" className="w-full bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
                   <Link href="/signin">Sign in</Link>
                 </Button>
                 <Button className="w-full bg-brand-secondary hover:bg-brand-secondary/90 text-white" asChild>
