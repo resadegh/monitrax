@@ -62,12 +62,18 @@ interface InvestmentAccount {
   platform: string | null;
 }
 
+interface Asset {
+  id: string;
+  name: string;
+  type: string;
+}
+
 interface Expense {
   id: string;
   name: string;
   vendorName: string | null;
   category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'OTHER';
-  sourceType: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT';
+  sourceType: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
   amount: number;
   frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
   isEssential: boolean;
@@ -75,9 +81,11 @@ interface Expense {
   propertyId: string | null;
   loanId: string | null;
   investmentAccountId: string | null;
+  assetId: string | null;
   property?: Property | null;
   loan?: Loan | null;
   investmentAccount?: InvestmentAccount | null;
+  asset?: Asset | null;
   // GRDCS fields
   _links?: {
     self: string;
@@ -101,6 +109,7 @@ type ExpenseFormData = {
   propertyId: string | null;
   loanId: string | null;
   investmentAccountId: string | null;
+  assetId: string | null;
 };
 
 function ExpensesPageContent() {
@@ -117,6 +126,7 @@ function ExpensesPageContent() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [investmentAccounts, setInvestmentAccounts] = useState<InvestmentAccount[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
@@ -134,6 +144,7 @@ function ExpensesPageContent() {
     propertyId: null,
     loanId: null,
     investmentAccountId: null,
+    assetId: null,
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [attachedDocuments, setAttachedDocuments] = useState<AttachedDocument[]>([]);
@@ -148,6 +159,7 @@ function ExpensesPageContent() {
       loadProperties();
       loadLoans();
       loadInvestmentAccounts();
+      loadAssets();
     }
   }, [token]);
 
@@ -206,6 +218,20 @@ function ExpensesPageContent() {
       }
     } catch (error) {
       console.error('Error loading investment accounts:', error);
+    }
+  };
+
+  const loadAssets = async () => {
+    try {
+      const response = await fetch('/api/assets', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setAssets(result.data || result);
+      }
+    } catch (error) {
+      console.error('Error loading assets:', error);
     }
   };
 
@@ -277,6 +303,7 @@ function ExpensesPageContent() {
       propertyId: formData.sourceType === 'PROPERTY' ? formData.propertyId : null,
       loanId: formData.sourceType === 'LOAN' ? formData.loanId : null,
       investmentAccountId: formData.sourceType === 'INVESTMENT' ? formData.investmentAccountId : null,
+      assetId: formData.sourceType === 'ASSET' ? formData.assetId : null,
     };
 
     try {
@@ -321,6 +348,7 @@ function ExpensesPageContent() {
       propertyId: null,
       loanId: null,
       investmentAccountId: null,
+      assetId: null,
     });
     setSelectedFile(null);
   };
@@ -344,6 +372,7 @@ function ExpensesPageContent() {
       propertyId: item.propertyId,
       loanId: item.loanId,
       investmentAccountId: item.investmentAccountId,
+      assetId: item.assetId,
     });
     setEditingId(item.id);
     setShowDialog(true);
@@ -512,6 +541,8 @@ function ExpensesPageContent() {
         return <Landmark className="h-4 w-4 text-orange-500" />;
       case 'INVESTMENT':
         return <Briefcase className="h-4 w-4 text-purple-500" />;
+      case 'ASSET':
+        return <Building2 className="h-4 w-4 text-green-500" />;
       default:
         return <DollarSign className="h-4 w-4 text-gray-500" />;
     }
@@ -527,6 +558,9 @@ function ExpensesPageContent() {
     if (item.sourceType === 'INVESTMENT' && item.investmentAccount) {
       return item.investmentAccount.name;
     }
+    if (item.sourceType === 'ASSET' && item.asset) {
+      return item.asset.name;
+    }
     return 'General';
   };
 
@@ -538,6 +572,7 @@ function ExpensesPageContent() {
     updates.propertyId = null;
     updates.loanId = null;
     updates.investmentAccountId = null;
+    updates.assetId = null;
 
     // Set tax deductible based on source type
     if (value === 'PROPERTY') {
@@ -545,6 +580,8 @@ function ExpensesPageContent() {
     } else if (value === 'LOAN') {
       updates.category = 'LOAN_INTEREST';
       updates.isTaxDeductible = true;
+    } else if (value === 'ASSET') {
+      updates.category = 'OTHER';
     }
 
     setFormData({ ...formData, ...updates });
@@ -1013,6 +1050,12 @@ function ExpensesPageContent() {
                       Investment Expense
                     </div>
                   </SelectItem>
+                  <SelectItem value="ASSET">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-green-500" />
+                      Asset Expense
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1120,6 +1163,41 @@ function ExpensesPageContent() {
                 {investmentAccounts.length === 0 && (
                   <p className="text-xs text-muted-foreground">
                     Add investment accounts first to link investment expenses.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Asset Selector - shown when sourceType is ASSET */}
+            {formData.sourceType === 'ASSET' && (
+              <div className="space-y-2">
+                <Label htmlFor="assetId">Linked Asset</Label>
+                <Select
+                  value={formData.assetId || ''}
+                  onValueChange={(value) => setFormData({ ...formData, assetId: value || null })}
+                >
+                  <SelectTrigger id="assetId">
+                    <SelectValue placeholder="Select an asset" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assets.length === 0 ? (
+                      <SelectItem value="" disabled>No assets available</SelectItem>
+                    ) : (
+                      assets.map((asset) => (
+                        <SelectItem key={asset.id} value={asset.id}>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            {asset.name}
+                            <span className="text-xs text-muted-foreground">({asset.type})</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {assets.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Add assets first to link asset expenses.
                   </p>
                 )}
               </div>

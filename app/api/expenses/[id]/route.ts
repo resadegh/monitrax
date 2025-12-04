@@ -15,6 +15,7 @@ export async function GET(
           property: true,
           loan: true,
           investmentAccount: true,
+          asset: true,
         },
       });
 
@@ -38,7 +39,7 @@ export async function PUT(
     try {
       const { id } = await params;
       const body = await request.json();
-      const { name, category, amount, frequency, isEssential, isTaxDeductible, propertyId, loanId, investmentAccountId, vendorName, sourceType } = body;
+      const { name, category, amount, frequency, isEssential, isTaxDeductible, propertyId, loanId, investmentAccountId, assetId, vendorName, sourceType } = body;
 
       // Verify ownership
       const existing = await prisma.expense.findUnique({
@@ -71,6 +72,14 @@ export async function PUT(
         }
       }
 
+      // Phase 21: Validate asset ownership
+      if (assetId) {
+        const asset = await prisma.asset.findUnique({ where: { id: assetId } });
+        if (!asset || asset.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Asset not found or unauthorized' }, { status: 403 });
+        }
+      }
+
       const expense = await prisma.expense.update({
         where: { id },
         data: {
@@ -83,6 +92,7 @@ export async function PUT(
           propertyId: propertyId !== undefined ? propertyId : undefined,
           loanId: loanId !== undefined ? loanId : undefined,
           investmentAccountId: investmentAccountId !== undefined ? investmentAccountId : undefined,
+          assetId: assetId !== undefined ? assetId : undefined,
           vendorName: vendorName !== undefined ? vendorName : undefined,
           sourceType: sourceType !== undefined ? sourceType : undefined,
         },
@@ -90,6 +100,7 @@ export async function PUT(
           property: true,
           loan: true,
           investmentAccount: true,
+          asset: true,
         },
       });
 
