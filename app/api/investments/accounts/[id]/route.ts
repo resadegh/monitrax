@@ -8,6 +8,13 @@ const updateAccountSchema = z.object({
   type: z.enum(['BROKERAGE', 'SUPERS', 'FUND', 'TRUST', 'ETF_CRYPTO']).optional(),
   platform: z.string().nullable().optional(),
   currency: z.string().optional(),
+  // Phase 23: Opening and balance tracking
+  openingDate: z.string().datetime().nullable().optional(),
+  openingBalance: z.number().min(0).optional(),
+  cashBalance: z.number().optional(),
+  totalDeposits: z.number().min(0).optional(),
+  totalWithdrawals: z.number().min(0).optional(),
+  costBasisMethod: z.enum(['FIFO', 'LIFO', 'HIFO', 'SPECIFIC', 'AVERAGE']).optional(),
 });
 
 export async function GET(
@@ -65,7 +72,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
       }
 
-      const { name, type, platform, currency } = validation.data;
+      const { name, type, platform, currency, openingDate, openingBalance, cashBalance, totalDeposits, totalWithdrawals, costBasisMethod } = validation.data;
 
       const account = await prisma.investmentAccount.update({
         where: { id },
@@ -74,6 +81,12 @@ export async function PUT(
           ...(type !== undefined && { type }),
           ...(platform !== undefined && { platform }),
           ...(currency !== undefined && { currency }),
+          ...(openingDate !== undefined && { openingDate: openingDate ? new Date(openingDate) : null }),
+          ...(openingBalance !== undefined && { openingBalance }),
+          ...(cashBalance !== undefined && { cashBalance }),
+          ...(totalDeposits !== undefined && { totalDeposits }),
+          ...(totalWithdrawals !== undefined && { totalWithdrawals }),
+          ...(costBasisMethod !== undefined && { costBasisMethod }),
         },
       });
 
