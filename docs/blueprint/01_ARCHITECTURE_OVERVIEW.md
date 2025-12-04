@@ -341,42 +341,90 @@ Built on top of:
 
 ---
 
-# **8. System-Level Diagram (Conceptual)**
+# **8. Deployment & Infrastructure Layer**
+
+Monitrax uses a split deployment architecture:
+
+## **8.1 Platform Architecture**
+
+| Component | Platform | Purpose |
+|-----------|----------|---------|
+| Frontend | Vercel | Next.js hosting, CDN, edge functions |
+| Backend | Render | API routes, server-side processing |
+| Database | Render PostgreSQL | Primary data store |
+
+## **8.2 Build & Deploy Process**
+
+**Render Build Command:**
+```bash
+npm install && npx prisma generate && npx prisma db push && npm run build
+```
+
+**Key Point:** Schema changes are deployed automatically via `prisma db push`. No manual database migrations required.
+
+## **8.3 Database Schema Management**
+
+| Strategy | Description |
+|----------|-------------|
+| **Method** | `prisma db push` (auto-sync on deploy) |
+| **Trigger** | Automatic on every Render deployment |
+| **Manual Steps** | None required after merging code |
+
+For complete deployment documentation, see: `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md`
+
+---
+
+# **9. System-Level Diagram (Conceptual)**
 
 ```
+┌──────────────────────────────────────────────┐
+│                    USERS                     │
+└──────────────────────────────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────────────┐
+│            VERCEL (Frontend)                 │
+└──────────────────────────────────────────────┘
+                       │
+                       ▼
 ┌──────────────────────────────────────────────┐
 │                 CLIENT LAYER                 │
 │   Next.js + React + CMNF + Real-Time UI Sync │
 └──────────────────────────────────────────────┘
-                       ▲
                        │
+                       ▼
+┌──────────────────────────────────────────────┐
+│            RENDER (Backend)                  │
+└──────────────────────────────────────────────┘
+                       │
+                       ▼
 ┌──────────────────────────────────────────────┐
 │            INSIGHTS ENGINE (v2)              │
 └──────────────────────────────────────────────┘
-                       ▲
                        │
+                       ▼
 ┌──────────────────────────────────────────────┐
 │         PORTFOLIO SNAPSHOT ENGINE            │
 └──────────────────────────────────────────────┘
-                       ▲
                        │
+                       ▼
 ┌──────────────────────────────────────────────┐
 │ GRDCS — Global Relational Data Consistency   │
 └──────────────────────────────────────────────┘
-                       ▲
                        │
+                       ▼
 ┌──────────────────────────────────────────────┐
 │          FINANCIAL ENGINES (Pure Logic)      │
 └──────────────────────────────────────────────┘
-                       ▲
                        │
+                       ▼
 ┌──────────────────────────────────────────────┐
 │             API ROUTE HANDLERS               │
 └──────────────────────────────────────────────┘
-                       ▲
                        │
+                       ▼
 ┌──────────────────────────────────────────────┐
-│       PRISMA ORM → DATABASE (PostgreSQL)     │
+│  PRISMA ORM → DATABASE (PostgreSQL/Render)   │
 └──────────────────────────────────────────────┘
 ```
 
