@@ -23,6 +23,7 @@ import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
+import { ListFilter, propertyFilterConfigs } from '@/components/ListFilter';
 
 interface Loan {
   id: string;
@@ -107,6 +108,7 @@ function PropertiesPageContent() {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
+  const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
 
   // CMNF navigation handler for LinkedDataPanel
   const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
@@ -128,6 +130,11 @@ function PropertiesPageContent() {
       loadProperties();
     }
   }, [token]);
+
+  // Initialize filtered properties when properties change
+  useEffect(() => {
+    setFilteredProperties(properties);
+  }, [properties]);
 
   const loadProperties = async () => {
     try {
@@ -323,6 +330,18 @@ function PropertiesPageContent() {
         }
       />
 
+      {/* Search and Filter */}
+      {properties.length > 0 && (
+        <ListFilter
+          data={properties}
+          searchFields={['name', 'address']}
+          searchPlaceholder="Search properties..."
+          filters={propertyFilterConfigs}
+          onFilteredData={setFilteredProperties}
+          className="mb-4"
+        />
+      )}
+
       {/* View Mode Toggle */}
       {properties.length > 0 && !isLoading && (
         <div className="flex items-center gap-2 mb-6">
@@ -386,7 +405,7 @@ function PropertiesPageContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {properties.map((property) => {
+                  {filteredProperties.map((property) => {
                     const { gain, percentage } = calculateGain(property);
                     const lvr = calculateLVR(property);
                     const equity = calculateEquity(property);
@@ -456,7 +475,7 @@ function PropertiesPageContent() {
       ) : (
         /* Tiles View */
         <div className="grid gap-6 md:grid-cols-2">
-          {properties.map((property) => {
+          {filteredProperties.map((property) => {
             const { gain, percentage } = calculateGain(property);
             const isPositiveGain = gain >= 0;
             const lvr = calculateLVR(property);

@@ -46,6 +46,7 @@ import {
   type IncomeSourceType,
   type IncomeType as IncomeTypeEnum,
 } from '@/lib/categoryFilters';
+import { ListFilter, incomeFilterConfigs } from '@/components/ListFilter';
 
 type ViewMode = 'type' | 'source' | 'all' | 'list';
 
@@ -167,6 +168,7 @@ function IncomePageContent() {
   } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('type');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [filteredIncome, setFilteredIncome] = useState<Income[]>([]);
 
   useEffect(() => {
     if (token) {
@@ -175,6 +177,11 @@ function IncomePageContent() {
       loadInvestmentAccounts();
     }
   }, [token]);
+
+  // Initialize filtered income when income changes
+  useEffect(() => {
+    setFilteredIncome(income);
+  }, [income]);
 
   // Calculate salary preview when relevant fields change
   useEffect(() => {
@@ -440,8 +447,9 @@ function IncomePageContent() {
   };
 
   // Calculate totals - use after-tax amounts for salaries
-  const totalNetMonthly = income.reduce((sum, i) => sum + getEffectiveMonthlyAmount(i), 0);
-  const totalGrossMonthly = income.reduce((sum, i) => sum + convertToMonthly(i.amount, i.frequency), 0);
+  const totalNetMonthly = filteredIncome.reduce((sum, i) => sum + getEffectiveMonthlyAmount(i), 0);
+  const totalGrossMonthly = filteredIncome.reduce((sum, i) => sum + convertToMonthly(i.amount, i.frequency), 0);
+  const allTotalNetMonthly = income.reduce((sum, i) => sum + getEffectiveMonthlyAmount(i), 0);
 
   // Use net monthly for display (matches dashboard)
   const totalMonthly = totalNetMonthly;
@@ -561,7 +569,7 @@ function IncomePageContent() {
   // Group income by type
   const groupByType = (): IncomeGroup[] => {
     const groups: Record<string, Income[]> = {};
-    income.forEach(inc => {
+    filteredIncome.forEach(inc => {
       const type = inc.type === 'RENTAL' ? 'RENT' : inc.type;
       if (!groups[type]) {
         groups[type] = [];
@@ -609,7 +617,7 @@ function IncomePageContent() {
     });
 
     // Distribute incomes
-    income.forEach(inc => {
+    filteredIncome.forEach(inc => {
       if (inc.sourceType === 'PROPERTY' && inc.propertyId) {
         const key = `property-${inc.propertyId}`;
         if (groups[key]) {
@@ -652,7 +660,7 @@ function IncomePageContent() {
     <DashboardLayout>
       <PageHeader
         title="Income"
-        description={`Manage your income sources • Net monthly: ${formatCurrency(totalMonthly)}${totalGrossMonthly !== totalNetMonthly ? ` (Gross: ${formatCurrency(totalGrossMonthly)})` : ''}`}
+        description={`Manage your income sources • Net monthly: ${formatCurrency(allTotalNetMonthly)}`}
         action={
           <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
             <Plus className="mr-2 h-4 w-4" />
@@ -660,6 +668,18 @@ function IncomePageContent() {
           </Button>
         }
       />
+
+      {/* Search and Filter */}
+      {income.length > 0 && (
+        <ListFilter
+          data={income}
+          searchFields={['name']}
+          searchPlaceholder="Search income..."
+          filters={incomeFilterConfigs}
+          onFilteredData={setFilteredIncome}
+          className="mb-4"
+        />
+      )}
 
       {/* View Mode Selector */}
       {income.length > 0 && (
@@ -742,7 +762,7 @@ function IncomePageContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {income.map((item) => {
+                  {filteredIncome.map((item) => {
                     // Use effective (after-tax for salary) amounts
                     const effectiveMonthly = getEffectiveMonthlyAmount(item);
                     const effectiveAnnual = getEffectiveAnnualAmount(item);
@@ -808,7 +828,7 @@ function IncomePageContent() {
       ) : viewMode === 'all' ? (
         /* Tiles view - individual cards */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {income.map((item) => {
+          {filteredIncome.map((item) => {
             // Use effective (after-tax for salary) amounts
             const effectiveAnnual = getEffectiveAnnualAmount(item);
             const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;

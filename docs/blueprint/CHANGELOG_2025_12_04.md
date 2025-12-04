@@ -273,6 +273,211 @@ Includes:
 
 ---
 
+---
+
+## 6. Search Engine & Universal Search (New)
+
+**Type:** New Feature
+**Files Created/Modified:**
+- `lib/search/searchEngine.ts` (NEW)
+- `app/api/search/route.ts`
+- `components/UniversalSearch.tsx` (NEW)
+- `components/ListFilter.tsx` (NEW)
+- `components/DashboardLayout.tsx`
+
+### Problem
+The application had no centralized search capability. Users could not search across entities or filter list views.
+
+### Solution
+
+#### Search Engine Library (`lib/search/searchEngine.ts`)
+Created a centralized, reusable search engine with:
+
+```typescript
+class SearchEngine {
+  // Main search - all or specific entity types
+  async search(options: SearchOptions): Promise<SearchResponse>
+
+  // Quick search - limited results for command palette
+  async quickSearch(query, userId, limit?)
+
+  // Type-specific search with filters
+  async searchEntityType(type, query, userId, filters?, limit?)
+}
+```
+
+**Features:**
+- Searches across expenses, income, properties, loans, assets, investments, holdings, documents
+- Supports text search with multiple fields per entity
+- Supports filters (category, sourceType, status, frequency, etc.)
+- Returns grouped or flat results
+- Includes search duration metrics
+- Extensible design for future enhancements (fuzzy search, AI-powered search)
+
+#### Universal Search API (`/api/search`)
+Updated to use the search engine with proper API standards:
+
+```
+GET /api/search?q=query&type=all&limit=20&category=HOUSING
+```
+
+Response follows `07_API_STANDARDS.md`:
+```json
+{
+  "success": true,
+  "data": {
+    "query": "...",
+    "total": 15,
+    "grouped": { ... }
+  },
+  "meta": { "timestamp": "...", "durationMs": 45 }
+}
+```
+
+#### Universal Search Component
+Command palette-style search with:
+- Keyboard shortcut: `⌘K` / `Ctrl+K`
+- Debounced search (300ms)
+- Arrow key navigation
+- Enter to select
+- Grouped results by entity type
+- Click or keyboard navigation
+
+#### List Filter Component
+Reusable filter component with:
+- Text search across specified fields
+- Dropdown filter presets
+- Active filter badges
+- Clear all filters
+- Result count display
+
+**Preset Configurations:**
+- `expenseFilterConfigs`: category, sourceType, frequency
+- `incomeFilterConfigs`: type, sourceType, frequency
+- `propertyFilterConfigs`: type
+- `loanFilterConfigs`: type, rateType
+- `assetFilterConfigs`: type, status
+- `documentFilterConfigs`: category
+
+### Integration
+- Search button added to DashboardLayout (header)
+- ListFilter integrated into: Expenses, Income, Properties, Assets pages
+
+### Architecture Alignment
+This implementation follows:
+- **01_ARCHITECTURE_OVERVIEW.md**: Search Engine as a dedicated service layer
+- **07_API_STANDARDS.md**: Unified response format with success/data/meta
+
+---
+
+## 7. Smart Category Filtering
+
+**Type:** Feature Enhancement
+**Files Created/Modified:**
+- `lib/categoryFilters.ts` (NEW)
+- `app/dashboard/expenses/page.tsx`
+- `app/dashboard/income/page.tsx`
+- `prisma/schema.prisma`
+
+### Problem
+Expense and income category dropdowns showed all options regardless of context. For example, vehicle-specific categories like "Registration" appeared when adding expenses for properties.
+
+### Solution
+
+#### Category Filters Library (`lib/categoryFilters.ts`)
+Created smart filtering based on source type and asset type:
+
+```typescript
+// Get filtered category options
+getExpenseCategoryOptions(sourceType, assetType?)
+getIncomeTypeOptions(sourceType)
+
+// Default category based on context
+getDefaultExpenseCategory(sourceType, assetType?)
+getDefaultIncomeType(sourceType)
+
+// Validation
+isValidExpenseCategory(category, sourceType, assetType?)
+```
+
+**Source Type → Categories Mapping:**
+
+| Source Type | Allowed Categories |
+|-------------|-------------------|
+| GENERAL | All categories |
+| PROPERTY | HOUSING, RATES, INSURANCE, MAINTENANCE, UTILITIES, STRATA, LAND_TAX, OTHER |
+| LOAN | LOAN_INTEREST, OTHER |
+| INVESTMENT | PERSONAL, OTHER |
+| ASSET | Varies by asset type |
+
+**Asset Type → Categories Mapping:**
+
+| Asset Type | Allowed Categories |
+|------------|-------------------|
+| VEHICLE | REGISTRATION, INSURANCE, TRANSPORT, MAINTENANCE, MODIFICATIONS, OTHER |
+| ELECTRONICS | PERSONAL, INSURANCE, MAINTENANCE, OTHER |
+| FURNITURE | PERSONAL, MAINTENANCE, OTHER |
+| EQUIPMENT | MAINTENANCE, INSURANCE, OTHER |
+| COLLECTIBLE | INSURANCE, MAINTENANCE, OTHER |
+
+#### New Expense Categories
+Added to Prisma schema:
+```prisma
+enum ExpenseCategory {
+  // ... existing
+  REGISTRATION    // Vehicle registration, license fees
+  MODIFICATIONS   // Vehicle modifications, upgrades
+  OTHER
+}
+```
+
+#### UI Integration
+- Categories dynamically filter when source type changes
+- Categories update when linked asset changes
+- Default category auto-selected based on context
+- Helper text explains filtered options
+
+---
+
+## 8. Email Verification Flow
+
+**Type:** Feature Enhancement
+**Files Modified:**
+- `lib/security/emailVerification.ts`
+- `app/api/auth/register/route.ts`
+- `app/api/auth/verify-email/route.ts` (NEW)
+- `app/api/auth/resend-verification/route.ts` (NEW)
+- `app/verify-email/page.tsx` (NEW)
+- `app/resend-verification/page.tsx` (NEW)
+
+### Changes
+- Registration now sends verification email via Resend
+- Lazy initialization of Resend client (fixes build-time errors)
+- Created verify-email page with token validation
+- Created resend-verification page for requesting new emails
+- Rate limiting: 1 minute cooldown, 5 emails per hour max
+
+---
+
+## 9. Mobile UI & OAuth Fixes
+
+**Type:** Bug Fixes
+**Files Modified:**
+- `components/marketing/Header.tsx`
+- `components/marketing/Hero.tsx`
+- `components/marketing/SecuritySection.tsx`
+- `app/oauth-callback/page.tsx`
+- `app/signin/page.tsx`
+- `app/register/page.tsx`
+
+### Fixes
+- Sign-in button visibility on dark backgrounds (added `bg-transparent`)
+- OAuth double login issue (changed to `window.location.replace()`)
+- Added email signup option (link to /register instead of broken /pricing)
+- Updated register page with brand styling
+
+---
+
 ## Next Steps
 
 1. Run Prisma migration for schema changes
@@ -280,8 +485,10 @@ Includes:
 3. Build investment transaction APIs
 4. Update investment UI with new fields
 5. Integrate capital gains with tax dashboard
+6. Add ListFilter to remaining pages (Loans, Documents)
+7. Implement full-text search upgrade for Search Engine
 
 ---
 
-*Document Version: 1.0*
-*Created: 2025-12-04*
+*Document Version: 1.1*
+*Updated: 2025-12-04*

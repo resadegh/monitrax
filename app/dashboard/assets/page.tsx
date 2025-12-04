@@ -20,6 +20,7 @@ import {
   Fuel, Shield, FileText, Zap
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ListFilter, assetFilterConfigs } from '@/components/ListFilter';
 
 type AssetType = 'VEHICLE' | 'ELECTRONICS' | 'FURNITURE' | 'EQUIPMENT' | 'COLLECTIBLE' | 'OTHER';
 type AssetStatus = 'ACTIVE' | 'SOLD' | 'WRITTEN_OFF';
@@ -204,6 +205,7 @@ function AssetsPageContent() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
+  const [filteredAssets, setFilteredAssets] = useState<Asset[]>([]);
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
   const [expenseFormData, setExpenseFormData] = useState<ExpenseFormData>({
     name: '',
@@ -241,6 +243,11 @@ function AssetsPageContent() {
       loadAssets();
     }
   }, [token]);
+
+  // Initialize filtered assets when assets change
+  useEffect(() => {
+    setFilteredAssets(assets);
+  }, [assets]);
 
   const loadAssets = async () => {
     try {
@@ -525,7 +532,7 @@ function AssetsPageContent() {
           </tr>
         </thead>
         <tbody>
-          {assets.map((asset) => {
+          {filteredAssets.map((asset) => {
             const computed = asset._computed || { depreciation: 0, depreciationPercent: 0 };
             return (
               <tr key={asset.id} className="border-b hover:bg-muted/50">
@@ -657,6 +664,18 @@ function AssetsPageContent() {
         )}
 
         {/* View Toggle */}
+        {/* Search and Filter */}
+        {assets.length > 0 && (
+          <ListFilter
+            data={assets}
+            searchFields={['name', 'vehicleMake', 'vehicleModel', 'vehicleRegistration', 'serialNumber']}
+            searchPlaceholder="Search assets..."
+            filters={assetFilterConfigs}
+            onFilteredData={setFilteredAssets}
+            className="mb-4"
+          />
+        )}
+
         <div className="flex justify-end">
           <div className="flex gap-1 p-1 bg-muted rounded-lg">
             <Button
@@ -689,7 +708,7 @@ function AssetsPageContent() {
           />
         ) : viewMode === 'tiles' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {assets.map(renderAssetCard)}
+            {filteredAssets.map(renderAssetCard)}
           </div>
         ) : (
           renderListView()

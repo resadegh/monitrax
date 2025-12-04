@@ -28,6 +28,7 @@ import {
   type ExpenseSourceType,
   type ExpenseCategory,
 } from '@/lib/categoryFilters';
+import { ListFilter, expenseFilterConfigs } from '@/components/ListFilter';
 
 type ViewMode = 'category' | 'property' | 'all' | 'list';
 
@@ -160,6 +161,7 @@ function ExpensesPageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('category');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showWizard, setShowWizard] = useState(false);
+  const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
 
   useEffect(() => {
     if (token) {
@@ -170,6 +172,11 @@ function ExpensesPageContent() {
       loadAssets();
     }
   }, [token]);
+
+  // Initialize filtered expenses when expenses change
+  useEffect(() => {
+    setFilteredExpenses(expenses);
+  }, [expenses]);
 
   const loadExpenses = async () => {
     try {
@@ -419,7 +426,8 @@ function ExpensesPageContent() {
     }
   };
 
-  const totalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+  const totalMonthly = filteredExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+  const allTotalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups(prev => {
@@ -455,7 +463,7 @@ function ExpensesPageContent() {
   // Group expenses by category
   const groupByCategory = (): ExpenseGroup[] => {
     const groups: Record<string, Expense[]> = {};
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       if (!groups[exp.category]) {
         groups[exp.category] = [];
       }
@@ -488,7 +496,7 @@ function ExpensesPageContent() {
     });
 
     // Distribute expenses
-    expenses.forEach(exp => {
+    filteredExpenses.forEach(exp => {
       if (exp.sourceType === 'PROPERTY' && exp.propertyId) {
         const key = `property-${exp.propertyId}`;
         if (groups[key]) {
@@ -630,7 +638,7 @@ function ExpensesPageContent() {
     <DashboardLayout>
       <PageHeader
         title="Expenses"
-        description={`Manage your expenses • Total monthly: ${formatCurrency(totalMonthly)}`}
+        description={`Manage your expenses • Total monthly: ${formatCurrency(allTotalMonthly)}`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowWizard(true)}>
@@ -644,6 +652,18 @@ function ExpensesPageContent() {
           </div>
         }
       />
+
+      {/* Search and Filter */}
+      {expenses.length > 0 && (
+        <ListFilter
+          data={expenses}
+          searchFields={['name', 'vendorName']}
+          searchPlaceholder="Search expenses..."
+          filters={expenseFilterConfigs}
+          onFilteredData={setFilteredExpenses}
+          className="mb-4"
+        />
+      )}
 
       {/* View Mode Selector */}
       {expenses.length > 0 && (
@@ -726,7 +746,7 @@ function ExpensesPageContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {expenses.map((item) => {
+                  {filteredExpenses.map((item) => {
                     const monthlyAmount = convertToMonthly(item.amount, item.frequency);
                     return (
                       <tr
@@ -797,7 +817,7 @@ function ExpensesPageContent() {
       ) : viewMode === 'all' ? (
         /* All expenses view - individual tiles */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {expenses.map((item) => {
+          {filteredExpenses.map((item) => {
             const monthlyAmount = convertToMonthly(item.amount, item.frequency);
 
             return (
