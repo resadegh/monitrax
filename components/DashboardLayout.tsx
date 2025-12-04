@@ -31,6 +31,7 @@ import {
   Briefcase,
   CreditCard,
   BarChart3,
+  Car,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -68,6 +69,7 @@ const navGroups: NavGroup[] = [
       { name: 'Loans', href: '/dashboard/loans', icon: Banknote },
       { name: 'Accounts', href: '/dashboard/accounts', icon: Wallet },
       { name: 'Investments', href: '/dashboard/investments/accounts', icon: PieChart },
+      { name: 'Assets', href: '/dashboard/assets', icon: Car },
     ],
   },
   {
