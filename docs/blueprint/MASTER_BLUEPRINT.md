@@ -90,10 +90,23 @@
 |-------|------------|
 | **Frontend** | Next.js 15, React Server Components, TailwindCSS, Shadcn/UI |
 | **Backend** | Next.js API Routes, Prisma ORM |
-| **Database** | PostgreSQL |
+| **Database** | PostgreSQL (Render) |
 | **Authentication** | Clerk.dev (MFA, OAuth, Session Management) |
-| **Deployment** | Vercel (Frontend), Render (Backend) |
+| **Deployment** | Vercel (Frontend), Render (Backend + Database) |
 | **File Storage** | Monitrax-managed (Phase 19), Google Drive (Phase 19B) |
+
+### Build & Deployment
+
+| Aspect | Configuration |
+|--------|---------------|
+| **Build Command** | `npm install && npx prisma generate && npx prisma db push && npm run build` |
+| **Schema Sync** | `prisma db push` (automatic on deploy) |
+| **Migration Strategy** | Schema auto-syncs to database on every deployment |
+| **Health Check** | `/api/health` |
+
+**IMPORTANT:** Database schema changes are applied automatically via `prisma db push` during the Render build process. No manual migration commands are required after merging code.
+
+See: `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` for full deployment documentation.
 
 ### Core Engines
 
