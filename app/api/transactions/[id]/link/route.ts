@@ -69,6 +69,7 @@ export async function POST(
           }
 
           let targetName = '';
+          let targetCategory = '';
 
           // Verify target exists and belongs to user
           if (body.type === 'income') {
@@ -82,6 +83,7 @@ export async function POST(
               );
             }
             targetName = income.name;
+            targetCategory = income.type; // SALARY, RENT, RENTAL, INVESTMENT, OTHER
 
             // Optionally update the income amount
             if (body.updateAmount) {
@@ -101,6 +103,7 @@ export async function POST(
               );
             }
             targetName = expense.name;
+            targetCategory = expense.category; // HOUSING, UTILITIES, etc.
 
             // Optionally update the expense amount
             if (body.updateAmount) {
@@ -120,6 +123,7 @@ export async function POST(
               );
             }
             targetName = loan.name;
+            targetCategory = 'Loan Repayment'; // Loan repayments are categorized as such
 
             // Optionally update the loan minRepayment
             if (body.updateAmount) {
@@ -130,7 +134,7 @@ export async function POST(
             }
           }
 
-          // Update transaction with link
+          // Update transaction with link and category
           const updated = await prisma.unifiedTransaction.update({
             where: { id: transactionId },
             data: {
@@ -138,6 +142,7 @@ export async function POST(
               expenseId: body.type === 'expense' ? body.targetId : null,
               loanId: body.type === 'loan' ? body.targetId : null,
               isRecurring: true,
+              categoryLevel1: targetCategory,
             },
           });
 
@@ -296,12 +301,13 @@ export async function POST(
               data: { amount: transaction.amount },
             });
 
-            // Also link the transaction
+            // Also link the transaction with category
             await prisma.unifiedTransaction.update({
               where: { id: transactionId },
               data: {
                 incomeId: body.targetId,
                 isRecurring: true,
+                categoryLevel1: income.type, // Set category from income type
               },
             });
 
@@ -310,18 +316,19 @@ export async function POST(
               updated: { type: 'income', id: income.id, newAmount: income.amount },
               message: `Income amount updated to $${transaction.amount}`,
             });
-          } else {
+          } else if (body.type === 'expense') {
             const expense = await prisma.expense.update({
               where: { id: body.targetId },
               data: { amount: transaction.amount },
             });
 
-            // Also link the transaction
+            // Also link the transaction with category
             await prisma.unifiedTransaction.update({
               where: { id: transactionId },
               data: {
                 expenseId: body.targetId,
                 isRecurring: true,
+                categoryLevel1: expense.category, // Set category from expense category
               },
             });
 
@@ -330,7 +337,33 @@ export async function POST(
               updated: { type: 'expense', id: expense.id, newAmount: expense.amount },
               message: `Expense amount updated to $${transaction.amount}`,
             });
+          } else if (body.type === 'loan') {
+            const loan = await prisma.loan.update({
+              where: { id: body.targetId },
+              data: { minRepayment: transaction.amount },
+            });
+
+            // Also link the transaction with category
+            await prisma.unifiedTransaction.update({
+              where: { id: transactionId },
+              data: {
+                loanId: body.targetId,
+                isRecurring: true,
+                categoryLevel1: 'Loan Repayment', // Set category for loan repayment
+              },
+            });
+
+            return NextResponse.json({
+              success: true,
+              updated: { type: 'loan', id: loan.id, newAmount: loan.minRepayment },
+              message: `Loan repayment updated to $${transaction.amount}`,
+            });
           }
+
+          return NextResponse.json(
+            { error: 'Invalid type for update action' },
+            { status: 400 }
+          );
         }
 
         case 'unlink': {
