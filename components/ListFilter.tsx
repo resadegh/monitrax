@@ -61,6 +61,10 @@ export function ListFilter<T extends object>({
   const [activeFilters, setActiveFilters] = useState<Record<string, string | string[]>>({});
   const [showFilters, setShowFilters] = useState(false);
 
+  // Use ref for searchFields to avoid infinite loops from inline array props
+  const searchFieldsRef = useRef(searchFields);
+  searchFieldsRef.current = searchFields;
+
   // Apply search and filters
   const filteredData = useMemo(() => {
     let result = [...data];
@@ -69,7 +73,7 @@ export function ListFilter<T extends object>({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter((item) =>
-        searchFields.some((field) => {
+        searchFieldsRef.current.some((field) => {
           const value = item[field];
           if (value === null || value === undefined) return false;
           return String(value).toLowerCase().includes(query);
@@ -92,7 +96,7 @@ export function ListFilter<T extends object>({
     });
 
     return result;
-  }, [data, searchQuery, activeFilters, searchFields]);
+  }, [data, searchQuery, activeFilters]);
 
   // Notify parent of filtered data - use ref to avoid infinite loops
   const onFilteredDataRef = useRef(onFilteredData);
