@@ -459,23 +459,22 @@ export function TransactionLinkDialog({
                     <div className="flex gap-2 flex-wrap">
                       <Button
                         size="sm"
+                        variant="outline"
                         onClick={() => handleLink(match.id, match.type, false)}
                         disabled={saving}
                       >
                         <Link2 className="h-3 w-3 mr-1" />
                         Link Only
                       </Button>
-                      {!match.amountMatch && (
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => handleLink(match.id, match.type, true)}
-                          disabled={saving}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Link & Update
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => handleLink(match.id, match.type, true)}
+                        disabled={saving}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Link & Update
+                      </Button>
                     </div>
                   </div>
                 ))
@@ -517,16 +516,14 @@ export function TransactionLinkDialog({
                           <Link2 className="h-3 w-3 mr-1" />
                           Link Only
                         </Button>
-                        {!amountMatch && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleLink(income.id, 'income', true)}
-                            disabled={saving}
-                          >
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            Link & Update
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          onClick={() => handleLink(income.id, 'income', true)}
+                          disabled={saving}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Link & Update
+                        </Button>
                       </div>
                     </div>
                   );
@@ -569,16 +566,14 @@ export function TransactionLinkDialog({
                             <Link2 className="h-3 w-3 mr-1" />
                             Link Only
                           </Button>
-                          {!amountMatch && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleLink(expense.id, 'expense', true)}
-                              disabled={saving}
-                            >
-                              <RefreshCw className="h-3 w-3 mr-1" />
-                              Link & Update
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => handleLink(expense.id, 'expense', true)}
+                            disabled={saving}
+                          >
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Link & Update
+                          </Button>
                         </div>
                       </div>
                     );
@@ -620,16 +615,14 @@ export function TransactionLinkDialog({
                             <Link2 className="h-3 w-3 mr-1" />
                             Link Only
                           </Button>
-                          {!amountMatch && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleLink(loan.id, 'loan', true)}
-                              disabled={saving}
-                            >
-                              <RefreshCw className="h-3 w-3 mr-1" />
-                              Link & Update
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => handleLink(loan.id, 'loan', true)}
+                            disabled={saving}
+                          >
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Link & Update
+                          </Button>
                         </div>
                       </div>
                     );
