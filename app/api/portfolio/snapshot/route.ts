@@ -437,7 +437,7 @@ export async function GET(request: NextRequest) {
       const userId = authReq.user!.userId;
 
       // Fetch all user data in parallel with full relational includes
-      const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions] = await Promise.all([
+      const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions, assets] = await Promise.all([
         prisma.property.findMany({
           where: { userId },
           include: {
@@ -478,6 +478,7 @@ export async function GET(request: NextRequest) {
             property: true,
             loan: true,
             investmentAccount: true,
+            asset: true,
           },
         }),
         prisma.investmentAccount.findMany({
@@ -507,6 +508,17 @@ export async function GET(request: NextRequest) {
             holding: true,
           },
         }),
+        // Phase 21: Fetch assets with their expenses
+        prisma.asset.findMany({
+          where: { userId },
+          include: {
+            expenses: true,
+            valueHistory: {
+              orderBy: { valuedAt: 'desc' },
+              take: 1,
+            },
+          },
+        }),
       ]);
 
       // ============================================================================
@@ -529,7 +541,10 @@ export async function GET(request: NextRequest) {
       const totalPropertyValue = properties.reduce((sum: number, p: any) => sum + p.currentValue, 0);
       const totalAccountBalances = accounts.reduce((sum: number, a: any) => sum + a.currentBalance, 0);
       const totalInvestmentValue = holdings.reduce((sum: number, h: any) => sum + (h.units * h.averagePrice), 0);
-      const totalAssets = totalPropertyValue + totalAccountBalances + totalInvestmentValue;
+      // Phase 21: Include active assets in total value
+      const activeAssets = assets.filter((a: any) => a.status === 'ACTIVE');
+      const totalAssetValue = activeAssets.reduce((sum: number, a: any) => sum + a.currentValue, 0);
+      const totalAssets = totalPropertyValue + totalAccountBalances + totalInvestmentValue + totalAssetValue;
       const totalLiabilities = loans.reduce((sum: number, l: any) => sum + l.principal, 0);
       const netWorth = totalAssets - totalLiabilities;
 
@@ -708,14 +723,61 @@ export async function GET(request: NextRequest) {
           id: expense.id,
           name: expense.name,
           category: expense.category,
+          sourceType: expense.sourceType,
           amount: expense.amount,
           frequency: expense.frequency,
           annualAmount,
           propertyId: expense.propertyId,
           propertyName: expense.property?.name || null,
+          assetId: expense.assetId,
+          assetName: expense.asset?.name || null,
           isTaxDeductible: expense.isTaxDeductible || false,
         };
       }).sort((a: any, b: any) => b.annualAmount - a.annualAmount);
+
+      // ============================================================================
+      // ASSET SNAPSHOTS (Phase 21)
+      // ============================================================================
+      const assetSnapshots = assets.map((asset: any) => {
+        // Get expenses linked to this asset
+        const assetExpenses = expenses.filter((e: any) => e.assetId === asset.id);
+        const annualExpenses = assetExpenses.reduce((sum: number, e: any) => {
+          return sum + normalizeToAnnual(e.amount, e.frequency);
+        }, 0);
+
+        // Calculate depreciation
+        const depreciation = asset.purchasePrice - asset.currentValue;
+        const depreciationPercent = asset.purchasePrice > 0
+          ? (depreciation / asset.purchasePrice) * 100
+          : 0;
+
+        // Calculate total cost of ownership
+        const totalExpensesCost = assetExpenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+        const totalCostOfOwnership = asset.purchasePrice + totalExpensesCost - (asset.salePrice || 0);
+
+        return {
+          id: asset.id,
+          name: asset.name,
+          type: asset.type,
+          status: asset.status,
+          currentValue: asset.currentValue,
+          purchasePrice: asset.purchasePrice,
+          purchaseDate: asset.purchaseDate,
+          depreciation,
+          depreciationPercent: Math.round(depreciationPercent * 100) / 100,
+          expenses: {
+            count: assetExpenses.length,
+            annualTotal: Math.round(annualExpenses * 100) / 100,
+            monthlyTotal: Math.round(annualExpenses / 12 * 100) / 100,
+          },
+          totalCostOfOwnership: Math.round(totalCostOfOwnership * 100) / 100,
+          // Vehicle-specific fields
+          vehicleMake: asset.vehicleMake,
+          vehicleModel: asset.vehicleModel,
+          vehicleYear: asset.vehicleYear,
+          vehicleOdometer: asset.vehicleOdometer,
+        };
+      });
 
       // ============================================================================
       // INCOME SNAPSHOTS FOR CASHFLOW BREAKDOWN
@@ -792,6 +854,11 @@ export async function GET(request: NextRequest) {
             count: investmentAccounts.length,
             totalValue: totalInvestmentValue,
           },
+          // Phase 21: Personal assets (vehicles, electronics, etc.)
+          personalAssets: {
+            count: activeAssets.length,
+            totalValue: totalAssetValue,
+          },
         },
 
         // Liabilities breakdown
@@ -846,6 +913,12 @@ export async function GET(request: NextRequest) {
           accounts: investmentSnapshots,
         },
 
+        // Phase 21: Personal assets (vehicles, electronics, etc.)
+        personalAssets: {
+          totalValue: totalAssetValue,
+          items: assetSnapshots,
+        },
+
         // Tax exposure (estimates)
         taxExposure: {
           taxableIncome,
@@ -866,6 +939,7 @@ export async function GET(request: NextRequest) {
           investmentAccounts: investmentAccounts.length,
           holdings: holdings.length,
           transactions: transactions.length,
+          assets: assets.length,
         },
       };
 

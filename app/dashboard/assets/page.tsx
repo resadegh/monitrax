@@ -16,8 +16,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Car, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   DollarSign, Calendar, Package, Laptop, Sofa, Wrench,
-  Gem, LayoutGrid, List, Eye, Receipt, History, Settings
+  Gem, LayoutGrid, List, Eye, Receipt, History, Settings,
+  Fuel, Shield, FileText, Zap
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type AssetType = 'VEHICLE' | 'ELECTRONICS' | 'FURNITURE' | 'EQUIPMENT' | 'COLLECTIBLE' | 'OTHER';
 type AssetStatus = 'ACTIVE' | 'SOLD' | 'WRITTEN_OFF';
@@ -139,6 +141,60 @@ const statusColors: Record<AssetStatus, string> = {
   WRITTEN_OFF: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 };
 
+// Expense templates based on asset type
+interface ExpenseTemplate {
+  name: string;
+  category: string;
+  frequency: string;
+  isTaxDeductible: boolean;
+  icon: React.ReactNode;
+}
+
+const assetExpenseTemplates: Record<AssetType, ExpenseTemplate[]> = {
+  VEHICLE: [
+    { name: 'Registration', category: 'TRANSPORT', frequency: 'ANNUAL', isTaxDeductible: false, icon: <FileText className="h-4 w-4" /> },
+    { name: 'Insurance', category: 'INSURANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Shield className="h-4 w-4" /> },
+    { name: 'Fuel', category: 'TRANSPORT', frequency: 'WEEKLY', isTaxDeductible: false, icon: <Fuel className="h-4 w-4" /> },
+    { name: 'Tolls', category: 'TRANSPORT', frequency: 'MONTHLY', isTaxDeductible: false, icon: <DollarSign className="h-4 w-4" /> },
+    { name: 'Service', category: 'MAINTENANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Wrench className="h-4 w-4" /> },
+    { name: 'Tyres', category: 'MAINTENANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Car className="h-4 w-4" /> },
+    { name: 'Parking', category: 'TRANSPORT', frequency: 'MONTHLY', isTaxDeductible: false, icon: <DollarSign className="h-4 w-4" /> },
+    { name: 'Car Wash', category: 'MAINTENANCE', frequency: 'MONTHLY', isTaxDeductible: false, icon: <DollarSign className="h-4 w-4" /> },
+  ],
+  ELECTRONICS: [
+    { name: 'Insurance', category: 'INSURANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Shield className="h-4 w-4" /> },
+    { name: 'Subscription/License', category: 'OTHER', frequency: 'MONTHLY', isTaxDeductible: false, icon: <FileText className="h-4 w-4" /> },
+    { name: 'Repairs', category: 'MAINTENANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Wrench className="h-4 w-4" /> },
+    { name: 'Accessories', category: 'OTHER', frequency: 'ANNUAL', isTaxDeductible: false, icon: <DollarSign className="h-4 w-4" /> },
+  ],
+  FURNITURE: [
+    { name: 'Insurance', category: 'INSURANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Shield className="h-4 w-4" /> },
+    { name: 'Cleaning/Maintenance', category: 'MAINTENANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Wrench className="h-4 w-4" /> },
+  ],
+  EQUIPMENT: [
+    { name: 'Insurance', category: 'INSURANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Shield className="h-4 w-4" /> },
+    { name: 'Maintenance', category: 'MAINTENANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Wrench className="h-4 w-4" /> },
+    { name: 'Consumables', category: 'OTHER', frequency: 'MONTHLY', isTaxDeductible: false, icon: <DollarSign className="h-4 w-4" /> },
+  ],
+  COLLECTIBLE: [
+    { name: 'Insurance', category: 'INSURANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Shield className="h-4 w-4" /> },
+    { name: 'Storage', category: 'HOUSING', frequency: 'MONTHLY', isTaxDeductible: false, icon: <DollarSign className="h-4 w-4" /> },
+    { name: 'Appraisal', category: 'OTHER', frequency: 'ANNUAL', isTaxDeductible: false, icon: <FileText className="h-4 w-4" /> },
+  ],
+  OTHER: [
+    { name: 'Insurance', category: 'INSURANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Shield className="h-4 w-4" /> },
+    { name: 'Maintenance', category: 'MAINTENANCE', frequency: 'ANNUAL', isTaxDeductible: false, icon: <Wrench className="h-4 w-4" /> },
+  ],
+};
+
+interface ExpenseFormData {
+  name: string;
+  category: string;
+  amount: string;
+  frequency: string;
+  isTaxDeductible: boolean;
+}
+
 function AssetsPageContent() {
   const { token } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -148,6 +204,14 @@ function AssetsPageContent() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
+  const [showExpenseDialog, setShowExpenseDialog] = useState(false);
+  const [expenseFormData, setExpenseFormData] = useState<ExpenseFormData>({
+    name: '',
+    category: 'OTHER',
+    amount: '',
+    frequency: 'MONTHLY',
+    isTaxDeductible: false,
+  });
   const [summary, setSummary] = useState<{
     totalCount: number;
     activeCount: number;
@@ -300,6 +364,60 @@ function AssetsPageContent() {
       }
     } catch (error) {
       console.error('Error deleting asset:', error);
+    }
+  };
+
+  const resetExpenseForm = () => {
+    setExpenseFormData({
+      name: '',
+      category: 'OTHER',
+      amount: '',
+      frequency: 'MONTHLY',
+      isTaxDeductible: false,
+    });
+  };
+
+  const applyExpenseTemplate = (template: ExpenseTemplate) => {
+    setExpenseFormData({
+      name: template.name,
+      category: template.category,
+      amount: '',
+      frequency: template.frequency,
+      isTaxDeductible: template.isTaxDeductible,
+    });
+  };
+
+  const handleExpenseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAsset) return;
+
+    try {
+      const response = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: expenseFormData.name,
+          category: expenseFormData.category,
+          amount: parseFloat(expenseFormData.amount),
+          frequency: expenseFormData.frequency,
+          isTaxDeductible: expenseFormData.isTaxDeductible,
+          isEssential: true,
+          sourceType: 'ASSET',
+          assetId: selectedAsset.id,
+        }),
+      });
+
+      if (response.ok) {
+        // Reload asset details to show new expense
+        await loadAssetDetail(selectedAsset.id);
+        setShowExpenseDialog(false);
+        resetExpenseForm();
+      }
+    } catch (error) {
+      console.error('Error creating expense:', error);
     }
   };
 
@@ -883,6 +1001,20 @@ function AssetsPageContent() {
                   </TabsList>
 
                   <TabsContent value="expenses" className="mt-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <p className="text-sm text-muted-foreground">
+                        {selectedAsset.expenses?.length || 0} expense{(selectedAsset.expenses?.length || 0) !== 1 ? 's' : ''} linked
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          resetExpenseForm();
+                          setShowExpenseDialog(true);
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Add Expense
+                      </Button>
+                    </div>
                     {selectedAsset.expenses && selectedAsset.expenses.length > 0 ? (
                       <div className="space-y-2">
                         {selectedAsset.expenses.map((expense) => (
@@ -902,9 +1034,13 @@ function AssetsPageContent() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-center text-muted-foreground py-8">
-                        No expenses linked to this asset
-                      </p>
+                      <div className="text-center py-8">
+                        <Receipt className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                        <p className="text-muted-foreground">No expenses linked to this asset</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Add common expenses like insurance, maintenance, or fuel
+                        </p>
+                      </div>
                     )}
                   </TabsContent>
 
@@ -1039,6 +1175,130 @@ function AssetsPageContent() {
                   </div>
                 </div>
               </>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Expense Dialog */}
+        <Dialog open={showExpenseDialog} onOpenChange={setShowExpenseDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
+                Add Expense
+              </DialogTitle>
+              <DialogDescription>
+                Add an expense linked to {selectedAsset?.name}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedAsset && (
+              <form onSubmit={handleExpenseSubmit} className="space-y-4">
+                {/* Quick Templates */}
+                <div className="space-y-2">
+                  <Label className="text-sm">Quick Templates</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {assetExpenseTemplates[selectedAsset.type].map((template, idx) => (
+                      <Button
+                        key={idx}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => applyExpenseTemplate(template)}
+                      >
+                        {template.icon}
+                        <span className="ml-1">{template.name}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="expenseName">Expense Name</Label>
+                  <Input
+                    id="expenseName"
+                    value={expenseFormData.name}
+                    onChange={(e) => setExpenseFormData({ ...expenseFormData, name: e.target.value })}
+                    placeholder="e.g., Registration, Insurance, Fuel"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="expenseAmount">Amount</Label>
+                    <Input
+                      id="expenseAmount"
+                      type="number"
+                      value={expenseFormData.amount}
+                      onChange={(e) => setExpenseFormData({ ...expenseFormData, amount: e.target.value })}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="expenseFrequency">Frequency</Label>
+                    <Select
+                      value={expenseFormData.frequency}
+                      onValueChange={(value) => setExpenseFormData({ ...expenseFormData, frequency: value })}
+                    >
+                      <SelectTrigger id="expenseFrequency">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="WEEKLY">Weekly</SelectItem>
+                        <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                        <SelectItem value="MONTHLY">Monthly</SelectItem>
+                        <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                        <SelectItem value="ANNUAL">Annually</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="expenseCategory">Category</Label>
+                  <Select
+                    value={expenseFormData.category}
+                    onValueChange={(value) => setExpenseFormData({ ...expenseFormData, category: value })}
+                  >
+                    <SelectTrigger id="expenseCategory">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TRANSPORT">Transport</SelectItem>
+                      <SelectItem value="INSURANCE">Insurance</SelectItem>
+                      <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                      <SelectItem value="UTILITIES">Utilities</SelectItem>
+                      <SelectItem value="HOUSING">Housing</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isTaxDeductible"
+                    checked={expenseFormData.isTaxDeductible}
+                    onCheckedChange={(checked) => setExpenseFormData({ ...expenseFormData, isTaxDeductible: checked as boolean })}
+                  />
+                  <Label htmlFor="isTaxDeductible" className="text-sm font-normal cursor-pointer">
+                    Tax deductible expense
+                  </Label>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setShowExpenseDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    Add Expense
+                  </Button>
+                </div>
+              </form>
             )}
           </DialogContent>
         </Dialog>

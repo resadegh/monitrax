@@ -35,6 +35,7 @@ import {
   ChevronRight,
   Landmark,
   X,
+  Car,
 } from 'lucide-react';
 
 interface PortfolioSnapshot {
@@ -89,6 +90,7 @@ interface PortfolioSnapshot {
     properties: { count: number; totalValue: number };
     accounts: { count: number; totalValue: number };
     investments: { count: number; totalValue: number };
+    personalAssets?: { count: number; totalValue: number };
   };
   liabilities: {
     loans: { count: number; totalValue: number };
@@ -609,6 +611,24 @@ export default function DashboardPage() {
                         color="bg-purple-500"
                       />
                     </div>
+
+                    {/* Personal Assets */}
+                    {snapshot.assets.personalAssets && snapshot.assets.personalAssets.count > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-orange-500" />
+                            <span className="text-sm font-medium">Personal Assets</span>
+                          </div>
+                          <span className="text-sm font-semibold">{formatCompactCurrency(snapshot.assets.personalAssets.totalValue)}</span>
+                        </div>
+                        <ProgressBar
+                          value={snapshot.assets.personalAssets.totalValue}
+                          max={snapshot.totalAssets}
+                          color="bg-orange-500"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -939,6 +959,15 @@ export default function DashboardPage() {
                           </div>
                           <span className="font-semibold">{formatCurrency(snapshot.assets.investments.totalValue)}</span>
                         </div>
+                        {snapshot.assets.personalAssets && snapshot.assets.personalAssets.count > 0 && (
+                          <div className="flex justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Car className="h-4 w-4 text-orange-600" />
+                              <span>Personal Assets ({snapshot.assets.personalAssets.count})</span>
+                            </div>
+                            <span className="font-semibold">{formatCurrency(snapshot.assets.personalAssets.totalValue)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
