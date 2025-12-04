@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,10 +94,13 @@ export function ListFilter<T extends object>({
     return result;
   }, [data, searchQuery, activeFilters, searchFields]);
 
-  // Notify parent of filtered data
-  useMemo(() => {
-    onFilteredData(filteredData);
-  }, [filteredData, onFilteredData]);
+  // Notify parent of filtered data - use ref to avoid infinite loops
+  const onFilteredDataRef = useRef(onFilteredData);
+  onFilteredDataRef.current = onFilteredData;
+
+  useEffect(() => {
+    onFilteredDataRef.current(filteredData);
+  }, [filteredData]);
 
   const handleFilterChange = (key: string, value: string) => {
     setActiveFilters((prev) => {
