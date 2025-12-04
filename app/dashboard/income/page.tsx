@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -40,6 +40,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
+import {
+  getIncomeTypeOptions,
+  getDefaultIncomeType,
+  type IncomeSourceType,
+  type IncomeType as IncomeTypeEnum,
+} from '@/lib/categoryFilters';
 
 type ViewMode = 'type' | 'source' | 'all' | 'list';
 
@@ -476,16 +482,22 @@ function IncomePageContent() {
   };
 
   // Auto-set income type based on source type selection
+  // Get filtered income type options based on source type
+  const filteredIncomeTypeOptions = useMemo(() => {
+    return getIncomeTypeOptions(formData.sourceType as IncomeSourceType);
+  }, [formData.sourceType]);
+
   const handleSourceTypeChange = (value: Income['sourceType']) => {
     const updates: Partial<IncomeFormData> = { sourceType: value };
 
+    // Set default income type based on source type
+    updates.type = getDefaultIncomeType(value as IncomeSourceType);
+
     if (value === 'PROPERTY') {
-      updates.type = 'RENT';
       updates.investmentAccountId = null;
       updates.salaryType = null;
       updates.salarySacrifice = null;
     } else if (value === 'INVESTMENT') {
-      updates.type = 'INVESTMENT';
       updates.propertyId = null;
       updates.salaryType = null;
       updates.salarySacrifice = null;
@@ -1076,27 +1088,29 @@ function IncomePageContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SALARY">
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="h-4 w-4" />
-                        Salary/Wages
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="RENT">
-                      <div className="flex items-center gap-2">
-                        <Home className="h-4 w-4" />
-                        Rental Income
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="INVESTMENT">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4" />
-                        Investment/Dividends
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
+                    {filteredIncomeTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          {option.value === 'SALARY' && <Briefcase className="h-4 w-4" />}
+                          {option.value === 'RENT' && <Home className="h-4 w-4" />}
+                          {option.value === 'RENTAL' && <Home className="h-4 w-4" />}
+                          {option.value === 'INVESTMENT' && <TrendingUp className="h-4 w-4" />}
+                          {option.value === 'OTHER' && <DollarSign className="h-4 w-4" />}
+                          {option.value === 'SALARY' ? 'Salary/Wages' :
+                           option.value === 'RENT' ? 'Rental Income' :
+                           option.value === 'RENTAL' ? 'Rental Income' :
+                           option.value === 'INVESTMENT' ? 'Investment/Dividends' :
+                           option.label}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {formData.sourceType !== 'GENERAL' && (
+                  <p className="text-xs text-muted-foreground">
+                    Showing types relevant to {formData.sourceType.toLowerCase()} income
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
