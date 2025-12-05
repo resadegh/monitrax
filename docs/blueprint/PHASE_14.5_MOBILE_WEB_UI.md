@@ -560,7 +560,7 @@ Changes:
 **Completed:** 2025-12-05
 **Branch:** `claude/fix-prompt-length-error-01CjVUZZsrZPvUyS2PmMS6tY`
 
-## Files Modified
+## Core UI Components Modified
 - [x] `components/ui/input.tsx` - h-10 sm:h-9, text-base sm:text-sm
 - [x] `components/ui/select.tsx` - h-10 sm:h-9, larger dropdown items (py-2.5 sm:py-1.5)
 - [x] `components/ui/dialog.tsx` - w-[calc(100vw-2rem)], max-h-[90vh] overflow-y-auto, p-4 sm:p-6, larger close button
@@ -569,6 +569,21 @@ Changes:
 - [x] `components/PageHeader.tsx` - flex-col sm:flex-row, text-2xl sm:text-3xl
 - [x] `components/DashboardLayout.tsx` - p-3 pt-16 sm:p-4 sm:pt-20 lg:p-8 lg:pt-8
 - [x] `components/AiChatButton.tsx` - bottom-4 right-4 sm:bottom-6 sm:right-6, w-12 h-12 sm:w-14 sm:h-14, panel h-[300px] sm:h-[450px]
+
+## Form Grid Layouts Fixed (Phase 14.5.1b)
+All form dialogs updated to use responsive grid: `grid-cols-1 sm:grid-cols-2` (stacks on mobile, side-by-side on tablet+)
+
+- [x] `app/dashboard/investments/accounts/page.tsx` - Opening date/balance, deposits/withdrawals
+- [x] `app/dashboard/expenses/page.tsx` - Name/vendor, amount/frequency pairs
+- [x] `app/dashboard/income/page.tsx` - Type/frequency, salary details, rental fields
+- [x] `app/dashboard/loans/page.tsx` - All loan form field pairs (8 grid sections)
+- [x] `app/dashboard/accounts/page.tsx` - Account form fields
+- [x] `app/dashboard/assets/page.tsx` - Asset form fields
+- [x] `app/dashboard/properties/page.tsx` - Property form fields
+- [x] `app/dashboard/investments/holdings/page.tsx` - Holding form fields
+- [x] `app/dashboard/investments/transactions/page.tsx` - Transaction form fields
+- [x] `app/dashboard/properties/[id]/depreciation/page.tsx` - Depreciation form fields
+- [x] `app/dashboard/cfo/page.tsx` - CFO dashboard grid
 
 ## Key Changes Summary
 
@@ -594,6 +609,12 @@ Changes:
 ### AI Chat Panel
 - Button: `w-12 h-12 sm:w-14 sm:h-14` positioned `bottom-4 right-4 sm:bottom-6 sm:right-6`
 - Panel: `w-[calc(100vw-2rem)] sm:w-[380px]` with `h-[300px] sm:h-[450px]`
+
+### Form Grid Layouts (Phase 14.5.1b)
+- **Issue**: Forms using `grid grid-cols-2` without breakpoints caused field overlap on mobile
+- **Fix**: Changed all form grids to `grid grid-cols-1 sm:grid-cols-2`
+- **Result**: Form fields stack vertically on mobile (<640px), display side-by-side on tablet and larger
+- **Files affected**: 11 dashboard pages with form dialogs
 
 ---
 

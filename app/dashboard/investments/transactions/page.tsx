@@ -502,7 +502,7 @@ function TransactionsPageContent() {
 
               <TabsContent value="details" className="space-y-4 mt-4">
                 {/* Transaction Summary */}
-                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div>
                     <p className="text-xs text-muted-foreground">Gross Value</p>
                     <p className="text-2xl font-bold">
@@ -525,7 +525,7 @@ function TransactionsPageContent() {
                   <h4 className="font-medium flex items-center gap-2">
                     <Receipt className="h-4 w-4" /> Transaction Details
                   </h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Transaction Type</p>
                       <div>{getTransactionTypeBadge(selectedTransaction.type)}</div>
@@ -583,7 +583,7 @@ function TransactionsPageContent() {
                       This sell transaction may trigger a Capital Gains Tax event.
                       Consider the holding period for 50% CGT discount eligibility (12+ months).
                     </p>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                       <div>
                         <p className="text-xs text-amber-600 dark:text-amber-400">Sale Proceeds</p>
                         <p className="font-medium">{formatCurrency(selectedTransaction.price * selectedTransaction.units)}</p>
@@ -618,7 +618,7 @@ function TransactionsPageContent() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">Current Units</p>
                         <p className="font-medium">
@@ -646,7 +646,7 @@ function TransactionsPageContent() {
                     {/* Transaction vs Holding Comparison */}
                     <div className="p-4 border rounded-lg">
                       <h4 className="font-medium mb-3">This Transaction vs Holding</h4>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground">Transaction Price</p>
                           <p className="font-medium">{formatCurrency(selectedTransaction.price)}</p>
@@ -689,7 +689,7 @@ function TransactionsPageContent() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">Account Type</p>
                         <p className="font-medium">{selectedTransaction.investmentAccount.type}</p>
@@ -826,7 +826,7 @@ function TransactionsPageContent() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Date</Label>
                 <Input
@@ -857,7 +857,7 @@ function TransactionsPageContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="units">Units</Label>
                 <Input

@@ -601,7 +601,7 @@ function InvestmentAccountsPageContent() {
             </div>
 
             {/* Phase 23: Opening Details */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="openingDate">Opening Date (Optional)</Label>
                 <Input
@@ -641,7 +641,7 @@ function InvestmentAccountsPageContent() {
             </div>
 
             {/* Deposits and Withdrawals */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="totalDeposits">Total Deposits</Label>
                 <Input

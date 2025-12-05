@@ -885,7 +885,7 @@ function IncomePageContent() {
 
                   {/* Salary-specific info */}
                   {item.type === 'SALARY' && (item.paygWithholding || item.superGuaranteeAmount) && (
-                    <div className="grid grid-cols-2 gap-2 p-2 bg-muted/50 rounded-lg text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 bg-muted/50 rounded-lg text-xs">
                       {item.grossAmount && item.salaryType === 'NET' && (
                         <div>
                           <p className="text-muted-foreground">Gross</p>
@@ -1092,7 +1092,7 @@ function IncomePageContent() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Income Type</Label>
                 <Select
@@ -1158,7 +1158,7 @@ function IncomePageContent() {
                     <span className="text-sm font-medium">Salary Details</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="salaryType">Amount Type</Label>
                       <Select
@@ -1226,7 +1226,7 @@ function IncomePageContent() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                           <div>
                             <p className="text-muted-foreground">Gross Salary</p>
                             <p className="font-semibold">{formatCurrency(salaryPreview.grossAmount)}</p>
@@ -1339,7 +1339,7 @@ function IncomePageContent() {
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="investmentAmount">Dividend/Distribution Amount</Label>
                       <Input
@@ -1467,7 +1467,7 @@ function IncomePageContent() {
 
               <TabsContent value="details" className="space-y-4 pt-4">
                 {/* Summary Cards */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">

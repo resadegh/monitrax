@@ -528,7 +528,7 @@ function PropertiesPageContent() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Value Section */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Current Value</p>
                       <p className="text-xl font-bold">{formatCurrency(property.currentValue)}</p>
@@ -644,7 +644,7 @@ function PropertiesPageContent() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Property Name</Label>
                 <Input
@@ -684,7 +684,7 @@ function PropertiesPageContent() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="purchasePrice">Purchase Price</Label>
                 <Input
@@ -710,7 +710,7 @@ function PropertiesPageContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="currentValue">Current Value</Label>
                 <Input
@@ -780,7 +780,7 @@ function PropertiesPageContent() {
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="p-4 bg-muted/50 rounded-lg">
                       <p className="text-sm text-muted-foreground">Purchase Price</p>
                       <p className="text-xl font-bold">{formatCurrency(selectedProperty.purchasePrice)}</p>
@@ -810,7 +810,7 @@ function PropertiesPageContent() {
                   </div>
 
                   {selectedProperty.type === 'INVESTMENT' && (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="p-4 bg-muted/50 rounded-lg">
                         <p className="text-sm text-muted-foreground">Rental Yield</p>
                         <p className="text-xl font-bold text-purple-600">
@@ -880,7 +880,7 @@ function PropertiesPageContent() {
                 <TabsContent value="cashflow" className="mt-4">
                   <div className="space-y-4">
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="p-3 bg-green-50 rounded-lg">
                         <p className="text-xs text-muted-foreground">Annual Income</p>
                         <p className="text-lg font-bold text-green-600">
