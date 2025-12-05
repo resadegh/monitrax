@@ -536,14 +536,14 @@ function InvestmentAccountsPageContent() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>{editingId ? 'Edit Investment Account' : 'Add Investment Account'}</DialogTitle>
             <DialogDescription>
               {editingId ? 'Update the account details below.' : 'Enter the details for your new investment account.'}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1 pb-2">
             <div className="space-y-2">
               <Label htmlFor="name">Account Name</Label>
               <Input
@@ -602,23 +602,25 @@ function InvestmentAccountsPageContent() {
 
             {/* Phase 23: Opening Details */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <Label htmlFor="openingDate">Opening Date (Optional)</Label>
                 <Input
                   id="openingDate"
                   type="date"
+                  className="w-full"
                   value={formData.openingDate || ''}
                   onChange={(e) => setFormData({ ...formData, openingDate: e.target.value })}
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <Label htmlFor="openingBalance">Opening Balance</Label>
                 <Input
                   id="openingBalance"
                   type="number"
                   min="0"
                   step="0.01"
+                  className="w-full"
                   value={formData.openingBalance || 0}
                   onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })}
                   placeholder="0.00"
@@ -642,13 +644,14 @@ function InvestmentAccountsPageContent() {
 
             {/* Deposits and Withdrawals */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <Label htmlFor="totalDeposits">Total Deposits</Label>
                 <Input
                   id="totalDeposits"
                   type="number"
                   min="0"
                   step="0.01"
+                  className="w-full"
                   value={formData.totalDeposits || 0}
                   onChange={(e) => setFormData({ ...formData, totalDeposits: parseFloat(e.target.value) || 0 })}
                   placeholder="0.00"
@@ -656,13 +659,14 @@ function InvestmentAccountsPageContent() {
                 <p className="text-xs text-muted-foreground">Total money deposited into account</p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 w-full">
                 <Label htmlFor="totalWithdrawals">Total Withdrawals</Label>
                 <Input
                   id="totalWithdrawals"
                   type="number"
                   min="0"
                   step="0.01"
+                  className="w-full"
                   value={formData.totalWithdrawals || 0}
                   onChange={(e) => setFormData({ ...formData, totalWithdrawals: parseFloat(e.target.value) || 0 })}
                   placeholder="0.00"
