@@ -1164,7 +1164,7 @@ function ExpensesPageContent() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
                 <Input
@@ -1375,7 +1375,7 @@ function ExpensesPageContent() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
                 <Select
@@ -1547,7 +1547,7 @@ function ExpensesPageContent() {
               </TabsList>
 
               <TabsContent value="details" className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">Amount</CardTitle>

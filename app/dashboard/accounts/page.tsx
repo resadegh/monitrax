@@ -464,7 +464,7 @@ function AccountsPageContent() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Account Type</Label>
                 <Select
@@ -494,7 +494,7 @@ function AccountsPageContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="currentBalance">Current Balance</Label>
                 <Input
@@ -560,7 +560,7 @@ function AccountsPageContent() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">Current Balance</CardTitle>
@@ -692,7 +692,7 @@ function AccountsPageContent() {
                           <CardDescription>Linked loan details</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Loan Principal</p>
                               <p className="text-xl font-bold">{formatCurrency(selectedAccount.linkedLoan.principal)}</p>
@@ -702,7 +702,7 @@ function AccountsPageContent() {
                               <p className="text-xl font-bold">{(selectedAccount.linkedLoan.interestRateAnnual * 100).toFixed(2)}%</p>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Rate Type</p>
                               <Badge variant="outline">{selectedAccount.linkedLoan.rateType}</Badge>

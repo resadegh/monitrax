@@ -511,7 +511,7 @@ function LoansPageContent() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Balance</p>
                       <p className="text-xl font-bold">{formatCurrency(loan.principal)}</p>
@@ -526,7 +526,7 @@ function LoansPageContent() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Min Repayment</p>
                       <p className="font-semibold">{formatCurrency(loan.minRepayment)}</p>
@@ -599,7 +599,7 @@ function LoansPageContent() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Loan Name</Label>
                 <Input
@@ -628,7 +628,7 @@ function LoansPageContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="principal">Principal Balance</Label>
                 <Input
@@ -655,7 +655,7 @@ function LoansPageContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="rateType">Rate Type</Label>
                 <Select
@@ -690,7 +690,7 @@ function LoansPageContent() {
             </div>
 
             {formData.rateType === 'FIXED' && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fixedExpiry">Fixed Rate Expiry</Label>
                   <Input
@@ -714,7 +714,7 @@ function LoansPageContent() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="termMonthsRemaining">Term Remaining (months)</Label>
                 <Input
@@ -757,7 +757,7 @@ function LoansPageContent() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="propertyId">Linked Property (Optional)</Label>
                 <Select
@@ -840,7 +840,7 @@ function LoansPageContent() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">Principal Balance</CardTitle>
@@ -948,7 +948,7 @@ function LoansPageContent() {
                       )}
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">Property Value</p>
                           <p className="text-xl font-bold">{formatCurrency(selectedLoan.property.currentValue)}</p>
@@ -996,7 +996,7 @@ function LoansPageContent() {
                       )}
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">Offset Balance</p>
                           <p className="text-xl font-bold text-green-600">
@@ -1049,7 +1049,7 @@ function LoansPageContent() {
                         <CardTitle className="text-sm">Linked Expenses Summary</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Total Expenses</p>
                             <p className="text-xl font-bold">{selectedLoan.expenses.length}</p>

@@ -471,7 +471,7 @@ function AssetsPageContent() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <p className="text-sm text-muted-foreground">Purchase Price</p>
               <p className="text-lg font-semibold">{formatCurrency(asset.purchasePrice)}</p>
@@ -719,7 +719,7 @@ function AssetsPageContent() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Asset Name *</Label>
                   <Input
@@ -763,7 +763,7 @@ function AssetsPageContent() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="purchasePrice">Purchase Price *</Label>
                   <Input
@@ -835,7 +835,7 @@ function AssetsPageContent() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="vehicleRegistration">Registration</Label>
                       <Input
@@ -1120,7 +1120,7 @@ function AssetsPageContent() {
                   </TabsContent>
 
                   <TabsContent value="details" className="mt-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {selectedAsset.type === 'VEHICLE' && (
                         <>
                           <div>
@@ -1239,7 +1239,7 @@ function AssetsPageContent() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="expenseAmount">Amount</Label>
                     <Input

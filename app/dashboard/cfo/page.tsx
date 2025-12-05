@@ -301,7 +301,7 @@ export default function CFODashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-3 bg-muted/50 rounded-lg">
                 <div className="text-xs text-muted-foreground">Net Worth Change</div>
                 <div className={`text-xl font-bold flex items-center gap-1 ${monthlyProgress.netWorthChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>

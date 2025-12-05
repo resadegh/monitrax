@@ -324,7 +324,7 @@ function HoldingsPageContent() {
                     <p className="text-2xl font-bold">{formatCurrency(value, currency)}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Units</p>
                       <p className="font-medium">{holding.units.toLocaleString()}</p>
@@ -393,7 +393,7 @@ function HoldingsPageContent() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="ticker">Ticker Symbol</Label>
                 <Input
@@ -424,7 +424,7 @@ function HoldingsPageContent() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="units">Units</Label>
                 <Input
@@ -506,7 +506,7 @@ function HoldingsPageContent() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">Market Value</CardTitle>
