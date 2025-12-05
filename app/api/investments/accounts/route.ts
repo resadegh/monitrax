@@ -9,7 +9,7 @@ const createAccountSchema = z.object({
   type: z.enum(['BROKERAGE', 'SUPERS', 'FUND', 'TRUST', 'ETF_CRYPTO']),
   platform: z.string().optional(),
   currency: z.string().default('AUD'),
-  // Phase 23: Opening and balance tracking
+  // Phase 23: Balance tracking fields
   openingDate: z.string().datetime().optional(),
   openingBalance: z.number().min(0).default(0),
   cashBalance: z.number().default(0),
@@ -68,7 +68,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
+<<<<<<< HEAD
       const { name, type, platform, currency, openingDate, openingBalance, cashBalance, totalDeposits, totalWithdrawals, costBasisMethod } = validation.data;
+=======
+      const {
+        name, type, platform, currency,
+        openingDate, openingBalance, cashBalance,
+        totalDeposits, totalWithdrawals, costBasisMethod
+      } = validation.data;
+>>>>>>> f6e5d20 (feat(investments): add balance tracking fields to investment accounts)
 
       const account = await prisma.investmentAccount.create({
         data: {
@@ -77,10 +85,16 @@ export async function POST(request: NextRequest) {
           type,
           platform: platform || null,
           currency: currency || 'AUD',
+<<<<<<< HEAD
           // Phase 23 fields
           openingDate: openingDate ? new Date(openingDate) : null,
           openingBalance: openingBalance || 0,
           cashBalance: cashBalance ?? openingBalance ?? 0, // Use provided value or fall back to opening balance
+=======
+          openingDate: openingDate ? new Date(openingDate) : null,
+          openingBalance: openingBalance || 0,
+          cashBalance: cashBalance || 0,
+>>>>>>> f6e5d20 (feat(investments): add balance tracking fields to investment accounts)
           totalDeposits: totalDeposits || 0,
           totalWithdrawals: totalWithdrawals || 0,
           costBasisMethod: costBasisMethod || 'FIFO',

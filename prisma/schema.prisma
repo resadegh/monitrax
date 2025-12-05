@@ -675,13 +675,13 @@ model InvestmentAccount {
   platform     String?               // e.g. CommSec, SelfWealth, Betashares app
   currency     String                @default("AUD")
 
-  // Phase 23: Opening and balance tracking
-  openingDate         DateTime?      // When account was opened
-  openingBalance      Float          @default(0)  // Initial cash balance
-  cashBalance         Float          @default(0)  // Current uninvested cash
-  totalDeposits       Float          @default(0)  // Sum of all deposits
-  totalWithdrawals    Float          @default(0)  // Sum of all withdrawals
-  costBasisMethod     CostBasisMethod @default(FIFO)  // Default CGT calculation method
+  // Phase 23: Balance tracking fields
+  openingDate         DateTime?
+  openingBalance      Float          @default(0)
+  cashBalance         Float          @default(0)
+  totalDeposits       Float          @default(0)
+  totalWithdrawals    Float          @default(0)
+  costBasisMethod     CostBasisMethod @default(FIFO)
 
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
