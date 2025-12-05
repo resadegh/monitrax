@@ -313,3 +313,262 @@ Phase 14.5 is complete when:
 ---
 
 # END OF PHASE 14.5 — MOBILE WEB UI ENHANCEMENT
+
+---
+
+# PHASE 14.5.1 — MOBILE UI REFINEMENT (December 2025)
+### Touch Targets • Form Dialogs • Component Polish • Modern Design
+Version: 1.1
+
+---
+
+# 1. PURPOSE
+
+Phase 14.5.1 addresses mobile UI issues discovered through comprehensive audit:
+- Form dialogs overlapping and not scrolling properly
+- Touch targets below WCAG 44px minimum
+- Inconsistent padding/spacing on mobile
+- Z-index stacking conflicts
+- Table views unusable on small screens
+
+---
+
+# 2. AUDIT FINDINGS
+
+## 2.1 Critical Issues (23 total)
+
+| Category | Count | Priority |
+|----------|-------|----------|
+| Dialog/Form | 8 | HIGH |
+| Layout | 4 | MEDIUM |
+| Tables/Lists | 5 | MEDIUM |
+| Touch Targets | 4 | MEDIUM |
+| Z-Index/Fixed | 2 | LOW |
+
+## 2.2 Key Problems Identified
+
+1. **Dialog Max-Width**: Forms use fixed `sm:max-w-[550px]` without mobile constraint
+2. **Input Height**: Inputs at `h-9` (36px) below 44px touch target
+3. **Select Height**: Selects at `h-9` (36px) below 44px touch target
+4. **Dialog Close Button**: Only 16x16px clickable area
+5. **PageHeader**: Doesn't stack vertically on mobile
+6. **Card Padding**: Fixed `p-6` too large for mobile
+7. **Table Views**: No responsive column hiding
+8. **Action Buttons**: Icon buttons at `h-8 w-8` too small
+
+---
+
+# 3. DESIGN DECISIONS
+
+## 3.1 Touch Target Standard
+All interactive elements must be minimum 44x44px on mobile:
+```
+Mobile: h-10 (40px) + padding = 44px effective
+Desktop: h-9 (36px) - unchanged
+```
+
+## 3.2 Mobile-First Dialog Sizing
+```css
+/* Mobile: full width with margin */
+w-[calc(100vw-2rem)]
+
+/* Tablet+: fixed max-width */
+sm:max-w-[550px]
+```
+
+## 3.3 Responsive Padding Scale
+```css
+/* Cards */
+Mobile: p-4 (16px)
+Desktop: p-6 (24px)
+
+/* Main Content */
+Mobile: p-3 (12px)
+Desktop: p-8 (32px)
+```
+
+## 3.4 Z-Index Hierarchy
+```
+10 = Sidebar backdrop
+20 = Sidebar
+30 = Floating buttons (AI Chat)
+40 = Chat panel
+50 = Dialogs/Modals
+```
+
+## 3.5 Typography on Mobile
+- Keep `text-base` (16px) on inputs to prevent iOS zoom
+- Headers: `text-2xl` on mobile, `text-3xl` on desktop
+- Body: `text-sm` remains consistent
+
+---
+
+# 4. COMPONENT CHANGES
+
+## 4.1 Input Component (`ui/input.tsx`)
+```tsx
+// Before
+"flex h-9 w-full rounded-md..."
+
+// After
+"flex h-10 sm:h-9 w-full rounded-md..."
+```
+
+## 4.2 Select Component (`ui/select.tsx`)
+```tsx
+// Before
+"flex h-9 w-full items-center..."
+
+// After
+"flex h-10 sm:h-9 w-full items-center..."
+```
+
+## 4.3 Dialog Component (`ui/dialog.tsx`)
+```tsx
+// Before (DialogContent)
+"fixed left-[50%] top-[50%]... sm:rounded-lg"
+
+// After
+"fixed left-[50%] top-[50%]... w-[calc(100vw-2rem)] sm:rounded-lg"
+
+// Close button: add padding for touch
+"absolute right-2 top-2 sm:right-4 sm:top-4 p-2"
+```
+
+## 4.4 Card Component (`ui/card.tsx`)
+```tsx
+// CardHeader
+"flex flex-col space-y-1.5 p-4 sm:p-6"
+
+// CardContent
+"p-4 sm:p-6 pt-0"
+
+// CardFooter
+"flex items-center p-4 sm:p-6 pt-0"
+```
+
+## 4.5 PageHeader Component
+```tsx
+// Before
+"flex items-center justify-between mb-8"
+
+// After
+"flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8"
+```
+
+## 4.6 Button Touch Targets (Action Icons)
+```tsx
+// Before
+<Button variant="ghost" size="icon" className="h-8 w-8">
+  <Edit2 className="h-4 w-4" />
+
+// After
+<Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8">
+  <Edit2 className="h-5 w-5 sm:h-4 sm:w-4" />
+```
+
+---
+
+# 5. LAYOUT ADJUSTMENTS
+
+## 5.1 DashboardLayout
+- Reduce mobile content padding from `pt-20` to `pt-16`
+- Sidebar width: `w-60 sm:w-64` for very small phones
+
+## 5.2 AI Chat Button
+```tsx
+// Position
+"fixed bottom-4 right-4 sm:bottom-6 sm:right-6"
+
+// Size
+"w-12 h-12 sm:w-14 sm:h-14"
+```
+
+## 5.3 AI Chat Panel
+```tsx
+// Width
+"w-[calc(100vw-1rem)] sm:w-[380px]"
+
+// Height
+"h-[300px] sm:h-[450px] max-h-[50vh] sm:max-h-[60vh]"
+```
+
+---
+
+# 6. TABLE RESPONSIVE STRATEGY
+
+## 6.1 Column Visibility
+```tsx
+// Essential columns: always visible
+<th className="px-2 sm:px-4">Name</th>
+<th className="px-2 sm:px-4">Amount</th>
+
+// Secondary columns: hidden on mobile
+<th className="hidden sm:table-cell">Category</th>
+<th className="hidden md:table-cell">Platform</th>
+```
+
+## 6.2 Cell Padding
+```tsx
+// Mobile-friendly padding
+"px-2 sm:px-4 py-2 sm:py-3"
+```
+
+---
+
+# 7. FORM DIALOG FIXES
+
+All form dialogs across dashboard pages updated:
+- `expenses/page.tsx`
+- `income/page.tsx`
+- `properties/page.tsx`
+- `assets/page.tsx`
+- `loans/page.tsx`
+- `investments/accounts/page.tsx`
+
+Changes:
+1. Add mobile width constraint
+2. Ensure `max-h-[90vh] overflow-y-auto`
+3. Single-column form layout on mobile
+4. Larger submit buttons
+
+---
+
+# 8. TESTING CHECKLIST
+
+## 8.1 Device Matrix
+- [ ] iPhone SE (375px)
+- [ ] iPhone 14 (390px)
+- [ ] iPhone 14 Pro Max (430px)
+- [ ] iPad Mini (768px)
+- [ ] iPad Pro (1024px)
+
+## 8.2 Interaction Tests
+- [ ] All dialogs scroll on mobile
+- [ ] Touch targets are 44px minimum
+- [ ] Forms don't overlap
+- [ ] Tables scroll horizontally
+- [ ] AI chat usable on mobile
+- [ ] All buttons easily tappable
+
+---
+
+# 9. IMPLEMENTATION STATUS
+
+**Status:** IN PROGRESS
+**Started:** 2025-12-05
+
+## Files to Modify
+- [ ] `components/ui/input.tsx`
+- [ ] `components/ui/select.tsx`
+- [ ] `components/ui/dialog.tsx`
+- [ ] `components/ui/card.tsx`
+- [ ] `components/ui/button.tsx`
+- [ ] `components/PageHeader.tsx`
+- [ ] `components/DashboardLayout.tsx`
+- [ ] `components/AiChatButton.tsx`
+- [ ] All dashboard page dialogs
+
+---
+
+# END OF PHASE 14.5.1

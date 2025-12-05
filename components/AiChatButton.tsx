@@ -20,8 +20,8 @@ export default function AiChatButton() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          fixed bottom-6 right-6 z-50
-          w-14 h-14 rounded-full shadow-lg
+          fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50
+          w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg
           flex items-center justify-center
           transition-all duration-300 ease-in-out
           ${isOpen
@@ -34,10 +34,10 @@ export default function AiChatButton() {
         aria-label={isOpen ? 'Close AI Chat' : 'Open AI Chat'}
       >
         {isOpen ? (
-          <X className="h-6 w-6 text-white" />
+          <X className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
         ) : (
           <>
-            <Bot className="h-6 w-6 text-white" />
+            <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             {/* Pulse animation when closed */}
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-success rounded-full animate-pulse" />
           </>
@@ -56,8 +56,8 @@ export default function AiChatButton() {
       {/* Chat Panel */}
       <div
         className={`
-          fixed bottom-24 right-6 z-50
-          w-[380px] max-w-[calc(100vw-3rem)]
+          fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-50
+          w-[calc(100vw-2rem)] sm:w-[380px] sm:max-w-[calc(100vw-3rem)]
           bg-white dark:bg-gray-900
           rounded-2xl shadow-2xl
           border border-gray-200 dark:border-gray-700
@@ -89,7 +89,7 @@ export default function AiChatButton() {
         </div>
 
         {/* Chat Content */}
-        <div className="h-[450px] max-h-[60vh] overflow-hidden">
+        <div className="h-[300px] sm:h-[450px] max-h-[50vh] sm:max-h-[60vh] overflow-hidden">
           {isOpen && (
             <AiAdvisorPanel
               mode="portfolio"
