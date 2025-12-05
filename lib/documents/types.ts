@@ -89,6 +89,9 @@ export interface UploadRequest {
   tags?: string[];
   // Entity links to create
   links?: EntityLinkRequest[];
+  // Local drive storage info (when file is already saved locally)
+  storageProvider?: 'LOCAL_DRIVE';
+  localPath?: string;
 }
 
 export interface EntityLinkRequest {

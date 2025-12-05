@@ -74,12 +74,6 @@ export async function uploadDocument(
   }
 
   try {
-    // Get storage provider
-    const storage = await getStorageProvider(userId);
-
-    // Generate storage path
-    const storagePath = generateStoragePath(userId, request);
-
     // Convert file to buffer if needed
     let fileBuffer: Buffer;
     if (Buffer.isBuffer(request.file)) {
@@ -89,6 +83,55 @@ export async function uploadDocument(
       const blob = request.file as Blob;
       fileBuffer = Buffer.from(await blob.arrayBuffer());
     }
+
+    // Check if this is a LOCAL_DRIVE upload (file already saved on client)
+    if (request.storageProvider === 'LOCAL_DRIVE' && request.localPath) {
+      // For local drive, we only store metadata - file is on user's computer
+      const document = await prisma.document.create({
+        data: {
+          userId,
+          filename: generateFilename(request.filename, request.mimeType),
+          originalFilename: request.filename,
+          mimeType: request.mimeType,
+          size: fileBuffer.length,
+          category: request.category,
+          storageProvider: StorageProviderType.LOCAL_DRIVE,
+          storagePath: request.localPath, // Store the local path
+          storageUrl: null,
+          description: request.description || null,
+          tags: request.tags || [],
+          // No fileContent for local drive - file is on user's computer
+          fileContent: null,
+        },
+      });
+
+      // Create document links
+      if (request.links && request.links.length > 0) {
+        await prisma.documentLink.createMany({
+          data: request.links.map(link => ({
+            documentId: document.id,
+            entityType: link.entityType,
+            entityId: link.entityId,
+          })),
+        });
+      }
+
+      // Fetch full document with links
+      const fullDocument = await getDocumentById(document.id, userId);
+
+      return {
+        success: true,
+        document: fullDocument!,
+        // No signed URL for local drive - client handles file access
+      };
+    }
+
+    // Standard Monitrax database storage
+    // Get storage provider
+    const storage = await getStorageProvider(userId);
+
+    // Generate storage path
+    const storagePath = generateStoragePath(userId, request);
 
     // Upload to storage
     const uploadResult = await storage.upload({
