@@ -20,6 +20,7 @@ import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { DocumentCategory, LinkedEntityType } from '@/lib/documents/types';
 import { ExpenseWizard } from '@/components/ExpenseWizard';
+import { useDocumentUpload, useDocumentReader } from '@/hooks/useDocumentUpload';
 import {
   getExpenseCategoryOptions,
   getDefaultExpenseCategory,
@@ -48,6 +49,8 @@ interface AttachedDocument {
   mimeType: string;
   size: number;
   category: string;
+  storageProvider?: string;
+  storagePath?: string;
   uploadedAt: string;
 }
 
@@ -129,6 +132,8 @@ type ExpenseFormData = {
 function ExpensesPageContent() {
   const { token } = useAuth();
   const { openLinkedEntity } = useCrossModuleNavigation();
+  const documentUpload = useDocumentUpload();
+  const documentReader = useDocumentReader();
 
   // CMNF navigation handler for LinkedDataPanel
   const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
@@ -265,32 +270,25 @@ function ExpensesPageContent() {
     }
   };
 
-  const uploadReceiptFile = async (expenseId: string, file: File) => {
+  const uploadReceiptFile = async (expenseId: string, file: File, expenseName?: string) => {
     setUploadingFile(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('category', DocumentCategory.RECEIPT);
-      formData.append('description', `Receipt for ${formData.get('name') || 'expense'}`);
-      formData.append('links', JSON.stringify([
-        { entityType: LinkedEntityType.EXPENSE, entityId: expenseId }
-      ]));
-
-      const response = await fetch('/api/documents', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+      // Use the unified document upload hook (handles local drive or server storage)
+      const result = await documentUpload.upload(file, {
+        category: DocumentCategory.RECEIPT,
+        description: `Receipt for ${expenseName || 'expense'}`,
+        links: [{ entityType: LinkedEntityType.EXPENSE, entityId: expenseId }],
+        entityName: expenseName, // For folder organization on local drive
       });
 
-      if (response.ok) {
+      if (result.success) {
         setSelectedFile(null);
         // Reload documents if viewing details
         if (selectedExpense?.id === expenseId) {
           await loadAttachedDocuments(expenseId);
         }
       } else {
-        const error = await response.json();
-        console.error('Failed to upload receipt:', error);
+        console.error('Failed to upload receipt:', result.error);
       }
     } catch (error) {
       console.error('Error uploading receipt:', error);
@@ -337,7 +335,7 @@ function ExpensesPageContent() {
 
         // Upload file if one was selected
         if (selectedFile && savedExpenseId) {
-          await uploadReceiptFile(savedExpenseId, selectedFile);
+          await uploadReceiptFile(savedExpenseId, selectedFile, formData.name);
         }
 
         await loadExpenses();
@@ -1722,7 +1720,7 @@ function ExpensesPageContent() {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file && selectedExpense) {
-                          await uploadReceiptFile(selectedExpense.id, file);
+                          await uploadReceiptFile(selectedExpense.id, file, selectedExpense.name);
                           e.target.value = '';
                         }
                       }}

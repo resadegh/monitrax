@@ -146,6 +146,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check if this is a local drive upload (file already saved on client)
+    const storageProvider = formData.get('storageProvider') as string | null;
+    const localPath = formData.get('localPath') as string | null;
+
     // Upload document
     const result = await uploadDocument(userId, {
       file,
@@ -155,6 +159,9 @@ export async function POST(request: NextRequest) {
       description: description || undefined,
       tags,
       links,
+      // Pass local drive info if provided
+      storageProvider: storageProvider === 'LOCAL_DRIVE' ? 'LOCAL_DRIVE' : undefined,
+      localPath: localPath || undefined,
     });
 
     if (!result.success) {
