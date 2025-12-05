@@ -1944,6 +1944,7 @@ enum StorageProviderType {
   GOOGLE_DRIVE
   ICLOUD
   ONEDRIVE
+  LOCAL_DRIVE   // User's local filesystem via File System Access API
   // Future: S3, DROPBOX
 }
 
