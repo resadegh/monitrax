@@ -270,13 +270,38 @@ function ExpensesPageContent() {
     }
   };
 
-  const uploadReceiptFile = async (expenseId: string, file: File, expenseName?: string) => {
+  // Map expense category to document category for proper folder organization
+  const getDocumentCategory = (expenseCategory: string): DocumentCategory => {
+    const categoryMap: Record<string, DocumentCategory> = {
+      'INSURANCE': DocumentCategory.INSURANCE,
+      'RATES': DocumentCategory.TAX,
+      'LAND_TAX': DocumentCategory.TAX,
+      'LOAN_INTEREST': DocumentCategory.MORTGAGE,
+      'HOUSING': DocumentCategory.RECEIPT,
+      'MAINTENANCE': DocumentCategory.RECEIPT,
+      'PERSONAL': DocumentCategory.RECEIPT,
+      'UTILITIES': DocumentCategory.STATEMENT,
+      'FOOD': DocumentCategory.RECEIPT,
+      'TRANSPORT': DocumentCategory.RECEIPT,
+      'ENTERTAINMENT': DocumentCategory.RECEIPT,
+      'STRATA': DocumentCategory.INVOICE,
+      'REGISTRATION': DocumentCategory.RECEIPT,
+      'MODIFICATIONS': DocumentCategory.RECEIPT,
+      'OTHER': DocumentCategory.OTHER,
+    };
+    return categoryMap[expenseCategory] || DocumentCategory.RECEIPT;
+  };
+
+  const uploadReceiptFile = async (expenseId: string, file: File, expenseName?: string, expenseCategory?: string) => {
     setUploadingFile(true);
     try {
+      // Map expense category to document category for proper folder organization
+      const documentCategory = expenseCategory ? getDocumentCategory(expenseCategory) : DocumentCategory.RECEIPT;
+
       // Use the unified document upload hook (handles local drive or server storage)
       const result = await documentUpload.upload(file, {
-        category: DocumentCategory.RECEIPT,
-        description: `Receipt for ${expenseName || 'expense'}`,
+        category: documentCategory,
+        description: `${expenseCategory || 'Receipt'} - ${expenseName || 'expense'}`,
         links: [{ entityType: LinkedEntityType.EXPENSE, entityId: expenseId }],
         entityName: expenseName, // For folder organization on local drive
       });
@@ -335,7 +360,7 @@ function ExpensesPageContent() {
 
         // Upload file if one was selected
         if (selectedFile && savedExpenseId) {
-          await uploadReceiptFile(savedExpenseId, selectedFile, formData.name);
+          await uploadReceiptFile(savedExpenseId, selectedFile, formData.name, formData.category);
         }
 
         await loadExpenses();
@@ -1720,7 +1745,7 @@ function ExpensesPageContent() {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file && selectedExpense) {
-                          await uploadReceiptFile(selectedExpense.id, file, selectedExpense.name);
+                          await uploadReceiptFile(selectedExpense.id, file, selectedExpense.name, selectedExpense.category);
                           e.target.value = '';
                         }
                       }}
