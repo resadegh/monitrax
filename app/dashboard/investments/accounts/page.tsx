@@ -249,10 +249,11 @@ function InvestmentAccountsPageContent() {
     }
   };
 
-  // Calculate total value of holdings in an account
+  // Calculate total value of holdings in an account (holdings + cash balance)
   const calculateTotalValue = (account: InvestmentAccount) => {
-    if (!account.holdings || account.holdings.length === 0) return 0;
-    return account.holdings.reduce((sum, h) => sum + (h.units * h.averagePrice), 0);
+    const holdingsValue = account.holdings?.reduce((sum, h) => sum + (h.units * h.averagePrice), 0) || 0;
+    const cashValue = account.cashBalance || 0;
+    return holdingsValue + cashValue;
   };
 
   // Calculate total cost basis
