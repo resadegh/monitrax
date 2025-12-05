@@ -427,7 +427,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content - Responsive */}
       <div className="lg:pl-64">
         {/* Add top padding on mobile for the header */}
-        <main className="min-h-screen p-4 pt-20 lg:p-8 lg:pt-8">
+        <main className="min-h-screen p-3 pt-16 sm:p-4 sm:pt-20 lg:p-8 lg:pt-8">
           <div className="mx-auto max-w-7xl">
             {children}
           </div>
