@@ -1,14 +1,11 @@
 /**
- * Phase 19: Monitrax Storage Provider
- * Default storage provider using local filesystem or S3-compatible storage
- *
- * In production, this would use S3, Supabase Storage, or similar.
- * For development, it uses local filesystem with signed URL simulation.
+ * Phase 19: Monitrax Storage Provider (Database Storage)
+ * Stores document content directly in the PostgreSQL database
+ * This ensures documents persist across deployments on platforms like Render
  */
 
-import { promises as fs } from 'fs';
-import path from 'path';
 import crypto from 'crypto';
+import { prisma } from '@/lib/db';
 import { IStorageProvider } from './interface';
 import {
   StorageUploadParams,
@@ -18,22 +15,21 @@ import {
   StorageProviderConfig,
 } from '../types';
 
-// Storage root directory (configurable via env)
-const STORAGE_ROOT = process.env.DOCUMENT_STORAGE_PATH || './uploads/documents';
-
 // Signed URL secret for HMAC generation
 const SIGNED_URL_SECRET = process.env.SIGNED_URL_SECRET || 'monitrax-dev-secret-key';
 
 // Default signed URL expiry (5 minutes)
 const DEFAULT_EXPIRY_SECONDS = 300;
 
+// Maximum file size for database storage (10MB - reasonable for receipts/documents)
+const MAX_DB_FILE_SIZE = 10 * 1024 * 1024;
+
 export class MonitraxStorageProvider implements IStorageProvider {
   readonly name = 'monitrax';
   private initialized = false;
 
   async initialize(_config?: StorageProviderConfig): Promise<void> {
-    // Ensure storage root exists
-    await fs.mkdir(STORAGE_ROOT, { recursive: true });
+    // No filesystem initialization needed for database storage
     this.initialized = true;
   }
 
@@ -43,18 +39,22 @@ export class MonitraxStorageProvider implements IStorageProvider {
     }
 
     try {
-      const fullPath = path.join(STORAGE_ROOT, params.path);
-      const directory = path.dirname(fullPath);
+      // Check file size limit for database storage
+      if (params.file.length > MAX_DB_FILE_SIZE) {
+        return {
+          success: false,
+          storagePath: '',
+          error: `File too large for database storage. Maximum size is ${MAX_DB_FILE_SIZE / 1024 / 1024}MB`,
+        };
+      }
 
-      // Ensure directory exists
-      await fs.mkdir(directory, { recursive: true });
-
-      // Write file
-      await fs.writeFile(fullPath, params.file);
-
+      // For database storage, we just return the path - the actual file content
+      // is stored by the documentService when creating the document record
       return {
         success: true,
         storagePath: params.path,
+        // Store file content in memory to be saved by documentService
+        fileBuffer: params.file,
       };
     } catch (error) {
       return {
@@ -71,20 +71,8 @@ export class MonitraxStorageProvider implements IStorageProvider {
     }
 
     try {
-      const fullPath = path.join(STORAGE_ROOT, storagePath);
-      await fs.unlink(fullPath);
-
-      // Try to clean up empty parent directories
-      const directory = path.dirname(fullPath);
-      try {
-        const files = await fs.readdir(directory);
-        if (files.length === 0) {
-          await fs.rmdir(directory);
-        }
-      } catch {
-        // Ignore cleanup errors
-      }
-
+      // For database storage, the fileContent is deleted when the document record is deleted
+      // via Prisma cascade, so this is a no-op
       return { success: true };
     } catch (error) {
       return {
@@ -103,10 +91,6 @@ export class MonitraxStorageProvider implements IStorageProvider {
     }
 
     try {
-      // Check if file exists
-      const fullPath = path.join(STORAGE_ROOT, storagePath);
-      await fs.access(fullPath);
-
       // Generate expiry timestamp
       const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
       const expiresTimestamp = Math.floor(expiresAt.getTime() / 1000);
@@ -114,9 +98,7 @@ export class MonitraxStorageProvider implements IStorageProvider {
       // Generate signature
       const signature = this.generateSignature(storagePath, expiresTimestamp);
 
-      // Build signed URL
-      // In production, this would be an S3/Supabase signed URL
-      // For development, we use a local API endpoint
+      // Build signed URL pointing to our download API
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const encodedPath = encodeURIComponent(storagePath);
       const url = `${baseUrl}/api/documents/download?path=${encodedPath}&expires=${expiresTimestamp}&signature=${signature}`;
@@ -140,9 +122,15 @@ export class MonitraxStorageProvider implements IStorageProvider {
     }
 
     try {
-      const fullPath = path.join(STORAGE_ROOT, storagePath);
-      await fs.access(fullPath);
-      return true;
+      const document = await prisma.document.findFirst({
+        where: {
+          storagePath,
+          deletedAt: null,
+          fileContent: { not: null },
+        },
+        select: { id: true },
+      });
+      return document !== null;
     } catch {
       return false;
     }
@@ -158,17 +146,26 @@ export class MonitraxStorageProvider implements IStorageProvider {
     }
 
     try {
-      const fullPath = path.join(STORAGE_ROOT, storagePath);
-      const stats = await fs.stat(fullPath);
+      const document = await prisma.document.findFirst({
+        where: {
+          storagePath,
+          deletedAt: null,
+        },
+        select: {
+          size: true,
+          updatedAt: true,
+          mimeType: true,
+        },
+      });
 
-      // Guess content type from extension
-      const ext = path.extname(storagePath).toLowerCase();
-      const contentType = this.getContentType(ext);
+      if (!document) {
+        return null;
+      }
 
       return {
-        size: stats.size,
-        lastModified: stats.mtime,
-        contentType,
+        size: document.size,
+        lastModified: document.updatedAt,
+        contentType: document.mimeType,
       };
     } catch {
       return null;
@@ -180,38 +177,25 @@ export class MonitraxStorageProvider implements IStorageProvider {
       await this.initialize();
     }
 
-    const results: string[] = [];
-    const fullPath = path.join(STORAGE_ROOT, pathPrefix);
-
     try {
-      const entries = await fs.readdir(fullPath, { withFileTypes: true });
+      const documents = await prisma.document.findMany({
+        where: {
+          storagePath: { startsWith: pathPrefix },
+          deletedAt: null,
+        },
+        select: { storagePath: true },
+      });
 
-      for (const entry of entries) {
-        const entryPath = path.join(pathPrefix, entry.name);
-        if (entry.isDirectory()) {
-          const subFiles = await this.listFiles(entryPath);
-          results.push(...subFiles);
-        } else {
-          results.push(entryPath);
-        }
-      }
+      return documents.map((d: { storagePath: string }) => d.storagePath);
     } catch {
-      // Directory doesn't exist or can't be read
+      return [];
     }
-
-    return results;
   }
 
   async healthCheck(): Promise<boolean> {
     try {
-      if (!this.initialized) {
-        await this.initialize();
-      }
-
-      // Try to create and delete a test file
-      const testPath = path.join(STORAGE_ROOT, '.health-check');
-      await fs.writeFile(testPath, 'ok');
-      await fs.unlink(testPath);
+      // Check database connectivity
+      await prisma.$queryRaw`SELECT 1`;
       return true;
     } catch {
       return false;
@@ -223,18 +207,35 @@ export class MonitraxStorageProvider implements IStorageProvider {
    */
   verifySignature(storagePath: string, expiresTimestamp: number, signature: string): boolean {
     const expectedSignature = this.generateSignature(storagePath, expiresTimestamp);
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expectedSignature)
+      );
+    } catch {
+      return false;
+    }
   }
 
   /**
-   * Read file contents (for serving via signed URL)
+   * Read file contents from database
    */
   async readFile(storagePath: string): Promise<Buffer> {
-    const fullPath = path.join(STORAGE_ROOT, storagePath);
-    return fs.readFile(fullPath);
+    const document = await prisma.document.findFirst({
+      where: {
+        storagePath,
+        deletedAt: null,
+      },
+      select: {
+        fileContent: true,
+      },
+    });
+
+    if (!document || !document.fileContent) {
+      throw new Error('Document not found or content missing');
+    }
+
+    return Buffer.from(document.fileContent);
   }
 
   // ============================================================================
@@ -247,26 +248,6 @@ export class MonitraxStorageProvider implements IStorageProvider {
       .createHmac('sha256', SIGNED_URL_SECRET)
       .update(data)
       .digest('hex');
-  }
-
-  private getContentType(ext: string): string {
-    const contentTypes: Record<string, string> = {
-      '.pdf': 'application/pdf',
-      '.doc': 'application/msword',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.xls': 'application/vnd.ms-excel',
-      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      '.csv': 'text/csv',
-      '.txt': 'text/plain',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.webp': 'image/webp',
-      '.heic': 'image/heic',
-      '.heif': 'image/heif',
-    };
-    return contentTypes[ext] || 'application/octet-stream';
   }
 }
 

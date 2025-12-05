@@ -1978,6 +1978,7 @@ model Document {
   storageProvider   StorageProviderType @default(MONITRAX)
   storagePath       String              // Key/path in storage
   storageUrl        String?             // External URL for Google Drive etc.
+  fileContent       Bytes?              // File content for database storage (Monitrax provider)
 
   // User metadata
   description       String?

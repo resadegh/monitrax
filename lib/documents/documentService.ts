@@ -103,7 +103,7 @@ export async function uploadDocument(
       return { success: false, error: uploadResult.error };
     }
 
-    // Create document record
+    // Create document record with file content for database storage
     const document = await prisma.document.create({
       data: {
         userId,
@@ -117,6 +117,8 @@ export async function uploadDocument(
         storageUrl: uploadResult.storageUrl || null,
         description: request.description || null,
         tags: request.tags || [],
+        // Store file content in database for Monitrax storage provider
+        fileContent: uploadResult.fileBuffer || fileBuffer,
       },
     });
 

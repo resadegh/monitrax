@@ -119,6 +119,7 @@ export interface StorageUploadResult {
   storagePath: string;
   storageUrl?: string;
   error?: string;
+  fileBuffer?: Buffer; // For database storage - the file content to store
 }
 
 export interface StorageDeleteResult {
