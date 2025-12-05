@@ -540,7 +540,10 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       const totalPropertyValue = properties.reduce((sum: number, p: any) => sum + p.currentValue, 0);
       const totalAccountBalances = accounts.reduce((sum: number, a: any) => sum + a.currentBalance, 0);
-      const totalInvestmentValue = holdings.reduce((sum: number, h: any) => sum + (h.units * h.averagePrice), 0);
+      // Investment value = holdings value + cash balances in investment accounts
+      const holdingsValue = holdings.reduce((sum: number, h: any) => sum + (h.units * h.averagePrice), 0);
+      const investmentCashBalances = investmentAccounts.reduce((sum: number, a: any) => sum + (a.cashBalance || 0), 0);
+      const totalInvestmentValue = holdingsValue + investmentCashBalances;
       // Phase 21: Include active assets in total value
       const activeAssets = assets.filter((a: any) => a.status === 'ACTIVE');
       const totalAssetValue = activeAssets.reduce((sum: number, a: any) => sum + a.currentValue, 0);
@@ -644,7 +647,9 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       const investmentSnapshots = investmentAccounts.map((acc: any) => {
         const accountHoldings = holdings.filter((h: any) => h.investmentAccountId === acc.id);
-        const accountValue = accountHoldings.reduce((sum: number, h: any) => sum + (h.units * h.averagePrice), 0);
+        const holdingsTotal = accountHoldings.reduce((sum: number, h: any) => sum + (h.units * h.averagePrice), 0);
+        const cashBalance = acc.cashBalance || 0;
+        const accountValue = holdingsTotal + cashBalance;
         const grdcsLinks = extractInvestmentAccountLinks(acc);
 
         return {
@@ -654,6 +659,11 @@ export async function GET(request: NextRequest) {
           platform: acc.platform,
           currency: acc.currency,
           totalValue: accountValue,
+          holdingsValue: holdingsTotal,
+          cashBalance: cashBalance,
+          openingBalance: acc.openingBalance || 0,
+          totalDeposits: acc.totalDeposits || 0,
+          totalWithdrawals: acc.totalWithdrawals || 0,
           holdings: accountHoldings.map((h: any) => {
             const holdingLinks = extractHoldingLinks(h);
             return {
