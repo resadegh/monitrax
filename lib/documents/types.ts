@@ -27,6 +27,7 @@ export enum StorageProviderType {
   GOOGLE_DRIVE = 'GOOGLE_DRIVE',
   ICLOUD = 'ICLOUD',
   ONEDRIVE = 'ONEDRIVE',
+  LOCAL_DRIVE = 'LOCAL_DRIVE',
 }
 
 export enum LinkedEntityType {
@@ -119,6 +120,7 @@ export interface StorageUploadResult {
   storagePath: string;
   storageUrl?: string;
   error?: string;
+  fileBuffer?: Buffer; // For database storage - the file content to store
 }
 
 export interface StorageDeleteResult {

@@ -2,7 +2,7 @@
 
 /**
  * Phase 19.1: Cloud Storage Settings Page
- * Connect and manage cloud storage providers (Google Drive, iCloud, OneDrive)
+ * Connect and manage cloud storage providers (Google Drive, iCloud, OneDrive, Local Drive)
  */
 
 import { useState, useEffect } from 'react';
@@ -36,6 +36,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { LocalDriveStorageCard } from '@/components/documents/LocalDriveStorageCard';
 
 // Storage provider configuration
 interface StorageProvider {
@@ -288,7 +289,10 @@ export default function StorageSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Storage Providers List */}
+      {/* Local Drive Storage - Save directly to computer */}
+      <LocalDriveStorageCard />
+
+      {/* Cloud Storage Providers List */}
       <div className="space-y-4">
         {providers.map((provider) => (
           <Card key={provider.id}>
@@ -460,6 +464,16 @@ export default function StorageSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Organize by Financial Year (Australian)</Label>
+              <p className="text-sm text-muted-foreground">
+                Group documents by Australian FY (July - June) for easy tax preparation
+              </p>
+            </div>
+            <Switch defaultChecked />
+          </div>
+          <Separator />
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label>Auto-organize by entity</Label>
