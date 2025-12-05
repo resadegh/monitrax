@@ -8,7 +8,7 @@ const updateAccountSchema = z.object({
   type: z.enum(['BROKERAGE', 'SUPERS', 'FUND', 'TRUST', 'ETF_CRYPTO']).optional(),
   platform: z.string().nullable().optional(),
   currency: z.string().optional(),
-  // Phase 23: Opening and balance tracking
+  // Phase 23: Balance tracking fields
   openingDate: z.string().datetime().nullable().optional(),
   openingBalance: z.number().min(0).optional(),
   cashBalance: z.number().optional(),
@@ -72,7 +72,11 @@ export async function PUT(
         return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
       }
 
-      const { name, type, platform, currency, openingDate, openingBalance, cashBalance, totalDeposits, totalWithdrawals, costBasisMethod } = validation.data;
+      const {
+        name, type, platform, currency,
+        openingDate, openingBalance, cashBalance,
+        totalDeposits, totalWithdrawals, costBasisMethod
+      } = validation.data;
 
       const account = await prisma.investmentAccount.update({
         where: { id },
