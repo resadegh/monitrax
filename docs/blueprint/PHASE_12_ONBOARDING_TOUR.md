@@ -1,9 +1,10 @@
 # Phase 12 — Onboarding Tour & Initial Setup Wizard
 
 **Monitrax Blueprint — Phase 12**
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Planned
 **Created:** 2025-12-05
+**Updated:** 2025-12-05
 
 ---
 
@@ -96,6 +97,196 @@ User sees a **Welcome overlay** with:
 | 7 | Income/Expenses nav | Income & Expenses | "Categorise your inflows and outflows for cashflow and strategy recommendations." |
 | 8 | Strategy nav (if enabled) | Strategy Engine | "Use the Strategy Engine to explore scenarios and optimisations based on your data." |
 | 9 | Central overlay | Wrap-up | "You're ready to go. Next, we recommend completing the quick setup so Monitrax can calculate your net worth and forecasts." CTA: "Start setup wizard" |
+
+### 3.5 Animated Navigation Guide
+
+A smooth, animated walkthrough that highlights each section of the app with visual effects.
+
+#### 3.5.1 Animation Style
+
+| Effect | Description |
+|--------|-------------|
+| **Spotlight Effect** | Dark overlay (opacity 0.7) with a "cut-out" circle/rectangle around the highlighted element |
+| **Pulse Animation** | Subtle pulse/glow effect on the highlighted element (CSS keyframe animation) |
+| **Pointer Arrow** | Animated arrow or hand icon pointing to the highlighted area |
+| **Slide-in Tooltip** | Description card slides in from the side with smooth easing |
+| **Progress Dots** | Small dots at bottom showing current step (like carousel indicators) |
+
+#### 3.5.2 Animation Specifications
+
+```css
+/* Spotlight overlay */
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  transition: all 0.3s ease-out;
+}
+
+/* Highlight cutout */
+.tour-spotlight {
+  position: absolute;
+  border-radius: 8px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pulse animation */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+  50% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+}
+
+.tour-highlight {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Tooltip slide-in */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tour-tooltip {
+  animation: slide-in 0.3s ease-out forwards;
+}
+```
+
+#### 3.5.3 Tooltip Card Design
+
+```
+┌─────────────────────────────────────────┐
+│  ● ● ● ○ ○ ○ ○ ○ ○  (progress dots)    │
+├─────────────────────────────────────────┤
+│                                         │
+│  📊  Dashboard Overview                 │
+│                                         │
+│  Your dashboard shows your net worth,   │
+│  cashflow, and key portfolio metrics    │
+│  at a glance.                           │
+│                                         │
+│  ┌─────────┐  ┌─────────────────────┐  │
+│  │  Skip   │  │  Next →  (3 of 9)   │  │
+│  └─────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+#### 3.5.4 Interactive Elements
+
+| Element | Interaction |
+|---------|-------------|
+| **Next Button** | Advances to next step with smooth transition |
+| **Back Button** | Returns to previous step (hidden on step 1) |
+| **Skip Button** | Exits tour, marks as seen, shows "You can restart from Settings" |
+| **Progress Dots** | Clickable to jump to specific step |
+| **Highlighted Area** | Clickable to interact (optional, some steps allow it) |
+| **Keyboard** | Arrow keys for next/back, Escape to close |
+
+#### 3.5.5 Transition Between Steps
+
+1. **Fade out** current tooltip (0.2s)
+2. **Animate** spotlight to new position (0.4s with easing)
+3. **Fade in** new tooltip (0.3s)
+4. **Start** pulse animation on new element
+
+#### 3.5.6 Mobile Adaptations
+
+| Desktop | Mobile |
+|---------|--------|
+| Tooltip beside element | Tooltip at bottom of screen |
+| Horizontal arrow | Vertical arrow pointing up |
+| Full sidebar visible | Hamburger menu opens first |
+| Click to advance | Tap or swipe to advance |
+
+#### 3.5.7 Component Structure
+
+```tsx
+interface TourStep {
+  id: string;
+  target: string;           // CSS selector or element ref
+  title: string;
+  description: string;
+  icon?: React.ReactNode;   // Optional icon for the step
+  placement?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+  spotlightPadding?: number;
+  allowInteraction?: boolean;  // Allow clicking the highlighted element
+  onEnter?: () => void;        // Callback when entering step
+  onExit?: () => void;         // Callback when leaving step
+}
+
+interface GuidedTourProps {
+  steps: TourStep[];
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+  startStep?: number;
+}
+```
+
+#### 3.5.8 Step-by-Step Animation Flow
+
+**Step 1: Welcome Modal (Center)**
+```
+┌──────────────────────────────────────────────────────┐
+│                                                      │
+│           🎉  Welcome to Monitrax!                   │
+│                                                      │
+│   Monitrax helps you see your entire wealth,         │
+│   forecast your future cashflow, and optimise        │
+│   your debt & investments.                           │
+│                                                      │
+│   Let's take a quick tour of the app.                │
+│                                                      │
+│          ┌──────────────────────┐                    │
+│          │   Let's Go! →        │                    │
+│          └──────────────────────┘                    │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
+
+**Step 2: Sidebar Navigation (Left spotlight)**
+```
+┌─────────────┐░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+│ ✨ SIDEBAR  │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+│  (glowing)  │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+│             │░░░  ┌─────────────────────────────┐ ░░░
+│ Dashboard   │░░░  │  📍 Navigation Sidebar      │ ░░░
+│ Properties  │░░░  │                             │ ░░░
+│ Loans       │░░░  │  Here are your main         │ ░░░
+│ Investments │░░░  │  sections...                │ ░░░
+│ Income      │░░░  │                             │ ░░░
+│ Expenses    │░░░  │  [Back]  [Next → 2/9]       │ ░░░
+│             │░░░  └─────────────────────────────┘ ░░░
+└─────────────┘░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+```
+
+**Step 3: Dashboard Cards (Top spotlight)**
+```
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+░░░ ┌──────────────────────────────────────────────┐ ░░
+░░░ │ ✨ Net Worth  │  Cashflow  │  Properties ✨   │ ░░
+░░░ │   $1.2M      │   $5,200   │   3 owned       │ ░░
+░░░ └──────────────────────────────────────────────┘ ░░
+░░░                       │                          ░░░
+░░░                       ▼                          ░░░
+░░░              ┌─────────────────┐                 ░░░
+░░░              │ Dashboard shows │                 ░░░
+░░░              │ your key metrics│                 ░░░
+░░░              │ at a glance...  │                 ░░░
+░░░              └─────────────────┘                 ░░░
+░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+```
+
+#### 3.5.9 Sound Effects (Optional)
+
+| Event | Sound |
+|-------|-------|
+| Step transition | Soft "whoosh" or click |
+| Tour complete | Success chime |
+| Skip tour | None |
+
+*Note: Sounds should be disabled by default, with option to enable in settings.*
 
 ---
 
@@ -365,17 +556,47 @@ Track counts of:
 
 ## 10. Files to Create
 
+### 10.1 Components
+
 | File | Purpose |
 |------|---------|
 | `components/onboarding/OnboardingWelcomeModal.tsx` | Initial welcome overlay |
 | `components/onboarding/InitialSetupWizard.tsx` | Multi-step wizard container |
-| `components/onboarding/GuidedTour.tsx` | Tour overlay component |
-| `components/onboarding/OnboardingProgressBadge.tsx` | Reminder badge |
+| `components/onboarding/GuidedTour.tsx` | Main tour overlay with animations |
+| `components/onboarding/TourSpotlight.tsx` | Animated spotlight/cutout effect |
+| `components/onboarding/TourTooltip.tsx` | Animated tooltip card |
+| `components/onboarding/TourProgressDots.tsx` | Step indicator dots |
+| `components/onboarding/OnboardingProgressBadge.tsx` | Reminder badge in header |
 | `components/onboarding/steps/*.tsx` | Individual wizard step components |
-| `hooks/useOnboardingState.ts` | Onboarding state management hook |
-| `hooks/useGuidedTour.ts` | Tour navigation hook |
+
+### 10.2 Hooks
+
+| File | Purpose |
+|------|---------|
+| `hooks/useOnboardingState.ts` | Onboarding state management |
+| `hooks/useGuidedTour.ts` | Tour navigation and step control |
+| `hooks/useTourAnimation.ts` | Animation timing and transitions |
+
+### 10.3 Styles
+
+| File | Purpose |
+|------|---------|
+| `styles/tour-animations.css` | CSS keyframes and tour styles |
+
+### 10.4 API & Pages
+
+| File | Purpose |
+|------|---------|
 | `app/api/onboarding/state/route.ts` | Onboarding state API |
 | `app/onboarding/page.tsx` | Optional dedicated onboarding page |
+
+### 10.5 Configuration
+
+| File | Purpose |
+|------|---------|
+| `lib/onboarding/tourSteps.ts` | Tour step definitions |
+| `lib/onboarding/wizardSteps.ts` | Wizard step definitions |
+| `lib/onboarding/constants.ts` | Animation timings, copy text |
 
 ---
 
@@ -383,6 +604,7 @@ Track counts of:
 
 Phase 12 is complete when:
 
+### Core Functionality
 1. ✅ New users see welcome modal on first dashboard visit
 2. ✅ Users can take a guided tour of key features
 3. ✅ Users can complete setup wizard to enter initial data
@@ -392,6 +614,24 @@ Phase 12 is complete when:
 7. ✅ Analytics events are tracked
 8. ✅ No regressions to existing functionality
 
+### Animation & UX
+9. ✅ Spotlight animation smoothly highlights each section
+10. ✅ Tooltip cards slide in with proper easing
+11. ✅ Progress dots show current step and are clickable
+12. ✅ Transitions between steps are smooth (< 0.5s total)
+13. ✅ Keyboard navigation works (arrow keys, escape)
+14. ✅ Mobile-responsive (tooltip at bottom, swipe support)
+15. ✅ Pulse/glow effect draws attention to highlighted element
+
 ---
 
-*END OF PHASE 12 BLUEPRINT v1.0*
+## 12. Revision History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| v1.0 | 2025-12-05 | Initial blueprint |
+| v1.1 | 2025-12-05 | Added animated navigation guide specifications |
+
+---
+
+*END OF PHASE 12 BLUEPRINT v1.1*
