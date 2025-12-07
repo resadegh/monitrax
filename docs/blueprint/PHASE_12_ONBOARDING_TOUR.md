@@ -1,10 +1,33 @@
 # Phase 12 — Onboarding Tour & Initial Setup Wizard
 
 **Monitrax Blueprint — Phase 12**
-**Version:** 1.1
-**Status:** Planned
+**Version:** 1.2
+**Status:** Implemented
 **Created:** 2025-12-05
-**Updated:** 2025-12-05
+**Updated:** 2025-12-07
+
+## Implementation Progress
+
+| Feature | Status | Date | Notes |
+|---------|--------|------|-------|
+| Schema: User onboarding fields | ✅ Implemented | 2025-12-07 | onboardingCompleted, onboardingProfileType, onboardingStep |
+| Schema: OnboardingProfileType enum | ✅ Implemented | 2025-12-07 | HOMEOWNER, INVESTOR, MIXED, STARTER |
+| Schema: UserPreference model | ✅ Implemented | 2025-12-07 | Tour state, dismissals, preferences |
+| API: /api/onboarding/state | ✅ Implemented | 2025-12-07 | GET/POST for onboarding state |
+| API: /api/onboarding/complete | ✅ Implemented | 2025-12-07 | Mark onboarding complete |
+| Hook: useOnboardingState | ✅ Implemented | 2025-12-07 | Full state management |
+| Hook: useGuidedTour | ✅ Implemented | 2025-12-07 | Tour navigation & animations |
+| Component: OnboardingWelcomeModal | ✅ Implemented | 2025-12-07 | Initial welcome overlay |
+| Component: GuidedTour | ✅ Implemented | 2025-12-07 | 9-step animated tour |
+| Component: TourSpotlight | ✅ Implemented | 2025-12-07 | Spotlight with pulse animation |
+| Component: TourTooltip | ✅ Implemented | 2025-12-07 | Animated tooltip cards |
+| Component: OnboardingProgressBadge | ✅ Implemented | 2025-12-07 | Resume progress indicator |
+| Component: InitialSetupWizard | ✅ Implemented | 2025-12-07 | 8-step data entry wizard |
+| Wizard Steps: All 8 steps | ✅ Implemented | 2025-12-07 | Profile, Country, Account, Property, Investment, Income, Expense, Review |
+| CSS: tour-animations.css | ✅ Implemented | 2025-12-07 | Spotlight, pulse, slide-in animations |
+| Integration: DashboardLayout | ✅ Implemented | 2025-12-07 | Auto-show for new users |
+
+---
 
 ---
 
@@ -528,29 +551,29 @@ Track counts of:
 
 ## 9. Implementation Roadmap
 
-### Phase 12.1 — Foundation
-- [ ] Add onboarding fields to User model
-- [ ] Create UserPreference model
-- [ ] Implement onboarding state API endpoints
-- [ ] Create `useOnboardingState` hook
+### Phase 12.1 — Foundation ✅ COMPLETE
+- [x] Add onboarding fields to User model
+- [x] Create UserPreference model
+- [x] Implement onboarding state API endpoints
+- [x] Create `useOnboardingState` hook
 
-### Phase 12.2 — Guided Tour
-- [ ] Build `GuidedTour` component with step navigation
-- [ ] Implement tour step definitions
-- [ ] Add tour trigger points (welcome modal, dashboard help)
-- [ ] Add progress tracking
+### Phase 12.2 — Guided Tour ✅ COMPLETE
+- [x] Build `GuidedTour` component with step navigation
+- [x] Implement tour step definitions
+- [x] Add tour trigger points (welcome modal, dashboard help)
+- [x] Add progress tracking
 
-### Phase 12.3 — Setup Wizard
-- [ ] Build `InitialSetupWizard` component
-- [ ] Implement each wizard step as sub-component
-- [ ] Wire up to existing create APIs
-- [ ] Add progress persistence
+### Phase 12.3 — Setup Wizard ✅ COMPLETE
+- [x] Build `InitialSetupWizard` component
+- [x] Implement each wizard step as sub-component
+- [x] Wire up to existing create APIs
+- [x] Add progress persistence
 
-### Phase 12.4 — Integration
-- [ ] Create `OnboardingWelcomeModal`
-- [ ] Add `OnboardingProgressBadge` to header
-- [ ] Connect all components
-- [ ] Test full flow end-to-end
+### Phase 12.4 — Integration ✅ COMPLETE
+- [x] Create `OnboardingWelcomeModal`
+- [x] Add `OnboardingProgressBadge` to header
+- [x] Connect all components
+- [x] Test full flow end-to-end
 
 ---
 
@@ -631,7 +654,40 @@ Phase 12 is complete when:
 |---------|------|---------|
 | v1.0 | 2025-12-05 | Initial blueprint |
 | v1.1 | 2025-12-05 | Added animated navigation guide specifications |
+| v1.2 | 2025-12-07 | Full implementation complete |
 
 ---
 
-*END OF PHASE 12 BLUEPRINT v1.1*
+## 13. Database Migration Required
+
+After deployment, run the following migrations:
+
+```sql
+-- Add onboarding fields to users table
+ALTER TABLE "users" ADD COLUMN "onboardingCompleted" BOOLEAN DEFAULT false;
+ALTER TABLE "users" ADD COLUMN "onboardingProfileType" TEXT;
+ALTER TABLE "users" ADD COLUMN "onboardingStartedAt" TIMESTAMP;
+ALTER TABLE "users" ADD COLUMN "onboardingCompletedAt" TIMESTAMP;
+ALTER TABLE "users" ADD COLUMN "onboardingStep" INTEGER DEFAULT 0;
+
+-- Create user_preferences table
+CREATE TABLE "user_preferences" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "userId" TEXT NOT NULL UNIQUE,
+  "hasSeenGuidedTour" BOOLEAN DEFAULT false,
+  "tourSkippedAt" TIMESTAMP,
+  "tourCompletedAt" TIMESTAMP,
+  "dismissedOnboardingBadge" BOOLEAN DEFAULT false,
+  "dismissedWelcomeModal" BOOLEAN DEFAULT false,
+  "preferredCurrency" TEXT DEFAULT 'AUD',
+  "preferredDateFormat" TEXT DEFAULT 'DD/MM/YYYY',
+  "country" TEXT DEFAULT 'AU',
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW(),
+  FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE
+);
+```
+
+---
+
+*END OF PHASE 12 BLUEPRINT v1.2*

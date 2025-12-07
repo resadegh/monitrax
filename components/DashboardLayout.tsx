@@ -3,7 +3,7 @@
 import { useAuth } from '@/lib/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   LayoutDashboard,
   Home,
@@ -42,6 +42,13 @@ import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
 import { FinancialHealthMiniWidget } from '@/components/health/FinancialHealthMiniWidget';
 import AiChatButton from '@/components/AiChatButton';
 import { UniversalSearch, useUniversalSearch } from '@/components/UniversalSearch';
+import { useOnboardingState } from '@/hooks/useOnboardingState';
+import {
+  OnboardingWelcomeModal,
+  GuidedTour,
+  InitialSetupWizard,
+  OnboardingProgressBadge,
+} from '@/components/onboarding';
 
 interface NavItem {
   name: string;
@@ -122,6 +129,69 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Universal search
   const { open: searchOpen, setOpen: setSearchOpen } = useUniversalSearch();
+
+  // Phase 12: Onboarding state
+  const {
+    state: onboardingState,
+    shouldShowWelcome,
+    shouldShowOnboardingBadge,
+    dismissWelcomeModal,
+    dismissOnboardingBadge,
+    startOnboarding,
+    markTourCompleted,
+    markTourSkipped,
+    completeOnboarding,
+  } = useOnboardingState();
+
+  // Onboarding modal states
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
+
+  // Show welcome modal for new users (only on dashboard page)
+  useEffect(() => {
+    if (shouldShowWelcome && pathname === '/dashboard') {
+      setShowWelcomeModal(true);
+    }
+  }, [shouldShowWelcome, pathname]);
+
+  // Onboarding handlers
+  const handleStartSetup = useCallback(async () => {
+    setShowWelcomeModal(false);
+    await startOnboarding();
+    setShowWizard(true);
+  }, [startOnboarding]);
+
+  const handleTakeTour = useCallback(() => {
+    setShowWelcomeModal(false);
+    setShowTour(true);
+  }, []);
+
+  const handleSkipOnboarding = useCallback(async () => {
+    setShowWelcomeModal(false);
+    await dismissWelcomeModal();
+  }, [dismissWelcomeModal]);
+
+  const handleTourComplete = useCallback(async () => {
+    await markTourCompleted();
+    setShowTour(false);
+    // After tour, suggest starting the wizard
+    setShowWizard(true);
+  }, [markTourCompleted]);
+
+  const handleTourSkip = useCallback(async () => {
+    await markTourSkipped();
+    setShowTour(false);
+  }, [markTourSkipped]);
+
+  const handleWizardComplete = useCallback(async () => {
+    await completeOnboarding();
+    setShowWizard(false);
+  }, [completeOnboarding]);
+
+  const handleResumeOnboarding = useCallback(() => {
+    setShowWizard(true);
+  }, []);
 
   // Collapsible nav groups state - auto-expand group containing current path
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
@@ -255,6 +325,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar - Responsive */}
       <aside
+        data-tour="sidebar"
         className={`
           fixed inset-y-0 left-0 z-50 w-64 border-r border-border
           bg-card shadow-lg flex flex-col
@@ -429,6 +500,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Add top padding on mobile for the header */}
         <main className="min-h-screen p-3 pt-16 sm:p-4 sm:pt-20 lg:p-8 lg:pt-8">
           <div className="mx-auto max-w-7xl">
+            {/* Phase 12: Onboarding Progress Badge */}
+            {shouldShowOnboardingBadge && onboardingState && (
+              <div className="mb-4" data-tour="dashboard-stats">
+                <OnboardingProgressBadge
+                  isVisible={true}
+                  currentStep={onboardingState.currentStep}
+                  totalSteps={8}
+                  onResume={handleResumeOnboarding}
+                  onDismiss={dismissOnboardingBadge}
+                />
+              </div>
+            )}
             {children}
           </div>
         </main>
@@ -439,6 +522,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Universal Search */}
       <UniversalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
+      {/* Phase 12: Onboarding Components */}
+      {/* Welcome Modal for new users */}
+      <OnboardingWelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={handleSkipOnboarding}
+        onStartSetup={handleStartSetup}
+        onTakeTour={handleTakeTour}
+        onSkip={handleSkipOnboarding}
+      />
+
+      {/* Guided Tour */}
+      <GuidedTour
+        isOpen={showTour}
+        onClose={() => setShowTour(false)}
+        onComplete={handleTourComplete}
+        onSkip={handleTourSkip}
+      />
+
+      {/* Initial Setup Wizard */}
+      <InitialSetupWizard
+        isOpen={showWizard}
+        onClose={() => setShowWizard(false)}
+        onComplete={handleWizardComplete}
+        initialStep={onboardingState?.currentStep || 0}
+      />
     </div>
   );
 }
