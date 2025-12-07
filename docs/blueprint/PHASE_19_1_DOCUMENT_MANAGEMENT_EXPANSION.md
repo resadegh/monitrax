@@ -1,8 +1,8 @@
 # PHASE 19.1 — DOCUMENT MANAGEMENT SYSTEM (DMS) EXPANSION
 Monitrax Blueprint — Phase 19.1
-Version: v1.7
-Status: Partially Implemented
-Last Updated: 2025-12-01
+Version: v1.8
+Status: Mostly Implemented
+Last Updated: 2025-12-05
 
 ## Implementation Progress
 
@@ -12,6 +12,10 @@ Last Updated: 2025-12-01
 | Documents tab in expense detail | ✅ Implemented | 2025-12-01 | View/download attached receipts |
 | Quick upload while viewing | ✅ Implemented | 2025-12-01 | Add receipts from detail view |
 | Cloud storage OAuth | ✅ Fixed | 2025-12-01 | Commit `086fbe0` - redirect_uri fix |
+| Database storage (persistent) | ✅ Implemented | 2025-12-05 | Commit `c5d1d6d` - replaces filesystem |
+| Local drive storage | ✅ Implemented | 2025-12-05 | Commit `41763ad` - File System Access API |
+| Australian FY folder structure | ✅ Implemented | 2025-12-05 | July-June organization |
+| Expense category → folder mapping | ✅ Implemented | 2025-12-05 | Commit `28c262c` |
 | Other entity form uploads | 📋 Pending | - | Properties, Loans, Income |
 | Expiration tracking | 📋 Pending | - | Insurance, rates renewal |
 | Repair/renovation tracking | 📋 Pending | - | New entity type |
