@@ -5,6 +5,18 @@ import { withAuth } from '@/lib/middleware';
 // Profile types - will use Prisma enum after client regeneration
 const VALID_PROFILE_TYPES = ['HOMEOWNER', 'INVESTOR', 'MIXED', 'STARTER'] as const;
 
+// Default preferences for new users or when DB fields don't exist
+const DEFAULT_PREFERENCES = {
+  hasSeenGuidedTour: false,
+  tourSkippedAt: null,
+  tourCompletedAt: null,
+  dismissedOnboardingBadge: false,
+  dismissedWelcomeModal: false,
+  preferredCurrency: 'AUD',
+  preferredDateFormat: 'DD/MM/YYYY',
+  country: 'AU',
+};
+
 /**
  * GET /api/onboarding/state
  * Get onboarding state for the current user
@@ -13,34 +25,6 @@ export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq) => {
     try {
       const userId = authReq.user!.userId;
-
-      // Get user with onboarding fields
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          onboardingCompleted: true,
-          onboardingProfileType: true,
-          onboardingStartedAt: true,
-          onboardingCompletedAt: true,
-          onboardingStep: true,
-          userPreference: {
-            select: {
-              hasSeenGuidedTour: true,
-              tourSkippedAt: true,
-              tourCompletedAt: true,
-              dismissedOnboardingBadge: true,
-              dismissedWelcomeModal: true,
-              preferredCurrency: true,
-              preferredDateFormat: true,
-              country: true,
-            },
-          },
-        },
-      });
-
-      if (!user) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
-      }
 
       // Check if user has any data (to determine if they should see onboarding)
       const [propertyCount, accountCount, incomeCount, expenseCount] = await Promise.all([
@@ -52,24 +36,74 @@ export async function GET(request: NextRequest) {
 
       const hasData = propertyCount > 0 || accountCount > 0 || incomeCount > 0 || expenseCount > 0;
 
+      // Try to get user with onboarding fields (may fail if migration not run)
+      let onboardingData = {
+        onboardingCompleted: false,
+        onboardingProfileType: null as string | null,
+        onboardingStartedAt: null as Date | null,
+        onboardingCompletedAt: null as Date | null,
+        onboardingStep: 0,
+        userPreference: null as typeof DEFAULT_PREFERENCES | null,
+      };
+
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            onboardingCompleted: true,
+            onboardingProfileType: true,
+            onboardingStartedAt: true,
+            onboardingCompletedAt: true,
+            onboardingStep: true,
+            userPreference: {
+              select: {
+                hasSeenGuidedTour: true,
+                tourSkippedAt: true,
+                tourCompletedAt: true,
+                dismissedOnboardingBadge: true,
+                dismissedWelcomeModal: true,
+                preferredCurrency: true,
+                preferredDateFormat: true,
+                country: true,
+              },
+            },
+          },
+        });
+
+        if (user) {
+          onboardingData = {
+            onboardingCompleted: user.onboardingCompleted ?? false,
+            onboardingProfileType: user.onboardingProfileType ?? null,
+            onboardingStartedAt: user.onboardingStartedAt ?? null,
+            onboardingCompletedAt: user.onboardingCompletedAt ?? null,
+            onboardingStep: user.onboardingStep ?? 0,
+            userPreference: user.userPreference ?? null,
+          };
+        }
+      } catch (dbError) {
+        // If onboarding fields don't exist yet (migration not run), use defaults
+        console.warn('Onboarding fields not available (migration may not be run):', dbError);
+
+        // Check if user exists at all
+        const userExists = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true },
+        });
+
+        if (!userExists) {
+          return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+      }
+
       return NextResponse.json({
         success: true,
         data: {
-          onboardingCompleted: user.onboardingCompleted,
-          onboardingProfileType: user.onboardingProfileType,
-          onboardingStartedAt: user.onboardingStartedAt,
-          onboardingCompletedAt: user.onboardingCompletedAt,
-          currentStep: user.onboardingStep,
-          preferences: user.userPreference || {
-            hasSeenGuidedTour: false,
-            tourSkippedAt: null,
-            tourCompletedAt: null,
-            dismissedOnboardingBadge: false,
-            dismissedWelcomeModal: false,
-            preferredCurrency: 'AUD',
-            preferredDateFormat: 'DD/MM/YYYY',
-            country: 'AU',
-          },
+          onboardingCompleted: onboardingData.onboardingCompleted,
+          onboardingProfileType: onboardingData.onboardingProfileType,
+          onboardingStartedAt: onboardingData.onboardingStartedAt,
+          onboardingCompletedAt: onboardingData.onboardingCompletedAt,
+          currentStep: onboardingData.onboardingStep,
+          preferences: onboardingData.userPreference || DEFAULT_PREFERENCES,
           hasExistingData: hasData,
           dataSummary: {
             properties: propertyCount,
@@ -110,6 +144,7 @@ export async function POST(request: NextRequest) {
         hasSeenGuidedTour,
         tourSkipped,
         tourCompleted,
+        resetTour, // New: allows users to restart the tour from settings
         // UI state updates
         dismissOnboardingBadge,
         dismissWelcomeModal,
@@ -134,12 +169,16 @@ export async function POST(request: NextRequest) {
         userUpdate.onboardingStartedAt = new Date();
       }
 
-      // Update user if there are changes
+      // Try to update user onboarding fields (may fail if migration not run)
       if (Object.keys(userUpdate).length > 0) {
-        await prisma.user.update({
-          where: { id: userId },
-          data: userUpdate,
-        });
+        try {
+          await prisma.user.update({
+            where: { id: userId },
+            data: userUpdate,
+          });
+        } catch (dbError) {
+          console.warn('Could not update user onboarding fields (migration may not be run):', dbError);
+        }
       }
 
       // Build preference update data
@@ -154,6 +193,13 @@ export async function POST(request: NextRequest) {
       if (tourCompleted) {
         prefUpdate.tourCompletedAt = new Date();
         prefUpdate.hasSeenGuidedTour = true;
+      }
+      // Reset tour - clear all tour completion flags
+      if (resetTour) {
+        prefUpdate.hasSeenGuidedTour = false;
+        prefUpdate.tourSkippedAt = null;
+        prefUpdate.tourCompletedAt = null;
+        prefUpdate.dismissedWelcomeModal = false;
       }
       if (typeof dismissOnboardingBadge === 'boolean') {
         prefUpdate.dismissedOnboardingBadge = dismissOnboardingBadge;
@@ -171,16 +217,20 @@ export async function POST(request: NextRequest) {
         prefUpdate.country = country;
       }
 
-      // Upsert user preference if there are changes
+      // Try to upsert user preference (may fail if migration not run)
       if (Object.keys(prefUpdate).length > 0) {
-        await prisma.userPreference.upsert({
-          where: { userId },
-          create: {
-            userId,
-            ...prefUpdate,
-          },
-          update: prefUpdate,
-        });
+        try {
+          await prisma.userPreference.upsert({
+            where: { userId },
+            create: {
+              userId,
+              ...prefUpdate,
+            },
+            update: prefUpdate,
+          });
+        } catch (dbError) {
+          console.warn('Could not update user preferences (migration may not be run):', dbError);
+        }
       }
 
       return NextResponse.json({
