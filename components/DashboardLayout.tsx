@@ -54,18 +54,20 @@ interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  tourId?: string; // For guided tour targeting
 }
 
 interface NavGroup {
   name: string;
   icon: React.ComponentType<{ className?: string }>;
   items: NavItem[];
+  tourId?: string; // For guided tour targeting
 }
 
 // Standalone navigation items (always visible)
 const standaloneItems: NavItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Personal CFO', href: '/dashboard/cfo', icon: Brain },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, tourId: 'nav-dashboard' },
+  { name: 'Personal CFO', href: '/dashboard/cfo', icon: Brain, tourId: 'nav-cfo' },
 ];
 
 // Grouped navigation items (collapsible)
@@ -73,41 +75,45 @@ const navGroups: NavGroup[] = [
   {
     name: 'Portfolio',
     icon: Briefcase,
+    tourId: 'nav-portfolio',
     items: [
-      { name: 'Properties', href: '/dashboard/properties', icon: Home },
-      { name: 'Loans', href: '/dashboard/loans', icon: Banknote },
-      { name: 'Accounts', href: '/dashboard/accounts', icon: Wallet },
-      { name: 'Investments', href: '/dashboard/investments/accounts', icon: PieChart },
-      { name: 'Assets', href: '/dashboard/assets', icon: Car },
+      { name: 'Properties', href: '/dashboard/properties', icon: Home, tourId: 'nav-properties' },
+      { name: 'Loans', href: '/dashboard/loans', icon: Banknote, tourId: 'nav-loans' },
+      { name: 'Accounts', href: '/dashboard/accounts', icon: Wallet, tourId: 'nav-accounts' },
+      { name: 'Investments', href: '/dashboard/investments/accounts', icon: PieChart, tourId: 'nav-investments' },
+      { name: 'Assets', href: '/dashboard/assets', icon: Car, tourId: 'nav-assets' },
     ],
   },
   {
     name: 'Transactions',
     icon: CreditCard,
+    tourId: 'nav-transactions',
     items: [
-      { name: 'Income', href: '/dashboard/income', icon: TrendingUp },
-      { name: 'Expenses', href: '/dashboard/expenses', icon: TrendingDown },
-      { name: 'Transactions', href: '/transactions', icon: ArrowLeftRight },
-      { name: 'Recurring', href: '/recurring', icon: RefreshCw },
+      { name: 'Income', href: '/dashboard/income', icon: TrendingUp, tourId: 'nav-income' },
+      { name: 'Expenses', href: '/dashboard/expenses', icon: TrendingDown, tourId: 'nav-expenses' },
+      { name: 'Transactions', href: '/transactions', icon: ArrowLeftRight, tourId: 'nav-all-transactions' },
+      { name: 'Recurring', href: '/recurring', icon: RefreshCw, tourId: 'nav-recurring' },
     ],
   },
   {
     name: 'Planning',
     icon: Lightbulb,
+    tourId: 'nav-planning',
     items: [
-      { name: 'Cashflow', href: '/cashflow', icon: LineChart },
-      { name: 'Financial Health', href: '/health', icon: Activity },
-      { name: 'Strategy', href: '/strategy', icon: Lightbulb },
-      { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator },
-      { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt },
+      { name: 'Cashflow', href: '/cashflow', icon: LineChart, tourId: 'nav-cashflow' },
+      { name: 'Financial Health', href: '/health', icon: Activity, tourId: 'nav-health' },
+      { name: 'Strategy', href: '/strategy', icon: Lightbulb, tourId: 'nav-strategy' },
+      { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator, tourId: 'nav-debt' },
+      { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt, tourId: 'nav-tax' },
     ],
   },
   {
     name: 'Reporting',
     icon: BarChart3,
+    tourId: 'nav-reporting',
     items: [
-      { name: 'Reports', href: '/dashboard/reports', icon: FileText },
-      { name: 'Documents', href: '/dashboard/documents', icon: FolderOpen },
+      { name: 'Reports', href: '/dashboard/reports', icon: FileText, tourId: 'nav-reports' },
+      { name: 'Documents', href: '/dashboard/documents', icon: FolderOpen, tourId: 'nav-documents' },
     ],
   },
 ];
@@ -117,6 +123,7 @@ const settingsNavItem: NavItem = {
   name: 'Settings',
   href: '/dashboard/settings',
   icon: Settings,
+  tourId: 'nav-settings',
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -396,6 +403,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={item.tourId}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-sm'
@@ -417,7 +425,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
 
             return (
-              <div key={group.name} className="space-y-1">
+              <div key={group.name} className="space-y-1" data-tour={group.tourId}>
                 {/* Group header */}
                 <button
                   onClick={() => toggleGroup(group.name)}
@@ -452,6 +460,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <Link
                           key={item.href}
                           href={item.href}
+                          data-tour={item.tourId}
                           className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
                             isActive
                               ? 'bg-primary text-primary-foreground shadow-sm'
@@ -480,6 +489,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Settings Link */}
           <Link
             href={settingsNavItem.href}
+            data-tour={settingsNavItem.tourId}
             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
               pathname.startsWith(settingsNavItem.href)
                 ? 'bg-primary text-primary-foreground shadow-sm'

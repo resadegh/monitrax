@@ -246,28 +246,69 @@ export function useGuidedTour({
   };
 }
 
-// Default tour steps for Monitrax (simplified to only target elements that exist)
+// Default tour steps for Monitrax - comprehensive tour of all sections
 export const defaultTourSteps: TourStep[] = [
   {
     id: 'welcome',
     target: '',
     title: 'Welcome to Monitrax!',
-    description: 'Monitrax helps you see your entire wealth, forecast your future cashflow, and optimise your debt & investments. Let\'s take a quick tour.',
+    description: 'Monitrax helps you see your entire wealth, forecast your future cashflow, and optimise your debt & investments. Let\'s take a quick tour of the main features.',
     placement: 'center',
   },
   {
-    id: 'sidebar',
-    target: '[data-tour="sidebar"]',
-    title: 'Navigation Sidebar',
-    description: 'Your main navigation is here. You\'ll find Portfolio (properties, loans, accounts), Transactions (income, expenses), Planning (cashflow, strategy), and Reports.',
+    id: 'dashboard',
+    target: '[data-tour="nav-dashboard"]',
+    title: 'Dashboard',
+    description: 'Your financial command center. See your total net worth, monthly cashflow, and key portfolio metrics at a glance.',
     placement: 'right',
-    spotlightPadding: 0,
+  },
+  {
+    id: 'cfo',
+    target: '[data-tour="nav-cfo"]',
+    title: 'Personal CFO',
+    description: 'Your AI-powered financial advisor. Ask questions about your finances, get insights, and receive personalised recommendations.',
+    placement: 'right',
+  },
+  {
+    id: 'portfolio',
+    target: '[data-tour="nav-portfolio"]',
+    title: 'Portfolio',
+    description: 'Track all your assets here: Properties (with valuations & rental income), Loans (balances & interest rates), Bank Accounts, Investment Accounts, and Other Assets like vehicles.',
+    placement: 'right',
+  },
+  {
+    id: 'transactions',
+    target: '[data-tour="nav-transactions"]',
+    title: 'Transactions',
+    description: 'Manage your money flow: Income sources (salary, rent, dividends), Expenses by category, All Transactions history, and Recurring payments.',
+    placement: 'right',
+  },
+  {
+    id: 'planning',
+    target: '[data-tour="nav-planning"]',
+    title: 'Planning',
+    description: 'Plan your financial future: Cashflow forecasts, Financial Health score, AI Strategy recommendations, Debt Payoff Planner, and Tax Calculator.',
+    placement: 'right',
+  },
+  {
+    id: 'reporting',
+    target: '[data-tour="nav-reporting"]',
+    title: 'Reporting',
+    description: 'Generate detailed reports and store important documents. Export data for your accountant or financial planner.',
+    placement: 'right',
+  },
+  {
+    id: 'settings',
+    target: '[data-tour="nav-settings"]',
+    title: 'Settings',
+    description: 'Customise your experience: Update your profile, manage preferences, set up notifications, and configure your account.',
+    placement: 'right',
   },
   {
     id: 'wrap-up',
     target: '',
-    title: 'You\'re Ready to Go!',
-    description: 'That\'s the basics! We recommend completing the quick setup wizard next so Monitrax can calculate your net worth and forecasts.',
+    title: 'You\'re All Set!',
+    description: 'Great! You now know your way around Monitrax. Next, complete the quick setup wizard to add your accounts and start tracking your wealth.',
     placement: 'center',
   },
 ];
