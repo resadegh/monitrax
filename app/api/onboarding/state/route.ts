@@ -8,8 +8,8 @@ const VALID_PROFILE_TYPES = ['HOMEOWNER', 'INVESTOR', 'MIXED', 'STARTER'] as con
 // Default preferences for new users or when DB fields don't exist
 const DEFAULT_PREFERENCES = {
   hasSeenGuidedTour: false,
-  tourSkippedAt: null,
-  tourCompletedAt: null,
+  tourSkippedAt: null as Date | null,
+  tourCompletedAt: null as Date | null,
   dismissedOnboardingBadge: false,
   dismissedWelcomeModal: false,
   preferredCurrency: 'AUD',
