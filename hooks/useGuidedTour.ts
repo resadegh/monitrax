@@ -246,7 +246,7 @@ export function useGuidedTour({
   };
 }
 
-// Default tour steps for Monitrax
+// Default tour steps for Monitrax (simplified to only target elements that exist)
 export const defaultTourSteps: TourStep[] = [
   {
     id: 'welcome',
@@ -259,57 +259,15 @@ export const defaultTourSteps: TourStep[] = [
     id: 'sidebar',
     target: '[data-tour="sidebar"]',
     title: 'Navigation Sidebar',
-    description: 'Here are your main sections: Dashboard, Properties, Loans, Investments, Income & Expenses, Tax & Strategy.',
+    description: 'Your main navigation is here. You\'ll find Portfolio (properties, loans, accounts), Transactions (income, expenses), Planning (cashflow, strategy), and Reports.',
     placement: 'right',
     spotlightPadding: 0,
   },
   {
-    id: 'dashboard',
-    target: '[data-tour="dashboard-stats"]',
-    title: 'Dashboard Overview',
-    description: 'Your dashboard shows your net worth, cashflow, and key portfolio metrics at a glance.',
-    placement: 'bottom',
-  },
-  {
-    id: 'properties',
-    target: '[data-tour="nav-properties"]',
-    title: 'Properties',
-    description: 'Track each property\'s value, loans, rental income, expenses and depreciation.',
-    placement: 'right',
-  },
-  {
-    id: 'loans',
-    target: '[data-tour="nav-loans"]',
-    title: 'Loans',
-    description: 'See your loan balances, interest rates, offset accounts and repayment details.',
-    placement: 'right',
-  },
-  {
-    id: 'investments',
-    target: '[data-tour="nav-investments"]',
-    title: 'Investments',
-    description: 'Monitor investment accounts, holdings and transactions, and link them to income like dividends.',
-    placement: 'right',
-  },
-  {
-    id: 'income-expenses',
-    target: '[data-tour="nav-transactions"]',
-    title: 'Income & Expenses',
-    description: 'Categorise your inflows and outflows for cashflow and strategy recommendations.',
-    placement: 'right',
-  },
-  {
-    id: 'strategy',
-    target: '[data-tour="nav-strategy"]',
-    title: 'Strategy Engine',
-    description: 'Use the Strategy Engine to explore scenarios and optimisations based on your data.',
-    placement: 'right',
-  },
-  {
     id: 'wrap-up',
     target: '',
-    title: 'You\'re Ready!',
-    description: 'You\'re all set to explore Monitrax. Next, we recommend completing the quick setup so Monitrax can calculate your net worth and forecasts.',
+    title: 'You\'re Ready to Go!',
+    description: 'That\'s the basics! We recommend completing the quick setup wizard next so Monitrax can calculate your net worth and forecasts.',
     placement: 'center',
   },
 ];

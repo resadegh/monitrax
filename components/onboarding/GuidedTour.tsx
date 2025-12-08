@@ -2,19 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Sparkles, LayoutDashboard, Home, CreditCard, TrendingUp, Receipt, Brain, PartyPopper } from 'lucide-react';
+import { Sparkles, LayoutDashboard, PartyPopper } from 'lucide-react';
 import { useGuidedTour, TourStep } from '@/hooks/useGuidedTour';
 import { TourSpotlight } from './TourSpotlight';
 import { TourTooltip } from './TourTooltip';
 import '@/styles/tour-animations.css';
 
 // Default Monitrax tour steps with icons
+// Simplified to only target elements that exist
 const monitraxTourSteps: TourStep[] = [
   {
     id: 'welcome',
     target: '',
     title: 'Welcome to Monitrax!',
-    description: 'Monitrax helps you see your entire wealth, forecast your future cashflow, and optimise your debt & investments. Let\'s take a quick tour of the app.',
+    description: 'Monitrax helps you see your entire wealth, forecast your future cashflow, and optimise your debt & investments. Let\'s take a quick tour.',
     placement: 'center',
     icon: <Sparkles className="w-9 h-9 text-blue-500" />,
   },
@@ -22,64 +23,16 @@ const monitraxTourSteps: TourStep[] = [
     id: 'sidebar',
     target: '[data-tour="sidebar"]',
     title: 'Navigation Sidebar',
-    description: 'Here are your main sections: Dashboard, Properties, Loans, Investments, Income & Expenses, Tax & Strategy. Click any item to explore.',
+    description: 'Your main navigation is here. You\'ll find Portfolio (properties, loans, accounts), Transactions (income, expenses), Planning (cashflow, strategy), and Reports.',
     placement: 'right',
     spotlightPadding: 0,
     icon: <LayoutDashboard className="w-6 h-6 text-blue-500" />,
   },
   {
-    id: 'dashboard',
-    target: '[data-tour="dashboard-stats"]',
-    title: 'Dashboard Overview',
-    description: 'Your dashboard shows your net worth, cashflow, and key portfolio metrics at a glance. This is your financial command center.',
-    placement: 'bottom',
-    icon: <LayoutDashboard className="w-6 h-6 text-blue-500" />,
-  },
-  {
-    id: 'properties',
-    target: '[data-tour="nav-properties"]',
-    title: 'Properties',
-    description: 'Track each property\'s value, loans, rental income, expenses and depreciation. Perfect for property investors.',
-    placement: 'right',
-    icon: <Home className="w-6 h-6 text-blue-500" />,
-  },
-  {
-    id: 'loans',
-    target: '[data-tour="nav-loans"]',
-    title: 'Loans',
-    description: 'See your loan balances, interest rates, offset accounts and repayment details. Optimise your debt strategy here.',
-    placement: 'right',
-    icon: <CreditCard className="w-6 h-6 text-blue-500" />,
-  },
-  {
-    id: 'investments',
-    target: '[data-tour="nav-investments"]',
-    title: 'Investments',
-    description: 'Monitor investment accounts, holdings and transactions. Track dividends and link them to your income.',
-    placement: 'right',
-    icon: <TrendingUp className="w-6 h-6 text-blue-500" />,
-  },
-  {
-    id: 'income-expenses',
-    target: '[data-tour="nav-transactions"]',
-    title: 'Income & Expenses',
-    description: 'Categorise your inflows and outflows. This powers your cashflow forecasts and strategy recommendations.',
-    placement: 'right',
-    icon: <Receipt className="w-6 h-6 text-blue-500" />,
-  },
-  {
-    id: 'strategy',
-    target: '[data-tour="nav-strategy"]',
-    title: 'Strategy Engine',
-    description: 'Use our AI-powered Strategy Engine to explore scenarios and get personalised optimisation recommendations.',
-    placement: 'right',
-    icon: <Brain className="w-6 h-6 text-blue-500" />,
-  },
-  {
     id: 'wrap-up',
     target: '',
     title: 'You\'re Ready to Go!',
-    description: 'Excellent! You now know your way around Monitrax. Next, we recommend completing the quick setup wizard so we can calculate your net worth and forecasts.',
+    description: 'That\'s the basics! We recommend completing the quick setup wizard next so Monitrax can calculate your net worth and forecasts.',
     placement: 'center',
     icon: <PartyPopper className="w-9 h-9 text-blue-500" />,
   },
