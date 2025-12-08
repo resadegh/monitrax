@@ -52,6 +52,7 @@ interface UseOnboardingStateReturn {
   dismissOnboardingBadge: () => Promise<void>;
   markTourCompleted: () => Promise<void>;
   markTourSkipped: () => Promise<void>;
+  resetTour: () => Promise<void>; // Restart the tour from settings
   refetch: () => Promise<void>;
 }
 
@@ -154,11 +155,18 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     await updateState({ tourSkipped: true });
   }, [updateState]);
 
+  // Reset tour - allows users to restart the tour from settings
+  const resetTour = useCallback(async () => {
+    await updateState({ resetTour: true });
+  }, [updateState]);
+
   // Computed properties
+  // Show welcome modal for ALL users who haven't dismissed it or completed tour
+  // This includes both new and existing users - everyone should see onboarding once
   const shouldShowWelcome = state
-    ? !state.onboardingCompleted &&
-      !state.preferences.dismissedWelcomeModal &&
-      !state.hasExistingData
+    ? !state.preferences.dismissedWelcomeModal &&
+      !state.preferences.hasSeenGuidedTour &&
+      !state.preferences.tourSkippedAt
     : false;
 
   const shouldShowTour = state
@@ -187,6 +195,7 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     dismissOnboardingBadge,
     markTourCompleted,
     markTourSkipped,
+    resetTour,
     refetch: fetchState,
   };
 }
