@@ -155,11 +155,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [shouldShowWelcome, pathname]);
 
-  // Onboarding handlers
+  // Onboarding handlers - all wrapped in try-catch to work even if DB not migrated
   const handleStartSetup = useCallback(async () => {
     setShowWelcomeModal(false);
-    await startOnboarding();
     setShowWizard(true);
+    try {
+      await startOnboarding();
+    } catch (e) {
+      console.warn('Could not save onboarding state:', e);
+    }
   }, [startOnboarding]);
 
   const handleTakeTour = useCallback(() => {
@@ -169,24 +173,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleSkipOnboarding = useCallback(async () => {
     setShowWelcomeModal(false);
-    await dismissWelcomeModal();
+    try {
+      await dismissWelcomeModal();
+    } catch (e) {
+      console.warn('Could not save dismiss state:', e);
+    }
   }, [dismissWelcomeModal]);
 
   const handleTourComplete = useCallback(async () => {
-    await markTourCompleted();
     setShowTour(false);
-    // After tour, suggest starting the wizard
     setShowWizard(true);
+    try {
+      await markTourCompleted();
+    } catch (e) {
+      console.warn('Could not save tour completion:', e);
+    }
   }, [markTourCompleted]);
 
   const handleTourSkip = useCallback(async () => {
-    await markTourSkipped();
     setShowTour(false);
+    try {
+      await markTourSkipped();
+    } catch (e) {
+      console.warn('Could not save tour skip:', e);
+    }
   }, [markTourSkipped]);
 
   const handleWizardComplete = useCallback(async () => {
-    await completeOnboarding();
     setShowWizard(false);
+    try {
+      await completeOnboarding();
+    } catch (e) {
+      console.warn('Could not save wizard completion:', e);
+    }
   }, [completeOnboarding]);
 
   const handleResumeOnboarding = useCallback(() => {
