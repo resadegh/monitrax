@@ -50,23 +50,30 @@ export function TourTooltip({
 
     const gap = 16; // Gap between tooltip and target
     const style: React.CSSProperties = {};
+    const tooltipWidth = 360; // Approximate tooltip width
+    const tooltipHeight = 200; // Approximate tooltip height
 
     switch (placement) {
       case 'right':
-        style.top = targetPosition.top;
+        style.top = Math.max(gap, Math.min(targetPosition.top, window.innerHeight - tooltipHeight - gap));
         style.left = targetPosition.left + targetPosition.width + gap;
         break;
       case 'left':
-        style.top = targetPosition.top;
+        style.top = Math.max(gap, Math.min(targetPosition.top, window.innerHeight - tooltipHeight - gap));
         style.right = window.innerWidth - targetPosition.left + gap;
         break;
       case 'bottom':
         style.top = targetPosition.top + targetPosition.height + gap;
-        style.left = targetPosition.left;
+        style.left = Math.max(gap, Math.min(targetPosition.left, window.innerWidth - tooltipWidth - gap));
         break;
       case 'top':
+        // Position above the target, but to the right of sidebar for visibility
         style.bottom = window.innerHeight - targetPosition.top + gap;
-        style.left = targetPosition.left;
+        style.left = targetPosition.left + targetPosition.width + gap;
+        // Keep within viewport
+        if (style.left + tooltipWidth > window.innerWidth) {
+          style.left = window.innerWidth - tooltipWidth - gap;
+        }
         break;
     }
 

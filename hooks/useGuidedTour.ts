@@ -301,8 +301,8 @@ export const defaultTourSteps: TourStep[] = [
     id: 'settings',
     target: '[data-tour="nav-settings"]',
     title: 'Settings',
-    description: 'Customise your experience: Update your profile, manage preferences, set up notifications, and configure your account.',
-    placement: 'right',
+    description: 'Customise your experience: Update profile, preferences, and notifications.',
+    placement: 'top',
   },
   {
     id: 'wrap-up',
