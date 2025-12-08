@@ -163,11 +163,13 @@ export function useOnboardingState(): UseOnboardingStateReturn {
   // Computed properties
   // Show welcome modal for ALL users who haven't dismissed it or completed tour
   // This includes both new and existing users - everyone should see onboarding once
-  const shouldShowWelcome = state
-    ? !state.preferences.dismissedWelcomeModal &&
+  // IMPORTANT: If state is null but loading is complete (API error), still show welcome
+  const shouldShowWelcome = !isLoading && (
+    state === null || // API failed - show welcome anyway
+    (!state.preferences.dismissedWelcomeModal &&
       !state.preferences.hasSeenGuidedTour &&
-      !state.preferences.tourSkippedAt
-    : false;
+      !state.preferences.tourSkippedAt)
+  );
 
   const shouldShowTour = state
     ? !state.preferences.hasSeenGuidedTour &&
