@@ -23,26 +23,22 @@ export function TourSpotlight({
 }: TourSpotlightProps) {
   if (!isVisible) return null;
 
-  // If no position, just show the overlay (for center modals)
+  // If no position, just show the overlay (for center modals like welcome/wrap-up)
   if (!position) {
     return <div className="tour-overlay" />;
   }
 
+  // When we have a position, the spotlight's box-shadow creates the dark overlay
+  // So we DON'T render a separate overlay - just the spotlight cutout
   return (
-    <>
-      {/* Dark overlay */}
-      <div className="tour-overlay" style={{ pointerEvents: 'none' }} />
-
-      {/* Spotlight cutout */}
-      <div
-        className={`tour-spotlight ${pulse ? 'pulse' : ''} ${allowInteraction ? 'allow-interaction' : ''}`}
-        style={{
-          top: position.top,
-          left: position.left,
-          width: position.width,
-          height: position.height,
-        }}
-      />
-    </>
+    <div
+      className={`tour-spotlight ${pulse ? 'pulse' : ''} ${allowInteraction ? 'allow-interaction' : ''}`}
+      style={{
+        top: position.top,
+        left: position.left,
+        width: position.width,
+        height: position.height,
+      }}
+    />
   );
 }
