@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Sparkles, ArrowRight, Play, X, TrendingUp, PiggyBank, BarChart3 } from 'lucide-react';
 
@@ -19,7 +19,14 @@ export function OnboardingWelcomeModal({
   onTakeTour,
   onSkip,
 }: OnboardingWelcomeModalProps) {
-  if (!isOpen) return null;
+  // Handle SSR - only render portal after mounting on client
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !isOpen) return null;
 
   const valueProps = [
     {

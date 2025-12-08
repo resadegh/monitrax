@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
 import { useOnboardingState, OnboardingProfileType } from '@/hooks/useOnboardingState';
@@ -121,6 +121,13 @@ export function InitialSetupWizard({
   onComplete,
   initialStep = 0,
 }: InitialSetupWizardProps) {
+  // Handle SSR - only render portal after mounting on client
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [wizardData, setWizardData] = useState<WizardData>({
@@ -182,7 +189,8 @@ export function InitialSetupWizard({
     }
   }, [currentStepConfig, handleNext]);
 
-  if (!isOpen) return null;
+  // Don't render if not mounted (SSR) or not open
+  if (!mounted || !isOpen) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">

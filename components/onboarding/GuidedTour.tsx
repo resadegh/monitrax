@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Sparkles, LayoutDashboard, Home, CreditCard, TrendingUp, Receipt, Brain, PartyPopper } from 'lucide-react';
 import { useGuidedTour, TourStep } from '@/hooks/useGuidedTour';
@@ -102,6 +102,13 @@ export function GuidedTour({
   onSkip,
   startStep = 0,
 }: GuidedTourProps) {
+  // Handle SSR - only render portal after mounting on client
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const {
     currentStepIndex,
     currentStep,
@@ -127,8 +134,8 @@ export function GuidedTour({
     autoStart: isOpen,
   });
 
-  // Don't render if not open or no current step
-  if (!isOpen || !currentStep) return null;
+  // Don't render if not mounted (SSR), not open, or no current step
+  if (!mounted || !isOpen || !currentStep) return null;
 
   // Use portal to render at document body level
   return createPortal(
