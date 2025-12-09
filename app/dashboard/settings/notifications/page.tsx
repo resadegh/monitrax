@@ -5,13 +5,14 @@
  * Manage email and push notification preferences
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Bell, Mail, Smartphone, AlertTriangle, TrendingUp, Calendar, Save, Loader2 } from 'lucide-react';
+import { Bell, Mail, Smartphone, AlertTriangle, TrendingUp, Calendar, Save, Loader2, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface NotificationSettings {
   email: {
@@ -21,16 +22,18 @@ interface NotificationSettings {
     productUpdates: boolean;
   };
   push: {
-    enabled: boolean;
     cashflowAlerts: boolean;
     spendingAlerts: boolean;
-    goalProgress: boolean;
+    goalUpdates: boolean;
     billReminders: boolean;
   };
 }
 
 export default function NotificationSettingsPage() {
+  const { token } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [settings, setSettings] = useState<NotificationSettings>({
     email: {
       weeklyDigest: true,
@@ -39,23 +42,72 @@ export default function NotificationSettingsPage() {
       productUpdates: false,
     },
     push: {
-      enabled: true,
-      cashflowAlerts: true,
-      spendingAlerts: true,
-      goalProgress: false,
-      billReminders: true,
+      cashflowAlerts: false,
+      spendingAlerts: false,
+      goalUpdates: false,
+      billReminders: false,
     },
   });
 
+  // Load notification settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/settings/notifications', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setSettings({
+            email: {
+              weeklyDigest: data.email?.weeklyDigest ?? true,
+              monthlyReport: data.email?.monthlyReport ?? true,
+              alerts: data.email?.alerts ?? true,
+              productUpdates: data.email?.productUpdates ?? false,
+            },
+            push: {
+              cashflowAlerts: data.push?.cashflowAlerts ?? false,
+              spendingAlerts: data.push?.spendingAlerts ?? false,
+              goalUpdates: data.push?.goalUpdates ?? false,
+              billReminders: data.push?.billReminders ?? false,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load notification settings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [token]);
+
   const handleSave = async () => {
     setIsSaving(true);
+    setSuccessMessage(null);
     try {
-      await fetch('/api/settings/notifications', {
+      const response = await fetch('/api/settings/notifications', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(settings),
       });
-      alert('Notification settings saved');
+
+      if (response.ok) {
+        setSuccessMessage('Notification settings saved');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        throw new Error('Failed to save');
+      }
     } catch (error) {
       console.error('Failed to save settings:', error);
       alert('Failed to save settings');
@@ -63,6 +115,14 @@ export default function NotificationSettingsPage() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -148,106 +208,96 @@ export default function NotificationSettingsPage() {
             Push Notifications
           </CardTitle>
           <CardDescription>
-            Real-time alerts on your device
+            Real-time alerts on your device (Coming Soon)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Push notifications will be available in a future update.
+          </p>
+          <Separator />
           <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Enable Push Notifications</Label>
-              <p className="text-sm text-muted-foreground">
-                Receive notifications in your browser or mobile app
-              </p>
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <div className="space-y-0.5">
+                <Label>Cashflow Alerts</Label>
+                <p className="text-sm text-muted-foreground">
+                  Low balance and shortfall warnings
+                </p>
+              </div>
             </div>
             <Switch
-              checked={settings.push.enabled}
+              checked={settings.push.cashflowAlerts}
               onCheckedChange={(checked) =>
-                setSettings({ ...settings, push: { ...settings.push, enabled: checked } })
+                setSettings({ ...settings, push: { ...settings.push, cashflowAlerts: checked } })
               }
             />
           </div>
           <Separator />
-
-          {settings.push.enabled && (
-            <>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <div className="space-y-0.5">
-                    <Label>Cashflow Alerts</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Low balance and shortfall warnings
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.push.cashflowAlerts}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, push: { ...settings.push, cashflowAlerts: checked } })
-                  }
-                />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-4 w-4 text-red-500" />
+              <div className="space-y-0.5">
+                <Label>Spending Alerts</Label>
+                <p className="text-sm text-muted-foreground">
+                  Overspending and unusual transactions
+                </p>
               </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="h-4 w-4 text-red-500" />
-                  <div className="space-y-0.5">
-                    <Label>Spending Alerts</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Overspending and unusual transactions
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.push.spendingAlerts}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, push: { ...settings.push, spendingAlerts: checked } })
-                  }
-                />
+            </div>
+            <Switch
+              checked={settings.push.spendingAlerts}
+              onCheckedChange={(checked) =>
+                setSettings({ ...settings, push: { ...settings.push, spendingAlerts: checked } })
+              }
+            />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Bell className="h-4 w-4 text-green-500" />
+              <div className="space-y-0.5">
+                <Label>Goal Updates</Label>
+                <p className="text-sm text-muted-foreground">
+                  Updates on your savings goals
+                </p>
               </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Bell className="h-4 w-4 text-green-500" />
-                  <div className="space-y-0.5">
-                    <Label>Goal Progress</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Updates on your savings goals
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.push.goalProgress}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, push: { ...settings.push, goalProgress: checked } })
-                  }
-                />
+            </div>
+            <Switch
+              checked={settings.push.goalUpdates}
+              onCheckedChange={(checked) =>
+                setSettings({ ...settings, push: { ...settings.push, goalUpdates: checked } })
+              }
+            />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-4 w-4 text-blue-500" />
+              <div className="space-y-0.5">
+                <Label>Bill Reminders</Label>
+                <p className="text-sm text-muted-foreground">
+                  Upcoming bills and payments
+                </p>
               </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-4 w-4 text-blue-500" />
-                  <div className="space-y-0.5">
-                    <Label>Bill Reminders</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Upcoming bills and payments
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={settings.push.billReminders}
-                  onCheckedChange={(checked) =>
-                    setSettings({ ...settings, push: { ...settings.push, billReminders: checked } })
-                  }
-                />
-              </div>
-            </>
-          )}
+            </div>
+            <Switch
+              checked={settings.push.billReminders}
+              onCheckedChange={(checked) =>
+                setSettings({ ...settings, push: { ...settings.push, billReminders: checked } })
+              }
+            />
+          </div>
         </CardContent>
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-4">
+        {successMessage && (
+          <div className="flex items-center gap-2 text-green-600">
+            <CheckCircle className="h-4 w-4" />
+            <span className="text-sm">{successMessage}</span>
+          </div>
+        )}
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? (
             <>

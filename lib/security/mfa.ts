@@ -752,3 +752,459 @@ export async function verifyWebAuthnCredential(
     return { success: false, error: 'Failed to register passkey' };
   }
 }
+
+// ============================================
+// SMS MFA FUNCTIONS
+// ============================================
+
+export interface SMSSetupResult {
+  id: string;
+  type: 'SMS';
+  phoneNumber: string;
+  backupCodes: string[];
+}
+
+/**
+ * Generate a 6-digit SMS verification code
+ */
+export function generateSMSCode(): string {
+  return crypto.randomInt(100000, 999999).toString();
+}
+
+/**
+ * Normalize phone number to E.164 format
+ */
+function normalizePhoneNumber(phone: string): string {
+  // Remove all non-digit characters except +
+  let normalized = phone.replace(/[^\d+]/g, '');
+
+  // If starts with 0 (Australian local), convert to +61
+  if (normalized.startsWith('0')) {
+    normalized = '+61' + normalized.slice(1);
+  }
+
+  // If doesn't start with +, assume it needs +
+  if (!normalized.startsWith('+')) {
+    normalized = '+' + normalized;
+  }
+
+  return normalized;
+}
+
+/**
+ * Validate phone number format
+ */
+function isValidPhoneNumber(phone: string): boolean {
+  const normalized = normalizePhoneNumber(phone);
+  // Basic E.164 validation: + followed by 10-15 digits
+  return /^\+\d{10,15}$/.test(normalized);
+}
+
+/**
+ * Send SMS via Twilio
+ */
+async function sendSMSViaTwilio(
+  phoneNumber: string,
+  message: string
+): Promise<{ success: boolean; error?: string }> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+
+  if (!accountSid || !authToken || !fromNumber) {
+    // In development, log the code instead of sending SMS
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`\n📱 SMS to ${phoneNumber}: ${message}\n`);
+      return { success: true };
+    }
+    return { success: false, error: 'SMS service not configured' };
+  }
+
+  try {
+    // Dynamic import to avoid issues if twilio is not installed
+    const twilio = await import('twilio');
+    const client = twilio.default(accountSid, authToken);
+
+    await client.messages.create({
+      body: message,
+      from: fromNumber,
+      to: normalizePhoneNumber(phoneNumber),
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('[SMS] Twilio error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to send SMS',
+    };
+  }
+}
+
+/**
+ * Setup SMS MFA for a user
+ */
+export async function setupSMSMFA(
+  userId: string,
+  phoneNumber: string
+): Promise<SMSSetupResult & { code?: string }> {
+  if (!isValidPhoneNumber(phoneNumber)) {
+    throw new Error('Invalid phone number format');
+  }
+
+  const normalizedPhone = normalizePhoneNumber(phoneNumber);
+  const code = generateSMSCode();
+  const backupCodes = generateBackupCodes();
+  const hashedBackupCodes = backupCodes.map(hashBackupCode);
+
+  // Check if user already has an SMS MFA method
+  const existingMethod = await prisma.mFAMethod.findFirst({
+    where: {
+      userId,
+      type: 'SMS',
+    },
+  });
+
+  let mfaMethod;
+
+  if (existingMethod) {
+    // Update existing method
+    mfaMethod = await prisma.mFAMethod.update({
+      where: { id: existingMethod.id },
+      data: {
+        phoneNumber: normalizedPhone,
+        secret: crypto.createHash('sha256').update(code).digest('hex'), // Store hashed code temporarily
+        backupCodes: hashedBackupCodes,
+        isEnabled: false,
+      },
+    });
+  } else {
+    // Create new method
+    mfaMethod = await prisma.mFAMethod.create({
+      data: {
+        userId,
+        type: 'SMS',
+        phoneNumber: normalizedPhone,
+        secret: crypto.createHash('sha256').update(code).digest('hex'),
+        backupCodes: hashedBackupCodes,
+        isEnabled: false,
+        isPrimary: false,
+      },
+    });
+  }
+
+  // Send verification SMS
+  const smsResult = await sendSMSViaTwilio(
+    normalizedPhone,
+    `Your Monitrax verification code is: ${code}. This code expires in 10 minutes.`
+  );
+
+  if (!smsResult.success) {
+    throw new Error(smsResult.error || 'Failed to send verification SMS');
+  }
+
+  await logAuth({
+    userId,
+    action: 'MFA_CHALLENGE',
+    status: 'SUCCESS',
+    metadata: { type: 'sms_setup', phone: `****${normalizedPhone.slice(-4)}` },
+  });
+
+  return {
+    id: mfaMethod.id,
+    type: 'SMS',
+    phoneNumber: normalizedPhone,
+    backupCodes,
+    // Include code in development for testing
+    ...(process.env.NODE_ENV === 'development' ? { code } : {}),
+  };
+}
+
+/**
+ * Verify SMS MFA code during setup
+ */
+export async function verifySMSSetup(
+  userId: string,
+  mfaMethodId: string,
+  code: string,
+  ipAddress?: string
+): Promise<MFAVerificationResult> {
+  const mfaMethod = await prisma.mFAMethod.findFirst({
+    where: {
+      id: mfaMethodId,
+      userId,
+      type: 'SMS',
+      isEnabled: false,
+    },
+  });
+
+  if (!mfaMethod || !mfaMethod.secret) {
+    return { success: false, error: 'MFA setup not found or already enabled' };
+  }
+
+  // Verify the code
+  const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+  if (hashedCode !== mfaMethod.secret) {
+    await logAuth({
+      userId,
+      action: 'MFA_FAILURE',
+      status: 'FAILURE',
+      ipAddress,
+      metadata: { reason: 'invalid_sms_code' },
+    });
+    return { success: false, error: 'Invalid verification code' };
+  }
+
+  // Enable the MFA method
+  await prisma.mFAMethod.update({
+    where: { id: mfaMethodId },
+    data: {
+      isEnabled: true,
+      secret: null, // Clear the temporary code
+      lastUsedAt: new Date(),
+    },
+  });
+
+  // Update user MFA status
+  await prisma.user.update({
+    where: { id: userId },
+    data: { mfaEnabled: true },
+  });
+
+  await logAuth({
+    userId,
+    action: 'MFA_SUCCESS',
+    status: 'SUCCESS',
+    ipAddress,
+    metadata: { type: 'sms_enabled' },
+  });
+
+  return { success: true };
+}
+
+/**
+ * Send SMS MFA code during login
+ */
+export async function sendSMSMFACode(
+  userId: string,
+  ipAddress?: string
+): Promise<{ success: boolean; expiresAt: Date; error?: string }> {
+  const mfaMethod = await prisma.mFAMethod.findFirst({
+    where: {
+      userId,
+      type: 'SMS',
+      isEnabled: true,
+    },
+  });
+
+  if (!mfaMethod || !mfaMethod.phoneNumber) {
+    return { success: false, expiresAt: new Date(), error: 'SMS MFA not configured' };
+  }
+
+  const code = generateSMSCode();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  // Store the code temporarily
+  await prisma.mFAMethod.update({
+    where: { id: mfaMethod.id },
+    data: {
+      secret: crypto.createHash('sha256').update(code).digest('hex'),
+    },
+  });
+
+  // Send SMS
+  const smsResult = await sendSMSViaTwilio(
+    mfaMethod.phoneNumber,
+    `Your Monitrax login code is: ${code}. This code expires in 10 minutes.`
+  );
+
+  if (!smsResult.success) {
+    return { success: false, expiresAt: new Date(), error: smsResult.error };
+  }
+
+  await logAuth({
+    userId,
+    action: 'MFA_CHALLENGE',
+    status: 'SUCCESS',
+    ipAddress,
+    metadata: { type: 'sms_code_sent' },
+  });
+
+  log.info('SMS MFA code sent', {
+    userId,
+    phone: `****${mfaMethod.phoneNumber.slice(-4)}`,
+    expiresAt,
+    code: process.env.NODE_ENV === 'development' ? code : '******',
+  });
+
+  return { success: true, expiresAt };
+}
+
+/**
+ * Verify SMS MFA code during login
+ */
+export async function verifySMSMFA(
+  userId: string,
+  code: string,
+  ipAddress?: string
+): Promise<MFAVerificationResult> {
+  const mfaMethod = await prisma.mFAMethod.findFirst({
+    where: {
+      userId,
+      type: 'SMS',
+      isEnabled: true,
+    },
+  });
+
+  if (!mfaMethod || !mfaMethod.secret) {
+    return { success: false, error: 'SMS MFA not configured or no code pending' };
+  }
+
+  // Check if it's a backup code
+  if (code.includes('-') && verifyBackupCode(code, mfaMethod.backupCodes)) {
+    const hashedCode = hashBackupCode(code);
+    const updatedBackupCodes = mfaMethod.backupCodes.filter((bc: string) => bc !== hashedCode);
+
+    await prisma.mFAMethod.update({
+      where: { id: mfaMethod.id },
+      data: {
+        backupCodes: updatedBackupCodes,
+        secret: null,
+        lastUsedAt: new Date(),
+      },
+    });
+
+    await logAuth({
+      userId,
+      action: 'MFA_SUCCESS',
+      status: 'SUCCESS',
+      ipAddress,
+      metadata: { type: 'sms_backup_code' },
+    });
+
+    return { success: true };
+  }
+
+  // Verify the SMS code
+  const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+  if (hashedCode !== mfaMethod.secret) {
+    await logAuth({
+      userId,
+      action: 'MFA_FAILURE',
+      status: 'FAILURE',
+      ipAddress,
+      metadata: { reason: 'invalid_sms_code' },
+    });
+    return { success: false, error: 'Invalid verification code' };
+  }
+
+  // Clear the code and update last used
+  await prisma.mFAMethod.update({
+    where: { id: mfaMethod.id },
+    data: {
+      secret: null,
+      lastUsedAt: new Date(),
+    },
+  });
+
+  await logAuth({
+    userId,
+    action: 'MFA_SUCCESS',
+    status: 'SUCCESS',
+    ipAddress,
+    metadata: { type: 'sms' },
+  });
+
+  return { success: true };
+}
+
+/**
+ * Resend SMS verification code
+ */
+export async function resendSMSCode(
+  userId: string,
+  mfaMethodId: string
+): Promise<{ success: boolean; error?: string }> {
+  const mfaMethod = await prisma.mFAMethod.findFirst({
+    where: {
+      id: mfaMethodId,
+      userId,
+      type: 'SMS',
+    },
+  });
+
+  if (!mfaMethod || !mfaMethod.phoneNumber) {
+    return { success: false, error: 'SMS MFA not found' };
+  }
+
+  const code = generateSMSCode();
+
+  // Update the code
+  await prisma.mFAMethod.update({
+    where: { id: mfaMethodId },
+    data: {
+      secret: crypto.createHash('sha256').update(code).digest('hex'),
+    },
+  });
+
+  // Send SMS
+  const smsResult = await sendSMSViaTwilio(
+    mfaMethod.phoneNumber,
+    `Your Monitrax verification code is: ${code}. This code expires in 10 minutes.`
+  );
+
+  if (!smsResult.success) {
+    return { success: false, error: smsResult.error };
+  }
+
+  log.info('SMS code resent', {
+    userId,
+    phone: `****${mfaMethod.phoneNumber.slice(-4)}`,
+    code: process.env.NODE_ENV === 'development' ? code : '******',
+  });
+
+  return { success: true };
+}
+
+/**
+ * Disable SMS MFA for a user
+ */
+export async function disableSMSMFA(
+  userId: string,
+  mfaMethodId: string
+): Promise<void> {
+  await prisma.mFAMethod.update({
+    where: {
+      id: mfaMethodId,
+      userId,
+      type: 'SMS',
+    },
+    data: {
+      isEnabled: false,
+      secret: null,
+    },
+  });
+
+  // Check if user has any other enabled MFA methods
+  const otherMethods = await prisma.mFAMethod.count({
+    where: {
+      userId,
+      isEnabled: true,
+      id: { not: mfaMethodId },
+    },
+  });
+
+  if (otherMethods === 0) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { mfaEnabled: false },
+    });
+  }
+
+  await logAuth({
+    userId,
+    action: 'MFA_CHALLENGE',
+    status: 'SUCCESS',
+    metadata: { action: 'sms_mfa_disabled', methodId: mfaMethodId },
+  });
+}

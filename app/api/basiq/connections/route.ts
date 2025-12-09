@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         // Update local database with Basiq connection statuses
         for (const conn of basiqConnections) {
           const existing = localConnections.find(
-            (lc) => lc.basiqConnectionId === conn.id
+            (lc: typeof localConnections[number]) => lc.basiqConnectionId === conn.id
           );
 
           if (existing) {

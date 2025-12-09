@@ -358,6 +358,16 @@ model UserPreference {
   preferredDateFormat     String   @default("DD/MM/YYYY")
   country                 String   @default("AU")
 
+  // Notification preferences (Phase 10)
+  emailWeeklyDigest       Boolean  @default(true)
+  emailMonthlyReport      Boolean  @default(true)
+  emailAlerts             Boolean  @default(true)
+  emailProductUpdates     Boolean  @default(false)
+  pushCashflowAlerts      Boolean  @default(false)
+  pushSpendingAlerts      Boolean  @default(false)
+  pushGoalUpdates         Boolean  @default(false)
+  pushBillReminders       Boolean  @default(false)
+
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 

@@ -572,5 +572,164 @@ For future schema changes involving Basiq fields:
 
 ---
 
-*Document Version: 3.0*
+---
+
+## 8. Settings Section Audit & MFA Enhancement
+
+**Type:** Feature Enhancement / Bug Fix
+**Severity:** High
+**Session ID:** claude/audit-settings-architecture-01FrJLMk1htrKLxFgKPAGjA3
+**Files Created:**
+- `app/api/auth/mfa/sms/setup/route.ts`
+- `app/api/auth/mfa/sms/verify/route.ts`
+- `app/api/auth/mfa/sms/resend/route.ts`
+- `app/api/auth/mfa/sms/disable/route.ts`
+- `app/api/auth/password/change/route.ts`
+- `app/api/settings/status/route.ts`
+- `app/api/settings/appearance/route.ts`
+- `app/api/settings/notifications/route.ts`
+- `app/api/places/autocomplete/route.ts`
+- `app/api/places/details/route.ts`
+- `components/ui/address-autocomplete.tsx`
+
+**Files Modified:**
+- `app/api/auth/mfa/totp/setup/route.ts`
+- `app/dashboard/settings/security-mfa/page.tsx`
+- `app/dashboard/settings/security/page.tsx`
+- `app/dashboard/settings/page.tsx`
+- `app/dashboard/settings/appearance/page.tsx`
+- `app/dashboard/settings/notifications/page.tsx`
+- `app/dashboard/properties/page.tsx`
+- `lib/security/mfa.ts`
+- `prisma/schema.prisma`
+
+### Overview
+
+Complete audit and implementation of the settings section to ensure all fields are functional (not placeholders):
+
+1. **SMS MFA via Twilio** - Full implementation for mobile SMS verification
+2. **TOTP QR Code Fix** - Now displays actual QR code image instead of URL text
+3. **Real API Connections** - All settings pages now load/save from database
+4. **Google Places Autocomplete** - Address search integrated into forms
+
+### 8.1 SMS MFA Implementation (Twilio)
+
+**New Functions in `lib/security/mfa.ts`:**
+
+```typescript
+// SMS MFA Functions
+generateSMSCode(): string                    // 6-digit code generator
+normalizePhoneNumber(phone: string): string  // E.164 format conversion
+isValidPhoneNumber(phone: string): boolean   // Australian phone validation
+sendSMSViaTwilio(to, message): Promise       // Twilio API integration
+setupSMSMFA(userId, phoneNumber): Promise    // Initiate SMS setup
+verifySMSSetup(userId, code): Promise        // Verify during enrollment
+sendSMSMFACode(userId): Promise              // Send code during login
+verifySMSMFA(userId, code): Promise          // Verify during login
+resendSMSCode(userId): Promise               // Resend verification
+disableSMSMFA(userId): Promise               // Remove SMS MFA
+```
+
+**API Endpoints:**
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/mfa/sms/setup` | POST | Start SMS MFA enrollment |
+| `/api/auth/mfa/sms/verify` | POST | Verify code and enable SMS MFA |
+| `/api/auth/mfa/sms/resend` | POST | Resend verification code |
+| `/api/auth/mfa/sms/disable` | DELETE | Disable SMS MFA |
+
+**Environment Variables Required:**
+```bash
+TWILIO_ACCOUNT_SID=ACxxxx
+TWILIO_AUTH_TOKEN=xxxx
+TWILIO_PHONE_NUMBER=+1xxxxxxxxxx
+```
+
+### 8.2 TOTP QR Code Fix
+
+**Problem:** QR code displayed as URL text instead of scannable image.
+
+**Solution:** Generate QR code data URL server-side using `qrcode` package:
+
+```typescript
+// app/api/auth/mfa/totp/setup/route.ts
+import QRCode from 'qrcode';
+
+qrCodeDataUrl = await QRCode.toDataURL(result.qrCodeUrl, {
+  width: 200,
+  margin: 2,
+  color: { dark: '#000000', light: '#ffffff' },
+});
+
+return NextResponse.json({
+  secret: result.secret,
+  qrCodeUrl: result.qrCodeUrl,
+  qrCodeDataUrl,  // Base64 image for <img src="..." />
+  backupCodes: result.backupCodes,
+});
+```
+
+### 8.3 Settings APIs
+
+**Settings Status API** (`/api/settings/status`):
+Returns overview data for settings dashboard:
+- Security status (MFA enabled, methods)
+- Storage status (provider, usage)
+- Notification status
+- Profile completeness
+
+**Appearance API** (`/api/settings/appearance`):
+- GET/PUT for currency, date format, country
+- Validation for supported values
+
+**Notifications API** (`/api/settings/notifications`):
+- GET/PUT for email and push notification preferences
+- 8 individual preference flags
+
+### 8.4 Database Schema Updates
+
+Added to `UserPreference` model:
+
+```prisma
+// Notification Preferences
+emailWeeklyDigest       Boolean  @default(true)
+emailMonthlyReport      Boolean  @default(true)
+emailAlerts             Boolean  @default(true)
+emailProductUpdates     Boolean  @default(false)
+pushCashflowAlerts      Boolean  @default(false)
+pushSpendingAlerts      Boolean  @default(false)
+pushGoalUpdates         Boolean  @default(false)
+pushBillReminders       Boolean  @default(false)
+```
+
+### 8.5 Google Places Address Autocomplete
+
+**Components:**
+- `AddressAutocomplete` - Reusable input with dropdown suggestions
+- Debounced search (300ms)
+- Keyboard navigation support
+- Returns parsed address components
+
+**API Proxy Routes:**
+- `/api/places/autocomplete` - Search for addresses
+- `/api/places/details` - Get full address details
+
+**Environment Variable:**
+```bash
+GOOGLE_PLACES_API_KEY=AIzaxxxx
+```
+
+**Integration:**
+- Properties page address field now uses autocomplete
+
+---
+
+## Related Blueprint Phases
+
+- **Phase 10** — Auth & Security (SMS MFA, TOTP QR fix)
+- **Phase 19.1** — Document Management (Notification settings)
+
+---
+
+*Document Version: 4.0*
 *Updated: 2025-12-09*

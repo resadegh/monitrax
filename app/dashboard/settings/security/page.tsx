@@ -1,22 +1,22 @@
 'use client';
 
 /**
- * Security Settings Page - Phase 05
+ * Security Settings Page - Phase 10
  *
  * User-facing security center for:
  * - Password change
- * - MFA setup
+ * - MFA status and management link
  * - Session management
  * - Connected accounts (OAuth)
- * - Login history
+ * - Account deletion
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -40,81 +40,307 @@ import {
   CheckCircle,
   Clock,
   Globe,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 // =============================================================================
-// MOCK DATA (Replace with API calls)
+// TYPES
 // =============================================================================
 
-const mockSessions = [
-  {
-    id: '1',
-    device: 'Chrome on macOS',
-    location: 'Sydney, Australia',
-    ip: '203.45.xxx.xxx',
-    lastActive: new Date(),
-    isCurrent: true,
-  },
-  {
-    id: '2',
-    device: 'Safari on iPhone',
-    location: 'Melbourne, Australia',
-    ip: '202.12.xxx.xxx',
-    lastActive: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    isCurrent: false,
-  },
-];
+interface Session {
+  id: string;
+  device: string;
+  browser: string;
+  os: string;
+  location: string;
+  ip: string;
+  lastActive: Date;
+  isCurrent: boolean;
+}
 
-const mockConnectedAccounts = [
-  { provider: 'google', email: null, connected: false },
-  { provider: 'apple', email: null, connected: false },
-  { provider: 'microsoft', email: null, connected: false },
-];
+interface OAuthAccount {
+  provider: string;
+  email: string | null;
+  connected: boolean;
+}
+
+interface MFAMethod {
+  id: string;
+  type: 'TOTP' | 'SMS' | 'WEBAUTHN';
+  isEnabled: boolean;
+}
 
 // =============================================================================
 // COMPONENT
 // =============================================================================
 
 export default function SecuritySettingsPage() {
+  const router = useRouter();
+  const { token, user } = useAuth();
+
+  // State
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // MFA State
+  const [mfaMethods, setMfaMethods] = useState<MFAMethod[]>([]);
   const [mfaEnabled, setMfaEnabled] = useState(false);
+
+  // Sessions State
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+
+  // OAuth State
+  const [connectedAccounts, setConnectedAccounts] = useState<OAuthAccount[]>([
+    { provider: 'google', email: null, connected: false },
+    { provider: 'apple', email: null, connected: false },
+    { provider: 'microsoft', email: null, connected: false },
+  ]);
+
+  // Password Change State
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
 
+  // Load MFA methods
+  const loadMFAMethods = async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/auth/mfa/methods', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMfaMethods(data.methods || []);
+        setMfaEnabled(data.methods?.some((m: MFAMethod) => m.isEnabled) || false);
+      }
+    } catch (err) {
+      console.error('Error loading MFA methods:', err);
+    }
+  };
+
+  // Load active sessions
+  const loadSessions = async () => {
+    if (!token) return;
+    setSessionsLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/sessions', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSessions(
+          data.sessions?.map((s: {
+            id: string;
+            deviceName?: string;
+            browser?: string;
+            os?: string;
+            location?: string;
+            ipAddress?: string;
+            lastActivity?: string;
+            isCurrent?: boolean;
+          }) => ({
+            id: s.id,
+            device: s.deviceName || 'Unknown Device',
+            browser: s.browser || 'Unknown',
+            os: s.os || 'Unknown',
+            location: s.location || 'Unknown',
+            ip: s.ipAddress ? `${s.ipAddress.substring(0, 8)}xxx.xxx` : 'Unknown',
+            lastActive: new Date(s.lastActivity || Date.now()),
+            isCurrent: s.isCurrent || false,
+          })) || []
+        );
+      }
+    } catch (err) {
+      console.error('Error loading sessions:', err);
+      // Set default session for current device if API fails
+      setSessions([
+        {
+          id: 'current',
+          device: 'Current Device',
+          browser: 'Unknown',
+          os: 'Unknown',
+          location: 'Unknown',
+          ip: 'Unknown',
+          lastActive: new Date(),
+          isCurrent: true,
+        },
+      ]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  // Load OAuth accounts
+  const loadOAuthAccounts = async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/auth/oauth/accounts', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.accounts) {
+          setConnectedAccounts(data.accounts);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading OAuth accounts:', err);
+    }
+  };
+
+  // Handle password change
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert('New passwords do not match');
+      setError('New passwords do not match');
       return;
     }
-    // TODO: Implement password change API call
-    console.log('Changing password...');
-    setIsChangingPassword(false);
-    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+    if (passwordForm.newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/password/change', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to change password');
+      }
+
+      setSuccessMessage('Password changed successfully');
+      setIsChangingPassword(false);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
+  // Handle session revocation
   const handleRevokeSession = async (sessionId: string) => {
-    // TODO: Implement session revocation API call
-    console.log('Revoking session:', sessionId);
+    if (!token) return;
+
+    try {
+      const response = await fetch(`/api/auth/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        setSuccessMessage('Session revoked successfully');
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    } catch (err) {
+      console.error('Error revoking session:', err);
+      setError('Failed to revoke session');
+    }
   };
 
+  // Handle revoke all sessions
   const handleRevokeAllSessions = async () => {
-    // TODO: Implement revoke all sessions API call
-    console.log('Revoking all sessions...');
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/auth/sessions/revoke-all', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        setSessions((prev) => prev.filter((s) => s.isCurrent));
+        setSuccessMessage('All other sessions have been signed out');
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    } catch (err) {
+      console.error('Error revoking all sessions:', err);
+      setError('Failed to sign out other devices');
+    }
   };
 
-  const handleToggleMfa = async () => {
-    // TODO: Implement MFA toggle API call
-    setMfaEnabled(!mfaEnabled);
-  };
-
+  // Handle OAuth connection
   const handleConnectOAuth = (provider: string) => {
-    // TODO: Redirect to OAuth flow
-    console.log('Connecting:', provider);
+    // Redirect to OAuth flow
+    window.location.href = `/api/auth/oauth/${provider}`;
   };
+
+  // Handle OAuth disconnection
+  const handleDisconnectOAuth = async (provider: string) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(`/api/auth/oauth/${provider}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        setConnectedAccounts((prev) =>
+          prev.map((a) =>
+            a.provider === provider ? { ...a, connected: false, email: null } : a
+          )
+        );
+        setSuccessMessage(`${provider} account disconnected`);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    } catch (err) {
+      console.error('Error disconnecting OAuth:', err);
+      setError(`Failed to disconnect ${provider}`);
+    }
+  };
+
+  // Initial data load
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([loadMFAMethods(), loadSessions(), loadOAuthAccounts()]);
+      setLoading(false);
+    };
+
+    if (token) {
+      loadData();
+    }
+  }, [token]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 max-w-4xl">
@@ -127,6 +353,19 @@ export default function SecuritySettingsPage() {
           Manage your account security, sessions, and authentication methods.
         </p>
       </div>
+
+      {/* Messages */}
+      {error && (
+        <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
+          {error}
+          <button onClick={() => setError(null)} className="float-right">×</button>
+        </div>
+      )}
+      {successMessage && (
+        <div className="mb-6 p-4 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300">
+          {successMessage}
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Password Section */}
@@ -145,7 +384,7 @@ export default function SecuritySettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    Last changed: Never
+                    Password is set
                   </p>
                 </div>
                 <Button onClick={() => setIsChangingPassword(true)}>
@@ -192,7 +431,16 @@ export default function SecuritySettingsPage() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button type="submit">Update Password</Button>
+                  <Button type="submit" disabled={passwordLoading}>
+                    {passwordLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Password'
+                    )}
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
@@ -235,11 +483,14 @@ export default function SecuritySettingsPage() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {mfaEnabled
-                    ? 'Your account is protected with two-factor authentication.'
+                    ? `${mfaMethods.filter((m) => m.isEnabled).length} authentication method(s) configured`
                     : 'Enable 2FA to add an extra layer of security.'}
                 </p>
               </div>
-              <Switch checked={mfaEnabled} onCheckedChange={handleToggleMfa} />
+              <Button onClick={() => router.push('/dashboard/settings/security-mfa')}>
+                {mfaEnabled ? 'Manage 2FA' : 'Enable 2FA'}
+                <ExternalLink className="h-4 w-4 ml-2" />
+              </Button>
             </div>
 
             {!mfaEnabled && (
@@ -264,78 +515,89 @@ export default function SecuritySettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {mockSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
-                  <div className="flex items-center gap-4">
-                    <Monitor className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{session.device}</p>
-                        {session.isCurrent && (
-                          <Badge variant="outline" className="text-xs">
-                            Current
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Globe className="h-3 w-3" />
-                          {session.location}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {session.isCurrent
-                            ? 'Active now'
-                            : `${Math.round(
-                                (Date.now() - session.lastActive.getTime()) / (1000 * 60 * 60)
-                              )}h ago`}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  {!session.isCurrent && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRevokeSession(session.id)}
+            {sessionsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  {sessions.map((session) => (
+                    <div
+                      key={session.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
                     >
-                      <LogOut className="h-4 w-4 mr-1" />
-                      Revoke
-                    </Button>
-                  )}
+                      <div className="flex items-center gap-4">
+                        <Monitor className="h-8 w-8 text-muted-foreground" />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{session.device}</p>
+                            {session.isCurrent && (
+                              <Badge variant="outline" className="text-xs">
+                                Current
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Globe className="h-3 w-3" />
+                              {session.location}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {session.isCurrent
+                                ? 'Active now'
+                                : `${Math.round(
+                                    (Date.now() - session.lastActive.getTime()) / (1000 * 60 * 60)
+                                  )}h ago`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      {!session.isCurrent && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRevokeSession(session.id)}
+                        >
+                          <LogOut className="h-4 w-4 mr-1" />
+                          Revoke
+                        </Button>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            <Separator className="my-4" />
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out All Other Devices
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Sign out all other devices?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will sign you out of all devices except this one. You'll need to sign in
-                    again on those devices.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleRevokeAllSessions}>
-                    Sign Out All
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                {sessions.length > 1 && (
+                  <>
+                    <Separator className="my-4" />
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="w-full">
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Sign Out All Other Devices
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Sign out all other devices?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will sign you out of all devices except this one. You'll need to sign in
+                            again on those devices.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleRevokeAllSessions}>
+                            Sign Out All
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -352,7 +614,7 @@ export default function SecuritySettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockConnectedAccounts.map((account) => (
+              {connectedAccounts.map((account) => (
                 <div
                   key={account.provider}
                   className="flex items-center justify-between p-4 border rounded-lg"
@@ -379,7 +641,11 @@ export default function SecuritySettingsPage() {
                     </div>
                   </div>
                   {account.connected ? (
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDisconnectOAuth(account.provider)}
+                    >
                       Disconnect
                     </Button>
                   ) : (
