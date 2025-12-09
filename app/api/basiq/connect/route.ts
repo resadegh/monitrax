@@ -16,6 +16,44 @@ export async function POST(request: NextRequest) {
     try {
       const userId = req.user!.userId;
 
+      // Get mobile number from request body
+      const body = await request.json().catch(() => ({}));
+      const { mobile } = body;
+
+      // Validate mobile number format (Australian format)
+      if (!mobile) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Mobile number is required for bank connection. Please provide your Australian mobile number.'
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      // Basic Australian mobile validation (+61 or 04)
+      const mobileClean = mobile.replace(/\s/g, '');
+      if (!mobileClean.match(/^(\+61|0)[4-5]\d{8}$/)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Please provide a valid Australian mobile number (e.g., 0412345678 or +61412345678)'
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      // Format mobile to international format for Basiq
+      const formattedMobile = mobileClean.startsWith('+61')
+        ? mobileClean
+        : '+61' + mobileClean.substring(1);
+
       // Get user from database
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -31,9 +69,9 @@ export async function POST(request: NextRequest) {
 
       let basiqUserId = user.basiqUserId;
 
-      // Create Basiq user if not exists
+      // Create or update Basiq user with mobile number
       if (!basiqUserId) {
-        const basiqUser = await getOrCreateBasiqUser(user.email);
+        const basiqUser = await getOrCreateBasiqUser(user.email, formattedMobile);
         basiqUserId = basiqUser.id;
 
         // Save Basiq user ID to database
@@ -41,6 +79,10 @@ export async function POST(request: NextRequest) {
           where: { id: userId },
           data: { basiqUserId },
         });
+      } else {
+        // Update existing Basiq user with mobile if they don't have one
+        const { updateBasiqUser } = await import('@/lib/basiq');
+        await updateBasiqUser(basiqUserId, { mobile: formattedMobile });
       }
 
       // Generate consent link for bank connection

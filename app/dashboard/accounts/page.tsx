@@ -102,6 +102,8 @@ function AccountsPageContent() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncingConnectionId, setSyncingConnectionId] = useState<string | null>(null);
+  const [showMobileDialog, setShowMobileDialog] = useState(false);
+  const [mobileNumber, setMobileNumber] = useState('');
 
   useEffect(() => {
     if (token) {
@@ -124,8 +126,21 @@ function AccountsPageContent() {
     }
   };
 
-  const handleConnectBank = async () => {
+  const handleConnectBank = () => {
+    // Show mobile number dialog
+    setMobileNumber('');
+    setShowMobileDialog(true);
+  };
+
+  const handleConnectBankWithMobile = async () => {
+    if (!mobileNumber.trim()) {
+      alert('Please enter your mobile number');
+      return;
+    }
+
     setIsConnecting(true);
+    setShowMobileDialog(false);
+
     try {
       const response = await fetch('/api/basiq/connect', {
         method: 'POST',
@@ -133,6 +148,7 @@ function AccountsPageContent() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({ mobile: mobileNumber }),
       });
 
       if (response.ok) {
@@ -994,6 +1010,58 @@ function AccountsPageContent() {
             <Button onClick={() => { setShowDetailDialog(false); if (selectedAccount) handleEdit(selectedAccount); }}>
               <Edit2 className="h-4 w-4 mr-2" />
               Edit Account
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mobile Number Dialog for Bank Connection */}
+      <Dialog open={showMobileDialog} onOpenChange={setShowMobileDialog}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Connect Your Bank
+            </DialogTitle>
+            <DialogDescription>
+              To securely connect your Australian bank, we need your mobile number for verification.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="mobile">Australian Mobile Number</Label>
+              <Input
+                id="mobile"
+                type="tel"
+                value={mobileNumber}
+                onChange={(e) => setMobileNumber(e.target.value)}
+                placeholder="0412 345 678"
+                className="text-lg"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter your mobile number in format: 04XX XXX XXX or +614XX XXX XXX
+              </p>
+            </div>
+            <div className="bg-muted/50 p-3 rounded-lg text-sm text-muted-foreground">
+              <p className="font-medium text-foreground mb-1">What happens next?</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>A secure bank consent page will open</li>
+                <li>Select your bank and log in securely</li>
+                <li>Your accounts and transactions will sync automatically</li>
+              </ul>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowMobileDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConnectBankWithMobile} disabled={isConnecting}>
+              {isConnecting ? (
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="mr-2 h-4 w-4" />
+              )}
+              Continue to Bank
             </Button>
           </div>
         </DialogContent>

@@ -156,9 +156,33 @@ export async function createBasiqUser(email: string, mobile?: string): Promise<B
 }
 
 /**
+ * Update an existing Basiq user (e.g., to add mobile number)
+ */
+export async function updateBasiqUser(basiqUserId: string, updates: { mobile?: string; email?: string }): Promise<BasiqUser> {
+  const token = await getBasiqToken();
+
+  const response = await fetch(`${BASIQ_API_URL}/users/${basiqUserId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'basiq-version': '3.0',
+    },
+    body: JSON.stringify(updates),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to update Basiq user: ${error}`);
+  }
+
+  return response.json();
+}
+
+/**
  * Get or create a Basiq user
  */
-export async function getOrCreateBasiqUser(email: string): Promise<BasiqUser> {
+export async function getOrCreateBasiqUser(email: string, mobile?: string): Promise<BasiqUser> {
   const token = await getBasiqToken();
 
   // Try to find existing user by email
@@ -172,12 +196,17 @@ export async function getOrCreateBasiqUser(email: string): Promise<BasiqUser> {
   if (searchResponse.ok) {
     const data = await searchResponse.json();
     if (data.data && data.data.length > 0) {
-      return data.data[0];
+      const existingUser = data.data[0];
+      // If mobile provided and user doesn't have one, update the user
+      if (mobile && !existingUser.mobile) {
+        return updateBasiqUser(existingUser.id, { mobile });
+      }
+      return existingUser;
     }
   }
 
   // Create new user if not found
-  return createBasiqUser(email);
+  return createBasiqUser(email, mobile);
 }
 
 /**
