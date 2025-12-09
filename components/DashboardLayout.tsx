@@ -226,14 +226,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       await completeOnboarding();
       setShowWizard(false);
 
-      // Refresh the page to show the new data
-      router.refresh();
+      // Full page reload to ensure client components refetch data
+      // router.refresh() only invalidates server component cache,
+      // but dashboard uses client-side useEffect to fetch data
+      window.location.reload();
     } catch (e) {
       console.error('Could not complete wizard:', e);
       // Still close the wizard but show an error state could be added here
       setShowWizard(false);
     }
-  }, [completeOnboarding, router]);
+  }, [completeOnboarding]);
 
   const handleResumeOnboarding = useCallback(() => {
     setShowWizard(true);
