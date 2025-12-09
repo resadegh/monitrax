@@ -48,6 +48,7 @@ import {
   GuidedTour,
   WizardContainer,
   OnboardingProgressBadge,
+  WizardData,
 } from '@/components/onboarding';
 
 interface NavItem {
@@ -206,14 +207,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [markTourSkipped]);
 
-  const handleWizardComplete = useCallback(async () => {
-    setShowWizard(false);
+  const handleWizardComplete = useCallback(async (wizardData: WizardData) => {
     try {
+      // Save all wizard data to the database via bulk-create API
+      const response = await fetch('/api/onboarding/bulk-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(wizardData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to save wizard data:', errorData);
+        throw new Error(errorData.error || 'Failed to save data');
+      }
+
+      // Mark onboarding as complete
       await completeOnboarding();
+      setShowWizard(false);
+
+      // Refresh the page to show the new data
+      router.refresh();
     } catch (e) {
-      console.warn('Could not save wizard completion:', e);
+      console.error('Could not complete wizard:', e);
+      // Still close the wizard but show an error state could be added here
+      setShowWizard(false);
     }
-  }, [completeOnboarding]);
+  }, [completeOnboarding, router]);
 
   const handleResumeOnboarding = useCallback(() => {
     setShowWizard(true);
