@@ -24,6 +24,7 @@ import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { ListFilter, propertyFilterConfigs } from '@/components/ListFilter';
+import { ExpenseDialog } from '@/components/ExpenseDialog';
 
 interface Loan {
   id: string;
@@ -109,11 +110,27 @@ function PropertiesPageContent() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
+  const [showExpenseDialog, setShowExpenseDialog] = useState(false);
+  const [expensePropertyId, setExpensePropertyId] = useState<string | null>(null);
 
   // CMNF navigation handler for LinkedDataPanel
   const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
     setShowDetailDialog(false); // Close current dialog
     openLinkedEntity(entity);
+  };
+
+  // Handler for adding expense from property section
+  const handleAddExpenseForProperty = (propertyId: string) => {
+    setExpensePropertyId(propertyId);
+    setShowExpenseDialog(true);
+  };
+
+  // Callback when expense is added successfully
+  const handleExpenseSuccess = async () => {
+    // Reload the property detail to show the new expense
+    if (selectedProperty) {
+      await loadPropertyDetail(selectedProperty.id);
+    }
   };
   const [formData, setFormData] = useState<PropertyFormData>({
     name: '',
@@ -935,10 +952,20 @@ function PropertiesPageContent() {
                     </div>
 
                     <div>
-                      <h4 className="font-medium mb-2 flex items-center gap-2">
-                        <TrendingDown className="h-4 w-4 text-red-600" />
-                        Expenses
-                      </h4>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium flex items-center gap-2">
+                          <TrendingDown className="h-4 w-4 text-red-600" />
+                          Expenses
+                        </h4>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddExpenseForProperty(selectedProperty.id)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Expense
+                        </Button>
+                      </div>
                       {selectedProperty.expenses && selectedProperty.expenses.length > 0 ? (
                         <div className="space-y-2">
                           {selectedProperty.expenses.map((exp) => (
@@ -956,7 +983,7 @@ function PropertiesPageContent() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground">No expenses linked.</p>
+                        <p className="text-sm text-muted-foreground">No expenses linked. Click &quot;Add Expense&quot; to add one.</p>
                       )}
                     </div>
 
@@ -1050,6 +1077,18 @@ function PropertiesPageContent() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Expense Dialog - Reusable component for adding expenses */}
+      <ExpenseDialog
+        open={showExpenseDialog}
+        onOpenChange={(open) => {
+          setShowExpenseDialog(open);
+          if (!open) setExpensePropertyId(null);
+        }}
+        defaultPropertyId={expensePropertyId}
+        token={token || ''}
+        onSuccess={handleExpenseSuccess}
+      />
     </DashboardLayout>
   );
 }

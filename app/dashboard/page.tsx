@@ -225,12 +225,14 @@ function ProgressBar({
 }
 
 type DetailTileType = 'netWorth' | 'cashflow' | 'savingsRate' | 'lvr' | null;
+type CashflowPeriod = 'monthly' | 'annual';
 
 export default function DashboardPage() {
   const { token } = useAuth();
   const [snapshot, setSnapshot] = useState<PortfolioSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState<DetailTileType>(null);
+  const [cashflowPeriod, setCashflowPeriod] = useState<CashflowPeriod>('monthly');
 
   useEffect(() => {
     if (token) {
@@ -520,14 +522,36 @@ export default function DashboardPage() {
                 variant="purple"
               />
             </div>
-            <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer">
-              <StatCard
-                title="Monthly Cash Flow"
-                value={formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
-                description={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'Positive cash flow' : 'Negative cash flow'}
-                icon={snapshot.cashflow.monthlyNetCashflow >= 0 ? ArrowUpRight : ArrowDownRight}
-                variant={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'green' : 'orange'}
-              />
+            <div className="relative">
+              <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer">
+                <StatCard
+                  title={cashflowPeriod === 'monthly' ? 'Monthly Cash Flow' : 'Annual Cash Flow'}
+                  value={formatCurrency(
+                    cashflowPeriod === 'monthly'
+                      ? snapshot.cashflow.monthlyNetCashflow
+                      : snapshot.cashflow.annualNetCashflow
+                  )}
+                  description={
+                    cashflowPeriod === 'monthly'
+                      ? `${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`
+                      : `${formatCurrency(snapshot.cashflow.monthlyNetCashflow)}/month`
+                  }
+                  icon={snapshot.cashflow.monthlyNetCashflow >= 0 ? ArrowUpRight : ArrowDownRight}
+                  variant={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'green' : 'orange'}
+                />
+              </div>
+              {/* Period Toggle */}
+              <div className="absolute top-2 right-2 z-10">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCashflowPeriod(cashflowPeriod === 'monthly' ? 'annual' : 'monthly');
+                  }}
+                  className="text-xs px-2 py-1 rounded-md bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-colors shadow-sm"
+                >
+                  {cashflowPeriod === 'monthly' ? '/mo' : '/yr'}
+                </button>
+              </div>
             </div>
             <div onClick={() => setSelectedDetail('savingsRate')} className="cursor-pointer">
               <StatCard
@@ -1007,14 +1031,49 @@ export default function DashboardPage() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-6 pt-4">
+                    {/* Period Toggle */}
+                    <div className="flex justify-center">
+                      <div className="inline-flex items-center gap-1 p-1 bg-muted rounded-lg">
+                        <button
+                          onClick={() => setCashflowPeriod('monthly')}
+                          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                            cashflowPeriod === 'monthly'
+                              ? 'bg-white dark:bg-gray-800 shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          onClick={() => setCashflowPeriod('annual')}
+                          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                            cashflowPeriod === 'annual'
+                              ? 'bg-white dark:bg-gray-800 shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          Annual
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Summary */}
                     <div className={`text-center p-6 rounded-lg ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
-                      <p className="text-sm text-muted-foreground mb-1">Monthly Net Cash Flow</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {cashflowPeriod === 'monthly' ? 'Monthly' : 'Annual'} Net Cash Flow
+                      </p>
                       <p className={`text-4xl font-bold ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                        {formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
+                        {formatCurrency(
+                          cashflowPeriod === 'monthly'
+                            ? snapshot.cashflow.monthlyNetCashflow
+                            : snapshot.cashflow.annualNetCashflow
+                        )}
                       </p>
                       <p className="text-sm text-muted-foreground mt-2">
-                        {formatCurrency(snapshot.cashflow.annualNetCashflow)}/year
+                        {cashflowPeriod === 'monthly'
+                          ? `${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`
+                          : `${formatCurrency(snapshot.cashflow.monthlyNetCashflow)}/month`
+                        }
                       </p>
                     </div>
 
@@ -1025,26 +1084,43 @@ export default function DashboardPage() {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <TrendingUp className="h-5 w-5 text-green-600" />
-                            <span className="font-medium">Annual Income</span>
+                            <span className="font-medium">
+                              {cashflowPeriod === 'monthly' ? 'Monthly' : 'Annual'} Income
+                            </span>
                           </div>
                           <span className="text-xl font-bold text-green-700 dark:text-green-400">
-                            +{formatCurrency(snapshot.cashflow.totalIncome)}
+                            +{formatCurrency(
+                              cashflowPeriod === 'monthly'
+                                ? snapshot.cashflow.totalIncome / 12
+                                : snapshot.cashflow.totalIncome
+                            )}
                           </span>
                         </div>
                         {snapshot.cashflow.grossIncome && snapshot.cashflow.paygWithholding && snapshot.cashflow.paygWithholding > 0 && (
                           <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800 text-sm space-y-1">
                             <div className="flex justify-between text-muted-foreground">
                               <span>Gross income</span>
-                              <span>{formatCurrency(snapshot.cashflow.grossIncome)}</span>
+                              <span>{formatCurrency(
+                                cashflowPeriod === 'monthly'
+                                  ? snapshot.cashflow.grossIncome / 12
+                                  : snapshot.cashflow.grossIncome
+                              )}</span>
                             </div>
                             <div className="flex justify-between text-muted-foreground">
                               <span>PAYG withheld</span>
-                              <span>-{formatCurrency(snapshot.cashflow.paygWithholding)}</span>
+                              <span>-{formatCurrency(
+                                cashflowPeriod === 'monthly'
+                                  ? snapshot.cashflow.paygWithholding / 12
+                                  : snapshot.cashflow.paygWithholding
+                              )}</span>
                             </div>
                           </div>
                         )}
                         <p className="text-xs text-muted-foreground mt-2">
-                          {formatCurrency(snapshot.cashflow.totalIncome / 12)}/month
+                          {cashflowPeriod === 'monthly'
+                            ? `${formatCurrency(snapshot.cashflow.totalIncome)}/year`
+                            : `${formatCurrency(snapshot.cashflow.totalIncome / 12)}/month`
+                          }
                         </p>
                         {snapshot.income && snapshot.income.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800 space-y-2">
@@ -1054,7 +1130,13 @@ export default function DashboardPage() {
                                   {inc.name}
                                   {inc.propertyName && <span className="text-xs"> ({inc.propertyName})</span>}
                                 </span>
-                                <span>{formatCurrency(inc.netAnnual)}/yr</span>
+                                <span>
+                                  {formatCurrency(
+                                    cashflowPeriod === 'monthly'
+                                      ? inc.netAnnual / 12
+                                      : inc.netAnnual
+                                  )}/{cashflowPeriod === 'monthly' ? 'mo' : 'yr'}
+                                </span>
                               </div>
                             ))}
                             {snapshot.income.length > 5 && (
@@ -1071,14 +1153,23 @@ export default function DashboardPage() {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <Receipt className="h-5 w-5 text-red-600" />
-                            <span className="font-medium">Annual Expenses</span>
+                            <span className="font-medium">
+                              {cashflowPeriod === 'monthly' ? 'Monthly' : 'Annual'} Expenses
+                            </span>
                           </div>
                           <span className="text-xl font-bold text-red-700 dark:text-red-400">
-                            -{formatCurrency(snapshot.cashflow.totalExpenses)}
+                            -{formatCurrency(
+                              cashflowPeriod === 'monthly'
+                                ? snapshot.cashflow.totalExpenses / 12
+                                : snapshot.cashflow.totalExpenses
+                            )}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
-                          {formatCurrency(snapshot.cashflow.totalExpenses / 12)}/month
+                          {cashflowPeriod === 'monthly'
+                            ? `${formatCurrency(snapshot.cashflow.totalExpenses)}/year`
+                            : `${formatCurrency(snapshot.cashflow.totalExpenses / 12)}/month`
+                          }
                         </p>
                         {snapshot.expenses && snapshot.expenses.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-800 space-y-2">
@@ -1088,7 +1179,13 @@ export default function DashboardPage() {
                                   {expense.name}
                                   {expense.propertyName && <span className="text-xs"> ({expense.propertyName})</span>}
                                 </span>
-                                <span>{formatCurrency(expense.annualAmount)}/yr</span>
+                                <span>
+                                  {formatCurrency(
+                                    cashflowPeriod === 'monthly'
+                                      ? expense.annualAmount / 12
+                                      : expense.annualAmount
+                                  )}/{cashflowPeriod === 'monthly' ? 'mo' : 'yr'}
+                                </span>
                               </div>
                             ))}
                             {snapshot.expenses.length > 5 && (
@@ -1105,14 +1202,23 @@ export default function DashboardPage() {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <Landmark className="h-5 w-5 text-orange-600" />
-                            <span className="font-medium">Annual Loan Repayments</span>
+                            <span className="font-medium">
+                              {cashflowPeriod === 'monthly' ? 'Monthly' : 'Annual'} Loan Repayments
+                            </span>
                           </div>
                           <span className="text-xl font-bold text-orange-700 dark:text-orange-400">
-                            -{formatCurrency(snapshot.cashflow.totalLoanRepayments || 0)}
+                            -{formatCurrency(
+                              cashflowPeriod === 'monthly'
+                                ? (snapshot.cashflow.totalLoanRepayments || 0) / 12
+                                : (snapshot.cashflow.totalLoanRepayments || 0)
+                            )}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
-                          {formatCurrency((snapshot.cashflow.totalLoanRepayments || 0) / 12)}/month
+                          {cashflowPeriod === 'monthly'
+                            ? `${formatCurrency(snapshot.cashflow.totalLoanRepayments || 0)}/year`
+                            : `${formatCurrency((snapshot.cashflow.totalLoanRepayments || 0) / 12)}/month`
+                          }
                         </p>
                         {snapshot.loans && snapshot.loans.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-800 space-y-2">
@@ -1122,7 +1228,13 @@ export default function DashboardPage() {
                                   {loan.name}
                                   {loan.propertyName && <span className="text-xs"> ({loan.propertyName})</span>}
                                 </span>
-                                <span>{formatCurrency(loan.annualRepayment || 0)}/yr</span>
+                                <span>
+                                  {formatCurrency(
+                                    cashflowPeriod === 'monthly'
+                                      ? (loan.annualRepayment || 0) / 12
+                                      : (loan.annualRepayment || 0)
+                                  )}/{cashflowPeriod === 'monthly' ? 'mo' : 'yr'}
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -1132,9 +1244,15 @@ export default function DashboardPage() {
                       {/* Net Result */}
                       <div className={`p-4 rounded-lg border-2 ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'border-green-500 bg-green-100 dark:bg-green-950/50' : 'border-red-500 bg-red-100 dark:bg-red-950/50'}`}>
                         <div className="flex justify-between items-center">
-                          <span className="font-semibold">= Annual Net Cash Flow</span>
+                          <span className="font-semibold">
+                            = {cashflowPeriod === 'monthly' ? 'Monthly' : 'Annual'} Net Cash Flow
+                          </span>
                           <span className={`text-xl font-bold ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                            {formatCurrency(snapshot.cashflow.annualNetCashflow)}
+                            {formatCurrency(
+                              cashflowPeriod === 'monthly'
+                                ? snapshot.cashflow.monthlyNetCashflow
+                                : snapshot.cashflow.annualNetCashflow
+                            )}
                           </span>
                         </div>
                       </div>
