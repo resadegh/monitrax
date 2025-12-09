@@ -312,29 +312,41 @@ function generateIncomeTimeline(
     };
 
     const intervalDays = frequencyToDays[income.frequency] || 30;
+
+    // Start from nextExpected if provided, otherwise start from today
     let nextDate = income.nextExpected ? new Date(income.nextExpected) : new Date(today);
-    nextDate.setDate(nextDate.getDate() + intervalDays);
 
-    // Convert to monthly if not already
-    const monthlyAmount =
-      income.frequency === 'WEEKLY'
-        ? income.monthlyAmount * 4.33
-        : income.frequency === 'FORTNIGHTLY'
-          ? income.monthlyAmount * 2.17
-          : income.frequency === 'ANNUAL'
-            ? income.monthlyAmount / 12
-            : income.monthlyAmount;
+    // If nextExpected is in the past, advance to next occurrence
+    while (nextDate < today) {
+      nextDate.setDate(nextDate.getDate() + intervalDays);
+    }
 
-    const perOccurrence = monthlyAmount / (30 / intervalDays);
+    // Calculate per-occurrence amount from monthly amount
+    // monthlyAmount is already normalized to monthly by the API
+    // Convert back to per-occurrence based on frequency
+    let perOccurrence: number;
+    switch (income.frequency) {
+      case 'WEEKLY':
+        perOccurrence = (income.monthlyAmount * 12) / 52; // Monthly → Weekly
+        break;
+      case 'FORTNIGHTLY':
+        perOccurrence = (income.monthlyAmount * 12) / 26; // Monthly → Fortnightly
+        break;
+      case 'ANNUAL':
+        perOccurrence = income.monthlyAmount * 12; // Monthly → Annual
+        break;
+      case 'MONTHLY':
+      default:
+        perOccurrence = income.monthlyAmount; // Already monthly
+        break;
+    }
 
     while (nextDate <= endDate) {
-      if (nextDate >= today) {
-        timeline.push({
-          date: new Date(nextDate),
-          amount: perOccurrence,
-          name: income.name,
-        });
-      }
+      timeline.push({
+        date: new Date(nextDate),
+        amount: perOccurrence,
+        name: income.name,
+      });
       nextDate.setDate(nextDate.getDate() + intervalDays);
     }
   });

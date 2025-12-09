@@ -730,16 +730,26 @@ export default function DashboardPage() {
                   <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/50">
                     <ArrowDownRight className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                   </div>
-                  Annual Expenses
+                  Annual Outgoings
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-orange-700 dark:text-orange-400">
-                  {formatCurrency(snapshot.cashflow.totalExpenses)}
+                  {formatCurrency(snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0))}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {formatCurrency(snapshot.cashflow.totalExpenses / 12)}/month
+                  {formatCurrency((snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)) / 12)}/month
                 </p>
+                <div className="mt-2 pt-2 border-t text-xs text-muted-foreground space-y-1">
+                  <div className="flex justify-between">
+                    <span>Expenses</span>
+                    <span>{formatCurrency(snapshot.cashflow.totalExpenses)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Loan Repayments</span>
+                    <span>{formatCurrency(snapshot.cashflow.totalLoanRepayments || 0)}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
