@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+// LocalStorage key for fallback when DB is unavailable
+const DISMISSED_WELCOME_KEY = 'monitrax_dismissed_welcome_modal';
+
 export type OnboardingProfileType = 'HOMEOWNER' | 'INVESTOR' | 'MIXED' | 'STARTER';
 
 export interface OnboardingPreferences {
@@ -54,6 +57,26 @@ interface UseOnboardingStateReturn {
   markTourSkipped: () => Promise<void>;
   resetTour: () => Promise<void>; // Restart the tour from settings
   refetch: () => Promise<void>;
+}
+
+// Check if welcome modal was dismissed via localStorage (fallback)
+function isWelcomeDismissedLocally(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(DISMISSED_WELCOME_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+// Save dismiss preference to localStorage (fallback)
+function setWelcomeDismissedLocally(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(DISMISSED_WELCOME_KEY, 'true');
+  } catch {
+    // Ignore localStorage errors
+  }
 }
 
 export function useOnboardingState(): UseOnboardingStateReturn {
@@ -140,7 +163,15 @@ export function useOnboardingState(): UseOnboardingStateReturn {
   }, [fetchState]);
 
   const dismissWelcomeModal = useCallback(async () => {
-    await updateState({ dismissWelcomeModal: true });
+    // Always save to localStorage as fallback (works even if DB fails)
+    setWelcomeDismissedLocally();
+    // Try to save to DB as well
+    try {
+      await updateState({ dismissWelcomeModal: true });
+    } catch {
+      // localStorage fallback already saved, so this is okay
+      console.warn('Could not save dismiss preference to DB, using localStorage fallback');
+    }
   }, [updateState]);
 
   const dismissOnboardingBadge = useCallback(async () => {
@@ -163,9 +194,10 @@ export function useOnboardingState(): UseOnboardingStateReturn {
   // Computed properties
   // Show welcome modal for ALL users who haven't dismissed it or completed tour
   // This includes both new and existing users - everyone should see onboarding once
-  // IMPORTANT: If state is null but loading is complete (API error), still show welcome
-  const shouldShowWelcome = !isLoading && (
-    state === null || // API failed - show welcome anyway
+  // Check localStorage as fallback if DB state is unavailable or missing the preference
+  const dismissedViaLocalStorage = isWelcomeDismissedLocally();
+  const shouldShowWelcome = !isLoading && !dismissedViaLocalStorage && (
+    state === null || // API failed - check localStorage fallback above
     (!state.preferences.dismissedWelcomeModal &&
       !state.preferences.hasSeenGuidedTour &&
       !state.preferences.tourSkippedAt)
