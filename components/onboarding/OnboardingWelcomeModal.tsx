@@ -10,6 +10,7 @@ interface OnboardingWelcomeModalProps {
   onStartSetup: () => void;
   onTakeTour: () => void;
   onSkip: () => void;
+  onDismissPermanently?: () => void;
 }
 
 export function OnboardingWelcomeModal({
@@ -18,13 +19,22 @@ export function OnboardingWelcomeModal({
   onStartSetup,
   onTakeTour,
   onSkip,
+  onDismissPermanently,
 }: OnboardingWelcomeModalProps) {
   // Handle SSR - only render portal after mounting on client
   const [mounted, setMounted] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleSkip = () => {
+    if (dontShowAgain && onDismissPermanently) {
+      onDismissPermanently();
+    }
+    onSkip();
+  };
 
   if (!mounted || !isOpen) return null;
 
@@ -51,14 +61,14 @@ export function OnboardingWelcomeModal({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onSkip}
+        onClick={handleSkip}
       />
 
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
         {/* Close button */}
         <button
-          onClick={onSkip}
+          onClick={handleSkip}
           className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
           aria-label="Close"
         >
@@ -112,11 +122,24 @@ export function OnboardingWelcomeModal({
           </button>
 
           <button
-            onClick={onSkip}
+            onClick={handleSkip}
             className="w-full text-sm text-gray-500 hover:text-gray-700 py-2 transition-colors"
           >
             Skip for now — I&apos;ll explore on my own
           </button>
+
+          {/* Don't show again checkbox */}
+          <label className="flex items-center justify-center gap-2 pt-2 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={dontShowAgain}
+              onChange={(e) => setDontShowAgain(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-400 group-hover:text-gray-600 transition-colors">
+              Don&apos;t show this again
+            </span>
+          </label>
         </div>
       </div>
     </div>,

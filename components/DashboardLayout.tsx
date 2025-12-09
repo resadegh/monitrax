@@ -560,6 +560,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onStartSetup={handleStartSetup}
         onTakeTour={handleTakeTour}
         onSkip={handleSkipOnboarding}
+        onDismissPermanently={dismissWelcomeModal}
       />
 
       {/* Guided Tour */}
@@ -568,6 +569,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onClose={() => setShowTour(false)}
         onComplete={handleTourComplete}
         onSkip={handleTourSkip}
+        onDismissPermanently={dismissWelcomeModal}
       />
 
       {/* Initial Setup Wizard */}

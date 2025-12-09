@@ -100,6 +100,7 @@ interface GuidedTourProps {
   onClose: () => void;
   onComplete: () => void;
   onSkip?: () => void;
+  onDismissPermanently?: () => void;
   startStep?: number;
 }
 
@@ -109,6 +110,7 @@ export function GuidedTour({
   onClose,
   onComplete,
   onSkip,
+  onDismissPermanently,
   startStep = 0,
 }: GuidedTourProps) {
   // Handle SSR - only render portal after mounting on client
@@ -173,6 +175,7 @@ export function GuidedTour({
         onPrev={prevStep}
         onSkip={skipTour}
         onGoToStep={goToStep}
+        onDismissPermanently={onDismissPermanently}
       />
     </>,
     document.body

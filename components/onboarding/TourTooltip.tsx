@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import '@/styles/tour-animations.css';
 
@@ -24,6 +24,7 @@ interface TourTooltipProps {
   onPrev: () => void;
   onSkip: () => void;
   onGoToStep: (index: number) => void;
+  onDismissPermanently?: () => void;
 }
 
 export function TourTooltip({
@@ -41,7 +42,16 @@ export function TourTooltip({
   onPrev,
   onSkip,
   onGoToStep,
+  onDismissPermanently,
 }: TourTooltipProps) {
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
+  const handleSkip = () => {
+    if (dontShowAgain && onDismissPermanently) {
+      onDismissPermanently();
+    }
+    onSkip();
+  };
   // Calculate tooltip position based on target and placement
   const tooltipStyle = useMemo(() => {
     if (placement === 'center' || !targetPosition) {
@@ -98,11 +108,23 @@ export function TourTooltip({
             </button>
             <button
               className="tour-center-btn secondary"
-              onClick={onSkip}
+              onClick={handleSkip}
             >
               {isFirstStep ? 'Skip for now' : 'Close tour'}
             </button>
           </div>
+          {/* Don't show again checkbox */}
+          <label className="flex items-center justify-center gap-2 mt-4 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={dontShowAgain}
+              onChange={(e) => setDontShowAgain(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-400 group-hover:text-gray-600 transition-colors">
+              Don&apos;t show this tour again
+            </span>
+          </label>
         </div>
 
         {/* Progress dots for center modals */}
@@ -151,9 +173,21 @@ export function TourTooltip({
 
       {/* Actions */}
       <div className="tour-tooltip-actions">
-        <button className="tour-tooltip-skip" onClick={onSkip}>
-          Skip
-        </button>
+        <div className="tour-tooltip-skip-section">
+          <button className="tour-tooltip-skip" onClick={handleSkip}>
+            Skip
+          </button>
+          {/* Don't show again checkbox (inline for tooltips) */}
+          <label className="tour-tooltip-dont-show flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={dontShowAgain}
+              onChange={(e) => setDontShowAgain(e.target.checked)}
+              className="w-3 h-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-400">Don&apos;t show again</span>
+          </label>
+        </div>
         <div className="tour-tooltip-nav">
           {!isFirstStep && (
             <button className="tour-tooltip-btn secondary" onClick={onPrev}>
