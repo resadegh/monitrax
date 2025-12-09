@@ -24,8 +24,9 @@ import '@/styles/wizard-animations.css';
 // =============================================================================
 
 interface WizardContainerProps {
+  isOpen: boolean;
   onClose: () => void;
-  onComplete: (data: WizardData) => Promise<void>;
+  onComplete: (data: WizardData) => Promise<void> | void;
   initialData?: Partial<WizardData>;
 }
 
@@ -34,10 +35,14 @@ interface WizardContainerProps {
 // =============================================================================
 
 export function WizardContainer({
+  isOpen,
   onClose,
   onComplete,
   initialData,
 }: WizardContainerProps) {
+  // Don't render if not open
+  if (!isOpen) return null;
+
   const [data, setData] = useState<WizardData>({
     ...INITIAL_WIZARD_DATA,
     ...initialData,
