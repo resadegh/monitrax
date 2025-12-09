@@ -100,7 +100,7 @@ interface GuidedTourProps {
   onClose: () => void;
   onComplete: () => void;
   onSkip?: () => void;
-  onDismissPermanently?: () => void;
+  onDismissPermanently?: () => Promise<void>;
   startStep?: number;
 }
 

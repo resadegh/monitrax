@@ -10,7 +10,7 @@ interface OnboardingWelcomeModalProps {
   onStartSetup: () => void;
   onTakeTour: () => void;
   onSkip: () => void;
-  onDismissPermanently?: () => void;
+  onDismissPermanently?: () => Promise<void>;
 }
 
 export function OnboardingWelcomeModal({
@@ -29,9 +29,13 @@ export function OnboardingWelcomeModal({
     setMounted(true);
   }, []);
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     if (dontShowAgain && onDismissPermanently) {
-      onDismissPermanently();
+      try {
+        await onDismissPermanently();
+      } catch (e) {
+        console.warn('Could not save permanent dismiss preference:', e);
+      }
     }
     onSkip();
   };
