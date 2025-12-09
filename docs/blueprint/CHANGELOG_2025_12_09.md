@@ -304,5 +304,161 @@ Renamed tile to "Annual Outgoings" and included both expenses and loan repayment
 
 ---
 
-*Document Version: 1.0*
-*Created: 2025-12-09*
+## 5. Basiq Open Banking Integration (Phase 24)
+
+**Type:** New Feature
+**Severity:** Major Feature
+**Files Created:**
+- `lib/basiq.ts` - Basiq API service library
+- `app/api/basiq/connect/route.ts` - Connect bank API
+- `app/api/basiq/connections/route.ts` - List connections API
+- `app/api/basiq/connections/[id]/route.ts` - Get/delete connection API
+- `app/api/basiq/sync/route.ts` - Sync accounts & transactions API
+- `docs/blueprint/PHASE_24_OPEN_BANKING_BASIQ.md` - Blueprint documentation
+
+**Files Modified:**
+- `prisma/schema.prisma` - Added Basiq fields and BasiqConnection model
+- `app/dashboard/accounts/page.tsx` - Added Connect Bank UI
+
+### Overview
+
+Implemented Australian Open Banking integration via Basiq, enabling users to:
+- Connect their Australian bank accounts securely
+- Automatically import account balances
+- Sync transactions directly from banks
+- Manage connections (view, sync, disconnect)
+
+### Database Changes
+
+```prisma
+// User model additions
+basiqUserId  String?  @unique
+
+// Account model additions
+basiqAccountId     String?   @unique
+basiqConnectionId  String?
+basiqLastSynced    DateTime?
+accountNumber      String?
+bsb                String?
+
+// New BasiqConnection model
+model BasiqConnection {
+  id                 String
+  userId             String
+  basiqConnectionId  String  @unique
+  institutionId      String
+  institutionName    String
+  institutionLogo    String?
+  status             BasiqConnectionStatus
+  lastSyncedAt       DateTime?
+  accounts           Account[]
+}
+
+// UnifiedTransaction addition
+basiqTransactionId  String?  @unique
+```
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/basiq/connect` | POST | Create Basiq user, get consent URL |
+| `/api/basiq/connections` | GET | List bank connections |
+| `/api/basiq/connections/[id]` | GET/DELETE | Get/remove connection |
+| `/api/basiq/sync` | POST | Sync accounts & transactions |
+
+### UI Changes
+
+- **Accounts Page Header**: Added "Connect Bank" button alongside "Add Manually"
+- **Connected Banks Panel**: Shows all active bank connections with:
+  - Institution logo and name
+  - Status badge (ACTIVE, PENDING, RECONNECT)
+  - Last synced timestamp
+  - Sync and Disconnect buttons
+
+### Configuration Required
+
+```bash
+# .env.local
+BASIQ_API_KEY="your-api-key"
+BASIQ_API_URL="https://au-api.basiq.io"
+```
+
+---
+
+## 6. Wizard Data Not Showing Fix
+
+**Type:** Bug Fix
+**Severity:** Critical
+**Files Modified:**
+- `components/DashboardLayout.tsx`
+
+### Problem
+
+Wizard data was not appearing on the dashboard after completion because:
+1. The `handleWizardComplete` function was calling `/api/onboarding/bulk-create` without the Authorization header
+2. The API was returning 401 Unauthorized and silently failing
+3. Additionally, `router.refresh()` only invalidates server component cache, not client-side data fetching
+
+### Solution
+
+```typescript
+// Before (broken)
+const response = await fetch('/api/onboarding/bulk-create', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },  // Missing Authorization!
+  body: JSON.stringify(wizardData),
+});
+
+// After (fixed)
+const response = await fetch('/api/onboarding/bulk-create', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,  // Added auth header
+  },
+  body: JSON.stringify(wizardData),
+});
+
+// Changed router.refresh() to window.location.reload() for full page refresh
+window.location.reload();
+```
+
+---
+
+## Files Summary (Updated)
+
+| Action | File | Change Type |
+|--------|------|-------------|
+| Modified | `hooks/useOnboardingState.ts` | localStorage fallback |
+| Modified | `components/onboarding/OnboardingWelcomeModal.tsx` | Async handling |
+| Modified | `components/onboarding/TourTooltip.tsx` | Async handling |
+| Modified | `components/onboarding/GuidedTour.tsx` | Type signature |
+| Modified | `app/api/onboarding/state/route.ts` | Error handling |
+| Modified | `app/dashboard/income/page.tsx` | Input validation |
+| Modified | `lib/cashflow/forecasting.ts` | Income calculation |
+| Modified | `app/dashboard/page.tsx` | Outgoings display |
+| Modified | `components/DashboardLayout.tsx` | Wizard auth fix, page refresh |
+| Modified | `prisma/schema.prisma` | Basiq integration |
+| Modified | `app/dashboard/accounts/page.tsx` | Connect Bank UI |
+| Created | `lib/basiq.ts` | Basiq API service |
+| Created | `app/api/basiq/connect/route.ts` | Connect bank API |
+| Created | `app/api/basiq/connections/route.ts` | List connections API |
+| Created | `app/api/basiq/connections/[id]/route.ts` | Get/delete connection |
+| Created | `app/api/basiq/sync/route.ts` | Sync API |
+| Created | `docs/blueprint/PHASE_24_OPEN_BANKING_BASIQ.md` | Blueprint |
+| Modified | `docs/blueprint/CHANGELOG_2025_12_09.md` | This document |
+
+---
+
+## Related Blueprint Phases
+
+- **Phase 7** — Dashboard Rebuild (Annual Outgoings fix)
+- **Phase 12** — Onboarding Tour (localStorage fallback, async handling, wizard auth fix)
+- **Phase 14** — Cashflow Optimisation Engine (Income timeline fix)
+- **Phase 24** — Open Banking Basiq Integration (NEW)
+
+---
+
+*Document Version: 2.0*
+*Updated: 2025-12-09*
