@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -13,10 +13,24 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wallet, Plus, Edit2, Trash2, Percent, Eye, Landmark, ArrowUpRight, ArrowDownRight, Building, Link2, LayoutGrid, List } from 'lucide-react';
+import { Wallet, Plus, Edit2, Trash2, Percent, Eye, Landmark, ArrowUpRight, ArrowDownRight, Building, Link2, LayoutGrid, List, RefreshCw, Unplug, ExternalLink } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
+
+interface BasiqConnection {
+  id: string;
+  institutionName: string;
+  institutionLogo?: string;
+  status: 'ACTIVE' | 'PENDING' | 'RECONNECT' | 'DISABLED' | 'ERROR';
+  lastSyncedAt?: string;
+  accounts: Array<{
+    id: string;
+    name: string;
+    type: string;
+    currentBalance: number;
+  }>;
+}
 
 interface Transaction {
   id: string;
@@ -83,9 +97,115 @@ function AccountsPageContent() {
     interestRate: 0,
   });
 
+  // Basiq Open Banking state
+  const [basiqConnections, setBasiqConnections] = useState<BasiqConnection[]>([]);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncingConnectionId, setSyncingConnectionId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (token) loadAccounts();
+    if (token) {
+      loadAccounts();
+      loadBasiqConnections();
+    }
   }, [token]);
+
+  const loadBasiqConnections = async () => {
+    try {
+      const response = await fetch('/api/basiq/connections', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setBasiqConnections(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading Basiq connections:', error);
+    }
+  };
+
+  const handleConnectBank = async () => {
+    setIsConnecting(true);
+    try {
+      const response = await fetch('/api/basiq/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Open Basiq consent URL in new window
+        window.open(result.data.consentUrl, '_blank', 'width=600,height=700');
+        // Show message to user
+        alert('A new window has opened for you to connect your bank. After connecting, click "Sync" to import your accounts.');
+      } else {
+        const error = await response.json();
+        alert(`Failed to connect bank: ${error.error?.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error connecting bank:', error);
+      alert('Failed to connect bank. Please try again.');
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleSyncConnection = async (connectionId?: string) => {
+    setSyncingConnectionId(connectionId || 'all');
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/basiq/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ connectionId }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Synced ${result.data.accountsSynced} accounts and ${result.data.transactionsSynced} transactions`);
+        // Reload accounts and connections
+        await Promise.all([loadAccounts(), loadBasiqConnections()]);
+      } else {
+        const error = await response.json();
+        alert(`Sync failed: ${error.error?.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error syncing:', error);
+      alert('Failed to sync. Please try again.');
+    } finally {
+      setIsSyncing(false);
+      setSyncingConnectionId(null);
+    }
+  };
+
+  const handleDisconnectBank = async (connectionId: string) => {
+    if (!confirm('Are you sure you want to disconnect this bank? Your synced accounts will remain but will no longer update automatically.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/basiq/connections/${connectionId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        await loadBasiqConnections();
+        await loadAccounts();
+      } else {
+        const error = await response.json();
+        alert(`Failed to disconnect: ${error.error?.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+    }
+  };
 
   const loadAccounts = async () => {
     try {
@@ -226,12 +346,105 @@ function AccountsPageContent() {
         title="Accounts"
         description={`Manage your bank accounts • Total balance: ${formatCurrency(totalBalance)}`}
         action={
-          <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Account
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleConnectBank} disabled={isConnecting}>
+              {isConnecting ? (
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Building className="mr-2 h-4 w-4" />
+              )}
+              Connect Bank
+            </Button>
+            <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Manually
+            </Button>
+          </div>
         }
       />
+
+      {/* Connected Banks Section */}
+      {basiqConnections.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                Connected Banks
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleSyncConnection()}
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing && syncingConnectionId === 'all' ? 'animate-spin' : ''}`} />
+                Sync All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {basiqConnections.filter(c => c.status !== 'DISABLED').map((connection) => (
+                <div
+                  key={connection.id}
+                  className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30"
+                >
+                  {connection.institutionLogo ? (
+                    <img
+                      src={connection.institutionLogo}
+                      alt={connection.institutionName}
+                      className="h-8 w-8 rounded"
+                    />
+                  ) : (
+                    <Building className="h-8 w-8 text-muted-foreground" />
+                  )}
+                  <div>
+                    <p className="font-medium text-sm">{connection.institutionName}</p>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={connection.status === 'ACTIVE' ? 'default' : 'secondary'}
+                        className={connection.status === 'ACTIVE' ? 'bg-green-600' : ''}
+                      >
+                        {connection.status}
+                      </Badge>
+                      {connection.lastSyncedAt && (
+                        <span className="text-xs text-muted-foreground">
+                          Synced {new Date(connection.lastSyncedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 ml-auto">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleSyncConnection(connection.id)}
+                      disabled={isSyncing}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isSyncing && syncingConnectionId === connection.id ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleDisconnectBank(connection.id)}
+                    >
+                      <Unplug className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {basiqConnections.some(c => c.accounts.length > 0) && (
+              <p className="text-xs text-muted-foreground mt-3">
+                {basiqConnections.reduce((sum, c) => sum + c.accounts.length, 0)} accounts synced from connected banks
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* View Mode Toggle */}
       {accounts.length > 0 && !isLoading && (
