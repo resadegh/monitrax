@@ -489,5 +489,51 @@ lowerBound = predictedBalance - volatilityAdjustment
 ## 14.10.11 Authentication
 
 All endpoints use `Authorization: Bearer ${token}` header pattern.
-Implemented via `withAuth()` middleware from `lib/middleware`.  
+Implemented via `withAuth()` middleware from `lib/middleware`.
+
+---
+
+## 14.10.12 Bug Fixes & Updates
+
+### December 9, 2025 — Income Timeline Calculation Fix
+
+**File:** `lib/cashflow/forecasting.ts` → `generateIncomeTimeline()`
+
+**Issue:** Three critical bugs in income forecast calculations:
+
+1. **Double conversion bug**: `monthlyAmount` was already normalized to monthly by the API (`app/api/cashflow/route.ts`), but the forecasting engine incorrectly multiplied it again:
+   - Weekly: × 4.33 (resulted in ~4x too high)
+   - Fortnightly: × 2.17 (resulted in ~2x too high)
+
+2. **First occurrence skip**: Code added `intervalDays` before the while loop, causing the first income payment to be skipped.
+
+3. **Annual income bug**: Divided an already-monthly amount by 12, making annual income 12x too low.
+
+**Fix Applied:**
+```typescript
+// Correct per-occurrence calculation from monthly amount
+let perOccurrence: number;
+switch (income.frequency) {
+  case 'WEEKLY':
+    perOccurrence = (income.monthlyAmount * 12) / 52; // Monthly → Weekly
+    break;
+  case 'FORTNIGHTLY':
+    perOccurrence = (income.monthlyAmount * 12) / 26; // Monthly → Fortnightly
+    break;
+  case 'ANNUAL':
+    perOccurrence = income.monthlyAmount * 12; // Monthly → Annual
+    break;
+  case 'MONTHLY':
+  default:
+    perOccurrence = income.monthlyAmount; // Already monthly
+    break;
+}
+
+// Handle past nextExpected dates
+while (nextDate < today) {
+  nextDate.setDate(nextDate.getDate() + intervalDays);
+}
+```
+
+**Reference:** See `CHANGELOG_2025_12_09.md` for full details.  
 
