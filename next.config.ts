@@ -1,14 +1,11 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': path.resolve(__dirname),
-    };
-    return config;
-  },
+  // The @ alias is handled by tsconfig.json paths
+  // No custom webpack config needed for basic aliasing
+
+  // Ensure Prisma works properly with serverless/edge
+  serverExternalPackages: ['@prisma/client', 'prisma'],
 };
 
 export default nextConfig;
