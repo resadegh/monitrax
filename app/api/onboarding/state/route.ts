@@ -218,6 +218,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Try to upsert user preference (may fail if migration not run)
+      let prefUpdateFailed = false;
       if (Object.keys(prefUpdate).length > 0) {
         try {
           await prisma.userPreference.upsert({
@@ -229,8 +230,17 @@ export async function POST(request: NextRequest) {
             update: prefUpdate,
           });
         } catch (dbError) {
-          console.warn('Could not update user preferences (migration may not be run):', dbError);
+          console.error('Could not update user preferences:', dbError);
+          prefUpdateFailed = true;
         }
+      }
+
+      // If preference update failed, return error so frontend knows to retry or show message
+      if (prefUpdateFailed) {
+        return NextResponse.json(
+          { success: false, error: 'Failed to save preferences. Please try again.' },
+          { status: 500 }
+        );
       }
 
       return NextResponse.json({

@@ -24,7 +24,7 @@ interface TourTooltipProps {
   onPrev: () => void;
   onSkip: () => void;
   onGoToStep: (index: number) => void;
-  onDismissPermanently?: () => void;
+  onDismissPermanently?: () => Promise<void>;
 }
 
 export function TourTooltip({
@@ -46,12 +46,17 @@ export function TourTooltip({
 }: TourTooltipProps) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     if (dontShowAgain && onDismissPermanently) {
-      onDismissPermanently();
+      try {
+        await onDismissPermanently();
+      } catch (e) {
+        console.warn('Could not save permanent dismiss preference:', e);
+      }
     }
     onSkip();
   };
+
   // Calculate tooltip position based on target and placement
   const tooltipStyle = useMemo(() => {
     if (placement === 'center' || !targetPosition) {
