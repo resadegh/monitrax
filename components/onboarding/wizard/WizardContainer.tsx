@@ -40,9 +40,7 @@ export function WizardContainer({
   onComplete,
   initialData,
 }: WizardContainerProps) {
-  // Don't render if not open
-  if (!isOpen) return null;
-
+  // Hooks must be called unconditionally (Rules of Hooks)
   const [data, setData] = useState<WizardData>({
     ...INITIAL_WIZARD_DATA,
     ...initialData,
@@ -120,6 +118,9 @@ export function WizardContainer({
         return true;
     }
   }, [currentStep?.id, data.profileType]);
+
+  // Don't render if not open - MUST be after all hooks!
+  if (!isOpen) return null;
 
   // Render step content
   const renderStepContent = () => {
