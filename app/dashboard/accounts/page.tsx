@@ -126,10 +126,42 @@ function AccountsPageContent() {
     }
   };
 
-  const handleConnectBank = () => {
-    // Show mobile number dialog
-    setMobileNumber('');
-    setShowMobileDialog(true);
+  const handleConnectBank = async () => {
+    setIsConnecting(true);
+
+    try {
+      // First try to connect using profile mobile (no body needed if profile has mobile)
+      const response = await fetch('/api/basiq/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Open Basiq consent URL in new window
+        window.open(result.data.consentUrl, '_blank', 'width=600,height=700');
+        // Show message to user
+        alert('A new window has opened for you to connect your bank. After connecting, click "Sync" to import your accounts.');
+      } else {
+        const error = await response.json();
+        // If mobile is required, show the dialog
+        if (error.error?.code === 'MOBILE_REQUIRED') {
+          setMobileNumber('');
+          setShowMobileDialog(true);
+        } else {
+          alert(`Failed to connect bank: ${error.error?.message || 'Unknown error'}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error connecting bank:', error);
+      alert('Failed to connect bank. Please try again.');
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const handleConnectBankWithMobile = async () => {
@@ -1049,6 +1081,13 @@ function AccountsPageContent() {
                 <li>Select your bank and log in securely</li>
                 <li>Your accounts and transactions will sync automatically</li>
               </ul>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              <strong>Tip:</strong> Save your mobile in{' '}
+              <a href="/dashboard/settings/profile" className="text-primary underline">
+                Settings &gt; Profile
+              </a>{' '}
+              to skip this step next time.
             </div>
           </div>
           <div className="flex justify-end gap-3">
