@@ -235,7 +235,8 @@ export async function createConsentLink(basiqUserId: string): Promise<string> {
   }
 
   const data = await response.json();
-  return data.links.self;
+  // Use links.public for the user-facing consent URL (not links.self which is the API endpoint)
+  return data.links.public || data.links.self;
 }
 
 /**
