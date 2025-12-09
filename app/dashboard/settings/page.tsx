@@ -24,18 +24,30 @@ import {
 interface SettingsStatus {
   security: {
     mfaEnabled: boolean;
-    passwordAge: number; // days since last change
-    sessionsCount: number;
+    mfaMethods?: string[];
+    status: string;
+    message: string;
   };
   storage: {
     provider: string;
-    connected: boolean;
+    usedMB: number;
+    limitMB: number;
+    usedPercent: number;
     documentsCount: number;
-    storageUsed: number; // bytes
+    status: string;
+    message: string;
   };
   notifications: {
     emailEnabled: boolean;
     pushEnabled: boolean;
+    status: string;
+    message: string;
+  };
+  profile: {
+    completeness: number;
+    status: string;
+    message: string;
+    missingFields: string[];
   };
 }
 
@@ -44,40 +56,64 @@ export default function GeneralSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch settings status
     const fetchStatus = async () => {
       try {
-        const response = await fetch('/api/settings/status');
+        // Try to get token from localStorage for auth
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch('/api/settings/status', { headers });
         if (response.ok) {
           const data = await response.json();
-          setStatus(data.data);
+          setStatus(data);
+        } else {
+          // Use defaults on error
+          setDefaults();
         }
       } catch (error) {
         console.error('Failed to fetch settings status:', error);
+        setDefaults();
       } finally {
         setIsLoading(false);
       }
     };
 
-    // For now, use mock data
-    setStatus({
-      security: {
-        mfaEnabled: false,
-        passwordAge: 30,
-        sessionsCount: 2,
-      },
-      storage: {
-        provider: 'MONITRAX',
-        connected: true,
-        documentsCount: 12,
-        storageUsed: 25 * 1024 * 1024, // 25MB
-      },
-      notifications: {
-        emailEnabled: true,
-        pushEnabled: false,
-      },
-    });
-    setIsLoading(false);
+    const setDefaults = () => {
+      setStatus({
+        security: {
+          mfaEnabled: false,
+          mfaMethods: [],
+          status: 'at_risk',
+          message: 'Enable 2FA to secure your account',
+        },
+        storage: {
+          provider: 'MONITRAX',
+          usedMB: 0,
+          limitMB: 5120,
+          usedPercent: 0,
+          documentsCount: 0,
+          status: 'ok',
+          message: '0MB of 5GB used',
+        },
+        notifications: {
+          emailEnabled: true,
+          pushEnabled: false,
+          status: 'ok',
+          message: 'Email notifications enabled',
+        },
+        profile: {
+          completeness: 50,
+          status: 'incomplete',
+          message: 'Complete your profile',
+          missingFields: [],
+        },
+      });
+    };
+
+    fetchStatus();
   }, []);
 
   const formatBytes = (bytes: number) => {
@@ -132,7 +168,7 @@ export default function GeneralSettingsPage() {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {status?.security.sessionsCount} active sessions
+                    {status?.security.message}
                   </p>
                 </div>
               </div>
@@ -162,7 +198,7 @@ export default function GeneralSettingsPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {status?.storage.documentsCount} documents &middot;{' '}
-                    {formatBytes(status?.storage.storageUsed || 0)} used
+                    {status?.storage.usedMB}MB of {(status?.storage.limitMB || 5120) / 1024}GB used
                   </p>
                 </div>
               </div>

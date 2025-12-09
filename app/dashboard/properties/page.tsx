@@ -25,6 +25,7 @@ import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { ListFilter, propertyFilterConfigs } from '@/components/ListFilter';
 import { ExpenseDialog } from '@/components/ExpenseDialog';
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 
 interface Loan {
   id: string;
@@ -692,12 +693,11 @@ function PropertiesPageContent() {
 
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
-              <Input
+              <AddressAutocomplete
                 id="address"
                 value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="123 Main St, Sydney NSW 2000"
-                required
+                onChange={(value) => setFormData({ ...formData, address: value })}
+                placeholder="Start typing an address..."
               />
             </div>
 

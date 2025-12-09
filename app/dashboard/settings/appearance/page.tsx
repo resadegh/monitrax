@@ -5,18 +5,22 @@
  * Theme and display preferences
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Palette, Sun, Moon, Monitor, DollarSign, Calendar, Save, Loader2 } from 'lucide-react';
+import { Palette, Sun, Moon, Monitor, DollarSign, Calendar, Save, Loader2, CheckCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useAuth } from '@/lib/context/AuthContext';
 
 export default function AppearanceSettingsPage() {
   const { theme, setTheme } = useTheme();
+  const { token } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [preferences, setPreferences] = useState({
     currency: 'AUD',
     dateFormat: 'DD/MM/YYYY',
@@ -25,15 +29,57 @@ export default function AppearanceSettingsPage() {
     financialYearStart: '07-01', // July 1st for Australia
   });
 
+  // Load preferences on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/settings/appearance', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setPreferences((prev) => ({
+            ...prev,
+            currency: data.currency || 'AUD',
+            dateFormat: data.dateFormat || 'DD/MM/YYYY',
+            financialYearStart: data.financialYearStart || '07-01',
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load appearance settings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPreferences();
+  }, [token]);
+
   const handleSave = async () => {
     setIsSaving(true);
+    setSuccessMessage(null);
     try {
-      await fetch('/api/settings/appearance', {
+      const response = await fetch('/api/settings/appearance', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(preferences),
       });
-      alert('Appearance settings saved');
+
+      if (response.ok) {
+        setSuccessMessage('Appearance settings saved');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        throw new Error('Failed to save');
+      }
     } catch (error) {
       console.error('Failed to save settings:', error);
       alert('Failed to save settings');
@@ -41,6 +87,14 @@ export default function AppearanceSettingsPage() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -215,7 +269,13 @@ export default function AppearanceSettingsPage() {
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-4">
+        {successMessage && (
+          <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+            <CheckCircle className="h-4 w-4" />
+            {successMessage}
+          </span>
+        )}
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? (
             <>

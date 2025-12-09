@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
       // Update connection sync timestamps
       await prisma.basiqConnection.updateMany({
-        where: { id: { in: connections.map((c) => c.id) } },
+        where: { id: { in: connections.map((c: typeof connections[number]) => c.id) } },
         data: { lastSyncedAt: new Date(), lastSyncError: errors.length > 0 ? errors.join('; ') : null },
       });
 
