@@ -50,9 +50,9 @@ const ASSET_TYPES: {
     color: 'text-purple-600 dark:text-purple-400',
   },
   {
-    value: 'JEWELLERY',
-    label: 'Jewellery',
-    description: 'Watches, rings, jewelry',
+    value: 'EQUIPMENT',
+    label: 'Equipment',
+    description: 'Tools, machinery, gear',
     icon: <Watch className="h-5 w-5" />,
     color: 'text-amber-600 dark:text-amber-400',
   },
@@ -66,7 +66,7 @@ const ASSET_TYPES: {
   {
     value: 'COLLECTIBLE',
     label: 'Collectibles',
-    description: 'Art, antiques, collections',
+    description: 'Art, antiques, jewelry, collections',
     icon: <Palette className="h-5 w-5" />,
     color: 'text-pink-600 dark:text-pink-400',
   },
@@ -121,6 +121,7 @@ function createEmptyExpense(): AssetExpenseInput {
   return {
     id: generateId(),
     name: '',
+    category: 'OTHER',
     amount: 0,
     frequency: 'ANNUAL',
   };
@@ -187,7 +188,7 @@ function AssetCard({
         return 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20';
       case 'ELECTRONICS':
         return 'bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20';
-      case 'JEWELLERY':
+      case 'EQUIPMENT':
         return 'bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20';
       case 'COLLECTIBLE':
         return 'bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20';
@@ -202,7 +203,7 @@ function AssetCard({
         return 'bg-blue-100 dark:bg-blue-800/40';
       case 'ELECTRONICS':
         return 'bg-purple-100 dark:bg-purple-800/40';
-      case 'JEWELLERY':
+      case 'EQUIPMENT':
         return 'bg-amber-100 dark:bg-amber-800/40';
       case 'COLLECTIBLE':
         return 'bg-pink-100 dark:bg-pink-800/40';
@@ -554,7 +555,7 @@ export function AssetsStep({ data, onUpdate }: AssetsStepProps) {
                       ? 'bg-blue-100 dark:bg-blue-800/40'
                       : type.value === 'ELECTRONICS'
                       ? 'bg-purple-100 dark:bg-purple-800/40'
-                      : type.value === 'JEWELLERY'
+                      : type.value === 'EQUIPMENT'
                       ? 'bg-amber-100 dark:bg-amber-800/40'
                       : type.value === 'COLLECTIBLE'
                       ? 'bg-pink-100 dark:bg-pink-800/40'

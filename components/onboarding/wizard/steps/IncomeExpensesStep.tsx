@@ -46,10 +46,9 @@ const INCOME_TYPES: {
   color: string;
 }[] = [
   { value: 'SALARY', label: 'Salary', icon: <Briefcase className="h-4 w-4" />, color: 'text-blue-600' },
-  { value: 'DIVIDENDS', label: 'Dividends', icon: <TrendingUp className="h-4 w-4" />, color: 'text-purple-600' },
-  { value: 'INTEREST', label: 'Interest', icon: <Banknote className="h-4 w-4" />, color: 'text-green-600' },
-  { value: 'RENTAL', label: 'Rental', icon: <Building className="h-4 w-4" />, color: 'text-amber-600' },
-  { value: 'BUSINESS', label: 'Business', icon: <Store className="h-4 w-4" />, color: 'text-pink-600' },
+  { value: 'INVESTMENT', label: 'Investment Income', icon: <TrendingUp className="h-4 w-4" />, color: 'text-purple-600' },
+  { value: 'RENT', label: 'Rent Received', icon: <Building className="h-4 w-4" />, color: 'text-amber-600' },
+  { value: 'RENTAL', label: 'Rental Income', icon: <Building className="h-4 w-4" />, color: 'text-green-600' },
   { value: 'OTHER', label: 'Other', icon: <MoreHorizontal className="h-4 w-4" />, color: 'text-gray-600' },
 ];
 
@@ -60,17 +59,20 @@ const EXPENSE_CATEGORIES: {
   color: string;
   examples: string;
 }[] = [
-  { value: 'GROCERIES', label: 'Groceries', icon: <ShoppingCart className="h-4 w-4" />, color: 'text-green-600', examples: 'Food, household items' },
+  { value: 'HOUSING', label: 'Housing', icon: <Building className="h-4 w-4" />, color: 'text-blue-600', examples: 'Rent, mortgage' },
   { value: 'UTILITIES', label: 'Utilities', icon: <Zap className="h-4 w-4" />, color: 'text-yellow-600', examples: 'Electricity, gas, water' },
+  { value: 'FOOD', label: 'Food & Groceries', icon: <ShoppingCart className="h-4 w-4" />, color: 'text-green-600', examples: 'Food, household items' },
   { value: 'TRANSPORT', label: 'Transport', icon: <Car className="h-4 w-4" />, color: 'text-blue-600', examples: 'Fuel, public transport' },
-  { value: 'HEALTHCARE', label: 'Healthcare', icon: <Heart className="h-4 w-4" />, color: 'text-red-600', examples: 'Medical, pharmacy' },
-  { value: 'INSURANCE', label: 'Insurance', icon: <Shield className="h-4 w-4" />, color: 'text-purple-600', examples: 'Health, life insurance' },
-  { value: 'SUBSCRIPTIONS', label: 'Subscriptions', icon: <Tv className="h-4 w-4" />, color: 'text-indigo-600', examples: 'Netflix, Spotify, gym' },
-  { value: 'ENTERTAINMENT', label: 'Entertainment', icon: <Tv className="h-4 w-4" />, color: 'text-pink-600', examples: 'Movies, events' },
-  { value: 'DINING', label: 'Dining', icon: <UtensilsCrossed className="h-4 w-4" />, color: 'text-orange-600', examples: 'Restaurants, takeaway' },
-  { value: 'EDUCATION', label: 'Education', icon: <GraduationCap className="h-4 w-4" />, color: 'text-cyan-600', examples: 'Courses, books' },
-  { value: 'CHILDCARE', label: 'Childcare', icon: <Users className="h-4 w-4" />, color: 'text-teal-600', examples: 'Daycare, school fees' },
+  { value: 'INSURANCE', label: 'Insurance', icon: <Shield className="h-4 w-4" />, color: 'text-purple-600', examples: 'Health, life, home' },
+  { value: 'ENTERTAINMENT', label: 'Entertainment', icon: <Tv className="h-4 w-4" />, color: 'text-pink-600', examples: 'Movies, events, streaming' },
   { value: 'PERSONAL', label: 'Personal', icon: <Package className="h-4 w-4" />, color: 'text-gray-600', examples: 'Clothing, personal care' },
+  { value: 'RATES', label: 'Council Rates', icon: <Building className="h-4 w-4" />, color: 'text-teal-600', examples: 'Council rates' },
+  { value: 'MAINTENANCE', label: 'Maintenance', icon: <Package className="h-4 w-4" />, color: 'text-orange-600', examples: 'Repairs, upkeep' },
+  { value: 'STRATA', label: 'Strata Fees', icon: <Building className="h-4 w-4" />, color: 'text-indigo-600', examples: 'Body corporate fees' },
+  { value: 'LAND_TAX', label: 'Land Tax', icon: <Building className="h-4 w-4" />, color: 'text-red-600', examples: 'Land tax' },
+  { value: 'LOAN_INTEREST', label: 'Loan Interest', icon: <Banknote className="h-4 w-4" />, color: 'text-amber-600', examples: 'Interest payments' },
+  { value: 'REGISTRATION', label: 'Registration', icon: <Car className="h-4 w-4" />, color: 'text-cyan-600', examples: 'Vehicle registration' },
+  { value: 'MODIFICATIONS', label: 'Modifications', icon: <Package className="h-4 w-4" />, color: 'text-violet-600', examples: 'Asset modifications' },
   { value: 'OTHER', label: 'Other', icon: <MoreHorizontal className="h-4 w-4" />, color: 'text-gray-500', examples: 'Miscellaneous' },
 ];
 
@@ -96,7 +98,7 @@ function createEmptyIncome(type: IncomeType = 'SALARY'): IncomeInput {
   };
 }
 
-function createEmptyExpense(category: ExpenseCategory = 'GROCERIES'): ExpenseInput {
+function createEmptyExpense(category: ExpenseCategory = 'HOUSING'): ExpenseInput {
   return {
     id: generateId(),
     name: '',

@@ -18,6 +18,7 @@ import {
   InvestmentAccountInput,
   HoldingInput,
   InvestmentAccountType,
+  HoldingType,
   generateId,
 } from '../types';
 import '@/styles/wizard-animations.css';
@@ -41,25 +42,32 @@ const ACCOUNT_TYPES: {
     color: 'text-blue-600 dark:text-blue-400',
   },
   {
-    value: 'SUPER',
+    value: 'SUPERS',
     label: 'Superannuation',
     description: 'Retirement savings',
     icon: <Briefcase className="h-5 w-5" />,
     color: 'text-purple-600 dark:text-purple-400',
   },
   {
-    value: 'MANAGED_FUND',
+    value: 'FUND',
     label: 'Managed Fund',
     description: 'ETFs & managed investments',
     icon: <Coins className="h-5 w-5" />,
     color: 'text-green-600 dark:text-green-400',
   },
   {
-    value: 'CRYPTO',
-    label: 'Crypto',
-    description: 'Cryptocurrency holdings',
+    value: 'ETF_CRYPTO',
+    label: 'ETF / Crypto',
+    description: 'ETFs & Cryptocurrency holdings',
     icon: <Bitcoin className="h-5 w-5" />,
     color: 'text-orange-600 dark:text-orange-400',
+  },
+  {
+    value: 'TRUST',
+    label: 'Trust',
+    description: 'Trust investments',
+    icon: <Briefcase className="h-5 w-5" />,
+    color: 'text-pink-600 dark:text-pink-400',
   },
 ];
 
@@ -86,6 +94,7 @@ function createEmptyHolding(): HoldingInput {
     ticker: '',
     units: 0,
     averagePrice: 0,
+    type: 'SHARE',
   };
 }
 
@@ -227,9 +236,9 @@ function InvestmentCard({
         className={`flex items-center justify-between p-4 cursor-pointer ${
           account.type === 'BROKERAGE'
             ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20'
-            : account.type === 'SUPER'
+            : account.type === 'SUPERS'
             ? 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20'
-            : account.type === 'CRYPTO'
+            : account.type === 'ETF_CRYPTO'
             ? 'bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20'
             : 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20'
         }`}
@@ -240,9 +249,9 @@ function InvestmentCard({
             className={`p-2 rounded-lg ${
               account.type === 'BROKERAGE'
                 ? 'bg-blue-100 dark:bg-blue-800/40'
-                : account.type === 'SUPER'
+                : account.type === 'SUPERS'
                 ? 'bg-purple-100 dark:bg-purple-800/40'
-                : account.type === 'CRYPTO'
+                : account.type === 'ETF_CRYPTO'
                 ? 'bg-orange-100 dark:bg-orange-800/40'
                 : 'bg-green-100 dark:bg-green-800/40'
             }`}
@@ -484,9 +493,9 @@ export function InvestmentsStep({ data, onUpdate }: InvestmentsStepProps) {
                   className={`p-2 rounded-lg ${
                     type.value === 'BROKERAGE'
                       ? 'bg-blue-100 dark:bg-blue-800/40'
-                      : type.value === 'SUPER'
+                      : type.value === 'SUPERS'
                       ? 'bg-purple-100 dark:bg-purple-800/40'
-                      : type.value === 'CRYPTO'
+                      : type.value === 'ETF_CRYPTO'
                       ? 'bg-orange-100 dark:bg-orange-800/40'
                       : 'bg-green-100 dark:bg-green-800/40'
                   }`}

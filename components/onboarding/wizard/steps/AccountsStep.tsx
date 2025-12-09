@@ -34,7 +34,7 @@ const ACCOUNT_TYPES: {
   color: string;
 }[] = [
   {
-    value: 'TRANSACTION',
+    value: 'TRANSACTIONAL',
     label: 'Transaction',
     description: 'Everyday spending account',
     icon: <Wallet className="h-5 w-5" />,
@@ -67,13 +67,12 @@ const ACCOUNT_TYPES: {
 // HELPER FUNCTIONS
 // =============================================================================
 
-function createEmptyAccount(type: AccountType = 'TRANSACTION'): AccountInput {
+function createEmptyAccount(type: AccountType = 'TRANSACTIONAL'): AccountInput {
   return {
     id: generateId(),
     name: '',
     type,
-    balance: 0,
-    isOffset: type === 'OFFSET',
+    currentBalance: 0,
     linkedLoanId: undefined,
   };
 }
@@ -122,7 +121,7 @@ function AccountCard({
         <div className="flex items-center gap-3">
           <div
             className={`p-2 rounded-lg ${
-              account.type === 'TRANSACTION'
+              account.type === 'TRANSACTIONAL'
                 ? 'bg-blue-100 dark:bg-blue-800/40'
                 : account.type === 'SAVINGS'
                 ? 'bg-green-100 dark:bg-green-800/40'
@@ -140,7 +139,6 @@ function AccountCard({
                 const newType = e.target.value as AccountType;
                 onUpdate({
                   type: newType,
-                  isOffset: newType === 'OFFSET',
                   linkedLoanId: newType === 'OFFSET' ? account.linkedLoanId : undefined,
                 });
               }}
@@ -184,8 +182,8 @@ function AccountCard({
             <span className="absolute left-3 top-2 text-gray-400">$</span>
             <input
               type="number"
-              value={account.balance || ''}
-              onChange={(e) => onUpdate({ balance: parseFloat(e.target.value) || 0 })}
+              value={account.currentBalance || ''}
+              onChange={(e) => onUpdate({ currentBalance: parseFloat(e.target.value) || 0 })}
               placeholder="0"
               className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -254,7 +252,7 @@ function QuickAddButton({ type, onClick }: QuickAddButtonProps) {
     >
       <div
         className={`p-2 rounded-lg ${
-          type === 'TRANSACTION'
+          type === 'TRANSACTIONAL'
             ? 'bg-blue-100 dark:bg-blue-800/40'
             : type === 'SAVINGS'
             ? 'bg-green-100 dark:bg-green-800/40'
@@ -284,7 +282,7 @@ interface AccountsStepProps {
 export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
   const availableLoans = getLoansFromProperties(data.properties);
 
-  const addAccount = (type: AccountType = 'TRANSACTION') => {
+  const addAccount = (type: AccountType = 'TRANSACTIONAL') => {
     const newAccount = createEmptyAccount(type);
     onUpdate({
       accounts: [...data.accounts, newAccount],
@@ -308,10 +306,10 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
   // Calculate totals
   const totalAssets = data.accounts
     .filter((a) => a.type !== 'CREDIT_CARD')
-    .reduce((sum, a) => sum + a.balance, 0);
+    .reduce((sum, a) => sum + a.currentBalance, 0);
   const totalDebt = data.accounts
     .filter((a) => a.type === 'CREDIT_CARD')
-    .reduce((sum, a) => sum + a.balance, 0);
+    .reduce((sum, a) => sum + a.currentBalance, 0);
   const netBalance = totalAssets - totalDebt;
 
   return (
