@@ -128,7 +128,7 @@ const settingsNavItem: NavItem = {
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, isLoading } = useAuth();
+  const { user, token, logout, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -212,7 +212,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Save all wizard data to the database via bulk-create API
       const response = await fetch('/api/onboarding/bulk-create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(wizardData),
       });
 
@@ -235,7 +238,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Still close the wizard but show an error state could be added here
       setShowWizard(false);
     }
-  }, [completeOnboarding]);
+  }, [completeOnboarding, token]);
 
   const handleResumeOnboarding = useCallback(() => {
     setShowWizard(true);
