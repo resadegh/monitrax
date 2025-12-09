@@ -4,8 +4,8 @@
 
 ---
 
-**Version:** 2.0
-**Last Updated:** 2025-12-01
+**Version:** 2.1
+**Last Updated:** 2025-12-09
 **Status:** Active Development
 **Owners:** ReNew (Newsha & Reza)
 **Architect:** ChatGPT | **Engineer:** Claude
@@ -48,11 +48,11 @@
 | **Portfolio Strategy** | Investment tracking, performance analytics |
 | **Wealth Forecasting** | Multi-year projections, risk analysis |
 
-### Current State (November 2025)
+### Current State (December 2025)
 
-- **22 Phases** defined in the blueprint
-- **12 Phases** fully implemented
-- **Active Development:** Phase 19 (Document Management)
+- **24 Phases** defined in the blueprint
+- **13 Phases** fully implemented (including Phase 24 Open Banking)
+- **Active Development:** Phase 19 (Document Management), Phase 21 (Asset Management)
 - **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel
 
 ---
@@ -99,12 +99,15 @@
 
 | Aspect | Configuration |
 |--------|---------------|
-| **Build Command** | `npm install && npx prisma generate && npx prisma db push && npm run build` |
+| **Build Command (Vercel)** | `prisma generate && prisma db push --accept-data-loss && next build` |
+| **Build Command (Render)** | `npm install && npx prisma generate && npx prisma db push && npm run build` |
 | **Schema Sync** | `prisma db push` (automatic on deploy) |
 | **Migration Strategy** | Schema auto-syncs to database on every deployment |
 | **Health Check** | `/api/health` |
 
-**IMPORTANT:** Database schema changes are applied automatically via `prisma db push` during the Render build process. No manual migration commands are required after merging code.
+**IMPORTANT:** Database schema changes are applied automatically via `prisma db push` during the build process. No manual migration commands are required after merging code.
+
+**Note on `--accept-data-loss`:** This flag is used in the Vercel build because new unique constraints on nullable fields trigger warnings even though no actual data loss occurs (multiple NULL values are allowed in unique constraints).
 
 See: `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` for full deployment documentation.
 
@@ -159,6 +162,7 @@ Every API response follows a standardised format:
 | **14** | Cashflow Optimisation | ✅ Complete | Forecasting, stress testing, optimisation |
 | **16** | Reporting & Integrations | ✅ Complete | Report generators, CSV/Excel/JSON exporters |
 | **17** | Personal CFO Engine | ✅ Complete | CFO Score, Risk Radar, Action Engine |
+| **24** | Open Banking (Basiq) | ✅ Complete | Australian bank connection, account sync, transaction import |
 
 ### In Progress
 
@@ -175,7 +179,7 @@ Every API response follows a standardised format:
 |-------|------|--------|-------|
 | **14.5** | Mobile Web UI | 📋 Planned | Responsive optimisations |
 | **15** | Mobile Companion App | 📋 Planned | Native mobile experience |
-| **18** | Bank Transactions | 📋 Planned | Bank feed integration, transaction sync |
+| **18** | Bank Transactions (Legacy) | ✅ Superseded | Replaced by Phase 24 (Basiq Open Banking) |
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
 | **22** | Marketing Site & Auth Shell | 📋 Planned | Landing page, sign-in experience, public marketing routes |
@@ -224,6 +228,20 @@ Every API response follows a standardised format:
 - Loan-linked accounts
 - Balance tracking
 - Cashflow source/sink categorisation
+
+**Open Banking Integration (Phase 24):**
+- Connect Australian banks via Basiq
+- Automatic account import from connected banks
+- Real-time balance sync
+- Transaction import to UnifiedTransaction
+- Connection status tracking (ACTIVE, PENDING, RECONNECT, ERROR)
+
+**Basiq-Specific Fields:**
+- `basiqAccountId` - Links account to Basiq
+- `basiqConnectionId` - Reference to bank connection
+- `basiqLastSynced` - Last sync timestamp
+- `accountNumber` - Masked account number
+- `bsb` - BSB for AU banks
 
 ### 5.4 Income Module
 
