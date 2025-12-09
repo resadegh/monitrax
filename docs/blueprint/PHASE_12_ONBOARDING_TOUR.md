@@ -648,17 +648,350 @@ Phase 12 is complete when:
 
 ---
 
-## 12. Revision History
+## 12. Enhanced Setup Wizard v2.0
+
+> **Status:** Implementation in Progress (December 2025)
+> **Goal:** Complete data entry wizard that captures ALL financial data with proper entity linking
+
+### 12.1 Design Philosophy
+
+The Enhanced Wizard is the **hook** of Monitrax - it must be:
+
+1. **Simple & Clean** - One concept at a time, no overwhelm
+2. **Smart** - Adapts steps based on profile type
+3. **Multi-Entry** - Add multiple properties, loans, accounts, etc.
+4. **Linked** - Properly connects loans to properties, offsets to loans
+5. **AI-Assisted** - Context-aware helper on every step
+6. **Beautiful** - Smooth animations, delightful interactions
+
+### 12.2 Smart Profile-Based Flow
+
+The wizard adapts based on the user's profile type:
+
+| Profile Type | Steps Shown | Est. Time |
+|--------------|-------------|-----------|
+| **STARTER** | Welcome → Accounts → Income → Expenses → Review | 3 min |
+| **HOMEOWNER** | Welcome → Properties+Loans → Accounts → Income → Expenses → Review | 5 min |
+| **INVESTOR** | Welcome → Properties+Loans → Accounts → Investments → Income → Expenses → Review | 7 min |
+| **MIXED** | All steps including Assets | 10 min |
+
+### 12.3 Step Specifications
+
+#### Step 1: Welcome & Profile
+- Profile type selection with visual cards
+- Country & tax year (AU default)
+- Animation: Cards flip/hover with subtle shadow
+
+#### Step 2: Properties & Loans (Combined)
+For each property:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 🏠 Property Details                                         │
+├─────────────────────────────────────────────────────────────┤
+│ Name: [123 Main Street_____________]                        │
+│ Type: [▼ Investment Property]  Value: [$850,000____]       │
+│                                                             │
+│ ┌─ Rental Income ─────────────────────────────────────────┐ │
+│ │ Amount: [$650____] per [▼ Week]  Tenant: [__________]   │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ ┌─ Loan Details ──────────────────────────────────────────┐ │
+│ │ ☑ This property has a loan                              │ │
+│ │ Lender: [ANZ Bank___]  Principal: [$500,000____]        │ │
+│ │ Rate: [6.5%__] [▼ Variable] [▼ P&I] Repay: [$3,200/mo]  │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ ┌─ Property Expenses ─────────────────────────────────────┐ │
+│ │ + Council Rates    [$2,400/year]                        │ │
+│ │ + Insurance        [$1,800/year]                        │ │
+│ │ + Property Mgmt    [$3,640/year]                        │ │
+│ │ [+ Add Expense]                                         │ │
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+          [+ Add Another Property]
+```
+
+#### Step 3: Bank Accounts
+For each account:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 🏦 Account Details                                          │
+├─────────────────────────────────────────────────────────────┤
+│ Name: [Everyday Account_____]  Type: [▼ Transaction]       │
+│ Balance: [$15,000____]                                      │
+│                                                             │
+│ ☐ This is an offset account                                │
+│   └─ Linked Loan: [▼ ANZ Home Loan - 123 Main St]          │
+└─────────────────────────────────────────────────────────────┘
+          [+ Add Another Account]
+```
+
+#### Step 4: Investments
+For each investment account:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 📈 Investment Account                                       │
+├─────────────────────────────────────────────────────────────┤
+│ Name: [CommSec Brokerage__]  Platform: [▼ CommSec]         │
+│ Type: [▼ Brokerage]  Cash Balance: [$5,000____]            │
+│                                                             │
+│ ┌─ Holdings ──────────────────────────────────────────────┐ │
+│ │ VAS   | 500 units  @ $95.50  = $47,750                  │ │
+│ │ VDHG  | 200 units  @ $62.30  = $12,460                  │ │
+│ │ [+ Add Holding]                                         │ │
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+          [+ Add Another Investment Account]
+```
+
+#### Step 5: Personal Assets
+For each asset:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 🚗 Personal Asset                                           │
+├─────────────────────────────────────────────────────────────┤
+│ Name: [2022 Toyota RAV4__]  Type: [▼ Vehicle]              │
+│ Purchase Price: [$55,000__]  Current Value: [$42,000__]    │
+│                                                             │
+│ ┌─ Ongoing Expenses ──────────────────────────────────────┐ │
+│ │ + Insurance      [$1,200/year]                          │ │
+│ │ + Registration   [$800/year]                            │ │
+│ │ + Servicing      [$600/year]                            │ │
+│ │ [+ Add Expense]                                         │ │
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+          [+ Add Another Asset]
+```
+
+#### Step 6: Income & Expenses
+```
+┌─ Income Sources ──────────────────────────────────────────────┐
+│ Salary (Primary)    $95,000/year  [Gross ▼]                  │
+│ Dividends           $2,500/year                               │
+│ [+ Add Income Source]                                         │
+└───────────────────────────────────────────────────────────────┘
+
+┌─ Living Expenses ─────────────────────────────────────────────┐
+│ Groceries           $800/month                                │
+│ Utilities           $350/month                                │
+│ Transport           $400/month                                │
+│ Subscriptions       $150/month                                │
+│ [+ Add Expense]                                               │
+└───────────────────────────────────────────────────────────────┘
+```
+
+#### Step 7: Review & Launch
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              🎉 Your Financial Snapshot                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │  NET WORTH  │  │   INCOME    │  │  EXPENSES   │             │
+│  │  $892,500   │  │  $97,500/yr │  │  $45,600/yr │             │
+│  └─────────────┘  └─────────────┘  └─────────────┘             │
+│                                                                 │
+│  ┌─ What You've Added ──────────────────────────────────────┐  │
+│  │ ✓ 2 Properties worth $1.35M                              │  │
+│  │ ✓ 2 Loans totaling $850K                                 │  │
+│  │ ✓ 3 Bank Accounts with $45K                              │  │
+│  │ ✓ 1 Investment Account worth $65K                        │  │
+│  │ ✓ 1 Personal Asset worth $42K                            │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌─ Monthly Cashflow ───────────────────────────────────────┐  │
+│  │ Income:     +$8,125                                      │  │
+│  │ Expenses:   -$3,800                                      │  │
+│  │ Loans:      -$4,200                                      │  │
+│  │ ─────────────────────                                    │  │
+│  │ Net:        +$125/month ✓                                │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│              [🚀 Launch My Dashboard]                           │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 12.4 AI Helper Component
+
+A floating AI assistant available on every wizard step:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                    ┌───┐                    │
+│                                    │🤖│ ← Floating Button   │
+│                                    └───┘                    │
+└─────────────────────────────────────────────────────────────┘
+
+When clicked, opens slide-up panel:
+┌─────────────────────────────────────────────────────────────┐
+│  🤖 Monitrax Assistant                              [×]     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  I can help you with this step! Here are some common        │
+│  questions:                                                 │
+│                                                             │
+│  • What's the difference between fixed and variable rate?   │
+│  • How do I find my property's current value?               │
+│  • Should I include my PPOR or just investments?            │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ Ask me anything...                            [Send] │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Features:**
+- Pre-loaded context about current wizard step
+- Suggested questions based on step
+- Real-time AI responses (uses existing AI strategy engine)
+- Remembers conversation throughout wizard
+
+### 12.5 Animation Specifications
+
+#### Entry Animations
+```css
+/* Card entry - staggered fade up */
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wizard-card {
+  animation: card-enter 0.4s ease-out forwards;
+  animation-delay: calc(var(--card-index) * 0.1s);
+}
+
+/* Step transition - slide and fade */
+@keyframes step-enter {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes step-exit {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-30px); }
+}
+
+/* Success checkmark animation */
+@keyframes checkmark-draw {
+  from { stroke-dashoffset: 50; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Confetti on completion */
+@keyframes confetti-fall {
+  0% { transform: translateY(-100vh) rotate(0deg); }
+  100% { transform: translateY(100vh) rotate(720deg); }
+}
+```
+
+#### Micro-interactions
+- Input focus: Subtle border glow
+- Button hover: Scale up 1.02x with shadow
+- Card hover: Lift with shadow
+- Add button: Expand animation
+- Delete: Collapse with fade
+- Progress bar: Smooth fill animation
+
+### 12.6 Component Structure
+
+```
+components/onboarding/
+├── wizard/
+│   ├── WizardContainer.tsx      # Main wizard shell with progress
+│   ├── WizardProgress.tsx       # Animated progress bar
+│   ├── WizardNavigation.tsx     # Back/Next buttons
+│   ├── AIHelperButton.tsx       # Floating AI button
+│   ├── AIHelperPanel.tsx        # Slide-up AI chat panel
+│   └── steps/
+│       ├── WelcomeStep.tsx      # Profile + country selection
+│       ├── PropertiesStep.tsx   # Multi-property with loans
+│       ├── AccountsStep.tsx     # Multi-account with offset
+│       ├── InvestmentsStep.tsx  # Multi-investment with holdings
+│       ├── AssetsStep.tsx       # Personal assets with expenses
+│       ├── IncomeExpensesStep.tsx # Income + expenses combined
+│       └── ReviewStep.tsx       # Summary dashboard preview
+├── shared/
+│   ├── MultiEntryCard.tsx       # Reusable card for multi-entry
+│   ├── CollapsibleSection.tsx   # Expandable sub-sections
+│   └── EntitySelector.tsx       # Dropdown for linking entities
+```
+
+### 12.7 API Endpoint
+
+**POST /api/onboarding/bulk-create**
+
+Creates all entities in a single transaction:
+```typescript
+interface BulkCreateRequest {
+  properties: PropertyInput[];
+  loans: LoanInput[];        // includes propertyId reference
+  accounts: AccountInput[];  // includes offsetLoanId reference
+  investments: InvestmentAccountInput[];
+  holdings: HoldingInput[];
+  assets: AssetInput[];
+  income: IncomeInput[];
+  expenses: ExpenseInput[];
+}
+```
+
+**Response:**
+```typescript
+{
+  success: true,
+  created: {
+    properties: 2,
+    loans: 2,
+    accounts: 3,
+    investments: 1,
+    holdings: 5,
+    assets: 1,
+    income: 2,
+    expenses: 8
+  },
+  summary: {
+    netWorth: 892500,
+    annualIncome: 97500,
+    annualExpenses: 45600,
+    monthlyCashflow: 125
+  }
+}
+```
+
+### 12.8 Implementation Files
+
+| Action | File | Description |
+|--------|------|-------------|
+| Create | `components/onboarding/wizard/WizardContainer.tsx` | Main container |
+| Create | `components/onboarding/wizard/AIHelperButton.tsx` | Floating button |
+| Create | `components/onboarding/wizard/AIHelperPanel.tsx` | Chat panel |
+| Create | `components/onboarding/wizard/steps/WelcomeStep.tsx` | Step 1 |
+| Create | `components/onboarding/wizard/steps/PropertiesStep.tsx` | Step 2 |
+| Create | `components/onboarding/wizard/steps/AccountsStep.tsx` | Step 3 |
+| Create | `components/onboarding/wizard/steps/InvestmentsStep.tsx` | Step 4 |
+| Create | `components/onboarding/wizard/steps/AssetsStep.tsx` | Step 5 |
+| Create | `components/onboarding/wizard/steps/IncomeExpensesStep.tsx` | Step 6 |
+| Create | `components/onboarding/wizard/steps/ReviewStep.tsx` | Step 7 |
+| Create | `app/api/onboarding/bulk-create/route.ts` | Bulk API |
+| Create | `styles/wizard-animations.css` | Animation styles |
+| Modify | `components/DashboardLayout.tsx` | Integration |
+
+---
+
+## 13. Revision History
 
 | Version | Date | Changes |
 |---------|------|---------|
 | v1.0 | 2025-12-05 | Initial blueprint |
 | v1.1 | 2025-12-05 | Added animated navigation guide specifications |
 | v1.2 | 2025-12-07 | Full implementation complete |
+| v2.0 | 2025-12-09 | Enhanced Wizard v2.0 - comprehensive data entry with AI helper |
 
 ---
 
-## 13. Database Migration Required
+## 14. Database Migration Required
 
 After deployment, run the following migrations:
 
