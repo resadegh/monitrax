@@ -270,6 +270,9 @@ model User {
   onboardingCompletedAt  DateTime?
   onboardingStep         Int                   @default(0)  // Current wizard step (0-7)
 
+  // Basiq Open Banking Integration
+  basiqUserId            String?               @unique      // Basiq user ID for this user
+
   // Relationships
   properties          Property[]
   loans               Loan[]
@@ -277,6 +280,7 @@ model User {
   income              Income[]
   expenses            Expense[]
   transactions        Transaction[]
+  basiqConnections    BasiqConnection[]    // Basiq Open Banking connections
   debtPlans           DebtPlan[]
   investmentAccounts  InvestmentAccount[]
   assets              Asset[]                  // Phase 21: Personal assets
@@ -434,10 +438,18 @@ model Account {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  // Basiq Open Banking Integration
+  basiqAccountId    String?      @unique  // Basiq account ID (if linked via Open Banking)
+  basiqConnectionId String?               // Basiq connection ID
+  basiqLastSynced   DateTime?             // Last time data was synced from Basiq
+  accountNumber     String?               // Masked account number from bank
+  bsb               String?               // BSB (for AU banks)
+
   // Relationships
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-  linkedLoan   Loan?         // One-to-one: this account can be an offset for one loan
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  basiqConnection   BasiqConnection?  @relation(fields: [basiqConnectionId], references: [id], onDelete: SetNull)
+  transactions      Transaction[]
+  linkedLoan        Loan?             // One-to-one: this account can be an offset for one loan
 
   // Phase 13: Transactional Intelligence
   unifiedTransactions UnifiedTransaction[] @relation("UnifiedTransactions")
@@ -447,7 +459,42 @@ model Account {
   cashflowForecasts   CashflowForecast[]
 
   @@index([userId])
+  @@index([basiqConnectionId])
   @@map("accounts")
+}
+
+// =============================================================================
+// BASIQ CONNECTION (Open Banking)
+// =============================================================================
+
+enum BasiqConnectionStatus {
+  ACTIVE        // Connection is active and syncing
+  PENDING       // Awaiting user consent
+  RECONNECT     // Needs re-authentication
+  DISABLED      // User disabled this connection
+  ERROR         // Connection error
+}
+
+model BasiqConnection {
+  id                String                 @id @default(uuid())
+  userId            String
+  basiqConnectionId String                 @unique  // Basiq's connection ID
+  institutionId     String                          // Basiq institution ID
+  institutionName   String                          // Bank name (e.g., "Commonwealth Bank")
+  institutionLogo   String?                         // Logo URL
+  status            BasiqConnectionStatus  @default(PENDING)
+  lastSyncedAt      DateTime?
+  lastSyncError     String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relationships
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts          Account[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("basiq_connections")
 }
 
 // =============================================================================
@@ -1259,6 +1306,7 @@ model UnifiedTransaction {
   // Source tracking
   source                TransactionSource    @default(MANUAL)
   externalId            String?              // ID from external source (bank, CSV row)
+  basiqTransactionId    String?              @unique  // Basiq transaction ID (for deduplication)
   importBatchId         String?              // Batch ID for grouped imports
 
   // Entity linking (GRDCS compatible)
