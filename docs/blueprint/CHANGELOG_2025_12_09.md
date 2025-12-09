@@ -460,5 +460,117 @@ window.location.reload();
 
 ---
 
-*Document Version: 2.0*
+## 7. Deployment Fixes for Basiq Integration
+
+**Type:** Deployment Configuration
+**Severity:** Critical (Blocking Deployment)
+**Files Modified:**
+- `package.json` - Build command updated
+
+### Problem
+
+The initial Basiq integration deployment to Vercel failed with multiple errors:
+
+#### Error 1: Missing Migration Files
+```
+No migration found in prisma/migrations
+Error: P3005 - The database schema is not empty
+```
+
+**Cause:** `prisma migrate deploy` was added to the build command, but the database was originally set up using `prisma db push` (no migration files exist).
+
+#### Error 2: Unique Constraint Warnings
+```
+⚠️ There might be data loss when applying the changes:
+• A unique constraint covering the columns [basiqAccountId] on the table accounts will be added.
+• A unique constraint covering the columns [basiqTransactionId] on the table unified_transactions will be added.
+• A unique constraint covering the columns [basiqUserId] on the table users will be added.
+Error: Use the --accept-data-loss flag
+```
+
+**Cause:** New unique constraints on nullable fields trigger a warning even though no actual data loss will occur.
+
+#### Error 3: Module Not Found
+```
+Module not found: Can't resolve '@/lib/prisma'
+```
+
+**Cause:** Basiq API routes were importing from `@/lib/prisma` instead of the correct path `@/lib/db`.
+
+### Solution
+
+#### 7.1 Build Command Fix
+```json
+// Before (broken)
+"build": "prisma generate && prisma migrate deploy && next build"
+
+// After (fixed)
+"build": "prisma generate && prisma db push --accept-data-loss && next build"
+```
+
+**Rationale:**
+- `prisma db push` syncs schema changes without requiring migration files
+- `--accept-data-loss` is safe because the new unique constraints are on nullable fields that will be `null` for existing records
+- Multiple `null` values are allowed in unique constraints
+
+#### 7.2 Import Path Fix
+```typescript
+// Before (broken - all 4 Basiq route files)
+import { prisma } from '@/lib/prisma';
+
+// After (fixed)
+import { prisma } from '@/lib/db';
+```
+
+**Files Fixed:**
+- `app/api/basiq/connect/route.ts`
+- `app/api/basiq/connections/route.ts`
+- `app/api/basiq/connections/[id]/route.ts`
+- `app/api/basiq/sync/route.ts`
+
+### Deployment Notes
+
+For future schema changes involving Basiq fields:
+1. Schema changes are applied automatically via `prisma db push` during build
+2. New unique constraints on nullable fields are safe
+3. Always verify import paths use `@/lib/db` (not `@/lib/prisma`)
+
+---
+
+## Files Summary (Final)
+
+| Action | File | Change Type |
+|--------|------|-------------|
+| Modified | `hooks/useOnboardingState.ts` | localStorage fallback |
+| Modified | `components/onboarding/OnboardingWelcomeModal.tsx` | Async handling |
+| Modified | `components/onboarding/TourTooltip.tsx` | Async handling |
+| Modified | `components/onboarding/GuidedTour.tsx` | Type signature |
+| Modified | `app/api/onboarding/state/route.ts` | Error handling |
+| Modified | `app/dashboard/income/page.tsx` | Input validation |
+| Modified | `lib/cashflow/forecasting.ts` | Income calculation |
+| Modified | `app/dashboard/page.tsx` | Outgoings display |
+| Modified | `components/DashboardLayout.tsx` | Wizard auth fix, page refresh |
+| Modified | `prisma/schema.prisma` | Basiq integration |
+| Modified | `app/dashboard/accounts/page.tsx` | Connect Bank UI |
+| Modified | `package.json` | Build command (db push) |
+| Created | `lib/basiq.ts` | Basiq API service |
+| Created | `app/api/basiq/connect/route.ts` | Connect bank API |
+| Created | `app/api/basiq/connections/route.ts` | List connections API |
+| Created | `app/api/basiq/connections/[id]/route.ts` | Get/delete connection |
+| Created | `app/api/basiq/sync/route.ts` | Sync API |
+| Created | `docs/blueprint/PHASE_24_OPEN_BANKING_BASIQ.md` | Blueprint |
+| Modified | `docs/blueprint/CHANGELOG_2025_12_09.md` | This document |
+
+---
+
+## Related Blueprint Phases
+
+- **Phase 7** — Dashboard Rebuild (Annual Outgoings fix)
+- **Phase 12** — Onboarding Tour (localStorage fallback, async handling, wizard auth fix)
+- **Phase 14** — Cashflow Optimisation Engine (Income timeline fix)
+- **Phase 24** — Open Banking Basiq Integration (NEW)
+
+---
+
+*Document Version: 3.0*
 *Updated: 2025-12-09*

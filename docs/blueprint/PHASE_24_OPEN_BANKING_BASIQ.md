@@ -315,14 +315,15 @@ Add the same variables in Vercel project settings:
 
 ## 24.9 Completion Criteria
 
-- [ ] Users can connect Australian banks via Basiq
-- [ ] Accounts automatically imported and updated
-- [ ] Transactions synced to UnifiedTransaction table
-- [ ] Connection status visible in UI
-- [ ] Sync/disconnect functionality working
-- [ ] Blueprint documentation updated
-- [ ] Environment variables documented
-- [ ] Error handling for connection failures
+- [x] Users can connect Australian banks via Basiq
+- [x] Accounts automatically imported and updated
+- [x] Transactions synced to UnifiedTransaction table
+- [x] Connection status visible in UI
+- [x] Sync/disconnect functionality working
+- [x] Blueprint documentation updated
+- [x] Environment variables documented
+- [x] Error handling for connection failures
+- [x] Deployment configuration verified and documented
 
 ---
 
@@ -379,3 +380,30 @@ Basiq API has rate limits. The implementation includes:
 - Token caching to minimize auth requests
 - Batch processing for transactions
 - Error handling for rate limit responses
+
+### Deployment Configuration
+
+**Build Command (package.json):**
+```json
+"build": "prisma generate && prisma db push --accept-data-loss && next build"
+```
+
+**Why `prisma db push` instead of `prisma migrate deploy`:**
+- The database was originally set up using `prisma db push` (no migration files exist)
+- `db push` syncs schema changes directly without requiring migration history
+- `--accept-data-loss` flag is needed for new unique constraints on nullable fields
+
+**Import Paths:**
+All Basiq API routes import Prisma from `@/lib/db`:
+```typescript
+import { prisma } from '@/lib/db';  // Correct
+// NOT: import { prisma } from '@/lib/prisma';  // Wrong
+```
+
+### Deployment Issues Resolved
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| P3005 Schema not empty | `migrate deploy` with no migrations | Use `db push` instead |
+| Unique constraint warning | New unique constraints on nullable fields | Add `--accept-data-loss` flag |
+| Module not found | Wrong import path `@/lib/prisma` | Change to `@/lib/db` |
