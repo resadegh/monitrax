@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 
+// Prisma transaction client type
+type TransactionClient = Omit<
+  typeof prisma,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>;
+
 // =============================================================================
 // TYPES (matching wizard types)
 // =============================================================================
@@ -156,7 +162,7 @@ export async function POST(request: NextRequest) {
       const loanIdMap = new Map<string, string>();
 
       // Start a transaction to create all data atomically
-      const result = await prisma.$transaction(async (tx: typeof prisma) => {
+      const result = await prisma.$transaction(async (tx: TransactionClient) => {
       // =======================================================================
       // 1. Update user onboarding status
       // =======================================================================
