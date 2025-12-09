@@ -1189,7 +1189,7 @@ function IncomePageContent() {
                         onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
                         placeholder={formData.salaryType === 'GROSS' ? '85000' : '65000'}
                         min="0"
-                        step="100"
+                        step="any"
                         required
                       />
                     </div>
@@ -1209,7 +1209,7 @@ function IncomePageContent() {
                       onChange={(e) => setFormData({ ...formData, salarySacrifice: e.target.value ? Number(e.target.value) : null })}
                       placeholder="0"
                       min="0"
-                      step="100"
+                      step="any"
                     />
                     <p className="text-xs text-muted-foreground">
                       Pre-tax contributions to superannuation beyond employer SG
