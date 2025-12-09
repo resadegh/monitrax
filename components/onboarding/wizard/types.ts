@@ -1,8 +1,8 @@
 /**
  * Enhanced Setup Wizard v2.0 - Type Definitions
  *
- * Comprehensive type system for the onboarding wizard that captures
- * all financial data with proper entity linking.
+ * These types MUST match the Prisma schema exactly.
+ * See prisma/schema.prisma for the source of truth.
  */
 
 import { OnboardingProfileType } from '@/hooks/useOnboardingState';
@@ -85,35 +85,50 @@ export const WIZARD_STEPS: WizardStep[] = [
 ];
 
 // =============================================================================
-// PROPERTY DATA TYPES
+// PROPERTY DATA TYPES (matches Prisma PropertyType enum)
 // =============================================================================
 
-export type PropertyType = 'PRIMARY_RESIDENCE' | 'INVESTMENT' | 'HOLIDAY_HOME';
+// Prisma: enum PropertyType { HOME, INVESTMENT }
+export type PropertyType = 'HOME' | 'INVESTMENT';
+
+// For UI display - maps to Prisma PropertyType
+export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
+  HOME: 'Primary Residence',
+  INVESTMENT: 'Investment Property',
+};
 
 export interface PropertyExpenseInput {
   id: string;
   name: string;
-  category: string;
+  category: ExpenseCategory;
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+  frequency: Frequency;
 }
+
+// Prisma: enum RateType { VARIABLE, FIXED }
+export type RateType = 'VARIABLE' | 'FIXED';
+
+// Prisma: enum RepaymentFrequency { WEEKLY, FORTNIGHTLY, MONTHLY }
+export type RepaymentFrequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY';
 
 export interface PropertyLoanInput {
   id: string;
-  lender: string;
+  name: string; // Loan name (e.g., "Home Loan", "Investment Loan")
+  lender: string; // For display - stored in name field
   principal: number;
-  interestRate: number;
-  rateType: 'FIXED' | 'VARIABLE';
+  interestRateAnnual: number; // e.g., 0.0625 for 6.25%
+  rateType: RateType;
   isInterestOnly: boolean;
-  repaymentAmount: number;
-  repaymentFrequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY';
+  termMonthsRemaining: number;
+  minRepayment: number;
+  repaymentFrequency: RepaymentFrequency;
 }
 
 export interface PropertyIncomeInput {
   id: string;
-  type: 'RENT';
+  type: 'RENTAL'; // Maps to IncomeType.RENTAL
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY';
+  frequency: Frequency;
   tenantName?: string;
 }
 
@@ -132,53 +147,87 @@ export interface PropertyInput {
 }
 
 // =============================================================================
-// ACCOUNT DATA TYPES
+// ACCOUNT DATA TYPES (matches Prisma AccountType enum)
 // =============================================================================
 
-export type AccountType = 'TRANSACTION' | 'SAVINGS' | 'OFFSET' | 'CREDIT_CARD';
+// Prisma: enum AccountType { OFFSET, SAVINGS, TRANSACTIONAL, CREDIT_CARD }
+export type AccountType = 'OFFSET' | 'SAVINGS' | 'TRANSACTIONAL' | 'CREDIT_CARD';
+
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  TRANSACTIONAL: 'Transaction Account',
+  SAVINGS: 'Savings Account',
+  OFFSET: 'Offset Account',
+  CREDIT_CARD: 'Credit Card',
+};
 
 export interface AccountInput {
   id: string;
   name: string;
   type: AccountType;
-  balance: number;
-  isOffset: boolean;
-  linkedLoanId?: string; // Reference to a loan from properties step
+  institution?: string;
+  currentBalance: number;
+  interestRate?: number; // Annual interest rate (e.g., 0.025 for 2.5%)
+  linkedLoanId?: string; // For offset accounts - reference to a loan
 }
 
 // =============================================================================
-// INVESTMENT DATA TYPES
+// INVESTMENT DATA TYPES (matches Prisma InvestmentAccountType enum)
 // =============================================================================
 
-export type InvestmentAccountType = 'BROKERAGE' | 'SUPER' | 'MANAGED_FUND' | 'CRYPTO';
+// Prisma: enum InvestmentAccountType { BROKERAGE, SUPERS, FUND, TRUST, ETF_CRYPTO }
+export type InvestmentAccountType = 'BROKERAGE' | 'SUPERS' | 'FUND' | 'TRUST' | 'ETF_CRYPTO';
+
+export const INVESTMENT_TYPE_LABELS: Record<InvestmentAccountType, string> = {
+  BROKERAGE: 'Brokerage Account',
+  SUPERS: 'Superannuation',
+  FUND: 'Managed Fund',
+  TRUST: 'Trust',
+  ETF_CRYPTO: 'ETF / Crypto',
+};
+
+// Prisma: enum HoldingType { SHARE, ETF, MANAGED_FUND, CRYPTO }
+export type HoldingType = 'SHARE' | 'ETF' | 'MANAGED_FUND' | 'CRYPTO';
 
 export interface HoldingInput {
   id: string;
   ticker: string;
+  name?: string;
   units: number;
   averagePrice: number;
+  type: HoldingType;
 }
 
 export interface InvestmentAccountInput {
   id: string;
   name: string;
-  platform: string;
+  platform?: string;
   type: InvestmentAccountType;
   cashBalance: number;
   holdings: HoldingInput[];
 }
 
 // =============================================================================
-// ASSET DATA TYPES
+// ASSET DATA TYPES (matches Prisma AssetType enum)
 // =============================================================================
 
-export type AssetType = 'VEHICLE' | 'ELECTRONICS' | 'JEWELLERY' | 'FURNITURE' | 'COLLECTIBLE' | 'OTHER';
+// Prisma: enum AssetType { VEHICLE, ELECTRONICS, FURNITURE, EQUIPMENT, COLLECTIBLE, OTHER }
+export type AssetType = 'VEHICLE' | 'ELECTRONICS' | 'FURNITURE' | 'EQUIPMENT' | 'COLLECTIBLE' | 'OTHER';
+
+export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
+  VEHICLE: 'Vehicle',
+  ELECTRONICS: 'Electronics',
+  FURNITURE: 'Furniture',
+  EQUIPMENT: 'Equipment',
+  COLLECTIBLE: 'Collectibles',
+  OTHER: 'Other',
+};
 
 export interface AssetExpenseInput {
   id: string;
   name: string;
+  category: ExpenseCategory;
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+  frequency: Frequency;
 }
 
 export interface AssetInput {
@@ -188,6 +237,7 @@ export interface AssetInput {
   purchasePrice: number;
   currentValue: number;
   purchaseDate?: string;
+  description?: string;
   expenses: AssetExpenseInput[];
   // Vehicle-specific fields
   vehicleMake?: string;
@@ -196,41 +246,79 @@ export interface AssetInput {
 }
 
 // =============================================================================
-// INCOME & EXPENSE DATA TYPES
+// INCOME & EXPENSE DATA TYPES (matches Prisma enums)
 // =============================================================================
 
-export type IncomeType = 'SALARY' | 'DIVIDENDS' | 'INTEREST' | 'RENTAL' | 'BUSINESS' | 'OTHER';
+// Prisma: enum IncomeType { SALARY, RENT, RENTAL, INVESTMENT, OTHER }
+export type IncomeType = 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
+
+export const INCOME_TYPE_LABELS: Record<IncomeType, string> = {
+  SALARY: 'Salary/Wages',
+  RENT: 'Rent Received',
+  RENTAL: 'Rental Income',
+  INVESTMENT: 'Investment Income',
+  OTHER: 'Other Income',
+};
+
+// Prisma: enum SalaryType { GROSS, NET }
 export type SalaryType = 'GROSS' | 'NET';
+
+// Prisma: enum Frequency { WEEKLY, FORTNIGHTLY, MONTHLY, QUARTERLY, ANNUAL }
+export type Frequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
 
 export interface IncomeInput {
   id: string;
   name: string;
   type: IncomeType;
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL';
+  frequency: Frequency;
   salaryType?: SalaryType; // For SALARY type
 }
 
+// Prisma: enum ExpenseCategory
 export type ExpenseCategory =
-  | 'GROCERIES'
-  | 'UTILITIES'
-  | 'TRANSPORT'
-  | 'HEALTHCARE'
+  | 'HOUSING'
+  | 'RATES'
   | 'INSURANCE'
-  | 'SUBSCRIPTIONS'
-  | 'ENTERTAINMENT'
-  | 'DINING'
-  | 'EDUCATION'
-  | 'CHILDCARE'
+  | 'MAINTENANCE'
   | 'PERSONAL'
+  | 'UTILITIES'
+  | 'FOOD'
+  | 'TRANSPORT'
+  | 'ENTERTAINMENT'
+  | 'STRATA'
+  | 'LAND_TAX'
+  | 'LOAN_INTEREST'
+  | 'REGISTRATION'
+  | 'MODIFICATIONS'
   | 'OTHER';
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  HOUSING: 'Housing',
+  RATES: 'Council Rates',
+  INSURANCE: 'Insurance',
+  MAINTENANCE: 'Maintenance',
+  PERSONAL: 'Personal',
+  UTILITIES: 'Utilities',
+  FOOD: 'Food & Groceries',
+  TRANSPORT: 'Transport',
+  ENTERTAINMENT: 'Entertainment',
+  STRATA: 'Strata Fees',
+  LAND_TAX: 'Land Tax',
+  LOAN_INTEREST: 'Loan Interest',
+  REGISTRATION: 'Registration',
+  MODIFICATIONS: 'Modifications',
+  OTHER: 'Other',
+};
 
 export interface ExpenseInput {
   id: string;
   name: string;
   category: ExpenseCategory;
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+  frequency: Frequency;
+  isEssential?: boolean;
+  isTaxDeductible?: boolean;
 }
 
 // =============================================================================
@@ -321,7 +409,7 @@ export function calculateSummary(data: WizardData): {
 
   const totalPropertyValue = data.properties.reduce((sum, p) => sum + p.currentValue, 0);
   const totalLoanBalance = data.properties.reduce((sum, p) => sum + (p.loan?.principal || 0), 0);
-  const totalAccountBalance = data.accounts.reduce((sum, a) => sum + a.balance, 0);
+  const totalAccountBalance = data.accounts.reduce((sum, a) => sum + a.currentBalance, 0);
   const totalInvestmentValue = data.investments.reduce((sum, inv) => {
     const holdingsValue = inv.holdings.reduce((h, hold) => h + (hold.units * hold.averagePrice), 0);
     return sum + inv.cashBalance + holdingsValue;
@@ -361,7 +449,7 @@ export function calculateSummary(data: WizardData): {
   let annualLoanRepayments = 0;
   data.properties.forEach(prop => {
     if (prop.loan) {
-      annualLoanRepayments += frequencyToAnnual(prop.loan.repaymentAmount, prop.loan.repaymentFrequency);
+      annualLoanRepayments += frequencyToAnnual(prop.loan.minRepayment, prop.loan.repaymentFrequency);
     }
   });
 

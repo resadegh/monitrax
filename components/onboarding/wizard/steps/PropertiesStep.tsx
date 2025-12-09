@@ -32,20 +32,19 @@ import '@/styles/wizard-animations.css';
 // =============================================================================
 
 const PROPERTY_TYPES: { value: PropertyType; label: string; icon: React.ReactNode }[] = [
-  { value: 'PRIMARY_RESIDENCE', label: 'Primary Residence', icon: <Home className="h-4 w-4" /> },
+  { value: 'HOME', label: 'Primary Residence', icon: <Home className="h-4 w-4" /> },
   { value: 'INVESTMENT', label: 'Investment Property', icon: <Building2 className="h-4 w-4" /> },
-  { value: 'HOLIDAY_HOME', label: 'Holiday Home', icon: <Home className="h-4 w-4" /> },
 ];
 
-const EXPENSE_CATEGORIES = [
-  'Council Rates',
-  'Water Rates',
-  'Strata Fees',
-  'Insurance',
-  'Property Management',
-  'Maintenance',
-  'Land Tax',
-  'Other',
+import { ExpenseCategory, EXPENSE_CATEGORY_LABELS } from '../types';
+
+const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
+  { value: 'RATES', label: 'Council Rates' },
+  { value: 'STRATA', label: 'Strata Fees' },
+  { value: 'INSURANCE', label: 'Insurance' },
+  { value: 'MAINTENANCE', label: 'Maintenance' },
+  { value: 'LAND_TAX', label: 'Land Tax' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 const FREQUENCIES = [
@@ -71,7 +70,7 @@ function createEmptyProperty(): PropertyInput {
     id: generateId(),
     name: '',
     address: '',
-    type: 'PRIMARY_RESIDENCE',
+    type: 'HOME',
     purchasePrice: 0,
     currentValue: 0,
     purchaseDate: '',
@@ -84,12 +83,14 @@ function createEmptyProperty(): PropertyInput {
 function createEmptyLoan(): PropertyLoanInput {
   return {
     id: generateId(),
+    name: '',
     lender: '',
     principal: 0,
-    interestRate: 0,
+    interestRateAnnual: 0,
     rateType: 'VARIABLE',
     isInterestOnly: false,
-    repaymentAmount: 0,
+    termMonthsRemaining: 360,
+    minRepayment: 0,
     repaymentFrequency: 'MONTHLY',
   };
 }
@@ -97,7 +98,7 @@ function createEmptyLoan(): PropertyLoanInput {
 function createEmptyIncome(): PropertyIncomeInput {
   return {
     id: generateId(),
-    type: 'RENT',
+    type: 'RENTAL',
     amount: 0,
     frequency: 'WEEKLY',
     tenantName: '',
@@ -108,7 +109,7 @@ function createEmptyExpense(): PropertyExpenseInput {
   return {
     id: generateId(),
     name: '',
-    category: 'Other',
+    category: 'OTHER',
     amount: 0,
     frequency: 'ANNUAL',
   };
@@ -353,14 +354,14 @@ function PropertyCard({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Interest Rate
+                    Interest Rate (Annual)
                   </label>
                   <div className="relative">
                     <input
                       type="number"
                       step="0.01"
-                      value={property.loan.interestRate || ''}
-                      onChange={(e) => updateLoan({ interestRate: parseFloat(e.target.value) || 0 })}
+                      value={property.loan.interestRateAnnual || ''}
+                      onChange={(e) => updateLoan({ interestRateAnnual: parseFloat(e.target.value) || 0 })}
                       placeholder="0.00"
                       className="wizard-input w-full pl-3 pr-7 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -382,14 +383,14 @@ function PropertyCard({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Repayment Amount
+                    Minimum Repayment
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-2 text-gray-400">$</span>
                     <input
                       type="number"
-                      value={property.loan.repaymentAmount || ''}
-                      onChange={(e) => updateLoan({ repaymentAmount: parseFloat(e.target.value) || 0 })}
+                      value={property.loan.minRepayment || ''}
+                      onChange={(e) => updateLoan({ minRepayment: parseFloat(e.target.value) || 0 })}
                       placeholder="0"
                       className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -521,15 +522,15 @@ function PropertyCard({
                         value={expense.category}
                         onChange={(e) =>
                           updateExpense(expense.id, {
-                            category: e.target.value,
-                            name: e.target.value,
+                            category: e.target.value as ExpenseCategory,
+                            name: EXPENSE_CATEGORIES.find(c => c.value === e.target.value)?.label || e.target.value,
                           })
                         }
                         className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         {EXPENSE_CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
+                          <option key={cat.value} value={cat.value}>
+                            {cat.label}
                           </option>
                         ))}
                       </select>
