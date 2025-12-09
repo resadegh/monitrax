@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 import { getOrCreateBasiqUser, createConsentLink } from '@/lib/basiq';
 
 export async function POST(request: NextRequest) {
