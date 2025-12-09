@@ -46,7 +46,7 @@ import { useOnboardingState } from '@/hooks/useOnboardingState';
 import {
   OnboardingWelcomeModal,
   GuidedTour,
-  InitialSetupWizard,
+  WizardContainer,
   OnboardingProgressBadge,
 } from '@/components/onboarding';
 
@@ -572,12 +572,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onDismissPermanently={dismissWelcomeModal}
       />
 
-      {/* Initial Setup Wizard */}
-      <InitialSetupWizard
+      {/* Enhanced Setup Wizard v2.0 */}
+      <WizardContainer
         isOpen={showWizard}
         onClose={() => setShowWizard(false)}
         onComplete={handleWizardComplete}
-        initialStep={onboardingState?.currentStep || 0}
       />
     </div>
   );

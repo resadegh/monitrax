@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/lib/context/AuthContext';
 
-// LocalStorage key for fallback when DB is unavailable
-const DISMISSED_WELCOME_KEY = 'monitrax_dismissed_welcome_modal';
+// LocalStorage key prefix for fallback when DB is unavailable
+const DISMISSED_WELCOME_KEY_PREFIX = 'monitrax_dismissed_welcome_modal_';
 
 export type OnboardingProfileType = 'HOMEOWNER' | 'INVESTOR' | 'MIXED' | 'STARTER';
 
@@ -60,26 +61,29 @@ interface UseOnboardingStateReturn {
 }
 
 // Check if welcome modal was dismissed via localStorage (fallback)
-function isWelcomeDismissedLocally(): boolean {
-  if (typeof window === 'undefined') return false;
+// Now user-specific to prevent cross-user dismissal issues
+function isWelcomeDismissedLocally(userId: string | null): boolean {
+  if (typeof window === 'undefined' || !userId) return false;
   try {
-    return localStorage.getItem(DISMISSED_WELCOME_KEY) === 'true';
+    return localStorage.getItem(DISMISSED_WELCOME_KEY_PREFIX + userId) === 'true';
   } catch {
     return false;
   }
 }
 
 // Save dismiss preference to localStorage (fallback)
-function setWelcomeDismissedLocally(): void {
-  if (typeof window === 'undefined') return;
+// Now user-specific
+function setWelcomeDismissedLocally(userId: string | null): void {
+  if (typeof window === 'undefined' || !userId) return;
   try {
-    localStorage.setItem(DISMISSED_WELCOME_KEY, 'true');
+    localStorage.setItem(DISMISSED_WELCOME_KEY_PREFIX + userId, 'true');
   } catch {
     // Ignore localStorage errors
   }
 }
 
 export function useOnboardingState(): UseOnboardingStateReturn {
+  const { user } = useAuth();
   const [state, setState] = useState<OnboardingState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +168,8 @@ export function useOnboardingState(): UseOnboardingStateReturn {
 
   const dismissWelcomeModal = useCallback(async () => {
     // Always save to localStorage as fallback (works even if DB fails)
-    setWelcomeDismissedLocally();
+    // Now user-specific
+    setWelcomeDismissedLocally(user?.id || null);
     // Try to save to DB as well
     try {
       await updateState({ dismissWelcomeModal: true });
@@ -172,7 +177,7 @@ export function useOnboardingState(): UseOnboardingStateReturn {
       // localStorage fallback already saved, so this is okay
       console.warn('Could not save dismiss preference to DB, using localStorage fallback');
     }
-  }, [updateState]);
+  }, [updateState, user?.id]);
 
   const dismissOnboardingBadge = useCallback(async () => {
     await updateState({ dismissOnboardingBadge: true });
@@ -195,8 +200,9 @@ export function useOnboardingState(): UseOnboardingStateReturn {
   // Show welcome modal for ALL users who haven't dismissed it or completed tour
   // This includes both new and existing users - everyone should see onboarding once
   // Check localStorage as fallback if DB state is unavailable or missing the preference
-  const dismissedViaLocalStorage = isWelcomeDismissedLocally();
-  const shouldShowWelcome = !isLoading && !dismissedViaLocalStorage && (
+  // Now user-specific to prevent cross-user dismissal issues
+  const dismissedViaLocalStorage = isWelcomeDismissedLocally(user?.id || null);
+  const shouldShowWelcome = !isLoading && !!user && !dismissedViaLocalStorage && (
     state === null || // API failed - check localStorage fallback above
     (!state.preferences.dismissedWelcomeModal &&
       !state.preferences.hasSeenGuidedTour &&
