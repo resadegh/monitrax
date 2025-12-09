@@ -273,6 +273,13 @@ model User {
   // Basiq Open Banking Integration
   basiqUserId            String?               @unique      // Basiq user ID for this user
 
+  // Profile Information
+  mobile                 String?               // Australian mobile number for bank verification
+  phone                  String?               // General phone number
+  location               String?               // City/State
+  timezone               String?               @default("Australia/Sydney")
+  bio                    String?               // User bio/description
+
   // Relationships
   properties          Property[]
   loans               Loan[]

@@ -16,19 +16,35 @@ export async function POST(request: NextRequest) {
     try {
       const userId = req.user!.userId;
 
-      // Get mobile number from request body
+      // Get mobile number from request body (optional if saved in profile)
       const body = await request.json().catch(() => ({}));
-      const { mobile } = body;
+      const { mobile: requestMobile } = body;
 
-      // Validate mobile number format (Australian format)
+      // Get user from database with profile mobile
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, basiqUserId: true, mobile: true },
+      });
+
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: { code: 'NOT_FOUND', message: 'User not found' } },
+          { status: 404 }
+        );
+      }
+
+      // Use profile mobile if available, otherwise use request mobile
+      const mobile = user.mobile || requestMobile;
+
+      // Validate mobile number is present
       if (!mobile) {
         return NextResponse.json(
           {
             success: false,
             error: {
-              code: 'VALIDATION_ERROR',
-              message: 'Mobile number is required for bank connection. Please provide your Australian mobile number.'
-            }
+              code: 'MOBILE_REQUIRED',
+              message: 'Mobile number is required for bank connection. Please add your mobile number in Settings > Profile first.',
+            },
           },
           { status: 400 }
         );
@@ -42,8 +58,8 @@ export async function POST(request: NextRequest) {
             success: false,
             error: {
               code: 'VALIDATION_ERROR',
-              message: 'Please provide a valid Australian mobile number (e.g., 0412345678 or +61412345678)'
-            }
+              message: 'Please provide a valid Australian mobile number (e.g., 0412345678 or +61412345678)',
+            },
           },
           { status: 400 }
         );
@@ -53,19 +69,6 @@ export async function POST(request: NextRequest) {
       const formattedMobile = mobileClean.startsWith('+61')
         ? mobileClean
         : '+61' + mobileClean.substring(1);
-
-      // Get user from database
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, email: true, basiqUserId: true },
-      });
-
-      if (!user) {
-        return NextResponse.json(
-          { success: false, error: { code: 'NOT_FOUND', message: 'User not found' } },
-          { status: 404 }
-        );
-      }
 
       let basiqUserId = user.basiqUserId;
 
