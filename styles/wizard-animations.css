@@ -1,0 +1,493 @@
+/**
+ * Enhanced Setup Wizard v2.0 - Animation Styles
+ *
+ * Beautiful, smooth animations for the onboarding wizard.
+ */
+
+/* =============================================================================
+   STEP TRANSITIONS
+   ============================================================================= */
+
+@keyframes step-enter-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes step-exit-left {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+}
+
+@keyframes step-enter-left {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes step-exit-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}
+
+.wizard-step-enter {
+  animation: step-enter-right 0.4s ease-out forwards;
+}
+
+.wizard-step-exit {
+  animation: step-exit-left 0.3s ease-in forwards;
+}
+
+.wizard-step-enter-back {
+  animation: step-enter-left 0.4s ease-out forwards;
+}
+
+.wizard-step-exit-back {
+  animation: step-exit-right 0.3s ease-in forwards;
+}
+
+/* =============================================================================
+   CARD ANIMATIONS
+   ============================================================================= */
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes card-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+}
+
+.wizard-card {
+  animation: card-enter 0.4s ease-out forwards;
+  animation-delay: calc(var(--card-index, 0) * 0.08s);
+  opacity: 0;
+}
+
+.wizard-card-exit {
+  animation: card-exit 0.3s ease-in forwards;
+}
+
+/* Card hover effect */
+.wizard-card-hoverable {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.wizard-card-hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.15);
+}
+
+/* =============================================================================
+   PROFILE CARD ANIMATIONS
+   ============================================================================= */
+
+@keyframes profile-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.profile-card {
+  animation: profile-card-enter 0.5s ease-out forwards;
+  animation-delay: calc(var(--card-index, 0) * 0.1s);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.profile-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.2);
+}
+
+.profile-card.selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 8px 25px -8px rgba(59, 130, 246, 0.3);
+}
+
+/* =============================================================================
+   ADD BUTTON ANIMATION
+   ============================================================================= */
+
+@keyframes add-button-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+}
+
+.wizard-add-button {
+  transition: all 0.3s ease;
+  border: 2px dashed #d1d5db;
+  background: transparent;
+}
+
+.wizard-add-button:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+  transform: scale(1.01);
+}
+
+.wizard-add-button:active {
+  transform: scale(0.98);
+}
+
+/* =============================================================================
+   PROGRESS BAR
+   ============================================================================= */
+
+@keyframes progress-fill {
+  from {
+    width: var(--progress-from, 0%);
+  }
+  to {
+    width: var(--progress-to, 0%);
+  }
+}
+
+.wizard-progress-bar {
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wizard-progress-step {
+  transition: all 0.3s ease;
+}
+
+.wizard-progress-step.completed {
+  background: #22c55e;
+  border-color: #22c55e;
+  transform: scale(1.1);
+}
+
+.wizard-progress-step.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  animation: step-pulse 2s ease-in-out infinite;
+}
+
+@keyframes step-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+  }
+}
+
+/* =============================================================================
+   INPUT FOCUS EFFECTS
+   ============================================================================= */
+
+.wizard-input {
+  transition: all 0.2s ease;
+}
+
+.wizard-input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+}
+
+/* =============================================================================
+   BUTTON ANIMATIONS
+   ============================================================================= */
+
+.wizard-button {
+  transition: all 0.2s ease;
+}
+
+.wizard-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.15);
+}
+
+.wizard-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.wizard-button-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.wizard-button-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+/* =============================================================================
+   SUCCESS ANIMATIONS
+   ============================================================================= */
+
+@keyframes checkmark-draw {
+  from {
+    stroke-dashoffset: 50;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.wizard-checkmark {
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: checkmark-draw 0.5s ease-out forwards;
+  animation-delay: 0.2s;
+}
+
+@keyframes success-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.wizard-success-icon {
+  animation: success-pop 0.5s ease-out forwards;
+}
+
+/* =============================================================================
+   CONFETTI ANIMATION (Review Step)
+   ============================================================================= */
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  top: 0;
+  animation: confetti-fall 3s linear forwards;
+  animation-delay: var(--confetti-delay, 0s);
+  left: var(--confetti-left, 50%);
+  background: var(--confetti-color, #3b82f6);
+  border-radius: 2px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* =============================================================================
+   AI HELPER ANIMATIONS
+   ============================================================================= */
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.ai-helper-button {
+  animation: float 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.ai-helper-button:hover {
+  animation: none;
+  transform: scale(1.1);
+  box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.4);
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.ai-helper-panel-enter {
+  animation: slide-up 0.3s ease-out forwards;
+}
+
+.ai-helper-panel-exit {
+  animation: slide-down 0.2s ease-in forwards;
+}
+
+/* =============================================================================
+   COLLAPSIBLE SECTION ANIMATIONS
+   ============================================================================= */
+
+@keyframes collapse {
+  from {
+    max-height: var(--section-height, 500px);
+    opacity: 1;
+  }
+  to {
+    max-height: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes expand {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: var(--section-height, 500px);
+    opacity: 1;
+  }
+}
+
+.wizard-section-collapsed {
+  overflow: hidden;
+  animation: collapse 0.3s ease-out forwards;
+}
+
+.wizard-section-expanded {
+  overflow: hidden;
+  animation: expand 0.3s ease-out forwards;
+}
+
+/* =============================================================================
+   LOADING STATES
+   ============================================================================= */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.wizard-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wizard-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* =============================================================================
+   NUMBER COUNTER ANIMATION (Review Step)
+   ============================================================================= */
+
+@keyframes count-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wizard-stat-value {
+  animation: count-up 0.6s ease-out forwards;
+  animation-delay: var(--stat-delay, 0s);
+  opacity: 0;
+}
+
+/* =============================================================================
+   DARK MODE OVERRIDES
+   ============================================================================= */
+
+.dark .wizard-card-hoverable:hover {
+  box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.4);
+}
+
+.dark .profile-card:hover {
+  box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.5);
+}
+
+.dark .wizard-add-button {
+  border-color: #4b5563;
+}
+
+.dark .wizard-add-button:hover {
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.dark .wizard-skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
+}
