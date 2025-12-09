@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -74,6 +75,7 @@ type ViewMode = 'tiles' | 'list';
 
 function AccountsPageContent() {
   const { token } = useAuth();
+  const router = useRouter();
   const { openLinkedEntity } = useCrossModuleNavigation();
 
   // CMNF navigation handler for LinkedDataPanel
@@ -102,8 +104,6 @@ function AccountsPageContent() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncingConnectionId, setSyncingConnectionId] = useState<string | null>(null);
-  const [showMobileDialog, setShowMobileDialog] = useState(false);
-  const [mobileNumber, setMobileNumber] = useState('');
 
   useEffect(() => {
     if (token) {
@@ -130,7 +130,7 @@ function AccountsPageContent() {
     setIsConnecting(true);
 
     try {
-      // First try to connect using profile mobile (no body needed if profile has mobile)
+      // Connect using profile mobile from user settings
       const response = await fetch('/api/basiq/connect', {
         method: 'POST',
         headers: {
@@ -148,50 +148,17 @@ function AccountsPageContent() {
         alert('A new window has opened for you to connect your bank. After connecting, click "Sync" to import your accounts.');
       } else {
         const error = await response.json();
-        // If mobile is required, show the dialog
+        // If mobile is required, redirect to profile settings
         if (error.error?.code === 'MOBILE_REQUIRED') {
-          setMobileNumber('');
-          setShowMobileDialog(true);
+          const shouldRedirect = confirm(
+            'To connect your bank, you need to add your Australian mobile number to your profile.\n\nClick OK to go to Profile Settings.'
+          );
+          if (shouldRedirect) {
+            router.push('/dashboard/settings/profile');
+          }
         } else {
           alert(`Failed to connect bank: ${error.error?.message || 'Unknown error'}`);
         }
-      }
-    } catch (error) {
-      console.error('Error connecting bank:', error);
-      alert('Failed to connect bank. Please try again.');
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  const handleConnectBankWithMobile = async () => {
-    if (!mobileNumber.trim()) {
-      alert('Please enter your mobile number');
-      return;
-    }
-
-    setIsConnecting(true);
-    setShowMobileDialog(false);
-
-    try {
-      const response = await fetch('/api/basiq/connect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ mobile: mobileNumber }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Open Basiq consent URL in new window
-        window.open(result.data.consentUrl, '_blank', 'width=600,height=700');
-        // Show message to user
-        alert('A new window has opened for you to connect your bank. After connecting, click "Sync" to import your accounts.');
-      } else {
-        const error = await response.json();
-        alert(`Failed to connect bank: ${error.error?.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error connecting bank:', error);
@@ -1042,65 +1009,6 @@ function AccountsPageContent() {
             <Button onClick={() => { setShowDetailDialog(false); if (selectedAccount) handleEdit(selectedAccount); }}>
               <Edit2 className="h-4 w-4 mr-2" />
               Edit Account
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mobile Number Dialog for Bank Connection */}
-      <Dialog open={showMobileDialog} onOpenChange={setShowMobileDialog}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
-              Connect Your Bank
-            </DialogTitle>
-            <DialogDescription>
-              To securely connect your Australian bank, we need your mobile number for verification.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="mobile">Australian Mobile Number</Label>
-              <Input
-                id="mobile"
-                type="tel"
-                value={mobileNumber}
-                onChange={(e) => setMobileNumber(e.target.value)}
-                placeholder="0412 345 678"
-                className="text-lg"
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter your mobile number in format: 04XX XXX XXX or +614XX XXX XXX
-              </p>
-            </div>
-            <div className="bg-muted/50 p-3 rounded-lg text-sm text-muted-foreground">
-              <p className="font-medium text-foreground mb-1">What happens next?</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>A secure bank consent page will open</li>
-                <li>Select your bank and log in securely</li>
-                <li>Your accounts and transactions will sync automatically</li>
-              </ul>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              <strong>Tip:</strong> Save your mobile in{' '}
-              <a href="/dashboard/settings/profile" className="text-primary underline">
-                Settings &gt; Profile
-              </a>{' '}
-              to skip this step next time.
-            </div>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowMobileDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleConnectBankWithMobile} disabled={isConnecting}>
-              {isConnecting ? (
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <ExternalLink className="mr-2 h-4 w-4" />
-              )}
-              Continue to Bank
             </Button>
           </div>
         </DialogContent>
