@@ -115,7 +115,8 @@ export default function StorageSettingsPage() {
         if (settingsRes.ok) {
           const settingsData = await settingsRes.json();
           if (settingsData.data?.activeProvider) {
-            setActiveProvider(settingsData.data.activeProvider);
+            // Normalize to lowercase for UI consistency
+            setActiveProvider(settingsData.data.activeProvider.toLowerCase());
           }
         }
       } catch (error) {

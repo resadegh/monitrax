@@ -37,7 +37,7 @@ export class StorageProviderFactory implements IStorageProviderFactory {
       });
 
       if (!config || !config.isActive) {
-        return this.getDefaultProvider();
+        return await this.getDefaultProvider();
       }
 
       // Return appropriate provider based on configuration
@@ -48,12 +48,12 @@ export class StorageProviderFactory implements IStorageProviderFactory {
             return this.gcsProvider;
           }
           console.warn('Google Cloud Storage not configured, falling back to default');
-          return this.getDefaultProvider();
+          return await this.getDefaultProvider();
 
         case StorageProviderType.LOCAL_DRIVE:
           // Local drive storage is handled client-side via File System Access API
           // Server-side, we still use the default provider for metadata
-          return this.getDefaultProvider();
+          return await this.getDefaultProvider();
 
         case StorageProviderType.MONITRAX:
         default:
@@ -61,7 +61,7 @@ export class StorageProviderFactory implements IStorageProviderFactory {
       }
     } catch (error) {
       console.error('Error getting storage provider for user:', error);
-      return this.getDefaultProvider();
+      return await this.getDefaultProvider();
     }
   }
 
@@ -69,10 +69,17 @@ export class StorageProviderFactory implements IStorageProviderFactory {
    * Get the default storage provider
    * Returns GCS if configured, otherwise Monitrax database storage
    */
-  getDefaultProvider(): IStorageProvider {
+  async getDefaultProvider(): Promise<IStorageProvider> {
     // Use GCS as default if configured (better for production)
     if (this.gcsProvider) {
-      return this.gcsProvider;
+      try {
+        await this.gcsProvider.initialize();
+        return this.gcsProvider;
+      } catch (error) {
+        console.error('Failed to initialize GCS, falling back to database storage:', error);
+        // GCS failed to initialize, fall back to Monitrax
+        return this.monitraxProvider;
+      }
     }
     return this.monitraxProvider;
   }
