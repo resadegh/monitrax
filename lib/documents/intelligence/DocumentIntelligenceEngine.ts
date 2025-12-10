@@ -338,16 +338,17 @@ export class DocumentIntelligenceEngine {
 
   /**
    * Format analysis for API response
+   * Uses string types for status/documentType to support both Prisma and local enum types
    */
   private formatAnalysisResponse(analysis: {
     id: string;
     documentId: string;
-    status: DocumentAnalysisStatus;
-    documentType: DocumentAnalysisType;
-    typeConfidence: number;
-    overallConfidence: number;
+    status: string;  // Accepts both Prisma and local enum
+    documentType: string | null;  // Accepts both Prisma and local enum
+    typeConfidence: number | null;
+    overallConfidence: number | null;
     extractedData: unknown;
-    lowConfidenceFields: string[];
+    lowConfidenceFields: string[] | unknown;
     suggestedActions: unknown;
     rawText: string | null;
     analyzedAt: Date | null;
@@ -366,11 +367,13 @@ export class DocumentIntelligenceEngine {
       analysis: {
         id: analysis.id,
         documentId: analysis.documentId,
-        documentType: analysis.documentType,
-        typeConfidence: analysis.typeConfidence,
-        overallConfidence: analysis.overallConfidence,
+        documentType: analysis.documentType || 'UNKNOWN',
+        typeConfidence: analysis.typeConfidence ?? 0,
+        overallConfidence: analysis.overallConfidence ?? 0,
         extractedData: analysis.extractedData as Record<string, unknown>,
-        lowConfidenceFields: analysis.lowConfidenceFields,
+        lowConfidenceFields: Array.isArray(analysis.lowConfidenceFields)
+          ? analysis.lowConfidenceFields
+          : [],
         suggestedActions: (analysis.suggestedActions || []) as SuggestedAction[],
         rawText: analysis.rawText || undefined,
         status: analysis.status,
