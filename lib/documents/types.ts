@@ -23,12 +23,9 @@ export enum DocumentCategory {
 }
 
 export enum StorageProviderType {
-  MONITRAX = 'MONITRAX',
-  GOOGLE_CLOUD_STORAGE = 'GOOGLE_CLOUD_STORAGE',
-  GOOGLE_DRIVE = 'GOOGLE_DRIVE',
-  ICLOUD = 'ICLOUD',
-  ONEDRIVE = 'ONEDRIVE',
-  LOCAL_DRIVE = 'LOCAL_DRIVE',
+  MONITRAX = 'MONITRAX',              // Monitrax Cloud Storage (GCS-backed)
+  GOOGLE_CLOUD_STORAGE = 'GOOGLE_CLOUD_STORAGE',  // Internal GCS reference
+  LOCAL_DRIVE = 'LOCAL_DRIVE',        // User's local filesystem
 }
 
 export enum LinkedEntityType {
