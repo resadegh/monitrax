@@ -51,13 +51,24 @@ export async function GET(request: NextRequest) {
     url.searchParams.set('key', apiKey);
     url.searchParams.set('fields', 'formatted_address,address_components,geometry');
 
+    console.log('Places Details API request for place_id:', placeId);
+
     const response = await fetch(url.toString());
-
-    if (!response.ok) {
-      throw new Error('Google Places API request failed');
-    }
-
     const data = await response.json();
+
+    // Check for API errors
+    if (data.status !== 'OK') {
+      console.error('Places Details API error:', data.status, data.error_message);
+
+      if (data.status === 'REQUEST_DENIED') {
+        console.error('Places Details API: Request denied. Check if Places API is enabled for your API key.');
+      }
+
+      return NextResponse.json({
+        result: null,
+        error: data.error_message || `API returned status: ${data.status}`,
+      });
+    }
 
     return NextResponse.json({
       result: data.result || null,
@@ -65,8 +76,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Places details error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch address details' },
-      { status: 500 }
+      { error: 'Failed to fetch address details', result: null },
+      { status: 200 }
     );
   }
 }

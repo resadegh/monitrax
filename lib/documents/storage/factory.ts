@@ -9,8 +9,24 @@ import { StorageProviderType } from '../types';
 import { getMonitraxStorageProvider, MonitraxStorageProvider } from './monitraxProvider';
 import { getGoogleCloudStorageProvider, GoogleCloudStorageProvider } from './googleCloudStorageProvider';
 
-// Check if GCS is configured (has required env vars)
-const isGCSConfigured = !!(process.env.GCS_PROJECT_ID && process.env.GCS_BUCKET_NAME);
+// Check if GCS is fully configured (has ALL required env vars including service account key)
+const isGCSConfigured = !!(
+  process.env.GCS_PROJECT_ID &&
+  process.env.GCS_BUCKET_NAME &&
+  process.env.GCS_SERVICE_ACCOUNT_KEY
+);
+
+// Log GCS configuration status at startup (server-side only)
+if (typeof window === 'undefined') {
+  console.log('[StorageFactory] GCS Configuration:', {
+    projectId: process.env.GCS_PROJECT_ID ? 'set' : 'NOT SET',
+    bucketName: process.env.GCS_BUCKET_NAME || 'NOT SET',
+    serviceAccountKey: process.env.GCS_SERVICE_ACCOUNT_KEY
+      ? `set (length: ${process.env.GCS_SERVICE_ACCOUNT_KEY.length})`
+      : 'NOT SET',
+    isFullyConfigured: isGCSConfigured,
+  });
+}
 
 export class StorageProviderFactory implements IStorageProviderFactory {
   private monitraxProvider: MonitraxStorageProvider;
