@@ -50,7 +50,7 @@
 
 ### Current State (December 2025)
 
-- **25 Phases** defined in the blueprint
+- **26 Phases** defined in the blueprint
 - **14 Phases** fully implemented (including Phase 25 Document Management Engine)
 - **Active Development:** Phase 19 (Document Management UI), Phase 21 (Asset Management)
 - **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel
@@ -185,6 +185,7 @@ Every API response follows a standardised format:
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
 | **22** | Marketing Site & Auth Shell | 📋 Planned | Landing page, sign-in experience, public marketing routes |
+| **26** | Document Intelligence Engine | 📋 Planned | OCR extraction, auto-populate forms, receipt/invoice/contract analysis |
 
 ---
 
