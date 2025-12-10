@@ -81,5 +81,5 @@ export interface IStorageProviderFactory {
   /**
    * Get the default Monitrax storage provider
    */
-  getDefaultProvider(): IStorageProvider;
+  getDefaultProvider(): Promise<IStorageProvider>;
 }
