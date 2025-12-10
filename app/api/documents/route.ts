@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   console.log('[API/documents POST] Request received');
+  console.error('[API/documents POST] Request received (stderr)');
   try {
     // Authenticate
     const authHeader = request.headers.get('authorization');
