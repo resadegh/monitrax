@@ -5,7 +5,24 @@
  * vendor names, and other extracted data.
  */
 
-import { ExpenseCategory } from '@prisma/client';
+// ExpenseCategory enum (matches Prisma schema)
+// Defined locally to avoid dependency on Prisma client regeneration timing
+type ExpenseCategory =
+  | 'HOUSING'
+  | 'RATES'
+  | 'INSURANCE'
+  | 'MAINTENANCE'
+  | 'PERSONAL'
+  | 'UTILITIES'
+  | 'FOOD'
+  | 'TRANSPORT'
+  | 'ENTERTAINMENT'
+  | 'STRATA'
+  | 'LAND_TAX'
+  | 'LOAN_INTEREST'
+  | 'REGISTRATION'
+  | 'MODIFICATIONS'
+  | 'OTHER';
 
 // ============================================================================
 // Category Inference Rules

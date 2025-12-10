@@ -17,6 +17,21 @@ import {
 } from '@/lib/documents';
 import { getDocumentIntelligenceEngine } from '@/lib/documents/intelligence';
 
+// Type for document analysis data (matches Prisma schema)
+interface DocumentAnalysisData {
+  documentId: string;
+  id: string;
+  status: string;
+  documentType: string | null;
+  typeConfidence: number | null;
+  overallConfidence: number | null;
+  extractedData: unknown;
+  suggestedActions: unknown;
+  userVerified: boolean;
+  createdEntityType: string | null;
+  createdEntityId: string | null;
+}
+
 // ============================================================================
 // GET /api/documents - List documents
 // ============================================================================
@@ -77,7 +92,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Create a map for quick lookup
-    const analysisMap = new Map(analyses.map(a => [a.documentId, a]));
+    const analysisMap = new Map<string, DocumentAnalysisData>(
+      (analyses as DocumentAnalysisData[]).map(a => [a.documentId, a])
+    );
 
     return NextResponse.json({
       documents: result.documents.map(doc => {

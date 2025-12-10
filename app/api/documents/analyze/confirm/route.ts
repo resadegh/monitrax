@@ -14,8 +14,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { ExpenseCategory, Frequency, IncomeType } from '@prisma/client';
 import { SuggestedActionType } from '@/lib/documents/intelligence';
+
+// Types defined locally to avoid dependency on Prisma client regeneration timing
+type ExpenseCategory =
+  | 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL'
+  | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA'
+  | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
+
+type Frequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+
+type IncomeType = 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
 
 // ============================================================================
 // Types
