@@ -25,8 +25,8 @@ import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { ListFilter, propertyFilterConfigs } from '@/components/ListFilter';
 import { ExpenseDialog } from '@/components/ExpenseDialog';
-import { AddressAutocomplete, PropertyMap } from '@/components/google-maps';
-import type { AddressResult } from '@/components/google-maps/AddressAutocomplete';
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
+import { PropertyMap } from '@/components/google-maps';
 
 interface Loan {
   id: string;
@@ -247,16 +247,23 @@ function PropertiesPageContent() {
   };
 
   // Handle address selection from autocomplete
-  const handleAddressSelect = (result: AddressResult) => {
+  const handleAddressSelect = (address: {
+    formatted_address: string;
+    suburb?: string;
+    state?: string;
+    stateShort?: string;
+    postcode?: string;
+    lat?: number;
+    lng?: number;
+  }) => {
     setFormData((prev) => ({
       ...prev,
-      address: result.formattedAddress,
-      latitude: result.location.lat,
-      longitude: result.location.lng,
-      googlePlaceId: result.placeId,
-      suburb: result.components.suburb,
-      state: result.components.stateShort,
-      postcode: result.components.postcode,
+      address: address.formatted_address,
+      latitude: address.lat,
+      longitude: address.lng,
+      suburb: address.suburb,
+      state: address.stateShort || address.state,
+      postcode: address.postcode,
     }));
   };
 
@@ -735,10 +742,11 @@ function PropertiesPageContent() {
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
               <AddressAutocomplete
+                id="address"
                 value={formData.address}
                 onChange={(value) => setFormData({ ...formData, address: value })}
                 onAddressSelect={handleAddressSelect}
-                placeholder="Start typing address..."
+                placeholder="Start typing an address..."
               />
               {formData.suburb && formData.state && (
                 <p className="text-xs text-muted-foreground">

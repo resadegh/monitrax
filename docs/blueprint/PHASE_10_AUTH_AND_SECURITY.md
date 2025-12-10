@@ -339,9 +339,9 @@ Phase 10 is complete when:
 
 # IMPLEMENTATION STATUS
 
-**Status:** 45% Complete (PAUSED - Moving to Phase 11)
-**Last Updated:** 2025-01-25
-**Branch:** `claude/health-feed-ui-sync-01Xx4ZXP52A3GcsBWGLS1r6r`
+**Status:** 50% Complete (PAUSED - Moving to Phase 11)
+**Last Updated:** 2025-12-09
+**Branch:** `claude/audit-settings-architecture-01FrJLMk1htrKLxFgKPAGjA3`
 **Detailed Progress:** See `/docs/PHASE_10_PROGRESS.md`
 
 ---
@@ -394,10 +394,20 @@ Phase 10 is complete when:
 **TOTP (Time-based One-Time Password)**
 - ✅ Google Authenticator / Authy compatible
 - ✅ QR code generation for easy enrollment
+- ✅ **QR code data URL generation** (displays actual image, not URL text)
 - ✅ Secret key encryption and secure storage
 - ✅ 10 backup codes (SHA-256 hashed)
 - ✅ Primary/secondary MFA method support
 - ✅ API Routes: `/api/auth/mfa/totp/*`
+
+**SMS MFA (Twilio Integration)** — *Added 2025-12-09*
+- ✅ Australian phone number validation and E.164 normalization
+- ✅ 6-digit code generation with 10-minute expiry
+- ✅ Twilio API integration for SMS delivery
+- ✅ Development mode console logging (when Twilio not configured)
+- ✅ Setup, verify, resend, and disable flows
+- ✅ API Routes: `/api/auth/mfa/sms/*`
+- ✅ Functions: `setupSMSMFA`, `verifySMSSetup`, `sendSMSMFACode`, `verifySMSMFA`, `resendSMSCode`, `disableSMSMFA`
 
 **Email MFA**
 - ✅ 6-digit code generation
@@ -539,8 +549,9 @@ Phase 10 is complete when:
 ### Frontend UI (Not Started - 0%)
 
 **1. User Security Settings Page**
-- ❌ Password change form
-- ❌ MFA setup wizard with TOTP enrollment
+- ✅ Password change form (API: `/api/auth/password/change`) — *Added 2025-12-09*
+- ✅ MFA setup wizard with TOTP enrollment — *Updated 2025-12-09*
+- ✅ SMS MFA setup with phone verification — *Added 2025-12-09*
 - ❌ Passkey management UI (add, delete, rename)
 - ❌ Email MFA toggle
 - ❌ Backup codes display and regeneration
