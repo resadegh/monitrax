@@ -354,6 +354,106 @@ curl -X POST /api/documents/upload \
 
 ---
 
+## 6. Production Deployment Fixes (Session 2)
+
+**Type:** Bug Fixes
+**Severity:** Critical
+**Session:** claude/continue-session-01BTVc9M2B1mWrWBpgf6N3bM
+
+### 6.1 Vercel MIME Type Loss Fix
+
+**Problem:** Vercel's serverless environment loses the `file.type` property when parsing FormData, causing all uploads to fail with "Unsupported file type: application/json" error.
+
+**Solution:** Send MIME type explicitly from client and use it on server.
+
+**Files Modified:**
+- `hooks/useDocumentUpload.ts` - Added `formData.append('mimeType', file.type)`
+- `app/dashboard/documents/page.tsx` - Added explicit mimeType to form data
+- `app/api/documents/route.ts` - Read explicit mimeType, fall back to file.type
+
+```typescript
+// Client-side: Send MIME type explicitly
+formData.append('file', file);
+formData.append('mimeType', file.type);  // NEW
+
+// Server-side: Use explicit type with fallback
+const explicitMimeType = formData.get('mimeType') as string | null;
+const mimeType = explicitMimeType || file.type;
+```
+
+### 6.2 GCS Service Account Permissions
+
+**Problem:** Service account had "Storage Object Admin" role but GCS initialization failed with "Permission 'storage.buckets.get' denied" because bucket existence check requires bucket-level permissions.
+
+**Solution:** Updated service account IAM role.
+
+**Required IAM Role:**
+- ❌ Storage Object Admin (insufficient)
+- ✅ Storage Admin (includes bucket + object permissions)
+
+**Google Cloud Console Steps:**
+1. Cloud Storage → Buckets → monitrax-documents
+2. Permissions → Grant Access
+3. Principal: `monitrax-backend@monitrax-479700.iam.gserviceaccount.com`
+4. Role: **Storage Admin**
+
+### 6.3 TypeScript Build Fixes
+
+**Problem:** TypeScript build failing on Vercel with multiple errors.
+
+**Fixes Applied:**
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `app/api/documents/upload/route.ts` | `SUPPORTED_MIME_TYPES.includes(file.type)` type error | Cast array: `(SUPPORTED_MIME_TYPES as readonly string[]).includes(file.type)` |
+| `lib/documents/engine/rules/LinkingRules.ts` | `accountId` doesn't exist on InvestmentHolding | Changed to `investmentAccountId` |
+| `package.json` | Missing `uuid` types | Added `uuid: ^9.0.0` and `@types/uuid: ^9.0.0` |
+| `types/uuid.d.ts` | Backup type declaration | Created local type declaration file |
+
+### 6.4 Vercel vs Render Configuration
+
+**Problem:** GCS environment variables were configured in Render, but the app is deployed on Vercel.
+
+**Solution:** Added GCS environment variables to Vercel:
+
+| Variable | Value |
+|----------|-------|
+| `GCS_PROJECT_ID` | `monitrax-479700` |
+| `GCS_BUCKET_NAME` | `monitrax-documents` |
+| `GCS_SERVICE_ACCOUNT_KEY` | Base64-encoded service account JSON |
+
+### 6.5 Google Places API Key Fallback
+
+**Problem:** Address autocomplete not working because API routes looked for `GOOGLE_PLACES_API_KEY` but user had `GOOGLE_MAPS_API_KEY`.
+
+**Solution:** Added fallback in API routes.
+
+**Files Modified:**
+- `app/api/places/autocomplete/route.ts`
+- `app/api/places/details/route.ts`
+
+```typescript
+const apiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+```
+
+### 6.6 Storage Provider Activation Fix
+
+**Problem:** Storage provider activation not persisting - reverts to inactive after navigation.
+
+**Root Cause:** Case mismatch between UI (lowercase 'monitrax') and API response (uppercase 'MONITRAX').
+
+**Solution:** Normalize to lowercase in storage settings page.
+
+**File Modified:** `app/dashboard/settings/storage/page.tsx`
+
+```typescript
+if (settingsData.data?.activeProvider) {
+  setActiveProvider(settingsData.data.activeProvider.toLowerCase());
+}
+```
+
+---
+
 ## Testing Notes
 
 - TypeScript compilation passes
@@ -373,5 +473,6 @@ curl -X POST /api/documents/upload \
 
 ---
 
-*Document Version: 1.0*
+*Document Version: 1.1*
 *Created: 2025-12-10*
+*Updated: 2025-12-10 (Session 2 - Production deployment fixes)*
