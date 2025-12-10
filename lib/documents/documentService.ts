@@ -251,8 +251,29 @@ export async function getDocumentWithSignedUrl(
     return null;
   }
 
-  const storage = await getStorageProvider(userId);
-  const signedUrlResult = await storage.getSignedUrl(document.storagePath);
+  // Use the correct storage provider based on where the document is actually stored
+  const { getGoogleCloudStorageProvider } = await import('./storage/googleCloudStorageProvider');
+  const { getMonitraxStorageProvider } = await import('./storage/monitraxProvider');
+
+  let signedUrlResult;
+
+  if (document.storageProvider === StorageProviderType.GOOGLE_CLOUD_STORAGE) {
+    // Document is in GCS - use GCS provider
+    const gcsProvider = getGoogleCloudStorageProvider();
+    await gcsProvider.initialize();
+    signedUrlResult = await gcsProvider.getSignedUrl(document.storagePath);
+  } else if (document.storageProvider === StorageProviderType.LOCAL_DRIVE) {
+    // Local drive - no signed URL needed, return path for client-side handling
+    return {
+      document,
+      signedUrl: document.storagePath, // Client will use File System Access API
+      expiresAt: new Date(Date.now() + 300000), // 5 minutes
+    };
+  } else {
+    // Default to Monitrax (database) provider
+    const monitraxProvider = getMonitraxStorageProvider();
+    signedUrlResult = await monitraxProvider.getSignedUrl(document.storagePath);
+  }
 
   if (!signedUrlResult.success) {
     return null;
