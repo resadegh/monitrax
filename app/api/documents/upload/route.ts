@@ -1,6 +1,10 @@
 /**
- * Phase 25: Unified Document Upload API
- * Uses the Document Management Engine for all uploads
+ * Phase 25 & 26: Unified Document Upload API
+ *
+ * Uses the Document Management Engine (Phase 25) for uploads
+ * and optionally the Document Intelligence Engine (Phase 26) for analysis.
+ *
+ * Supports `analyze=true` parameter to trigger immediate analysis after upload.
  */
 
 import { NextResponse } from 'next/server';
@@ -10,6 +14,7 @@ import {
   createUploadContext,
   UploadSource,
 } from '@/lib/documents/engine';
+import { getDocumentIntelligenceEngine } from '@/lib/documents/intelligence';
 import {
   DocumentCategory,
   StorageProviderType,
@@ -117,17 +122,22 @@ export async function POST(request: Request) {
       timestamp: new Date(),
     });
 
+    // Parse analyze flag (Phase 26: Document Intelligence Engine)
+    const analyzeValue = formData.get('analyze') as string | null;
+    const shouldAnalyze = analyzeValue === 'true' || analyzeValue === '1';
+
     console.log('[API/upload] Processing upload through engine:', {
       source,
       filename: file.name,
       size: file.size,
       entities: Object.keys(cleanEntities),
       userInput: Object.keys(cleanUserInput),
+      analyze: shouldAnalyze,
     });
 
-    // Process through Document Management Engine
-    const engine = getDocumentManagementEngine();
-    const result = await engine.processUpload(context);
+    // Process through Document Management Engine (Phase 25)
+    const dme = getDocumentManagementEngine();
+    const result = await dme.processUpload(context);
 
     if (!result.success) {
       console.error('[API/upload] Engine upload failed:', result.error);
@@ -142,11 +152,43 @@ export async function POST(request: Request) {
       storagePath: result.storagePath,
     });
 
+    // Phase 26: Trigger analysis if requested
+    let analysis = null;
+    if (shouldAnalyze && result.document?.id) {
+      console.log('[API/upload] Triggering document analysis...');
+      const die = getDocumentIntelligenceEngine();
+
+      // Only attempt analysis if Vision API is available
+      if (die.isVisionAvailable()) {
+        try {
+          const analysisResult = await die.analyzeDocument({
+            documentId: result.document.id,
+          });
+
+          if (analysisResult.success) {
+            analysis = analysisResult.analysis;
+            console.log('[API/upload] Analysis complete:', {
+              documentType: analysis?.documentType,
+              confidence: analysis?.overallConfidence,
+            });
+          } else {
+            console.warn('[API/upload] Analysis failed:', analysisResult.error);
+          }
+        } catch (analysisError) {
+          console.error('[API/upload] Analysis error:', analysisError);
+          // Don't fail the upload if analysis fails
+        }
+      } else {
+        console.log('[API/upload] Vision API not available, skipping analysis');
+      }
+    }
+
     return NextResponse.json({
       success: true,
       document: result.document,
       storagePath: result.storagePath,
       storageUrl: result.storageUrl,
+      analysis,  // Phase 26: Include analysis result if available
     });
   } catch (error) {
     console.error('[API/upload] Error:', error);

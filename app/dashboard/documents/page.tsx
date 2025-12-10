@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Phase 19: Documents Library Page
- * Document management with folder structure navigation
+ * Phase 19 & 26: Documents Library Page
+ * Document management with folder structure navigation and AI analysis
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
   FileText,
   Upload,
@@ -26,6 +28,7 @@ import {
   FolderTree as FolderTreeIcon,
   PanelLeftClose,
   PanelLeft,
+  Sparkles,
 } from 'lucide-react';
 import {
   DocumentUploadDropzone,
@@ -35,6 +38,24 @@ import {
 } from '@/components/documents';
 import { DocumentCategory } from '@/lib/documents/types';
 import { StatCard } from '@/components/StatCard';
+
+// Phase 26: Analysis summary interface
+interface AnalysisSummary {
+  id: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  documentType: string;
+  typeConfidence: number;
+  overallConfidence: number;
+  extractedData: Record<string, unknown> | null;
+  suggestedActions: Array<{
+    type: string;
+    confidence: number;
+    description: string;
+  }> | null;
+  userVerified: boolean;
+  createdEntityType: string | null;
+  createdEntityId: string | null;
+}
 
 interface DocumentListItem {
   id: string;
@@ -50,6 +71,7 @@ interface DocumentListItem {
     entityType: string;
     entityId: string;
   }[];
+  analysis: AnalysisSummary | null; // Phase 26
 }
 
 interface DocumentsResponse {
@@ -69,6 +91,7 @@ export default function DocumentsLibraryPage() {
   const [currentPath, setCurrentPath] = useState('/');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showSidebar, setShowSidebar] = useState(true);
+  const [enableAIAnalysis, setEnableAIAnalysis] = useState(true); // Phase 26: Auto-analyze uploads
 
   // Fetch documents
   const fetchDocuments = useCallback(async () => {
@@ -177,7 +200,7 @@ export default function DocumentsLibraryPage() {
     return [];
   }, [currentPath, documentCounts]);
 
-  // Handle upload
+  // Handle upload (Phase 26: includes AI analysis option)
   const handleUpload = async (
     file: File,
     category: DocumentCategory,
@@ -193,6 +216,11 @@ export default function DocumentsLibraryPage() {
     formData.append('mimeType', file.type);
     if (description) formData.append('description', description);
     if (tags?.length) formData.append('tags', tags.join(','));
+
+    // Phase 26: Include analyze flag for AI document analysis
+    if (enableAIAnalysis) {
+      formData.append('analyze', 'true');
+    }
 
     const res = await fetch('/api/documents', {
       method: 'POST',
@@ -239,9 +267,56 @@ export default function DocumentsLibraryPage() {
     }
   };
 
+  // Phase 26: Handle analyze existing document
+  const handleAnalyze = async (id: string) => {
+    if (!token) return;
+
+    const res = await fetch('/api/documents/analyze', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ documentId: id }),
+    });
+
+    if (res.ok) {
+      // Refresh to get updated analysis
+      setRefreshKey((k) => k + 1);
+    }
+  };
+
+  // Phase 26: Handle confirm analysis action
+  const handleConfirmAnalysis = async (
+    analysisId: string,
+    action: string,
+    data: Record<string, unknown>
+  ) => {
+    if (!token) return;
+
+    const res = await fetch('/api/documents/analyze/confirm', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ analysisId, action, data }),
+    });
+
+    if (res.ok) {
+      // Refresh to get updated status
+      setRefreshKey((k) => k + 1);
+    }
+
+    return res.ok;
+  };
+
   // Calculate stats
   const totalSize = documents.reduce((sum, d) => sum + d.size, 0);
   const categoryCount = new Set(documents.map((d) => d.category)).size;
+  // Phase 26: Count analyzed documents
+  const analyzedCount = documents.filter((d) => d.analysis?.status === 'COMPLETED').length;
+  const pendingAnalysisCount = documents.filter((d) => d.analysis && d.analysis.status !== 'COMPLETED' && d.analysis.status !== 'FAILED').length;
 
   return (
     <DashboardLayout>
@@ -320,7 +395,35 @@ export default function DocumentsLibraryPage() {
                     Upload Documents
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  {/* Phase 26: AI Analysis Toggle */}
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <Label htmlFor="ai-analysis" className="text-sm font-medium">
+                        AI Document Analysis
+                      </Label>
+                      <Badge variant="secondary" className="text-xs">
+                        Phase 26
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {enableAIAnalysis ? 'Enabled' : 'Disabled'}
+                      </span>
+                      <Switch
+                        id="ai-analysis"
+                        checked={enableAIAnalysis}
+                        onCheckedChange={setEnableAIAnalysis}
+                      />
+                    </div>
+                  </div>
+                  {enableAIAnalysis && (
+                    <p className="text-xs text-muted-foreground">
+                      Documents will be automatically analyzed to extract data like vendor, amount, date, and GST.
+                      You can review and confirm extracted data to create expenses or income records.
+                    </p>
+                  )}
                   <DocumentUploadDropzone
                     onUpload={handleUpload}
                     defaultCategory={DocumentCategory.OTHER}
@@ -415,6 +518,8 @@ export default function DocumentsLibraryPage() {
                   onView={handleView}
                   onDelete={handleDelete}
                   onNavigateFolder={setCurrentPath}
+                  onAnalyze={handleAnalyze}
+                  onConfirmAnalysis={handleConfirmAnalysis}
                   loading={isLoading}
                   viewMode={viewMode}
                 />

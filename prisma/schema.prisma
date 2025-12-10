@@ -2115,12 +2115,93 @@ model Document {
   // Relationships
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   links             DocumentLink[]
+  analysis          DocumentAnalysis?   // Phase 26: Document Intelligence
 
   @@index([userId])
   @@index([category])
   @@index([storageProvider])
   @@index([deletedAt])
   @@map("documents")
+}
+
+// =============================================================================
+// PHASE 26: DOCUMENT INTELLIGENCE ENGINE ENUMS
+// =============================================================================
+
+enum DocumentAnalysisType {
+  RECEIPT
+  INVOICE
+  BANK_STATEMENT
+  UTILITY_BILL
+  RATE_NOTICE
+  INSURANCE_POLICY
+  LOAN_STATEMENT
+  LOAN_CONTRACT
+  LEASE_AGREEMENT
+  VALUATION_REPORT
+  TAX_DOCUMENT
+  UNKNOWN
+}
+
+enum DocumentAnalysisStatus {
+  PENDING           // Analysis queued
+  PROCESSING        // Currently being analyzed
+  COMPLETED         // Analysis finished successfully
+  FAILED            // Analysis failed
+}
+
+// =============================================================================
+// PHASE 26: DOCUMENT ANALYSIS MODEL
+// =============================================================================
+
+model DocumentAnalysis {
+  id                    String                 @id @default(uuid())
+  documentId            String                 @unique
+  document              Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  // Analysis status
+  status                DocumentAnalysisStatus @default(PENDING)
+  errorMessage          String?
+
+  // Analysis metadata
+  analyzedAt            DateTime?
+  analyzerVersion       String?                // e.g., "vision-v1", "docai-v1", "claude-v1"
+  processingTimeMs      Int?                   // Processing time in milliseconds
+
+  // Classification
+  documentType          DocumentAnalysisType   @default(UNKNOWN)
+  typeConfidence        Float                  @default(0)  // 0.0 - 1.0
+
+  // Extracted data (JSON)
+  extractedData         Json?                  // Structured extraction result
+  rawText               String?                @db.Text     // Full OCR text (for search)
+
+  // Confidence metrics
+  overallConfidence     Float                  @default(0)  // 0.0 - 1.0
+  lowConfidenceFields   String[]               // Field names needing review
+
+  // User verification
+  userVerified          Boolean                @default(false)
+  userCorrectedFields   String[]               // Fields user modified
+  verifiedAt            DateTime?
+  verifiedData          Json?                  // User-corrected data
+
+  // Entity creation tracking
+  createdEntityType     String?                // "EXPENSE", "INCOME", "LOAN", etc.
+  createdEntityId       String?                // ID of created entity
+
+  // Suggested actions (JSON array)
+  suggestedActions      Json?                  // [{ action, label, prefilled }]
+
+  // Timestamps
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@index([documentId])
+  @@index([documentType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("document_analyses")
 }
 
 // =============================================================================
