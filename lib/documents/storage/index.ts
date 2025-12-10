@@ -4,4 +4,10 @@
 
 export type { IStorageProvider, IStorageProviderFactory } from './interface';
 export { MonitraxStorageProvider, getMonitraxStorageProvider } from './monitraxProvider';
-export { StorageProviderFactory, getStorageProviderFactory, getStorageProvider } from './factory';
+export { GoogleCloudStorageProvider, getGoogleCloudStorageProvider } from './googleCloudStorageProvider';
+export {
+  StorageProviderFactory,
+  getStorageProviderFactory,
+  getStorageProvider,
+  isGoogleCloudStorageConfigured,
+} from './factory';
