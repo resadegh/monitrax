@@ -245,14 +245,14 @@ export class DocumentIntelligenceEngine {
     filename: string
   ): Promise<AnalysisResult> {
     switch (documentType) {
-      case 'RECEIPT':
+      case DocumentAnalysisType.RECEIPT:
         return analyzeReceipt(text, filename);
-      case 'INVOICE':
+      case DocumentAnalysisType.INVOICE:
         return analyzeInvoice(text, filename);
       // Add more analyzers as implemented
-      case 'UTILITY_BILL':
-      case 'RATE_NOTICE':
-      case 'BANK_STATEMENT':
+      case DocumentAnalysisType.UTILITY_BILL:
+      case DocumentAnalysisType.RATE_NOTICE:
+      case DocumentAnalysisType.BANK_STATEMENT:
         // For now, fall back to receipt/invoice patterns
         // These can be specialized later
         return analyzeReceipt(text, filename);
@@ -385,10 +385,11 @@ export class DocumentIntelligenceEngine {
 
   /**
    * Get analysis status for a document
+   * Returns string type for status to support both Prisma and local enum types
    */
   async getAnalysisStatus(documentId: string): Promise<{
     exists: boolean;
-    status?: DocumentAnalysisStatus;
+    status?: string;  // Use string to accept both Prisma and local enum
     analysisId?: string;
   }> {
     const analysis = await prisma.documentAnalysis.findUnique({
@@ -402,7 +403,7 @@ export class DocumentIntelligenceEngine {
 
     return {
       exists: true,
-      status: analysis.status,
+      status: analysis.status as string,
       analysisId: analysis.id,
     };
   }
