@@ -212,6 +212,8 @@ export default function DocumentsLibraryPage() {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('category', category);
+    // Send MIME type explicitly (Vercel/Next.js can lose file.type)
+    formData.append('mimeType', file.type);
     if (description) formData.append('description', description);
     if (tags?.length) formData.append('tags', tags.join(','));
 

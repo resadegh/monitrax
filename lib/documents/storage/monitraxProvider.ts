@@ -34,6 +34,7 @@ export class MonitraxStorageProvider implements IStorageProvider {
   }
 
   async upload(params: StorageUploadParams): Promise<StorageUploadResult> {
+    console.log('[MonitraxProvider] Upload called - storing in DATABASE, path:', params.path);
     if (!this.initialized) {
       await this.initialize();
     }

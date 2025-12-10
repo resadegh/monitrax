@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     // Validate file type
-    if (!SUPPORTED_MIME_TYPES.includes(file.type as typeof SUPPORTED_MIME_TYPES[number])) {
+    if (!(SUPPORTED_MIME_TYPES as readonly string[]).includes(file.type)) {
       return NextResponse.json(
         { error: `Unsupported file type: ${file.type}` },
         { status: 400 }

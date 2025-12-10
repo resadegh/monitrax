@@ -145,6 +145,8 @@ export async function GET(request: NextRequest) {
 // ============================================================================
 
 export async function POST(request: NextRequest) {
+  console.log('[API/documents POST] Request received');
+  console.error('[API/documents POST] Request received (stderr)');
   try {
     // Authenticate
     const authHeader = request.headers.get('authorization');
@@ -168,10 +170,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
+    // Get MIME type - prefer explicit mimeType field (Vercel/Next.js can lose file.type)
+    const explicitMimeType = formData.get('mimeType') as string | null;
+    const mimeType = explicitMimeType || file.type;
+
+    console.log('[API/documents POST] File info:', {
+      fileName: file.name,
+      fileType: file.type,
+      explicitMimeType,
+      resolvedMimeType: mimeType,
+      size: file.size,
+    });
+
     // Validate file type
-    if (!SUPPORTED_MIME_TYPES.includes(file.type as typeof SUPPORTED_MIME_TYPES[number])) {
+    if (!SUPPORTED_MIME_TYPES.includes(mimeType as typeof SUPPORTED_MIME_TYPES[number])) {
       return NextResponse.json(
-        { error: `Unsupported file type: ${file.type}` },
+        { error: `Unsupported file type: ${mimeType}` },
         { status: 400 }
       );
     }
@@ -217,7 +231,7 @@ export async function POST(request: NextRequest) {
     const result = await uploadDocument(userId, {
       file,
       filename: file.name,
-      mimeType: file.type,
+      mimeType: mimeType,
       category,
       description: description || undefined,
       tags,

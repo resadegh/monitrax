@@ -108,6 +108,8 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('category', options.category);
+        // Send MIME type explicitly (Vercel/Next.js can lose file.type)
+        formData.append('mimeType', file.type);
         if (options.description) {
           formData.append('description', options.description);
         }

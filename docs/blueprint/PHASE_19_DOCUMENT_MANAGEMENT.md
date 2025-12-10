@@ -821,9 +821,35 @@ This ensures the app works in all environments:
 ### 19.14.10 Security Features
 
 - **Signed URLs**: 5-minute expiry for all file access
-- **Service Account**: Limited permissions (Storage Object Admin only)
+- **Service Account**: Requires **Storage Admin** role (not just Object Admin)
 - **Path Isolation**: Users can only access `{userId}/*` paths
 - **No Public Access**: Bucket is private, all access via signed URLs
+
+### 19.14.11 Vercel Deployment Considerations
+
+**IMPORTANT:** When deploying to Vercel:
+
+1. **Environment Variables**: Add GCS vars to Vercel, not just Render
+2. **MIME Type Fix**: Vercel loses `file.type` from FormData - client must send mimeType explicitly
+3. **Service Account Role**: Must be **Storage Admin** (not Storage Object Admin) for bucket existence check
+
+**IAM Role Comparison:**
+
+| Role | Bucket Operations | Object Operations | Required? |
+|------|-------------------|-------------------|-----------|
+| Storage Object Admin | ❌ | ✅ | ❌ Insufficient |
+| Storage Admin | ✅ | ✅ | ✅ Required |
+
+**MIME Type Workaround:**
+
+```typescript
+// Client: Send MIME type explicitly
+formData.append('file', file);
+formData.append('mimeType', file.type);
+
+// Server: Use explicit type with fallback
+const mimeType = formData.get('mimeType') || file.type;
+```
 
 ---
 
