@@ -196,13 +196,13 @@ export const LinkingRules: LinkingRule[] = [
       try {
         const holding = await prisma.investmentHolding.findUnique({
           where: { id: ctx.entities.investmentHoldingId },
-          select: { accountId: true },
+          select: { investmentAccountId: true },
         });
 
-        if (holding?.accountId) {
+        if (holding?.investmentAccountId) {
           links.push({
             entityType: LinkedEntityType.INVESTMENT_ACCOUNT,
-            entityId: holding.accountId,
+            entityId: holding.investmentAccountId,
           });
         }
       } catch (error) {
