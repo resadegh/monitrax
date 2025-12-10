@@ -53,6 +53,13 @@ export async function POST(request: NextRequest) {
         purchaseDate,
         currentValue,
         valuationDate,
+        // Location fields (Google Maps)
+        latitude,
+        longitude,
+        googlePlaceId,
+        suburb,
+        state,
+        postcode,
       } = body;
 
       if (!name || !type || !purchasePrice || !purchaseDate || !currentValue || !valuationDate) {
@@ -72,6 +79,13 @@ export async function POST(request: NextRequest) {
           purchaseDate: new Date(purchaseDate),
           currentValue: parseFloat(currentValue),
           valuationDate: new Date(valuationDate),
+          // Location data
+          latitude: latitude ? parseFloat(latitude) : null,
+          longitude: longitude ? parseFloat(longitude) : null,
+          googlePlaceId: googlePlaceId || null,
+          suburb: suburb || null,
+          state: state || null,
+          postcode: postcode || null,
         },
       });
 
