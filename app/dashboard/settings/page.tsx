@@ -188,11 +188,9 @@ export default function GeneralSettingsPage() {
                     Cloud Storage
                     <Badge variant="outline">
                       {status?.storage.provider === 'MONITRAX'
-                        ? 'Monitrax Storage'
-                        : status?.storage.provider === 'GOOGLE_DRIVE'
-                        ? 'Google Drive'
-                        : status?.storage.provider === 'ICLOUD'
-                        ? 'iCloud'
+                        ? 'Monitrax Cloud'
+                        : status?.storage.provider === 'LOCAL_DRIVE'
+                        ? 'Local Drive'
                         : status?.storage.provider}
                     </Badge>
                   </div>

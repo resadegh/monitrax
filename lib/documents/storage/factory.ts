@@ -50,9 +50,9 @@ export class StorageProviderFactory implements IStorageProviderFactory {
           console.warn('Google Cloud Storage not configured, falling back to default');
           return this.getDefaultProvider();
 
-        case StorageProviderType.GOOGLE_DRIVE:
-          // TODO: Implement Google Drive provider (OAuth-based user storage)
-          console.warn('Google Drive provider not yet implemented, falling back to default');
+        case StorageProviderType.LOCAL_DRIVE:
+          // Local drive storage is handled client-side via File System Access API
+          // Server-side, we still use the default provider for metadata
           return this.getDefaultProvider();
 
         case StorageProviderType.MONITRAX:

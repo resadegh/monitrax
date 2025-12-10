@@ -11,9 +11,7 @@ import { getCurrentUser } from '@/lib/auth';
 // Local enum to avoid Prisma generation issues
 const StorageProviderType = {
   MONITRAX: 'MONITRAX',
-  GOOGLE_DRIVE: 'GOOGLE_DRIVE',
-  ICLOUD: 'ICLOUD',
-  ONEDRIVE: 'ONEDRIVE',
+  LOCAL_DRIVE: 'LOCAL_DRIVE',
 } as const;
 type StorageProviderTypeValue = (typeof StorageProviderType)[keyof typeof StorageProviderType];
 
@@ -55,30 +53,12 @@ export async function GET(request: Request) {
       },
     ];
 
-    if (config) {
-      if (config.provider === StorageProviderType.GOOGLE_DRIVE) {
-        connectedProviders.push({
-          provider: StorageProviderType.GOOGLE_DRIVE,
-          connected: true,
-          isActive: config.isActive,
-          email: (config.config as Record<string, string> | null)?.email,
-        });
-      }
-      if (config.provider === StorageProviderType.ICLOUD) {
-        connectedProviders.push({
-          provider: StorageProviderType.ICLOUD,
-          connected: true,
-          isActive: config.isActive,
-        });
-      }
-      if (config.provider === StorageProviderType.ONEDRIVE) {
-        connectedProviders.push({
-          provider: StorageProviderType.ONEDRIVE,
-          connected: true,
-          isActive: config.isActive,
-          email: (config.config as Record<string, string> | null)?.email,
-        });
-      }
+    if (config && config.provider === StorageProviderType.LOCAL_DRIVE) {
+      connectedProviders.push({
+        provider: StorageProviderType.LOCAL_DRIVE,
+        connected: true,
+        isActive: config.isActive,
+      });
     }
 
     return NextResponse.json({

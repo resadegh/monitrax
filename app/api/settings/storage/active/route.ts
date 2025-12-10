@@ -10,17 +10,13 @@ import { getCurrentUser } from '@/lib/auth';
 // Local enum to avoid Prisma generation issues
 const StorageProviderType = {
   MONITRAX: 'MONITRAX',
-  GOOGLE_DRIVE: 'GOOGLE_DRIVE',
-  ICLOUD: 'ICLOUD',
-  ONEDRIVE: 'ONEDRIVE',
+  LOCAL_DRIVE: 'LOCAL_DRIVE',
 } as const;
 type StorageProviderTypeValue = (typeof StorageProviderType)[keyof typeof StorageProviderType];
 
 const PROVIDER_MAP: Record<string, StorageProviderTypeValue> = {
   monitrax: StorageProviderType.MONITRAX,
-  google_drive: StorageProviderType.GOOGLE_DRIVE,
-  icloud: StorageProviderType.ICLOUD,
-  onedrive: StorageProviderType.ONEDRIVE,
+  local_drive: StorageProviderType.LOCAL_DRIVE,
 };
 
 export async function POST(request: Request) {
