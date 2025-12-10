@@ -129,8 +129,12 @@ export async function uploadDocument(
     // Get storage provider (GCS if configured, otherwise Monitrax database storage)
     const storage = await getStorageProvider(userId);
 
+    console.log('[DocumentUpload] Using storage provider:', storage.name, 'for user:', userId);
+
     // Generate storage path
     const storagePath = generateStoragePath(userId, request);
+
+    console.log('[DocumentUpload] Storage path:', storagePath);
 
     // Upload to storage
     const uploadResult = await storage.upload({
@@ -142,8 +146,14 @@ export async function uploadDocument(
     });
 
     if (!uploadResult.success) {
+      console.error('[DocumentUpload] Upload failed:', uploadResult.error);
       return { success: false, error: uploadResult.error };
     }
+
+    console.log('[DocumentUpload] Upload successful:', {
+      storagePath: uploadResult.storagePath,
+      storageUrl: uploadResult.storageUrl,
+    });
 
     // Determine storage provider type based on which provider was used
     const isGCSProvider = storage.name === 'google_cloud_storage';

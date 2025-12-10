@@ -55,12 +55,14 @@ interface StorageHealthData {
   storage: {
     configured: { monitrax: boolean; googleCloudStorage: boolean };
     healthy: { monitrax: boolean; googleCloudStorage: boolean };
+    ready: { monitrax: boolean; googleCloudStorage: boolean };
     activeProvider: string;
     googleCloudStorage?: {
       bucket: string;
       location: string;
       storageClass: string;
     };
+    error?: string | null;
   };
 }
 
@@ -152,12 +154,16 @@ export default function StorageSettingsPage() {
   const getStorageStatus = () => {
     if (!storageHealth) return null;
 
-    const isGCSActive = storageHealth.storage.activeProvider === 'google_cloud_storage';
+    const isGCSConfigured = storageHealth.storage.configured.googleCloudStorage;
     const isGCSHealthy = storageHealth.storage.healthy.googleCloudStorage;
+    const isGCSReady = storageHealth.storage.ready?.googleCloudStorage ?? isGCSHealthy;
+    const gcsError = storageHealth.storage.error;
 
     return {
-      isGCSActive,
+      isGCSConfigured,
       isGCSHealthy,
+      isGCSReady,
+      gcsError,
       bucket: storageHealth.storage.googleCloudStorage?.bucket,
       location: storageHealth.storage.googleCloudStorage?.location,
     };
@@ -183,22 +189,35 @@ export default function StorageSettingsPage() {
 
       {/* Storage Status */}
       {status && (
-        <Card className={status.isGCSHealthy ? 'border-green-200 dark:border-green-800' : 'border-yellow-200 dark:border-yellow-800'}>
+        <Card className={status.isGCSReady ? 'border-green-200 dark:border-green-800' : status.gcsError ? 'border-red-200 dark:border-red-800' : 'border-yellow-200 dark:border-yellow-800'}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <Server className={`h-5 w-5 ${status.isGCSHealthy ? 'text-green-600' : 'text-yellow-600'}`} />
+              <Server className={`h-5 w-5 ${status.isGCSReady ? 'text-green-600' : status.gcsError ? 'text-red-600' : 'text-yellow-600'}`} />
               <div className="flex-1">
                 <p className="font-medium">
-                  {status.isGCSHealthy ? 'Cloud Storage Connected' : 'Storage Status'}
+                  {status.isGCSReady ? 'Cloud Storage Connected' : status.gcsError ? 'Cloud Storage Error' : 'Using Database Storage'}
                 </p>
-                {status.isGCSHealthy && status.bucket && (
+                {status.isGCSReady && status.bucket && (
                   <p className="text-sm text-muted-foreground">
                     Bucket: {status.bucket} ({status.location})
                   </p>
                 )}
+                {status.gcsError && (
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {status.gcsError}
+                  </p>
+                )}
+                {!status.isGCSReady && !status.gcsError && (
+                  <p className="text-sm text-muted-foreground">
+                    Documents are stored in Monitrax database
+                  </p>
+                )}
               </div>
-              <Badge variant={status.isGCSHealthy ? 'default' : 'secondary'} className={status.isGCSHealthy ? 'bg-green-500' : ''}>
-                {status.isGCSHealthy ? 'Healthy' : 'Checking...'}
+              <Badge
+                variant={status.isGCSReady ? 'default' : 'secondary'}
+                className={status.isGCSReady ? 'bg-green-500' : status.gcsError ? 'bg-red-500 text-white' : ''}
+              >
+                {status.isGCSReady ? 'Healthy' : status.gcsError ? 'Error' : 'Active'}
               </Badge>
             </div>
           </CardContent>

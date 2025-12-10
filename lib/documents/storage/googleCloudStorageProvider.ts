@@ -38,12 +38,21 @@ export class GoogleCloudStorageProvider implements IStorageProvider {
 
   async initialize(_config?: StorageProviderConfig): Promise<void> {
     if (this.initialized) {
+      console.log('[GCS] Already initialized');
       return;
     }
+
+    console.log('[GCS] Initializing Google Cloud Storage...');
 
     try {
       const projectId = process.env.GCS_PROJECT_ID;
       const serviceAccountKey = process.env.GCS_SERVICE_ACCOUNT_KEY;
+
+      console.log('[GCS] Config:', {
+        projectId: projectId ? 'set' : 'NOT SET',
+        bucketName: this.bucketName,
+        serviceAccountKey: serviceAccountKey ? `set (length: ${serviceAccountKey.length})` : 'NOT SET',
+      });
 
       if (!projectId) {
         throw new Error('GCS_PROJECT_ID environment variable is not set');
@@ -51,15 +60,18 @@ export class GoogleCloudStorageProvider implements IStorageProvider {
 
       if (serviceAccountKey) {
         // Parse base64-encoded service account key
+        console.log('[GCS] Parsing service account key...');
         const credentials = JSON.parse(
           Buffer.from(serviceAccountKey, 'base64').toString('utf-8')
         );
+        console.log('[GCS] Service account email:', credentials.client_email);
 
         this.storage = new Storage({
           projectId,
           credentials,
         });
       } else {
+        console.log('[GCS] No service account key, using default credentials');
         // Fall back to default credentials (for local development with gcloud CLI)
         this.storage = new Storage({
           projectId,
@@ -69,13 +81,14 @@ export class GoogleCloudStorageProvider implements IStorageProvider {
       this.bucket = this.storage.bucket(this.bucketName);
 
       // Verify bucket exists
+      console.log('[GCS] Verifying bucket exists...');
       const [exists] = await this.bucket.exists();
       if (!exists) {
         throw new Error(`Bucket ${this.bucketName} does not exist`);
       }
 
       this.initialized = true;
-      console.log(`Google Cloud Storage initialized with bucket: ${this.bucketName}`);
+      console.log(`[GCS] Initialized successfully with bucket: ${this.bucketName}`);
     } catch (error) {
       console.error('Failed to initialize Google Cloud Storage:', error);
       throw error;
@@ -107,6 +120,8 @@ export class GoogleCloudStorageProvider implements IStorageProvider {
 
       const file = this.bucket.file(params.path);
 
+      console.log('[GCS] Uploading file to bucket:', this.bucketName, 'path:', params.path);
+
       // Upload file to GCS
       await file.save(params.file, {
         metadata: {
@@ -123,13 +138,15 @@ export class GoogleCloudStorageProvider implements IStorageProvider {
       // Generate the storage URL (public URL format, not for direct access)
       const storageUrl = `gs://${this.bucketName}/${params.path}`;
 
+      console.log('[GCS] Upload successful, storageUrl:', storageUrl);
+
       return {
         success: true,
         storagePath: params.path,
         storageUrl,
       };
     } catch (error) {
-      console.error('GCS upload error:', error);
+      console.error('[GCS] Upload error:', error);
       return {
         success: false,
         storagePath: '',
