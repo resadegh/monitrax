@@ -4,8 +4,8 @@
 
 ---
 
-**Version:** 2.1
-**Last Updated:** 2025-12-09
+**Version:** 2.2
+**Last Updated:** 2025-12-10
 **Status:** Active Development
 **Owners:** ReNew (Newsha & Reza)
 **Architect:** ChatGPT | **Engineer:** Claude
@@ -50,9 +50,9 @@
 
 ### Current State (December 2025)
 
-- **24 Phases** defined in the blueprint
-- **13 Phases** fully implemented (including Phase 24 Open Banking)
-- **Active Development:** Phase 19 (Document Management), Phase 21 (Asset Management)
+- **26 Phases** defined in the blueprint
+- **14 Phases** fully implemented (including Phase 25 Document Management Engine)
+- **Active Development:** Phase 19 (Document Management UI), Phase 21 (Asset Management)
 - **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel
 
 ---
@@ -93,7 +93,7 @@
 | **Database** | PostgreSQL (Render) |
 | **Authentication** | Clerk.dev (MFA, OAuth, Session Management) |
 | **Deployment** | Vercel (Frontend), Render (Backend + Database) |
-| **File Storage** | Monitrax-managed (Phase 19), Google Drive (Phase 19B) |
+| **File Storage** | Google Cloud Storage (primary), Database (fallback), Local Drive (optional) |
 
 ### Build & Deployment
 
@@ -127,6 +127,7 @@ See: `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` for full deployment do
 | **AI Strategy Engine** | Multi-horizon recommendations |
 | **Personal CFO Engine** | Unified intelligence orchestration |
 | **Reporting Engine** | Multi-format export (CSV, Excel, JSON) |
+| **Document Management Engine** | Rule-based upload orchestration, auto-categorization, storage selection |
 
 ### Data Standards
 
@@ -163,6 +164,7 @@ Every API response follows a standardised format:
 | **16** | Reporting & Integrations | ✅ Complete | Report generators, CSV/Excel/JSON exporters |
 | **17** | Personal CFO Engine | ✅ Complete | CFO Score, Risk Radar, Action Engine |
 | **24** | Open Banking (Basiq) | ✅ Complete | Australian bank connection, account sync, transaction import |
+| **25** | Document Management Engine | ✅ Complete | Rule-based upload orchestration, auto-categorization, cascade linking |
 
 ### In Progress
 
@@ -183,6 +185,7 @@ Every API response follows a standardised format:
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
 | **22** | Marketing Site & Auth Shell | 📋 Planned | Landing page, sign-in experience, public marketing routes |
+| **26** | Document Intelligence Engine | 📋 Planned | OCR extraction, auto-populate forms, receipt/invoice/contract analysis |
 
 ---
 
@@ -392,7 +395,7 @@ See: `docs/blueprint/PHASE_20_AUSTRALIAN_TAX_INTELLIGENCE_ENGINE.md`
 - Four priority levels
 - Deadline tracking
 
-### 5.9 Document Management (Phase 19)
+### 5.9 Document Management (Phase 19 & 25)
 
 **Capabilities:**
 - Document upload (drag-and-drop)
@@ -402,11 +405,28 @@ See: `docs/blueprint/PHASE_20_AUSTRALIAN_TAX_INTELLIGENCE_ENGINE.md`
 - PDF/image preview
 - Signed URLs (5-minute expiry)
 - Polymorphic entity linking
+- Folder structure view (by category, FY, entity)
+
+**Document Management Engine (Phase 25):**
+- Centralized upload orchestration
+- Rule-based storage provider selection
+- Automatic document categorization
+- Cascade entity linking (expense → property → loan)
+- Intelligent path generation with Australian FY
+- Priority-based rule matching
+
+**Storage Providers:**
+- Google Cloud Storage (production primary)
+- Database/Monitrax (fallback)
+- Local Drive (user's computer)
 
 **Supported Formats:**
 - PDF, DOC, DOCX, XLS, XLSX
 - CSV, TXT
 - JPEG, PNG, GIF, WEBP, HEIC
+
+See: `docs/blueprint/PHASE_19_DOCUMENT_MANAGEMENT.md`
+See: `docs/blueprint/PHASE_25_DOCUMENT_MANAGEMENT_ENGINE.md`
 
 ---
 

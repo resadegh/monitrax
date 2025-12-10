@@ -827,17 +827,238 @@ This ensures the app works in all environments:
 
 ---
 
-## 19.15 Future Enhancements
+## 19.15 PHASE 25 - DOCUMENT MANAGEMENT ENGINE
+
+**Status:** ✅ IMPLEMENTED
+**Implemented Date:** 2025-12-10
+**Branch:** `claude/google-backend-integrations-01DaDaQEvzPyus6apSWk17wo`
+
+### 19.15.1 Overview
+
+The Document Management Engine (DME) is a centralized orchestration layer that manages all document uploads across the application. Instead of scattered upload logic in multiple components, the DME provides a single entry point that intelligently determines:
+
+- **Where** documents are stored (GCS, Database, Local Drive)
+- **How** they are categorized (based on context and content)
+- **Which** entities they link to (with automatic cascade linking)
+- **What** path structure is used (entity hierarchy with Australian FY)
+
+### 19.15.2 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Document Upload Entry Points                      │
+├──────────┬──────────┬──────────┬──────────┬──────────┬─────────────┤
+│ Documents│  Expense │ Property │   Loan   │   Bank   │    API      │
+│  Library │   Form   │   Form   │   Form   │  Import  │   Direct    │
+└────┬─────┴────┬─────┴────┬─────┴────┬─────┴────┬─────┴──────┬──────┘
+     │          │          │          │          │            │
+     ▼          ▼          ▼          ▼          ▼            ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Upload Context Builder                            │
+│  ┌─────────┐  ┌──────────┐  ┌────────────┐  ┌────────────────────┐  │
+│  │ Source  │  │ Entities │  │ User Input │  │ File Metadata      │  │
+│  │ Type    │  │ Context  │  │ (category, │  │ (name, type, size) │  │
+│  │         │  │          │  │  tags, etc)│  │                    │  │
+│  └────┬────┘  └────┬─────┘  └─────┬──────┘  └──────────┬─────────┘  │
+└───────┴────────────┴──────────────┴────────────────────┴────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                   DOCUMENT MANAGEMENT ENGINE                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                      Rule Engine                              │    │
+│  ├──────────────┬──────────────┬───────────────┬────────────────┤    │
+│  │ StorageRules │ CategoryRules│ LinkingRules  │   PathRules    │    │
+│  │ (Priority:   │ (Auto-detect │ (Cascade      │ (Entity        │    │
+│  │  100-10)     │  category)   │  linking)     │  hierarchy)    │    │
+│  └──────────────┴──────────────┴───────────────┴────────────────┘    │
+│                                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                    Resolved Config                           │    │
+│  │  • Storage Provider (GCS/DB/LocalDrive)                     │    │
+│  │  • Category (TAX/RECEIPT/CONTRACT/etc.)                     │    │
+│  │  • Entity Links [(EXPENSE, id), (PROPERTY, id)]             │    │
+│  │  • Storage Path (userId/properties/xxx/FY24-25/receipts/)   │    │
+│  │  • Suggested Tags                                            │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Storage Execution                                │
+├────────────────────┬────────────────────┬───────────────────────────┤
+│    GCS Provider    │   DB Provider      │   Local Drive Provider    │
+│    (Production)    │   (Fallback)       │   (User's Computer)       │
+└────────────────────┴────────────────────┴───────────────────────────┘
+```
+
+### 19.15.3 Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/documents/engine/types.ts` | Core type definitions (UploadContext, EntityContext, Rules) |
+| `lib/documents/engine/rules/StorageRules.ts` | Priority-based storage provider selection |
+| `lib/documents/engine/rules/CategoryRules.ts` | Auto-categorization from expense type/filename |
+| `lib/documents/engine/rules/LinkingRules.ts` | Entity linking with cascade logic |
+| `lib/documents/engine/rules/PathRules.ts` | Intelligent path generation with FY support |
+| `lib/documents/engine/rules/index.ts` | Rules module exports |
+| `lib/documents/engine/RuleEngine.ts` | Rule processing orchestrator |
+| `lib/documents/engine/DocumentManagementEngine.ts` | Main engine singleton |
+| `lib/documents/engine/index.ts` | Engine public exports |
+| `hooks/useDocumentEngine.ts` | React hook for uploads |
+| `app/api/documents/upload/route.ts` | Unified upload API endpoint |
+| `lib/documents/constants.ts` | Centralized constants |
+
+### 19.15.4 Storage Rules (Priority-Based)
+
+| Priority | Rule Name | Condition | Provider |
+|----------|-----------|-----------|----------|
+| 100 | User Preference | User explicitly selects provider | Selected |
+| 90 | Local Drive Request | User requests local storage | LOCAL_DRIVE |
+| 80 | Tax Documents | Category is TAX | GCS (for backup) |
+| 70 | Large Files | Size > 5MB | GCS |
+| 50 | GCS Available | GCS is configured | GCS |
+| 10 | Default | Always matches | MONITRAX (DB) |
+
+### 19.15.5 Category Rules
+
+**Expense Category Mapping:**
+
+| Expense Category | Document Category |
+|-----------------|-------------------|
+| INSURANCE | INSURANCE |
+| RATES, LAND_TAX | TAX |
+| LOAN_INTEREST | MORTGAGE |
+| UTILITIES | STATEMENT |
+| STRATA | INVOICE |
+| HOUSING, MAINTENANCE, etc. | RECEIPT |
+
+**Filename Pattern Detection:**
+
+| Pattern | Category |
+|---------|----------|
+| `*contract*`, `*agreement*` | CONTRACT |
+| `*statement*` | STATEMENT |
+| `*receipt*` | RECEIPT |
+| `*invoice*` | INVOICE |
+| `*tax*` | TAX |
+| `*insurance*`, `*policy*` | INSURANCE |
+| `*mortgage*`, `*loan*` | MORTGAGE |
+
+### 19.15.6 Entity Linking with Cascade
+
+**Cascade Rules:**
+- Expense with Property → Link to both EXPENSE and PROPERTY
+- Expense with Loan → Link to EXPENSE, LOAN, and any linked PROPERTY
+- Income with Property → Link to both INCOME and PROPERTY
+- Transaction with Account → Link to TRANSACTION and ACCOUNT
+
+**Example Cascade:**
+```
+Upload from Expense Form
+├── Expense ID: exp_123 (linked to Property prop_456)
+└── Engine creates:
+    ├── DocumentLink(EXPENSE, exp_123)
+    └── DocumentLink(PROPERTY, prop_456)
+```
+
+### 19.15.7 Path Generation
+
+**Path Template:**
+```
+{userId}/{entityType}/{entityId}/FY{year}/{ category}/{timestamp}_{filename}
+```
+
+**Examples:**
+```
+abc123/properties/prop_456/FY24-25/receipts/20251210_receipt.pdf
+abc123/expenses/exp_789/FY24-25/invoices/20251210_invoice.pdf
+abc123/general/FY24-25/contracts/20251210_lease.pdf
+```
+
+**Australian Financial Year:**
+- FY starts July 1, ends June 30
+- FY24-25 = July 2024 - June 2025
+
+### 19.15.8 React Hook Usage
+
+```typescript
+import { useDocumentEngine, createExpenseUploadOptions } from '@/hooks/useDocumentEngine';
+
+function ExpenseForm() {
+  const { upload, isUploading, progress, error } = useDocumentEngine();
+
+  const handleUpload = async (file: File) => {
+    const options = createExpenseUploadOptions(
+      expenseId,
+      propertyId,
+      loanId,
+      expenseCategory
+    );
+
+    const document = await upload(file, options);
+    if (document) {
+      console.log('Uploaded:', document.id);
+    }
+  };
+}
+```
+
+### 19.15.9 API Endpoint
+
+**POST /api/documents/upload**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| file | File | Yes | The file to upload |
+| source | string | No | Upload source (defaults to API_DIRECT) |
+| propertyId | string | No | Link to property |
+| expenseId | string | No | Link to expense |
+| loanId | string | No | Link to loan |
+| incomeId | string | No | Link to income |
+| accountId | string | No | Link to account |
+| category | string | No | Force category |
+| tags | string | No | Comma-separated tags |
+| storagePreference | string | No | Force storage provider |
+
+**Response:**
+```json
+{
+  "success": true,
+  "document": {
+    "id": "doc_abc123",
+    "filename": "receipt_8f4a2b1c.pdf",
+    "originalFilename": "receipt.pdf",
+    "category": "RECEIPT",
+    "storageProvider": "GOOGLE_CLOUD_STORAGE",
+    "storagePath": "user123/expenses/exp_456/FY24-25/receipts/...",
+    "links": [
+      { "entityType": "EXPENSE", "entityId": "exp_456" },
+      { "entityType": "PROPERTY", "entityId": "prop_789" }
+    ]
+  },
+  "storagePath": "...",
+  "storageUrl": "https://storage.googleapis.com/..."
+}
+```
+
+---
+
+## 19.16 Future Enhancements
 
 The following features are planned for future iterations:
 
 1. **Entity Documents Tab** - Add Documents tab to Property, Loan, Expense pages
-2. **Auto-linking Rules** - Smart linking based on upload context
+2. ~~**Auto-linking Rules** - Smart linking based on upload context~~ ✅ (Phase 25)
 3. **Document Versioning** - Track document revisions
 4. **Bulk Upload** - Upload multiple files at once
 5. **Document Search** - Full-text search within documents (OCR)
-6. **iCloud CloudKit Integration** - Full CloudKit API for file storage
-7. **Dropbox Integration** - Additional storage provider option
-8. **Local Drive Sync** - Sync documents between local drive and cloud storage
-9. **GCS Lifecycle Policies** - Auto-archive old documents to Nearline storage
-10. **Storage Analytics** - Per-user storage usage dashboard
+6. **Document Analysis (OCR)** - Auto-populate expense fields from receipts
+7. **iCloud CloudKit Integration** - Full CloudKit API for file storage
+8. **Dropbox Integration** - Additional storage provider option
+9. **Local Drive Sync** - Sync documents between local drive and cloud storage
+10. **GCS Lifecycle Policies** - Auto-archive old documents to Nearline storage
+11. **Storage Analytics** - Per-user storage usage dashboard
