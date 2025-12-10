@@ -46,13 +46,20 @@ export class StorageProviderFactory implements IStorageProviderFactory {
    * Returns user's configured provider or default provider
    */
   async getProvider(userId: string): Promise<IStorageProvider> {
+    console.log('[StorageFactory] getProvider called for userId:', userId);
     try {
       // Check if user has a custom storage provider configured
       const config = await prisma.storageProviderConfig.findUnique({
         where: { userId },
       });
 
+      console.log('[StorageFactory] User config:', config ? {
+        provider: config.provider,
+        isActive: config.isActive,
+      } : 'No config found');
+
       if (!config || !config.isActive) {
+        console.log('[StorageFactory] Using default provider (no active config)');
         return await this.getDefaultProvider();
       }
 
@@ -86,17 +93,21 @@ export class StorageProviderFactory implements IStorageProviderFactory {
    * Returns GCS if configured, otherwise Monitrax database storage
    */
   async getDefaultProvider(): Promise<IStorageProvider> {
+    console.log('[StorageFactory] getDefaultProvider called, gcsProvider:', this.gcsProvider ? 'available' : 'NOT available');
     // Use GCS as default if configured (better for production)
     if (this.gcsProvider) {
       try {
+        console.log('[StorageFactory] Initializing GCS provider...');
         await this.gcsProvider.initialize();
+        console.log('[StorageFactory] Returning GCS provider');
         return this.gcsProvider;
       } catch (error) {
-        console.error('Failed to initialize GCS, falling back to database storage:', error);
+        console.error('[StorageFactory] Failed to initialize GCS, falling back to database storage:', error);
         // GCS failed to initialize, fall back to Monitrax
         return this.monitraxProvider;
       }
     }
+    console.log('[StorageFactory] Returning Monitrax provider (no GCS)');
     return this.monitraxProvider;
   }
 
