@@ -2065,13 +2065,9 @@ enum DocumentCategory {
 }
 
 enum StorageProviderType {
-  MONITRAX
-  GOOGLE_CLOUD_STORAGE  // Google Cloud Storage bucket
-  GOOGLE_DRIVE          // User's Google Drive (OAuth)
-  ICLOUD
-  ONEDRIVE
+  MONITRAX              // Monitrax Cloud Storage (GCS-backed)
+  GOOGLE_CLOUD_STORAGE  // Google Cloud Storage bucket (internal)
   LOCAL_DRIVE           // User's local filesystem via File System Access API
-  // Future: S3, DROPBOX
 }
 
 enum LinkedEntityType {

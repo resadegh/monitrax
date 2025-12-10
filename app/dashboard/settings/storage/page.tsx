@@ -2,7 +2,7 @@
 
 /**
  * Phase 19.1: Cloud Storage Settings Page
- * Connect and manage cloud storage providers (Google Drive, iCloud, OneDrive, Local Drive)
+ * Manage storage providers (Monitrax Cloud Storage and Local Drive)
  */
 
 import { useState, useEffect } from 'react';
@@ -13,27 +13,12 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import {
   Cloud,
   HardDrive,
   CheckCircle,
-  AlertCircle,
-  ExternalLink,
-  Trash2,
-  RefreshCw,
   FolderOpen,
   Lock,
-  Loader2,
+  Server,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { LocalDriveStorageCard } from '@/components/documents/LocalDriveStorageCard';
@@ -47,188 +32,103 @@ interface StorageProvider {
   color: string;
   connected: boolean;
   isActive: boolean;
-  email?: string;
   storageUsed?: number;
   storageLimit?: number;
-  folderPath?: string;
-  lastSync?: Date;
-  available: boolean; // Whether the provider is available for connection
+  available: boolean;
 }
 
-// Provider icons/branding
-const GoogleDriveIcon = () => (
-  <svg viewBox="0 0 87.3 78" className="h-6 w-6">
-    <path d="M6.6 66.85l14.3-24.75L34.7 66.85z" fill="#0066DA" />
-    <path d="M57.4 0l-24 41.5-14.3-24.75L43.1 0z" fill="#00AC47" />
-    <path d="M57.4 0L33.4 0 19.1 24.75 43.1 66.85 57.4 42.1z" fill="#EA4335" />
-    <path d="M43.65 66.85h29.8L58.6 42.1 43.65 66.85z" fill="#00832D" />
-    <path d="M73.45 66.85L87.7 42.1 57.4 0 43.1 24.75z" fill="#2684FC" />
-    <path d="M43.65 66.85L57.4 42.1 87.7 42.1 73.45 66.85z" fill="#FFBA00" />
-  </svg>
-);
-
-const ICloudIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-    <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
-  </svg>
-);
-
-const OneDriveIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-6 w-6">
-    <path
-      fill="#0078D4"
-      d="M10.5 18.5c-2.5 0-4.5-2-4.5-4.5 0-2.2 1.6-4.1 3.7-4.4.5-2.5 2.7-4.1 5.3-4.1 2.9 0 5.2 2.1 5.4 4.8 1.7.5 3 2.1 3 3.9 0 2.3-1.9 4.2-4.2 4.2H10.5z"
-    />
-  </svg>
-);
-
-const MonitraxIcon = () => (
-  <div className="h-6 w-6 rounded bg-emerald-500 flex items-center justify-center">
-    <HardDrive className="h-4 w-4 text-white" />
+// Monitrax Cloud Storage Icon
+const MonitraxCloudIcon = () => (
+  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+    <Cloud className="h-5 w-5 text-white" />
   </div>
 );
 
+// Local Drive Icon
+const LocalDriveIcon = () => (
+  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center">
+    <HardDrive className="h-5 w-5 text-white" />
+  </div>
+);
+
+interface StorageHealthData {
+  storage: {
+    configured: { monitrax: boolean; googleCloudStorage: boolean };
+    healthy: { monitrax: boolean; googleCloudStorage: boolean };
+    activeProvider: string;
+    googleCloudStorage?: {
+      bucket: string;
+      location: string;
+      storageClass: string;
+    };
+  };
+}
+
 export default function StorageSettingsPage() {
   const { token } = useAuth();
-  const [providers, setProviders] = useState<StorageProvider[]>([
+  const [activeProvider, setActiveProvider] = useState<string>('monitrax');
+  const [storageHealth, setStorageHealth] = useState<StorageHealthData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const providers: StorageProvider[] = [
     {
       id: 'monitrax',
-      name: 'Monitrax Storage',
-      description: 'Secure cloud storage included with your account',
-      icon: <MonitraxIcon />,
+      name: 'Monitrax Cloud Storage',
+      description: 'Secure, scalable cloud storage powered by Google Cloud. Included with your account.',
+      icon: <MonitraxCloudIcon />,
       color: 'emerald',
       connected: true,
-      isActive: true,
-      storageUsed: 25 * 1024 * 1024,
-      storageLimit: 1024 * 1024 * 1024, // 1GB
+      isActive: activeProvider === 'monitrax',
       available: true,
     },
     {
-      id: 'google_drive',
-      name: 'Google Drive',
-      description: 'Store documents in your Google Drive account',
-      icon: <GoogleDriveIcon />,
-      color: 'blue',
+      id: 'local_drive',
+      name: 'Local Drive',
+      description: 'Store documents on your local computer. Files stay on your device and are not uploaded.',
+      icon: <LocalDriveIcon />,
+      color: 'slate',
       connected: false,
-      isActive: false,
+      isActive: activeProvider === 'local_drive',
       available: true,
     },
-    {
-      id: 'icloud',
-      name: 'iCloud Drive',
-      description: 'Store documents in your Apple iCloud account',
-      icon: <ICloudIcon />,
-      color: 'gray',
-      connected: false,
-      isActive: false,
-      available: true,
-    },
-    {
-      id: 'onedrive',
-      name: 'OneDrive',
-      description: 'Store documents in your Microsoft OneDrive',
-      icon: <OneDriveIcon />,
-      color: 'blue',
-      connected: false,
-      isActive: false,
-      available: true,
-    },
-  ]);
-
-  const [isConnecting, setIsConnecting] = useState<string | null>(null);
-  const [activeProvider, setActiveProvider] = useState<string>('monitrax');
+  ];
 
   useEffect(() => {
-    // Fetch storage provider status from API
-    const fetchProviders = async () => {
+    const fetchData = async () => {
       if (!token) return;
+      setIsLoading(true);
+
       try {
-        const response = await fetch('/api/settings/storage', {
+        // Fetch storage health status
+        const healthRes = await fetch('/api/storage/health', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (response.ok) {
-          const data = await response.json();
-          // Update providers with API data
-          if (data.data?.activeProvider) {
-            setActiveProvider(data.data.activeProvider);
+        if (healthRes.ok) {
+          const healthData = await healthRes.json();
+          setStorageHealth(healthData);
+        }
+
+        // Fetch user's storage settings
+        const settingsRes = await fetch('/api/settings/storage', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (settingsRes.ok) {
+          const settingsData = await settingsRes.json();
+          if (settingsData.data?.activeProvider) {
+            setActiveProvider(settingsData.data.activeProvider);
           }
         }
       } catch (error) {
         console.error('Failed to fetch storage settings:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchProviders();
+    fetchData();
   }, [token]);
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
-  };
-
-  const handleConnect = async (providerId: string) => {
-    setIsConnecting(providerId);
-
-    try {
-      // Redirect to OAuth flow
-      const response = await fetch(`/api/settings/storage/connect/${providerId}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.authUrl) {
-          // Redirect to OAuth provider
-          window.location.href = data.authUrl;
-        }
-      } else {
-        const error = await response.json();
-        alert(error.message || 'Failed to connect storage provider');
-      }
-    } catch (error) {
-      console.error('Failed to connect:', error);
-      alert('Failed to connect storage provider');
-    } finally {
-      setIsConnecting(null);
-    }
-  };
-
-  const handleDisconnect = async (providerId: string) => {
-    try {
-      const response = await fetch(`/api/settings/storage/disconnect/${providerId}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        setProviders((prev) =>
-          prev.map((p) =>
-            p.id === providerId
-              ? { ...p, connected: false, isActive: false, email: undefined }
-              : p
-          )
-        );
-        // If this was the active provider, switch to Monitrax
-        if (activeProvider === providerId) {
-          setActiveProvider('monitrax');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to disconnect:', error);
-    }
-  };
-
   const handleSetActive = async (providerId: string) => {
-    const provider = providers.find((p) => p.id === providerId);
-    if (!provider?.connected && providerId !== 'monitrax') {
-      alert('Please connect this provider first');
-      return;
-    }
-
     try {
       const response = await fetch('/api/settings/storage/active', {
         method: 'POST',
@@ -247,6 +147,23 @@ export default function StorageSettingsPage() {
     }
   };
 
+  // Get storage status info
+  const getStorageStatus = () => {
+    if (!storageHealth) return null;
+
+    const isGCSActive = storageHealth.storage.activeProvider === 'google_cloud_storage';
+    const isGCSHealthy = storageHealth.storage.healthy.googleCloudStorage;
+
+    return {
+      isGCSActive,
+      isGCSHealthy,
+      bucket: storageHealth.storage.googleCloudStorage?.bucket,
+      location: storageHealth.storage.googleCloudStorage?.location,
+    };
+  };
+
+  const status = getStorageStatus();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -254,15 +171,38 @@ export default function StorageSettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
-            Cloud Storage
+            Storage Settings
           </CardTitle>
           <CardDescription>
-            Connect external cloud storage providers to store your documents. You can use
-            Monitrax's secure storage or connect your own Google Drive, iCloud, or OneDrive
-            account.
+            Choose where your documents are stored. Monitrax Cloud Storage provides secure,
+            automatic backups. Local Drive keeps files on your computer only.
           </CardDescription>
         </CardHeader>
       </Card>
+
+      {/* Storage Status */}
+      {status && (
+        <Card className={status.isGCSHealthy ? 'border-green-200 dark:border-green-800' : 'border-yellow-200 dark:border-yellow-800'}>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <Server className={`h-5 w-5 ${status.isGCSHealthy ? 'text-green-600' : 'text-yellow-600'}`} />
+              <div className="flex-1">
+                <p className="font-medium">
+                  {status.isGCSHealthy ? 'Cloud Storage Connected' : 'Storage Status'}
+                </p>
+                {status.isGCSHealthy && status.bucket && (
+                  <p className="text-sm text-muted-foreground">
+                    Bucket: {status.bucket} ({status.location})
+                  </p>
+                )}
+              </div>
+              <Badge variant={status.isGCSHealthy ? 'default' : 'secondary'} className={status.isGCSHealthy ? 'bg-green-500' : ''}>
+                {status.isGCSHealthy ? 'Healthy' : 'Checking...'}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Active Provider Selection */}
       <Card>
@@ -289,147 +229,65 @@ export default function StorageSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Local Drive Storage - Save directly to computer */}
-      <LocalDriveStorageCard />
-
-      {/* Cloud Storage Providers List */}
+      {/* Storage Providers */}
       <div className="space-y-4">
-        {providers.map((provider) => (
-          <Card key={provider.id}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0">{provider.icon}</div>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium">{provider.name}</h3>
-                      {provider.connected && (
-                        <Badge variant="default" className="bg-green-500">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Connected
-                        </Badge>
-                      )}
-                      {provider.id === activeProvider && (
-                        <Badge variant="outline">Active</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {provider.description}
-                    </p>
+        <h3 className="text-lg font-medium">Available Storage Options</h3>
 
-                    {/* Connected account details */}
-                    {provider.connected && provider.email && (
-                      <p className="text-sm text-muted-foreground">
-                        Connected as: {provider.email}
-                      </p>
+        {/* Monitrax Cloud Storage */}
+        <Card className={activeProvider === 'monitrax' ? 'ring-2 ring-emerald-500' : ''}>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-4">
+                <MonitraxCloudIcon />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium">Monitrax Cloud Storage</h3>
+                    <Badge variant="default" className="bg-green-500">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Connected
+                    </Badge>
+                    {activeProvider === 'monitrax' && (
+                      <Badge variant="outline">Active</Badge>
                     )}
-
-                    {/* Storage usage for Monitrax */}
-                    {provider.id === 'monitrax' &&
-                      provider.storageUsed !== undefined &&
-                      provider.storageLimit !== undefined && (
-                        <div className="mt-3 space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Storage used</span>
-                            <span>
-                              {formatBytes(provider.storageUsed)} /{' '}
-                              {formatBytes(provider.storageLimit)}
-                            </span>
-                          </div>
-                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-emerald-500 rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(
-                                  (provider.storageUsed / provider.storageLimit) * 100,
-                                  100
-                                )}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
                   </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex items-center gap-2">
-                  {provider.id !== 'monitrax' && (
-                    <>
-                      {provider.connected ? (
-                        <>
-                          {provider.id !== activeProvider && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleSetActive(provider.id)}
-                            >
-                              Set as Active
-                            </Button>
-                          )}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Disconnect {provider.name}?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will disconnect your {provider.name} account.
-                                  Documents already stored there will remain, but new
-                                  documents will use a different provider.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDisconnect(provider.id)}
-                                >
-                                  Disconnect
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </>
-                      ) : (
-                        <Button
-                          onClick={() => handleConnect(provider.id)}
-                          disabled={isConnecting === provider.id || !provider.available}
-                        >
-                          {isConnecting === provider.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Connecting...
-                            </>
-                          ) : (
-                            <>
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              Connect
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </>
-                  )}
-
-                  {provider.id === 'monitrax' && activeProvider !== 'monitrax' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSetActive('monitrax')}
-                    >
-                      Set as Active
-                    </Button>
-                  )}
+                  <p className="text-sm text-muted-foreground">
+                    Secure cloud storage powered by Google Cloud Platform. Your documents are
+                    encrypted, automatically backed up, and accessible from any device.
+                  </p>
+                  <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-3 w-3 text-green-500" />
+                      Automatic backups
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-3 w-3 text-green-500" />
+                      Encrypted at rest and in transit
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-3 w-3 text-green-500" />
+                      Access from any device
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="h-3 w-3 text-green-500" />
+                      Included with your subscription
+                    </li>
+                  </ul>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              {activeProvider !== 'monitrax' && (
+                <Button
+                  variant="outline"
+                  onClick={() => handleSetActive('monitrax')}
+                >
+                  Set as Active
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Local Drive Storage */}
+        <LocalDriveStorageCard />
       </div>
 
       {/* Security Notice */}
@@ -442,10 +300,9 @@ export default function StorageSettingsPage() {
                 Security & Privacy
               </h4>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                Your documents are encrypted during transfer and at rest. When using external
-                providers like Google Drive or iCloud, your files are stored according to
-                their respective privacy policies. Monitrax only stores references to your
-                files, not the file contents themselves.
+                Monitrax Cloud Storage uses Google Cloud Platform infrastructure with enterprise-grade
+                security. All documents are encrypted during transfer (TLS) and at rest (AES-256).
+                Access is controlled via secure, time-limited signed URLs.
               </p>
             </div>
           </div>
@@ -476,9 +333,9 @@ export default function StorageSettingsPage() {
           <Separator />
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Auto-organize by entity</Label>
+              <Label>Auto-organize by category</Label>
               <p className="text-sm text-muted-foreground">
-                Automatically create folders for properties, loans, etc.
+                Automatically organize documents into category folders (Receipts, Contracts, etc.)
               </p>
             </div>
             <Switch defaultChecked />
