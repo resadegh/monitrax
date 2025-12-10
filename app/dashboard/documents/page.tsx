@@ -289,8 +289,8 @@ export default function DocumentsLibraryPage() {
     analysisId: string,
     action: string,
     data: Record<string, unknown>
-  ) => {
-    if (!token) return;
+  ): Promise<boolean> => {
+    if (!token) return false;
 
     const res = await fetch('/api/documents/analyze/confirm', {
       method: 'POST',

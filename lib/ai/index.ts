@@ -44,6 +44,7 @@ export {
   getOpenAIClient,
   generateCompletion,
   generateJSONCompletion,
+  truncateToTokenLimit,
   AI_MODELS,
   formatCurrencyForPrompt,
   formatPercentageForPrompt,
