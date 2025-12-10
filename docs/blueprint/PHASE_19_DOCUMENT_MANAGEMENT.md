@@ -675,7 +675,159 @@ For LOCAL_DRIVE uploads:
 
 ---
 
-## 19.14 Future Enhancements
+## 19.14 PHASE 19.3 - GOOGLE CLOUD STORAGE INTEGRATION
+
+**Status:** ✅ IMPLEMENTED
+**Implemented Date:** 2025-12-10
+**Branch:** `claude/google-backend-integrations-01DaDaQEvzPyus6apSWk17wo`
+
+### 19.14.1 Overview
+
+Google Cloud Storage (GCS) has been implemented as the primary production storage provider, replacing database storage for better scalability and cost-effectiveness.
+
+### 19.14.2 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 Monitrax Google Cloud Account                    │
+│                    (monitrax-479700)                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌─────────────────────────────────────────────────────────┐   │
+│   │           monitrax-documents (Single Bucket)             │   │
+│   ├─────────────────────────────────────────────────────────┤   │
+│   │                                                          │   │
+│   │   {userId}/                      ← Per-user folder       │   │
+│   │   ├── properties/{propId}/       ← Property documents    │   │
+│   │   ├── expenses/{expId}/          ← Expense receipts      │   │
+│   │   ├── loans/{loanId}/            ← Loan contracts        │   │
+│   │   └── general/                   ← Unlinked documents    │   │
+│   │                                                          │   │
+│   └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Design Decisions:**
+- **Single bucket** for all users (standard SaaS pattern)
+- **Per-user folder isolation** via path prefix (`{userId}/...`)
+- **Backend-enforced access control** - users can only access their own paths
+- **Service account authentication** - no user Google accounts required
+
+### 19.14.3 Multi-Tenant Storage Model
+
+| Question | Answer |
+|----------|--------|
+| Who owns the storage? | Monitrax (the business) |
+| Do users need Google accounts? | No - Monitrax handles all storage |
+| How are users separated? | By folder path (`userId/...`) |
+| Who pays for storage? | Monitrax (as infrastructure cost) |
+| Is data secure between users? | Yes - backend enforces isolation |
+
+### 19.14.4 Files Created/Modified
+
+| File | Purpose |
+|------|---------|
+| `lib/documents/storage/googleCloudStorageProvider.ts` | GCS provider implementation |
+| `lib/documents/storage/factory.ts` | Updated to support GCS auto-detection |
+| `lib/documents/storage/index.ts` | Added GCS exports |
+| `lib/documents/types.ts` | Added `GOOGLE_CLOUD_STORAGE` enum |
+| `lib/documents/documentService.ts` | Smart provider detection |
+| `app/api/storage/health/route.ts` | Storage health check endpoint |
+
+### 19.14.5 Storage Provider Type
+
+```prisma
+enum StorageProviderType {
+  MONITRAX              // Database storage (fallback)
+  GOOGLE_CLOUD_STORAGE  // GCS bucket (primary for production)
+  GOOGLE_DRIVE          // User's personal Drive (OAuth)
+  ICLOUD
+  ONEDRIVE
+  LOCAL_DRIVE
+}
+```
+
+### 19.14.6 Environment Variables
+
+```env
+# Required for GCS
+GCS_PROJECT_ID=monitrax-479700
+GCS_BUCKET_NAME=monitrax-documents
+GCS_SERVICE_ACCOUNT_KEY=<base64-encoded-service-account-json>
+```
+
+### 19.14.7 Auto-Fallback Behavior
+
+The system automatically selects storage provider:
+
+1. **If GCS configured** → Use Google Cloud Storage
+2. **If GCS not configured** → Fall back to database storage (MONITRAX)
+
+This ensures the app works in all environments:
+- **Production** (Render): Uses GCS
+- **Development** (local): Uses database storage
+- **Testing**: Uses database storage
+
+### 19.14.8 Cost Management
+
+#### Pricing (australia-southeast1)
+
+| Cost Type | Price | Notes |
+|-----------|-------|-------|
+| Storage | ~$0.023/GB/month | Standard storage class |
+| Class A ops | $0.05/10,000 | Uploads, list operations |
+| Class B ops | $0.004/10,000 | Downloads, metadata |
+| Network egress | $0.12/GB | Data transferred to users |
+
+#### Estimated Monthly Costs
+
+| Users | Storage/User | Downloads/User | Est. Cost |
+|-------|--------------|----------------|-----------|
+| 100 | 50MB | 100 | ~$2-5 |
+| 100 | 200MB | 500 | ~$10-20 |
+| 500 | 200MB | 500 | ~$50-100 |
+| 1000 | 500MB | 1000 | ~$200-400 |
+
+#### Cost Control
+
+1. **Budget Alerts**: Set up in Google Cloud Console → Billing → Budgets
+2. **Lifecycle Policies**: Auto-delete soft-deleted files after 30 days
+3. **Storage Classes**: Use Standard for frequently accessed, Nearline for archives
+
+### 19.14.9 API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/storage/health` | GET | Check storage provider status |
+
+**Response:**
+```json
+{
+  "success": true,
+  "storage": {
+    "configured": { "monitrax": true, "googleCloudStorage": true },
+    "healthy": { "monitrax": true, "googleCloudStorage": true },
+    "activeProvider": "google_cloud_storage",
+    "googleCloudStorage": {
+      "bucket": "monitrax-documents",
+      "location": "australia-southeast1",
+      "storageClass": "STANDARD"
+    }
+  }
+}
+```
+
+### 19.14.10 Security Features
+
+- **Signed URLs**: 5-minute expiry for all file access
+- **Service Account**: Limited permissions (Storage Object Admin only)
+- **Path Isolation**: Users can only access `{userId}/*` paths
+- **No Public Access**: Bucket is private, all access via signed URLs
+
+---
+
+## 19.15 Future Enhancements
 
 The following features are planned for future iterations:
 
@@ -687,3 +839,5 @@ The following features are planned for future iterations:
 6. **iCloud CloudKit Integration** - Full CloudKit API for file storage
 7. **Dropbox Integration** - Additional storage provider option
 8. **Local Drive Sync** - Sync documents between local drive and cloud storage
+9. **GCS Lifecycle Policies** - Auto-archive old documents to Nearline storage
+10. **Storage Analytics** - Per-user storage usage dashboard

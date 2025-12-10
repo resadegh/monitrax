@@ -394,6 +394,14 @@ model Property {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  // Location data (Google Maps integration)
+  latitude       Float?       // Latitude coordinate
+  longitude      Float?       // Longitude coordinate
+  googlePlaceId  String?      // Google Places API place_id
+  suburb         String?      // Suburb/locality
+  state          String?      // State (e.g., NSW, VIC)
+  postcode       String?      // Postal code
+
   // Relationships
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   loans                 Loan[]
@@ -2058,10 +2066,11 @@ enum DocumentCategory {
 
 enum StorageProviderType {
   MONITRAX
-  GOOGLE_DRIVE
+  GOOGLE_CLOUD_STORAGE  // Google Cloud Storage bucket
+  GOOGLE_DRIVE          // User's Google Drive (OAuth)
   ICLOUD
   ONEDRIVE
-  LOCAL_DRIVE   // User's local filesystem via File System Access API
+  LOCAL_DRIVE           // User's local filesystem via File System Access API
   // Future: S3, DROPBOX
 }
 

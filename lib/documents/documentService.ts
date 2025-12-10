@@ -126,8 +126,7 @@ export async function uploadDocument(
       };
     }
 
-    // Standard Monitrax database storage
-    // Get storage provider
+    // Get storage provider (GCS if configured, otherwise Monitrax database storage)
     const storage = await getStorageProvider(userId);
 
     // Generate storage path
@@ -146,7 +145,15 @@ export async function uploadDocument(
       return { success: false, error: uploadResult.error };
     }
 
-    // Create document record with file content for database storage
+    // Determine storage provider type based on which provider was used
+    const isGCSProvider = storage.name === 'google_cloud_storage';
+    const providerType = isGCSProvider
+      ? StorageProviderType.GOOGLE_CLOUD_STORAGE
+      : StorageProviderType.MONITRAX;
+
+    // Create document record
+    // For GCS: store only metadata (file is in cloud)
+    // For Monitrax: store file content in database
     const document = await prisma.document.create({
       data: {
         userId,
@@ -155,13 +162,14 @@ export async function uploadDocument(
         mimeType: request.mimeType,
         size: fileBuffer.length,
         category: request.category,
-        storageProvider: StorageProviderType.MONITRAX,
+        storageProvider: providerType,
         storagePath: uploadResult.storagePath,
         storageUrl: uploadResult.storageUrl || null,
         description: request.description || null,
         tags: request.tags || [],
-        // Store file content in database for Monitrax storage provider
-        fileContent: uploadResult.fileBuffer || fileBuffer,
+        // Only store file content in database for Monitrax provider
+        // For GCS, file is stored in cloud bucket
+        fileContent: isGCSProvider ? null : (uploadResult.fileBuffer || fileBuffer),
       },
     });
 

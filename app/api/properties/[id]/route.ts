@@ -38,7 +38,22 @@ export async function PUT(
     try {
       const { id } = await params;
       const body = await request.json();
-      const { name, type, address, purchasePrice, purchaseDate, currentValue, valuationDate } = body;
+      const {
+        name,
+        type,
+        address,
+        purchasePrice,
+        purchaseDate,
+        currentValue,
+        valuationDate,
+        // Location fields (Google Maps)
+        latitude,
+        longitude,
+        googlePlaceId,
+        suburb,
+        state,
+        postcode,
+      } = body;
 
       // Verify ownership
       const existing = await prisma.property.findUnique({
@@ -59,6 +74,13 @@ export async function PUT(
           purchaseDate: new Date(purchaseDate),
           currentValue,
           valuationDate: new Date(valuationDate),
+          // Location data
+          latitude: latitude !== undefined ? (latitude ? parseFloat(latitude) : null) : undefined,
+          longitude: longitude !== undefined ? (longitude ? parseFloat(longitude) : null) : undefined,
+          googlePlaceId: googlePlaceId !== undefined ? (googlePlaceId || null) : undefined,
+          suburb: suburb !== undefined ? (suburb || null) : undefined,
+          state: state !== undefined ? (state || null) : undefined,
+          postcode: postcode !== undefined ? (postcode || null) : undefined,
         },
       });
 

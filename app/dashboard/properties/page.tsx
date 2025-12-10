@@ -26,6 +26,7 @@ import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { ListFilter, propertyFilterConfigs } from '@/components/ListFilter';
 import { ExpenseDialog } from '@/components/ExpenseDialog';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
+import { PropertyMap } from '@/components/google-maps';
 
 interface Loan {
   id: string;
@@ -73,6 +74,13 @@ interface Property {
   purchaseDate: string;
   currentValue: number;
   valuationDate: string;
+  // Location data (Google Maps)
+  latitude?: number;
+  longitude?: number;
+  googlePlaceId?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
   loans?: Loan[];
   income?: Income[];
   expenses?: Expense[];
@@ -96,6 +104,13 @@ type PropertyFormData = {
   purchaseDate: string;
   currentValue: number;
   valuationDate: string;
+  // Location data
+  latitude?: number;
+  longitude?: number;
+  googlePlaceId?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
 };
 
 type ViewMode = 'tiles' | 'list';
@@ -222,7 +237,34 @@ function PropertiesPageContent() {
       purchaseDate: '',
       currentValue: 0,
       valuationDate: new Date().toISOString().split('T')[0],
+      latitude: undefined,
+      longitude: undefined,
+      googlePlaceId: undefined,
+      suburb: undefined,
+      state: undefined,
+      postcode: undefined,
     });
+  };
+
+  // Handle address selection from autocomplete
+  const handleAddressSelect = (address: {
+    formatted_address: string;
+    suburb?: string;
+    state?: string;
+    stateShort?: string;
+    postcode?: string;
+    lat?: number;
+    lng?: number;
+  }) => {
+    setFormData((prev) => ({
+      ...prev,
+      address: address.formatted_address,
+      latitude: address.lat,
+      longitude: address.lng,
+      suburb: address.suburb,
+      state: address.stateShort || address.state,
+      postcode: address.postcode,
+    }));
   };
 
   const handleEdit = (property: Property) => {
@@ -234,6 +276,12 @@ function PropertiesPageContent() {
       purchaseDate: property.purchaseDate.split('T')[0],
       currentValue: property.currentValue,
       valuationDate: property.valuationDate.split('T')[0],
+      latitude: property.latitude,
+      longitude: property.longitude,
+      googlePlaceId: property.googlePlaceId,
+      suburb: property.suburb,
+      state: property.state,
+      postcode: property.postcode,
     });
     setEditingId(property.id);
     setShowDialog(true);
@@ -697,8 +745,14 @@ function PropertiesPageContent() {
                 id="address"
                 value={formData.address}
                 onChange={(value) => setFormData({ ...formData, address: value })}
+                onAddressSelect={handleAddressSelect}
                 placeholder="Start typing an address..."
               />
+              {formData.suburb && formData.state && (
+                <p className="text-xs text-muted-foreground">
+                  {formData.suburb}, {formData.state} {formData.postcode}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -842,6 +896,20 @@ function PropertiesPageContent() {
                       </div>
                     </div>
                   )}
+
+                  {/* Property Location Map */}
+                  {(selectedProperty.latitude && selectedProperty.longitude) || selectedProperty.address ? (
+                    <div className="pt-4">
+                      <p className="text-sm font-medium mb-2">Location</p>
+                      <PropertyMap
+                        latitude={selectedProperty.latitude}
+                        longitude={selectedProperty.longitude}
+                        address={selectedProperty.address}
+                        propertyName={selectedProperty.name}
+                        height="200px"
+                      />
+                    </div>
+                  ) : null}
                 </TabsContent>
 
                 <TabsContent value="loans" className="mt-4">
