@@ -10,11 +10,30 @@
  * - Adds DocumentAnalysis as a related model to Document
  */
 
-// Re-export Prisma enums for convenience
-export {
-  DocumentAnalysisType,
-  DocumentAnalysisStatus,
-} from '@prisma/client';
+// Document analysis enums (matches Prisma schema)
+// Defined locally to avoid dependency on Prisma client regeneration timing
+
+export enum DocumentAnalysisType {
+  RECEIPT = 'RECEIPT',
+  INVOICE = 'INVOICE',
+  BANK_STATEMENT = 'BANK_STATEMENT',
+  UTILITY_BILL = 'UTILITY_BILL',
+  RATE_NOTICE = 'RATE_NOTICE',
+  INSURANCE_POLICY = 'INSURANCE_POLICY',
+  LOAN_STATEMENT = 'LOAN_STATEMENT',
+  LOAN_CONTRACT = 'LOAN_CONTRACT',
+  LEASE_AGREEMENT = 'LEASE_AGREEMENT',
+  VALUATION_REPORT = 'VALUATION_REPORT',
+  TAX_DOCUMENT = 'TAX_DOCUMENT',
+  UNKNOWN = 'UNKNOWN',
+}
+
+export enum DocumentAnalysisStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+}
 
 // ============================================================================
 // Extracted Field Types

@@ -5,7 +5,7 @@
  * Provides OCR (text detection) and document type detection.
  */
 
-import { ImageAnnotatorClient, protos } from '@google-cloud/vision';
+import { ImageAnnotatorClient } from '@google-cloud/vision';
 
 // ============================================================================
 // Types
@@ -127,7 +127,7 @@ class VisionService {
     }
 
     try {
-      const request: protos.google.cloud.vision.v1.IAnnotateImageRequest = {
+      const request = {
         image: { content: imageBuffer.toString('base64') },
         features: [
           {
@@ -139,7 +139,9 @@ class VisionService {
         ],
       };
 
-      const [response] = await this.client.annotateImage(request);
+      const [response] = await this.client.annotateImage(
+        request as Parameters<typeof this.client.annotateImage>[0]
+      );
 
       if (!response || !response.fullTextAnnotation) {
         // Try with regular text detection if document mode failed
@@ -237,7 +239,7 @@ class VisionService {
     }
 
     try {
-      const request: protos.google.cloud.vision.v1.IAnnotateImageRequest = {
+      const request = {
         image: { content: imageBuffer.toString('base64') },
         features: [
           {
@@ -247,7 +249,9 @@ class VisionService {
         ],
       };
 
-      const [response] = await this.client.annotateImage(request);
+      const [response] = await this.client.annotateImage(
+        request as Parameters<typeof this.client.annotateImage>[0]
+      );
 
       if (!response || !response.labelAnnotations) {
         return {
@@ -296,7 +300,7 @@ class VisionService {
     }
 
     try {
-      const request: protos.google.cloud.vision.v1.IAnnotateImageRequest = {
+      const request = {
         image: { content: imageBuffer.toString('base64') },
         features: [
           {
@@ -305,7 +309,9 @@ class VisionService {
         ],
       };
 
-      const [response] = await this.client.annotateImage(request);
+      const [response] = await this.client.annotateImage(
+        request as Parameters<typeof this.client.annotateImage>[0]
+      );
 
       if (!response || !response.safeSearchAnnotation) {
         return {

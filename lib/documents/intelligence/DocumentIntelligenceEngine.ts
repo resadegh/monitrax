@@ -14,8 +14,11 @@
  */
 
 import { prisma } from '@/lib/db';
-import { DocumentAnalysisType, DocumentAnalysisStatus } from '@prisma/client';
 import { getVisionService } from './services/visionService';
+import {
+  DocumentAnalysisType,
+  DocumentAnalysisStatus,
+} from './types';
 import { classifyDocument, classifyByFilename } from './classifiers/documentClassifier';
 import { analyzeReceipt } from './analyzers/receiptAnalyzer';
 import { analyzeInvoice } from './analyzers/invoiceAnalyzer';
@@ -46,21 +49,21 @@ const SUPPORTED_PDF_TYPE = 'application/pdf';
 
 // Document types that use pattern-based analysis (Tier 1 & 2)
 const PATTERN_ANALYZED_TYPES: DocumentAnalysisType[] = [
-  'RECEIPT',
-  'INVOICE',
-  'UTILITY_BILL',
-  'RATE_NOTICE',
-  'BANK_STATEMENT',
+  DocumentAnalysisType.RECEIPT,
+  DocumentAnalysisType.INVOICE,
+  DocumentAnalysisType.UTILITY_BILL,
+  DocumentAnalysisType.RATE_NOTICE,
+  DocumentAnalysisType.BANK_STATEMENT,
 ];
 
 // Document types that require AI analysis (Tier 3)
 const AI_ANALYZED_TYPES: DocumentAnalysisType[] = [
-  'LOAN_CONTRACT',
-  'LOAN_STATEMENT',
-  'INSURANCE_POLICY',
-  'LEASE_AGREEMENT',
-  'VALUATION_REPORT',
-  'TAX_DOCUMENT',
+  DocumentAnalysisType.LOAN_CONTRACT,
+  DocumentAnalysisType.LOAN_STATEMENT,
+  DocumentAnalysisType.INSURANCE_POLICY,
+  DocumentAnalysisType.LEASE_AGREEMENT,
+  DocumentAnalysisType.VALUATION_REPORT,
+  DocumentAnalysisType.TAX_DOCUMENT,
 ];
 
 // ============================================================================
@@ -335,16 +338,17 @@ export class DocumentIntelligenceEngine {
 
   /**
    * Format analysis for API response
+   * Uses string types for status/documentType to support both Prisma and local enum types
    */
   private formatAnalysisResponse(analysis: {
     id: string;
     documentId: string;
-    status: DocumentAnalysisStatus;
-    documentType: DocumentAnalysisType;
-    typeConfidence: number;
-    overallConfidence: number;
+    status: string;  // Accepts both Prisma and local enum
+    documentType: string | null;  // Accepts both Prisma and local enum
+    typeConfidence: number | null;
+    overallConfidence: number | null;
     extractedData: unknown;
-    lowConfidenceFields: string[];
+    lowConfidenceFields: string[] | unknown;
     suggestedActions: unknown;
     rawText: string | null;
     analyzedAt: Date | null;
@@ -363,11 +367,13 @@ export class DocumentIntelligenceEngine {
       analysis: {
         id: analysis.id,
         documentId: analysis.documentId,
-        documentType: analysis.documentType,
-        typeConfidence: analysis.typeConfidence,
-        overallConfidence: analysis.overallConfidence,
+        documentType: analysis.documentType || 'UNKNOWN',
+        typeConfidence: analysis.typeConfidence ?? 0,
+        overallConfidence: analysis.overallConfidence ?? 0,
         extractedData: analysis.extractedData as Record<string, unknown>,
-        lowConfidenceFields: analysis.lowConfidenceFields,
+        lowConfidenceFields: Array.isArray(analysis.lowConfidenceFields)
+          ? analysis.lowConfidenceFields
+          : [],
         suggestedActions: (analysis.suggestedActions || []) as SuggestedAction[],
         rawText: analysis.rawText || undefined,
         status: analysis.status,

@@ -23,8 +23,8 @@ import {
   LoanDocumentExtraction,
   InsurancePolicyExtraction,
   LeaseAgreementExtraction,
+  DocumentAnalysisType,
 } from '../types';
-import { DocumentAnalysisType } from '@prisma/client';
 
 // ============================================================================
 // System Prompts for Document Analysis

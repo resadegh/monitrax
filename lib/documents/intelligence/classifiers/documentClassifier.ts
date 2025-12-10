@@ -8,7 +8,7 @@
  * - Vision API labels
  */
 
-import { DocumentAnalysisType } from '@prisma/client';
+import { DocumentAnalysisType } from '../types';
 
 // ============================================================================
 // Classification Rules
@@ -31,7 +31,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   // === High Priority: Specific Document Types ===
 
   {
-    type: 'RATE_NOTICE',
+    type: DocumentAnalysisType.RATE_NOTICE,
     priority: 100,
     requiredKeywords: ['council', 'rates'],
     optionalKeywords: ['property', 'levy', 'general rate', 'waste', 'valuation', 'land value'],
@@ -44,7 +44,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
-    type: 'INSURANCE_POLICY',
+    type: DocumentAnalysisType.INSURANCE_POLICY,
     priority: 95,
     requiredKeywords: ['insurance', 'policy'],
     optionalKeywords: ['premium', 'cover', 'excess', 'insured', 'underwriting', 'certificate', 'renewal'],
@@ -58,7 +58,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
-    type: 'LOAN_CONTRACT',
+    type: DocumentAnalysisType.LOAN_CONTRACT,
     priority: 95,
     requiredKeywords: ['loan', 'contract'],
     optionalKeywords: ['principal', 'interest rate', 'term', 'repayment', 'borrower', 'lender', 'mortgage', 'security'],
@@ -71,7 +71,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
-    type: 'LOAN_STATEMENT',
+    type: DocumentAnalysisType.LOAN_STATEMENT,
     priority: 90,
     requiredKeywords: ['loan'],
     optionalKeywords: ['statement', 'balance', 'repayment', 'interest charged', 'principal', 'account'],
@@ -84,7 +84,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
-    type: 'LEASE_AGREEMENT',
+    type: DocumentAnalysisType.LEASE_AGREEMENT,
     priority: 90,
     requiredKeywords: ['lease'],
     optionalKeywords: ['tenant', 'landlord', 'rent', 'premises', 'term', 'bond', 'residential tenancy'],
@@ -97,7 +97,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
-    type: 'VALUATION_REPORT',
+    type: DocumentAnalysisType.VALUATION_REPORT,
     priority: 90,
     requiredKeywords: ['valuation'],
     optionalKeywords: ['property', 'market value', 'valuer', 'assessment', 'appraisal'],
@@ -110,7 +110,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
-    type: 'TAX_DOCUMENT',
+    type: DocumentAnalysisType.TAX_DOCUMENT,
     priority: 85,
     requiredKeywords: ['tax'],
     optionalKeywords: ['ato', 'assessment', 'return', 'taxable income', 'deduction', 'refund', 'offset', 'payg'],
@@ -127,7 +127,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   // === Medium Priority: Common Financial Documents ===
 
   {
-    type: 'BANK_STATEMENT',
+    type: DocumentAnalysisType.BANK_STATEMENT,
     priority: 80,
     requiredKeywords: ['statement'],
     optionalKeywords: ['bank', 'account', 'transaction', 'balance', 'credit', 'debit', 'bsb'],
@@ -142,7 +142,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
-    type: 'UTILITY_BILL',
+    type: DocumentAnalysisType.UTILITY_BILL,
     priority: 75,
     optionalKeywords: ['electricity', 'gas', 'water', 'power', 'energy', 'usage', 'consumption', 'kwh', 'mj', 'utility', 'account'],
     patterns: [
@@ -157,7 +157,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
-    type: 'INVOICE',
+    type: DocumentAnalysisType.INVOICE,
     priority: 70,
     requiredKeywords: ['invoice'],
     optionalKeywords: ['amount due', 'payment', 'total', 'tax', 'gst', 'subtotal', 'due date', 'invoice number'],
@@ -172,7 +172,7 @@ const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 
   {
-    type: 'RECEIPT',
+    type: DocumentAnalysisType.RECEIPT,
     priority: 65,
     optionalKeywords: ['receipt', 'paid', 'thank you', 'total', 'change', 'eftpos', 'cash', 'card'],
     patterns: [
@@ -289,7 +289,7 @@ export function classifyDocument(
   // Default to UNKNOWN if no good match
   if (!bestMatch || bestMatch.confidence < 0.2) {
     return {
-      documentType: 'UNKNOWN',
+      documentType: DocumentAnalysisType.UNKNOWN,
       confidence: 0.1,
       matchedPatterns: [],
       matchedKeywords: [],
@@ -310,17 +310,17 @@ export function classifyByFilename(filename: string): {
   const lower = filename.toLowerCase();
 
   const filenamePatterns: Array<{ pattern: RegExp; type: DocumentAnalysisType; confidence: number }> = [
-    { pattern: /rate.*notice/i, type: 'RATE_NOTICE', confidence: 0.7 },
-    { pattern: /insurance.*policy/i, type: 'INSURANCE_POLICY', confidence: 0.7 },
-    { pattern: /bank.*statement/i, type: 'BANK_STATEMENT', confidence: 0.7 },
-    { pattern: /loan.*statement/i, type: 'LOAN_STATEMENT', confidence: 0.7 },
-    { pattern: /loan.*contract/i, type: 'LOAN_CONTRACT', confidence: 0.7 },
-    { pattern: /lease.*agreement/i, type: 'LEASE_AGREEMENT', confidence: 0.7 },
-    { pattern: /valuation/i, type: 'VALUATION_REPORT', confidence: 0.6 },
-    { pattern: /tax.*return/i, type: 'TAX_DOCUMENT', confidence: 0.7 },
-    { pattern: /invoice/i, type: 'INVOICE', confidence: 0.6 },
-    { pattern: /receipt/i, type: 'RECEIPT', confidence: 0.6 },
-    { pattern: /electricity|gas|water|utility/i, type: 'UTILITY_BILL', confidence: 0.6 },
+    { pattern: /rate.*notice/i, type: DocumentAnalysisType.RATE_NOTICE, confidence: 0.7 },
+    { pattern: /insurance.*policy/i, type: DocumentAnalysisType.INSURANCE_POLICY, confidence: 0.7 },
+    { pattern: /bank.*statement/i, type: DocumentAnalysisType.BANK_STATEMENT, confidence: 0.7 },
+    { pattern: /loan.*statement/i, type: DocumentAnalysisType.LOAN_STATEMENT, confidence: 0.7 },
+    { pattern: /loan.*contract/i, type: DocumentAnalysisType.LOAN_CONTRACT, confidence: 0.7 },
+    { pattern: /lease.*agreement/i, type: DocumentAnalysisType.LEASE_AGREEMENT, confidence: 0.7 },
+    { pattern: /valuation/i, type: DocumentAnalysisType.VALUATION_REPORT, confidence: 0.6 },
+    { pattern: /tax.*return/i, type: DocumentAnalysisType.TAX_DOCUMENT, confidence: 0.7 },
+    { pattern: /invoice/i, type: DocumentAnalysisType.INVOICE, confidence: 0.6 },
+    { pattern: /receipt/i, type: DocumentAnalysisType.RECEIPT, confidence: 0.6 },
+    { pattern: /electricity|gas|water|utility/i, type: DocumentAnalysisType.UTILITY_BILL, confidence: 0.6 },
   ];
 
   for (const { pattern, type, confidence } of filenamePatterns) {
@@ -337,18 +337,18 @@ export function classifyByFilename(filename: string): {
  */
 export function getDocumentTypeName(type: DocumentAnalysisType): string {
   const names: Record<DocumentAnalysisType, string> = {
-    RECEIPT: 'Receipt',
-    INVOICE: 'Invoice',
-    BANK_STATEMENT: 'Bank Statement',
-    UTILITY_BILL: 'Utility Bill',
-    RATE_NOTICE: 'Rate Notice',
-    INSURANCE_POLICY: 'Insurance Policy',
-    LOAN_STATEMENT: 'Loan Statement',
-    LOAN_CONTRACT: 'Loan Contract',
-    LEASE_AGREEMENT: 'Lease Agreement',
-    VALUATION_REPORT: 'Valuation Report',
-    TAX_DOCUMENT: 'Tax Document',
-    UNKNOWN: 'Unknown Document',
+    [DocumentAnalysisType.RECEIPT]: 'Receipt',
+    [DocumentAnalysisType.INVOICE]: 'Invoice',
+    [DocumentAnalysisType.BANK_STATEMENT]: 'Bank Statement',
+    [DocumentAnalysisType.UTILITY_BILL]: 'Utility Bill',
+    [DocumentAnalysisType.RATE_NOTICE]: 'Rate Notice',
+    [DocumentAnalysisType.INSURANCE_POLICY]: 'Insurance Policy',
+    [DocumentAnalysisType.LOAN_STATEMENT]: 'Loan Statement',
+    [DocumentAnalysisType.LOAN_CONTRACT]: 'Loan Contract',
+    [DocumentAnalysisType.LEASE_AGREEMENT]: 'Lease Agreement',
+    [DocumentAnalysisType.VALUATION_REPORT]: 'Valuation Report',
+    [DocumentAnalysisType.TAX_DOCUMENT]: 'Tax Document',
+    [DocumentAnalysisType.UNKNOWN]: 'Unknown Document',
   };
 
   return names[type] || type;
