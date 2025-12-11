@@ -71,7 +71,7 @@ export async function lookupEntities(
       select: {
         id: true,
         name: true,
-        lender: true,
+        type: true,
         property: {
           select: {
             id: true,
@@ -84,7 +84,7 @@ export async function lookupEntities(
     loans.forEach(l => {
       result[l.id] = {
         id: l.id,
-        name: l.name || `${l.lender || 'Unknown'} Loan`,
+        name: l.name || `${l.type || 'Unknown'} Loan`,
         type: LinkedEntityType.LOAN,
         parentId: l.property?.id,
         parentName: l.property?.name || l.property?.address,
@@ -260,7 +260,7 @@ export async function getAllUserEntities(userId: string): Promise<{
       select: {
         id: true,
         name: true,
-        lender: true,
+        type: true,
         property: { select: { id: true, name: true, address: true } },
       },
       orderBy: { name: 'asc' },
@@ -305,7 +305,7 @@ export async function getAllUserEntities(userId: string): Promise<{
     })),
     loans: loans.map(l => ({
       id: l.id,
-      name: l.name || `${l.lender || 'Unknown'} Loan`,
+      name: l.name || `${l.type || 'Unknown'} Loan`,
       type: LinkedEntityType.LOAN,
       parentId: l.property?.id,
       parentName: l.property?.name || l.property?.address,
