@@ -1,6 +1,7 @@
 /**
  * Entity Lookup Service
  * Fetches entity names for document folder structure
+ * Updated: 2025-12-11
  */
 
 import { prisma } from '@/lib/db';
@@ -71,7 +72,7 @@ export async function lookupEntities(
       select: {
         id: true,
         name: true,
-        lender: true,
+        type: true,
         property: {
           select: {
             id: true,
@@ -84,10 +85,10 @@ export async function lookupEntities(
     loans.forEach(l => {
       result[l.id] = {
         id: l.id,
-        name: l.name || `${l.lender || 'Unknown'} Loan`,
+        name: l.name || `${l.type || 'Unknown'} Loan`,
         type: LinkedEntityType.LOAN,
         parentId: l.property?.id,
-        parentName: l.property?.name || l.property?.address,
+        parentName: (l.property?.name || l.property?.address) ?? undefined,
         parentType: l.property ? LinkedEntityType.PROPERTY : undefined,
       };
     });
@@ -119,7 +120,7 @@ export async function lookupEntities(
         name: e.name || e.category || 'Unnamed Expense',
         type: LinkedEntityType.EXPENSE,
         parentId: e.property?.id,
-        parentName: e.property?.name || e.property?.address,
+        parentName: (e.property?.name || e.property?.address) ?? undefined,
         parentType: e.property ? LinkedEntityType.PROPERTY : undefined,
       };
     });
@@ -135,7 +136,7 @@ export async function lookupEntities(
       select: {
         id: true,
         name: true,
-        category: true,
+        type: true,
         property: {
           select: {
             id: true,
@@ -148,10 +149,10 @@ export async function lookupEntities(
     incomes.forEach(i => {
       result[i.id] = {
         id: i.id,
-        name: i.name || i.category || 'Unnamed Income',
+        name: i.name || i.type || 'Unnamed Income',
         type: LinkedEntityType.INCOME,
         parentId: i.property?.id,
-        parentName: i.property?.name || i.property?.address,
+        parentName: (i.property?.name || i.property?.address) ?? undefined,
         parentType: i.property ? LinkedEntityType.PROPERTY : undefined,
       };
     });
@@ -159,7 +160,7 @@ export async function lookupEntities(
 
   // Fetch bank accounts
   if (groupedLinks.ACCOUNT?.length) {
-    const accounts = await prisma.bankAccount.findMany({
+    const accounts = await prisma.account.findMany({
       where: {
         id: { in: groupedLinks.ACCOUNT },
         userId,
@@ -168,13 +169,13 @@ export async function lookupEntities(
         id: true,
         name: true,
         institution: true,
-        accountType: true,
+        type: true,
       },
     });
     accounts.forEach(a => {
       result[a.id] = {
         id: a.id,
-        name: a.name || `${a.institution || 'Bank'} - ${a.accountType || 'Account'}`,
+        name: a.name || `${a.institution || 'Bank'} - ${a.type || 'Account'}`,
         type: LinkedEntityType.ACCOUNT,
       };
     });
@@ -229,8 +230,8 @@ export async function lookupEntities(
         name: h.name || h.symbol || 'Holding',
         type: LinkedEntityType.INVESTMENT_HOLDING,
         parentId: h.investmentAccount?.id,
-        parentName: h.investmentAccount?.name,
-        parentType: LinkedEntityType.INVESTMENT_ACCOUNT,
+        parentName: h.investmentAccount?.name ?? undefined,
+        parentType: h.investmentAccount ? LinkedEntityType.INVESTMENT_ACCOUNT : undefined,
       };
     });
   }
@@ -260,7 +261,7 @@ export async function getAllUserEntities(userId: string): Promise<{
       select: {
         id: true,
         name: true,
-        lender: true,
+        type: true,
         property: { select: { id: true, name: true, address: true } },
       },
       orderBy: { name: 'asc' },
@@ -280,14 +281,14 @@ export async function getAllUserEntities(userId: string): Promise<{
       select: {
         id: true,
         name: true,
-        category: true,
+        type: true,
         property: { select: { id: true, name: true, address: true } },
       },
       orderBy: { name: 'asc' },
     }),
-    prisma.bankAccount.findMany({
+    prisma.account.findMany({
       where: { userId },
-      select: { id: true, name: true, institution: true, accountType: true },
+      select: { id: true, name: true, institution: true, type: true },
       orderBy: { name: 'asc' },
     }),
     prisma.investmentAccount.findMany({
@@ -305,10 +306,10 @@ export async function getAllUserEntities(userId: string): Promise<{
     })),
     loans: loans.map(l => ({
       id: l.id,
-      name: l.name || `${l.lender || 'Unknown'} Loan`,
+      name: l.name || `${l.type || 'Unknown'} Loan`,
       type: LinkedEntityType.LOAN,
       parentId: l.property?.id,
-      parentName: l.property?.name || l.property?.address,
+      parentName: (l.property?.name || l.property?.address) ?? undefined,
       parentType: l.property ? LinkedEntityType.PROPERTY : undefined,
     })),
     expenses: expenses.map(e => ({
@@ -316,20 +317,20 @@ export async function getAllUserEntities(userId: string): Promise<{
       name: e.name || e.category || 'Unnamed Expense',
       type: LinkedEntityType.EXPENSE,
       parentId: e.property?.id,
-      parentName: e.property?.name || e.property?.address,
+      parentName: (e.property?.name || e.property?.address) ?? undefined,
       parentType: e.property ? LinkedEntityType.PROPERTY : undefined,
     })),
     income: income.map(i => ({
       id: i.id,
-      name: i.name || i.category || 'Unnamed Income',
+      name: i.name || i.type || 'Unnamed Income',
       type: LinkedEntityType.INCOME,
       parentId: i.property?.id,
-      parentName: i.property?.name || i.property?.address,
+      parentName: (i.property?.name || i.property?.address) ?? undefined,
       parentType: i.property ? LinkedEntityType.PROPERTY : undefined,
     })),
     accounts: accounts.map(a => ({
       id: a.id,
-      name: a.name || `${a.institution || 'Bank'} - ${a.accountType || 'Account'}`,
+      name: a.name || `${a.institution || 'Bank'} - ${a.type || 'Account'}`,
       type: LinkedEntityType.ACCOUNT,
     })),
     investmentAccounts: investmentAccounts.map(ia => ({
