@@ -1,6 +1,7 @@
 /**
  * Entity Lookup Service
  * Fetches entity names for document folder structure
+ * Updated: 2025-12-11
  */
 
 import { prisma } from '@/lib/db';
