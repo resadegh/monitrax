@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * DocumentFolderView Component
- * Displays documents in a grid/folder view with icons
+ * DocumentFolderView Component (Phase 19 & 26)
+ * Displays documents in a grid/folder view with icons and AI analysis status
  */
 
 import { useState } from 'react';
@@ -17,12 +17,19 @@ import {
   Trash2,
   ExternalLink,
   Folder,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -34,6 +41,24 @@ import {
 import { cn } from '@/lib/utils';
 import { DocumentCategory } from '@/lib/documents/types';
 
+// Phase 26: Analysis summary
+interface AnalysisSummary {
+  id: string;
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  documentType: string;
+  typeConfidence: number;
+  overallConfidence: number;
+  extractedData: Record<string, unknown> | null;
+  suggestedActions: Array<{
+    type: string;
+    confidence: number;
+    description: string;
+  }> | null;
+  userVerified: boolean;
+  createdEntityType: string | null;
+  createdEntityId: string | null;
+}
+
 interface DocumentItem {
   id: string;
   filename: string;
@@ -43,6 +68,7 @@ interface DocumentItem {
   category: DocumentCategory;
   description: string | null;
   uploadedAt: string;
+  analysis?: AnalysisSummary | null; // Phase 26
 }
 
 interface SubFolder {
@@ -57,6 +83,8 @@ interface DocumentFolderViewProps {
   onView: (id: string) => Promise<{ signedUrl: string } | null>;
   onDelete: (id: string) => Promise<void>;
   onNavigateFolder?: (path: string) => void;
+  onAnalyze?: (id: string) => Promise<void>; // Phase 26
+  onConfirmAnalysis?: (analysisId: string, action: string, data: Record<string, unknown>) => Promise<boolean>; // Phase 26
   loading?: boolean;
   viewMode?: 'grid' | 'list';
 }
@@ -96,17 +124,61 @@ function formatDate(dateString: string): string {
   });
 }
 
+// Phase 26: Get analysis status badge
+function getAnalysisStatusBadge(analysis: AnalysisSummary | null | undefined) {
+  if (!analysis) return null;
+
+  const statusConfig = {
+    PENDING: { icon: Clock, label: 'Pending', variant: 'secondary' as const },
+    PROCESSING: { icon: Loader2, label: 'Analyzing...', variant: 'secondary' as const },
+    COMPLETED: { icon: CheckCircle2, label: 'Analyzed', variant: 'default' as const },
+    FAILED: { icon: AlertCircle, label: 'Failed', variant: 'destructive' as const },
+  };
+
+  const config = statusConfig[analysis.status];
+  const Icon = config.icon;
+
+  return (
+    <Badge variant={config.variant} className="text-xs gap-1">
+      <Icon className={cn('h-3 w-3', analysis.status === 'PROCESSING' && 'animate-spin')} />
+      {config.label}
+    </Badge>
+  );
+}
+
+// Phase 26: Format document type for display
+function formatDocumentType(type: string): string {
+  const typeLabels: Record<string, string> = {
+    RECEIPT: 'Receipt',
+    INVOICE: 'Invoice',
+    BANK_STATEMENT: 'Bank Statement',
+    UTILITY_BILL: 'Utility Bill',
+    RATE_NOTICE: 'Rate Notice',
+    INSURANCE_POLICY: 'Insurance',
+    LOAN_STATEMENT: 'Loan Statement',
+    LOAN_CONTRACT: 'Loan Contract',
+    LEASE_AGREEMENT: 'Lease Agreement',
+    VALUATION_REPORT: 'Valuation',
+    TAX_DOCUMENT: 'Tax Document',
+    UNKNOWN: 'Unknown',
+  };
+  return typeLabels[type] || type;
+}
+
 export function DocumentFolderView({
   documents,
   subFolders = [],
   onView,
   onDelete,
   onNavigateFolder,
+  onAnalyze,
+  onConfirmAnalysis,
   loading = false,
   viewMode = 'grid',
 }: DocumentFolderViewProps) {
   const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string } | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null); // Phase 26
 
   const handleView = async (doc: DocumentItem) => {
     setLoadingId(doc.id);
@@ -137,6 +209,14 @@ export function DocumentFolderView({
       link.click();
       document.body.removeChild(link);
     }
+  };
+
+  // Phase 26: Handle analyze document
+  const handleAnalyze = async (doc: DocumentItem) => {
+    if (!onAnalyze) return;
+    setAnalyzingId(doc.id);
+    await onAnalyze(doc.id);
+    setAnalyzingId(null);
   };
 
   if (loading) {
@@ -182,6 +262,9 @@ export function DocumentFolderView({
           {documents.map((doc) => {
             const Icon = getFileIcon(doc.mimeType);
             const color = getFileColor(doc.mimeType);
+            const isAnalyzing = analyzingId === doc.id;
+            const hasAnalysis = doc.analysis?.status === 'COMPLETED';
+            const canAnalyze = !doc.analysis || doc.analysis.status === 'FAILED';
 
             return (
               <div
@@ -190,9 +273,19 @@ export function DocumentFolderView({
               >
                 <Icon className={cn('h-5 w-5 flex-shrink-0', color)} />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{doc.originalFilename}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate">{doc.originalFilename}</p>
+                    {/* Phase 26: Analysis status badge */}
+                    {getAnalysisStatusBadge(doc.analysis)}
+                    {doc.analysis?.userVerified && (
+                      <Badge variant="outline" className="text-xs">Verified</Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {formatFileSize(doc.size)} • {formatDate(doc.uploadedAt)}
+                    {hasAnalysis && doc.analysis && (
+                      <> • {formatDocumentType(doc.analysis.documentType)}</>
+                    )}
                   </p>
                 </div>
                 <DropdownMenu>
@@ -201,9 +294,13 @@ export function DocumentFolderView({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      disabled={loadingId === doc.id}
+                      disabled={loadingId === doc.id || isAnalyzing}
                     >
-                      <MoreVertical className="h-4 w-4" />
+                      {isAnalyzing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MoreVertical className="h-4 w-4" />
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -215,6 +312,25 @@ export function DocumentFolderView({
                       <Download className="h-4 w-4 mr-2" />
                       Download
                     </DropdownMenuItem>
+                    {/* Phase 26: Analysis options */}
+                    {onAnalyze && (
+                      <>
+                        <DropdownMenuSeparator />
+                        {canAnalyze && (
+                          <DropdownMenuItem onClick={() => handleAnalyze(doc)}>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            {doc.analysis?.status === 'FAILED' ? 'Re-analyze' : 'Analyze'}
+                          </DropdownMenuItem>
+                        )}
+                        {hasAnalysis && !doc.analysis?.userVerified && (
+                          <DropdownMenuItem onClick={() => handleView(doc)}>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Review & Confirm
+                          </DropdownMenuItem>
+                        )}
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => onDelete(doc.id)}
                       className="text-destructive"
@@ -281,6 +397,9 @@ export function DocumentFolderView({
         {documents.map((doc) => {
           const Icon = getFileIcon(doc.mimeType);
           const color = getFileColor(doc.mimeType);
+          const isAnalyzing = analyzingId === doc.id;
+          const hasAnalysis = doc.analysis?.status === 'COMPLETED';
+          const canAnalyze = !doc.analysis || doc.analysis.status === 'FAILED';
 
           return (
             <div
@@ -290,19 +409,39 @@ export function DocumentFolderView({
               <button
                 onClick={() => handleView(doc)}
                 className="flex flex-col items-center w-full"
-                disabled={loadingId === doc.id}
+                disabled={loadingId === doc.id || isAnalyzing}
               >
-                <Icon
-                  className={cn(
-                    'h-12 w-12 mb-2 group-hover:scale-110 transition-transform',
-                    color,
-                    loadingId === doc.id && 'animate-pulse'
+                <div className="relative">
+                  <Icon
+                    className={cn(
+                      'h-12 w-12 mb-2 group-hover:scale-110 transition-transform',
+                      color,
+                      (loadingId === doc.id || isAnalyzing) && 'animate-pulse'
+                    )}
+                  />
+                  {/* Phase 26: Analysis indicator */}
+                  {hasAnalysis && (
+                    <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-0.5">
+                      <Sparkles className="h-3 w-3 text-primary-foreground" />
+                    </div>
                   )}
-                />
+                  {isAnalyzing && (
+                    <div className="absolute -bottom-1 -right-1 bg-secondary rounded-full p-0.5">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    </div>
+                  )}
+                </div>
                 <p className="text-sm font-medium text-center truncate w-full">
                   {doc.originalFilename}
                 </p>
-                <p className="text-xs text-muted-foreground">{formatFileSize(doc.size)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatFileSize(doc.size)}
+                  {hasAnalysis && doc.analysis && (
+                    <span className="block text-primary">
+                      {formatDocumentType(doc.analysis.documentType)}
+                    </span>
+                  )}
+                </p>
               </button>
 
               {/* Actions dropdown */}
@@ -322,6 +461,25 @@ export function DocumentFolderView({
                       <Download className="h-4 w-4 mr-2" />
                       Download
                     </DropdownMenuItem>
+                    {/* Phase 26: Analysis options */}
+                    {onAnalyze && (
+                      <>
+                        <DropdownMenuSeparator />
+                        {canAnalyze && (
+                          <DropdownMenuItem onClick={() => handleAnalyze(doc)}>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            {doc.analysis?.status === 'FAILED' ? 'Re-analyze' : 'Analyze'}
+                          </DropdownMenuItem>
+                        )}
+                        {hasAnalysis && !doc.analysis?.userVerified && (
+                          <DropdownMenuItem onClick={() => handleView(doc)}>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Review & Confirm
+                          </DropdownMenuItem>
+                        )}
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => onDelete(doc.id)}
                       className="text-destructive"

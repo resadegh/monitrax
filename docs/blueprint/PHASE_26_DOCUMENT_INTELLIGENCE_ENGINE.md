@@ -749,6 +749,281 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ---
 
+## Form Auto-Fill Feature (Phase 26.6)
+
+### Overview
+
+The Form Auto-Fill feature allows users to attach documents directly to entity forms (Expense, Income, Loan) and have the form fields automatically populated from the document content.
+
+> "Attach a receipt to the expense form, and watch the fields fill themselves."
+
+### User Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Form Auto-Fill Flow                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   1. User opens Expense Form (or Income, Loan form)                         │
+│                    │                                                         │
+│                    ▼                                                         │
+│   2. User clicks "Attach Document" / "Scan Receipt" button                  │
+│                    │                                                         │
+│                    ▼                                                         │
+│   3. User uploads document (image/PDF)                                      │
+│                    │                                                         │
+│                    ▼                                                         │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │                   Document Intelligence Engine                       │   │
+│   │                                                                      │   │
+│   │   a) Vision API performs OCR → extracts text                        │   │
+│   │   b) OpenAI analyzes text + form context → maps to fields           │   │
+│   │   c) Returns field mappings with confidence scores                   │   │
+│   │                                                                      │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                    │                                                         │
+│                    ▼                                                         │
+│   4. Form fields auto-populate with extracted values                        │
+│      • High confidence fields: filled normally                              │
+│      • Low confidence fields: highlighted for review                        │
+│                    │                                                         │
+│                    ▼                                                         │
+│   5. User reviews, edits if needed, and submits form                        │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Technical Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    Form Auto-Fill Architecture                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   Client (Form Component)                                                    │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  FormDocumentUpload Component                                        │   │
+│   │  • Accepts file upload                                               │   │
+│   │  • Shows upload/analyzing progress                                   │   │
+│   │  • Receives field mappings and updates form state                   │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                              │                                               │
+│                              │ POST /api/documents/analyze-for-form         │
+│                              │ { file, formType, formFields }               │
+│                              ▼                                               │
+│   Server                                                                     │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │  /api/documents/analyze-for-form                                     │   │
+│   │                                                                      │   │
+│   │  1. Upload to GCS (temporary or permanent)                          │   │
+│   │  2. Vision API → OCR text extraction                                │   │
+│   │  3. OpenAI → Intelligent field mapping                              │   │
+│   │     Prompt includes:                                                │   │
+│   │     - OCR text                                                      │   │
+│   │     - Form type (expense, income, loan)                            │   │
+│   │     - Available form fields with types                              │   │
+│   │     - Australian context (GST, ABN, date formats)                  │   │
+│   │  4. Return mapped fields with confidence                           │   │
+│   │                                                                      │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                              │                                               │
+│                              ▼                                               │
+│   Response                                                                   │
+│   {                                                                          │
+│     "success": true,                                                         │
+│     "documentId": "doc_123",                                                │
+│     "fieldMappings": {                                                       │
+│       "vendor": { "value": "Bunnings", "confidence": 0.98 },               │
+│       "amount": { "value": 156.80, "confidence": 0.99 },                   │
+│       "date": { "value": "2025-12-10", "confidence": 0.95 },               │
+│       "category": { "value": "MAINTENANCE", "confidence": 0.85 },          │
+│       "gst": { "value": 14.25, "confidence": 0.97 },                       │
+│       "taxDeductible": { "value": true, "confidence": 0.90 }               │
+│     },                                                                       │
+│     "lowConfidenceFields": ["category"],                                    │
+│     "rawText": "...",                                                       │
+│     "documentType": "RECEIPT"                                               │
+│   }                                                                          │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### API Endpoint
+
+#### POST /api/documents/analyze-for-form
+
+Analyzes a document and returns field mappings for a specific form type.
+
+**Request (FormData):**
+```
+file: [binary]           # The document file
+formType: "expense"      # expense | income | loan | property
+formFields: JSON string  # Available form fields
+propertyId?: string      # Optional property context
+```
+
+**formFields Example:**
+```json
+{
+  "vendor": { "type": "string", "label": "Vendor Name" },
+  "amount": { "type": "number", "label": "Amount" },
+  "date": { "type": "date", "label": "Date" },
+  "category": {
+    "type": "enum",
+    "label": "Category",
+    "options": ["MAINTENANCE", "UTILITIES", "INSURANCE", "RATES", "OTHER"]
+  },
+  "description": { "type": "string", "label": "Description" },
+  "taxDeductible": { "type": "boolean", "label": "Tax Deductible" },
+  "gst": { "type": "number", "label": "GST Amount" }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "documentId": "doc_abc123",
+  "storageUrl": "gs://bucket/path/to/file",
+  "fieldMappings": {
+    "vendor": {
+      "value": "Bunnings Warehouse",
+      "confidence": 0.98,
+      "source": "ocr"
+    },
+    "amount": {
+      "value": 156.80,
+      "confidence": 0.99,
+      "source": "ocr"
+    },
+    "date": {
+      "value": "2025-12-10",
+      "confidence": 0.95,
+      "source": "ocr"
+    },
+    "category": {
+      "value": "MAINTENANCE",
+      "confidence": 0.85,
+      "source": "ai_inference",
+      "reason": "Hardware store purchase suggests maintenance category"
+    },
+    "description": {
+      "value": "Paint and brushes for property maintenance",
+      "confidence": 0.80,
+      "source": "ai_generated"
+    },
+    "taxDeductible": {
+      "value": true,
+      "confidence": 0.90,
+      "source": "ai_inference",
+      "reason": "Linked to investment property"
+    },
+    "gst": {
+      "value": 14.25,
+      "confidence": 0.97,
+      "source": "ocr"
+    }
+  },
+  "lowConfidenceFields": ["category", "description"],
+  "documentType": "RECEIPT",
+  "rawText": "BUNNINGS WAREHOUSE\nTAX INVOICE\n..."
+}
+```
+
+### OpenAI Prompt Strategy
+
+The system uses OpenAI to intelligently map OCR text to form fields:
+
+```typescript
+const FORM_AUTOFILL_SYSTEM_PROMPT = `You are an expert at extracting data from Australian financial documents and mapping them to form fields.
+
+CONTEXT:
+- The user is filling out a {formType} form
+- They have uploaded a document (usually a receipt, invoice, or statement)
+- You need to extract relevant data and map it to the form fields
+
+FORM FIELDS:
+{formFields}
+
+INSTRUCTIONS:
+1. Analyze the OCR text carefully
+2. Extract values that match the form fields
+3. For each field, provide:
+   - value: The extracted value (in correct type)
+   - confidence: 0.0-1.0 how confident you are
+   - source: "ocr" (direct extraction) or "ai_inference" (derived/inferred)
+   - reason: (for ai_inference only) Brief explanation
+
+AUSTRALIAN SPECIFICS:
+- Dates are typically DD/MM/YYYY format
+- GST is 10% (calculate as total/11 if not shown)
+- ABN format: XX XXX XXX XXX (validate using weighted sum)
+- Currency is AUD ($ symbol)
+
+EXPENSE CATEGORY HINTS:
+- Bunnings, hardware stores → MAINTENANCE
+- Council rates → RATES
+- Insurance → INSURANCE
+- Electricity, gas, water → UTILITIES
+- Strata → STRATA
+
+Return a JSON object with fieldMappings for each field you can fill.
+Only include fields where you found relevant data.
+`;
+```
+
+### UI Component: FormDocumentUpload
+
+```tsx
+interface FormDocumentUploadProps {
+  formType: 'expense' | 'income' | 'loan' | 'property';
+  formFields: FormFieldDefinition[];
+  onFieldsExtracted: (mappings: FieldMappings) => void;
+  onDocumentAttached: (documentId: string) => void;
+  propertyId?: string;
+  disabled?: boolean;
+}
+
+// Usage in ExpenseForm:
+<FormDocumentUpload
+  formType="expense"
+  formFields={EXPENSE_FORM_FIELDS}
+  propertyId={selectedPropertyId}
+  onFieldsExtracted={(mappings) => {
+    // Auto-fill form fields
+    if (mappings.vendor) setVendor(mappings.vendor.value);
+    if (mappings.amount) setAmount(mappings.amount.value);
+    if (mappings.date) setDate(mappings.date.value);
+    if (mappings.category) setCategory(mappings.category.value);
+    // ... etc
+  }}
+  onDocumentAttached={(docId) => setAttachedDocumentId(docId)}
+/>
+```
+
+### Form Integration Points
+
+| Form | Document Types | Auto-Fill Fields |
+|------|---------------|------------------|
+| **Expense** | Receipt, Invoice, Bill | vendor, amount, date, category, gst, description, taxDeductible |
+| **Income** | Rental Statement, Bank Statement | source, amount, date, frequency |
+| **Loan** | Loan Contract, Statement | lender, principalAmount, interestRate, term, repaymentAmount |
+| **Property** | Valuation Report, Rate Notice | currentValue, purchasePrice, councilRates |
+
+### Implementation Checklist
+
+- [ ] Create `/api/documents/analyze-for-form` endpoint
+- [ ] Implement OpenAI field mapping logic
+- [ ] Create `FormDocumentUpload` component
+- [ ] Integrate with Expense form
+- [ ] Integrate with Income form
+- [ ] Integrate with Loan form
+- [ ] Add confidence indicators to form fields
+- [ ] Add "Attached Document" badge to forms
+- [ ] Test with various Australian document types
+
+---
+
 ## Dependencies
 
 - **Phase 25** (Document Management Engine) - Required

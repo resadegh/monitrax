@@ -17,6 +17,13 @@ import { getStorageProvider } from '../storage';
 import { DocumentCategory, StorageProviderType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
+// Type for document links from Prisma
+interface DocumentLinkData {
+  id: string;
+  entityType: string;
+  entityId: string;
+}
+
 /**
  * Generate a unique filename with UUID prefix
  */
@@ -190,9 +197,9 @@ export class DocumentManagementEngine {
           description: completeDocument!.description,
           tags: completeDocument!.tags,
           uploadedAt: completeDocument!.uploadedAt,
-          links: completeDocument!.links.map(l => ({
+          links: (completeDocument!.links as DocumentLinkData[]).map((l: DocumentLinkData) => ({
             id: l.id,
-            entityType: l.entityType as any,
+            entityType: l.entityType as EntityLink['entityType'],
             entityId: l.entityId,
           })),
         },
@@ -270,9 +277,9 @@ export class DocumentManagementEngine {
         description: completeDocument!.description,
         tags: completeDocument!.tags,
         uploadedAt: completeDocument!.uploadedAt,
-        links: completeDocument!.links.map(l => ({
+        links: (completeDocument!.links as DocumentLinkData[]).map((l: DocumentLinkData) => ({
           id: l.id,
-          entityType: l.entityType as any,
+          entityType: l.entityType as EntityLink['entityType'],
           entityId: l.entityId,
         })),
       },

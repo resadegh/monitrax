@@ -47,6 +47,7 @@ import {
   type IncomeType as IncomeTypeEnum,
 } from '@/lib/categoryFilters';
 import { ListFilter, incomeFilterConfigs } from '@/components/ListFilter';
+import { FormDocumentUpload, FieldMapping } from '@/components/documents';
 
 type ViewMode = 'type' | 'source' | 'all' | 'list';
 
@@ -169,6 +170,44 @@ function IncomePageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('type');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [filteredIncome, setFilteredIncome] = useState<Income[]>([]);
+  const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
+  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
+
+  // Handle auto-fill from document analysis
+  const handleFieldsExtracted = (mappings: Record<string, FieldMapping>) => {
+    const filledFields: string[] = [];
+    const updates: Partial<IncomeFormData> = {};
+
+    // Map extracted fields to form data
+    if (mappings.source?.value && !formData.name) {
+      updates.name = String(mappings.source.value);
+      filledFields.push('name');
+    }
+
+    if (mappings.amount?.value && !formData.amount) {
+      updates.amount = Number(mappings.amount.value);
+      filledFields.push('amount');
+    }
+
+    if (mappings.date?.value) {
+      // Could be used for filtering or context
+      filledFields.push('date');
+    }
+
+    if (mappings.frequency?.value) {
+      const frequencyValue = String(mappings.frequency.value).toUpperCase();
+      const validFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'];
+      if (validFrequencies.includes(frequencyValue)) {
+        updates.frequency = frequencyValue as Income['frequency'];
+        filledFields.push('frequency');
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setFormData(prev => ({ ...prev, ...updates }));
+      setAutoFilledFields(filledFields);
+    }
+  };
 
   useEffect(() => {
     if (token) {
@@ -333,6 +372,28 @@ function IncomePageContent() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        const savedIncomeId = result.data?.id || result.id || editingId;
+
+        // Link document if one was attached via FormDocumentUpload
+        if (attachedDocumentId && savedIncomeId) {
+          try {
+            await fetch(`/api/documents/${attachedDocumentId}/link`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                entityType: 'INCOME',
+                entityId: savedIncomeId,
+              }),
+            });
+          } catch (linkError) {
+            console.error('Error linking document to income:', linkError);
+          }
+        }
+
         await loadIncome();
         setShowDialog(false);
         setEditingId(null);
@@ -359,6 +420,8 @@ function IncomePageContent() {
       frankingPercentage: null,
     });
     setSalaryPreview(null);
+    setAttachedDocumentId(null);
+    setAutoFilledFields([]);
   };
 
   const handleEdit = (item: Income) => {
@@ -1081,6 +1144,20 @@ function IncomePageContent() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Document Auto-Fill */}
+            <FormDocumentUpload
+              formType="income"
+              propertyId={formData.propertyId || undefined}
+              onFieldsExtracted={handleFieldsExtracted}
+              onDocumentAttached={setAttachedDocumentId}
+              disabled={isLoading}
+            />
+            {autoFilledFields.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Auto-filled {autoFilledFields.length} field(s). Review and adjust if needed.
+              </p>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
