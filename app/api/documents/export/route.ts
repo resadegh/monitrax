@@ -203,7 +203,12 @@ export async function POST(request: NextRequest) {
     zipFilename += `_${new Date().toISOString().split('T')[0]}.zip`;
 
     // Return ZIP file using native Response with Blob
-    const blob = new Blob([zipBuffer], { type: 'application/zip' });
+    // Convert Uint8Array to ArrayBuffer for TypeScript compatibility
+    const arrayBuffer = zipBuffer.buffer.slice(
+      zipBuffer.byteOffset,
+      zipBuffer.byteOffset + zipBuffer.byteLength
+    );
+    const blob = new Blob([arrayBuffer], { type: 'application/zip' });
     return new Response(blob, {
       status: 200,
       headers: {
