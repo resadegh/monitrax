@@ -2,10 +2,10 @@
 
 /**
  * FolderTree Component
- * Displays a navigable folder tree for document organization
+ * Displays a navigable folder tree for document organization with entity drill-down
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Folder,
   FolderOpen,
@@ -21,6 +21,8 @@ import {
   Shield,
   FileCheck,
   Files,
+  Banknote,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DocumentCategory } from '@/lib/documents/types';
@@ -32,7 +34,25 @@ export interface FolderNode {
   icon?: React.ElementType;
   children?: FolderNode[];
   count?: number;
-  type: 'root' | 'category' | 'fiscal-year' | 'entity';
+  type: 'root' | 'category' | 'fiscal-year' | 'entity' | 'entity-item';
+}
+
+export interface EntityInfo {
+  id: string;
+  name: string;
+  type: string;
+  parentId?: string;
+  parentName?: string;
+  parentType?: string;
+}
+
+export interface UserEntities {
+  properties: EntityInfo[];
+  loans: EntityInfo[];
+  expenses: EntityInfo[];
+  income: EntityInfo[];
+  accounts: EntityInfo[];
+  investmentAccounts: EntityInfo[];
 }
 
 // Category to icon mapping
@@ -65,10 +85,21 @@ const CATEGORY_NAMES: Record<string, string> = {
   OTHER: 'Other',
 };
 
+// Entity type to icon mapping
+const ENTITY_ICONS: Record<string, React.ElementType> = {
+  PROPERTY: Building2,
+  LOAN: Landmark,
+  EXPENSE: Receipt,
+  INCOME: PiggyBank,
+  ACCOUNT: Banknote,
+  INVESTMENT_ACCOUNT: TrendingUp,
+};
+
 interface FolderTreeProps {
   currentPath: string;
   onNavigate: (path: string) => void;
   documentCounts: Record<string, number>;
+  entities?: UserEntities;
   className?: string;
 }
 
@@ -76,87 +107,372 @@ export function FolderTree({
   currentPath,
   onNavigate,
   documentCounts,
+  entities,
   className,
 }: FolderTreeProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set(['/', '/categories'])
   );
 
-  // Build folder structure
-  const folders: FolderNode[] = [
-    {
-      id: 'root',
-      name: 'All Documents',
-      path: '/',
-      icon: Home,
-      type: 'root',
-      count: Object.values(documentCounts).reduce((a, b) => a + b, 0),
-    },
-    {
-      id: 'categories',
-      name: 'By Category',
-      path: '/categories',
-      icon: Folder,
-      type: 'root',
-      children: Object.values(DocumentCategory).map((cat) => ({
-        id: `cat-${cat}`,
-        name: CATEGORY_NAMES[cat] || cat,
-        path: `/categories/${cat}`,
-        icon: CATEGORY_ICONS[cat] || Files,
-        type: 'category' as const,
-        count: documentCounts[cat] || 0,
-      })),
-    },
-    {
-      id: 'fiscal-year',
-      name: 'By Financial Year',
-      path: '/fiscal-year',
-      icon: Calendar,
-      type: 'root',
-      children: generateFiscalYears(documentCounts),
-    },
-    {
-      id: 'entities',
-      name: 'By Entity',
-      path: '/entities',
+  // Build entity children with counts
+  const buildEntityChildren = useMemo(() => {
+    if (!entities) return null;
+
+    const propertyChildren: FolderNode[] = entities.properties.map((prop) => ({
+      id: `prop-${prop.id}`,
+      name: prop.name,
+      path: `/entities/PROPERTY/${prop.id}`,
       icon: Building2,
-      type: 'root',
-      children: [
-        {
+      type: 'entity-item' as const,
+      count: documentCounts[`entity:PROPERTY:${prop.id}`] || 0,
+    }));
+
+    const loanChildren: FolderNode[] = entities.loans.map((loan) => ({
+      id: `loan-${loan.id}`,
+      name: loan.name,
+      path: `/entities/LOAN/${loan.id}`,
+      icon: Landmark,
+      type: 'entity-item' as const,
+      count: documentCounts[`entity:LOAN:${loan.id}`] || 0,
+    }));
+
+    // Group expenses by property
+    const expensesByProperty: Record<string, EntityInfo[]> = {};
+    const standaloneExpenses: EntityInfo[] = [];
+    entities.expenses.forEach((exp) => {
+      if (exp.parentId) {
+        if (!expensesByProperty[exp.parentId]) {
+          expensesByProperty[exp.parentId] = [];
+        }
+        expensesByProperty[exp.parentId].push(exp);
+      } else {
+        standaloneExpenses.push(exp);
+      }
+    });
+
+    const expenseChildren: FolderNode[] = standaloneExpenses.map((exp) => ({
+      id: `exp-${exp.id}`,
+      name: exp.name,
+      path: `/entities/EXPENSE/${exp.id}`,
+      icon: Receipt,
+      type: 'entity-item' as const,
+      count: documentCounts[`entity:EXPENSE:${exp.id}`] || 0,
+    }));
+
+    // Group income by property
+    const incomeByProperty: Record<string, EntityInfo[]> = {};
+    const standaloneIncome: EntityInfo[] = [];
+    entities.income.forEach((inc) => {
+      if (inc.parentId) {
+        if (!incomeByProperty[inc.parentId]) {
+          incomeByProperty[inc.parentId] = [];
+        }
+        incomeByProperty[inc.parentId].push(inc);
+      } else {
+        standaloneIncome.push(inc);
+      }
+    });
+
+    const incomeChildren: FolderNode[] = standaloneIncome.map((inc) => ({
+      id: `inc-${inc.id}`,
+      name: inc.name,
+      path: `/entities/INCOME/${inc.id}`,
+      icon: PiggyBank,
+      type: 'entity-item' as const,
+      count: documentCounts[`entity:INCOME:${inc.id}`] || 0,
+    }));
+
+    const accountChildren: FolderNode[] = entities.accounts.map((acc) => ({
+      id: `acc-${acc.id}`,
+      name: acc.name,
+      path: `/entities/ACCOUNT/${acc.id}`,
+      icon: Banknote,
+      type: 'entity-item' as const,
+      count: documentCounts[`entity:ACCOUNT:${acc.id}`] || 0,
+    }));
+
+    const investmentChildren: FolderNode[] = entities.investmentAccounts.map((ia) => ({
+      id: `inv-${ia.id}`,
+      name: ia.name,
+      path: `/entities/INVESTMENT_ACCOUNT/${ia.id}`,
+      icon: TrendingUp,
+      type: 'entity-item' as const,
+      count: documentCounts[`entity:INVESTMENT_ACCOUNT:${ia.id}`] || 0,
+    }));
+
+    // Build property nodes with nested expenses and income
+    const propertyNodesWithNested: FolderNode[] = entities.properties.map((prop) => {
+      const children: FolderNode[] = [];
+
+      // Add expenses for this property
+      const propExpenses = expensesByProperty[prop.id] || [];
+      if (propExpenses.length > 0) {
+        children.push({
+          id: `prop-${prop.id}-expenses`,
+          name: 'Expenses',
+          path: `/entities/PROPERTY/${prop.id}/expenses`,
+          icon: Receipt,
+          type: 'entity' as const,
+          count: propExpenses.reduce((sum, e) => sum + (documentCounts[`entity:EXPENSE:${e.id}`] || 0), 0),
+          children: propExpenses.map((exp) => ({
+            id: `exp-${exp.id}`,
+            name: exp.name,
+            path: `/entities/EXPENSE/${exp.id}`,
+            icon: Receipt,
+            type: 'entity-item' as const,
+            count: documentCounts[`entity:EXPENSE:${exp.id}`] || 0,
+          })),
+        });
+      }
+
+      // Add income for this property
+      const propIncome = incomeByProperty[prop.id] || [];
+      if (propIncome.length > 0) {
+        children.push({
+          id: `prop-${prop.id}-income`,
+          name: 'Income',
+          path: `/entities/PROPERTY/${prop.id}/income`,
+          icon: PiggyBank,
+          type: 'entity' as const,
+          count: propIncome.reduce((sum, i) => sum + (documentCounts[`entity:INCOME:${i.id}`] || 0), 0),
+          children: propIncome.map((inc) => ({
+            id: `inc-${inc.id}`,
+            name: inc.name,
+            path: `/entities/INCOME/${inc.id}`,
+            icon: PiggyBank,
+            type: 'entity-item' as const,
+            count: documentCounts[`entity:INCOME:${inc.id}`] || 0,
+          })),
+        });
+      }
+
+      // Add loans for this property
+      const propLoans = entities.loans.filter(l => l.parentId === prop.id);
+      if (propLoans.length > 0) {
+        children.push({
+          id: `prop-${prop.id}-loans`,
+          name: 'Loans',
+          path: `/entities/PROPERTY/${prop.id}/loans`,
+          icon: Landmark,
+          type: 'entity' as const,
+          count: propLoans.reduce((sum, l) => sum + (documentCounts[`entity:LOAN:${l.id}`] || 0), 0),
+          children: propLoans.map((loan) => ({
+            id: `loan-${loan.id}`,
+            name: loan.name,
+            path: `/entities/LOAN/${loan.id}`,
+            icon: Landmark,
+            type: 'entity-item' as const,
+            count: documentCounts[`entity:LOAN:${loan.id}`] || 0,
+          })),
+        });
+      }
+
+      return {
+        id: `prop-${prop.id}`,
+        name: prop.name,
+        path: `/entities/PROPERTY/${prop.id}`,
+        icon: Building2,
+        type: 'entity-item' as const,
+        count: documentCounts[`entity:PROPERTY:${prop.id}`] || 0,
+        children: children.length > 0 ? children : undefined,
+      };
+    });
+
+    // Standalone loans (not linked to property)
+    const standaloneLoans = entities.loans.filter(l => !l.parentId);
+    const standaloneLoanChildren: FolderNode[] = standaloneLoans.map((loan) => ({
+      id: `loan-${loan.id}`,
+      name: loan.name,
+      path: `/entities/LOAN/${loan.id}`,
+      icon: Landmark,
+      type: 'entity-item' as const,
+      count: documentCounts[`entity:LOAN:${loan.id}`] || 0,
+    }));
+
+    return {
+      properties: propertyNodesWithNested,
+      loans: standaloneLoanChildren,
+      expenses: expenseChildren,
+      income: incomeChildren,
+      accounts: accountChildren,
+      investments: investmentChildren,
+    };
+  }, [entities, documentCounts]);
+
+  // Build folder structure
+  const folders: FolderNode[] = useMemo(() => {
+    const baseTotal = Object.entries(documentCounts)
+      .filter(([key]) => !key.startsWith('entity:') && !key.startsWith('fy:'))
+      .reduce((sum, [, count]) => sum + count, 0);
+
+    const result: FolderNode[] = [
+      {
+        id: 'root',
+        name: 'All Documents',
+        path: '/',
+        icon: Home,
+        type: 'root',
+        count: baseTotal,
+      },
+      {
+        id: 'categories',
+        name: 'By Category',
+        path: '/categories',
+        icon: Folder,
+        type: 'root',
+        children: Object.values(DocumentCategory).map((cat) => ({
+          id: `cat-${cat}`,
+          name: CATEGORY_NAMES[cat] || cat,
+          path: `/categories/${cat}`,
+          icon: CATEGORY_ICONS[cat] || Files,
+          type: 'category' as const,
+          count: documentCounts[cat] || 0,
+        })),
+      },
+      {
+        id: 'fiscal-year',
+        name: 'By Financial Year',
+        path: '/fiscal-year',
+        icon: Calendar,
+        type: 'root',
+        children: generateFiscalYears(documentCounts),
+      },
+    ];
+
+    // Build entities section with drill-down
+    const entityChildren: FolderNode[] = [];
+
+    if (buildEntityChildren) {
+      if (buildEntityChildren.properties.length > 0) {
+        entityChildren.push({
           id: 'entity-properties',
           name: 'Properties',
           path: '/entities/PROPERTY',
           icon: Building2,
           type: 'entity' as const,
           count: documentCounts['entity:PROPERTY'] || 0,
-        },
-        {
+          children: buildEntityChildren.properties,
+        });
+      }
+
+      if (buildEntityChildren.loans.length > 0) {
+        entityChildren.push({
           id: 'entity-loans',
           name: 'Loans',
           path: '/entities/LOAN',
           icon: Landmark,
           type: 'entity' as const,
           count: documentCounts['entity:LOAN'] || 0,
-        },
-        {
+          children: buildEntityChildren.loans,
+        });
+      }
+
+      if (buildEntityChildren.expenses.length > 0) {
+        entityChildren.push({
           id: 'entity-expenses',
           name: 'Expenses',
           path: '/entities/EXPENSE',
           icon: Receipt,
           type: 'entity' as const,
           count: documentCounts['entity:EXPENSE'] || 0,
-        },
-        {
+          children: buildEntityChildren.expenses,
+        });
+      }
+
+      if (buildEntityChildren.income.length > 0) {
+        entityChildren.push({
           id: 'entity-income',
           name: 'Income',
           path: '/entities/INCOME',
           icon: PiggyBank,
           type: 'entity' as const,
           count: documentCounts['entity:INCOME'] || 0,
-        },
-      ],
-    },
-  ];
+          children: buildEntityChildren.income,
+        });
+      }
+
+      if (buildEntityChildren.accounts.length > 0) {
+        entityChildren.push({
+          id: 'entity-accounts',
+          name: 'Bank Accounts',
+          path: '/entities/ACCOUNT',
+          icon: Banknote,
+          type: 'entity' as const,
+          count: documentCounts['entity:ACCOUNT'] || 0,
+          children: buildEntityChildren.accounts,
+        });
+      }
+
+      if (buildEntityChildren.investments.length > 0) {
+        entityChildren.push({
+          id: 'entity-investments',
+          name: 'Investments',
+          path: '/entities/INVESTMENT_ACCOUNT',
+          icon: TrendingUp,
+          type: 'entity' as const,
+          count: documentCounts['entity:INVESTMENT_ACCOUNT'] || 0,
+          children: buildEntityChildren.investments,
+        });
+      }
+    }
+
+    // Add entities section if there are any entities
+    if (entityChildren.length > 0) {
+      result.push({
+        id: 'entities',
+        name: 'By Entity',
+        path: '/entities',
+        icon: Building2,
+        type: 'root',
+        children: entityChildren,
+      });
+    } else {
+      // Fallback to simple entity types if no entity data
+      result.push({
+        id: 'entities',
+        name: 'By Entity',
+        path: '/entities',
+        icon: Building2,
+        type: 'root',
+        children: [
+          {
+            id: 'entity-properties',
+            name: 'Properties',
+            path: '/entities/PROPERTY',
+            icon: Building2,
+            type: 'entity' as const,
+            count: documentCounts['entity:PROPERTY'] || 0,
+          },
+          {
+            id: 'entity-loans',
+            name: 'Loans',
+            path: '/entities/LOAN',
+            icon: Landmark,
+            type: 'entity' as const,
+            count: documentCounts['entity:LOAN'] || 0,
+          },
+          {
+            id: 'entity-expenses',
+            name: 'Expenses',
+            path: '/entities/EXPENSE',
+            icon: Receipt,
+            type: 'entity' as const,
+            count: documentCounts['entity:EXPENSE'] || 0,
+          },
+          {
+            id: 'entity-income',
+            name: 'Income',
+            path: '/entities/INCOME',
+            icon: PiggyBank,
+            type: 'entity' as const,
+            count: documentCounts['entity:INCOME'] || 0,
+          },
+        ],
+      });
+    }
+
+    return result;
+  }, [documentCounts, buildEntityChildren]);
 
   const toggleFolder = (path: string) => {
     setExpandedFolders((prev) => {

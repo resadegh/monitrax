@@ -28,6 +28,10 @@ import {
   FolderTree as FolderTreeIcon,
   PanelLeftClose,
   PanelLeft,
+  Download,
+  ChevronDown,
+  Calendar,
+  Building2,
   Sparkles,
 } from 'lucide-react';
 import {
@@ -38,6 +42,15 @@ import {
 } from '@/components/documents';
 import { DocumentCategory } from '@/lib/documents/types';
 import { StatCard } from '@/components/StatCard';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { UserEntities } from '@/components/documents/FolderTree';
+
+type ExportStructure = 'financial-year-first' | 'entity-first' | 'category-first';
 
 // Phase 26: Analysis summary interface
 interface AnalysisSummary {
@@ -70,6 +83,10 @@ interface DocumentListItem {
   links: {
     entityType: string;
     entityId: string;
+    entityName?: string;
+    parentId?: string;
+    parentName?: string;
+    parentType?: string;
   }[];
   analysis: AnalysisSummary | null; // Phase 26
 }
@@ -91,9 +108,11 @@ export default function DocumentsLibraryPage() {
   const [currentPath, setCurrentPath] = useState('/');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showSidebar, setShowSidebar] = useState(true);
+  const [entities, setEntities] = useState<UserEntities | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [enableAIAnalysis, setEnableAIAnalysis] = useState(true); // Phase 26: Auto-analyze uploads
 
-  // Fetch documents
+  // Fetch documents with entity names
   const fetchDocuments = useCallback(async () => {
     if (!token) return;
 
@@ -102,6 +121,7 @@ export default function DocumentsLibraryPage() {
       const params = new URLSearchParams();
       if (searchQuery) params.set('search', searchQuery);
       params.set('limit', '100');
+      params.set('includeEntityNames', 'true');
 
       const res = await fetch(`/api/documents?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -119,9 +139,28 @@ export default function DocumentsLibraryPage() {
     }
   }, [token, searchQuery]);
 
+  // Fetch user entities for folder tree
+  const fetchEntities = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/documents/entities', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setEntities(data);
+      }
+    } catch (err) {
+      console.error('Error fetching entities:', err);
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments, refreshKey]);
+    fetchEntities();
+  }, [fetchDocuments, fetchEntities, refreshKey]);
 
   // Calculate document counts for folder tree
   const documentCounts = useMemo(() => {
@@ -138,9 +177,12 @@ export default function DocumentsLibraryPage() {
       const fiscalYear = month >= 6 ? year : year - 1; // July onwards = current year, else previous
       counts[`fy:${fiscalYear}`] = (counts[`fy:${fiscalYear}`] || 0) + 1;
 
-      // Count by entity type
+      // Count by entity type AND specific entity ID
       doc.links.forEach((link) => {
+        // Count by entity type (for parent folder count)
         counts[`entity:${link.entityType}`] = (counts[`entity:${link.entityType}`] || 0) + 1;
+        // Count by specific entity ID (for individual entity counts)
+        counts[`entity:${link.entityType}:${link.entityId}`] = (counts[`entity:${link.entityType}:${link.entityId}`] || 0) + 1;
       });
     });
 
@@ -171,9 +213,20 @@ export default function DocumentsLibraryPage() {
     }
 
     if (pathParts[0] === 'entities' && pathParts[1]) {
-      return documents.filter((doc) =>
-        doc.links.some((link) => link.entityType === pathParts[1])
-      );
+      const entityType = pathParts[1];
+      const entityId = pathParts[2];
+
+      if (entityId) {
+        // Specific entity (e.g., /entities/PROPERTY/abc-123)
+        return documents.filter((doc) =>
+          doc.links.some((link) => link.entityType === entityType && link.entityId === entityId)
+        );
+      } else {
+        // Entity type (e.g., /entities/PROPERTY)
+        return documents.filter((doc) =>
+          doc.links.some((link) => link.entityType === entityType)
+        );
+      }
     }
 
     return documents;
@@ -267,6 +320,55 @@ export default function DocumentsLibraryPage() {
     }
   };
 
+  // Handle export
+  const handleExport = async (structure: ExportStructure) => {
+    if (!token || filteredDocuments.length === 0) return;
+
+    setIsExporting(true);
+    try {
+      const res = await fetch('/api/documents/export', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path: currentPath,
+          structure,
+          includeSubFolders: true,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Export failed');
+      }
+
+      // Download the ZIP file
+      const blob = await res.blob();
+      const contentDisposition = res.headers.get('Content-Disposition');
+      let filename = 'Monitrax_Documents.zip';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match) filename = match[1];
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert(err instanceof Error ? err.message : 'Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Phase 26: Handle analyze existing document
   const handleAnalyze = async (id: string) => {
     if (!token) return;
@@ -341,6 +443,7 @@ export default function DocumentsLibraryPage() {
               currentPath={currentPath}
               onNavigate={setCurrentPath}
               documentCounts={documentCounts}
+              entities={entities || undefined}
             />
           </aside>
         )}
@@ -490,6 +593,44 @@ export default function DocumentsLibraryPage() {
                       className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
                     />
                   </Button>
+
+                  {/* Export Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled={isExporting || filteredDocuments.length === 0}
+                      >
+                        {isExporting ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
+                        Export
+                        <ChevronDown className="h-4 w-4 ml-2" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem
+                        onClick={() => handleExport('financial-year-first')}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        By Financial Year
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExport('entity-first')}
+                      >
+                        <Building2 className="h-4 w-4 mr-2" />
+                        By Entity
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExport('category-first')}
+                      >
+                        <FolderTreeIcon className="h-4 w-4 mr-2" />
+                        By Category
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </CardContent>
             </Card>

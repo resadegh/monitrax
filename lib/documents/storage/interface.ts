@@ -65,6 +65,16 @@ export interface IStorageProvider {
    * Health check for the storage provider
    */
   healthCheck(): Promise<boolean>;
+
+  /**
+   * Download file contents from storage
+   * Returns the file data as a Buffer
+   */
+  download(storagePath: string): Promise<{
+    success: boolean;
+    data?: Buffer;
+    error?: string;
+  }>;
 }
 
 /**

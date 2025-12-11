@@ -323,7 +323,7 @@ export class GoogleCloudStorageProvider implements IStorageProvider {
   }
 
   /**
-   * Download file contents from GCS
+   * Download file contents from GCS (legacy method)
    */
   async downloadFile(storagePath: string): Promise<Buffer> {
     if (!this.initialized || !this.bucket) {
@@ -337,6 +337,26 @@ export class GoogleCloudStorageProvider implements IStorageProvider {
     const file = this.bucket.file(storagePath);
     const [contents] = await file.download();
     return contents;
+  }
+
+  /**
+   * Download file contents from GCS (interface method)
+   */
+  async download(storagePath: string): Promise<{
+    success: boolean;
+    data?: Buffer;
+    error?: string;
+  }> {
+    try {
+      const data = await this.downloadFile(storagePath);
+      return { success: true, data };
+    } catch (error) {
+      console.error('GCS download error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Download failed',
+      };
+    }
   }
 
   /**
