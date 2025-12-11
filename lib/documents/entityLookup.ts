@@ -135,7 +135,7 @@ export async function lookupEntities(
       select: {
         id: true,
         name: true,
-        category: true,
+        type: true,
         property: {
           select: {
             id: true,
@@ -148,7 +148,7 @@ export async function lookupEntities(
     incomes.forEach(i => {
       result[i.id] = {
         id: i.id,
-        name: i.name || i.category || 'Unnamed Income',
+        name: i.name || i.type || 'Unnamed Income',
         type: LinkedEntityType.INCOME,
         parentId: i.property?.id,
         parentName: (i.property?.name || i.property?.address) ?? undefined,
@@ -159,7 +159,7 @@ export async function lookupEntities(
 
   // Fetch bank accounts
   if (groupedLinks.ACCOUNT?.length) {
-    const accounts = await prisma.bankAccount.findMany({
+    const accounts = await prisma.account.findMany({
       where: {
         id: { in: groupedLinks.ACCOUNT },
         userId,
@@ -168,13 +168,13 @@ export async function lookupEntities(
         id: true,
         name: true,
         institution: true,
-        accountType: true,
+        type: true,
       },
     });
     accounts.forEach(a => {
       result[a.id] = {
         id: a.id,
-        name: a.name || `${a.institution || 'Bank'} - ${a.accountType || 'Account'}`,
+        name: a.name || `${a.institution || 'Bank'} - ${a.type || 'Account'}`,
         type: LinkedEntityType.ACCOUNT,
       };
     });
@@ -280,14 +280,14 @@ export async function getAllUserEntities(userId: string): Promise<{
       select: {
         id: true,
         name: true,
-        category: true,
+        type: true,
         property: { select: { id: true, name: true, address: true } },
       },
       orderBy: { name: 'asc' },
     }),
-    prisma.bankAccount.findMany({
+    prisma.account.findMany({
       where: { userId },
-      select: { id: true, name: true, institution: true, accountType: true },
+      select: { id: true, name: true, institution: true, type: true },
       orderBy: { name: 'asc' },
     }),
     prisma.investmentAccount.findMany({
@@ -321,7 +321,7 @@ export async function getAllUserEntities(userId: string): Promise<{
     })),
     income: income.map(i => ({
       id: i.id,
-      name: i.name || i.category || 'Unnamed Income',
+      name: i.name || i.type || 'Unnamed Income',
       type: LinkedEntityType.INCOME,
       parentId: i.property?.id,
       parentName: (i.property?.name || i.property?.address) ?? undefined,
@@ -329,7 +329,7 @@ export async function getAllUserEntities(userId: string): Promise<{
     })),
     accounts: accounts.map(a => ({
       id: a.id,
-      name: a.name || `${a.institution || 'Bank'} - ${a.accountType || 'Account'}`,
+      name: a.name || `${a.institution || 'Bank'} - ${a.type || 'Account'}`,
       type: LinkedEntityType.ACCOUNT,
     })),
     investmentAccounts: investmentAccounts.map(ia => ({
