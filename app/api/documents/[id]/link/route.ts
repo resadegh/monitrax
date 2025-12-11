@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { LinkedEntityType } from '@/lib/documents/types';
 
 interface LinkRequest {
   entityType: string;
@@ -62,18 +63,10 @@ export async function POST(
       );
     }
 
-    // Validate entity type
-    const validEntityTypes = [
-      'PROPERTY',
-      'LOAN',
-      'EXPENSE',
-      'INCOME',
-      'INVESTMENT_ACCOUNT',
-      'INVESTMENT_HOLDING',
-      'ASSET',
-    ];
+    // Validate entity type - use enum values from LinkedEntityType
+    const validEntityTypes = Object.values(LinkedEntityType);
 
-    if (!validEntityTypes.includes(entityType)) {
+    if (!validEntityTypes.includes(entityType as LinkedEntityType)) {
       return NextResponse.json(
         { success: false, error: `Invalid entityType. Must be one of: ${validEntityTypes.join(', ')}` },
         { status: 400 }
@@ -84,7 +77,7 @@ export async function POST(
     const existingLink = await prisma.documentLink.findFirst({
       where: {
         documentId,
-        entityType,
+        entityType: entityType as LinkedEntityType,
         entityId,
       },
     });
@@ -101,7 +94,7 @@ export async function POST(
     const link = await prisma.documentLink.create({
       data: {
         documentId,
-        entityType,
+        entityType: entityType as LinkedEntityType,
         entityId,
       },
     });
@@ -171,7 +164,7 @@ export async function DELETE(
     const deleteResult = await prisma.documentLink.deleteMany({
       where: {
         documentId,
-        entityType,
+        entityType: entityType as LinkedEntityType,
         entityId,
       },
     });
