@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
 
     // Generate ZIP buffer
     const zipBuffer = await zip.generateAsync({
-      type: 'nodebuffer',
+      type: 'uint8array',
       compression: 'DEFLATE',
       compressionOptions: { level: 6 },
     });
