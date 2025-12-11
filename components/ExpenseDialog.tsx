@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import {
   Home, Landmark, Briefcase, Building2, DollarSign,
-  Upload, FileText, X, Paperclip
+  Upload, FileText, X, Paperclip, Sparkles
 } from 'lucide-react';
 import { useDocumentUpload } from '@/hooks/useDocumentUpload';
 import { DocumentCategory, LinkedEntityType } from '@/lib/documents/types';
@@ -19,6 +20,7 @@ import {
   type AssetType as CategoryAssetType,
   type ExpenseSourceType,
 } from '@/lib/categoryFilters';
+import { FormDocumentUpload, FieldMapping } from '@/components/documents';
 
 // Types
 interface Property {
@@ -133,8 +135,51 @@ export function ExpenseDialog({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
+  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
 
   const isEditing = !!expense;
+
+  // Handle auto-fill from document analysis
+  const handleFieldsExtracted = useCallback((mappings: Record<string, FieldMapping>) => {
+    const filledFields: string[] = [];
+    const updates: Partial<ExpenseFormData> = {};
+
+    // Map extracted fields to form data
+    if (mappings.vendor?.value && !formData.vendorName) {
+      updates.vendorName = String(mappings.vendor.value);
+      filledFields.push('vendorName');
+    }
+
+    if (mappings.amount?.value && !formData.amount) {
+      updates.amount = Number(mappings.amount.value);
+      filledFields.push('amount');
+    }
+
+    if (mappings.description?.value && !formData.name) {
+      updates.name = String(mappings.description.value);
+      filledFields.push('name');
+    }
+
+    if (mappings.category?.value) {
+      const categoryValue = String(mappings.category.value).toUpperCase();
+      const validCategories = ['HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL', 'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'STRATA', 'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'];
+      if (validCategories.includes(categoryValue)) {
+        updates.category = categoryValue as ExpenseCategory;
+        filledFields.push('category');
+      }
+    }
+
+    if (mappings.taxDeductible?.value !== undefined) {
+      updates.isTaxDeductible = Boolean(mappings.taxDeductible.value);
+      filledFields.push('isTaxDeductible');
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setFormData(prev => ({ ...prev, ...updates }));
+      setAutoFilledFields(filledFields);
+    }
+  }, [formData.vendorName, formData.amount, formData.name]);
 
   // Load related data when dialog opens
   useEffect(() => {
@@ -176,6 +221,8 @@ export function ExpenseDialog({
         setFormData(initialFormData);
       }
       setSelectedFile(null);
+      setAttachedDocumentId(null);
+      setAutoFilledFields([]);
     }
   }, [open, expense, defaultPropertyId]);
 
@@ -297,7 +344,26 @@ export function ExpenseDialog({
         const result = await response.json();
         const savedExpenseId = result.data?.id || result.id || expense?.id;
 
-        // Upload file if one was selected
+        // Link document if one was attached via FormDocumentUpload
+        if (attachedDocumentId && savedExpenseId) {
+          try {
+            await fetch(`/api/documents/${attachedDocumentId}/link`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                entityType: 'EXPENSE',
+                entityId: savedExpenseId,
+              }),
+            });
+          } catch (linkError) {
+            console.error('Failed to link document to expense:', linkError);
+          }
+        }
+
+        // Legacy: Upload file if one was selected the old way
         if (selectedFile && savedExpenseId) {
           await uploadReceiptFile(savedExpenseId, selectedFile, formData.name, formData.category);
         }
@@ -641,50 +707,32 @@ export function ExpenseDialog({
             </div>
           </div>
 
-          {/* Receipt Upload Section */}
+          {/* Smart Document Upload - Phase 26 */}
           <div className="space-y-2 border-t pt-4">
-            <Label className="flex items-center gap-2">
-              <Paperclip className="h-4 w-4" />
-              Attach Receipt (optional)
-            </Label>
-            {selectedFile ? (
-              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-                <FileText className="h-8 w-8 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{selectedFile.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedFile(null)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="relative">
-                <input
-                  type="file"
-                  accept="image/*,.pdf,.doc,.docx"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setSelectedFile(file);
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <div className="flex items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg hover:border-primary/50 transition-colors cursor-pointer">
-                  <Upload className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    Click to upload receipt or invoice
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Smart Document Scan
+                <Badge variant="secondary" className="text-xs">AI</Badge>
+              </Label>
+              {autoFilledFields.length > 0 && (
+                <span className="text-xs text-green-600">
+                  {autoFilledFields.length} fields auto-filled
+                </span>
+              )}
+            </div>
+            <FormDocumentUpload
+              formType="expense"
+              propertyId={formData.propertyId || undefined}
+              onFieldsExtracted={handleFieldsExtracted}
+              onDocumentAttached={setAttachedDocumentId}
+              disabled={isLoading}
+            />
+            {autoFilledFields.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Review the auto-filled values above and adjust if needed.
+              </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Supported: Images, PDF, Word documents
-            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">

@@ -18,6 +18,7 @@ import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
+import { FormDocumentUpload, FieldMapping } from '@/components/documents';
 
 interface Expense {
   id: string;
@@ -107,6 +108,51 @@ function LoansPageContent() {
     propertyId: undefined,
     offsetAccountId: undefined,
   });
+  const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
+  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
+
+  // Handle auto-fill from document analysis
+  const handleFieldsExtracted = (mappings: Record<string, FieldMapping>) => {
+    const filledFields: string[] = [];
+    const updates: Partial<Loan> = {};
+
+    // Map extracted fields to form data
+    if (mappings.lender?.value && !formData.name) {
+      updates.name = String(mappings.lender.value);
+      filledFields.push('name');
+    }
+
+    if (mappings.principalAmount?.value && !formData.principal) {
+      updates.principal = Number(mappings.principalAmount.value);
+      filledFields.push('principal');
+    }
+
+    if (mappings.interestRate?.value && !formData.interestRateAnnual) {
+      const rate = Number(mappings.interestRate.value);
+      // Convert percentage to decimal if needed
+      updates.interestRateAnnual = rate > 1 ? rate / 100 : rate;
+      filledFields.push('interestRateAnnual');
+    }
+
+    if (mappings.loanTerm?.value && !formData.termMonthsRemaining) {
+      updates.termMonthsRemaining = Number(mappings.loanTerm.value);
+      filledFields.push('termMonthsRemaining');
+    }
+
+    if (mappings.repaymentAmount?.value && !formData.minRepayment) {
+      updates.minRepayment = Number(mappings.repaymentAmount.value);
+      filledFields.push('minRepayment');
+    }
+
+    if (mappings.accountNumber?.value) {
+      filledFields.push('accountNumber');
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setFormData(prev => ({ ...prev, ...updates }));
+      setAutoFilledFields(filledFields);
+    }
+  };
 
   useEffect(() => {
     if (token) {
@@ -173,6 +219,28 @@ function LoansPageContent() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        const savedLoanId = result.data?.id || result.id || editingId;
+
+        // Link document if one was attached via FormDocumentUpload
+        if (attachedDocumentId && savedLoanId) {
+          try {
+            await fetch(`/api/documents/${attachedDocumentId}/link`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                entityType: 'LOAN',
+                entityId: savedLoanId,
+              }),
+            });
+          } catch (linkError) {
+            console.error('Error linking document to loan:', linkError);
+          }
+        }
+
         await loadData();
         setShowDialog(false);
         setEditingId(null);
@@ -199,6 +267,8 @@ function LoansPageContent() {
       propertyId: undefined,
       offsetAccountId: undefined,
     });
+    setAttachedDocumentId(null);
+    setAutoFilledFields([]);
   };
 
   const handleEdit = (loan: Loan) => {
@@ -599,6 +669,20 @@ function LoansPageContent() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Document Auto-Fill */}
+            <FormDocumentUpload
+              formType="loan"
+              propertyId={formData.propertyId || undefined}
+              onFieldsExtracted={handleFieldsExtracted}
+              onDocumentAttached={setAttachedDocumentId}
+              disabled={isLoading}
+            />
+            {autoFilledFields.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Auto-filled {autoFilledFields.length} field(s). Review and adjust if needed.
+              </p>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Loan Name</Label>
