@@ -87,7 +87,7 @@ export async function lookupEntities(
         name: l.name || `${l.type || 'Unknown'} Loan`,
         type: LinkedEntityType.LOAN,
         parentId: l.property?.id,
-        parentName: l.property?.name || l.property?.address,
+        parentName: (l.property?.name || l.property?.address) ?? undefined,
         parentType: l.property ? LinkedEntityType.PROPERTY : undefined,
       };
     });
@@ -119,7 +119,7 @@ export async function lookupEntities(
         name: e.name || e.category || 'Unnamed Expense',
         type: LinkedEntityType.EXPENSE,
         parentId: e.property?.id,
-        parentName: e.property?.name || e.property?.address,
+        parentName: (e.property?.name || e.property?.address) ?? undefined,
         parentType: e.property ? LinkedEntityType.PROPERTY : undefined,
       };
     });
@@ -151,7 +151,7 @@ export async function lookupEntities(
         name: i.name || i.category || 'Unnamed Income',
         type: LinkedEntityType.INCOME,
         parentId: i.property?.id,
-        parentName: i.property?.name || i.property?.address,
+        parentName: (i.property?.name || i.property?.address) ?? undefined,
         parentType: i.property ? LinkedEntityType.PROPERTY : undefined,
       };
     });
@@ -229,8 +229,8 @@ export async function lookupEntities(
         name: h.name || h.symbol || 'Holding',
         type: LinkedEntityType.INVESTMENT_HOLDING,
         parentId: h.investmentAccount?.id,
-        parentName: h.investmentAccount?.name,
-        parentType: LinkedEntityType.INVESTMENT_ACCOUNT,
+        parentName: h.investmentAccount?.name ?? undefined,
+        parentType: h.investmentAccount ? LinkedEntityType.INVESTMENT_ACCOUNT : undefined,
       };
     });
   }
@@ -308,7 +308,7 @@ export async function getAllUserEntities(userId: string): Promise<{
       name: l.name || `${l.type || 'Unknown'} Loan`,
       type: LinkedEntityType.LOAN,
       parentId: l.property?.id,
-      parentName: l.property?.name || l.property?.address,
+      parentName: (l.property?.name || l.property?.address) ?? undefined,
       parentType: l.property ? LinkedEntityType.PROPERTY : undefined,
     })),
     expenses: expenses.map(e => ({
@@ -316,7 +316,7 @@ export async function getAllUserEntities(userId: string): Promise<{
       name: e.name || e.category || 'Unnamed Expense',
       type: LinkedEntityType.EXPENSE,
       parentId: e.property?.id,
-      parentName: e.property?.name || e.property?.address,
+      parentName: (e.property?.name || e.property?.address) ?? undefined,
       parentType: e.property ? LinkedEntityType.PROPERTY : undefined,
     })),
     income: income.map(i => ({
@@ -324,7 +324,7 @@ export async function getAllUserEntities(userId: string): Promise<{
       name: i.name || i.category || 'Unnamed Income',
       type: LinkedEntityType.INCOME,
       parentId: i.property?.id,
-      parentName: i.property?.name || i.property?.address,
+      parentName: (i.property?.name || i.property?.address) ?? undefined,
       parentType: i.property ? LinkedEntityType.PROPERTY : undefined,
     })),
     accounts: accounts.map(a => ({
