@@ -214,7 +214,7 @@ export async function lookupEntities(
       },
       select: {
         id: true,
-        symbol: true,
+        ticker: true,
         name: true,
         investmentAccount: {
           select: {
@@ -227,7 +227,7 @@ export async function lookupEntities(
     holdings.forEach(h => {
       result[h.id] = {
         id: h.id,
-        name: h.name || h.symbol || 'Holding',
+        name: h.name || h.ticker || 'Holding',
         type: LinkedEntityType.INVESTMENT_HOLDING,
         parentId: h.investmentAccount?.id,
         parentName: h.investmentAccount?.name ?? undefined,
