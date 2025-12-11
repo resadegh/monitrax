@@ -219,7 +219,7 @@ export class MonitraxStorageProvider implements IStorageProvider {
   }
 
   /**
-   * Read file contents from database
+   * Read file contents from database (legacy method)
    */
   async readFile(storagePath: string): Promise<Buffer> {
     const document = await prisma.document.findFirst({
@@ -237,6 +237,26 @@ export class MonitraxStorageProvider implements IStorageProvider {
     }
 
     return Buffer.from(document.fileContent);
+  }
+
+  /**
+   * Download file contents from database (interface method)
+   */
+  async download(storagePath: string): Promise<{
+    success: boolean;
+    data?: Buffer;
+    error?: string;
+  }> {
+    try {
+      const data = await this.readFile(storagePath);
+      return { success: true, data };
+    } catch (error) {
+      console.error('Monitrax download error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Download failed',
+      };
+    }
   }
 
   // ============================================================================

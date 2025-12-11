@@ -14,6 +14,7 @@ import {
   SUPPORTED_MIME_TYPES,
   MAX_FILE_SIZE,
 } from '@/lib/documents';
+import { lookupEntities } from '@/lib/documents/entityLookup';
 
 // ============================================================================
 // GET /api/documents - List documents
@@ -51,7 +52,26 @@ export async function GET(request: NextRequest) {
       sortOrder: searchParams.get('sortOrder') as 'asc' | 'desc' | undefined,
     };
 
+    // Check if entity names are requested
+    const includeEntityNames = searchParams.get('includeEntityNames') === 'true';
+
     const result = await listDocuments(query);
+
+    // Collect all entity links for batch lookup
+    let entityInfo: Record<string, { id: string; name: string; type: string; parentId?: string; parentName?: string; parentType?: string }> = {};
+
+    if (includeEntityNames && result.documents.length > 0) {
+      const allLinks: { entityType: string; entityId: string }[] = [];
+      result.documents.forEach(doc => {
+        doc.links.forEach(link => {
+          allLinks.push({ entityType: link.entityType, entityId: link.entityId });
+        });
+      });
+
+      if (allLinks.length > 0) {
+        entityInfo = await lookupEntities(userId, allLinks);
+      }
+    }
 
     return NextResponse.json({
       documents: result.documents.map(doc => ({
@@ -64,9 +84,17 @@ export async function GET(request: NextRequest) {
         description: doc.description,
         tags: doc.tags,
         uploadedAt: doc.uploadedAt.toISOString(),
+        storageProvider: doc.storageProvider,
         links: doc.links.map(link => ({
           entityType: link.entityType,
           entityId: link.entityId,
+          // Include entity name if requested
+          ...(includeEntityNames && entityInfo[link.entityId] ? {
+            entityName: entityInfo[link.entityId].name,
+            parentId: entityInfo[link.entityId].parentId,
+            parentName: entityInfo[link.entityId].parentName,
+            parentType: entityInfo[link.entityId].parentType,
+          } : {}),
         })),
       })),
       total: result.total,
