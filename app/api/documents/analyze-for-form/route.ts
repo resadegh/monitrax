@@ -28,22 +28,30 @@ import { classifyDocument } from '@/lib/documents/intelligence/classifiers/docum
 
 // PDF parsing function using pdfjs-dist (works in serverless)
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  console.log('[PDF] Starting extraction, buffer size:', buffer.length);
+
   try {
     // Use pdfjs-dist for serverless-compatible PDF parsing
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+    console.log('[PDF] Library loaded');
 
     // Disable worker for serverless environment
     pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
     // Load the PDF document from buffer
     const uint8Array = new Uint8Array(buffer);
+    console.log('[PDF] Uint8Array created, length:', uint8Array.length);
+
     const loadingTask = pdfjsLib.getDocument({
       data: uint8Array,
       useSystemFonts: true,
       disableFontFace: true,
+      isEvalSupported: false,
     });
+
     const pdfDoc = await loadingTask.promise;
+    console.log('[PDF] Document loaded, pages:', pdfDoc.numPages);
 
     let fullText = '';
 
@@ -56,12 +64,17 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
         .map((item: any) => item.str || '')
         .join(' ');
       fullText += pageText + '\n';
+      console.log('[PDF] Page', i, 'text length:', pageText.length);
     }
 
+    console.log('[PDF] Total extracted text length:', fullText.length);
     return fullText.trim();
   } catch (error) {
-    console.error('[PDF] Extraction error:', error);
-    throw error;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : 'no stack';
+    console.error('[PDF] Extraction error:', errorMsg);
+    console.error('[PDF] Stack:', errorStack);
+    throw new Error(`PDF extraction failed: ${errorMsg}`);
   }
 }
 
