@@ -662,6 +662,7 @@ export default function DocumentsLibraryPage() {
                   onAnalyze={handleAnalyze}
                   onConfirmAnalysis={handleConfirmAnalysis}
                   loading={isLoading}
+                  token={token || undefined}
                   viewMode={viewMode}
                 />
               </CardContent>
