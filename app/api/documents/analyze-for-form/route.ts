@@ -27,34 +27,21 @@ import {
 } from '@/lib/documents/intelligence/parsers/australian';
 import { classifyDocument } from '@/lib/documents/intelligence/classifiers/documentClassifier';
 
-// PDF parsing function using pdf-parse (designed for Node.js/serverless)
+// PDF parsing function using unpdf (designed for serverless/edge)
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  console.log('[PDF] Starting extraction with pdf-parse, buffer size:', buffer.length);
+  console.log('[PDF] Starting extraction with unpdf, buffer size:', buffer.length);
 
   try {
-    // Use pdf-parse which is designed for Node.js and doesn't require Web Workers
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require('pdf-parse');
+    // Use unpdf which is specifically designed for serverless environments
+    // It uses WebAssembly and doesn't require canvas/DOM APIs
+    const { extractText } = await import('unpdf');
 
-    // Custom page render function that only extracts text (no canvas rendering)
-    // This avoids DOMMatrix/ImageData/Path2D errors in serverless
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const renderPage = async (pageData: any) => {
-      const textContent = await pageData.getTextContent();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const text = textContent.items.map((item: any) => item.str || '').join(' ');
-      return text;
-    };
+    const { text, totalPages } = await extractText(buffer, { mergePages: true });
 
-    const data = await pdfParse(buffer, {
-      max: 0, // Parse all pages (0 = no limit)
-      pagerender: renderPage, // Use custom text-only renderer
-    });
+    console.log('[PDF] Extraction complete, pages:', totalPages);
+    console.log('[PDF] Total extracted text length:', text?.length || 0);
 
-    console.log('[PDF] Extraction complete, pages:', data.numpages);
-    console.log('[PDF] Total extracted text length:', data.text?.length || 0);
-
-    return data.text?.trim() || '';
+    return text?.trim() || '';
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error('[PDF] Extraction error:', errorMsg);
