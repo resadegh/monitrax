@@ -17,7 +17,7 @@ import { getVisionService } from '@/lib/documents/intelligence/services/visionSe
 import { uploadDocument } from '@/lib/documents';
 import { DocumentCategory, SUPPORTED_MIME_TYPES, MAX_FILE_SIZE } from '@/lib/documents/types';
 import { isOpenAIConfigured, generateJSONCompletion, truncateToTokenLimit } from '@/lib/ai';
-import { isGeminiConfigured, generateGeminiJSONCompletion } from '@/lib/ai/gemini';
+import { isGeminiConfigured, generateGeminiJSONCompletion, listAvailableModels } from '@/lib/ai/gemini';
 import {
   extractABN,
   extractGST,
@@ -485,6 +485,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
       } catch (aiError) {
         console.error('[Form Auto-Fill] Gemini extraction failed:', aiError);
         console.error('[Form Auto-Fill] Gemini error details:', aiError instanceof Error ? aiError.message : String(aiError));
+
+        // Debug: List available models to help diagnose API key issues
+        console.log('[Form Auto-Fill] Checking available Gemini models...');
+        const availableModels = await listAvailableModels();
+        console.log('[Form Auto-Fill] Available models:', availableModels.length > 0 ? availableModels.join(', ') : 'NONE - API key may be invalid');
+
         fieldMappings = extractFieldsWithPatterns(ocrText, formType);
       }
     } else if (isOpenAIConfigured()) {

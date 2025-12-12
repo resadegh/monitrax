@@ -48,18 +48,19 @@ export function isGeminiConfigured(): boolean {
 
 export const GEMINI_MODELS = {
   // Gemini 1.5 Flash - Fast and reliable for document extraction
-  FLASH: 'gemini-1.5-flash-latest',
+  FLASH: 'gemini-1.5-flash',
   // Gemini 1.5 Pro - More capable for complex analysis
-  PRO: 'gemini-1.5-pro-latest',
-  // Gemini Pro - Stable fallback option (legacy but widely available)
-  PRO_STABLE: 'gemini-pro',
+  PRO: 'gemini-1.5-pro',
+  // Gemini 1.0 Pro - Stable fallback option (legacy)
+  PRO_STABLE: 'gemini-1.0-pro',
 } as const;
 
-// Fallback model order if primary fails
+// Fallback model order if primary fails - try all known model name variants
 const MODEL_FALLBACKS: Record<string, string[]> = {
-  'gemini-1.5-flash-latest': ['gemini-1.5-flash', 'gemini-pro'],
-  'gemini-1.5-pro-latest': ['gemini-1.5-pro', 'gemini-pro'],
-  'gemini-pro': [],
+  'gemini-1.5-flash': ['gemini-1.5-flash-001', 'gemini-1.0-pro', 'gemini-pro'],
+  'gemini-1.5-pro': ['gemini-1.5-pro-001', 'gemini-1.0-pro', 'gemini-pro'],
+  'gemini-1.0-pro': ['gemini-pro', 'gemini-1.0-pro-001'],
+  'gemini-pro': ['gemini-1.0-pro'],
 };
 
 export type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
@@ -82,6 +83,33 @@ export interface GeminiCompletionResult<T> {
     completionTokens: number;
     totalTokens: number;
   };
+}
+
+/**
+ * List available models (for debugging)
+ */
+export async function listAvailableModels(): Promise<string[]> {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return [];
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+
+    if (!response.ok) {
+      console.error('[Gemini] Failed to list models:', response.status, response.statusText);
+      return [];
+    }
+
+    const data = await response.json();
+    const models = data.models?.map((m: { name: string }) => m.name) || [];
+    console.log('[Gemini] Available models:', models);
+    return models;
+  } catch (error) {
+    console.error('[Gemini] Error listing models:', error);
+    return [];
+  }
 }
 
 /**
