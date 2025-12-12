@@ -25,8 +25,20 @@ import {
   parseAustralianCurrency,
 } from '@/lib/documents/intelligence/parsers/australian';
 import { classifyDocument } from '@/lib/documents/intelligence/classifiers/documentClassifier';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse');
+// PDF parsing function - uses dynamic import to avoid serverless issues
+async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  try {
+    // Dynamic import to avoid issues with pdf-parse in serverless
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pdfParseModule: any = await import('pdf-parse');
+    const pdfParse = pdfParseModule.default || pdfParseModule;
+    const data = await pdfParse(buffer);
+    return data.text || '';
+  } catch (error) {
+    console.error('[PDF] Extraction error:', error);
+    throw error;
+  }
+}
 
 // ============================================================================
 // Types
@@ -314,8 +326,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
       // For PDFs: Use pdf-parse to extract embedded text
       console.log('[Form Auto-Fill] Extracting text from PDF...');
       try {
-        const pdfData = await pdfParse(fileBuffer);
-        ocrText = pdfData.text || '';
+        ocrText = await extractTextFromPDF(fileBuffer);
         console.log('[Form Auto-Fill] PDF text extracted, length:', ocrText.length);
 
         if (!ocrText.trim()) {
@@ -331,7 +342,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
       } catch (pdfError) {
         console.error('[Form Auto-Fill] PDF parsing error:', pdfError);
         return NextResponse.json(
-          { success: false, error: 'Failed to read PDF file. Please ensure the PDF is not corrupted.' },
+          { success: false, error: 'Failed to read PDF file. Please ensure the PDF is not corrupted or try uploading an image instead.' },
           { status: 400 }
         );
       }
