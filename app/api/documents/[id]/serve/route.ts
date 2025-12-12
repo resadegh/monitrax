@@ -56,7 +56,7 @@ export async function GET(
     let fileBuffer: Buffer;
 
     // Get file content based on storage provider
-    if (document.storageProvider === 'GOOGLE_CLOUD_STORAGE' && isGCSConfigured()) {
+    if (document.storageProvider === 'GOOGLE_CLOUD_STORAGE' && isGCSConfigured) {
       // Download from GCS
       const storage = await getStorageProvider(userId);
       const result = await storage.download(document.storagePath);
