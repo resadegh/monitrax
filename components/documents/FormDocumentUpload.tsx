@@ -100,7 +100,10 @@ export function FormDocumentUpload({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleFileSelect = useCallback(async (file: File) => {
+    console.log('[FormDocumentUpload] handleFileSelect called', { fileName: file.name, fileType: file.type, fileSize: file.size });
+
     if (!token) {
+      console.log('[FormDocumentUpload] No token available');
       setErrorMessage('Not authenticated');
       onError?.('Not authenticated');
       return;
@@ -116,6 +119,7 @@ export function FormDocumentUpload({
     ];
 
     if (!supportedTypes.includes(file.type)) {
+      console.log('[FormDocumentUpload] Invalid file type:', file.type);
       const error = 'Please upload a PDF or image file (JPEG, PNG, GIF, WebP)';
       setErrorMessage(error);
       onError?.(error);
@@ -203,9 +207,13 @@ export function FormDocumentUpload({
   }, [token, formType, formFields, propertyId, onFieldsExtracted, onDocumentAttached, onError]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[FormDocumentUpload] handleInputChange triggered');
     const file = event.target.files?.[0];
     if (file) {
+      console.log('[FormDocumentUpload] File selected via input:', file.name);
       handleFileSelect(file);
+    } else {
+      console.log('[FormDocumentUpload] No file in input event');
     }
     // Reset input
     if (fileInputRef.current) {
@@ -215,9 +223,13 @@ export function FormDocumentUpload({
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
+    console.log('[FormDocumentUpload] handleDrop triggered');
     const file = event.dataTransfer.files?.[0];
     if (file) {
+      console.log('[FormDocumentUpload] File dropped:', file.name);
       handleFileSelect(file);
+    } else {
+      console.log('[FormDocumentUpload] No file in drop event');
     }
   };
 
