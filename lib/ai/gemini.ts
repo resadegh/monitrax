@@ -47,11 +47,20 @@ export function isGeminiConfigured(): boolean {
 // =============================================================================
 
 export const GEMINI_MODELS = {
-  // Gemini 1.5 Flash - Fast and cheap, great for document extraction
-  FLASH: 'gemini-1.5-flash',
+  // Gemini 1.5 Flash - Fast and reliable for document extraction
+  FLASH: 'gemini-1.5-flash-latest',
   // Gemini 1.5 Pro - More capable for complex analysis
-  PRO: 'gemini-1.5-pro',
+  PRO: 'gemini-1.5-pro-latest',
+  // Gemini Pro - Stable fallback option (legacy but widely available)
+  PRO_STABLE: 'gemini-pro',
 } as const;
+
+// Fallback model order if primary fails
+const MODEL_FALLBACKS: Record<string, string[]> = {
+  'gemini-1.5-flash-latest': ['gemini-1.5-flash', 'gemini-pro'],
+  'gemini-1.5-pro-latest': ['gemini-1.5-pro', 'gemini-pro'],
+  'gemini-pro': [],
+};
 
 export type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
 
@@ -76,79 +85,154 @@ export interface GeminiCompletionResult<T> {
 }
 
 /**
- * Generate a JSON response using Gemini
+ * Try to generate content with a specific model
  */
-export async function generateGeminiJSONCompletion<T>(
-  options: GeminiCompletionOptions
+async function tryGenerateWithModel<T>(
+  client: GoogleGenerativeAI,
+  modelName: string,
+  fullPrompt: string,
+  temperature: number
 ): Promise<GeminiCompletionResult<T>> {
-  const client = getGeminiClient();
-
-  const model = options.model || GEMINI_MODELS.FLASH;
-  const temperature = options.temperature ?? 0.2;
+  console.log('[Gemini] Trying model:', modelName);
 
   const genModel = client.getGenerativeModel({
-    model,
+    model: modelName,
     generationConfig: {
       temperature,
       responseMimeType: 'application/json',
     },
   });
 
-  // Combine system and user prompts
-  const fullPrompt = `${options.systemPrompt}\n\n${options.userPrompt}`;
-
-  console.log('[Gemini] Sending request to model:', model);
-
   const result = await genModel.generateContent(fullPrompt);
   const response = result.response;
   const text = response.text();
 
-  console.log('[Gemini] Raw response:', text.substring(0, 500));
+  console.log('[Gemini] Raw response from', modelName, ':', text.substring(0, 500));
 
-  try {
-    const data = JSON.parse(text) as T;
+  const data = JSON.parse(text) as T;
 
-    // Get usage metadata if available
-    const usageMetadata = response.usageMetadata;
+  // Get usage metadata if available
+  const usageMetadata = response.usageMetadata;
 
-    return {
-      data,
-      usage: usageMetadata
-        ? {
-            promptTokens: usageMetadata.promptTokenCount || 0,
-            completionTokens: usageMetadata.candidatesTokenCount || 0,
-            totalTokens: usageMetadata.totalTokenCount || 0,
-          }
-        : undefined,
-    };
-  } catch (error) {
-    console.error('[Gemini] Failed to parse JSON response:', text);
-    throw new Error('Gemini response was not valid JSON');
-  }
+  return {
+    data,
+    usage: usageMetadata
+      ? {
+          promptTokens: usageMetadata.promptTokenCount || 0,
+          completionTokens: usageMetadata.candidatesTokenCount || 0,
+          totalTokens: usageMetadata.totalTokenCount || 0,
+        }
+      : undefined,
+  };
 }
 
 /**
- * Generate a text response using Gemini
+ * Generate a JSON response using Gemini with automatic model fallback
+ */
+export async function generateGeminiJSONCompletion<T>(
+  options: GeminiCompletionOptions
+): Promise<GeminiCompletionResult<T>> {
+  const client = getGeminiClient();
+
+  const primaryModel = options.model || GEMINI_MODELS.FLASH;
+  const temperature = options.temperature ?? 0.2;
+
+  // Combine system and user prompts
+  const fullPrompt = `${options.systemPrompt}\n\n${options.userPrompt}`;
+
+  // Build list of models to try (primary + fallbacks)
+  const modelsToTry = [primaryModel, ...(MODEL_FALLBACKS[primaryModel] || [])];
+
+  let lastError: Error | null = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      return await tryGenerateWithModel<T>(client, modelName, fullPrompt, temperature);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.log('[Gemini] Model', modelName, 'failed:', errorMsg);
+
+      // Check if it's a model not found error (404)
+      if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+        lastError = error instanceof Error ? error : new Error(errorMsg);
+        continue; // Try next model
+      }
+
+      // For JSON parse errors, also try fallback
+      if (errorMsg.includes('JSON')) {
+        lastError = error instanceof Error ? error : new Error(errorMsg);
+        continue;
+      }
+
+      // For other errors, throw immediately
+      throw error;
+    }
+  }
+
+  // All models failed
+  throw lastError || new Error('All Gemini models failed');
+}
+
+/**
+ * Try to generate text content with a specific model
+ */
+async function tryGenerateTextWithModel(
+  client: GoogleGenerativeAI,
+  modelName: string,
+  fullPrompt: string,
+  temperature: number
+): Promise<string> {
+  console.log('[Gemini] Trying text model:', modelName);
+
+  const genModel = client.getGenerativeModel({
+    model: modelName,
+    generationConfig: {
+      temperature,
+    },
+  });
+
+  const result = await genModel.generateContent(fullPrompt);
+  const response = result.response;
+
+  return response.text();
+}
+
+/**
+ * Generate a text response using Gemini with automatic model fallback
  */
 export async function generateGeminiCompletion(
   options: GeminiCompletionOptions
 ): Promise<string> {
   const client = getGeminiClient();
 
-  const model = options.model || GEMINI_MODELS.FLASH;
+  const primaryModel = options.model || GEMINI_MODELS.FLASH;
   const temperature = options.temperature ?? 0.7;
-
-  const genModel = client.getGenerativeModel({
-    model,
-    generationConfig: {
-      temperature,
-    },
-  });
 
   const fullPrompt = `${options.systemPrompt}\n\n${options.userPrompt}`;
 
-  const result = await genModel.generateContent(fullPrompt);
-  const response = result.response;
+  // Build list of models to try (primary + fallbacks)
+  const modelsToTry = [primaryModel, ...(MODEL_FALLBACKS[primaryModel] || [])];
 
-  return response.text();
+  let lastError: Error | null = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      return await tryGenerateTextWithModel(client, modelName, fullPrompt, temperature);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.log('[Gemini] Text model', modelName, 'failed:', errorMsg);
+
+      // Check if it's a model not found error (404)
+      if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+        lastError = error instanceof Error ? error : new Error(errorMsg);
+        continue; // Try next model
+      }
+
+      // For other errors, throw immediately
+      throw error;
+    }
+  }
+
+  // All models failed
+  throw lastError || new Error('All Gemini models failed');
 }
