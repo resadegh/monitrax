@@ -17,7 +17,7 @@ import { getVisionService } from '@/lib/documents/intelligence/services/visionSe
 import { uploadDocument } from '@/lib/documents';
 import { DocumentCategory, SUPPORTED_MIME_TYPES, MAX_FILE_SIZE } from '@/lib/documents/types';
 import { isOpenAIConfigured, generateJSONCompletion, truncateToTokenLimit } from '@/lib/ai';
-import { isGeminiConfigured, generateGeminiJSONCompletion, listAvailableModels } from '@/lib/ai/gemini';
+import { isGeminiConfigured, generateGeminiJSONCompletion, listAvailableModels, testGeminiDirectAPI } from '@/lib/ai/gemini';
 import {
   extractABN,
   extractGST,
@@ -465,6 +465,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
     if (isGeminiConfigured()) {
       // Use Gemini AI (preferred - cheaper and uses same Google account)
       console.log('[Form Auto-Fill] Using Google Gemini for field mapping...');
+
+      // Run direct API test first to diagnose issues
+      console.log('[Form Auto-Fill] Running Gemini API diagnostic test...');
+      const testResult = await testGeminiDirectAPI();
+      console.log('[Form Auto-Fill] Gemini test result:', JSON.stringify(testResult));
+
+      if (!testResult.success) {
+        console.error('[Form Auto-Fill] Gemini API test failed:', testResult.error);
+        console.log('[Form Auto-Fill] Available models from test:', testResult.models?.join(', ') || 'none');
+      }
 
       try {
         const aiResult = await generateGeminiJSONCompletion<{ fieldMappings: Record<string, FieldMapping> }>({
