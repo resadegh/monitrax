@@ -10,7 +10,7 @@ import { getMonitraxStorageProvider, MonitraxStorageProvider } from './monitraxP
 import { getGoogleCloudStorageProvider, GoogleCloudStorageProvider } from './googleCloudStorageProvider';
 
 // Check if GCS is fully configured (has ALL required env vars including service account key)
-const isGCSConfigured = !!(
+export const isGCSConfigured = !!(
   process.env.GCS_PROJECT_ID &&
   process.env.GCS_BUCKET_NAME &&
   process.env.GCS_SERVICE_ACCOUNT_KEY
