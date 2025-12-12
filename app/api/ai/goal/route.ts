@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   analyzeGoalProgress,
   buildFinancialContextFromSnapshot,
-  isOpenAIConfigured,
+  isGeminiConfigured,
 } from '@/lib/ai';
 import { collectStrategyData } from '@/lib/strategy';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
@@ -29,13 +29,13 @@ export async function POST(request: NextRequest) {
       const userId = authReq.user!.userId;
 
       // Check if AI is configured
-      if (!isOpenAIConfigured()) {
+      if (!isGeminiConfigured()) {
         return NextResponse.json(
           {
             success: false,
             error: 'AI analysis not configured',
             message:
-              'Please configure OPENAI_API_KEY environment variable to enable AI features.',
+              'Please configure GEMINI_API_KEY environment variable to enable AI features.',
           },
           { status: 503 }
         );

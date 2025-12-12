@@ -1,21 +1,45 @@
 /**
  * MONITRAX AI ENGINE
- * Phase 11 Enhancement - AI Integration
+ * Phase 27 - Complete AI Migration to Google Gemini
  *
  * Main entry point for AI-powered financial advice.
+ * All AI features now powered by Google Gemini.
  *
  * Usage:
- * import { generateAIAdvice, askFinancialQuestion, isOpenAIConfigured } from '@/lib/ai';
+ * import { generateAIAdvice, askFinancialQuestion, isGeminiConfigured } from '@/lib/ai';
  */
 
-// Core functionality
+// =============================================================================
+// GEMINI-POWERED SERVICES (Primary)
+// =============================================================================
+
+// Core functionality from Gemini services
 export {
   generateAIAdvice,
   askFinancialQuestion,
   buildFinancialContextFromSnapshot,
-} from './financialAdvisor';
+} from './services/financialAdvisor';
 
-// Entity Context Builders
+// Gemini client and utilities
+export {
+  isGeminiConfigured,
+  getGeminiClient,
+  generateGeminiJSONCompletion,
+  generateGeminiTextCompletion,
+  formatCurrencyForPrompt,
+  formatPercentageForPrompt,
+  truncateToTokenLimit,
+  GEMINI_MODELS,
+  type GeminiCompletionOptions,
+  type GeminiUsageMetrics,
+  type GeminiCompletionResult,
+} from './google';
+
+// =============================================================================
+// LEGACY EXPORTS (For backward compatibility)
+// =============================================================================
+
+// Context Builders (unchanged)
 export {
   buildPropertyContext,
   buildLoanContext,
@@ -27,7 +51,7 @@ export {
   type AIRequestLog,
 } from './contextBuilder';
 
-// Strategy Enhancement
+// Strategy Enhancement (unchanged - uses internal AI calls)
 export {
   enhanceRecommendation,
   enhanceRecommendationsBatch,
@@ -38,19 +62,10 @@ export {
   type BatchEnhancementResult,
 } from './strategyEnhancer';
 
-// OpenAI client utilities
-export {
-  isOpenAIConfigured,
-  getOpenAIClient,
-  generateCompletion,
-  generateJSONCompletion,
-  truncateToTokenLimit,
-  AI_MODELS,
-  formatCurrencyForPrompt,
-  formatPercentageForPrompt,
-} from './openai';
+// =============================================================================
+// TYPES
+// =============================================================================
 
-// Types
 export type {
   // Request types
   AIAdvisorRequest,
@@ -81,4 +96,8 @@ export type {
   TaxOptimizationQuery,
 } from './types';
 
-export const AI_ENGINE_VERSION = '1.0.0';
+// =============================================================================
+// VERSION
+// =============================================================================
+
+export const AI_ENGINE_VERSION = '2.0.0'; // Phase 27 - Gemini Migration

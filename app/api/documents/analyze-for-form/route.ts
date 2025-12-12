@@ -16,8 +16,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { getVisionService } from '@/lib/documents/intelligence/services/visionService';
 import { uploadDocument } from '@/lib/documents';
 import { DocumentCategory, SUPPORTED_MIME_TYPES, MAX_FILE_SIZE } from '@/lib/documents/types';
-import { isOpenAIConfigured, generateJSONCompletion, truncateToTokenLimit } from '@/lib/ai';
-import { isGeminiConfigured, generateGeminiJSONCompletion, listAvailableModels, testGeminiDirectAPI } from '@/lib/ai/gemini';
+import { isGeminiConfigured, generateGeminiJSONCompletion, truncateToTokenLimit } from '@/lib/ai';
+import { listAvailableModels, testGeminiDirectAPI } from '@/lib/ai/gemini';
 import {
   extractABN,
   extractGST,
@@ -501,31 +501,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
         const availableModels = await listAvailableModels();
         console.log('[Form Auto-Fill] Available models:', availableModels.length > 0 ? availableModels.join(', ') : 'NONE - API key may be invalid');
 
-        fieldMappings = extractFieldsWithPatterns(ocrText, formType);
-      }
-    } else if (isOpenAIConfigured()) {
-      // Fallback to OpenAI if Gemini not configured
-      console.log('[Form Auto-Fill] Using OpenAI for field mapping...');
-
-      try {
-        const aiResult = await generateJSONCompletion<{ fieldMappings: Record<string, FieldMapping> }>({
-          systemPrompt: FORM_AUTOFILL_SYSTEM_PROMPT,
-          userPrompt,
-          temperature: 0.2,
-        });
-
-        console.log('[Form Auto-Fill] OpenAI response:', JSON.stringify(aiResult.data, null, 2));
-
-        if (aiResult && aiResult.data && aiResult.data.fieldMappings) {
-          fieldMappings = aiResult.data.fieldMappings;
-          console.log('[Form Auto-Fill] OpenAI extraction complete, fields:', Object.keys(fieldMappings));
-        } else {
-          console.log('[Form Auto-Fill] OpenAI returned no mappings, falling back to patterns');
-          fieldMappings = extractFieldsWithPatterns(ocrText, formType);
-        }
-      } catch (aiError) {
-        console.error('[Form Auto-Fill] OpenAI extraction failed:', aiError);
-        console.error('[Form Auto-Fill] OpenAI error details:', aiError instanceof Error ? aiError.message : String(aiError));
         fieldMappings = extractFieldsWithPatterns(ocrText, formType);
       }
     } else {

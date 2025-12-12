@@ -3,31 +3,35 @@
  * GET /api/ai/status
  *
  * Check if AI features are configured and available
+ * Phase 27 - Now powered by Google Gemini
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isOpenAIConfigured, AI_MODELS, AI_ENGINE_VERSION } from '@/lib/ai';
+import { isGeminiConfigured, GEMINI_MODELS, AI_ENGINE_VERSION } from '@/lib/ai';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq: AuthenticatedRequest) => {
     try {
-      const configured = isOpenAIConfigured();
+      const configured = isGeminiConfigured();
 
       return NextResponse.json({
         success: true,
         data: {
           configured,
+          provider: 'google-gemini',
           version: AI_ENGINE_VERSION,
           features: {
             financialAdvisor: configured,
             chatAssistant: configured,
             projections: configured,
+            documentAnalysis: configured,
           },
           models: configured
             ? {
-                quick: AI_MODELS.QUICK_RESPONSE,
-                detailed: AI_MODELS.FINANCIAL_ADVISOR,
+                quick: GEMINI_MODELS.QUICK_RESPONSE,
+                detailed: GEMINI_MODELS.FINANCIAL_ADVISOR,
+                document: GEMINI_MODELS.DOCUMENT_ANALYSIS,
               }
             : null,
         },
