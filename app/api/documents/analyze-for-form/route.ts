@@ -36,9 +36,19 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse = require('pdf-parse');
 
+    // Custom page render function that only extracts text (no canvas rendering)
+    // This avoids DOMMatrix/ImageData/Path2D errors in serverless
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const renderPage = async (pageData: any) => {
+      const textContent = await pageData.getTextContent();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const text = textContent.items.map((item: any) => item.str || '').join(' ');
+      return text;
+    };
+
     const data = await pdfParse(buffer, {
-      // Options for better text extraction
       max: 0, // Parse all pages (0 = no limit)
+      pagerender: renderPage, // Use custom text-only renderer
     });
 
     console.log('[PDF] Extraction complete, pages:', data.numpages);
