@@ -6,7 +6,7 @@
  *
  * Flow:
  * 1. Upload document to GCS
- * 2. Vision API performs OCR
+ * 2. Vision API performs OCR (for images) or pdf-parse extracts text (for PDFs)
  * 3. OpenAI maps extracted text to form fields
  * 4. Return field mappings with confidence scores
  */
@@ -25,6 +25,8 @@ import {
   parseAustralianCurrency,
 } from '@/lib/documents/intelligence/parsers/australian';
 import { classifyDocument } from '@/lib/documents/intelligence/classifiers/documentClassifier';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse');
 
 // ============================================================================
 // Types
@@ -301,34 +303,64 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
 
     console.log('[Form Auto-Fill] Processing document for form:', formType);
 
-    // Step 1: Check if Vision API is available
-    const visionService = getVisionService();
-    if (!visionService.isAvailable()) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Document analysis is not available. Vision API not configured.',
-        },
-        { status: 503 }
-      );
-    }
-
-    // Step 2: Get file buffer for OCR
+    // Step 1: Get file buffer
     const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const isPDF = file.type === 'application/pdf';
 
-    // Step 3: Perform OCR
-    console.log('[Form Auto-Fill] Performing OCR...');
-    const ocrResult = await visionService.detectText(fileBuffer);
+    // Step 2: Extract text based on file type
+    let ocrText = '';
 
-    if (!ocrResult.success || !ocrResult.text) {
-      return NextResponse.json(
-        { success: false, error: ocrResult.error || 'OCR failed - no text detected' },
-        { status: 500 }
-      );
+    if (isPDF) {
+      // For PDFs: Use pdf-parse to extract embedded text
+      console.log('[Form Auto-Fill] Extracting text from PDF...');
+      try {
+        const pdfData = await pdfParse(fileBuffer);
+        ocrText = pdfData.text || '';
+        console.log('[Form Auto-Fill] PDF text extracted, length:', ocrText.length);
+
+        if (!ocrText.trim()) {
+          // PDF has no extractable text (might be a scanned document)
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'This PDF appears to be a scanned document with no extractable text. Please try uploading an image (JPG/PNG) of the document instead.',
+            },
+            { status: 400 }
+          );
+        }
+      } catch (pdfError) {
+        console.error('[Form Auto-Fill] PDF parsing error:', pdfError);
+        return NextResponse.json(
+          { success: false, error: 'Failed to read PDF file. Please ensure the PDF is not corrupted.' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // For images: Use Vision API OCR
+      const visionService = getVisionService();
+      if (!visionService.isAvailable()) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Document analysis is not available. Vision API not configured.',
+          },
+          { status: 503 }
+        );
+      }
+
+      console.log('[Form Auto-Fill] Performing OCR on image...');
+      const ocrResult = await visionService.detectText(fileBuffer);
+
+      if (!ocrResult.success || !ocrResult.text) {
+        return NextResponse.json(
+          { success: false, error: ocrResult.error || 'OCR failed - no text detected' },
+          { status: 500 }
+        );
+      }
+
+      ocrText = ocrResult.text;
+      console.log('[Form Auto-Fill] OCR complete, text length:', ocrText.length);
     }
-
-    const ocrText = ocrResult.text;
-    console.log('[Form Auto-Fill] OCR complete, text length:', ocrText.length);
 
     // Step 4: Classify document type
     const classification = classifyDocument(ocrText);
