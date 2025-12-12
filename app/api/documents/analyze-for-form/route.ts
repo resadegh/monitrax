@@ -123,6 +123,8 @@ IMPORTANT RULES:
 4. Use "ai_inference" source when deriving/inferring values
 5. Include a brief "reason" for ai_inference values
 6. Return values in the correct type for each field
+7. For amounts, extract the main/total amount as a number (no $ symbol)
+8. For vendor, extract the company or business name issuing the document
 
 AUSTRALIAN SPECIFICS:
 - Dates are typically DD/MM/YYYY format - convert to YYYY-MM-DD (ISO)
@@ -131,24 +133,25 @@ AUSTRALIAN SPECIFICS:
 - Currency is AUD ($ symbol means Australian dollars)
 
 EXPENSE CATEGORY MAPPING:
+- CTP, green slip, compulsory third party, motor vehicle insurance → INSURANCE
+- Insurance, policy, premium, cover → INSURANCE
 - Bunnings, hardware, paint, tools, repairs → MAINTENANCE
 - Council, rates, property tax → RATES
-- Insurance, policy, premium → INSURANCE
 - Electricity, gas, water, internet, phone → UTILITIES
 - Strata, body corporate, levies → STRATA
 - Real estate agent, property management → OTHER
 - Land tax → LAND_TAX
 - Loan interest, bank fees → LOAN_INTEREST
+- Car rego, registration → REGISTRATION
 
 Return a JSON object with this exact structure:
 {
   "fieldMappings": {
-    "fieldName": {
-      "value": <extracted value in correct type>,
-      "confidence": <0.0-1.0>,
-      "source": "ocr" | "ai_inference",
-      "reason": "<only for ai_inference>"
-    }
+    "vendor": { "value": "Company Name", "confidence": 0.9, "source": "ocr" },
+    "amount": { "value": 123.45, "confidence": 0.95, "source": "ocr" },
+    "description": { "value": "Brief description of what this is", "confidence": 0.8, "source": "ai_inference", "reason": "Derived from document content" },
+    "category": { "value": "INSURANCE", "confidence": 0.9, "source": "ai_inference", "reason": "Document is a CTP insurance policy" },
+    "taxDeductible": { "value": false, "confidence": 0.7, "source": "ai_inference", "reason": "Personal vehicle insurance is not typically tax deductible" }
   }
 }
 
@@ -461,21 +464,27 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
           propertyId ? 'investment property' : undefined
         );
 
+        console.log('[Form Auto-Fill] OCR text preview:', truncatedText.substring(0, 500));
+
         const aiResult = await generateJSONCompletion<{ fieldMappings: Record<string, FieldMapping> }>({
           systemPrompt: FORM_AUTOFILL_SYSTEM_PROMPT,
           userPrompt,
           temperature: 0.2,
         });
 
+        console.log('[Form Auto-Fill] AI response:', JSON.stringify(aiResult.data, null, 2));
+
         if (aiResult && aiResult.data && aiResult.data.fieldMappings) {
           fieldMappings = aiResult.data.fieldMappings;
           console.log('[Form Auto-Fill] AI extraction complete, fields:', Object.keys(fieldMappings));
+          console.log('[Form Auto-Fill] Field values:', JSON.stringify(fieldMappings, null, 2));
         } else {
           console.log('[Form Auto-Fill] AI returned no mappings, falling back to patterns');
           fieldMappings = extractFieldsWithPatterns(ocrText, formType);
         }
       } catch (aiError) {
         console.error('[Form Auto-Fill] AI extraction failed:', aiError);
+        console.error('[Form Auto-Fill] AI error details:', aiError instanceof Error ? aiError.message : String(aiError));
         fieldMappings = extractFieldsWithPatterns(ocrText, formType);
       }
     } else {
