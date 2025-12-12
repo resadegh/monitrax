@@ -1,8 +1,9 @@
 # PHASE 26 — DOCUMENT INTELLIGENCE ENGINE
 **Monitrax Blueprint — Phase 26**
-**Version:** v1.0
-**Status:** Planned
+**Version:** v1.1
+**Status:** In Progress (Phase 26.6 Form Auto-Fill)
 **Created:** 2025-12-10
+**Updated:** 2025-12-12
 
 ---
 
@@ -1012,15 +1013,145 @@ interface FormDocumentUploadProps {
 
 ### Implementation Checklist
 
-- [ ] Create `/api/documents/analyze-for-form` endpoint
-- [ ] Implement OpenAI field mapping logic
-- [ ] Create `FormDocumentUpload` component
-- [ ] Integrate with Expense form
+- [x] Create `/api/documents/analyze-for-form` endpoint
+- [x] Implement AI field mapping logic (Gemini primary, OpenAI fallback)
+- [x] Create `FormDocumentUpload` component
+- [x] Integrate with Expense form
 - [ ] Integrate with Income form
 - [ ] Integrate with Loan form
-- [ ] Add confidence indicators to form fields
+- [x] Add confidence indicators to form fields
 - [ ] Add "Attached Document" badge to forms
 - [ ] Test with various Australian document types
+
+---
+
+## Implementation Status (2025-12-12)
+
+### Completed Features
+
+#### 1. Form Auto-Fill API (`/api/documents/analyze-for-form`)
+**File:** `/app/api/documents/analyze-for-form/route.ts`
+
+The API endpoint handles document upload, OCR, and AI-powered field extraction:
+
+```
+Document Upload → PDF/Image Detection → OCR/Text Extraction → AI Field Mapping → Response
+```
+
+**Key Features:**
+- Supports PDF and image uploads (JPEG, PNG, WebP)
+- PDF text extraction using `pdfjs-dist` (serverless-compatible)
+- Image OCR using Google Cloud Vision API
+- AI field mapping with automatic fallback chain
+- Australian-specific parsing (ABN, GST, date formats)
+- Confidence scoring for extracted fields
+
+#### 2. AI Integration - Google Gemini (Primary)
+**File:** `/lib/ai/gemini.ts`
+
+We chose Google Gemini over OpenAI for field mapping because:
+- Same Google Cloud ecosystem as GCS storage
+- Cost-effective (generous free tier)
+- Good JSON output support
+
+**Model Configuration:**
+```typescript
+export const GEMINI_MODELS = {
+  FLASH: 'gemini-1.5-flash',      // Primary - fast and cheap
+  PRO: 'gemini-1.5-pro',          // Complex analysis
+  PRO_STABLE: 'gemini-1.0-pro',   // Legacy fallback
+};
+```
+
+**Automatic Fallback Chain:**
+If the primary model fails (404), the system automatically tries fallback models:
+```
+gemini-1.5-flash → gemini-1.5-flash-001 → gemini-1.0-pro → gemini-pro
+```
+
+#### 3. FormDocumentUpload Component
+**File:** `/components/documents/FormDocumentUpload.tsx`
+
+React component that integrates with forms to provide:
+- Drag-and-drop file upload
+- Upload progress indicator
+- "Analyzing..." state during AI processing
+- Auto-population of form fields from extraction results
+- Low confidence field highlighting
+
+#### 4. Expense Form Integration
+**File:** `/app/dashboard/expenses/page.tsx`
+
+The expense form dialog now includes:
+- "Smart Document Scan" upload button
+- Automatic field population after document analysis
+- Support for CTP insurance, receipts, invoices, etc.
+
+### Environment Variables Required
+
+```env
+# Google Cloud Vision (OCR) - uses existing GCS service account
+GCS_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
+
+# Google Gemini AI (Field Mapping)
+GEMINI_API_KEY=AIza...
+
+# OpenAI (Fallback - Optional)
+OPENAI_API_KEY=sk-...
+```
+
+### API Key Setup for Gemini
+
+**Important:** The Gemini API key must be created from Google AI Studio:
+
+1. Go to https://aistudio.google.com/app/apikey
+2. Create API key in a project that has Gemini API enabled
+3. Ensure the key is **unrestricted** or has "Generative Language API" access
+4. Add to Vercel as `GEMINI_API_KEY`
+
+**Troubleshooting 404 Errors:**
+If all models return 404, check:
+1. API key is from Google AI Studio (not Google Cloud Console)
+2. The project has Generative Language API enabled
+3. API key has no restrictive API filters
+
+**Debug Endpoint:**
+The analyze-for-form endpoint includes diagnostic logging:
+```
+[Gemini Direct Test] Starting with key: AIzaSyBbw2...
+[Gemini Direct Test] List models status: 200
+[Gemini Direct Test] Found models: [...]
+```
+
+### Files Created/Modified
+
+| File | Purpose |
+|------|---------|
+| `/lib/ai/gemini.ts` | Gemini AI service with model fallback |
+| `/app/api/documents/analyze-for-form/route.ts` | Form auto-fill API endpoint |
+| `/components/documents/FormDocumentUpload.tsx` | Upload component for forms |
+| `/app/dashboard/expenses/page.tsx` | Expense form with smart scan |
+
+### Known Issues / In Progress
+
+1. **Gemini API 404 Errors** (In Progress)
+   - Some Google Cloud projects may not have Gemini models accessible
+   - Solution: Create API key from AI Studio in a fresh project
+   - Added diagnostic functions to list available models
+
+2. **PDF Scanned Documents**
+   - Currently only extracts embedded text from PDFs
+   - Scanned PDFs (images inside PDF) return empty text
+   - Workaround: User uploads image instead of scanned PDF
+
+### Testing Checklist
+
+- [ ] Upload receipt image → verify field extraction
+- [ ] Upload PDF invoice → verify text extraction
+- [ ] Upload CTP insurance → verify amount/GST extraction
+- [ ] Test with investment property context
+- [ ] Verify Gemini fallback chain works
+- [ ] Test pattern-based fallback when AI unavailable
 
 ---
 
