@@ -48,18 +48,19 @@ export function isGeminiConfigured(): boolean {
 
 export const GEMINI_MODELS = {
   // Gemini 1.5 Flash - Fast and reliable for document extraction
-  FLASH: 'gemini-1.5-flash-latest',
+  FLASH: 'gemini-1.5-flash',
   // Gemini 1.5 Pro - More capable for complex analysis
-  PRO: 'gemini-1.5-pro-latest',
-  // Gemini Pro - Stable fallback option (legacy but widely available)
-  PRO_STABLE: 'gemini-pro',
+  PRO: 'gemini-1.5-pro',
+  // Gemini 1.0 Pro - Stable fallback option (legacy)
+  PRO_STABLE: 'gemini-1.0-pro',
 } as const;
 
-// Fallback model order if primary fails
+// Fallback model order if primary fails - try all known model name variants
 const MODEL_FALLBACKS: Record<string, string[]> = {
-  'gemini-1.5-flash-latest': ['gemini-1.5-flash', 'gemini-pro'],
-  'gemini-1.5-pro-latest': ['gemini-1.5-pro', 'gemini-pro'],
-  'gemini-pro': [],
+  'gemini-1.5-flash': ['gemini-1.5-flash-001', 'gemini-1.0-pro', 'gemini-pro'],
+  'gemini-1.5-pro': ['gemini-1.5-pro-001', 'gemini-1.0-pro', 'gemini-pro'],
+  'gemini-1.0-pro': ['gemini-pro', 'gemini-1.0-pro-001'],
+  'gemini-pro': ['gemini-1.0-pro'],
 };
 
 export type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
@@ -82,6 +83,115 @@ export interface GeminiCompletionResult<T> {
     completionTokens: number;
     totalTokens: number;
   };
+}
+
+/**
+ * List available models (for debugging)
+ */
+export async function listAvailableModels(): Promise<string[]> {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return [];
+
+    console.log('[Gemini] Listing models with API key:', apiKey.substring(0, 10) + '...');
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+
+    console.log('[Gemini] List models response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Gemini] Failed to list models:', response.status, errorText);
+      return [];
+    }
+
+    const data = await response.json();
+    const models = data.models?.map((m: { name: string }) => m.name) || [];
+    console.log('[Gemini] Available models count:', models.length);
+    console.log('[Gemini] Available models:', JSON.stringify(models));
+    return models;
+  } catch (error) {
+    console.error('[Gemini] Error listing models:', error);
+    return [];
+  }
+}
+
+/**
+ * Test direct REST API call (bypasses SDK for debugging)
+ */
+export async function testGeminiDirectAPI(): Promise<{ success: boolean; error?: string; models?: string[] }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return { success: false, error: 'No API key configured' };
+  }
+
+  console.log('[Gemini Direct Test] Starting with key:', apiKey.substring(0, 10) + '...');
+
+  try {
+    // First, list available models
+    const listResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+
+    console.log('[Gemini Direct Test] List models status:', listResponse.status);
+
+    if (!listResponse.ok) {
+      const errorText = await listResponse.text();
+      return { success: false, error: `List models failed: ${listResponse.status} - ${errorText}` };
+    }
+
+    const listData = await listResponse.json();
+    const models = listData.models?.map((m: { name: string; supportedGenerationMethods?: string[] }) => ({
+      name: m.name,
+      methods: m.supportedGenerationMethods || []
+    })) || [];
+
+    console.log('[Gemini Direct Test] Found models:', JSON.stringify(models, null, 2));
+
+    // Find a model that supports generateContent
+    const generateModel = models.find((m: { name: string; methods: string[] }) =>
+      m.methods.includes('generateContent')
+    );
+
+    if (!generateModel) {
+      return {
+        success: false,
+        error: 'No models support generateContent',
+        models: models.map((m: { name: string }) => m.name)
+      };
+    }
+
+    console.log('[Gemini Direct Test] Using model:', generateModel.name);
+
+    // Try a simple generation
+    const genResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/${generateModel.name}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Say "hello"' }] }]
+        })
+      }
+    );
+
+    console.log('[Gemini Direct Test] Generate status:', genResponse.status);
+
+    if (!genResponse.ok) {
+      const errorText = await genResponse.text();
+      return {
+        success: false,
+        error: `Generate failed: ${genResponse.status} - ${errorText}`,
+        models: models.map((m: { name: string }) => m.name)
+      };
+    }
+
+    return { success: true, models: models.map((m: { name: string }) => m.name) };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
 }
 
 /**

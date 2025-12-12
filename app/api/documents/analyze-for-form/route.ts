@@ -17,7 +17,7 @@ import { getVisionService } from '@/lib/documents/intelligence/services/visionSe
 import { uploadDocument } from '@/lib/documents';
 import { DocumentCategory, SUPPORTED_MIME_TYPES, MAX_FILE_SIZE } from '@/lib/documents/types';
 import { isOpenAIConfigured, generateJSONCompletion, truncateToTokenLimit } from '@/lib/ai';
-import { isGeminiConfigured, generateGeminiJSONCompletion } from '@/lib/ai/gemini';
+import { isGeminiConfigured, generateGeminiJSONCompletion, listAvailableModels, testGeminiDirectAPI } from '@/lib/ai/gemini';
 import {
   extractABN,
   extractGST,
@@ -466,6 +466,16 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
       // Use Gemini AI (preferred - cheaper and uses same Google account)
       console.log('[Form Auto-Fill] Using Google Gemini for field mapping...');
 
+      // Run direct API test first to diagnose issues
+      console.log('[Form Auto-Fill] Running Gemini API diagnostic test...');
+      const testResult = await testGeminiDirectAPI();
+      console.log('[Form Auto-Fill] Gemini test result:', JSON.stringify(testResult));
+
+      if (!testResult.success) {
+        console.error('[Form Auto-Fill] Gemini API test failed:', testResult.error);
+        console.log('[Form Auto-Fill] Available models from test:', testResult.models?.join(', ') || 'none');
+      }
+
       try {
         const aiResult = await generateGeminiJSONCompletion<{ fieldMappings: Record<string, FieldMapping> }>({
           systemPrompt: FORM_AUTOFILL_SYSTEM_PROMPT,
@@ -485,6 +495,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
       } catch (aiError) {
         console.error('[Form Auto-Fill] Gemini extraction failed:', aiError);
         console.error('[Form Auto-Fill] Gemini error details:', aiError instanceof Error ? aiError.message : String(aiError));
+
+        // Debug: List available models to help diagnose API key issues
+        console.log('[Form Auto-Fill] Checking available Gemini models...');
+        const availableModels = await listAvailableModels();
+        console.log('[Form Auto-Fill] Available models:', availableModels.length > 0 ? availableModels.join(', ') : 'NONE - API key may be invalid');
+
         fieldMappings = extractFieldsWithPatterns(ocrText, formType);
       }
     } else if (isOpenAIConfigured()) {
