@@ -27,74 +27,27 @@ import {
 } from '@/lib/documents/intelligence/parsers/australian';
 import { classifyDocument } from '@/lib/documents/intelligence/classifiers/documentClassifier';
 
-// PDF parsing function using pdfjs-dist (works in serverless)
+// PDF parsing function using pdf-parse (designed for Node.js/serverless)
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  console.log('[PDF] Starting extraction, buffer size:', buffer.length);
+  console.log('[PDF] Starting extraction with pdf-parse, buffer size:', buffer.length);
 
   try {
-    // Dynamic import for pdfjs-dist to work in serverless
-    // Try multiple import paths for compatibility
-    let pdfjsLib;
-    try {
-      // Try the legacy CommonJS build first
-      pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    } catch {
-      try {
-        // Fallback to main entry
-        pdfjsLib = await import('pdfjs-dist');
-      } catch {
-        // Last resort - require
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        pdfjsLib = require('pdfjs-dist');
-      }
-    }
-    console.log('[PDF] Library loaded');
+    // Use pdf-parse which is designed for Node.js and doesn't require Web Workers
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require('pdf-parse');
 
-    // Disable worker for serverless environment
-    if (pdfjsLib.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-    }
-
-    // Load the PDF document from buffer
-    const uint8Array = new Uint8Array(buffer);
-    console.log('[PDF] Uint8Array created, length:', uint8Array.length);
-
-    const getDocument = pdfjsLib.getDocument || pdfjsLib.default?.getDocument;
-    if (!getDocument) {
-      throw new Error('pdfjs-dist getDocument not found');
-    }
-
-    const loadingTask = getDocument({
-      data: uint8Array,
-      useSystemFonts: true,
-      disableFontFace: true,
-      isEvalSupported: false,
+    const data = await pdfParse(buffer, {
+      // Options for better text extraction
+      max: 0, // Parse all pages (0 = no limit)
     });
 
-    const pdfDoc = await loadingTask.promise;
-    console.log('[PDF] Document loaded, pages:', pdfDoc.numPages);
+    console.log('[PDF] Extraction complete, pages:', data.numpages);
+    console.log('[PDF] Total extracted text length:', data.text?.length || 0);
 
-    let fullText = '';
-
-    // Extract text from each page
-    for (let i = 1; i <= pdfDoc.numPages; i++) {
-      const page = await pdfDoc.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((item: any) => item.str || '')
-        .join(' ');
-      fullText += pageText + '\n';
-      console.log('[PDF] Page', i, 'text length:', pageText.length);
-    }
-
-    console.log('[PDF] Total extracted text length:', fullText.length);
-    return fullText.trim();
+    return data.text?.trim() || '';
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : 'no stack';
     console.error('[PDF] Extraction error:', errorMsg);
-    console.error('[PDF] Stack:', errorStack);
     throw new Error(`PDF extraction failed: ${errorMsg}`);
   }
 }
