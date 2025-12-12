@@ -3,14 +3,15 @@
  * POST /api/ai/ask
  *
  * Ask specific financial questions and get AI-powered answers
+ * Phase 27: Powered by Google Gemini
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { isGeminiConfigured } from '@/lib/ai/google';
 import {
   askFinancialQuestion,
   buildFinancialContextFromSnapshot,
-  isOpenAIConfigured,
-} from '@/lib/ai';
+} from '@/lib/ai/services/financialAdvisor';
 import { collectStrategyData, validateDataCompleteness } from '@/lib/strategy';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 
@@ -19,14 +20,14 @@ export async function POST(request: NextRequest) {
     try {
       const userId = authReq.user!.userId;
 
-      // Check if AI is configured
-      if (!isOpenAIConfigured()) {
+      // Check if Gemini AI is configured
+      if (!isGeminiConfigured()) {
         return NextResponse.json(
           {
             success: false,
             error: 'AI assistant not configured',
             message:
-              'Please configure OPENAI_API_KEY environment variable to enable AI features.',
+              'Please configure GEMINI_API_KEY environment variable to enable AI features.',
           },
           { status: 503 }
         );
@@ -74,12 +75,13 @@ export async function POST(request: NextRequest) {
         strategyData.health
       );
 
-      // Get AI answer
-      console.log('[API] Getting AI response...');
+      // Get AI answer from Gemini
+      console.log('[API] Getting Gemini AI response...');
       const result = await askFinancialQuestion(context, question);
 
-      console.log(`[API] AI response generated`);
+      console.log(`[API] Gemini response generated`);
       console.log(`[API] Token usage: ${result.usage.totalTokens}`);
+      console.log(`[API] Estimated cost: $${result.usage.estimatedCost.toFixed(6)}`);
 
       return NextResponse.json({
         success: true,

@@ -3,14 +3,15 @@
  * POST /api/ai/advisor
  *
  * Generate comprehensive AI-powered financial advice based on user data
+ * Phase 27: Powered by Google Gemini
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { isGeminiConfigured } from '@/lib/ai/google';
 import {
   generateAIAdvice,
   buildFinancialContextFromSnapshot,
-  isOpenAIConfigured,
-} from '@/lib/ai';
+} from '@/lib/ai/services/financialAdvisor';
 import { collectStrategyData, validateDataCompleteness } from '@/lib/strategy';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 
@@ -19,14 +20,14 @@ export async function POST(request: NextRequest) {
     try {
       const userId = authReq.user!.userId;
 
-      // Check if AI is configured
-      if (!isOpenAIConfigured()) {
+      // Check if Gemini AI is configured
+      if (!isGeminiConfigured()) {
         return NextResponse.json(
           {
             success: false,
             error: 'AI advisor not configured',
             message:
-              'Please configure OPENAI_API_KEY environment variable to enable AI features.',
+              'Please configure GEMINI_API_KEY environment variable to enable AI features.',
           },
           { status: 503 }
         );
@@ -75,8 +76,8 @@ export async function POST(request: NextRequest) {
         strategyData.health
       );
 
-      // Generate AI advice
-      console.log('[API] Generating AI advice...');
+      // Generate AI advice using Gemini
+      console.log('[API] Generating Gemini AI advice...');
       const result = await generateAIAdvice({
         userId,
         query,
@@ -99,14 +100,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log(`[API] AI advice generated successfully`);
+      console.log(`[API] Gemini advice generated successfully`);
       console.log(`[API] Health score: ${result.advice.healthScore}`);
       console.log(
         `[API] Recommendations: ${result.advice.recommendations?.length || 0}`
       );
       console.log(`[API] Token usage: ${result.usage.totalTokens}`);
       console.log(
-        `[API] Estimated cost: $${result.usage.estimatedCost.toFixed(4)}`
+        `[API] Estimated cost: $${result.usage.estimatedCost.toFixed(6)}`
       );
 
       return NextResponse.json({
@@ -145,15 +146,16 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq: AuthenticatedRequest) => {
     try {
-      const configured = isOpenAIConfigured();
+      const configured = isGeminiConfigured();
 
       return NextResponse.json({
         success: true,
         data: {
           available: configured,
+          provider: 'Google Gemini',
           message: configured
-            ? 'AI advisor is ready'
-            : 'AI advisor requires OPENAI_API_KEY configuration',
+            ? 'AI advisor is ready (Powered by Google Gemini)'
+            : 'AI advisor requires GEMINI_API_KEY configuration',
         },
       });
     } catch (error) {
