@@ -30,10 +30,19 @@ import { classifyDocument } from '@/lib/documents/intelligence/classifiers/docum
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
     // Use pdfjs-dist for serverless-compatible PDF parsing
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
 
-    // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument({ data: buffer });
+    // Disable worker for serverless environment
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+
+    // Load the PDF document from buffer
+    const uint8Array = new Uint8Array(buffer);
+    const loadingTask = pdfjsLib.getDocument({
+      data: uint8Array,
+      useSystemFonts: true,
+      disableFontFace: true,
+    });
     const pdfDoc = await loadingTask.promise;
 
     let fullText = '';
