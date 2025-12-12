@@ -47,17 +47,17 @@ export function isGeminiConfigured(): boolean {
 // =============================================================================
 
 export const GEMINI_MODELS = {
-  // Gemini 2.0 Flash - Latest fast model for document extraction
-  FLASH: 'gemini-2.0-flash',
+  // Gemini 1.5 Flash - Fast and reliable for document extraction
+  FLASH: 'gemini-1.5-flash-latest',
   // Gemini 1.5 Pro - More capable for complex analysis
   PRO: 'gemini-1.5-pro-latest',
-  // Gemini Pro - Stable fallback option
+  // Gemini Pro - Stable fallback option (legacy but widely available)
   PRO_STABLE: 'gemini-pro',
 } as const;
 
 // Fallback model order if primary fails
 const MODEL_FALLBACKS: Record<string, string[]> = {
-  'gemini-2.0-flash': ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-pro'],
+  'gemini-1.5-flash-latest': ['gemini-1.5-flash', 'gemini-pro'],
   'gemini-1.5-pro-latest': ['gemini-1.5-pro', 'gemini-pro'],
   'gemini-pro': [],
 };
