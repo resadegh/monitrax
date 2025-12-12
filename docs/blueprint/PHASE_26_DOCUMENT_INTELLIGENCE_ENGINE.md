@@ -1057,17 +1057,19 @@ We chose Google Gemini over OpenAI for field mapping because:
 **Model Configuration:**
 ```typescript
 export const GEMINI_MODELS = {
-  FLASH: 'gemini-1.5-flash',      // Primary - fast and cheap
-  PRO: 'gemini-1.5-pro',          // Complex analysis
-  PRO_STABLE: 'gemini-1.0-pro',   // Legacy fallback
+  FLASH: 'gemini-2.0-flash',      // Primary - fast and reliable
+  FLASH_LATEST: 'gemini-2.5-flash', // Latest flash model
+  PRO: 'gemini-2.5-pro',          // Complex analysis
 };
 ```
 
 **Automatic Fallback Chain:**
 If the primary model fails (404), the system automatically tries fallback models:
 ```
-gemini-1.5-flash → gemini-1.5-flash-001 → gemini-1.0-pro → gemini-pro
+gemini-2.0-flash → gemini-2.5-flash → gemini-flash-latest → gemini-2.0-flash-001
 ```
+
+**Note:** Google deprecated the old model names (gemini-1.5-flash, gemini-1.0-pro, etc.) in late 2025. The current available models are gemini-2.0-flash, gemini-2.5-flash, and gemini-2.5-pro.
 
 #### 3. FormDocumentUpload Component
 **File:** `/components/documents/FormDocumentUpload.tsx`
@@ -1134,23 +1136,29 @@ The analyze-for-form endpoint includes diagnostic logging:
 
 ### Known Issues / In Progress
 
-1. **Gemini API 404 Errors** (In Progress)
-   - Some Google Cloud projects may not have Gemini models accessible
-   - Solution: Create API key from AI Studio in a fresh project
-   - Added diagnostic functions to list available models
+1. **Gemini API 404 Errors** (RESOLVED ✓)
+   - Old model names (gemini-1.5-flash, gemini-1.0-pro) were deprecated by Google
+   - Solution: Updated to current model names (gemini-2.0-flash, gemini-2.5-flash, gemini-2.5-pro)
+   - Image document extraction now works correctly
 
-2. **PDF Scanned Documents**
+2. **PDF Parsing in Serverless** (RESOLVED ✓)
+   - Module import error: `Cannot find module 'pdfjs-dist/legacy/build/pdf.js'`
+   - Solution: Updated to use dynamic imports with multiple fallback paths
+   - Added serverless-compatible configuration for pdfjs-dist
+
+3. **PDF Scanned Documents**
    - Currently only extracts embedded text from PDFs
    - Scanned PDFs (images inside PDF) return empty text
    - Workaround: User uploads image instead of scanned PDF
+   - Future: Could use Vision API for OCR on scanned PDFs
 
 ### Testing Checklist
 
-- [ ] Upload receipt image → verify field extraction
-- [ ] Upload PDF invoice → verify text extraction
-- [ ] Upload CTP insurance → verify amount/GST extraction
+- [x] Upload receipt image → verify field extraction ✓
+- [ ] Upload PDF invoice → verify text extraction (awaiting deployment)
+- [x] Upload CTP insurance → verify amount/GST extraction ✓ ($204.05 correctly extracted)
 - [ ] Test with investment property context
-- [ ] Verify Gemini fallback chain works
+- [x] Verify Gemini fallback chain works ✓ (gemini-2.0-flash working)
 - [ ] Test pattern-based fallback when AI unavailable
 
 ---
@@ -1172,6 +1180,7 @@ The analyze-for-form endpoint includes diagnostic logging:
 
 ---
 
-*Document Version: 1.0*
+*Document Version: 1.2*
 *Created: 2025-12-10*
-*Status: Planned*
+*Updated: 2025-12-12*
+*Status: In Progress (Phase 26.6 Form Auto-Fill)*
