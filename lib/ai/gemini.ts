@@ -47,20 +47,20 @@ export function isGeminiConfigured(): boolean {
 // =============================================================================
 
 export const GEMINI_MODELS = {
-  // Gemini 1.5 Flash - Fast and reliable for document extraction
-  FLASH: 'gemini-1.5-flash',
-  // Gemini 1.5 Pro - More capable for complex analysis
-  PRO: 'gemini-1.5-pro',
-  // Gemini 1.0 Pro - Stable fallback option (legacy)
-  PRO_STABLE: 'gemini-1.0-pro',
+  // Gemini 2.0 Flash - Fast and reliable for document extraction
+  FLASH: 'gemini-2.0-flash',
+  // Gemini 2.5 Flash - Latest flash model
+  FLASH_LATEST: 'gemini-2.5-flash',
+  // Gemini 2.5 Pro - Most capable for complex analysis
+  PRO: 'gemini-2.5-pro',
 } as const;
 
-// Fallback model order if primary fails - try all known model name variants
+// Fallback model order if primary fails - use current available models
 const MODEL_FALLBACKS: Record<string, string[]> = {
-  'gemini-1.5-flash': ['gemini-1.5-flash-001', 'gemini-1.0-pro', 'gemini-pro'],
-  'gemini-1.5-pro': ['gemini-1.5-pro-001', 'gemini-1.0-pro', 'gemini-pro'],
-  'gemini-1.0-pro': ['gemini-pro', 'gemini-1.0-pro-001'],
-  'gemini-pro': ['gemini-1.0-pro'],
+  'gemini-2.0-flash': ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash-001'],
+  'gemini-2.5-flash': ['gemini-2.0-flash', 'gemini-flash-latest'],
+  'gemini-2.5-pro': ['gemini-pro-latest', 'gemini-2.5-flash'],
+  'gemini-flash-latest': ['gemini-2.0-flash', 'gemini-2.5-flash'],
 };
 
 export type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
