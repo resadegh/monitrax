@@ -32,19 +32,39 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   console.log('[PDF] Starting extraction, buffer size:', buffer.length);
 
   try {
-    // Use pdfjs-dist for serverless-compatible PDF parsing
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+    // Dynamic import for pdfjs-dist to work in serverless
+    // Try multiple import paths for compatibility
+    let pdfjsLib;
+    try {
+      // Try the legacy CommonJS build first
+      pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    } catch {
+      try {
+        // Fallback to main entry
+        pdfjsLib = await import('pdfjs-dist');
+      } catch {
+        // Last resort - require
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        pdfjsLib = require('pdfjs-dist');
+      }
+    }
     console.log('[PDF] Library loaded');
 
     // Disable worker for serverless environment
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    if (pdfjsLib.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    }
 
     // Load the PDF document from buffer
     const uint8Array = new Uint8Array(buffer);
     console.log('[PDF] Uint8Array created, length:', uint8Array.length);
 
-    const loadingTask = pdfjsLib.getDocument({
+    const getDocument = pdfjsLib.getDocument || pdfjsLib.default?.getDocument;
+    if (!getDocument) {
+      throw new Error('pdfjs-dist getDocument not found');
+    }
+
+    const loadingTask = getDocument({
       data: uint8Array,
       useSystemFonts: true,
       disableFontFace: true,
