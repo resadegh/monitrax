@@ -4,8 +4,8 @@
 
 ---
 
-**Version:** 2.2
-**Last Updated:** 2025-12-10
+**Version:** 2.3
+**Last Updated:** 2025-12-12
 **Status:** Active Development
 **Owners:** ReNew (Newsha & Reza)
 **Architect:** ChatGPT | **Engineer:** Claude
@@ -50,9 +50,10 @@
 
 ### Current State (December 2025)
 
-- **26 Phases** defined in the blueprint
+- **27 Phases** defined in the blueprint
 - **14 Phases** fully implemented (including Phase 25 Document Management Engine)
 - **Active Development:** Phase 19 (Document Management UI), Phase 21 (Asset Management)
+- **Proposed:** Phase 27 (Unified Google AI Engine)
 - **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel
 
 ---
@@ -124,8 +125,10 @@ See: `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` for full deployment do
 | **Financial Health Engine** | Health scoring across categories |
 | **Cashflow Optimisation Engine** | Forecasting, stress testing |
 | **Transactional Intelligence Engine** | Category inference, recurring detection |
-| **AI Strategy Engine** | Multi-horizon recommendations |
+| **AI Strategy Engine** | Multi-horizon recommendations (OpenAI - being migrated) |
 | **Personal CFO Engine** | Unified intelligence orchestration |
+| **Document Intelligence Engine** | OCR, document field extraction (Google Gemini) |
+| **Unified Google AI Engine** | Planned - Consolidates all AI under Google Gemini |
 | **Reporting Engine** | Multi-format export (CSV, Excel, JSON) |
 | **Document Management Engine** | Rule-based upload orchestration, auto-categorization, storage selection |
 
@@ -185,7 +188,8 @@ Every API response follows a standardised format:
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
 | **22** | Marketing Site & Auth Shell | 📋 Planned | Landing page, sign-in experience, public marketing routes |
-| **26** | Document Intelligence Engine | 📋 Planned | OCR extraction, auto-populate forms, receipt/invoice/contract analysis |
+| **26** | Document Intelligence Engine | ✅ Complete | OCR extraction, auto-populate forms via Gemini AI |
+| **27** | Unified Google AI Engine | 📋 Proposed | Consolidate all AI features under Google Gemini |
 
 ---
 

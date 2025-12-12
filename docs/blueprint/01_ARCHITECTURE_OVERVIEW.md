@@ -323,21 +323,79 @@ High-level goals:
 
 ---
 
-# **7. Intelligence Architecture (Future)**
+# **7. Intelligence Architecture**
 
-Coming in Phase 11:
+Monitrax uses AI for intelligent financial analysis across multiple layers.
 
-- AI Strategy Engine  
-- Recommendation algorithms  
-- Multi-year projections  
-- Advisor-grade reasoning  
-- Explainable AI outputs  
+## **7.1 Current AI Implementation**
 
-Built on top of:
+### Phase 11: AI Strategy Engine (OpenAI - Being Migrated)
+- Recommendation algorithms
+- Multi-year projections
+- Advisor-grade reasoning
+- Explainable AI outputs
+- **Status:** Working but migrating to Google AI
 
-- GRDCS  
-- Snapshot Engine  
-- Insights Engine  
+### Phase 26: Document Intelligence Engine (Google Gemini)
+- Document OCR via Google Vision API
+- Field extraction with Gemini AI
+- Form auto-fill from receipts/invoices
+- **Status:** ✅ Active and working
+
+## **7.2 Proposed: Unified Google AI Engine (Phase 27)**
+
+Consolidates all AI features under Google Gemini:
+
+### AI Services
+| Service | Purpose |
+|---------|---------|
+| Financial Advisor | Comprehensive portfolio advice |
+| Document Intelligence | OCR + field extraction |
+| Transaction Categorizer | Auto-categorize bank transactions |
+| Health Explainer | Explain financial health scores |
+| Property Analyzer | Investment property analysis |
+| Chat Assistant | Conversational AI queries |
+| Scenario Analyzer | What-if financial scenarios |
+
+### Model Selection
+| Use Case | Model |
+|----------|-------|
+| Complex analysis | gemini-1.5-pro-latest |
+| Quick responses | gemini-1.5-flash-latest |
+| Document extraction | gemini-1.5-flash-latest |
+
+### AI Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────┐
+│         UNIFIED GOOGLE AI ENGINE                │
+│              (Phase 27)                         │
+├─────────────────────────────────────────────────┤
+│  lib/ai/google/                                 │
+│  ├── geminiClient.ts   # Core Gemini client     │
+│  ├── modelConfig.ts    # Model selection        │
+│  └── promptManager.ts  # System prompts         │
+├─────────────────────────────────────────────────┤
+│  lib/ai/services/                               │
+│  ├── financialAdvisor.ts   (migrate)            │
+│  ├── documentIntelligence.ts (existing)         │
+│  ├── transactionCategorizer.ts (new)            │
+│  ├── healthExplainer.ts (new)                   │
+│  └── chatAssistant.ts (new)                     │
+└─────────────────────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────────────────────┐
+│               DATA SOURCES                       │
+├─────────────────────────────────────────────────┤
+│  • GRDCS (Entity Relationships)                 │
+│  • Snapshot Engine (Portfolio Data)             │
+│  • Insights Engine (Financial Insights)         │
+│  • Financial Health Engine (Health Scores)      │
+└─────────────────────────────────────────────────┘
+```
+
+See: `docs/blueprint/PHASE_27_UNIFIED_GOOGLE_AI_ENGINE.md`
 
 ---
 
