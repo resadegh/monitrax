@@ -30,6 +30,8 @@ import {
   type ExpenseCategory,
 } from '@/lib/categoryFilters';
 import { ListFilter, expenseFilterConfigs } from '@/components/ListFilter';
+import { FormDocumentUpload, FieldMapping } from '@/components/documents';
+import { Sparkles } from 'lucide-react';
 
 type ViewMode = 'category' | 'property' | 'all' | 'list';
 
@@ -172,6 +174,49 @@ function ExpensesPageContent() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [showWizard, setShowWizard] = useState(false);
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
+  const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
+  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
+
+  // Handle auto-fill from document analysis
+  const handleFieldsExtracted = (mappings: Record<string, FieldMapping>) => {
+    const filledFields: string[] = [];
+    const updates: Partial<ExpenseFormData> = {};
+
+    // Map extracted fields to form data
+    if (mappings.vendor?.value && !formData.vendorName) {
+      updates.vendorName = String(mappings.vendor.value);
+      filledFields.push('vendorName');
+    }
+
+    if (mappings.amount?.value && !formData.amount) {
+      updates.amount = Number(mappings.amount.value);
+      filledFields.push('amount');
+    }
+
+    if (mappings.description?.value && !formData.name) {
+      updates.name = String(mappings.description.value);
+      filledFields.push('name');
+    }
+
+    if (mappings.category?.value) {
+      const categoryValue = String(mappings.category.value).toUpperCase();
+      const validCategories = ['HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL', 'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'STRATA', 'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'];
+      if (validCategories.includes(categoryValue)) {
+        updates.category = categoryValue as ExpenseFormData['category'];
+        filledFields.push('category');
+      }
+    }
+
+    if (mappings.taxDeductible?.value !== undefined) {
+      updates.isTaxDeductible = Boolean(mappings.taxDeductible.value);
+      filledFields.push('isTaxDeductible');
+    }
+
+    if (Object.keys(updates).length > 0) {
+      setFormData(prev => ({ ...prev, ...updates }));
+      setAutoFilledFields(filledFields);
+    }
+  };
 
   useEffect(() => {
     if (token) {
@@ -358,7 +403,26 @@ function ExpensesPageContent() {
         const result = await response.json();
         const savedExpenseId = result.data?.id || result.id || editingId;
 
-        // Upload file if one was selected
+        // Link document if one was attached via FormDocumentUpload
+        if (attachedDocumentId && savedExpenseId) {
+          try {
+            await fetch(`/api/documents/${attachedDocumentId}/link`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                entityType: 'EXPENSE',
+                entityId: savedExpenseId,
+              }),
+            });
+          } catch (linkError) {
+            console.error('Failed to link document to expense:', linkError);
+          }
+        }
+
+        // Upload file if one was selected (legacy method)
         if (selectedFile && savedExpenseId) {
           await uploadReceiptFile(savedExpenseId, selectedFile, formData.name, formData.category);
         }
@@ -389,6 +453,8 @@ function ExpensesPageContent() {
       assetId: null,
     });
     setSelectedFile(null);
+    setAttachedDocumentId(null);
+    setAutoFilledFields([]);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -1482,6 +1548,34 @@ function ExpensesPageContent() {
                   This expense is tax deductible
                 </Label>
               </div>
+            </div>
+
+            {/* Smart Document Scan - Phase 26 */}
+            <div className="space-y-2 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Smart Document Scan
+                  <Badge variant="secondary" className="text-xs">AI</Badge>
+                </Label>
+                {autoFilledFields.length > 0 && (
+                  <span className="text-xs text-green-600">
+                    {autoFilledFields.length} fields auto-filled
+                  </span>
+                )}
+              </div>
+              <FormDocumentUpload
+                formType="expense"
+                propertyId={formData.propertyId || undefined}
+                onFieldsExtracted={handleFieldsExtracted}
+                onDocumentAttached={setAttachedDocumentId}
+                disabled={uploadingFile}
+              />
+              {autoFilledFields.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Review the auto-filled values above and adjust if needed.
+                </p>
+              )}
             </div>
 
             {/* Receipt Upload Section */}
