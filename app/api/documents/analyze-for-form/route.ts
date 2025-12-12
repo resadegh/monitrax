@@ -25,15 +25,31 @@ import {
   parseAustralianCurrency,
 } from '@/lib/documents/intelligence/parsers/australian';
 import { classifyDocument } from '@/lib/documents/intelligence/classifiers/documentClassifier';
-// PDF parsing function - uses dynamic import to avoid serverless issues
+
+// PDF parsing function using pdfjs-dist (works in serverless)
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    // Dynamic import to avoid issues with pdf-parse in serverless
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pdfParseModule: any = await import('pdf-parse');
-    const pdfParse = pdfParseModule.default || pdfParseModule;
-    const data = await pdfParse(buffer);
-    return data.text || '';
+    // Use pdfjs-dist for serverless-compatible PDF parsing
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+    // Load the PDF document
+    const loadingTask = pdfjsLib.getDocument({ data: buffer });
+    const pdfDoc = await loadingTask.promise;
+
+    let fullText = '';
+
+    // Extract text from each page
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((item: any) => item.str || '')
+        .join(' ');
+      fullText += pageText + '\n';
+    }
+
+    return fullText.trim();
   } catch (error) {
     console.error('[PDF] Extraction error:', error);
     throw error;
