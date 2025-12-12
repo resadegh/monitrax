@@ -6,8 +6,8 @@
  *
  * Flow:
  * 1. Upload document to GCS
- * 2. Vision API performs OCR (for images) or pdf-parse extracts text (for PDFs)
- * 3. OpenAI maps extracted text to form fields
+ * 2. Vision API performs OCR (for images) or pdfjs-dist extracts text (for PDFs)
+ * 3. Gemini AI (preferred) or OpenAI maps extracted text to form fields
  * 4. Return field mappings with confidence scores
  */
 
@@ -17,6 +17,7 @@ import { getVisionService } from '@/lib/documents/intelligence/services/visionSe
 import { uploadDocument } from '@/lib/documents';
 import { DocumentCategory, SUPPORTED_MIME_TYPES, MAX_FILE_SIZE } from '@/lib/documents/types';
 import { isOpenAIConfigured, generateJSONCompletion, truncateToTokenLimit } from '@/lib/ai';
+import { isGeminiConfigured, generateGeminiJSONCompletion } from '@/lib/ai/gemini';
 import {
   extractABN,
   extractGST,
@@ -449,46 +450,70 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
       // Continue without document storage - we can still extract fields
     }
 
-    // Step 6: Extract fields using OpenAI (or fallback to pattern matching)
+    // Step 6: Extract fields using AI (Gemini preferred, OpenAI fallback, then pattern matching)
     let fieldMappings: Record<string, FieldMapping>;
+    const truncatedText = truncateToTokenLimit(ocrText, 3000);
+    const userPrompt = buildUserPrompt(
+      formType,
+      formFields,
+      truncatedText,
+      propertyId ? 'investment property' : undefined
+    );
 
-    if (isOpenAIConfigured()) {
+    console.log('[Form Auto-Fill] OCR text preview:', truncatedText.substring(0, 500));
+
+    if (isGeminiConfigured()) {
+      // Use Gemini AI (preferred - cheaper and uses same Google account)
+      console.log('[Form Auto-Fill] Using Google Gemini for field mapping...');
+
+      try {
+        const aiResult = await generateGeminiJSONCompletion<{ fieldMappings: Record<string, FieldMapping> }>({
+          systemPrompt: FORM_AUTOFILL_SYSTEM_PROMPT,
+          userPrompt,
+          temperature: 0.2,
+        });
+
+        console.log('[Form Auto-Fill] Gemini response:', JSON.stringify(aiResult.data, null, 2));
+
+        if (aiResult && aiResult.data && aiResult.data.fieldMappings) {
+          fieldMappings = aiResult.data.fieldMappings;
+          console.log('[Form Auto-Fill] Gemini extraction complete, fields:', Object.keys(fieldMappings));
+        } else {
+          console.log('[Form Auto-Fill] Gemini returned no mappings, falling back to patterns');
+          fieldMappings = extractFieldsWithPatterns(ocrText, formType);
+        }
+      } catch (aiError) {
+        console.error('[Form Auto-Fill] Gemini extraction failed:', aiError);
+        console.error('[Form Auto-Fill] Gemini error details:', aiError instanceof Error ? aiError.message : String(aiError));
+        fieldMappings = extractFieldsWithPatterns(ocrText, formType);
+      }
+    } else if (isOpenAIConfigured()) {
+      // Fallback to OpenAI if Gemini not configured
       console.log('[Form Auto-Fill] Using OpenAI for field mapping...');
 
       try {
-        const truncatedText = truncateToTokenLimit(ocrText, 3000);
-        const userPrompt = buildUserPrompt(
-          formType,
-          formFields,
-          truncatedText,
-          propertyId ? 'investment property' : undefined
-        );
-
-        console.log('[Form Auto-Fill] OCR text preview:', truncatedText.substring(0, 500));
-
         const aiResult = await generateJSONCompletion<{ fieldMappings: Record<string, FieldMapping> }>({
           systemPrompt: FORM_AUTOFILL_SYSTEM_PROMPT,
           userPrompt,
           temperature: 0.2,
         });
 
-        console.log('[Form Auto-Fill] AI response:', JSON.stringify(aiResult.data, null, 2));
+        console.log('[Form Auto-Fill] OpenAI response:', JSON.stringify(aiResult.data, null, 2));
 
         if (aiResult && aiResult.data && aiResult.data.fieldMappings) {
           fieldMappings = aiResult.data.fieldMappings;
-          console.log('[Form Auto-Fill] AI extraction complete, fields:', Object.keys(fieldMappings));
-          console.log('[Form Auto-Fill] Field values:', JSON.stringify(fieldMappings, null, 2));
+          console.log('[Form Auto-Fill] OpenAI extraction complete, fields:', Object.keys(fieldMappings));
         } else {
-          console.log('[Form Auto-Fill] AI returned no mappings, falling back to patterns');
+          console.log('[Form Auto-Fill] OpenAI returned no mappings, falling back to patterns');
           fieldMappings = extractFieldsWithPatterns(ocrText, formType);
         }
       } catch (aiError) {
-        console.error('[Form Auto-Fill] AI extraction failed:', aiError);
-        console.error('[Form Auto-Fill] AI error details:', aiError instanceof Error ? aiError.message : String(aiError));
+        console.error('[Form Auto-Fill] OpenAI extraction failed:', aiError);
+        console.error('[Form Auto-Fill] OpenAI error details:', aiError instanceof Error ? aiError.message : String(aiError));
         fieldMappings = extractFieldsWithPatterns(ocrText, formType);
       }
     } else {
-      console.log('[Form Auto-Fill] OpenAI not configured, using pattern matching');
+      console.log('[Form Auto-Fill] No AI configured, using pattern matching');
       fieldMappings = extractFieldsWithPatterns(ocrText, formType);
     }
 
