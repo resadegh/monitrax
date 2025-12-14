@@ -178,6 +178,10 @@ export function AnalysisPreviewCard({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <Badge variant="outline" className="gap-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400">
+              <Sparkles className="h-3 w-3" />
+              Gemini AI
+            </Badge>
             {userVerified && (
               <Badge variant="outline" className="gap-1">
                 <CheckCircle className="h-3 w-3" />

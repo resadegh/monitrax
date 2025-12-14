@@ -76,7 +76,15 @@ export default function AiChatButton() {
             </div>
             <div>
               <h3 className="text-white font-semibold text-sm">AI Financial Advisor</h3>
-              <p className="text-emerald-200 text-xs">Ask me anything about your finances</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-emerald-200 text-xs">Powered by</p>
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-white/20 text-white px-1.5 py-0.5 rounded">
+                  <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                  </svg>
+                  Gemini AI
+                </span>
+              </div>
             </div>
           </div>
           <button

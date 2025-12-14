@@ -198,9 +198,13 @@ export default function AiAdvisorPanel({
         {messages.length === 0 ? (
           <div className="text-center py-8">
             <Bot className="h-12 w-12 text-purple-300 dark:text-purple-700 mx-auto mb-3" />
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
               Ask me anything about {mode === 'portfolio' ? 'your finances' : mode === 'recommendation' ? 'this recommendation' : `this ${entityType}`}
             </p>
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white px-2 py-1 rounded-full mb-4">
+              <Sparkles className="h-2.5 w-2.5" />
+              Powered by Gemini AI
+            </span>
             {/* Quick Actions */}
             <div className="flex flex-wrap justify-center gap-2">
               {quickActions.map((action, i) => (
@@ -277,10 +281,17 @@ export default function AiAdvisorPanel({
         )}
       </div>
 
-      {/* Disclaimer */}
-      <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-700 dark:text-yellow-300 flex items-start gap-2">
-        <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-        <span>AI-generated explanation – not personal financial advice. Consult a licensed advisor.</span>
+      {/* Disclaimer with Gemini badge */}
+      <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded text-xs text-yellow-700 dark:text-yellow-300">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+            <span>AI-generated explanation – not personal financial advice.</span>
+          </div>
+          <span className="inline-flex items-center gap-0.5 text-[9px] font-medium bg-blue-500/20 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded whitespace-nowrap">
+            Gemini AI
+          </span>
+        </div>
       </div>
 
       {/* Input Form */}
