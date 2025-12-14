@@ -1,9 +1,9 @@
 # PHASE 26 — DOCUMENT INTELLIGENCE ENGINE
 **Monitrax Blueprint — Phase 26**
-**Version:** v1.1
-**Status:** In Progress (Phase 26.6 Form Auto-Fill)
+**Version:** v1.2
+**Status:** Complete (Phase 26.6 Form Auto-Fill with Gemini)
 **Created:** 2025-12-10
-**Updated:** 2025-12-12
+**Updated:** 2025-12-14
 
 ---
 
@@ -778,7 +778,7 @@ The Form Auto-Fill feature allows users to attach documents directly to entity f
 │   │                   Document Intelligence Engine                       │   │
 │   │                                                                      │   │
 │   │   a) Vision API performs OCR → extracts text                        │   │
-│   │   b) OpenAI analyzes text + form context → maps to fields           │   │
+│   │   b) Gemini AI analyzes text + form context → maps to fields        │   │
 │   │   c) Returns field mappings with confidence scores                   │   │
 │   │                                                                      │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
@@ -818,7 +818,7 @@ The Form Auto-Fill feature allows users to attach documents directly to entity f
 │   │                                                                      │   │
 │   │  1. Upload to GCS (temporary or permanent)                          │   │
 │   │  2. Vision API → OCR text extraction                                │   │
-│   │  3. OpenAI → Intelligent field mapping                              │   │
+│   │  3. Gemini AI → Intelligent field mapping                           │   │
 │   │     Prompt includes:                                                │   │
 │   │     - OCR text                                                      │   │
 │   │     - Form type (expense, income, loan)                            │   │
@@ -931,9 +931,9 @@ propertyId?: string      # Optional property context
 }
 ```
 
-### OpenAI Prompt Strategy
+### Gemini AI Prompt Strategy
 
-The system uses OpenAI to intelligently map OCR text to form fields:
+The system uses Google Gemini to intelligently map OCR text to form fields:
 
 ```typescript
 const FORM_AUTOFILL_SYSTEM_PROMPT = `You are an expert at extracting data from Australian financial documents and mapping them to form fields.
@@ -1014,7 +1014,7 @@ interface FormDocumentUploadProps {
 ### Implementation Checklist
 
 - [x] Create `/api/documents/analyze-for-form` endpoint
-- [x] Implement AI field mapping logic (Gemini primary, OpenAI fallback)
+- [x] Implement AI field mapping logic (Gemini-only, see Phase 27)
 - [x] Create `FormDocumentUpload` component
 - [x] Integrate with Expense form
 - [ ] Integrate with Income form
@@ -1098,8 +1098,8 @@ GCS_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
 # Google Gemini AI (Field Mapping)
 GEMINI_API_KEY=AIza...
 
-# OpenAI (Fallback - Optional)
-OPENAI_API_KEY=sk-...
+# Note: OpenAI is no longer used (removed in Phase 27)
+# All AI features now use Gemini exclusively
 ```
 
 ### API Key Setup for Gemini

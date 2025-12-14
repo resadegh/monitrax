@@ -4,8 +4,8 @@
 
 ---
 
-**Version:** 2.2
-**Last Updated:** 2025-12-10
+**Version:** 2.3
+**Last Updated:** 2025-12-14
 **Status:** Active Development
 **Owners:** ReNew (Newsha & Reza)
 **Architect:** ChatGPT | **Engineer:** Claude
@@ -124,7 +124,7 @@ See: `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` for full deployment do
 | **Financial Health Engine** | Health scoring across categories |
 | **Cashflow Optimisation Engine** | Forecasting, stress testing |
 | **Transactional Intelligence Engine** | Category inference, recurring detection |
-| **AI Strategy Engine** | Multi-horizon recommendations |
+| **AI Strategy Engine** | Multi-horizon recommendations (powered by Google Gemini) |
 | **Personal CFO Engine** | Unified intelligence orchestration |
 | **Reporting Engine** | Multi-format export (CSV, Excel, JSON) |
 | **Document Management Engine** | Rule-based upload orchestration, auto-categorization, storage selection |
@@ -165,6 +165,8 @@ Every API response follows a standardised format:
 | **17** | Personal CFO Engine | ✅ Complete | CFO Score, Risk Radar, Action Engine |
 | **24** | Open Banking (Basiq) | ✅ Complete | Australian bank connection, account sync, transaction import |
 | **25** | Document Management Engine | ✅ Complete | Rule-based upload orchestration, auto-categorization, cascade linking |
+| **26** | Document Intelligence Engine | ✅ Complete | OCR extraction, Gemini AI analysis, form auto-fill |
+| **27** | Gemini AI Migration | ✅ Complete | All AI features migrated from OpenAI to Google Gemini |
 
 ### In Progress
 
@@ -185,7 +187,7 @@ Every API response follows a standardised format:
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
 | **22** | Marketing Site & Auth Shell | 📋 Planned | Landing page, sign-in experience, public marketing routes |
-| **26** | Document Intelligence Engine | 📋 Planned | OCR extraction, auto-populate forms, receipt/invoice/contract analysis |
+| **28** | Advanced Analytics | 📋 Planned | Enhanced reporting, visualization, export improvements |
 
 ---
 

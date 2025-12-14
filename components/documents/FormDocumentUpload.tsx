@@ -373,7 +373,11 @@ export function FormDocumentUpload({
               <div className="relative">
                 <Sparkles className="h-8 w-8 text-primary animate-pulse" />
               </div>
-              <p className="text-sm text-muted-foreground">Analyzing with AI...</p>
+              <Badge variant="outline" className="gap-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400">
+                <Sparkles className="h-3 w-3" />
+                Powered by Gemini AI
+              </Badge>
+              <p className="text-sm text-muted-foreground">Analyzing document...</p>
               <p className="text-xs text-muted-foreground">Extracting form fields</p>
             </div>
           )}
@@ -414,6 +418,10 @@ export function FormDocumentUpload({
                 <Upload className="h-4 w-4 mr-2" />
                 Choose File
               </Button>
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
+                <Sparkles className="h-2.5 w-2.5" />
+                Powered by Gemini AI
+              </span>
             </div>
           )}
         </div>
