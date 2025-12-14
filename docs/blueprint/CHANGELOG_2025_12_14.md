@@ -170,6 +170,63 @@ When AI is working correctly, logs show:
 |------|---------|
 | `a75c1dd` | feat(ai): migrate all AI features from OpenAI to Google Gemini (Phase 27) |
 | `a844493` | fix(ai): complete Gemini migration - remove remaining OpenAI dependencies |
+| `ac9e09d` | docs: add Phase 27 documentation and update blueprints |
+| `af1a14f` | feat(ui): add 'Powered by Gemini AI' badges to AI-powered components |
+| `7d328fd` | fix(ai): update system prompts to identify as Google Gemini AI |
+| `602d8b6` | feat(ai): add AI-powered debt analysis to Debt Planner |
+| `ebb71e3` | fix(ai): fix Property type reference in debt analysis API |
+
+---
+
+## AI-Powered Debt Analysis (Phase 27.1)
+
+### New API Endpoint
+
+**POST /api/ai/debt-analysis**
+
+AI-powered debt strategy advisor that analyzes user's loans, income, and expenses to provide personalized debt reduction recommendations.
+
+#### Features
+- **Debt Health Score** (0-100) - Overall assessment of debt situation
+- **Strategy Recommendation** - Tax-Aware, Avalanche, or Snowball with reasoning
+- **Optimal Surplus Amounts** - Minimum, recommended, and aggressive payment levels
+- **Key Insights** - Opportunities, warnings, and tips with quantified impact
+- **Loan Priority Order** - Which loans to pay first and why
+- **Action Plan** - Step-by-step instructions with timelines
+- **Projections** - Debt-free date, interest saved, time saved
+
+#### New Files
+| File | Purpose |
+|------|---------|
+| `app/api/ai/debt-analysis/route.ts` | AI debt analysis API endpoint |
+
+#### Updated Files
+| File | Changes |
+|------|---------|
+| `lib/ai/google/promptManager.ts` | Added `DEBT_ANALYSIS_PROMPT` |
+| `lib/ai/google/index.ts` | Export new prompt |
+| `app/dashboard/debt-planner/page.tsx` | AI Strategy Advisor panel UI |
+
+### UI Components Updated
+
+Added "Powered by Gemini AI" badges to:
+- `components/AiChatButton.tsx` - Chat panel header
+- `components/strategy/AiAdvisorPanel.tsx` - Advisor panel
+- `components/documents/FormDocumentUpload.tsx` - Document scan
+- `components/documents/intelligence/AnalysisPreviewCard.tsx` - Analysis results
+
+### System Prompts Updated
+
+All AI system prompts now explicitly identify as "powered by Google Gemini AI":
+- `FINANCIAL_ADVISOR_SYSTEM_PROMPT`
+- `QUICK_ANALYSIS_SYSTEM_PROMPT`
+- `QUESTION_ANSWERING_PROMPT`
+- `PROJECTIONS_SYSTEM_PROMPT`
+- `DOCUMENT_EXTRACTION_PROMPT`
+- `FORM_AUTOFILL_PROMPT`
+- `SCENARIO_ANALYSIS_PROMPT`
+- `GOAL_PROGRESS_PROMPT`
+- `DEBT_ANALYSIS_PROMPT`
 
 ---
 
