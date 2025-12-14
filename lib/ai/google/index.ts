@@ -45,5 +45,6 @@ export {
   FORM_AUTOFILL_PROMPT,
   SCENARIO_ANALYSIS_PROMPT,
   GOAL_PROGRESS_PROMPT,
+  DEBT_ANALYSIS_PROMPT,
   buildFinancialContextPrompt,
 } from './promptManager';

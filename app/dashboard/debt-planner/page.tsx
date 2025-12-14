@@ -21,7 +21,16 @@ import {
   Clock,
   AlertCircle,
   Info,
-  Calculator
+  Calculator,
+  Sparkles,
+  Brain,
+  Lightbulb,
+  ArrowRight,
+  CheckCircle,
+  TrendingUp,
+  AlertTriangle,
+  Zap,
+  RefreshCw,
 } from 'lucide-react';
 
 interface DebtPlanSettings {
@@ -48,6 +57,44 @@ interface PlanResult {
   loans: LoanResult[];
 }
 
+interface AIAnalysis {
+  summary: string;
+  debtHealthScore: number;
+  recommendedStrategy: 'TAX_AWARE_MINIMUM_INTEREST' | 'AVALANCHE' | 'SNOWBALL';
+  strategyReason: string;
+  optimalSurplus: {
+    recommended: number;
+    minimum: number;
+    aggressive: number;
+    reasoning: string;
+  };
+  keyInsights: Array<{
+    type: 'opportunity' | 'warning' | 'tip';
+    title: string;
+    description: string;
+    impact: string;
+  }>;
+  loanPriority: Array<{
+    loanName: string;
+    priority: number;
+    reason: string;
+    estimatedPayoff: string;
+  }>;
+  projections: {
+    debtFreeDate: string;
+    totalInterestSaved: number;
+    monthsSaved: number;
+    comparedToMinimum: string;
+  };
+  actionPlan: Array<{
+    step: number;
+    action: string;
+    timeline: string;
+    expectedResult: string;
+  }>;
+  warnings: string[];
+}
+
 export default function DebtPlannerPage() {
   const { token } = useAuth();
   const [settings, setSettings] = useState<DebtPlanSettings>({
@@ -61,6 +108,12 @@ export default function DebtPlannerPage() {
   const [planResult, setPlanResult] = useState<PlanResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // AI Analysis state
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [showAIPanel, setShowAIPanel] = useState(true);
 
   const runPlan = async () => {
     setIsLoading(true);
@@ -87,6 +140,58 @@ export default function DebtPlannerPage() {
       setError(err instanceof Error ? err.message : 'Failed to calculate debt plan');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fetch AI debt analysis
+  const fetchAIAnalysis = async () => {
+    setIsLoadingAI(true);
+    setAiError('');
+
+    try {
+      const response = await fetch('/api/ai/debt-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to get AI analysis');
+      }
+
+      if (result.success && result.data?.analysis) {
+        setAiAnalysis(result.data.analysis);
+
+        // Auto-apply AI recommended settings
+        if (result.data.analysis.recommendedStrategy) {
+          setSettings(prev => ({
+            ...prev,
+            strategy: result.data.analysis.recommendedStrategy,
+            surplusPerPeriod: result.data.analysis.optimalSurplus?.recommended || prev.surplusPerPeriod,
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('AI Analysis error:', err);
+      setAiError(err instanceof Error ? err.message : 'Failed to get AI analysis');
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  // Apply AI recommended surplus
+  const applyAISurplus = (amount: number) => {
+    setSettings(prev => ({ ...prev, surplusPerPeriod: amount }));
+  };
+
+  // Apply AI recommended strategy
+  const applyAIStrategy = () => {
+    if (aiAnalysis?.recommendedStrategy) {
+      setSettings(prev => ({ ...prev, strategy: aiAnalysis.recommendedStrategy }));
     }
   };
 
@@ -132,6 +237,278 @@ export default function DebtPlannerPage() {
       />
 
       <div className="space-y-6">
+        {/* AI Smart Analysis Panel */}
+        <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
+                  <Brain className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    AI Debt Strategy Advisor
+                    <Badge variant="outline" className="gap-1 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400">
+                      <Sparkles className="h-3 w-3" />
+                      Powered by Gemini AI
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Get personalized debt reduction strategy based on your financial situation
+                  </CardDescription>
+                </div>
+              </div>
+              <Button
+                onClick={fetchAIAnalysis}
+                disabled={isLoadingAI}
+                className="gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                {isLoadingAI ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    {aiAnalysis ? 'Refresh Analysis' : 'Get AI Analysis'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+
+          {aiError && (
+            <CardContent className="pt-0">
+              <div className="flex items-center gap-2 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg text-red-700 dark:text-red-300 text-sm">
+                <AlertCircle className="h-4 w-4" />
+                {aiError}
+              </div>
+            </CardContent>
+          )}
+
+          {aiAnalysis && (
+            <CardContent className="space-y-6">
+              {/* Summary & Score */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="md:col-span-3 p-4 bg-white dark:bg-gray-900 rounded-lg border">
+                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">AI Assessment</h4>
+                  <p className="text-sm">{aiAnalysis.summary}</p>
+                </div>
+                <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border text-center">
+                  <h4 className="font-semibold text-sm text-muted-foreground mb-2">Debt Health</h4>
+                  <div className={`text-3xl font-bold ${
+                    aiAnalysis.debtHealthScore >= 70 ? 'text-green-600' :
+                    aiAnalysis.debtHealthScore >= 40 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {aiAnalysis.debtHealthScore}
+                  </div>
+                  <div className="text-xs text-muted-foreground">out of 100</div>
+                </div>
+              </div>
+
+              {/* Recommended Strategy */}
+              <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4 text-yellow-500" />
+                      Recommended Strategy: {strategyDescriptions[aiAnalysis.recommendedStrategy]?.name || aiAnalysis.recommendedStrategy}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">{aiAnalysis.strategyReason}</p>
+                  </div>
+                  {settings.strategy !== aiAnalysis.recommendedStrategy && (
+                    <Button size="sm" variant="outline" onClick={applyAIStrategy} className="gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Apply
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Optimal Surplus Recommendations */}
+              <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border">
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-green-500" />
+                  Recommended Extra Payment Amounts
+                </h4>
+                <p className="text-xs text-muted-foreground mb-3">{aiAnalysis.optimalSurplus.reasoning}</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => applyAISurplus(aiAnalysis.optimalSurplus.minimum)}
+                    className={`p-3 rounded-lg border text-center transition-all hover:border-purple-500 ${
+                      settings.surplusPerPeriod === aiAnalysis.optimalSurplus.minimum ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : ''
+                    }`}
+                  >
+                    <div className="text-xs text-muted-foreground">Minimum</div>
+                    <div className="font-semibold">{formatCurrency(aiAnalysis.optimalSurplus.minimum)}</div>
+                    <div className="text-xs text-muted-foreground">/month</div>
+                  </button>
+                  <button
+                    onClick={() => applyAISurplus(aiAnalysis.optimalSurplus.recommended)}
+                    className={`p-3 rounded-lg border text-center transition-all hover:border-purple-500 ring-2 ring-purple-500/50 ${
+                      settings.surplusPerPeriod === aiAnalysis.optimalSurplus.recommended ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : ''
+                    }`}
+                  >
+                    <div className="text-xs font-medium text-purple-600">Recommended</div>
+                    <div className="font-bold text-lg">{formatCurrency(aiAnalysis.optimalSurplus.recommended)}</div>
+                    <div className="text-xs text-muted-foreground">/month</div>
+                  </button>
+                  <button
+                    onClick={() => applyAISurplus(aiAnalysis.optimalSurplus.aggressive)}
+                    className={`p-3 rounded-lg border text-center transition-all hover:border-purple-500 ${
+                      settings.surplusPerPeriod === aiAnalysis.optimalSurplus.aggressive ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : ''
+                    }`}
+                  >
+                    <div className="text-xs text-muted-foreground">Aggressive</div>
+                    <div className="font-semibold">{formatCurrency(aiAnalysis.optimalSurplus.aggressive)}</div>
+                    <div className="text-xs text-muted-foreground">/month</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Key Insights */}
+              {aiAnalysis.keyInsights && aiAnalysis.keyInsights.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                    Key Insights
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {aiAnalysis.keyInsights.map((insight, index) => (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg border ${
+                          insight.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' :
+                          insight.type === 'opportunity' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
+                          'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          {insight.type === 'warning' ? (
+                            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                          ) : insight.type === 'opportunity' ? (
+                            <TrendingUp className="h-4 w-4 text-green-600 mt-0.5" />
+                          ) : (
+                            <Lightbulb className="h-4 w-4 text-blue-600 mt-0.5" />
+                          )}
+                          <div>
+                            <div className="font-medium text-sm">{insight.title}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{insight.description}</div>
+                            {insight.impact && (
+                              <div className="text-xs font-medium text-purple-600 mt-1">{insight.impact}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Loan Priority Order */}
+              {aiAnalysis.loanPriority && aiAnalysis.loanPriority.length > 0 && (
+                <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Target className="h-4 w-4 text-purple-500" />
+                    Loan Payoff Priority
+                  </h4>
+                  <div className="space-y-2">
+                    {aiAnalysis.loanPriority.map((loan, index) => (
+                      <div key={index} className="flex items-center gap-3 p-2 bg-muted/50 rounded">
+                        <div className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-bold text-purple-600">
+                          {loan.priority}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{loan.loanName}</div>
+                          <div className="text-xs text-muted-foreground">{loan.reason}</div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {loan.estimatedPayoff}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Plan */}
+              {aiAnalysis.actionPlan && aiAnalysis.actionPlan.length > 0 && (
+                <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Your Action Plan
+                  </h4>
+                  <div className="space-y-3">
+                    {aiAnalysis.actionPlan.map((action, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-xs font-bold text-green-600 mt-0.5">
+                          {action.step}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{action.action}</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
+                            <Clock className="h-3 w-3" />
+                            {action.timeline}
+                            <ArrowRight className="h-3 w-3" />
+                            {action.expectedResult}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Warnings */}
+              {aiAnalysis.warnings && aiAnalysis.warnings.length > 0 && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                  <h4 className="font-semibold mb-2 flex items-center gap-2 text-red-700 dark:text-red-300">
+                    <AlertTriangle className="h-4 w-4" />
+                    Important Warnings
+                  </h4>
+                  <ul className="list-disc list-inside text-sm text-red-600 dark:text-red-400 space-y-1">
+                    {aiAnalysis.warnings.map((warning, index) => (
+                      <li key={index}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* AI Projections */}
+              {aiAnalysis.projections && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="text-xs text-green-600 dark:text-green-400 font-medium">Debt Free By</div>
+                    <div className="text-xl font-bold text-green-700 dark:text-green-300">{aiAnalysis.projections.debtFreeDate}</div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Interest Savings</div>
+                    <div className="text-xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(aiAnalysis.projections.totalInterestSaved)}</div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/30 dark:to-violet-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
+                    <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">Time Saved</div>
+                    <div className="text-xl font-bold text-purple-700 dark:text-purple-300">{aiAnalysis.projections.monthsSaved} months</div>
+                    <div className="text-xs text-muted-foreground">{aiAnalysis.projections.comparedToMinimum}</div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          )}
+
+          {!aiAnalysis && !isLoadingAI && !aiError && (
+            <CardContent className="py-8">
+              <div className="text-center text-muted-foreground">
+                <Brain className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Click "Get AI Analysis" to receive personalized debt reduction recommendations</p>
+                <p className="text-xs mt-1">Our AI will analyze your loans, income, and expenses to create an optimal strategy</p>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        <Separator />
+
         {/* Strategy Selection */}
         <Card>
           <CardHeader>
