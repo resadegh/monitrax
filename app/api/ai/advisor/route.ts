@@ -3,13 +3,14 @@
  * POST /api/ai/advisor
  *
  * Generate comprehensive AI-powered financial advice based on user data
+ * Phase 27 - Now powered by Google Gemini
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
   generateAIAdvice,
   buildFinancialContextFromSnapshot,
-  isOpenAIConfigured,
+  isGeminiConfigured,
 } from '@/lib/ai';
 import { collectStrategyData, validateDataCompleteness } from '@/lib/strategy';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
@@ -20,13 +21,13 @@ export async function POST(request: NextRequest) {
       const userId = authReq.user!.userId;
 
       // Check if AI is configured
-      if (!isOpenAIConfigured()) {
+      if (!isGeminiConfigured()) {
         return NextResponse.json(
           {
             success: false,
             error: 'AI advisor not configured',
             message:
-              'Please configure OPENAI_API_KEY environment variable to enable AI features.',
+              'Please configure GEMINI_API_KEY environment variable to enable AI features.',
           },
           { status: 503 }
         );
@@ -75,8 +76,8 @@ export async function POST(request: NextRequest) {
         strategyData.health
       );
 
-      // Generate AI advice
-      console.log('[API] Generating AI advice...');
+      // Generate AI advice using Gemini
+      console.log('[API] Generating Gemini AI advice...');
       const result = await generateAIAdvice({
         userId,
         query,
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log(`[API] AI advice generated successfully`);
+      console.log(`[API] Gemini AI advice generated successfully`);
       console.log(`[API] Health score: ${result.advice.healthScore}`);
       console.log(
         `[API] Recommendations: ${result.advice.recommendations?.length || 0}`
@@ -145,15 +146,15 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq: AuthenticatedRequest) => {
     try {
-      const configured = isOpenAIConfigured();
+      const configured = isGeminiConfigured();
 
       return NextResponse.json({
         success: true,
         data: {
           available: configured,
           message: configured
-            ? 'AI advisor is ready'
-            : 'AI advisor requires OPENAI_API_KEY configuration',
+            ? 'AI advisor is ready (powered by Gemini)'
+            : 'AI advisor requires GEMINI_API_KEY configuration',
         },
       });
     } catch (error) {

@@ -12,9 +12,9 @@
  */
 
 import {
-  isOpenAIConfigured,
-  generateJSONCompletion,
-  AI_MODELS,
+  isGeminiConfigured,
+  generateGeminiJSONCompletion,
+  GEMINI_MODELS,
   truncateToTokenLimit,
 } from '@/lib/ai';
 import {
@@ -127,10 +127,10 @@ export interface AIAnalyzerOptions {
 }
 
 /**
- * Check if AI analysis is available (OpenAI configured)
+ * Check if AI analysis is available (Gemini configured)
  */
 export function isAIAnalysisAvailable(): boolean {
-  return isOpenAIConfigured();
+  return isGeminiConfigured();
 }
 
 /**
@@ -142,7 +142,7 @@ export async function analyzeDocumentWithAI(
   const { documentType, text, filename } = options;
   const startTime = Date.now();
 
-  if (!isOpenAIConfigured()) {
+  if (!isGeminiConfigured()) {
     return {
       documentType,
       typeConfidence: 0,
@@ -179,8 +179,8 @@ Include vendor names, amounts, dates, and any identifying numbers.`;
   const truncatedText = truncateToTokenLimit(text, 8000);
 
   try {
-    const result = await generateJSONCompletion<Record<string, unknown>>({
-      model: AI_MODELS.QUICK_RESPONSE,  // Use cost-effective model
+    const result = await generateGeminiJSONCompletion<Record<string, unknown>>({
+      model: GEMINI_MODELS.DOCUMENT_ANALYSIS,  // Use cost-effective model
       systemPrompt: DOCUMENT_ANALYSIS_SYSTEM_PROMPT,
       userPrompt: `${userPrompt}\n\nDocument text:\n${truncatedText}`,
       maxTokens: 2000,
@@ -218,7 +218,7 @@ Include vendor names, amounts, dates, and any identifying numbers.`;
       overallConfidence,
       lowConfidenceFields,
       suggestedActions,
-      analyzerVersion: 'ai-gpt4o-mini-v1',
+      analyzerVersion: 'ai-gemini-v1',
       processingTimeMs: Date.now() - startTime,
     };
   } catch (error) {
@@ -365,13 +365,13 @@ export async function explainExtraction(
   extractedData: Record<string, unknown>,
   userQuestion: string
 ): Promise<string> {
-  if (!isOpenAIConfigured()) {
-    return 'AI explanation is not available. Please ensure OpenAI API is configured.';
+  if (!isGeminiConfigured()) {
+    return 'AI explanation is not available. Please ensure Gemini API is configured.';
   }
 
   try {
-    const result = await generateJSONCompletion<{ explanation: string }>({
-      model: AI_MODELS.QUICK_RESPONSE,
+    const result = await generateGeminiJSONCompletion<{ explanation: string }>({
+      model: GEMINI_MODELS.QUICK_RESPONSE,
       systemPrompt: `You are a helpful assistant explaining document extraction results to Australian users.
 Be concise and focus on practical implications.`,
       userPrompt: `Document type: ${documentType}
