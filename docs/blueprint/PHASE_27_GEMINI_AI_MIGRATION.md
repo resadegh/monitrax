@@ -174,6 +174,7 @@ gemini-2.5-pro-preview-05-06
 | `/api/ai/status` | GET | Check AI config | N/A |
 | `/api/ai/goal` | POST | Goal analysis | gemini-2.0-flash |
 | `/api/ai/scenario` | POST | What-if scenarios | gemini-2.0-flash |
+| `/api/ai/debt-analysis` | POST | **NEW** AI debt strategy advisor | gemini-2.5-flash |
 | `/api/documents/analyze-for-form` | POST | Document extraction | gemini-2.0-flash |
 
 ### Request/Response Examples
@@ -253,12 +254,84 @@ gemini-2.5-pro-preview-05-06
       "financialAdvisor": true,
       "chatAssistant": true,
       "projections": true,
-      "documentAnalysis": true
+      "documentAnalysis": true,
+      "debtAnalysis": true
     },
     "models": {
       "quick": "gemini-2.0-flash",
       "detailed": "gemini-2.5-flash-preview-05-20",
       "document": "gemini-2.0-flash"
+    }
+  }
+}
+```
+
+#### POST /api/ai/debt-analysis
+
+AI-powered debt strategy advisor that analyzes user's loans, income, and expenses to provide personalized debt reduction recommendations.
+
+```typescript
+// Request
+POST /api/ai/debt-analysis
+Authorization: Bearer <token>
+
+// Response
+{
+  "success": true,
+  "data": {
+    "analysis": {
+      "summary": "Your debt portfolio shows high concentration in property loans...",
+      "debtHealthScore": 62,
+      "recommendedStrategy": "TAX_AWARE_MINIMUM_INTEREST",
+      "strategyReason": "You have both investment and home loans. Prioritizing home loan reduces non-deductible interest.",
+      "optimalSurplus": {
+        "recommended": 2000,
+        "minimum": 500,
+        "aggressive": 4000,
+        "reasoning": "Based on your $8,500 monthly income and $6,000 expenses..."
+      },
+      "keyInsights": [
+        {
+          "type": "opportunity",
+          "title": "Offset Account Opportunity",
+          "description": "Your offset account only covers 15% of your loan balance",
+          "impact": "Adding $50,000 to offset would save $3,200/year in interest"
+        }
+      ],
+      "loanPriority": [
+        {
+          "loanName": "Home Loan - Thornlands",
+          "priority": 1,
+          "reason": "Non-deductible debt with highest effective interest cost",
+          "estimatedPayoff": "18 months with recommended surplus"
+        }
+      ],
+      "projections": {
+        "debtFreeDate": "March 2032",
+        "totalInterestSaved": 87500,
+        "monthsSaved": 48,
+        "comparedToMinimum": "4 years earlier than minimum payments only"
+      },
+      "actionPlan": [
+        {
+          "step": 1,
+          "action": "Set up automatic extra repayment of $2,000/month",
+          "timeline": "This week",
+          "expectedResult": "Start reducing principal immediately"
+        }
+      ],
+      "warnings": ["High debt-to-income ratio (52%) - consider reducing expenses"]
+    },
+    "context": {
+      "totalDebt": 1850000,
+      "monthlyIncome": 12500,
+      "monthlySurplus": 2800,
+      "loanCount": 4
+    },
+    "usage": {
+      "model": "gemini-2.5-flash-preview-05-20",
+      "totalTokens": 3521,
+      "estimatedCost": 0.0021
     }
   }
 }
