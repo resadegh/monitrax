@@ -224,6 +224,8 @@ function buildDebtAnalysisPrompt(ctx: PromptContext): string {
   const formatCurrency = (v: number) => formatCurrencyForPrompt(v);
   const formatPercent = (v: number) => formatPercentageForPrompt(v);
 
+  const availableForExtra = Math.max(0, ctx.monthlySurplus - ctx.totalLoanRepayments);
+
   let prompt = `
 DEBT PORTFOLIO ANALYSIS REQUEST
 ===============================
@@ -231,11 +233,15 @@ DEBT PORTFOLIO ANALYSIS REQUEST
 CASH FLOW SUMMARY
 -----------------
 Monthly Income: ${formatCurrency(ctx.monthlyIncome)}
-Monthly Expenses: ${formatCurrency(ctx.monthlyExpenses)}
-Monthly Surplus (after expenses): ${formatCurrency(ctx.monthlySurplus)}
-Current Loan Repayments: ${formatCurrency(ctx.totalLoanRepayments)}
-Available for Extra Repayments: ${formatCurrency(Math.max(0, ctx.monthlySurplus - ctx.totalLoanRepayments))}
-Cash/Savings Balance: ${formatCurrency(ctx.cashBalance)}
+Monthly Expenses (recorded): ${formatCurrency(ctx.monthlyExpenses)}
+Monthly Surplus (after recorded expenses): ${formatCurrency(ctx.monthlySurplus)}
+Current Loan Repayments (minimum required): ${formatCurrency(ctx.totalLoanRepayments)}
+
+⚠️ IMPORTANT - AVAILABLE FOR EXTRA REPAYMENTS: ${formatCurrency(availableForExtra)}/month
+This is the MAXIMUM amount that can be allocated to extra debt payments.
+Your surplus recommendations MUST NOT exceed this amount!
+
+Cash/Savings Balance (Emergency Fund): ${formatCurrency(ctx.cashBalance)}
 
 DEBT SUMMARY
 ------------
@@ -275,6 +281,9 @@ ${index + 1}. ${loan.name}
 ANALYSIS REQUEST
 ----------------
 Based on the above debt portfolio and cash flow situation:
+
+REMEMBER: Available for Extra Repayments = ${formatCurrency(availableForExtra)}/month
+ALL your surplus recommendations must be LESS than or equal to this amount!
 
 1. Recommend the BEST strategy (Tax-Aware, Avalanche, or Snowball) with specific reasoning
 2. Calculate optimal monthly surplus amounts they should allocate to extra repayments
