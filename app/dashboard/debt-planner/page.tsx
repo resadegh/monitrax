@@ -62,6 +62,14 @@ interface AIAnalysis {
   debtHealthScore: number;
   recommendedStrategy: 'TAX_AWARE_MINIMUM_INTEREST' | 'AVALANCHE' | 'SNOWBALL';
   strategyReason: string;
+  budgetAnalysis?: {
+    estimatedLivingCosts: number;
+    lifestyleBuffer: number;
+    emergencyFundStatus: 'adequate' | 'needs_building' | 'critical';
+    recommendedEmergencyFund: number;
+    trueDisposableIncome: number;
+    budgetNotes: string;
+  };
   optimalSurplus: {
     recommended: number;
     minimum: number;
@@ -306,6 +314,45 @@ export default function DebtPlannerPage() {
                   <div className="text-xs text-muted-foreground">out of 100</div>
                 </div>
               </div>
+
+              {/* Budget Analysis */}
+              {aiAnalysis.budgetAnalysis && (
+                <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <h4 className="font-semibold mb-3 flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                    <DollarSign className="h-4 w-4" />
+                    Budget Analysis
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div className="p-2 bg-white/50 dark:bg-gray-900/50 rounded">
+                      <div className="text-xs text-muted-foreground">Est. Living Costs</div>
+                      <div className="font-semibold">{formatCurrency(aiAnalysis.budgetAnalysis.estimatedLivingCosts)}/mo</div>
+                    </div>
+                    <div className="p-2 bg-white/50 dark:bg-gray-900/50 rounded">
+                      <div className="text-xs text-muted-foreground">Lifestyle Buffer</div>
+                      <div className="font-semibold">{formatCurrency(aiAnalysis.budgetAnalysis.lifestyleBuffer)}/mo</div>
+                    </div>
+                    <div className="p-2 bg-white/50 dark:bg-gray-900/50 rounded">
+                      <div className="text-xs text-muted-foreground">True Disposable</div>
+                      <div className="font-semibold text-green-600">{formatCurrency(aiAnalysis.budgetAnalysis.trueDisposableIncome)}/mo</div>
+                    </div>
+                    <div className="p-2 bg-white/50 dark:bg-gray-900/50 rounded">
+                      <div className="text-xs text-muted-foreground">Emergency Fund</div>
+                      <div className={`font-semibold ${
+                        aiAnalysis.budgetAnalysis.emergencyFundStatus === 'adequate' ? 'text-green-600' :
+                        aiAnalysis.budgetAnalysis.emergencyFundStatus === 'needs_building' ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {aiAnalysis.budgetAnalysis.emergencyFundStatus === 'adequate' ? 'Adequate' :
+                         aiAnalysis.budgetAnalysis.emergencyFundStatus === 'needs_building' ? 'Needs Work' : 'Critical'}
+                      </div>
+                    </div>
+                  </div>
+                  {aiAnalysis.budgetAnalysis.budgetNotes && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300 bg-white/30 dark:bg-gray-900/30 p-2 rounded">
+                      <strong>Note:</strong> {aiAnalysis.budgetAnalysis.budgetNotes}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Recommended Strategy */}
               <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border">
