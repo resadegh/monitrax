@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
               id: true,
               name: true,
               address: true,
-              isInvestmentProperty: true,
+              type: true,
             }
           }
         },
@@ -249,7 +249,7 @@ INDIVIDUAL LOANS
 `;
 
   ctx.loans.forEach((loan, index) => {
-    const isInvestment = loan.property?.isInvestmentProperty || loan.type === 'INVESTMENT';
+    const isInvestment = loan.property?.type === 'INVESTMENT' || loan.type === 'INVESTMENT';
     const effectiveBalance = loan.principal - (loan.offsetAccount?.currentBalance || 0);
     const monthlyInterest = (effectiveBalance * loan.interestRateAnnual) / 12;
 
