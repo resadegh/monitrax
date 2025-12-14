@@ -1,18 +1,18 @@
 /**
  * AI STRATEGY ENHANCER
- * Phase 11 Enhancement - AI Integration
+ * Phase 27 - Migrated to Google Gemini
  *
  * Enhances rule-based strategy recommendations with AI-generated
  * explanations, insights, and personalized advice.
  */
 
 import {
-  generateCompletion,
-  generateJSONCompletion,
-  AI_MODELS,
-  isOpenAIConfigured,
+  generateGeminiJSONCompletion,
+  generateGeminiTextCompletion,
+  isGeminiConfigured,
   formatCurrencyForPrompt,
-} from './openai';
+  GEMINI_MODELS,
+} from './google';
 import type { FinancialContext } from './types';
 
 // =============================================================================
@@ -54,7 +54,7 @@ export async function enhanceRecommendation(
   },
   context: FinancialContext
 ): Promise<RecommendationEnhancement | null> {
-  if (!isOpenAIConfigured()) {
+  if (!isGeminiConfigured()) {
     return null;
   }
 
@@ -87,8 +87,8 @@ Enhance this recommendation with personalized, actionable advice.
 `;
 
   try {
-    const { data } = await generateJSONCompletion<RecommendationEnhancement>({
-      model: AI_MODELS.QUICK_RESPONSE,
+    const { data } = await generateGeminiJSONCompletion<RecommendationEnhancement>({
+      model: GEMINI_MODELS.QUICK_RESPONSE,
       systemPrompt,
       userPrompt,
       maxTokens: 800,
@@ -125,7 +125,7 @@ export async function enhanceRecommendationsBatch(
   let totalTokens = 0;
   let totalCost = 0;
 
-  if (!isOpenAIConfigured()) {
+  if (!isGeminiConfigured()) {
     return { enhanced, usage: { totalTokens: 0, estimatedCost: 0 } };
   }
 
@@ -170,7 +170,7 @@ export async function generateExecutiveSummary(
   }>,
   context: FinancialContext
 ): Promise<string | null> {
-  if (!isOpenAIConfigured() || recommendations.length === 0) {
+  if (!isGeminiConfigured() || recommendations.length === 0) {
     return null;
   }
 
@@ -202,15 +202,15 @@ Write a brief executive summary (3-4 sentences) highlighting:
 `;
 
   try {
-    const result = await generateCompletion({
-      model: AI_MODELS.QUICK_RESPONSE,
+    const result = await generateGeminiTextCompletion({
+      model: GEMINI_MODELS.QUICK_RESPONSE,
       systemPrompt,
       userPrompt,
       maxTokens: 400,
       temperature: 0.7,
     });
 
-    return result.content;
+    return result.text;
   } catch (error) {
     console.error('[AIStrategyEnhancer] Error generating summary:', error);
     return null;
@@ -237,7 +237,7 @@ export async function analyzeScenario(
   cons: string[];
   recommendation: string;
 } | null> {
-  if (!isOpenAIConfigured()) {
+  if (!isGeminiConfigured()) {
     return null;
   }
 
@@ -267,13 +267,13 @@ Analyze this scenario and provide a balanced assessment.
 `;
 
   try {
-    const { data } = await generateJSONCompletion<{
+    const { data } = await generateGeminiJSONCompletion<{
       analysis: string;
       pros: string[];
       cons: string[];
       recommendation: string;
     }>({
-      model: AI_MODELS.QUICK_RESPONSE,
+      model: GEMINI_MODELS.QUICK_RESPONSE,
       systemPrompt,
       userPrompt,
       maxTokens: 800,
@@ -308,7 +308,7 @@ export async function analyzeGoalProgress(
   adjustments: string[];
   milestones: string[];
 } | null> {
-  if (!isOpenAIConfigured()) {
+  if (!isGeminiConfigured()) {
     return null;
   }
 
@@ -339,13 +339,13 @@ Assess the feasibility of this goal and suggest concrete milestones.
 `;
 
   try {
-    const { data } = await generateJSONCompletion<{
+    const { data } = await generateGeminiJSONCompletion<{
       feasibility: 'on_track' | 'achievable' | 'challenging' | 'unrealistic';
       analysis: string;
       adjustments: string[];
       milestones: string[];
     }>({
-      model: AI_MODELS.QUICK_RESPONSE,
+      model: GEMINI_MODELS.QUICK_RESPONSE,
       systemPrompt,
       userPrompt,
       maxTokens: 800,
