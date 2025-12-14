@@ -6,7 +6,7 @@
  *
  * Flow:
  * 1. Upload document to GCS
- * 2. Vision API performs OCR (for images) or pdfjs-dist extracts text (for PDFs)
+ * 2. Vision API performs OCR (for images) or unpdf extracts text (for PDFs)
  * 3. Gemini AI (preferred) or OpenAI maps extracted text to form fields
  * 4. Return field mappings with confidence scores
  */
@@ -335,7 +335,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
     let ocrText = '';
 
     if (isPDF) {
-      // For PDFs: Use pdf-parse to extract embedded text
+      // For PDFs: Use unpdf to extract embedded text
       console.log('[Form Auto-Fill] Extracting text from PDF...');
       try {
         ocrText = await extractTextFromPDF(fileBuffer);
