@@ -560,6 +560,7 @@ function ExpensesPageContent() {
     FOOD: { label: 'Food', icon: <Store className="h-5 w-5" />, color: 'text-rose-500' },
     TRANSPORT: { label: 'Transport', icon: <Briefcase className="h-5 w-5" />, color: 'text-indigo-500' },
     ENTERTAINMENT: { label: 'Entertainment', icon: <CreditCard className="h-5 w-5" />, color: 'text-pink-500' },
+    SUBSCRIPTION: { label: 'Subscription', icon: <Calendar className="h-5 w-5" />, color: 'text-fuchsia-500' },
     STRATA: { label: 'Strata', icon: <Building2 className="h-5 w-5" />, color: 'text-teal-500' },
     LAND_TAX: { label: 'Land Tax', icon: <Landmark className="h-5 w-5" />, color: 'text-red-500' },
     LOAN_INTEREST: { label: 'Loan Interest', icon: <Landmark className="h-5 w-5" />, color: 'text-red-600' },
