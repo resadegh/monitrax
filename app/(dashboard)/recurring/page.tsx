@@ -60,6 +60,7 @@ import {
 interface LinkedExpense {
   id: string;
   name: string;
+  vendorName: string | null;
   category: string;
   amount: number;
   frequency: string;
