@@ -121,8 +121,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Fetch user's income and expenses for cash flow context
-      const [incomes, expenses, accounts] = await Promise.all([
+      // Fetch user's income, expenses, accounts, and budget analysis for cash flow context
+      const [incomes, expenses, accounts, budgetAnalysis] = await Promise.all([
         prisma.income.findMany({
           where: { userId },
           select: { amount: true, frequency: true },
@@ -134,6 +134,14 @@ export async function POST(request: NextRequest) {
         prisma.account.findMany({
           where: { userId },
           select: { currentBalance: true, type: true },
+        }),
+        // Phase 28: Check for confirmed budget analysis with realistic expenses
+        prisma.budgetAnalysis.findFirst({
+          where: {
+            userId,
+            status: 'CONFIRMED',
+          },
+          orderBy: { analysisDate: 'desc' },
         }),
       ]);
 
@@ -150,7 +158,13 @@ export async function POST(request: NextRequest) {
       };
 
       const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency), 0);
-      const monthlyExpenses = expenses.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency), 0);
+      const trackedExpenses = expenses.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency), 0);
+
+      // Phase 28: Use realistic budget if available, otherwise use tracked expenses only
+      const hasRealisticBudget = budgetAnalysis && budgetAnalysis.userFinalBudget;
+      const monthlyExpenses = hasRealisticBudget
+        ? budgetAnalysis.userFinalBudget!
+        : trackedExpenses;
       const monthlySurplus = monthlyIncome - monthlyExpenses;
       const totalLoanRepayments = loans.reduce((sum, l) => sum + toMonthly(l.minRepayment, l.repaymentFrequency), 0);
       const totalDebt = loans.reduce((sum, l) => sum + l.principal, 0);
@@ -163,7 +177,10 @@ export async function POST(request: NextRequest) {
 
       console.log('[API] Debt Analysis - Cash Flow Breakdown:');
       console.log(`  Monthly Income: $${monthlyIncome.toFixed(0)}`);
-      console.log(`  Monthly Expenses: $${monthlyExpenses.toFixed(0)}`);
+      console.log(`  Monthly Expenses: $${monthlyExpenses.toFixed(0)}${hasRealisticBudget ? ' (realistic budget)' : ' (tracked only)'}`);
+      if (hasRealisticBudget) {
+        console.log(`    └── Tracked: $${trackedExpenses.toFixed(0)}, Variable Est: $${(budgetAnalysis.aiVariableEstimate || 0).toFixed(0)}`);
+      }
       console.log(`  Monthly Loan Repayments: $${totalLoanRepayments.toFixed(0)}`);
       console.log(`  Available for Extra: $${availableForExtraRepayments.toFixed(0)}`);
 
@@ -217,6 +234,30 @@ export async function POST(request: NextRequest) {
             availableForExtraRepayments, // NEW: Include this for UI validation
             cashBalance,
             loanCount: loans.length,
+
+            // Phase 28: Budget analysis integration
+            budgetAnalysis: hasRealisticBudget ? {
+              available: true,
+              totalRealisticBudget: budgetAnalysis.userFinalBudget,
+              recurringExpenses: budgetAnalysis.recurringExpensesTotal,
+              variableExpenses: budgetAnalysis.aiVariableEstimate,
+              usedInCalculation: true,
+            } : {
+              available: false,
+              usedInCalculation: false,
+            },
+
+            // Comparison: with vs without realistic budget
+            comparison: hasRealisticBudget ? {
+              withoutBudgetAnalysis: {
+                monthlyExpenses: trackedExpenses,
+                availableForExtra: Math.max(0, (monthlyIncome - trackedExpenses) - totalLoanRepayments),
+              },
+              withBudgetAnalysis: {
+                monthlyExpenses: monthlyExpenses,
+                availableForExtra: availableForExtraRepayments,
+              },
+            } : null,
           },
           usage,
         },
