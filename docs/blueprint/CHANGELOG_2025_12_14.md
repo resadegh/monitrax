@@ -175,6 +175,49 @@ When AI is working correctly, logs show:
 | `7d328fd` | fix(ai): update system prompts to identify as Google Gemini AI |
 | `602d8b6` | feat(ai): add AI-powered debt analysis to Debt Planner |
 | `ebb71e3` | fix(ai): fix Property type reference in debt analysis API |
+| `df5f361` | feat(ai): add smart budgeting rules to debt analysis |
+| `c97ecc6` | fix(ai): constrain debt recommendations to actual available cash flow |
+| `c41ba5a` | fix(ai): add server-side validation to cap debt recommendations |
+
+---
+
+## Server-Side AI Validation (Phase 27.2)
+
+### Critical Fix: AI Recommendation Capping
+
+Fixed a critical bug where the AI was recommending surplus amounts exceeding the user's actual available cashflow. For example, recommending $8,443/month when only $4,969/month was available.
+
+#### Root Cause
+The AI (Gemini) was not reliably following prompt constraints about available cashflow, even with explicit instructions. The AI would hallucinate "True Disposable Income" values that exceeded the actual calculated cashflow.
+
+#### Solution: Server-Side Validation
+Added `validateAndCapRecommendations()` function that enforces hard limits on AI recommendations:
+
+```typescript
+// Calculate realistic surplus limits based on actual available cashflow
+const maxAggressiveSurplus = Math.round(availableForExtra * 0.9);  // 90%
+const maxRecommendedSurplus = Math.round(availableForExtra * 0.6); // 60%
+const maxMinimumSurplus = Math.round(availableForExtra * 0.3);     // 30%
+```
+
+#### Key Changes
+
+| Change | Description |
+|--------|-------------|
+| Server-side capping | All surplus recommendations are now capped to percentages of actual available cashflow |
+| Budget analysis validation | `trueDisposableIncome` capped to `availableForExtraRepayments` |
+| Emergency fund tracking | Cash balance checked against thresholds ($10k critical, $20k needs building) |
+| Hierarchy enforcement | Ensures minimum < recommended < aggressive |
+| User warning | Warning added when AI recommendations were significantly off |
+| API response | Now includes `availableForExtraRepayments` and `cashBalance` for UI validation |
+
+#### Validation Rules
+
+| Tier | Percentage of Available | Purpose |
+|------|------------------------|---------|
+| Minimum | 30% | Sustainable long-term payment |
+| Recommended | 60% | Balanced approach |
+| Aggressive | 90% | Maximum while leaving buffer |
 
 ---
 
