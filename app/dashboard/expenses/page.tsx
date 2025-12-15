@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap, List } from 'lucide-react';
+import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap, List, Radio } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -87,6 +87,15 @@ interface Asset {
   type: string;
 }
 
+// Phase 29: Linked recurring payment info
+interface LinkedRecurringPayment {
+  id: string;
+  merchantStandardised: string;
+  pattern: string;
+  expectedAmount: number;
+  matchStatus: string;
+}
+
 interface Expense {
   id: string;
   name: string;
@@ -105,6 +114,8 @@ interface Expense {
   loan?: Loan | null;
   investmentAccount?: InvestmentAccount | null;
   asset?: Asset | null;
+  // Phase 29: Linked recurring payments from bank detection
+  linkedRecurringPayments?: LinkedRecurringPayment[];
   // GRDCS fields
   _links?: {
     self: string;
@@ -978,6 +989,11 @@ function ExpensesPageContent() {
                         <td className="px-4 py-3 text-right font-medium">{formatCurrency(monthlyAmount)}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-1">
+                            {item.linkedRecurringPayments && item.linkedRecurringPayments.length > 0 && (
+                              <span title="Bank Detected - Linked to recurring payment">
+                                <Radio className="h-4 w-4 text-blue-500" />
+                              </span>
+                            )}
                             {item.isTaxDeductible && (
                               <span title="Tax deductible">
                                 <Receipt className="h-4 w-4 text-green-500" />
@@ -1035,6 +1051,12 @@ function ExpensesPageContent() {
                       </CardTitle>
                       <div className="flex gap-2 flex-wrap">
                         {getCategoryBadge(item.category)}
+                        {item.linkedRecurringPayments && item.linkedRecurringPayments.length > 0 && (
+                          <Badge className="bg-blue-100 text-blue-800">
+                            <Radio className="h-3 w-3 mr-1" />
+                            Bank Detected
+                          </Badge>
+                        )}
                         {!item.isEssential && (
                           <Badge variant="outline">
                             <AlertCircle className="h-3 w-3 mr-1" />

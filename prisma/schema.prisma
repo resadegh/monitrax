@@ -616,6 +616,9 @@ model Expense {
   asset             Asset?             @relation(fields: [assetId], references: [id], onDelete: SetNull)
   transactions      Transaction[]
 
+  // Phase 29: Linked recurring payments from bank detection
+  linkedRecurringPayments RecurringPayment[] @relation("RecurringPaymentExpense")
+
   @@index([userId])
   @@index([propertyId])
   @@index([loanId])
@@ -1294,6 +1297,15 @@ enum AnomalyType {
   TIMING_ANOMALY      // Transaction at unusual time/day
 }
 
+// Phase 29: Expense Match Status for Recurring Payments
+enum ExpenseMatchStatus {
+  UNMATCHED           // No expense linked, no suggestions
+  SUGGESTED           // AI found a potential match
+  LINKED              // User confirmed link to expense
+  DISMISSED           // User dismissed match suggestion
+  CREATED             // Expense was created from this recurring payment
+}
+
 // =============================================================================
 // PHASE 13: UNIFIED TRANSACTION RECORD (UTR)
 // =============================================================================
@@ -1431,17 +1443,24 @@ model RecurringPayment {
   isActive              Boolean           @default(true)
   isPaused              Boolean           @default(false)
 
+  // Phase 29: Expense Linking
+  linkedExpenseId       String?           // Links to tracked expense
+  matchConfidence       Float?            // Confidence score when matched (0-1)
+  matchStatus           ExpenseMatchStatus @default(UNMATCHED)
+
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
   // Relationships
   user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   account               Account           @relation("RecurringPayments", fields: [accountId], references: [id], onDelete: Cascade)
+  linkedExpense         Expense?          @relation("RecurringPaymentExpense", fields: [linkedExpenseId], references: [id], onDelete: SetNull)
 
   @@unique([userId, merchantStandardised, accountId])
   @@index([userId])
   @@index([accountId])
   @@index([nextExpected])
+  @@index([linkedExpenseId])
   @@map("recurring_payments")
 }
 
