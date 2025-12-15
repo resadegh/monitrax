@@ -29,45 +29,10 @@ import {
   Calendar,
   Building,
 } from 'lucide-react';
+import type { RecurringPayment, LinkedExpense } from '@/types/recurring';
 
-interface RecurringPayment {
-  id: string;
-  merchantStandardised: string;
-  pattern: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'IRREGULAR';
-  expectedAmount: number;
-  amountVariance: number;
-  lastOccurrence: string;
-  nextExpected: string | null;
-  occurrenceCount: number;
-  priceIncreaseAlert: boolean;
-  isActive: boolean;
-  isPaused: boolean;
-  matchStatus: string;
-  matchConfidence: number | null;
-  linkedExpenseId: string | null;
-  linkedExpense: {
-    id: string;
-    name: string;
-    vendorName: string | null;
-    category: string;
-    amount: number;
-    frequency: string;
-  } | null;
-  account: {
-    id: string;
-    name: string;
-    institution?: string;
-  };
-}
-
-interface ExpenseMatch {
-  id: string;
-  name: string;
-  vendorName: string | null;
-  category: string;
-  amount: number;
-  frequency: string;
-}
+// ExpenseMatch is the same as LinkedExpense
+type ExpenseMatch = LinkedExpense;
 
 interface MatchConfirmationDialogProps {
   open: boolean;

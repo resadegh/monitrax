@@ -23,6 +23,12 @@ import {
   MatchConfirmationDialog,
   CreateExpenseFromRecurring,
 } from '@/components/recurring';
+import type {
+  RecurringPayment,
+  LinkedExpense,
+  MatchResult,
+  RecurringSummary,
+} from '@/types/recurring';
 import {
   RefreshCw,
   Calendar,
@@ -53,61 +59,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// =============================================================================
-// TYPES
-// =============================================================================
-
-interface LinkedExpense {
-  id: string;
-  name: string;
-  vendorName: string | null;
-  category: string;
-  amount: number;
-  frequency: string;
-}
-
-interface RecurringPayment {
-  id: string;
-  merchantStandardised: string;
-  pattern: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'IRREGULAR';
-  expectedAmount: number;
-  amountVariance: number;
-  lastOccurrence: string;
-  nextExpected: string;
-  occurrenceCount: number;
-  priceIncreaseAlert: boolean;
-  isActive: boolean;
-  isPaused: boolean;
-  matchStatus: 'UNMATCHED' | 'SUGGESTED' | 'LINKED' | 'DISMISSED' | 'CREATED';
-  matchConfidence: number | null;
-  linkedExpenseId: string | null;
-  linkedExpense: LinkedExpense | null;
-  account: {
-    id: string;
-    name: string;
-    institution: string;
-  };
-}
-
-interface MatchResult {
-  recurringPaymentId: string;
-  merchantName: string;
-  suggestedExpense: LinkedExpense | null;
-  confidence: number;
-  amountMatch: boolean;
-  frequencyMatch: boolean;
-  amountDifference: number;
-  matchReason: string;
-  recurringPayment: RecurringPayment | null;
-}
-
-interface RecurringSummary {
-  total: number;
-  active: number;
-  paused: number;
-  monthlyTotal: number;
-  priceAlerts: number;
-}
+// Types imported from @/types/recurring
 
 // =============================================================================
 // HELPERS
