@@ -215,6 +215,7 @@ export async function POST(request: NextRequest) {
         totalDebt,
         totalOffsetBalance,
         cashBalance,
+        availableForExtraRepayments,  // CRITICAL: Pass the pre-calculated available amount
       });
 
       console.log('[API] Generating AI debt analysis...');
@@ -303,8 +304,8 @@ export async function POST(request: NextRequest) {
 // =============================================================================
 
 /**
- * Validates and caps AI recommendations to actual available cashflow.
- * The AI cannot be fully trusted to follow constraints, so we enforce them here.
+ * Validates and FORCES AI recommendations to actual available cashflow.
+ * The AI cannot be trusted to follow constraints, so we ALWAYS enforce correct values here.
  */
 function validateAndCapRecommendations(
   aiResponse: DebtAnalysisResponse,
@@ -314,53 +315,34 @@ function validateAndCapRecommendations(
   // Create a copy to avoid mutating original
   const validated = { ...aiResponse };
 
-  // Calculate realistic surplus limits based on actual available cashflow
-  // Leave 10% buffer for unexpected expenses
-  const maxAggressiveSurplus = Math.round(availableForExtra * 0.9);
-  const maxRecommendedSurplus = Math.round(availableForExtra * 0.6);
-  const maxMinimumSurplus = Math.round(availableForExtra * 0.3);
+  // Calculate CORRECT surplus values based on actual available cashflow
+  // These are the ONLY valid values - we ALWAYS use these regardless of AI output
+  const correctAggressiveSurplus = Math.round(availableForExtra * 0.9);
+  const correctRecommendedSurplus = Math.round(availableForExtra * 0.6);
+  const correctMinimumSurplus = Math.round(availableForExtra * 0.3);
 
-  // Cap the surplus recommendations
+  console.log('[API] Forcing correct surplus values:');
+  console.log(`  Available for Extra: $${availableForExtra}`);
+  console.log(`  Correct Min (30%): $${correctMinimumSurplus}`);
+  console.log(`  Correct Rec (60%): $${correctRecommendedSurplus}`);
+  console.log(`  Correct Agg (90%): $${correctAggressiveSurplus}`);
+
+  // ALWAYS force correct surplus values - DO NOT trust AI output
   if (validated.optimalSurplus) {
-    const original = { ...validated.optimalSurplus };
+    const aiOriginal = { ...validated.optimalSurplus };
 
-    // Aggressive: Max 90% of available
-    validated.optimalSurplus.aggressive = Math.min(
-      original.aggressive || maxAggressiveSurplus,
-      maxAggressiveSurplus
-    );
+    console.log(`  AI suggested Min: $${aiOriginal.minimum}, Rec: $${aiOriginal.recommended}, Agg: $${aiOriginal.aggressive}`);
 
-    // Recommended: Max 60% of available
-    validated.optimalSurplus.recommended = Math.min(
-      original.recommended || maxRecommendedSurplus,
-      maxRecommendedSurplus
-    );
+    // FORCE correct values - ignore what AI returned
+    validated.optimalSurplus.aggressive = correctAggressiveSurplus;
+    validated.optimalSurplus.recommended = correctRecommendedSurplus;
+    validated.optimalSurplus.minimum = correctMinimumSurplus;
 
-    // Minimum: Max 30% of available
-    validated.optimalSurplus.minimum = Math.min(
-      original.minimum || maxMinimumSurplus,
-      maxMinimumSurplus
-    );
-
-    // Ensure hierarchy: minimum < recommended < aggressive
-    if (validated.optimalSurplus.minimum > validated.optimalSurplus.recommended) {
-      validated.optimalSurplus.minimum = Math.round(validated.optimalSurplus.recommended * 0.5);
-    }
-    if (validated.optimalSurplus.recommended > validated.optimalSurplus.aggressive) {
-      validated.optimalSurplus.recommended = Math.round(validated.optimalSurplus.aggressive * 0.7);
-    }
-
-    // Update reasoning if we had to cap
-    const wasCapped = original.aggressive > maxAggressiveSurplus ||
-                      original.recommended > maxRecommendedSurplus ||
-                      original.minimum > maxMinimumSurplus;
-
-    if (wasCapped) {
-      validated.optimalSurplus.reasoning = `Based on your actual available cashflow of $${availableForExtra.toLocaleString()}/month after expenses and loan repayments. ` +
-        `Minimum ($${validated.optimalSurplus.minimum.toLocaleString()}) is 30%, ` +
-        `Recommended ($${validated.optimalSurplus.recommended.toLocaleString()}) is 60%, ` +
-        `and Aggressive ($${validated.optimalSurplus.aggressive.toLocaleString()}) is 90% of available funds, leaving buffer for unexpected expenses.`;
-    }
+    // ALWAYS update reasoning to show correct values
+    validated.optimalSurplus.reasoning = `Based on your confirmed budget, you have $${availableForExtra.toLocaleString()}/month available for extra debt payments. ` +
+      `Minimum ($${validated.optimalSurplus.minimum.toLocaleString()}) is 30%, ` +
+      `Recommended ($${validated.optimalSurplus.recommended.toLocaleString()}) is 60%, ` +
+      `and Aggressive ($${validated.optimalSurplus.aggressive.toLocaleString()}) is 90% of your available funds.`;
   }
 
   // IMPORTANT: Remove any AI-generated budgetAnalysis - we use confirmed budget from Budget Analysis page
@@ -394,28 +376,44 @@ interface PromptContext {
   totalDebt: number;
   totalOffsetBalance: number;
   cashBalance: number;
+  availableForExtraRepayments: number;  // CRITICAL: Pre-calculated available amount
 }
 
 function buildDebtAnalysisPrompt(ctx: PromptContext): string {
   const formatCurrency = (v: number) => formatCurrencyForPrompt(v);
   const formatPercent = (v: number) => formatPercentageForPrompt(v);
 
-  const availableForExtra = Math.max(0, ctx.monthlySurplus - ctx.totalLoanRepayments);
+  // Use the pre-calculated available amount - DO NOT recalculate
+  const availableForExtra = ctx.availableForExtraRepayments;
 
   let prompt = `
 DEBT PORTFOLIO ANALYSIS REQUEST
 ===============================
 
-CASH FLOW SUMMARY
------------------
-Monthly Income: ${formatCurrency(ctx.monthlyIncome)}
-Monthly Expenses (recorded): ${formatCurrency(ctx.monthlyExpenses)}
-Monthly Surplus (after recorded expenses): ${formatCurrency(ctx.monthlySurplus)}
-Current Loan Repayments (minimum required): ${formatCurrency(ctx.totalLoanRepayments)}
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🚨 CRITICAL CONSTRAINT - READ THIS FIRST 🚨                                  ║
+║                                                                               ║
+║  AVAILABLE FOR EXTRA DEBT REPAYMENTS: ${formatCurrency(availableForExtra)}/month                      ║
+║                                                                               ║
+║  This is the MAXIMUM amount the user can allocate to extra debt payments.    ║
+║  This has been calculated from their CONFIRMED budget:                        ║
+║    NET Income - Confirmed Budget - Loan Repayments = Available               ║
+║                                                                               ║
+║  YOUR SURPLUS RECOMMENDATIONS MUST BE:                                        ║
+║    • Minimum: ~30% of ${formatCurrency(availableForExtra)} = ${formatCurrency(Math.round(availableForExtra * 0.3))}                              ║
+║    • Recommended: ~60% of ${formatCurrency(availableForExtra)} = ${formatCurrency(Math.round(availableForExtra * 0.6))}                          ║
+║    • Aggressive: ~90% of ${formatCurrency(availableForExtra)} = ${formatCurrency(Math.round(availableForExtra * 0.9))}                           ║
+║                                                                               ║
+║  DO NOT recommend amounts higher than ${formatCurrency(availableForExtra)}/month!                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
-⚠️ IMPORTANT - AVAILABLE FOR EXTRA REPAYMENTS: ${formatCurrency(availableForExtra)}/month
-This is the MAXIMUM amount that can be allocated to extra debt payments.
-Your surplus recommendations MUST NOT exceed this amount!
+CASH FLOW SUMMARY (for context only - use Available amount above)
+-----------------------------------------------------------------
+Monthly NET Income: ${formatCurrency(ctx.monthlyIncome)}
+Monthly Budget (confirmed): ${formatCurrency(ctx.monthlyExpenses)}
+Monthly Surplus (after budget): ${formatCurrency(ctx.monthlySurplus)}
+Loan Repayments (minimum required): ${formatCurrency(ctx.totalLoanRepayments)}
+>>> AVAILABLE FOR EXTRA REPAYMENTS: ${formatCurrency(availableForExtra)}/month <<<
 
 Cash/Savings Balance (Emergency Fund): ${formatCurrency(ctx.cashBalance)}
 
@@ -458,17 +456,27 @@ ANALYSIS REQUEST
 ----------------
 Based on the above debt portfolio and cash flow situation:
 
-REMEMBER: Available for Extra Repayments = ${formatCurrency(availableForExtra)}/month
-ALL your surplus recommendations must be LESS than or equal to this amount!
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🚨 FINAL REMINDER - SURPLUS RECOMMENDATIONS 🚨                               ║
+║                                                                               ║
+║  Available for Extra Repayments: ${formatCurrency(availableForExtra)}/month                           ║
+║                                                                               ║
+║  Your optimalSurplus values MUST be:                                          ║
+║    • minimum: ${formatCurrency(Math.round(availableForExtra * 0.3))} (about 30% of available)                          ║
+║    • recommended: ${formatCurrency(Math.round(availableForExtra * 0.6))} (about 60% of available)                      ║
+║    • aggressive: ${formatCurrency(Math.round(availableForExtra * 0.9))} (about 90% of available)                       ║
+║                                                                               ║
+║  NEVER exceed ${formatCurrency(availableForExtra)}/month in any recommendation!                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
 1. Recommend the BEST strategy (Tax-Aware, Avalanche, or Snowball) with specific reasoning
-2. Calculate optimal monthly surplus amounts they should allocate to extra repayments
+2. Set optimalSurplus amounts based on the ${formatCurrency(availableForExtra)}/month available
 3. Prioritize which loans to attack first and why
 4. Project debt-free timeline with your recommendations
 5. Identify any opportunities to save interest or warnings about their situation
 6. Provide a clear action plan with specific steps
 
-Consider their actual cash flow constraints and provide realistic recommendations.
+The user has a CONFIRMED budget. Do NOT suggest they have more money available than ${formatCurrency(availableForExtra)}/month.
 `;
 
   return prompt;
