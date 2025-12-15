@@ -1,8 +1,9 @@
 # PHASE 28 — API ENDPOINTS
 **Monitrax Blueprint — Phase 28.3**
-**Version:** v1.0
-**Status:** Pending
+**Version:** v1.1
+**Status:** ✅ Complete
 **Created:** 2025-12-15
+**Updated:** 2025-12-15
 
 ---
 
@@ -570,6 +571,22 @@ app/api/
 
 ---
 
-*Status: Pending Implementation*
+*Status: ✅ Complete*
 *Author: Claude Code*
 *Phase: 28.3*
+
+## Implementation Notes
+
+All endpoints have been implemented with the following additions:
+
+1. **24-Hour Caching** in `/api/budget-analysis/generate`:
+   - If `forceRegenerate: false` (default), returns cached analysis from last 24 hours
+   - Prevents unnecessary AI calls and ensures consistent numbers
+
+2. **Benchmark Fallback** when AI unavailable:
+   - Uses Australian Bureau of Statistics household expenditure data
+   - Returns `usedAI: false` in response
+
+3. **TypeScript Strict Mode Compliance**:
+   - All JSON fields use explicit type casts (`as any`)
+   - Proper type annotations for reduce/map callbacks
