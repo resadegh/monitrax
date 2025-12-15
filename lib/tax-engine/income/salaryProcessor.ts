@@ -63,7 +63,7 @@ export function processSalary(
 
   // Step 1: Determine annual gross salary
   let annualGross: number;
-  let annualNet: number;
+  let annualNet: number = 0; // Initialize to satisfy TypeScript, will be set below
   let userProvidedNet = false; // Track if user provided NET input
 
   calculations.push({
