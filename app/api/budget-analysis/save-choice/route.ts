@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       // Process adjustments if provided
       if (adjustments && typeof adjustments === 'object') {
         userOverrodeAi = true;
-        userAdjustmentsData: Record<string, { original: number; adjusted: number }> = {};
+        userAdjustmentsData = {} as Record<string, { original: number; adjusted: number }>;
 
         for (const [category, adjustedValue] of Object.entries(adjustments)) {
           const original = variableBreakdown?.categories?.[category]?.estimate || 0;
