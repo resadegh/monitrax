@@ -62,14 +62,7 @@ interface AIAnalysis {
   debtHealthScore: number;
   recommendedStrategy: 'TAX_AWARE_MINIMUM_INTEREST' | 'AVALANCHE' | 'SNOWBALL';
   strategyReason: string;
-  budgetAnalysis?: {
-    estimatedLivingCosts: number;
-    lifestyleBuffer: number;
-    emergencyFundStatus: 'adequate' | 'needs_building' | 'critical';
-    recommendedEmergencyFund: number;
-    trueDisposableIncome: number;
-    budgetNotes: string;
-  };
+  // Note: budgetAnalysis removed - Debt Planner now uses confirmed budget from Budget Analysis page
   optimalSurplus: {
     recommended: number;
     minimum: number;
@@ -328,11 +321,6 @@ export default function DebtPlannerPage() {
     },
   };
 
-  // Phase 28: Check budget analysis context from AI analysis (for backwards compat)
-  const hasBudgetAnalysisFromAI = aiAnalysis && (aiAnalysis as any).budgetAnalysis?.available;
-  const budgetContextFromAI = (aiAnalysis as any)?.budgetAnalysis;
-  const comparisonData = (aiAnalysis as any)?.comparison;
-
   // Loading state
   if (budgetLoading) {
     return (
@@ -523,16 +511,6 @@ export default function DebtPlannerPage() {
         {/* Only show AI panel and debt planning if budget is confirmed AND there's available cashflow */}
         {budgetStatus && budgetStatus.hasConfirmedBudget && budgetStatus.availableForDebt > 0 && (
           <>
-        {/* Legacy: Show when using realistic budget from AI response (backwards compat) */}
-        {hasBudgetAnalysisFromAI && budgetContextFromAI && comparisonData && (
-          <div className="p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              <Info className="h-3 w-3 inline mr-1" />
-              Comparison: Without budget analysis you would have {formatCurrency(comparisonData.withoutBudgetAnalysis.availableForExtra)}/mo available (vs {formatCurrency(comparisonData.withBudgetAnalysis.availableForExtra)}/mo with realistic budget)
-            </p>
-          </div>
-        )}
-
         {/* AI Smart Analysis Panel - only if budget confirmed with positive cashflow */}
         <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30">
           <CardHeader>
