@@ -552,12 +552,11 @@ The "Monthly Burn Rate" metric was showing extremely high values (e.g., $44,700/
 
 **Fix Applied:**
 ```typescript
+// Category names match lib/tie/types.ts CATEGORY_HIERARCHY
 const EXCLUDED_CATEGORIES = [
-  'TRANSFER',
-  'LOAN_REPAYMENT',
-  'INTERNAL_TRANSFER',
-  'PAYMENT_TRANSFER',
-  'INVESTMENT',  // Investment purchases are not recurring expenses
+  'Transfers',           // Internal/External transfers between accounts
+  'Financial',           // Interest payments, bank fees (loan interest handled separately)
+  'Investments',         // Investment purchases are not recurring expenses
 ];
 
 const expenses = transactions.filter((t) =>
@@ -565,6 +564,8 @@ const expenses = transactions.filter((t) =>
   !EXCLUDED_CATEGORIES.includes(t.categoryLevel1 || '')
 );
 ```
+
+**Note:** Category names use title case (e.g., `'Transfers'` not `'TRANSFER'`) to match the `CATEGORY_HIERARCHY` defined in `lib/tie/types.ts`.
 
 ---
 
