@@ -8,7 +8,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 
@@ -146,7 +145,7 @@ export async function POST(request: NextRequest) {
           status: 'CONFIRMED',
           userFinalBudget,
           userOverrodeAi,
-          userAdjustments: userAdjustmentsData as Prisma.InputJsonValue,
+          userAdjustments: userAdjustmentsData as any,
         },
       });
 

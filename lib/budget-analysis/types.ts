@@ -214,7 +214,7 @@ export function validateHouseholdProfile(input: Partial<HouseholdProfileInput>):
 }
 
 export function isProfileComplete(profile: Partial<HouseholdProfileInput>): boolean {
-  return (
+  return !!(
     profile.adultsCount !== undefined &&
     profile.childrenCount !== undefined &&
     profile.petsCount !== undefined &&

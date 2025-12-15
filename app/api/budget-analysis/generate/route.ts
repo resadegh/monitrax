@@ -12,7 +12,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 import { toMonthly } from '@/lib/utils/frequencies';
@@ -85,7 +84,7 @@ export async function POST(request: NextRequest) {
         where: { userId },
       });
 
-      const recurringExpenses = expenses.map(e => ({
+      const recurringExpenses = expenses.map((e: typeof expenses[0]) => ({
         name: e.name,
         category: e.category,
         monthlyAmount: toMonthly(e.amount, e.frequency),
@@ -93,13 +92,13 @@ export async function POST(request: NextRequest) {
       }));
 
       const totalRecurringMonthly = recurringExpenses.reduce(
-        (sum, e) => sum + e.monthlyAmount,
+        (sum: number, e: typeof recurringExpenses[0]) => sum + e.monthlyAmount,
         0
       );
 
       // Group recurring by category for breakdown
       const recurringBreakdown: Record<string, { total: number; items: Array<{ name: string; amount: number; frequency: string; monthlyAmount: number }> }> = {};
-      expenses.forEach(e => {
+      expenses.forEach((e: typeof expenses[0]) => {
         if (!recurringBreakdown[e.category]) {
           recurringBreakdown[e.category] = { total: 0, items: [] };
         }
@@ -118,7 +117,7 @@ export async function POST(request: NextRequest) {
       let aiUsage = null;
       let usedAI = false;
 
-      const trackedCategories = new Set(recurringExpenses.map(e => e.category.toUpperCase()));
+      const trackedCategories = new Set<string>(recurringExpenses.map((e: typeof recurringExpenses[0]) => e.category.toUpperCase()));
 
       if (isGeminiConfigured()) {
         try {
@@ -131,9 +130,9 @@ export async function POST(request: NextRequest) {
               householdProfileId: householdProfile.id,
               status: 'ANALYZING',
               recurringExpensesTotal: totalRecurringMonthly,
-              recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly } as Prisma.InputJsonValue,
+              recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly } as any,
               aiVariableEstimate: 0,
-              variableBreakdown: {} as Prisma.InputJsonValue,
+              variableBreakdown: {} as any,
               totalRealisticBudget: totalRecurringMonthly,
               userReportedTotal: totalRecurringMonthly,
             },
@@ -197,14 +196,14 @@ export async function POST(request: NextRequest) {
             data: {
               status: 'READY',
               aiVariableEstimate: variableResponse.total,
-              variableBreakdown: variableResponse as unknown as Prisma.InputJsonValue,
+              variableBreakdown: variableResponse as unknown as any,
               totalRealisticBudget: totalRecurringMonthly + variableResponse.total,
               missingVariableExpenses: variableResponse.total,
               aiExplanation: variableResponse.explanation,
               aiConfidence: usedAI ? 0.75 : 0.5,  // Lower confidence for benchmark fallback
-              minimumScenario: variableResponse.scenarios.minimum as unknown as Prisma.InputJsonValue,
-              recommendedScenario: variableResponse.scenarios.recommended as unknown as Prisma.InputJsonValue,
-              comfortableScenario: variableResponse.scenarios.comfortable as unknown as Prisma.InputJsonValue,
+              minimumScenario: variableResponse.scenarios.minimum as unknown as any,
+              recommendedScenario: variableResponse.scenarios.recommended as unknown as any,
+              comfortableScenario: variableResponse.scenarios.comfortable as unknown as any,
             },
           });
 
@@ -250,17 +249,17 @@ export async function POST(request: NextRequest) {
           householdProfileId: householdProfile.id,
           status: 'READY',
           recurringExpensesTotal: totalRecurringMonthly,
-          recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly } as Prisma.InputJsonValue,
+          recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly } as any,
           aiVariableEstimate: variableResponse.total,
-          variableBreakdown: variableResponse as unknown as Prisma.InputJsonValue,
+          variableBreakdown: variableResponse as unknown as any,
           totalRealisticBudget: totalRecurringMonthly + variableResponse.total,
           userReportedTotal: totalRecurringMonthly,
           missingVariableExpenses: variableResponse.total,
           aiExplanation: variableResponse.explanation,
           aiConfidence: 0.5,  // Lower confidence for benchmarks
-          minimumScenario: variableResponse.scenarios.minimum as unknown as Prisma.InputJsonValue,
-          recommendedScenario: variableResponse.scenarios.recommended as unknown as Prisma.InputJsonValue,
-          comfortableScenario: variableResponse.scenarios.comfortable as unknown as Prisma.InputJsonValue,
+          minimumScenario: variableResponse.scenarios.minimum as unknown as any,
+          recommendedScenario: variableResponse.scenarios.recommended as unknown as any,
+          comfortableScenario: variableResponse.scenarios.comfortable as unknown as any,
         },
       });
 
