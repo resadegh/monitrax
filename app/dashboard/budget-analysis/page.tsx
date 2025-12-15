@@ -154,7 +154,7 @@ export default function BudgetAnalysisPage() {
   }, [token, router]);
 
   // Generate new analysis
-  const handleGenerate = async () => {
+  const handleGenerate = async (forceRegenerate = false) => {
     setGenerating(true);
     setError('');
 
@@ -165,7 +165,7 @@ export default function BudgetAnalysisPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ forceRegenerate: true }),
+        body: JSON.stringify({ forceRegenerate }),
       });
 
       const result = await response.json();
@@ -333,7 +333,7 @@ export default function BudgetAnalysisPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={handleGenerate} disabled={generating} size="lg">
+            <Button onClick={() => handleGenerate(false)} disabled={generating} size="lg">
               {generating ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -365,13 +365,13 @@ export default function BudgetAnalysisPage() {
         title="Budget Analysis"
         description="AI-powered estimate of your realistic monthly expenses"
         action={
-          <Button onClick={handleGenerate} variant="outline" disabled={generating}>
+          <Button onClick={() => handleGenerate(true)} variant="outline" disabled={generating}>
             {generating ? (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Refresh Analysis
+            Regenerate (New Estimate)
           </Button>
         }
       />
