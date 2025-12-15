@@ -1106,26 +1106,6 @@ export default function DashboardPage() {
                             )}
                           </span>
                         </div>
-                        {snapshot.cashflow.grossIncome && snapshot.cashflow.paygWithholding && snapshot.cashflow.paygWithholding > 0 && (
-                          <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800 text-sm space-y-1">
-                            <div className="flex justify-between text-muted-foreground">
-                              <span>Gross income</span>
-                              <span>{formatCurrency(
-                                cashflowPeriod === 'monthly'
-                                  ? snapshot.cashflow.grossIncome / 12
-                                  : snapshot.cashflow.grossIncome
-                              )}</span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground">
-                              <span>PAYG withheld</span>
-                              <span>-{formatCurrency(
-                                cashflowPeriod === 'monthly'
-                                  ? snapshot.cashflow.paygWithholding / 12
-                                  : snapshot.cashflow.paygWithholding
-                              )}</span>
-                            </div>
-                          </div>
-                        )}
                         <p className="text-xs text-muted-foreground mt-2">
                           {cashflowPeriod === 'monthly'
                             ? `${formatCurrency(snapshot.cashflow.totalIncome)}/year`
