@@ -129,7 +129,20 @@ function calculateSpendingPatterns(
   transactions: TransactionRecord[]
 ): SpendingPatterns {
   // Filter to expenses only (OUT direction)
-  const expenses = transactions.filter((t) => t.direction === 'OUT');
+  // Exclude transfers and loan repayments to avoid double-counting
+  // Loan repayments are handled separately in loanTimeline
+  const EXCLUDED_CATEGORIES = [
+    'TRANSFER',
+    'LOAN_REPAYMENT',
+    'INTERNAL_TRANSFER',
+    'PAYMENT_TRANSFER',
+    'INVESTMENT',  // Investment purchases are not recurring expenses
+  ];
+
+  const expenses = transactions.filter((t) =>
+    t.direction === 'OUT' &&
+    !EXCLUDED_CATEGORIES.includes(t.categoryLevel1 || '')
+  );
 
   if (expenses.length === 0) {
     return {

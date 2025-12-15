@@ -241,20 +241,45 @@ function MetricCard({
 }
 
 function ForecastChart({ forecast }: { forecast: ForecastPoint[] }) {
+  // Handle empty or invalid forecast data
+  if (!forecast || forecast.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow p-4">
+        <h3 className="font-semibold mb-4">90-Day Forecast</h3>
+        <div className="h-40 flex items-center justify-center text-gray-400">
+          <div className="text-center">
+            <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No forecast data available</p>
+            <p className="text-xs mt-1">Add accounts and transactions to see predictions</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Simple text-based chart (in production, use a charting library)
-  const maxBalance = Math.max(...forecast.map((f) => f.predictedBalance));
-  const minBalance = Math.min(...forecast.map((f) => f.predictedBalance));
-  const range = maxBalance - minBalance || 1;
+  const balances = forecast.map((f) => f.predictedBalance);
+  const maxBalance = Math.max(...balances);
+  const minBalance = Math.min(...balances);
+
+  // Ensure we have a valid range (avoid division by zero or -Infinity issues)
+  const range = maxBalance - minBalance;
+  const validRange = !isNaN(range) && isFinite(range) && range > 0 ? range : 1;
 
   // Sample 30 points for display
   const sampled = forecast.filter((_, i) => i % 3 === 0).slice(0, 30);
+
+  // If all balances are the same, show a flat line at 50%
+  const allSame = range === 0;
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
       <h3 className="font-semibold mb-4">90-Day Forecast</h3>
       <div className="h-40 flex items-end gap-1">
         {sampled.map((point, i) => {
-          const height = ((point.predictedBalance - minBalance) / range) * 100;
+          const height = allSame
+            ? 50
+            : ((point.predictedBalance - minBalance) / validRange) * 100;
           return (
             <div
               key={i}
@@ -265,9 +290,9 @@ function ForecastChart({ forecast }: { forecast: ForecastPoint[] }) {
                 className={`w-full rounded-t ${
                   point.shortfallRisk ? 'bg-red-400' : 'bg-blue-400'
                 }`}
-                style={{ height: `${Math.max(5, height)}%` }}
+                style={{ height: `${Math.max(5, Math.min(100, height))}%` }}
               />
-              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
                 {formatDate(point.date)}: {formatCurrency(point.predictedBalance)}
               </div>
             </div>
