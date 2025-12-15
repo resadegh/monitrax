@@ -488,14 +488,19 @@ function IncomePageContent() {
   };
 
   // Get effective (after-tax) annual amount for an income item
-  // For SALARY with GROSS type: use netAmount (already tax-adjusted)
+  // For SALARY: use netAmount (already tax-adjusted) regardless of GROSS/NET type
   // For other income: use the raw amount
   const getEffectiveAnnualAmount = (item: Income): number => {
-    if (item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount) {
-      // netAmount is already annual and after-tax
-      return item.netAmount;
+    if (item.type === 'SALARY') {
+      // For both GROSS and NET salary types, use the stored netAmount if available
+      // This ensures consistency with dashboard calculations
+      if (item.netAmount != null) {
+        return item.netAmount;
+      }
+      // Fallback: calculate from raw amount
+      return convertToAnnual(item.amount, item.frequency);
     }
-    // For NET salary or other income types, convert amount to annual
+    // For non-salary income types, convert amount to annual
     return convertToAnnual(item.amount, item.frequency);
   };
 
