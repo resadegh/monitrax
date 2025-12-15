@@ -154,7 +154,7 @@ export default function BudgetAnalysisPage() {
   }, [token, router]);
 
   // Generate new analysis
-  const handleGenerate = async () => {
+  const handleGenerate = async (forceRegenerate = false) => {
     setGenerating(true);
     setError('');
 
@@ -165,7 +165,7 @@ export default function BudgetAnalysisPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ forceRegenerate: true }),
+        body: JSON.stringify({ forceRegenerate }),
       });
 
       const result = await response.json();
@@ -333,7 +333,7 @@ export default function BudgetAnalysisPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={handleGenerate} disabled={generating} size="lg">
+            <Button onClick={() => handleGenerate(false)} disabled={generating} size="lg">
               {generating ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -365,13 +365,13 @@ export default function BudgetAnalysisPage() {
         title="Budget Analysis"
         description="AI-powered estimate of your realistic monthly expenses"
         action={
-          <Button onClick={handleGenerate} variant="outline" disabled={generating}>
+          <Button onClick={() => handleGenerate(true)} variant="outline" disabled={generating}>
             {generating ? (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Refresh Analysis
+            Regenerate (New Estimate)
           </Button>
         }
       />
@@ -415,32 +415,64 @@ export default function BudgetAnalysisPage() {
               <div className="text-xs text-muted-foreground">/month</div>
             </CardContent>
           </Card>
-          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
-            <CardContent className="pt-6">
-              <div className="text-sm text-amber-700 dark:text-amber-300">Missing Expenses</div>
-              <div className="text-2xl font-bold text-amber-600">{formatCurrency(totals.variable)}</div>
-              <div className="text-xs text-amber-600 dark:text-amber-400">not tracked</div>
-            </CardContent>
-          </Card>
+          {analysis.status === 'CONFIRMED' ? (
+            <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
+              <CardContent className="pt-6">
+                <div className="text-sm text-green-700 dark:text-green-300">Budget Confirmed</div>
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(analysis.userFinalBudget || totals.total)}</div>
+                <div className="text-xs text-green-600 dark:text-green-400">total/month</div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
+              <CardContent className="pt-6">
+                <div className="text-sm text-amber-700 dark:text-amber-300">Missing Expenses</div>
+                <div className="text-2xl font-bold text-amber-600">{formatCurrency(totals.variable)}</div>
+                <div className="text-xs text-amber-600 dark:text-amber-400">not tracked</div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Warning about missing expenses */}
-        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/10">
-          <CardContent className="py-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
-              <div>
-                <div className="font-medium text-amber-800 dark:text-amber-200">
-                  Your tracked expenses are missing ~{formatCurrency(totals.variable)}/month
-                </div>
-                <div className="text-sm text-amber-700 dark:text-amber-300">
-                  Variable expenses like groceries, fuel, and entertainment aren&apos;t typically tracked.
-                  Using the realistic budget will give you achievable debt repayment recommendations.
+        {/* Warning about missing expenses - only show if not confirmed */}
+        {analysis.status !== 'CONFIRMED' && (
+          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/10">
+            <CardContent className="py-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div>
+                  <div className="font-medium text-amber-800 dark:text-amber-200">
+                    Your tracked expenses are missing ~{formatCurrency(totals.variable)}/month
+                  </div>
+                  <div className="text-sm text-amber-700 dark:text-amber-300">
+                    Variable expenses like groceries, fuel, and entertainment aren&apos;t typically tracked.
+                    Using the realistic budget will give you achievable debt repayment recommendations.
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Success message when budget is confirmed */}
+        {analysis.status === 'CONFIRMED' && (
+          <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/10">
+            <CardContent className="py-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                <div>
+                  <div className="font-medium text-green-800 dark:text-green-200">
+                    Your realistic budget is active
+                  </div>
+                  <div className="text-sm text-green-700 dark:text-green-300">
+                    The Debt Planner is now using your confirmed budget of {formatCurrency(analysis.userFinalBudget || totals.total)}/month
+                    for more accurate repayment recommendations.
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Scenario Selection */}
         <Card>

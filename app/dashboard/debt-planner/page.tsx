@@ -103,6 +103,18 @@ interface AIAnalysis {
   warnings: string[];
 }
 
+// Budget status from pre-check
+interface BudgetStatus {
+  hasConfirmedBudget: boolean;
+  totalBudget: number;
+  recurringExpenses: number;
+  variableExpenses: number;
+  monthlyIncome: number;
+  remainingCashflow: number;
+  totalLoanRepayments: number;
+  availableForDebt: number;
+}
+
 export default function DebtPlannerPage() {
   const { token } = useAuth();
   const [settings, setSettings] = useState<DebtPlanSettings>({
@@ -122,6 +134,97 @@ export default function DebtPlannerPage() {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState('');
   const [showAIPanel, setShowAIPanel] = useState(true);
+
+  // Phase 28: Budget status pre-check
+  const [budgetStatus, setBudgetStatus] = useState<BudgetStatus | null>(null);
+  const [budgetLoading, setBudgetLoading] = useState(true);
+
+  // Pre-fetch budget analysis status on page load
+  useEffect(() => {
+    const fetchBudgetStatus = async () => {
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/budget-analysis/latest', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success && result.data?.status === 'CONFIRMED') {
+          // Also fetch income and loan data for full picture
+          const [incomeRes, loansRes] = await Promise.all([
+            fetch('/api/income', { headers: { Authorization: `Bearer ${token}` } }),
+            fetch('/api/loans', { headers: { Authorization: `Bearer ${token}` } }),
+          ]);
+
+          const incomeData = await incomeRes.json();
+          const loansData = await loansRes.json();
+
+          const toMonthly = (amount: number, freq: string): number => {
+            switch (freq) {
+              case 'WEEKLY': return amount * 52 / 12;
+              case 'FORTNIGHTLY': return amount * 26 / 12;
+              case 'MONTHLY': return amount;
+              case 'QUARTERLY': return amount / 3;
+              case 'ANNUALLY': return amount / 12;
+              default: return amount;
+            }
+          };
+
+          const monthlyIncome = (incomeData.data || []).reduce(
+            (sum: number, i: any) => sum + toMonthly(i.amount, i.frequency), 0
+          );
+
+          const totalLoanRepayments = (loansData.data || loansData || []).reduce(
+            (sum: number, l: any) => sum + toMonthly(l.minRepayment, l.repaymentFrequency), 0
+          );
+
+          const totalBudget = result.data.userFinalBudget || result.data.totalRealisticBudget;
+          const remainingCashflow = monthlyIncome - totalBudget;
+          const availableForDebt = remainingCashflow - totalLoanRepayments;
+
+          setBudgetStatus({
+            hasConfirmedBudget: true,
+            totalBudget,
+            recurringExpenses: result.data.recurringExpensesTotal,
+            variableExpenses: result.data.aiVariableEstimate,
+            monthlyIncome,
+            remainingCashflow,
+            totalLoanRepayments,
+            availableForDebt,
+          });
+        } else {
+          setBudgetStatus({
+            hasConfirmedBudget: false,
+            totalBudget: 0,
+            recurringExpenses: 0,
+            variableExpenses: 0,
+            monthlyIncome: 0,
+            remainingCashflow: 0,
+            totalLoanRepayments: 0,
+            availableForDebt: 0,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch budget status:', err);
+        setBudgetStatus({
+          hasConfirmedBudget: false,
+          totalBudget: 0,
+          recurringExpenses: 0,
+          variableExpenses: 0,
+          monthlyIncome: 0,
+          remainingCashflow: 0,
+          totalLoanRepayments: 0,
+          availableForDebt: 0,
+        });
+      } finally {
+        setBudgetLoading(false);
+      }
+    };
+
+    fetchBudgetStatus();
+  }, [token]);
 
   const runPlan = async () => {
     setIsLoading(true);
@@ -237,10 +340,21 @@ export default function DebtPlannerPage() {
     },
   };
 
-  // Phase 28: Check budget analysis context from AI analysis
-  const hasBudgetAnalysis = aiAnalysis && (aiAnalysis as any).budgetAnalysis?.available;
-  const budgetContext = (aiAnalysis as any)?.budgetAnalysis;
+  // Phase 28: Check budget analysis context from AI analysis (for backwards compat)
+  const hasBudgetAnalysisFromAI = aiAnalysis && (aiAnalysis as any).budgetAnalysis?.available;
+  const budgetContextFromAI = (aiAnalysis as any)?.budgetAnalysis;
   const comparisonData = (aiAnalysis as any)?.comparison;
+
+  // Loading state
+  if (budgetLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -250,78 +364,188 @@ export default function DebtPlannerPage() {
       />
 
       <div className="space-y-6">
-        {/* Phase 28: Budget Analysis Status Banner */}
-        {!hasBudgetAnalysis && (
-          <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <h4 className="font-medium text-amber-800 dark:text-amber-200">
-                  Your budget may be missing variable expenses
-                </h4>
-                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                  Your tracked expenses don&apos;t include groceries, fuel, and other variable costs.
-                  This could make debt recommendations unrealistic.
-                </p>
-                <div className="flex gap-2 mt-3">
+        {/* Phase 28: No Confirmed Budget - Require setup first */}
+        {budgetStatus && !budgetStatus.hasConfirmedBudget && (
+          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-full">
+                  <AlertTriangle className="h-6 w-6 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-amber-800 dark:text-amber-200 text-lg">
+                    Complete Your Budget First
+                  </h3>
+                  <p className="text-amber-700 dark:text-amber-300 mt-1">
+                    To get accurate debt repayment recommendations, you need to confirm your realistic budget.
+                    This includes variable expenses like groceries, fuel, and entertainment that aren&apos;t tracked.
+                  </p>
+                  <div className="flex gap-3 mt-4">
+                    <Button
+                      onClick={() => window.location.href = '/dashboard/household-profile'}
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      1. Set Up Household Profile
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.location.href = '/dashboard/budget-analysis'}
+                      className="border-amber-300 hover:bg-amber-100 dark:border-amber-700"
+                    >
+                      2. Generate Budget Analysis
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Phase 28: Confirmed Budget - Show Cashflow Breakdown */}
+        {budgetStatus && budgetStatus.hasConfirmedBudget && (
+          <>
+            {/* Cashflow Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Card>
+                <CardContent className="pt-4 pb-3">
+                  <div className="text-xs text-muted-foreground">Monthly Income</div>
+                  <div className="text-lg font-bold text-green-600">{formatCurrency(budgetStatus.monthlyIncome)}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3">
+                  <div className="text-xs text-muted-foreground">Total Budget</div>
+                  <div className="text-lg font-bold text-amber-600">-{formatCurrency(budgetStatus.totalBudget)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    ({formatCurrency(budgetStatus.recurringExpenses)} + {formatCurrency(budgetStatus.variableExpenses)})
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3">
+                  <div className="text-xs text-muted-foreground">Loan Repayments</div>
+                  <div className="text-lg font-bold text-red-600">-{formatCurrency(budgetStatus.totalLoanRepayments)}</div>
+                </CardContent>
+              </Card>
+              <Card className={budgetStatus.availableForDebt > 0 ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30'}>
+                <CardContent className="pt-4 pb-3">
+                  <div className="text-xs text-muted-foreground">Available for Extra Payments</div>
+                  <div className={`text-lg font-bold ${budgetStatus.availableForDebt > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(budgetStatus.availableForDebt)}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3 flex items-center justify-center">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/50"
-                    onClick={() => window.location.href = '/dashboard/household-profile'}
-                  >
-                    Complete Household Profile
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/50"
                     onClick={() => window.location.href = '/dashboard/budget-analysis'}
                   >
-                    Generate Budget Analysis
+                    Adjust Budget
                   </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Zero/Negative Cashflow Warning */}
+            {budgetStatus.availableForDebt <= 0 && (
+              <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-red-100 dark:bg-red-900/50 rounded-full">
+                      <AlertCircle className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-red-800 dark:text-red-200 text-lg">
+                        No Money Available for Extra Debt Payments
+                      </h3>
+                      <p className="text-red-700 dark:text-red-300 mt-1">
+                        After your budget ({formatCurrency(budgetStatus.totalBudget)}) and minimum loan repayments ({formatCurrency(budgetStatus.totalLoanRepayments)}),
+                        you have {formatCurrency(budgetStatus.availableForDebt)} remaining.
+                        {budgetStatus.availableForDebt < 0 ? ' You\'re spending more than you earn!' : ''}
+                      </p>
+                      <div className="mt-4 p-4 bg-white dark:bg-gray-900 rounded-lg border border-red-200 dark:border-red-800">
+                        <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">Suggestions:</h4>
+                        <ul className="text-sm text-red-700 dark:text-red-300 space-y-2">
+                          <li className="flex items-start gap-2">
+                            <span className="font-bold">1.</span>
+                            <span><strong>Review your budget</strong> — Can you reduce variable expenses? Consider choosing the &quot;Minimum&quot; budget scenario.</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="font-bold">2.</span>
+                            <span><strong>Increase income</strong> — Look for ways to boost your monthly income (side job, raise, etc.).</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="font-bold">3.</span>
+                            <span><strong>Refinance loans</strong> — Contact lenders about extending loan terms to reduce minimum repayments.</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="font-bold">4.</span>
+                            <span><strong>Seek financial advice</strong> — A financial advisor can help restructure your situation.</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <div className="flex gap-3 mt-4">
+                        <Button
+                          onClick={() => window.location.href = '/dashboard/budget-analysis'}
+                          variant="outline"
+                          className="border-red-300 hover:bg-red-100 dark:border-red-700"
+                        >
+                          Adjust Budget
+                        </Button>
+                        <Button
+                          onClick={() => window.location.href = '/dashboard/income'}
+                          variant="outline"
+                          className="border-red-300 hover:bg-red-100 dark:border-red-700"
+                        >
+                          Review Income
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Positive Cashflow - Show success banner */}
+            {budgetStatus.availableForDebt > 0 && (
+              <div className="p-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-green-800 dark:text-green-200">
+                        Budget Confirmed — Ready for Debt Planning
+                      </h4>
+                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300">
+                        {formatCurrency(budgetStatus.availableForDebt)}/mo available
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                      You have {formatCurrency(budgetStatus.availableForDebt)}/month available for extra debt payments after your realistic budget and minimum loan repayments.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+          </>
+        )}
+
+        {/* Only show AI panel and debt planning if budget is confirmed AND there's available cashflow */}
+        {budgetStatus && budgetStatus.hasConfirmedBudget && budgetStatus.availableForDebt > 0 && (
+          <>
+        {/* Legacy: Show when using realistic budget from AI response (backwards compat) */}
+        {hasBudgetAnalysisFromAI && budgetContextFromAI && comparisonData && (
+          <div className="p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              <Info className="h-3 w-3 inline mr-1" />
+              Comparison: Without budget analysis you would have {formatCurrency(comparisonData.withoutBudgetAnalysis.availableForExtra)}/mo available (vs {formatCurrency(comparisonData.withBudgetAnalysis.availableForExtra)}/mo with realistic budget)
+            </p>
           </div>
         )}
 
-        {/* Phase 28: Show when using realistic budget */}
-        {hasBudgetAnalysis && budgetContext && (
-          <div className="p-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
-            <div className="flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-green-800 dark:text-green-200">
-                    Using Realistic Budget
-                  </h4>
-                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700">
-                    {formatCurrency(budgetContext.totalRealisticBudget)}/mo
-                  </Badge>
-                </div>
-                <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                  Includes {formatCurrency(budgetContext.recurringExpenses)} recurring + {formatCurrency(budgetContext.variableExpenses)} variable expenses
-                </p>
-                {comparisonData && (
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                    Without budget analysis: {formatCurrency(comparisonData.withoutBudgetAnalysis.monthlyExpenses)}/mo expenses, {formatCurrency(comparisonData.withoutBudgetAnalysis.availableForExtra)}/mo for extra payments
-                  </p>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-green-700 hover:text-green-800 hover:bg-green-100 dark:text-green-300 dark:hover:bg-green-900/50"
-                onClick={() => window.location.href = '/dashboard/budget-analysis'}
-              >
-                Adjust Budget
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* AI Smart Analysis Panel */}
+        {/* AI Smart Analysis Panel - only if budget confirmed with positive cashflow */}
         <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -867,8 +1091,11 @@ export default function DebtPlannerPage() {
           </div>
         )}
 
-        {/* Getting Started Message */}
-        {!planResult && !isLoading && !error && (
+          </>
+        )}
+
+        {/* Getting Started Message - only show if budget not confirmed */}
+        {(!budgetStatus || !budgetStatus.hasConfirmedBudget) && (
           <Card className="border-blue-200 bg-blue-50/50">
             <CardHeader>
               <div className="flex items-start gap-2">
