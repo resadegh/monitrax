@@ -37,7 +37,7 @@ import {
   Bell,
   CreditCard,
   Link as LinkIcon,
-  LinkOff,
+  Link2Off,
   Plus,
   MoreVertical,
   Search,
@@ -191,7 +191,7 @@ function getMatchStatusBadge(payment: RecurringPayment) {
     case 'DISMISSED':
       return (
         <Badge variant="outline" className="text-gray-500 flex items-center gap-1">
-          <LinkOff className="h-3 w-3" />
+          <Link2Off className="h-3 w-3" />
           Dismissed
         </Badge>
       );
@@ -320,7 +320,7 @@ function RecurringPaymentCard({
                   View Expense
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onUnlink(payment)}>
-                  <LinkOff className="h-4 w-4 mr-2" />
+                  <Link2Off className="h-4 w-4 mr-2" />
                   Unlink Expense
                 </DropdownMenuItem>
               </>
