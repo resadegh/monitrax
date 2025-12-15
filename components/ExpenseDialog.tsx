@@ -54,7 +54,7 @@ interface Asset {
   type: string;
 }
 
-type ExpenseCategory = 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
+type ExpenseCategory = 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
 type ExpenseFrequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
 type ExpenseSourceTypeValue = 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
 
@@ -163,7 +163,7 @@ export function ExpenseDialog({
 
     if (mappings.category?.value) {
       const categoryValue = String(mappings.category.value).toUpperCase();
-      const validCategories = ['HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL', 'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'STRATA', 'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'];
+      const validCategories = ['HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL', 'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'SUBSCRIPTION', 'STRATA', 'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'];
       if (validCategories.includes(categoryValue)) {
         updates.category = categoryValue as ExpenseCategory;
         filledFields.push('category');

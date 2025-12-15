@@ -114,6 +114,7 @@ EXPENSE CATEGORY MAPPING:
 - Land tax → LAND_TAX
 - Loan interest, bank fees → LOAN_INTEREST
 - Car rego, registration → REGISTRATION
+- Netflix, Spotify, Disney+, streaming, subscription, membership, SaaS, software license → SUBSCRIPTION
 
 Return a JSON object with this exact structure:
 {
@@ -173,8 +174,8 @@ const DEFAULT_EXPENSE_FIELDS: Record<string, FormFieldDefinition> = {
     label: 'Expense Category',
     options: [
       'HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL',
-      'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'STRATA',
-      'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'
+      'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'SUBSCRIPTION',
+      'STRATA', 'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'
     ],
   },
   description: { type: 'string', label: 'Description' },

@@ -60,6 +60,7 @@ enum ExpenseCategory {
   FOOD
   TRANSPORT
   ENTERTAINMENT
+  SUBSCRIPTION    // Recurring subscriptions (streaming, software, memberships)
   STRATA
   LAND_TAX
   LOAN_INTEREST
