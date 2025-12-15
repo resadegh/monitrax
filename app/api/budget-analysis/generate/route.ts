@@ -12,6 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 import { toMonthly } from '@/lib/utils/frequencies';
@@ -130,9 +131,9 @@ export async function POST(request: NextRequest) {
               householdProfileId: householdProfile.id,
               status: 'ANALYZING',
               recurringExpensesTotal: totalRecurringMonthly,
-              recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly },
+              recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly } as Prisma.InputJsonValue,
               aiVariableEstimate: 0,
-              variableBreakdown: {},
+              variableBreakdown: {} as Prisma.InputJsonValue,
               totalRealisticBudget: totalRecurringMonthly,
               userReportedTotal: totalRecurringMonthly,
             },
@@ -196,14 +197,14 @@ export async function POST(request: NextRequest) {
             data: {
               status: 'READY',
               aiVariableEstimate: variableResponse.total,
-              variableBreakdown: variableResponse,
+              variableBreakdown: variableResponse as unknown as Prisma.InputJsonValue,
               totalRealisticBudget: totalRecurringMonthly + variableResponse.total,
               missingVariableExpenses: variableResponse.total,
               aiExplanation: variableResponse.explanation,
               aiConfidence: usedAI ? 0.75 : 0.5,  // Lower confidence for benchmark fallback
-              minimumScenario: variableResponse.scenarios.minimum,
-              recommendedScenario: variableResponse.scenarios.recommended,
-              comfortableScenario: variableResponse.scenarios.comfortable,
+              minimumScenario: variableResponse.scenarios.minimum as unknown as Prisma.InputJsonValue,
+              recommendedScenario: variableResponse.scenarios.recommended as unknown as Prisma.InputJsonValue,
+              comfortableScenario: variableResponse.scenarios.comfortable as unknown as Prisma.InputJsonValue,
             },
           });
 
@@ -249,17 +250,17 @@ export async function POST(request: NextRequest) {
           householdProfileId: householdProfile.id,
           status: 'READY',
           recurringExpensesTotal: totalRecurringMonthly,
-          recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly },
+          recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly } as Prisma.InputJsonValue,
           aiVariableEstimate: variableResponse.total,
-          variableBreakdown: variableResponse,
+          variableBreakdown: variableResponse as unknown as Prisma.InputJsonValue,
           totalRealisticBudget: totalRecurringMonthly + variableResponse.total,
           userReportedTotal: totalRecurringMonthly,
           missingVariableExpenses: variableResponse.total,
           aiExplanation: variableResponse.explanation,
           aiConfidence: 0.5,  // Lower confidence for benchmarks
-          minimumScenario: variableResponse.scenarios.minimum,
-          recommendedScenario: variableResponse.scenarios.recommended,
-          comfortableScenario: variableResponse.scenarios.comfortable,
+          minimumScenario: variableResponse.scenarios.minimum as unknown as Prisma.InputJsonValue,
+          recommendedScenario: variableResponse.scenarios.recommended as unknown as Prisma.InputJsonValue,
+          comfortableScenario: variableResponse.scenarios.comfortable as unknown as Prisma.InputJsonValue,
         },
       });
 
