@@ -131,12 +131,11 @@ function calculateSpendingPatterns(
   // Filter to expenses only (OUT direction)
   // Exclude transfers and loan repayments to avoid double-counting
   // Loan repayments are handled separately in loanTimeline
+  // Category names match lib/tie/types.ts CATEGORY_HIERARCHY
   const EXCLUDED_CATEGORIES = [
-    'TRANSFER',
-    'LOAN_REPAYMENT',
-    'INTERNAL_TRANSFER',
-    'PAYMENT_TRANSFER',
-    'INVESTMENT',  // Investment purchases are not recurring expenses
+    'Transfers',           // Internal/External transfers between accounts
+    'Financial',           // Interest payments, bank fees (loan interest handled separately)
+    'Investments',         // Investment purchases are not recurring expenses
   ];
 
   const expenses = transactions.filter((t) =>
