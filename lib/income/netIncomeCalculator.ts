@@ -1,9 +1,11 @@
 /**
  * Single source of truth for net income calculations
  * Used by both income page and dashboard to ensure consistency
+ *
+ * IMPORTANT: This does NOT calculate taxes. It simply uses stored values.
+ * - If netAmount is stored, use it
+ * - Otherwise, use the entered amount as-is
  */
-
-import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 
 // Frequency multipliers for annual conversion
 const ANNUAL_MULTIPLIERS: Record<string, number> = {
@@ -35,44 +37,25 @@ export interface IncomeForCalculation {
 }
 
 /**
- * Calculate the effective net annual income for an income item.
+ * Get the effective net annual income for an income item.
  *
- * This is the SINGLE SOURCE OF TRUTH for net income calculations.
- * Both the income page and dashboard must use this function.
- *
- * Logic:
- * - SALARY with NET type: amount is already net, just annualize
- * - SALARY with GROSS type: use stored netAmount, or calculate tax if missing
- * - Other income types: use gross amount (tax calculated at year end)
+ * Simple logic - NO tax calculations here:
+ * - SALARY with GROSS type AND stored netAmount: use netAmount
+ * - Everything else: just annualize the entered amount
  */
 export function getNetAnnualIncome(item: IncomeForCalculation): number {
-  if (item.type === 'SALARY') {
-    // NET salary: the entered amount IS the net amount
-    if (item.salaryType === 'NET') {
-      if (item.netAmount != null) {
-        return item.netAmount;
-      }
-      // Amount is already net, just annualize it
-      return toAnnual(item.amount, item.frequency);
-    }
-
-    // GROSS salary: use pre-calculated netAmount if available
-    if (item.salaryType === 'GROSS' && item.netAmount != null) {
-      return item.netAmount;
-    }
-
-    // Fallback for legacy data: calculate PAYG tax
-    const frequency = item.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
-    const takeHome = calculateTakeHomePay(item.amount, frequency);
-    return toAnnual(takeHome.netAmount, item.frequency);
+  // For GROSS salary with pre-calculated netAmount, use it
+  if (item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount != null) {
+    return item.netAmount;
   }
 
-  // Non-salary income: use gross amount (tax calculated at year end)
+  // For everything else (NET salary, other income types, or missing netAmount):
+  // Just annualize the entered amount - it's already the value to display
   return toAnnual(item.amount, item.frequency);
 }
 
 /**
- * Calculate the effective net monthly income for an income item.
+ * Get the effective net monthly income for an income item.
  */
 export function getNetMonthlyIncome(item: IncomeForCalculation): number {
   return getNetAnnualIncome(item) / 12;
