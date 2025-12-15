@@ -29,14 +29,7 @@ interface DebtAnalysisResponse {
   debtHealthScore: number;
   recommendedStrategy: 'TAX_AWARE_MINIMUM_INTEREST' | 'AVALANCHE' | 'SNOWBALL';
   strategyReason: string;
-  budgetAnalysis?: {
-    estimatedLivingCosts: number;
-    lifestyleBuffer: number;
-    emergencyFundStatus: 'adequate' | 'needs_building' | 'critical';
-    recommendedEmergencyFund: number;
-    trueDisposableIncome: number;
-    budgetNotes: string;
-  };
+  // Note: budgetAnalysis removed - Debt Planner now uses confirmed budget from Budget Analysis page
   optimalSurplus: {
     recommended: number;
     minimum: number;
@@ -342,20 +335,10 @@ function validateAndCapRecommendations(
     }
   }
 
-  // Cap budget analysis trueDisposableIncome
-  if (validated.budgetAnalysis) {
-    if (validated.budgetAnalysis.trueDisposableIncome > availableForExtra) {
-      validated.budgetAnalysis.trueDisposableIncome = availableForExtra;
-      validated.budgetAnalysis.budgetNotes = `True disposable income capped to actual available cashflow ($${availableForExtra.toLocaleString()}/month) after all expenses and loan repayments. ` +
-        (validated.budgetAnalysis.budgetNotes || '');
-    }
-
-    // Check emergency fund status
-    if (cashBalance < 10000) {
-      validated.budgetAnalysis.emergencyFundStatus = 'critical';
-    } else if (cashBalance < 20000) {
-      validated.budgetAnalysis.emergencyFundStatus = 'needs_building';
-    }
+  // IMPORTANT: Remove any AI-generated budgetAnalysis - we use confirmed budget from Budget Analysis page
+  // The AI might still generate this field even though we don't ask for it
+  if ((validated as any).budgetAnalysis) {
+    delete (validated as any).budgetAnalysis;
   }
 
   // Add warning if AI recommendations were significantly off
