@@ -91,7 +91,7 @@ interface Expense {
   id: string;
   name: string;
   vendorName: string | null;
-  category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
+  category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
   sourceType: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
   amount: number;
   frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
@@ -200,7 +200,7 @@ function ExpensesPageContent() {
 
     if (mappings.category?.value) {
       const categoryValue = String(mappings.category.value).toUpperCase();
-      const validCategories = ['HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL', 'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'STRATA', 'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'];
+      const validCategories = ['HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL', 'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'SUBSCRIPTION', 'STRATA', 'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'];
       if (validCategories.includes(categoryValue)) {
         updates.category = categoryValue as ExpenseFormData['category'];
         filledFields.push('category');
@@ -560,6 +560,7 @@ function ExpensesPageContent() {
     FOOD: { label: 'Food', icon: <Store className="h-5 w-5" />, color: 'text-rose-500' },
     TRANSPORT: { label: 'Transport', icon: <Briefcase className="h-5 w-5" />, color: 'text-indigo-500' },
     ENTERTAINMENT: { label: 'Entertainment', icon: <CreditCard className="h-5 w-5" />, color: 'text-pink-500' },
+    SUBSCRIPTION: { label: 'Subscription', icon: <Calendar className="h-5 w-5" />, color: 'text-fuchsia-500' },
     STRATA: { label: 'Strata', icon: <Building2 className="h-5 w-5" />, color: 'text-teal-500' },
     LAND_TAX: { label: 'Land Tax', icon: <Landmark className="h-5 w-5" />, color: 'text-red-500' },
     LOAN_INTEREST: { label: 'Loan Interest', icon: <Landmark className="h-5 w-5" />, color: 'text-red-600' },
@@ -649,6 +650,7 @@ function ExpensesPageContent() {
       FOOD: { variant: 'outline', label: 'Food' },
       TRANSPORT: { variant: 'secondary', label: 'Transport' },
       ENTERTAINMENT: { variant: 'outline', label: 'Entertainment' },
+      SUBSCRIPTION: { variant: 'outline', label: 'Subscription' },
       STRATA: { variant: 'default', label: 'Strata' },
       LAND_TAX: { variant: 'destructive', label: 'Land Tax' },
       LOAN_INTEREST: { variant: 'destructive', label: 'Loan Interest' },

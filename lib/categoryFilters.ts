@@ -19,6 +19,7 @@ export type ExpenseCategory =
   | 'FOOD'
   | 'TRANSPORT'
   | 'ENTERTAINMENT'
+  | 'SUBSCRIPTION'
   | 'STRATA'
   | 'LAND_TAX'
   | 'LOAN_INTEREST'
@@ -40,6 +41,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   FOOD: 'Food',
   TRANSPORT: 'Transport',
   ENTERTAINMENT: 'Entertainment',
+  SUBSCRIPTION: 'Subscription',
   STRATA: 'Strata',
   LAND_TAX: 'Land Tax',
   LOAN_INTEREST: 'Loan Interest',
@@ -52,8 +54,8 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 const EXPENSE_CATEGORIES_BY_SOURCE: Record<ExpenseSourceType, ExpenseCategory[]> = {
   GENERAL: [
     'HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL',
-    'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'STRATA',
-    'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'
+    'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'SUBSCRIPTION',
+    'STRATA', 'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'
   ],
   PROPERTY: [
     'HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'UTILITIES',
@@ -82,7 +84,8 @@ const EXPENSE_CATEGORIES_BY_ASSET_TYPE: Record<AssetType, ExpenseCategory[]> = {
     'OTHER'
   ],
   ELECTRONICS: [
-    'PERSONAL',     // Accessories, subscriptions
+    'PERSONAL',     // Accessories
+    'SUBSCRIPTION', // Software, apps, cloud services
     'INSURANCE',    // Device insurance
     'MAINTENANCE',  // Repairs
     'OTHER'
