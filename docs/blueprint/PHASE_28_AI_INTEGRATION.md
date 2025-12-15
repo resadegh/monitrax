@@ -703,6 +703,102 @@ try {
 
 ---
 
-*Status: Pending Implementation*
+## Debt Analysis Integration (Phase 28.6)
+
+### Overview
+
+The Debt Planner page integrates with AI to provide personalized debt repayment recommendations. A critical fix was implemented to ensure the AI uses the same `availableForDebt` value displayed in the UI header.
+
+### Problem Solved
+
+**Issue:** AI was recommending surplus amounts based on $220,508/month when the UI showed $494/month available.
+
+**Root Cause:** The API was independently calculating `availableForExtraRepayments` instead of using the value from the cashflow API that the frontend uses.
+
+### Solution: Frontend-to-API Value Passing
+
+The frontend now passes the pre-calculated `availableForDebt` value directly to the API:
+
+```typescript
+// Frontend: app/dashboard/debt-planner/page.tsx
+const response = await fetch('/api/ai/debt-analysis', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  },
+  body: JSON.stringify({
+    availableForExtraRepayments: budgetStatus?.availableForDebt || 0,
+  }),
+});
+```
+
+```typescript
+// Backend: app/api/ai/debt-analysis/route.ts
+// Parse request body to get pre-calculated value from frontend
+let requestBody: { availableForExtraRepayments?: number } = {};
+try {
+  requestBody = await authReq.json();
+} catch {
+  // No body provided - will calculate on server side
+}
+
+// Use frontend value if provided
+const availableForExtraRepayments = requestBody.availableForExtraRepayments !== undefined
+  && requestBody.availableForExtraRepayments >= 0
+  ? requestBody.availableForExtraRepayments
+  : calculatedAvailable;  // Fallback to server calculation
+```
+
+### Server-Side Validation
+
+Even with the correct value passed, the AI may not always follow instructions. Server-side validation FORCES correct surplus values:
+
+```typescript
+// ALWAYS force correct surplus values based on actual available cashflow
+const correctAggressiveSurplus = Math.round(availableForExtra * 0.9);  // 90%
+const correctRecommendedSurplus = Math.round(availableForExtra * 0.6); // 60%
+const correctMinimumSurplus = Math.round(availableForExtra * 0.3);     // 30%
+
+// Override AI response with correct values
+validated.optimalSurplus.aggressive = correctAggressiveSurplus;
+validated.optimalSurplus.recommended = correctRecommendedSurplus;
+validated.optimalSurplus.minimum = correctMinimumSurplus;
+```
+
+### Data Flow Sequence
+
+```
+User Flow:
+1. Household Profile → Set up household (adults, children, pets, cars)
+2. Budget Analysis → Generate & confirm realistic budget
+3. Debt Planner → Get AI recommendations using confirmed budget values
+
+Technical Flow:
+1. Frontend fetches /api/budget-analysis/latest → Gets confirmed budget
+2. Frontend fetches /api/calculate/cashflow → Gets NET income
+3. Frontend calculates: availableForDebt = netIncome - budget - loanPayments
+4. Frontend displays "$494/mo available" in header
+5. User clicks "Get AI Analysis"
+6. Frontend POSTs to /api/ai/debt-analysis with { availableForExtraRepayments: 494 }
+7. API uses $494 in prompt and validation
+8. AI recommendations are forced to 30%/60%/90% of $494
+```
+
+### Sidebar Navigation Order
+
+The Planning section in the sidebar was reordered to match the logical data flow:
+
+1. **Household Profile** — First step: define household
+2. **Budget Analysis** — Second step: confirm budget
+3. **Debt Planner** — Third step: plan debt repayment
+4. Cashflow — View projections
+5. Financial Health — Monitor health score
+6. Tax Calculator — Tax estimates
+7. Strategy — Overall strategy
+
+---
+
+*Status: Complete*
 *Author: Claude Code*
-*Phase: 28.5*
+*Phase: 28.6*
