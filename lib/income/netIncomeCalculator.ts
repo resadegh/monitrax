@@ -2,27 +2,37 @@
  * Single source of truth for net income calculations
  * Used by both income page and dashboard to ensure consistency
  *
- * IMPORTANT: This does NOT calculate taxes. It simply uses stored values.
- * - If netAmount is stored, use it
- * - Otherwise, use the entered amount as-is
+ * Logic:
+ * - GROSS salary: use stored netAmount (calculated by tax engine when saved)
+ * - NET salary / other income: convert entered amount to monthly using simple multipliers
  */
 
-// Frequency multipliers for annual conversion
-const ANNUAL_MULTIPLIERS: Record<string, number> = {
-  WEEKLY: 52,
-  FORTNIGHTLY: 26,
-  MONTHLY: 12,
-  QUARTERLY: 4,
-  ANNUAL: 1,
-  ANNUALLY: 1,
+import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
+
+// Simple monthly multipliers (not annual average)
+// Weekly × 4 = Monthly, Fortnightly × 2 = Monthly
+const MONTHLY_MULTIPLIERS: Record<string, number> = {
+  WEEKLY: 4,
+  FORTNIGHTLY: 2,
+  MONTHLY: 1,
+  QUARTERLY: 1 / 3,
+  ANNUAL: 1 / 12,
+  ANNUALLY: 1 / 12,
 };
+
+/**
+ * Convert an amount to monthly based on frequency
+ */
+export function toMonthly(amount: number, frequency: string): number {
+  const multiplier = MONTHLY_MULTIPLIERS[frequency] ?? 1;
+  return amount * multiplier;
+}
 
 /**
  * Convert an amount to annual based on frequency
  */
 export function toAnnual(amount: number, frequency: string): number {
-  const multiplier = ANNUAL_MULTIPLIERS[frequency] ?? 12; // Default to monthly
-  return amount * multiplier;
+  return toMonthly(amount, frequency) * 12;
 }
 
 /**
@@ -37,26 +47,32 @@ export interface IncomeForCalculation {
 }
 
 /**
- * Get the effective net annual income for an income item.
+ * Get the effective net monthly income for an income item.
  *
- * Simple logic - NO tax calculations here:
- * - SALARY with GROSS type AND stored netAmount: use netAmount
- * - Everything else: just annualize the entered amount
+ * Logic:
+ * - GROSS salary with stored netAmount: use netAmount / 12
+ * - GROSS salary without netAmount: calculate tax using tax engine
+ * - NET salary / other income: just convert to monthly (already net)
  */
-export function getNetAnnualIncome(item: IncomeForCalculation): number {
-  // For GROSS salary with pre-calculated netAmount, use it
-  if (item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount != null) {
-    return item.netAmount;
+export function getNetMonthlyIncome(item: IncomeForCalculation): number {
+  if (item.type === 'SALARY' && item.salaryType === 'GROSS') {
+    // GROSS salary: use pre-calculated netAmount if available
+    if (item.netAmount != null) {
+      return item.netAmount / 12;
+    }
+    // Fallback: calculate tax using tax engine
+    const frequency = item.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+    const takeHome = calculateTakeHomePay(item.amount, frequency);
+    return toMonthly(takeHome.netAmount, item.frequency);
   }
 
-  // For everything else (NET salary, other income types, or missing netAmount):
-  // Just annualize the entered amount - it's already the value to display
-  return toAnnual(item.amount, item.frequency);
+  // NET salary or other income: amount is already net, just convert to monthly
+  return toMonthly(item.amount, item.frequency);
 }
 
 /**
- * Get the effective net monthly income for an income item.
+ * Get the effective net annual income for an income item.
  */
-export function getNetMonthlyIncome(item: IncomeForCalculation): number {
-  return getNetAnnualIncome(item) / 12;
+export function getNetAnnualIncome(item: IncomeForCalculation): number {
+  return getNetMonthlyIncome(item) * 12;
 }
