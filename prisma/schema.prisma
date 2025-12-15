@@ -333,6 +333,10 @@ model User {
   // Phase 12: User Preferences
   userPreference          UserPreference?
 
+  // Phase 28: Realistic Budget Integration
+  householdProfile        HouseholdProfile?
+  budgetAnalyses          BudgetAnalysis[]
+
   @@map("users")
 }
 
@@ -2151,6 +2155,31 @@ enum DocumentAnalysisStatus {
 }
 
 // =============================================================================
+// PHASE 28: REALISTIC BUDGET ENUMS
+// =============================================================================
+
+enum LifestylePreference {
+  FRUGAL            // Budget-conscious, minimal spending
+  MODERATE          // Average Australian household
+  COMFORTABLE       // Higher spending, more conveniences
+}
+
+enum DiningFrequency {
+  NEVER             // Always cook at home
+  RARELY            // 1-2 times per month
+  SOMETIMES         // Weekly dining out
+  OFTEN             // Multiple times per week
+}
+
+enum BudgetAnalysisStatus {
+  PENDING           // Profile incomplete or AI not called
+  ANALYZING         // AI analysis in progress
+  READY             // Analysis complete, awaiting user review
+  CONFIRMED         // User has confirmed their budget choice
+  EXPIRED           // Analysis older than 30 days
+}
+
+// =============================================================================
 // PHASE 26: DOCUMENT ANALYSIS MODEL
 // =============================================================================
 
@@ -2498,4 +2527,89 @@ model AssetServiceRecord {
   @@index([assetId])
   @@index([serviceDate])
   @@map("asset_service_records")
+}
+
+// =============================================================================
+// PHASE 28: REALISTIC BUDGET - HOUSEHOLD PROFILE
+// =============================================================================
+
+model HouseholdProfile {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+
+  // Household Composition
+  adultsCount           Int      @default(1)      // 1-4 adults
+  childrenCount         Int      @default(0)      // 0-6 children
+  childrenAges          Int[]    @default([])     // Array of ages
+  petsCount             Int      @default(0)      // 0-5 pets
+  petTypes              String[] @default([])     // ["dog", "cat", "bird", etc.]
+  carsCount             Int      @default(0)      // 0-4 vehicles
+
+  // Lifestyle Preferences
+  lifestylePreference   LifestylePreference @default(MODERATE)
+  diningOutFrequency    DiningFrequency     @default(SOMETIMES)
+  hobbiesWithCosts      String?             // Free text for hobbies
+
+  // Metadata
+  isComplete            Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relationships
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgetAnalyses        BudgetAnalysis[]
+
+  @@index([userId])
+  @@map("household_profiles")
+}
+
+// =============================================================================
+// PHASE 28: REALISTIC BUDGET - BUDGET ANALYSIS
+// =============================================================================
+
+model BudgetAnalysis {
+  id                      String   @id @default(uuid())
+  userId                  String
+  householdProfileId      String?
+
+  // Analysis Date
+  analysisDate            DateTime @default(now())
+
+  // Recurring Expenses (from user's tracked expenses)
+  recurringExpensesTotal  Float               // Sum from Expense table
+  recurringBreakdown      Json                // Category breakdown from DB
+
+  // Variable Expenses (AI estimated)
+  aiVariableEstimate      Float               // AI's estimate
+  variableBreakdown       Json                // AI's category breakdown
+  aiExplanation           String?             @db.Text // AI's reasoning
+  aiConfidence            Float?              // AI confidence score (0-1)
+
+  // Totals
+  totalRealisticBudget    Float               // recurring + variable
+
+  // User Comparison & Choice
+  userReportedTotal       Float?              // What user originally reported
+  missingVariableExpenses Float?              // Difference (realistic - reported)
+  userFinalBudget         Float?              // What user chose to use
+  userOverrodeAi          Boolean  @default(false)
+  userAdjustments         Json?               // Any changes user made
+
+  // Three Scenarios from AI
+  minimumScenario         Json?               // Frugal estimate
+  recommendedScenario     Json?               // Realistic estimate
+  comfortableScenario     Json?               // Higher spending estimate
+
+  // Metadata
+  status                  BudgetAnalysisStatus @default(PENDING)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relationships
+  user                    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  householdProfile        HouseholdProfile? @relation(fields: [householdProfileId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([analysisDate])
+  @@map("budget_analyses")
 }
