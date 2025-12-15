@@ -237,6 +237,11 @@ export default function DebtPlannerPage() {
     },
   };
 
+  // Phase 28: Check budget analysis context from AI analysis
+  const hasBudgetAnalysis = aiAnalysis && (aiAnalysis as any).budgetAnalysis?.available;
+  const budgetContext = (aiAnalysis as any)?.budgetAnalysis;
+  const comparisonData = (aiAnalysis as any)?.comparison;
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -245,6 +250,77 @@ export default function DebtPlannerPage() {
       />
 
       <div className="space-y-6">
+        {/* Phase 28: Budget Analysis Status Banner */}
+        {!hasBudgetAnalysis && (
+          <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="font-medium text-amber-800 dark:text-amber-200">
+                  Your budget may be missing variable expenses
+                </h4>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  Your tracked expenses don&apos;t include groceries, fuel, and other variable costs.
+                  This could make debt recommendations unrealistic.
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/50"
+                    onClick={() => window.location.href = '/dashboard/household-profile'}
+                  >
+                    Complete Household Profile
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-900/50"
+                    onClick={() => window.location.href = '/dashboard/budget-analysis'}
+                  >
+                    Generate Budget Analysis
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Phase 28: Show when using realistic budget */}
+        {hasBudgetAnalysis && budgetContext && (
+          <div className="p-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-green-800 dark:text-green-200">
+                    Using Realistic Budget
+                  </h4>
+                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700">
+                    {formatCurrency(budgetContext.totalRealisticBudget)}/mo
+                  </Badge>
+                </div>
+                <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                  Includes {formatCurrency(budgetContext.recurringExpenses)} recurring + {formatCurrency(budgetContext.variableExpenses)} variable expenses
+                </p>
+                {comparisonData && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    Without budget analysis: {formatCurrency(comparisonData.withoutBudgetAnalysis.monthlyExpenses)}/mo expenses, {formatCurrency(comparisonData.withoutBudgetAnalysis.availableForExtra)}/mo for extra payments
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-green-700 hover:text-green-800 hover:bg-green-100 dark:text-green-300 dark:hover:bg-green-900/50"
+                onClick={() => window.location.href = '/dashboard/budget-analysis'}
+              >
+                Adjust Budget
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* AI Smart Analysis Panel */}
         <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30">
           <CardHeader>
