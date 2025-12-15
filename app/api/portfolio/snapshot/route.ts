@@ -14,6 +14,7 @@ import {
   extractHoldingLinks,
 } from '@/lib/grdcs';
 import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
+import { getNetAnnualIncome, toAnnual } from '@/lib/income/netIncomeCalculator';
 
 // ============================================================================
 // SNAPSHOT 2.0 - GRDCS-ENHANCED PORTFOLIO SNAPSHOT
@@ -89,7 +90,8 @@ function getPaygWithholding(incomeItem: {
   return 0;
 }
 
-// Helper to get net income amount after PAYG for salary types
+// Helper to get net income amount - delegates to shared calculator for consistency
+// This ensures dashboard shows IDENTICAL values to the income page
 function getNetIncomeAmount(incomeItem: {
   amount: number;
   frequency: string;
@@ -98,31 +100,7 @@ function getNetIncomeAmount(incomeItem: {
   netAmount?: number | null;
   grossAmount?: number | null;
 }): number {
-  if (incomeItem.type === 'SALARY') {
-    // If user entered NET income, the amount field is already net - use it directly
-    if (incomeItem.salaryType === 'NET') {
-      // Use the stored netAmount (annual) if available, otherwise use the entered amount
-      if (incomeItem.netAmount != null) {
-        return incomeItem.netAmount;
-      }
-      // The entered amount is already net, just annualize it
-      return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
-    }
-
-    // If user entered GROSS income, use the pre-calculated netAmount if available
-    if (incomeItem.salaryType === 'GROSS' && incomeItem.netAmount != null) {
-      return incomeItem.netAmount;
-    }
-
-    // Fallback: Calculate PAYG from amount (for legacy data or when netAmount not available)
-    const takeHome = calculateTakeHomePay(
-      incomeItem.amount,
-      incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'
-    );
-    return normalizeToAnnual(takeHome.netAmount, incomeItem.frequency);
-  }
-  // For non-salary income, use gross amount (tax calculated at year end)
-  return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+  return getNetAnnualIncome(incomeItem);
 }
 
 // Calculate rental yield

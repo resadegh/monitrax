@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
-import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
+import { getNetAnnualIncome, getNetMonthlyIncome } from '@/lib/income/netIncomeCalculator';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import {
@@ -488,38 +488,10 @@ function IncomePageContent() {
     }
   };
 
-  // Get effective (after-tax) annual amount for an income item
-  // This logic matches the dashboard's getNetIncomeAmount for consistency
-  const getEffectiveAnnualAmount = (item: Income): number => {
-    if (item.type === 'SALARY') {
-      // If user entered NET income, the amount field is already net
-      if (item.salaryType === 'NET') {
-        if (item.netAmount != null) {
-          return item.netAmount;
-        }
-        // The entered amount is already net, just annualize it
-        return convertToAnnual(item.amount, item.frequency);
-      }
-
-      // If user entered GROSS income, use the pre-calculated netAmount if available
-      if (item.salaryType === 'GROSS' && item.netAmount != null) {
-        return item.netAmount;
-      }
-
-      // Fallback: Calculate PAYG from amount (for legacy data or when netAmount not available)
-      // This matches the dashboard's fallback logic
-      const frequency = item.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
-      const takeHome = calculateTakeHomePay(item.amount, frequency);
-      return convertToAnnual(takeHome.netAmount, item.frequency);
-    }
-    // For non-salary income types, convert amount to annual (tax calculated at year end)
-    return convertToAnnual(item.amount, item.frequency);
-  };
-
-  // Get effective monthly amount (after-tax for salaries)
-  const getEffectiveMonthlyAmount = (item: Income): number => {
-    return getEffectiveAnnualAmount(item) / 12;
-  };
+  // Get effective (after-tax) amounts using shared calculator
+  // This ensures income page and dashboard always show identical values
+  const getEffectiveAnnualAmount = (item: Income): number => getNetAnnualIncome(item);
+  const getEffectiveMonthlyAmount = (item: Income): number => getNetMonthlyIncome(item);
 
   // Calculate totals - use after-tax amounts for salaries
   const totalNetMonthly = filteredIncome.reduce((sum, i) => sum + getEffectiveMonthlyAmount(i), 0);
