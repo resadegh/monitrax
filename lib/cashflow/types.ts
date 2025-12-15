@@ -116,6 +116,11 @@ export interface IncomeStream {
   frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL';
   nextExpected?: Date;
   volatility: number; // 0-1, how variable this income is
+  // Phase 20: Salary-specific fields for tax-aware cashflow
+  salaryType?: 'GROSS' | 'NET' | null; // How the amount was entered
+  grossAmount?: number | null; // Annual gross (calculated if NET entered)
+  netAmount?: number | null; // Annual net (calculated if GROSS entered)
+  paygWithholding?: number | null; // Annual PAYG withholding
 }
 
 export interface LoanSchedule {
