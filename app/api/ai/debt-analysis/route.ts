@@ -29,6 +29,14 @@ interface DebtAnalysisResponse {
   debtHealthScore: number;
   recommendedStrategy: 'TAX_AWARE_MINIMUM_INTEREST' | 'AVALANCHE' | 'SNOWBALL';
   strategyReason: string;
+  budgetAnalysis?: {
+    estimatedLivingCosts: number;
+    lifestyleBuffer: number;
+    emergencyFundStatus: 'adequate' | 'needs_building' | 'critical';
+    recommendedEmergencyFund: number;
+    trueDisposableIncome: number;
+    budgetNotes: string;
+  };
   optimalSurplus: {
     recommended: number;
     minimum: number;
@@ -149,6 +157,16 @@ export async function POST(request: NextRequest) {
       const totalOffsetBalance = loans.reduce((sum, l) => sum + (l.offsetAccount?.currentBalance || 0), 0);
       const cashBalance = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
+      // CRITICAL: Calculate the ACTUAL available cashflow for extra debt repayments
+      // This is AFTER expenses AND loan repayments
+      const availableForExtraRepayments = Math.max(0, monthlySurplus - totalLoanRepayments);
+
+      console.log('[API] Debt Analysis - Cash Flow Breakdown:');
+      console.log(`  Monthly Income: $${monthlyIncome.toFixed(0)}`);
+      console.log(`  Monthly Expenses: $${monthlyExpenses.toFixed(0)}`);
+      console.log(`  Monthly Loan Repayments: $${totalLoanRepayments.toFixed(0)}`);
+      console.log(`  Available for Extra: $${availableForExtraRepayments.toFixed(0)}`);
+
       // Build comprehensive prompt for AI
       const userPrompt = buildDebtAnalysisPrompt({
         loans,
@@ -174,10 +192,21 @@ export async function POST(request: NextRequest) {
 
       console.log(`[API] AI debt analysis generated. Tokens: ${usage.totalTokens}`);
 
+      // =======================================================================
+      // SERVER-SIDE VALIDATION: Cap AI recommendations to actual available cashflow
+      // The AI cannot be fully trusted to follow constraints, so we enforce them here
+      // =======================================================================
+
+      const validatedAnalysis = validateAndCapRecommendations(data, availableForExtraRepayments, cashBalance);
+
+      console.log('[API] Validated surplus recommendations:');
+      console.log(`  AI Original - Min: $${data.optimalSurplus?.minimum}, Rec: $${data.optimalSurplus?.recommended}, Agg: $${data.optimalSurplus?.aggressive}`);
+      console.log(`  After Cap - Min: $${validatedAnalysis.optimalSurplus.minimum}, Rec: $${validatedAnalysis.optimalSurplus.recommended}, Agg: $${validatedAnalysis.optimalSurplus.aggressive}`);
+
       return NextResponse.json({
         success: true,
         data: {
-          analysis: data,
+          analysis: validatedAnalysis,
           context: {
             totalDebt,
             totalOffsetBalance,
@@ -185,6 +214,8 @@ export async function POST(request: NextRequest) {
             monthlyExpenses,
             monthlySurplus,
             totalLoanRepayments,
+            availableForExtraRepayments, // NEW: Include this for UI validation
+            cashBalance,
             loanCount: loans.length,
           },
           usage,
@@ -203,6 +234,99 @@ export async function POST(request: NextRequest) {
       );
     }
   });
+}
+
+// =============================================================================
+// Server-Side Validation
+// =============================================================================
+
+/**
+ * Validates and caps AI recommendations to actual available cashflow.
+ * The AI cannot be fully trusted to follow constraints, so we enforce them here.
+ */
+function validateAndCapRecommendations(
+  aiResponse: DebtAnalysisResponse,
+  availableForExtra: number,
+  cashBalance: number
+): DebtAnalysisResponse {
+  // Create a copy to avoid mutating original
+  const validated = { ...aiResponse };
+
+  // Calculate realistic surplus limits based on actual available cashflow
+  // Leave 10% buffer for unexpected expenses
+  const maxAggressiveSurplus = Math.round(availableForExtra * 0.9);
+  const maxRecommendedSurplus = Math.round(availableForExtra * 0.6);
+  const maxMinimumSurplus = Math.round(availableForExtra * 0.3);
+
+  // Cap the surplus recommendations
+  if (validated.optimalSurplus) {
+    const original = { ...validated.optimalSurplus };
+
+    // Aggressive: Max 90% of available
+    validated.optimalSurplus.aggressive = Math.min(
+      original.aggressive || maxAggressiveSurplus,
+      maxAggressiveSurplus
+    );
+
+    // Recommended: Max 60% of available
+    validated.optimalSurplus.recommended = Math.min(
+      original.recommended || maxRecommendedSurplus,
+      maxRecommendedSurplus
+    );
+
+    // Minimum: Max 30% of available
+    validated.optimalSurplus.minimum = Math.min(
+      original.minimum || maxMinimumSurplus,
+      maxMinimumSurplus
+    );
+
+    // Ensure hierarchy: minimum < recommended < aggressive
+    if (validated.optimalSurplus.minimum > validated.optimalSurplus.recommended) {
+      validated.optimalSurplus.minimum = Math.round(validated.optimalSurplus.recommended * 0.5);
+    }
+    if (validated.optimalSurplus.recommended > validated.optimalSurplus.aggressive) {
+      validated.optimalSurplus.recommended = Math.round(validated.optimalSurplus.aggressive * 0.7);
+    }
+
+    // Update reasoning if we had to cap
+    const wasCapped = original.aggressive > maxAggressiveSurplus ||
+                      original.recommended > maxRecommendedSurplus ||
+                      original.minimum > maxMinimumSurplus;
+
+    if (wasCapped) {
+      validated.optimalSurplus.reasoning = `Based on your actual available cashflow of $${availableForExtra.toLocaleString()}/month after expenses and loan repayments. ` +
+        `Minimum ($${validated.optimalSurplus.minimum.toLocaleString()}) is 30%, ` +
+        `Recommended ($${validated.optimalSurplus.recommended.toLocaleString()}) is 60%, ` +
+        `and Aggressive ($${validated.optimalSurplus.aggressive.toLocaleString()}) is 90% of available funds, leaving buffer for unexpected expenses.`;
+    }
+  }
+
+  // Cap budget analysis trueDisposableIncome
+  if (validated.budgetAnalysis) {
+    if (validated.budgetAnalysis.trueDisposableIncome > availableForExtra) {
+      validated.budgetAnalysis.trueDisposableIncome = availableForExtra;
+      validated.budgetAnalysis.budgetNotes = `True disposable income capped to actual available cashflow ($${availableForExtra.toLocaleString()}/month) after all expenses and loan repayments. ` +
+        (validated.budgetAnalysis.budgetNotes || '');
+    }
+
+    // Check emergency fund status
+    if (cashBalance < 10000) {
+      validated.budgetAnalysis.emergencyFundStatus = 'critical';
+    } else if (cashBalance < 20000) {
+      validated.budgetAnalysis.emergencyFundStatus = 'needs_building';
+    }
+  }
+
+  // Add warning if AI recommendations were significantly off
+  if (aiResponse.optimalSurplus?.aggressive &&
+      aiResponse.optimalSurplus.aggressive > availableForExtra * 1.5) {
+    validated.warnings = validated.warnings || [];
+    validated.warnings.unshift(
+      `Recommendations adjusted to fit your actual available cashflow of $${availableForExtra.toLocaleString()}/month.`
+    );
+  }
+
+  return validated;
 }
 
 // =============================================================================
