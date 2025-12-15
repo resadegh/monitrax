@@ -247,6 +247,11 @@ export default function DebtPlannerPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        // Pass the pre-calculated availableForDebt from confirmed budget
+        // This ensures the AI uses the exact same value shown in the UI header
+        body: JSON.stringify({
+          availableForExtraRepayments: budgetStatus?.availableForDebt || 0,
+        }),
       });
 
       const result = await response.json();
