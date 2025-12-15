@@ -152,33 +152,21 @@ export default function DebtPlannerPage() {
         const result = await response.json();
 
         if (response.ok && result.success && result.data?.status === 'CONFIRMED') {
-          // Also fetch income and loan data for full picture
-          const [incomeRes, loansRes] = await Promise.all([
-            fetch('/api/income', { headers: { Authorization: `Bearer ${token}` } }),
-            fetch('/api/loans', { headers: { Authorization: `Bearer ${token}` } }),
-          ]);
+          // Fetch cashflow data (uses NET income, not GROSS) for accurate calculation
+          const cashflowRes = await fetch('/api/calculate/cashflow', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ fetchFromDatabase: true }),
+          });
 
-          const incomeData = await incomeRes.json();
-          const loansData = await loansRes.json();
+          const cashflowData = await cashflowRes.json();
 
-          const toMonthly = (amount: number, freq: string): number => {
-            switch (freq) {
-              case 'WEEKLY': return amount * 52 / 12;
-              case 'FORTNIGHTLY': return amount * 26 / 12;
-              case 'MONTHLY': return amount;
-              case 'QUARTERLY': return amount / 3;
-              case 'ANNUALLY': return amount / 12;
-              default: return amount;
-            }
-          };
-
-          const monthlyIncome = (incomeData.data || []).reduce(
-            (sum: number, i: any) => sum + toMonthly(i.amount, i.frequency), 0
-          );
-
-          const totalLoanRepayments = (loansData.data || loansData || []).reduce(
-            (sum: number, l: any) => sum + toMonthly(l.minRepayment, l.repaymentFrequency), 0
-          );
+          // Use NET income from cashflow API (after PAYG/tax withholding)
+          const monthlyIncome = cashflowData.output?.monthlyNetIncome || 0;
+          const totalLoanRepayments = cashflowData.output?.monthlyLoanRepayments || 0;
 
           const totalBudget = result.data.userFinalBudget || result.data.totalRealisticBudget;
           const remainingCashflow = monthlyIncome - totalBudget;
