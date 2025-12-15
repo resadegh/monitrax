@@ -518,20 +518,25 @@ app/dashboard/planning/
 
 On page load, the Debt Planner now:
 1. Fetches `/api/budget-analysis/latest` to check budget status
-2. Fetches income and loans to calculate full cashflow
+2. Fetches `/api/calculate/cashflow` to get **NET income** (after PAYG/tax withholding)
 3. Displays appropriate UI based on budget state
+
+**IMPORTANT: NET vs GROSS Income**
+- Uses Cashflow API which calculates income after tax
+- Example: Gross $26,787 → PAYG withheld $3,726 → **NET $23,061**
+- Ensures consistency with the main Cashflow section
 
 ### Cashflow Breakdown Cards
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────┐
-│  ┌──────────┐  ┌──────────────┐  ┌────────────┐  ┌─────────────┐  ┌────────┐  │
-│  │ INCOME   │  │ TOTAL BUDGET │  │ LOAN       │  │ AVAILABLE   │  │ ADJUST │  │
-│  │          │  │              │  │ REPAYMENTS │  │ FOR DEBT    │  │ BUDGET │  │
-│  │ $23,061  │  │ -$9,850      │  │ -$11,847   │  │ $1,364      │  │  [→]   │  │
-│  │          │  │ ($6,245 +    │  │            │  │             │  │        │  │
-│  │          │  │  $3,605)     │  │            │  │             │  │        │  │
-│  └──────────┘  └──────────────┘  └────────────┘  └─────────────┘  └────────┘  │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  ┌─────────────┐  ┌──────┐ │
+│  │ NET INCOME   │  │ TOTAL BUDGET │  │ LOAN       │  │ AVAILABLE   │  │ADJUST│ │
+│  │ (after tax)  │  │              │  │ REPAYMENTS │  │ FOR DEBT    │  │BUDGET│ │
+│  │ $23,061      │  │ -$10,467     │  │ -$11,847   │  │ $747        │  │  [→] │ │
+│  │              │  │ ($6,162 +    │  │            │  │             │  │      │ │
+│  │              │  │  $4,305)     │  │            │  │             │  │      │ │
+│  └──────────────┘  └──────────────┘  └────────────┘  └─────────────┘  └──────┘ │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -575,10 +580,12 @@ On page load, the Debt Planner now:
 **State 3: Positive Cashflow (Ready for Debt Planning)**
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  ✅ Budget Confirmed — Ready for Debt Planning          $1,364/mo   │
+│  ✅ Budget Confirmed — Ready for Debt Planning            $747/mo   │
 │                                                                       │
-│  You have $1,364/month available for extra debt payments after      │
+│  You have $747/month available for extra debt payments after        │
 │  your realistic budget and minimum loan repayments.                  │
+│                                                                       │
+│  Note: Uses NET income (after PAYG/tax) for accurate calculations   │
 │                                                                       │
 └──────────────────────────────────────────────────────────────────────┘
 
