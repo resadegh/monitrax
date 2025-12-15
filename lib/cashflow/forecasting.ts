@@ -131,6 +131,7 @@ function calculateSpendingPatterns(
   // Filter to expenses only (OUT direction)
   // Exclude transfers and loan repayments to avoid double-counting
   // Loan repayments are handled separately in loanTimeline
+
   // Category names match lib/tie/types.ts CATEGORY_HIERARCHY
   const EXCLUDED_CATEGORIES = [
     'Transfers',           // Internal/External transfers between accounts
@@ -138,10 +139,45 @@ function calculateSpendingPatterns(
     'Investments',         // Investment purchases are not recurring expenses
   ];
 
-  const expenses = transactions.filter((t) =>
-    t.direction === 'OUT' &&
-    !EXCLUDED_CATEGORIES.includes(t.categoryLevel1 || '')
-  );
+  // Also filter by description patterns (for transactions without categories)
+  // These patterns match common transfer/loan patterns from bank statements
+  const TRANSFER_PATTERNS = [
+    /transfer/i,
+    /^tfr\b/i,
+    /^trf\b/i,
+    /internal/i,
+    /osko/i,
+    /pay\s*anyone/i,
+    /bpay/i,
+    /loan\s*(repay|payment)/i,
+    /mortgage/i,
+    /home\s*loan/i,
+    /principal/i,
+    /offset/i,
+  ];
+
+  const isTransferOrLoan = (desc: string): boolean => {
+    if (!desc) return false;
+    return TRANSFER_PATTERNS.some(pattern => pattern.test(desc));
+  };
+
+  const expenses = transactions.filter((t) => {
+    // Must be outgoing
+    if (t.direction !== 'OUT') return false;
+
+    // Exclude by category if available
+    if (t.categoryLevel1 && EXCLUDED_CATEGORIES.includes(t.categoryLevel1)) {
+      return false;
+    }
+
+    // Exclude by description pattern (catches transfers without categories)
+    const description = t.merchantStandardised || '';
+    if (isTransferOrLoan(description)) {
+      return false;
+    }
+
+    return true;
+  });
 
   if (expenses.length === 0) {
     return {
