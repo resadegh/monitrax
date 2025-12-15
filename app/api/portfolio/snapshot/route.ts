@@ -36,9 +36,85 @@ function normalizeToMonthly(amount: number, frequency: string): number {
   return normalizeToAnnual(amount, frequency) / 12;
 }
 
-// Helper to get net income amount after PAYG for salary types
-function getNetIncomeAmount(incomeItem: { amount: number; frequency: string; type: string }): number {
+// Helper to get gross income amount for salary types
+function getGrossIncomeAmount(incomeItem: {
+  amount: number;
+  frequency: string;
+  type: string;
+  salaryType?: string | null;
+  netAmount?: number | null;
+  grossAmount?: number | null;
+  paygWithholding?: number | null;
+}): number {
   if (incomeItem.type === 'SALARY') {
+    // If user entered NET income, use the pre-calculated grossAmount
+    if (incomeItem.salaryType === 'NET' && incomeItem.grossAmount != null) {
+      return incomeItem.grossAmount;
+    }
+
+    // If user entered GROSS income, the amount field is the gross
+    if (incomeItem.salaryType === 'GROSS') {
+      return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+    }
+
+    // Fallback: use amount as gross (legacy behavior)
+    return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+  }
+  // For non-salary income, use gross amount
+  return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+}
+
+// Helper to get PAYG withholding for salary types
+function getPaygWithholding(incomeItem: {
+  amount: number;
+  frequency: string;
+  type: string;
+  salaryType?: string | null;
+  netAmount?: number | null;
+  grossAmount?: number | null;
+  paygWithholding?: number | null;
+}): number {
+  if (incomeItem.type === 'SALARY') {
+    // Use stored PAYG if available (pre-calculated)
+    if (incomeItem.paygWithholding != null) {
+      return incomeItem.paygWithholding;
+    }
+
+    // Calculate from gross/net difference
+    const gross = getGrossIncomeAmount(incomeItem);
+    const net = getNetIncomeAmount(incomeItem);
+    return Math.max(0, gross - net);
+  }
+  // Non-salary income has no PAYG withholding
+  return 0;
+}
+
+// Helper to get net income amount after PAYG for salary types
+function getNetIncomeAmount(incomeItem: {
+  amount: number;
+  frequency: string;
+  type: string;
+  salaryType?: string | null;
+  netAmount?: number | null;
+  grossAmount?: number | null;
+}): number {
+  if (incomeItem.type === 'SALARY') {
+    // If user entered NET income, the amount field is already net - use it directly
+    if (incomeItem.salaryType === 'NET') {
+      // Use the stored netAmount (annual) if available, otherwise use the entered amount
+      if (incomeItem.netAmount != null) {
+        return incomeItem.netAmount;
+      }
+      // The entered amount is already net, just annualize it
+      return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+    }
+
+    // If user entered GROSS income, use the pre-calculated netAmount if available
+    if (incomeItem.salaryType === 'GROSS' && incomeItem.netAmount != null) {
+      return incomeItem.netAmount;
+    }
+
+    // Fallback: Calculate PAYG from amount (for legacy data or when netAmount not available)
     const takeHome = calculateTakeHomePay(
       incomeItem.amount,
       incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'
@@ -552,12 +628,12 @@ export async function GET(request: NextRequest) {
       const netWorth = totalAssets - totalLiabilities;
 
       // Cashflow calculations with tax-adjusted income
-      // Gross income (before tax)
-      const totalAnnualGrossIncome = income.reduce((sum: number, i: any) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
-      // Net income (after PAYG for salaries)
+      // Gross income (before tax) - uses stored grossAmount for NET entries
+      const totalAnnualGrossIncome = income.reduce((sum: number, i: any) => sum + getGrossIncomeAmount(i), 0);
+      // Net income (after PAYG for salaries) - uses stored netAmount, no double-taxation
       const totalAnnualNetIncome = income.reduce((sum: number, i: any) => sum + getNetIncomeAmount(i), 0);
-      // PAYG withholding estimate
-      const totalAnnualPaygWithholding = totalAnnualGrossIncome - totalAnnualNetIncome;
+      // PAYG withholding - uses stored paygWithholding where available
+      const totalAnnualPaygWithholding = income.reduce((sum: number, i: any) => sum + getPaygWithholding(i), 0);
 
       const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
       // Calculate total loan repayments
@@ -793,16 +869,19 @@ export async function GET(request: NextRequest) {
       // INCOME SNAPSHOTS FOR CASHFLOW BREAKDOWN
       // ============================================================================
       const incomeSnapshots = income.map((inc: any) => {
-        const grossAnnual = normalizeToAnnual(inc.amount, inc.frequency);
+        const grossAnnual = getGrossIncomeAmount(inc);
         const netAnnual = getNetIncomeAmount(inc);
+        const paygAnnual = getPaygWithholding(inc);
         return {
           id: inc.id,
           name: inc.name,
           type: inc.type,
           amount: inc.amount,
           frequency: inc.frequency,
+          salaryType: inc.salaryType || null,
           grossAnnual,
           netAnnual,
+          paygWithholding: paygAnnual,
           propertyId: inc.propertyId,
           propertyName: inc.property?.name || null,
           isTaxable: inc.isTaxable || true,

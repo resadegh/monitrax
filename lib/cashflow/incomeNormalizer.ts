@@ -71,12 +71,58 @@ function calculateNetSalary(grossMonthlyAmount: number): {
 /**
  * Normalize a single income stream to include after-tax amounts
  *
- * For SALARY income: Calculates PAYG withholding and returns net amount
+ * For SALARY income:
+ * - If salaryType is 'NET': Uses the entered amount as net (no tax deduction needed)
+ * - If salaryType is 'GROSS': Uses pre-calculated netAmount or calculates PAYG
+ * - For legacy data: Calculates PAYG from amount
  * For other income types: Returns the original amount (assumed to be gross/taxable)
  */
 export function normalizeIncomeStream(income: IncomeStream): IncomeWithTax {
-  // For salary income, calculate PAYG withholding
+  // For salary income, handle based on how the amount was entered
   if (income.type === 'SALARY') {
+    // If user entered NET income, the monthlyAmount is already net
+    if (income.salaryType === 'NET') {
+      // Use stored amounts if available
+      const netMonthly = income.netAmount != null
+        ? income.netAmount / 12
+        : income.monthlyAmount;
+      const grossMonthly = income.grossAmount != null
+        ? income.grossAmount / 12
+        : income.monthlyAmount; // If no gross stored, use the amount (will be recalculated if needed)
+      const paygMonthly = income.paygWithholding != null
+        ? income.paygWithholding / 12
+        : grossMonthly - netMonthly;
+
+      return {
+        ...income,
+        grossMonthlyAmount: grossMonthly,
+        netMonthlyAmount: netMonthly,
+        monthlyPaygWithholding: paygMonthly,
+        // Use net amount for cashflow calculations (already net, no deduction needed)
+        monthlyAmount: netMonthly,
+        isAfterTax: true,
+      };
+    }
+
+    // If user entered GROSS income, use pre-calculated net if available
+    if (income.salaryType === 'GROSS' && income.netAmount != null) {
+      const netMonthly = income.netAmount / 12;
+      const grossMonthly = income.monthlyAmount;
+      const paygMonthly = income.paygWithholding != null
+        ? income.paygWithholding / 12
+        : grossMonthly - netMonthly;
+
+      return {
+        ...income,
+        grossMonthlyAmount: grossMonthly,
+        netMonthlyAmount: netMonthly,
+        monthlyPaygWithholding: paygMonthly,
+        monthlyAmount: netMonthly,
+        isAfterTax: true,
+      };
+    }
+
+    // Fallback: Calculate PAYG from monthlyAmount (legacy behavior for backward compatibility)
     const { netMonthly, paygMonthly } = calculateNetSalary(income.monthlyAmount);
 
     return {

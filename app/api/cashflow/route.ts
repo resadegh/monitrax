@@ -126,9 +126,14 @@ async function buildCFEInput(
       monthlyAmount: normalizeToMonthly(Number(i.amount), i.frequency),
       frequency: i.frequency,
       volatility: 0.1, // Default low volatility for regular income
+      // Pass salary-specific fields for proper tax handling
+      salaryType: i.salaryType || null,
+      grossAmount: i.grossAmount != null ? Number(i.grossAmount) : null,
+      netAmount: i.netAmount != null ? Number(i.netAmount) : null,
+      paygWithholding: i.paygWithholding != null ? Number(i.paygWithholding) : null,
     };
 
-    // Apply tax normalization (adjusts salary to net after PAYG)
+    // Apply tax normalization (handles NET vs GROSS properly)
     const normalized = normalizeIncomeStream(baseStream);
     return {
       ...baseStream,
