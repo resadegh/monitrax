@@ -74,6 +74,14 @@ export async function POST(request: NextRequest) {
     try {
       const userId = authReq.user!.userId;
 
+      // Parse request body to get pre-calculated availableForExtraRepayments from frontend
+      let requestBody: { availableForExtraRepayments?: number } = {};
+      try {
+        requestBody = await authReq.json();
+      } catch {
+        // No body provided - will calculate on server side
+      }
+
       // Check if Gemini is configured
       if (!isGeminiConfigured()) {
         return NextResponse.json(
@@ -192,9 +200,13 @@ export async function POST(request: NextRequest) {
       const totalOffsetBalance = loans.reduce((sum, l) => sum + (l.offsetAccount?.currentBalance || 0), 0);
       const cashBalance = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
-      // CRITICAL: Calculate the ACTUAL available cashflow for extra debt repayments
-      // This is AFTER expenses AND loan repayments (using NET income, not GROSS)
-      const availableForExtraRepayments = Math.max(0, monthlySurplus - totalLoanRepayments);
+      // CRITICAL: Use the pre-calculated availableForExtraRepayments from frontend if provided
+      // This ensures the AI uses the EXACT same value shown in the UI header ($494)
+      // The frontend calculates this using the cashflow API which has the authoritative calculation
+      const calculatedAvailable = Math.max(0, monthlySurplus - totalLoanRepayments);
+      const availableForExtraRepayments = requestBody.availableForExtraRepayments !== undefined && requestBody.availableForExtraRepayments >= 0
+        ? requestBody.availableForExtraRepayments
+        : calculatedAvailable;
 
       console.log('[API] Debt Analysis - Cash Flow Breakdown:');
       console.log(`  Monthly NET Income: $${monthlyNetIncome.toFixed(0)}`);
@@ -203,7 +215,9 @@ export async function POST(request: NextRequest) {
         console.log(`    └── Tracked: $${trackedExpenses.toFixed(0)}, Variable Est: $${(budgetAnalysis.aiVariableEstimate || 0).toFixed(0)}`);
       }
       console.log(`  Monthly Loan Repayments: $${totalLoanRepayments.toFixed(0)}`);
-      console.log(`  Available for Extra: $${availableForExtraRepayments.toFixed(0)}`);
+      console.log(`  Server Calculated Available: $${calculatedAvailable.toFixed(0)}`);
+      console.log(`  Frontend Provided Available: $${requestBody.availableForExtraRepayments !== undefined ? requestBody.availableForExtraRepayments.toFixed(0) : 'N/A'}`);
+      console.log(`  >>> USING Available for Extra: $${availableForExtraRepayments.toFixed(0)} <<<`);
 
       // Build comprehensive prompt for AI
       const userPrompt = buildDebtAnalysisPrompt({
