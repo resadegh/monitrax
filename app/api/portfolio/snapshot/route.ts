@@ -13,7 +13,6 @@ import {
   extractInvestmentAccountLinks,
   extractHoldingLinks,
 } from '@/lib/grdcs';
-import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 import { getNetAnnualIncome, toAnnual } from '@/lib/income/netIncomeCalculator';
 
 // ============================================================================
