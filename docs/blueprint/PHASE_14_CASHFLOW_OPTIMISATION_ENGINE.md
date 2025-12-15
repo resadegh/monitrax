@@ -535,5 +535,75 @@ while (nextDate < today) {
 }
 ```
 
-**Reference:** See `CHANGELOG_2025_12_09.md` for full details.  
+**Reference:** See `CHANGELOG_2025_12_09.md` for full details.
+
+### December 15, 2025 — Burn Rate Calculation & Chart Display Fix
+
+**File:** `lib/cashflow/forecasting.ts` → `calculateSpendingPatterns()`
+
+**Issue 1: Inflated Monthly Burn Rate**
+
+The "Monthly Burn Rate" metric was showing extremely high values (e.g., $44,700/mo instead of ~$6,000/mo) because the spending pattern calculation included ALL outgoing transactions, leading to double-counting:
+
+- **TRANSFER** transactions (internal account-to-account transfers)
+- **LOAN_REPAYMENT** (already counted separately in `loanTimeline`)
+- **INTERNAL_TRANSFER**, **PAYMENT_TRANSFER** (bank transfers)
+- **INVESTMENT** purchases (not recurring expenses)
+
+**Fix Applied:**
+```typescript
+const EXCLUDED_CATEGORIES = [
+  'TRANSFER',
+  'LOAN_REPAYMENT',
+  'INTERNAL_TRANSFER',
+  'PAYMENT_TRANSFER',
+  'INVESTMENT',  // Investment purchases are not recurring expenses
+];
+
+const expenses = transactions.filter((t) =>
+  t.direction === 'OUT' &&
+  !EXCLUDED_CATEGORIES.includes(t.categoryLevel1 || '')
+);
+```
+
+---
+
+**File:** `app/(dashboard)/cashflow/page.tsx` → `ForecastChart()`
+
+**Issue 2: 90-Day Forecast Chart Showing Blank**
+
+The chart component failed to render under certain conditions:
+
+1. **Empty forecast array**: `Math.max(...[])` returns `-Infinity`, `Math.min(...[])` returns `Infinity`
+2. **Division by zero**: When all predicted balances are identical (range = 0)
+3. **No empty state**: No visual feedback when no data exists
+
+**Fix Applied:**
+```typescript
+// Handle empty or invalid forecast data
+if (!forecast || forecast.length === 0) {
+  return (
+    <div className="bg-white rounded-lg shadow p-4">
+      <h3 className="font-semibold mb-4">90-Day Forecast</h3>
+      <div className="h-40 flex items-center justify-center text-gray-400">
+        <div className="text-center">
+          <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No forecast data available</p>
+          <p className="text-xs mt-1">Add accounts and transactions to see predictions</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Validate range calculations
+const range = maxBalance - minBalance;
+const validRange = !isNaN(range) && isFinite(range) && range > 0 ? range : 1;
+const allSame = range === 0;
+
+// Clamp bar heights to valid percentages
+style={{ height: `${Math.max(5, Math.min(100, height))}%` }}
+```
+
+---
 
