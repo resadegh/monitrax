@@ -286,11 +286,16 @@ The Debt Planner now fully integrates with Budget Analysis:
 
 **Pre-Check on Page Load:**
 - Fetches `/api/budget-analysis/latest` to check if budget is confirmed
-- Also fetches income and loan data to calculate full cashflow picture
+- Fetches `/api/calculate/cashflow` to get NET income (after PAYG/tax withholding)
+
+**IMPORTANT: NET vs GROSS Income**
+- Debt Planner uses the Cashflow API which calculates NET income
+- This ensures consistency with the Cashflow section which shows NET income
+- Example: Gross $26,787/mo → PAYG withheld $3,726/mo → **NET $23,061/mo**
 
 **Cashflow Breakdown Display:**
 ```
-Monthly Income:        $23,061
+Monthly NET Income:    $23,061  ← After PAYG/tax (not gross!)
 - Total Budget:        -$9,850 (recurring + variable)
 - Loan Repayments:     -$11,847
 ─────────────────────────────────
