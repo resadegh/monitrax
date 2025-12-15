@@ -619,3 +619,52 @@ style={{ height: `${Math.max(5, Math.min(100, height))}%` }}
 
 ---
 
+### December 15, 2025 — NET vs GROSS salaryType Double-Taxation Fix
+
+**Files:**
+- `app/api/portfolio/snapshot/route.ts`
+- `lib/cashflow/incomeNormalizer.ts`
+- `lib/cashflow/types.ts`
+- `app/api/cashflow/route.ts`
+
+**Issue:** When users entered salary as "Net (After Tax)", the cashflow calculations were incorrectly deducting PAYG tax again, resulting in double-taxation.
+
+**Root Cause:** The income normalizer and snapshot API were always calculating PAYG from the raw `amount` field, ignoring the `salaryType` field that indicates whether the user entered NET or GROSS income.
+
+**Fix Applied:**
+
+1. **Extended `IncomeStream` type** with salary-specific fields:
+```typescript
+interface IncomeStream {
+  // ... existing fields
+  salaryType?: 'GROSS' | 'NET' | null;
+  grossAmount?: number | null;  // Annual gross
+  netAmount?: number | null;    // Annual net
+  paygWithholding?: number | null;
+}
+```
+
+2. **Updated income processing logic**:
+```typescript
+// For NET income: use stored values directly (no tax calculation)
+if (incomeItem.salaryType === 'NET') {
+  return incomeItem.netAmount ?? normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+}
+
+// For GROSS income: use pre-calculated netAmount
+if (incomeItem.salaryType === 'GROSS' && incomeItem.netAmount != null) {
+  return incomeItem.netAmount;
+}
+
+// Fallback: calculate PAYG (for legacy data)
+```
+
+3. **Added helper functions** in snapshot route:
+- `getGrossIncomeAmount()` - Returns correct gross based on salaryType
+- `getPaygWithholding()` - Returns correct PAYG from stored values
+- Updated `getNetIncomeAmount()` - Checks salaryType before calculating
+
+**Reference:** See `PHASE_20_AUSTRALIAN_TAX_INTELLIGENCE_ENGINE.md` for full details.
+
+---
+
