@@ -46,6 +46,7 @@ Phase 20 introduces a comprehensive Australian Tax Intelligence Engine that:
 | Financial Health net income | ✅ Complete | Health metrics use take-home pay |
 | Portfolio snapshot gross/net | ✅ Complete | Shows both with PAYG breakdown |
 | Calculate cashflow API | ✅ Complete | Returns gross, net, PAYG separately |
+| **NET vs GROSS salaryType handling** | ✅ Fixed (2025-12-15) | Respects `salaryType` field to avoid double-taxation |
 
 ### 🔲 Phase 20B: Super Integration - PENDING
 
@@ -905,7 +906,83 @@ Every recommendation includes:
 
 ---
 
-## 11. References
+## 11. Bug Fixes & Updates
+
+### December 15, 2025 — NET vs GROSS salaryType Double-Taxation Fix
+
+**Issue:** When users entered salary as "Net (After Tax)", the cashflow calculations were incorrectly deducting PAYG tax again, resulting in double-taxation. The dashboard showed PAYG withheld even for NET income entries.
+
+**Root Cause:** The `getNetIncomeAmount()` function in `app/api/portfolio/snapshot/route.ts` and `normalizeIncomeStream()` in `lib/cashflow/incomeNormalizer.ts` were always calculating PAYG from the `amount` field, ignoring the `salaryType` field that indicates whether the user entered NET or GROSS income.
+
+**Files Modified:**
+
+| File | Changes |
+|------|---------|
+| `app/api/portfolio/snapshot/route.ts` | Added `getGrossIncomeAmount()` and `getPaygWithholding()` helpers that check `salaryType`; updated `getNetIncomeAmount()` to use stored values |
+| `lib/cashflow/incomeNormalizer.ts` | Updated `normalizeIncomeStream()` to handle NET/GROSS properly |
+| `lib/cashflow/types.ts` | Extended `IncomeStream` interface with `salaryType`, `grossAmount`, `netAmount`, `paygWithholding` fields |
+| `app/api/cashflow/route.ts` | Pass salary-specific fields when building income streams |
+
+**Fix Logic:**
+
+```typescript
+// For NET income: use stored values directly (no tax calculation)
+if (incomeItem.salaryType === 'NET') {
+  if (incomeItem.netAmount != null) return incomeItem.netAmount;
+  return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+}
+
+// For GROSS income: use pre-calculated netAmount if available
+if (incomeItem.salaryType === 'GROSS' && incomeItem.netAmount != null) {
+  return incomeItem.netAmount;
+}
+
+// Fallback: calculate PAYG (for legacy data without salaryType)
+```
+
+**Impact:**
+- Dashboard now correctly shows NET income without additional PAYG deduction
+- Cashflow calculations use the correct net amount based on how income was entered
+- Backward compatible with legacy income entries (calculates PAYG if no `salaryType`)
+
+### December 15, 2025 — NET Income Source of Truth Fix (Part 2)
+
+**Issue:** Even after the first fix, the dashboard showed $10,764/month while income page showed $11,074/month for NET salary entries. The values didn't match.
+
+**Root Cause:** In `lib/tax-engine/income/salaryProcessor.ts`, the `processSalary` function was:
+1. Back-calculating GROSS from NET (correct)
+2. Then **recalculating** NET from that GROSS (wrong!)
+3. The recalculated NET differed from user's input due to rounding in reverse calculation
+
+**Fix Applied:**
+
+```typescript
+// In processSalary()
+let userProvidedNet = false;
+
+if (salaryType === 'NET') {
+  // Net provided - PRESERVE the user's net input as source of truth
+  const annualNetInput = annualize(amount, payFrequency);
+  annualNet = annualNetInput; // User's input is the source of truth
+  userProvidedNet = true;
+  // Back-calculate gross for informational purposes only
+  annualGross = calculateGrossFromNet(annualNetInput, ...).gross;
+}
+
+// Later: only recalculate net if user provided GROSS
+if (!userProvidedNet) {
+  annualNet = annualGross - totalTax - annualSalarySacrifice;
+}
+```
+
+**Single Source of Truth:**
+- When user enters NET: Their input is stored and used everywhere
+- GROSS and PAYG are "estimated" values for informational purposes
+- All pages (income, dashboard, cashflow) now use the same `netAmount` from database
+
+---
+
+## 12. References
 
 - [ATO Individual Tax Rates](https://www.ato.gov.au/rates/individual-income-tax-rates/)
 - [ATO Medicare Levy](https://www.ato.gov.au/individuals/medicare-and-private-health-insurance/medicare-levy/)

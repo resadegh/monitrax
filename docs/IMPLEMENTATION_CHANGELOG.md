@@ -1,7 +1,7 @@
 # Monitrax Implementation Changelog
 
-**Last Updated:** 2025-12-01
-**Active Branch:** `claude/continue-ai-strategy-engine-01Y1tCB7457LqYNMe3hwg1Jk`
+**Last Updated:** 2025-12-15
+**Active Branch:** `claude/fix-cashflow-tax-deduction-Xpozc`
 
 ---
 
@@ -12,6 +12,28 @@ This document tracks all implementation changes, features, and bug fixes made to
 ---
 
 ## Recent Changes (December 2025)
+
+### Bug Fix: NET vs GROSS salaryType Double-Taxation
+**Date:** 2025-12-15
+
+**Issue:** When users entered salary as "Net (After Tax)", the cashflow calculations were incorrectly deducting PAYG tax again, resulting in double-taxation.
+
+**Files Modified:**
+| File | Changes |
+|------|---------|
+| `app/api/portfolio/snapshot/route.ts` | Added `getGrossIncomeAmount()`, `getPaygWithholding()` helpers; updated `getNetIncomeAmount()` to check `salaryType` |
+| `lib/cashflow/incomeNormalizer.ts` | Updated `normalizeIncomeStream()` to handle NET vs GROSS properly |
+| `lib/cashflow/types.ts` | Extended `IncomeStream` interface with `salaryType`, `grossAmount`, `netAmount`, `paygWithholding` |
+| `app/api/cashflow/route.ts` | Pass salary-specific fields when building income streams |
+
+**Fix Logic:**
+- For `salaryType === 'NET'`: Use stored `netAmount` directly (no tax calculation)
+- For `salaryType === 'GROSS'`: Use pre-calculated `netAmount` from database
+- For legacy data (no `salaryType`): Fall back to calculating PAYG for backward compatibility
+
+**Reference:** See `PHASE_20_AUSTRALIAN_TAX_INTELLIGENCE_ENGINE.md` Section 11 for full details.
+
+---
 
 ### Phase 20: Australian Tax Intelligence Engine ✅
 **Date:** 2025-12-01

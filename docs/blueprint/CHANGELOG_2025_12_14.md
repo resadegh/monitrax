@@ -281,5 +281,25 @@ All AI system prompts now explicitly identify as "powered by Google Gemini AI":
 
 ---
 
+## December 15, 2025 — NET vs GROSS salaryType Double-Taxation Fix
+
+### Bug Fix: Cashflow Tax Calculation
+
+**Issue:** When users entered salary as "Net (After Tax)", the cashflow calculations were incorrectly deducting PAYG tax again, resulting in double-taxation.
+
+**Root Cause:** The income normalizer and snapshot API were always calculating PAYG from the raw `amount` field, ignoring the `salaryType` field that indicates whether the user entered NET or GROSS income.
+
+**Files Modified:**
+| File | Changes |
+|------|---------|
+| `app/api/portfolio/snapshot/route.ts` | Added `getGrossIncomeAmount()`, `getPaygWithholding()` helpers |
+| `lib/cashflow/incomeNormalizer.ts` | Updated `normalizeIncomeStream()` to handle NET/GROSS |
+| `lib/cashflow/types.ts` | Extended `IncomeStream` interface with salary fields |
+| `app/api/cashflow/route.ts` | Pass salary-specific fields to normalizer |
+
+**Commit:** `e824a9b` fix: respect salaryType when calculating cashflow tax deduction
+
+---
+
 *Status: Complete*
 *Author: Claude Code*
