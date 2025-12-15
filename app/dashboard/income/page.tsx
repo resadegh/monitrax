@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import {
@@ -488,19 +489,30 @@ function IncomePageContent() {
   };
 
   // Get effective (after-tax) annual amount for an income item
-  // For SALARY: use netAmount (already tax-adjusted) regardless of GROSS/NET type
-  // For other income: use the raw amount
+  // This logic matches the dashboard's getNetIncomeAmount for consistency
   const getEffectiveAnnualAmount = (item: Income): number => {
     if (item.type === 'SALARY') {
-      // For both GROSS and NET salary types, use the stored netAmount if available
-      // This ensures consistency with dashboard calculations
-      if (item.netAmount != null) {
+      // If user entered NET income, the amount field is already net
+      if (item.salaryType === 'NET') {
+        if (item.netAmount != null) {
+          return item.netAmount;
+        }
+        // The entered amount is already net, just annualize it
+        return convertToAnnual(item.amount, item.frequency);
+      }
+
+      // If user entered GROSS income, use the pre-calculated netAmount if available
+      if (item.salaryType === 'GROSS' && item.netAmount != null) {
         return item.netAmount;
       }
-      // Fallback: calculate from raw amount
-      return convertToAnnual(item.amount, item.frequency);
+
+      // Fallback: Calculate PAYG from amount (for legacy data or when netAmount not available)
+      // This matches the dashboard's fallback logic
+      const frequency = item.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+      const takeHome = calculateTakeHomePay(item.amount, frequency);
+      return convertToAnnual(takeHome.netAmount, item.frequency);
     }
-    // For non-salary income types, convert amount to annual
+    // For non-salary income types, convert amount to annual (tax calculated at year end)
     return convertToAnnual(item.amount, item.frequency);
   };
 
