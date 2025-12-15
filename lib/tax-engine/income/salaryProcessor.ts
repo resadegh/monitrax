@@ -64,6 +64,7 @@ export function processSalary(
   // Step 1: Determine annual gross salary
   let annualGross: number;
   let annualNet: number;
+  let userProvidedNet = false; // Track if user provided NET input
 
   calculations.push({
     label: `Input Amount (${salaryType})`,
@@ -81,14 +82,18 @@ export function processSalary(
       explanation: `$${amount.toLocaleString()} × ${PERIODS_PER_YEAR[payFrequency]} periods`,
     });
   } else {
-    // Net provided - reverse calculate gross
+    // Net provided - reverse calculate gross, but PRESERVE the user's net input
     const annualNetInput = annualize(amount, payFrequency);
+    annualNet = annualNetInput; // Use user's NET input directly - this is the source of truth
+    userProvidedNet = true;
+
     const reverseCalc = calculateGrossFromNet(annualNetInput, 'ANNUALLY', hasTaxFreeThreshold, config);
     annualGross = reverseCalc.gross;
 
     calculations.push({
-      label: 'Target Annual Net',
+      label: 'Annual Net (User Input)',
       value: annualNetInput,
+      explanation: 'Your take-home pay - this is the source of truth',
     });
 
     calculations.push({
@@ -146,7 +151,12 @@ export function processSalary(
 
   // Step 6: Calculate net salary
   const totalTax = paygResult.annualWithholding + medicareResult.total;
-  annualNet = annualGross - totalTax - annualSalarySacrifice;
+
+  // Only calculate net if user provided GROSS - if they provided NET, we already have it
+  if (!userProvidedNet) {
+    annualNet = annualGross - totalTax - annualSalarySacrifice;
+  }
+  // Note: if userProvidedNet is true, annualNet was already set to the user's input
 
   calculations.push({
     label: 'Total Tax (PAYG + Medicare)',
@@ -158,7 +168,7 @@ export function processSalary(
     label: 'Annual Net Salary (Take-home)',
     value: annualNet,
     operation: '=',
-    explanation: 'What you receive after tax',
+    explanation: userProvidedNet ? 'Your specified take-home pay' : 'What you receive after tax',
   });
 
   // Step 7: Calculate superannuation

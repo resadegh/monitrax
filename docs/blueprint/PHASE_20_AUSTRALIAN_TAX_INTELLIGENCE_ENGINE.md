@@ -945,6 +945,41 @@ if (incomeItem.salaryType === 'GROSS' && incomeItem.netAmount != null) {
 - Cashflow calculations use the correct net amount based on how income was entered
 - Backward compatible with legacy income entries (calculates PAYG if no `salaryType`)
 
+### December 15, 2025 — NET Income Source of Truth Fix (Part 2)
+
+**Issue:** Even after the first fix, the dashboard showed $10,764/month while income page showed $11,074/month for NET salary entries. The values didn't match.
+
+**Root Cause:** In `lib/tax-engine/income/salaryProcessor.ts`, the `processSalary` function was:
+1. Back-calculating GROSS from NET (correct)
+2. Then **recalculating** NET from that GROSS (wrong!)
+3. The recalculated NET differed from user's input due to rounding in reverse calculation
+
+**Fix Applied:**
+
+```typescript
+// In processSalary()
+let userProvidedNet = false;
+
+if (salaryType === 'NET') {
+  // Net provided - PRESERVE the user's net input as source of truth
+  const annualNetInput = annualize(amount, payFrequency);
+  annualNet = annualNetInput; // User's input is the source of truth
+  userProvidedNet = true;
+  // Back-calculate gross for informational purposes only
+  annualGross = calculateGrossFromNet(annualNetInput, ...).gross;
+}
+
+// Later: only recalculate net if user provided GROSS
+if (!userProvidedNet) {
+  annualNet = annualGross - totalTax - annualSalarySacrifice;
+}
+```
+
+**Single Source of Truth:**
+- When user enters NET: Their input is stored and used everywhere
+- GROSS and PAYG are "estimated" values for informational purposes
+- All pages (income, dashboard, cashflow) now use the same `netAmount` from database
+
 ---
 
 ## 12. References
