@@ -559,13 +559,24 @@ const EXCLUDED_CATEGORIES = [
   'Investments',         // Investment purchases are not recurring expenses
 ];
 
-const expenses = transactions.filter((t) =>
-  t.direction === 'OUT' &&
-  !EXCLUDED_CATEGORIES.includes(t.categoryLevel1 || '')
-);
+// Also filter by description patterns (for transactions without categories)
+const TRANSFER_PATTERNS = [
+  /transfer/i, /^tfr\b/i, /^trf\b/i, /internal/i, /osko/i,
+  /pay\s*anyone/i, /bpay/i, /loan\s*(repay|payment)/i,
+  /mortgage/i, /home\s*loan/i, /principal/i, /offset/i,
+];
+
+const expenses = transactions.filter((t) => {
+  if (t.direction !== 'OUT') return false;
+  if (t.categoryLevel1 && EXCLUDED_CATEGORIES.includes(t.categoryLevel1)) return false;
+  if (isTransferOrLoan(t.merchantStandardised || '')) return false;
+  return true;
+});
 ```
 
-**Note:** Category names use title case (e.g., `'Transfers'` not `'TRANSFER'`) to match the `CATEGORY_HIERARCHY` defined in `lib/tie/types.ts`.
+**Note:** Two-layer filtering:
+1. By `categoryLevel1` if populated (title case names from `CATEGORY_HIERARCHY`)
+2. By `merchantStandardised` description patterns (catches uncategorized transfers/loans)
 
 ---
 
