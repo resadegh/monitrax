@@ -8,7 +8,22 @@ export async function GET(request: NextRequest) {
     try {
       const expenses = await prisma.expense.findMany({
         where: { userId: authReq.user!.userId },
-        include: { property: true, loan: true, investmentAccount: true, asset: true },
+        include: {
+          property: true,
+          loan: true,
+          investmentAccount: true,
+          asset: true,
+          // Phase 29: Include linked recurring payments
+          linkedRecurringPayments: {
+            select: {
+              id: true,
+              merchantStandardised: true,
+              pattern: true,
+              expectedAmount: true,
+              matchStatus: true,
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       });
 

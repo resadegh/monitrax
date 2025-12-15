@@ -1,14 +1,17 @@
 /**
  * RECURRING PAYMENTS CENTER
- * Phase 13 - Transactional Intelligence
+ * Phase 13 + Phase 29 - Transactional Intelligence & Expense Linking
  *
  * Features:
- * - All recurring payments list
+ * - All recurring payments list with expense linking status
+ * - Match suggestions for linking to existing expenses
+ * - Create expense from recurring payment
  * - Next occurrence prediction
  * - Monthly cost summaries
  * - Price change alerts
+ * - Untracked payments section
  *
- * Blueprint reference: PHASE_13_TRANSACTIONAL_INTELLIGENCE.md Section 13.5.3
+ * Blueprint reference: PHASE_13_TRANSACTIONAL_INTELLIGENCE.md, PHASE_29_RECURRING_EXPENSE_LINKING.md
  */
 
 'use client';
@@ -16,6 +19,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/context/AuthContext';
+import {
+  MatchConfirmationDialog,
+  CreateExpenseFromRecurring,
+} from '@/components/recurring';
 import {
   RefreshCw,
   Calendar,
@@ -26,15 +33,38 @@ import {
   Play,
   Clock,
   Building,
-  ChevronRight,
   CheckCircle,
   Bell,
   CreditCard,
+  Link as LinkIcon,
+  Link2Off,
+  Plus,
+  MoreVertical,
+  Search,
+  ExternalLink,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // =============================================================================
 // TYPES
 // =============================================================================
+
+interface LinkedExpense {
+  id: string;
+  name: string;
+  vendorName: string | null;
+  category: string;
+  amount: number;
+  frequency: string;
+}
 
 interface RecurringPayment {
   id: string;
@@ -48,11 +78,27 @@ interface RecurringPayment {
   priceIncreaseAlert: boolean;
   isActive: boolean;
   isPaused: boolean;
+  matchStatus: 'UNMATCHED' | 'SUGGESTED' | 'LINKED' | 'DISMISSED' | 'CREATED';
+  matchConfidence: number | null;
+  linkedExpenseId: string | null;
+  linkedExpense: LinkedExpense | null;
   account: {
     id: string;
     name: string;
     institution: string;
   };
+}
+
+interface MatchResult {
+  recurringPaymentId: string;
+  merchantName: string;
+  suggestedExpense: LinkedExpense | null;
+  confidence: number;
+  amountMatch: boolean;
+  frequencyMatch: boolean;
+  amountDifference: number;
+  matchReason: string;
+  recurringPayment: RecurringPayment | null;
 }
 
 interface RecurringSummary {
@@ -126,13 +172,53 @@ function getDaysUntilText(dateStr: string | null): string {
   return `${Math.ceil(days / 30)} months`;
 }
 
+function getMatchStatusBadge(payment: RecurringPayment) {
+  switch (payment.matchStatus) {
+    case 'LINKED':
+    case 'CREATED':
+      return (
+        <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+          <CheckCircle className="h-3 w-3" />
+          Tracked
+        </Badge>
+      );
+    case 'SUGGESTED':
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1">
+          <Search className="h-3 w-3" />
+          Match Found
+        </Badge>
+      );
+    case 'DISMISSED':
+      return (
+        <Badge variant="outline" className="text-gray-500 flex items-center gap-1">
+          <Link2Off className="h-3 w-3" />
+          Dismissed
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline" className="text-gray-500 flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          Not Tracked
+        </Badge>
+      );
+  }
+}
+
 // =============================================================================
 // SUB COMPONENTS
 // =============================================================================
 
-function SummaryCards({ summary }: { summary: RecurringSummary }) {
+function SummaryCards({
+  summary,
+  untrackedCount,
+}: {
+  summary: RecurringSummary;
+  untrackedCount: number;
+}) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
       <div className="bg-white rounded-lg shadow p-4">
         <div className="text-sm text-gray-500">Total Recurring</div>
         <div className="text-2xl font-bold">{summary.total}</div>
@@ -142,8 +228,16 @@ function SummaryCards({ summary }: { summary: RecurringSummary }) {
         <div className="text-2xl font-bold text-green-600">{summary.active}</div>
       </div>
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="text-sm text-gray-500">Paused</div>
-        <div className="text-2xl font-bold text-gray-500">{summary.paused}</div>
+        <div className="text-sm text-gray-500">Tracked in Expenses</div>
+        <div className="text-2xl font-bold text-blue-600">
+          {summary.total - untrackedCount}
+        </div>
+      </div>
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="text-sm text-gray-500">Not Tracked</div>
+        <div className={`text-2xl font-bold ${untrackedCount > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+          {untrackedCount}
+        </div>
       </div>
       <div className="bg-white rounded-lg shadow p-4">
         <div className="text-sm text-gray-500">Monthly Total</div>
@@ -164,23 +258,34 @@ function SummaryCards({ summary }: { summary: RecurringSummary }) {
 function RecurringPaymentCard({
   payment,
   onTogglePause,
+  onViewMatch,
+  onCreateExpense,
+  onUnlink,
+  onViewExpense,
 }: {
   payment: RecurringPayment;
   onTogglePause: (id: string, isPaused: boolean) => void;
+  onViewMatch: (payment: RecurringPayment) => void;
+  onCreateExpense: (payment: RecurringPayment) => void;
+  onUnlink: (payment: RecurringPayment) => void;
+  onViewExpense: (expenseId: string) => void;
 }) {
   const daysUntil = getDaysUntil(payment.nextExpected);
   const isUpcoming = daysUntil !== null && daysUntil >= 0 && daysUntil <= 7;
   const isOverdue = daysUntil !== null && daysUntil < 0;
+  const isLinked = payment.matchStatus === 'LINKED' || payment.matchStatus === 'CREATED';
 
   return (
     <div
       className={`bg-white rounded-lg shadow p-4 ${
         payment.isPaused ? 'opacity-60' : ''
-      } ${payment.priceIncreaseAlert ? 'ring-2 ring-orange-400' : ''}`}
+      } ${payment.priceIncreaseAlert ? 'ring-2 ring-orange-400' : ''} ${
+        isLinked ? 'border-l-4 border-green-500' : ''
+      }`}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-lg">{payment.merchantStandardised}</h3>
             {payment.priceIncreaseAlert && (
               <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-800 rounded-full text-xs">
@@ -188,38 +293,83 @@ function RecurringPaymentCard({
                 Price Increase
               </span>
             )}
+            {getMatchStatusBadge(payment)}
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
             <Building className="h-4 w-4" />
             <span>{payment.account.name}</span>
           </div>
+          {isLinked && payment.linkedExpense && (
+            <div className="flex items-center gap-2 text-sm text-green-600 mt-1">
+              <LinkIcon className="h-4 w-4" />
+              <span>Linked to: {payment.linkedExpense.name}</span>
+            </div>
+          )}
         </div>
-        <button
-          onClick={() => onTogglePause(payment.id, !payment.isPaused)}
-          className={`p-2 rounded-full ${
-            payment.isPaused
-              ? 'bg-green-100 text-green-600 hover:bg-green-200'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-          title={payment.isPaused ? 'Resume tracking' : 'Pause tracking'}
-        >
-          {payment.isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-        </button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {isLinked ? (
+              <>
+                <DropdownMenuItem onClick={() => onViewExpense(payment.linkedExpenseId!)}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Expense
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onUnlink(payment)}>
+                  <Link2Off className="h-4 w-4 mr-2" />
+                  Unlink Expense
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <>
+                {payment.matchStatus === 'SUGGESTED' && (
+                  <DropdownMenuItem onClick={() => onViewMatch(payment)}>
+                    <Search className="h-4 w-4 mr-2" />
+                    Review Match
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => onCreateExpense(payment)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create as Expense
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onTogglePause(payment.id, !payment.isPaused)}
+            >
+              {payment.isPaused ? (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Resume Tracking
+                </>
+              ) : (
+                <>
+                  <Pause className="h-4 w-4 mr-2" />
+                  Pause Tracking
+                </>
+              )}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Amount */}
         <div>
           <div className="text-xs text-gray-500 uppercase">Amount</div>
           <div className="font-bold text-lg">{formatCurrency(payment.expectedAmount)}</div>
           {payment.amountVariance > 0 && (
             <div className="text-xs text-gray-500">
-              ± {formatCurrency(payment.amountVariance)}
+              +/- {formatCurrency(payment.amountVariance)}
             </div>
           )}
         </div>
 
-        {/* Pattern */}
         <div>
           <div className="text-xs text-gray-500 uppercase">Frequency</div>
           <span
@@ -231,7 +381,6 @@ function RecurringPaymentCard({
           </span>
         </div>
 
-        {/* Next Due */}
         <div>
           <div className="text-xs text-gray-500 uppercase">Next Due</div>
           <div className={`font-medium ${isOverdue ? 'text-red-600' : isUpcoming ? 'text-orange-600' : ''}`}>
@@ -246,7 +395,6 @@ function RecurringPaymentCard({
           </div>
         </div>
 
-        {/* History */}
         <div>
           <div className="text-xs text-gray-500 uppercase">Occurrences</div>
           <div className="font-medium">{payment.occurrenceCount} times</div>
@@ -256,8 +404,7 @@ function RecurringPaymentCard({
         </div>
       </div>
 
-      {/* Status badges */}
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-4 flex items-center gap-2 flex-wrap">
         {payment.isActive && !payment.isPaused && (
           <span className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
             <CheckCircle className="h-3 w-3" />
@@ -287,6 +434,115 @@ function RecurringPaymentCard({
   );
 }
 
+function UntrackedPaymentsSection({
+  payments,
+  onReviewMatch,
+  onCreateExpense,
+}: {
+  payments: RecurringPayment[];
+  onReviewMatch: (payment: RecurringPayment) => void;
+  onCreateExpense: (payment: RecurringPayment) => void;
+}) {
+  const untracked = payments.filter(
+    (p) => p.matchStatus === 'UNMATCHED' || p.matchStatus === 'SUGGESTED'
+  );
+
+  if (untracked.length === 0) return null;
+
+  const monthlyTotal = untracked.reduce((sum, p) => {
+    switch (p.pattern) {
+      case 'WEEKLY':
+        return sum + p.expectedAmount * 4.33;
+      case 'FORTNIGHTLY':
+        return sum + p.expectedAmount * 2.17;
+      case 'MONTHLY':
+        return sum + p.expectedAmount;
+      case 'QUARTERLY':
+        return sum + p.expectedAmount / 3;
+      case 'ANNUALLY':
+        return sum + p.expectedAmount / 12;
+      default:
+        return sum + p.expectedAmount;
+    }
+  }, 0);
+
+  const suggested = untracked.filter((p) => p.matchStatus === 'SUGGESTED');
+
+  return (
+    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2 text-orange-800">
+            <AlertTriangle className="h-5 w-5" />
+            Untracked Recurring Payments ({untracked.length})
+          </h2>
+          <p className="text-sm text-orange-700 mt-1">
+            These detected payments are not tracked in your expenses. Add them for accurate budget calculations.
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-sm text-orange-600">Untracked Monthly</div>
+          <div className="text-xl font-bold text-orange-800">{formatCurrency(monthlyTotal)}</div>
+        </div>
+      </div>
+
+      {suggested.length > 0 && (
+        <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+          <div className="flex items-center gap-2 text-yellow-800 font-medium">
+            <Search className="h-4 w-4" />
+            {suggested.length} potential {suggested.length === 1 ? 'match' : 'matches'} found
+          </div>
+          <p className="text-sm text-yellow-700 mt-1">
+            We found existing expenses that might match these payments. Review and confirm to link them.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {untracked.map((payment) => (
+          <div
+            key={payment.id}
+            className="flex items-center justify-between p-3 bg-white rounded-lg"
+          >
+            <div className="flex items-center gap-3">
+              <div>
+                <div className="font-medium">{payment.merchantStandardised}</div>
+                <div className="text-sm text-gray-500">
+                  {formatCurrency(payment.expectedAmount)} {formatPattern(payment.pattern).toLowerCase()}
+                </div>
+              </div>
+              {payment.matchStatus === 'SUGGESTED' && (
+                <Badge className="bg-yellow-100 text-yellow-800">
+                  Match Found
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {payment.matchStatus === 'SUGGESTED' ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onReviewMatch(payment)}
+                >
+                  <Search className="h-4 w-4 mr-1" />
+                  Review
+                </Button>
+              ) : null}
+              <Button
+                size="sm"
+                onClick={() => onCreateExpense(payment)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add to Expenses
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function UpcomingPayments({ payments }: { payments: RecurringPayment[] }) {
   const upcoming = payments
     .filter((p) => !p.isPaused && p.nextExpected)
@@ -304,6 +560,7 @@ function UpcomingPayments({ payments }: { payments: RecurringPayment[] }) {
       <div className="space-y-3">
         {upcoming.map((payment) => {
           const daysUntil = getDaysUntil(payment.nextExpected);
+          const isLinked = payment.matchStatus === 'LINKED' || payment.matchStatus === 'CREATED';
           return (
             <div
               key={payment.id}
@@ -318,7 +575,12 @@ function UpcomingPayments({ payments }: { payments: RecurringPayment[] }) {
                   }`}
                 />
                 <div>
-                  <div className="font-medium">{payment.merchantStandardised}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{payment.merchantStandardised}</span>
+                    {isLinked && (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    )}
+                  </div>
                   <div className="text-sm text-gray-500">
                     {formatDate(payment.nextExpected)} - {getDaysUntilText(payment.nextExpected)}
                   </div>
@@ -381,15 +643,24 @@ function PriceAlerts({ payments }: { payments: RecurringPayment[] }) {
 export default function RecurringPaymentsCenter() {
   const { token } = useAuth();
   const [payments, setPayments] = useState<RecurringPayment[]>([]);
+  const [matchResults, setMatchResults] = useState<MatchResult[]>([]);
   const [summary, setSummary] = useState<RecurringSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [detecting, setDetecting] = useState(false);
+  const [matching, setMatching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Dialogs
+  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<RecurringPayment | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<MatchResult | null>(null);
 
   // Filters
   const [showActive, setShowActive] = useState(true);
   const [showPaused, setShowPaused] = useState(false);
   const [patternFilter, setPatternFilter] = useState('');
+  const [trackingFilter, setTrackingFilter] = useState('');
 
   const fetchPayments = useCallback(async () => {
     if (!token) return;
@@ -420,9 +691,27 @@ export default function RecurringPaymentsCenter() {
     }
   }, [token, showActive, showPaused]);
 
+  const fetchMatchSuggestions = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/recurring-payments/match', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await response.json();
+
+      if (response.ok && json.success) {
+        setMatchResults(json.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch match suggestions:', err);
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchPayments();
-  }, [fetchPayments]);
+    fetchMatchSuggestions();
+  }, [fetchPayments, fetchMatchSuggestions]);
 
   async function handleDetectRecurring() {
     if (!token) return;
@@ -438,6 +727,7 @@ export default function RecurringPaymentsCenter() {
       if (response.ok && json.success) {
         alert(`Detection complete! Found ${json.data.newDetected} new recurring payments.`);
         fetchPayments();
+        fetchMatchSuggestions();
       } else {
         alert(json.error || 'Detection failed');
       }
@@ -448,17 +738,118 @@ export default function RecurringPaymentsCenter() {
     }
   }
 
+  async function handleRunMatching() {
+    if (!token) return;
+
+    try {
+      setMatching(true);
+      const response = await fetch('/api/recurring-payments/match', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await response.json();
+
+      if (response.ok && json.success) {
+        alert(`Matching complete! Found ${json.data.suggestionsFound} potential matches.`);
+        fetchPayments();
+        fetchMatchSuggestions();
+      } else {
+        alert(json.error || 'Matching failed');
+      }
+    } catch (err) {
+      alert('Network error');
+    } finally {
+      setMatching(false);
+    }
+  }
+
   async function handleTogglePause(id: string, isPaused: boolean) {
-    // Note: Would need a PATCH endpoint for this
-    // For now, update local state only
     setPayments((prev) =>
       prev.map((p) => (p.id === id ? { ...p, isPaused } : p))
     );
   }
 
+  async function handleConfirmMatch(paymentId: string, expenseId: string) {
+    if (!token) return;
+
+    const response = await fetch(`/api/recurring-payments/${paymentId}/link`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ expenseId }),
+    });
+
+    if (response.ok) {
+      fetchPayments();
+      fetchMatchSuggestions();
+    } else {
+      const error = await response.json();
+      alert(error.error || 'Failed to link');
+    }
+  }
+
+  async function handleDismissMatch(paymentId: string) {
+    if (!token) return;
+
+    const response = await fetch(`/api/recurring-payments/${paymentId}/link`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.ok) {
+      fetchPayments();
+      fetchMatchSuggestions();
+    }
+  }
+
+  async function handleUnlink(payment: RecurringPayment) {
+    if (!token) return;
+
+    if (!confirm('Are you sure you want to unlink this recurring payment from the expense?')) {
+      return;
+    }
+
+    const response = await fetch(`/api/recurring-payments/${payment.id}/link`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.ok) {
+      fetchPayments();
+      fetchMatchSuggestions();
+    }
+  }
+
+  function handleViewMatch(payment: RecurringPayment) {
+    const match = matchResults.find((m) => m.recurringPaymentId === payment.id);
+    if (match) {
+      setSelectedPayment(payment);
+      setSelectedMatch(match);
+      setMatchDialogOpen(true);
+    }
+  }
+
+  function handleCreateExpense(payment: RecurringPayment) {
+    setSelectedPayment(payment);
+    setCreateDialogOpen(true);
+  }
+
+  function handleViewExpense(expenseId: string) {
+    window.location.href = `/dashboard/expenses?highlight=${expenseId}`;
+  }
+
+  // Calculate untracked count
+  const untrackedCount = payments.filter(
+    (p) => p.matchStatus === 'UNMATCHED' || p.matchStatus === 'SUGGESTED'
+  ).length;
+
   // Filter payments
   const filteredPayments = payments.filter((p) => {
     if (patternFilter && p.pattern !== patternFilter) return false;
+    if (trackingFilter === 'tracked' && p.matchStatus !== 'LINKED' && p.matchStatus !== 'CREATED') return false;
+    if (trackingFilter === 'untracked' && (p.matchStatus === 'LINKED' || p.matchStatus === 'CREATED')) return false;
     return true;
   });
 
@@ -466,29 +857,49 @@ export default function RecurringPaymentsCenter() {
     <DashboardLayout>
       <div className="p-6">
         {/* Header */}
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold">Recurring Payments</h1>
             <p className="text-gray-500 text-sm">
               Track and manage your subscriptions and regular payments
             </p>
           </div>
-          <button
-            onClick={handleDetectRecurring}
-            disabled={detecting}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {detecting ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
-            )}
-            Detect Recurring
-          </button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleRunMatching}
+              disabled={matching}
+            >
+              {matching ? (
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Search className="h-4 w-4 mr-2" />
+              )}
+              Find Matches
+            </Button>
+            <Button
+              onClick={handleDetectRecurring}
+              disabled={detecting}
+            >
+              {detecting ? (
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Detect Recurring
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
-        {summary && <SummaryCards summary={summary} />}
+        {summary && <SummaryCards summary={summary} untrackedCount={untrackedCount} />}
+
+        {/* Untracked Payments Section */}
+        <UntrackedPaymentsSection
+          payments={payments}
+          onReviewMatch={handleViewMatch}
+          onCreateExpense={handleCreateExpense}
+        />
 
         {/* Price Alerts */}
         <PriceAlerts payments={payments} />
@@ -533,6 +944,17 @@ export default function RecurringPaymentsCenter() {
                 <option value="ANNUALLY">Annually</option>
               </select>
             </div>
+            <div className="border-l pl-4">
+              <select
+                value={trackingFilter}
+                onChange={(e) => setTrackingFilter(e.target.value)}
+                className="border rounded-lg px-3 py-1 text-sm"
+              >
+                <option value="">All Status</option>
+                <option value="tracked">Tracked in Expenses</option>
+                <option value="untracked">Not Tracked</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -546,12 +968,12 @@ export default function RecurringPaymentsCenter() {
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <AlertTriangle className="h-8 w-8 mx-auto text-red-400" />
             <p className="text-red-600 mt-2">{error}</p>
-            <button
+            <Button
               onClick={fetchPayments}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg"
+              className="mt-4"
             >
               Retry
-            </button>
+            </Button>
           </div>
         ) : filteredPayments.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -570,10 +992,44 @@ export default function RecurringPaymentsCenter() {
                 key={payment.id}
                 payment={payment}
                 onTogglePause={handleTogglePause}
+                onViewMatch={handleViewMatch}
+                onCreateExpense={handleCreateExpense}
+                onUnlink={handleUnlink}
+                onViewExpense={handleViewExpense}
               />
             ))}
           </div>
         )}
+
+        {/* Match Confirmation Dialog */}
+        {selectedPayment && selectedMatch && (
+          <MatchConfirmationDialog
+            open={matchDialogOpen}
+            onOpenChange={setMatchDialogOpen}
+            recurringPayment={selectedPayment}
+            suggestedExpense={selectedMatch.suggestedExpense}
+            confidence={selectedMatch.confidence}
+            amountMatch={selectedMatch.amountMatch}
+            frequencyMatch={selectedMatch.frequencyMatch}
+            amountDifference={selectedMatch.amountDifference}
+            matchReason={selectedMatch.matchReason}
+            onConfirm={handleConfirmMatch}
+            onDismiss={handleDismissMatch}
+            onCreateNew={handleCreateExpense}
+          />
+        )}
+
+        {/* Create Expense Dialog */}
+        <CreateExpenseFromRecurring
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          recurringPayment={selectedPayment}
+          token={token || ''}
+          onSuccess={() => {
+            fetchPayments();
+            fetchMatchSuggestions();
+          }}
+        />
       </div>
     </DashboardLayout>
   );

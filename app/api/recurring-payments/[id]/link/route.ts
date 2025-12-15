@@ -1,0 +1,261 @@
+/**
+ * RECURRING PAYMENT LINKING API
+ * Phase 29 - Expense Linking
+ *
+ * POST   - Link recurring payment to an expense
+ * DELETE - Unlink recurring payment from expense
+ * PATCH  - Dismiss match suggestion
+ *
+ * Blueprint reference: PHASE_29_RECURRING_EXPENSE_LINKING.md
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/db';
+import { withAuth } from '@/lib/middleware';
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+// =============================================================================
+// POST - Link to Expense
+// =============================================================================
+
+export async function POST(request: NextRequest, { params }: RouteParams) {
+  return withAuth(request, async (authReq) => {
+    try {
+      const { id } = await params;
+      const userId = authReq.user!.userId;
+      const body = await request.json();
+
+      const { expenseId, createExpense } = body;
+
+      // Verify recurring payment belongs to user
+      const recurringPayment = await prisma.recurringPayment.findFirst({
+        where: { id, userId },
+      });
+
+      if (!recurringPayment) {
+        return NextResponse.json(
+          { success: false, error: 'Recurring payment not found' },
+          { status: 404 }
+        );
+      }
+
+      // If createExpense is true, create a new expense from the recurring payment
+      if (createExpense) {
+        const {
+          name,
+          category,
+          frequency,
+          amount,
+          isEssential,
+          isTaxDeductible,
+          vendorName,
+          propertyId,
+          loanId,
+          investmentAccountId,
+          assetId,
+          sourceType,
+        } = body;
+
+        // Create the expense
+        const newExpense = await prisma.expense.create({
+          data: {
+            userId,
+            name: name || recurringPayment.merchantStandardised,
+            vendorName: vendorName || recurringPayment.merchantStandardised,
+            category: category || 'OTHER',
+            sourceType: sourceType || 'GENERAL',
+            amount: amount || recurringPayment.expectedAmount,
+            frequency: frequency || mapPatternToFrequency(recurringPayment.pattern),
+            isEssential: isEssential ?? true,
+            isTaxDeductible: isTaxDeductible ?? false,
+            propertyId: propertyId || null,
+            loanId: loanId || null,
+            investmentAccountId: investmentAccountId || null,
+            assetId: assetId || null,
+          },
+        });
+
+        // Link the recurring payment to the new expense
+        const updatedPayment = await prisma.recurringPayment.update({
+          where: { id },
+          data: {
+            linkedExpenseId: newExpense.id,
+            matchStatus: 'CREATED',
+            matchConfidence: 1.0,
+          },
+          include: {
+            linkedExpense: true,
+            account: true,
+          },
+        });
+
+        return NextResponse.json({
+          success: true,
+          data: updatedPayment,
+          expense: newExpense,
+          message: 'Expense created and linked successfully',
+        });
+      }
+
+      // Otherwise, link to existing expense
+      if (!expenseId) {
+        return NextResponse.json(
+          { success: false, error: 'expenseId is required when not creating new expense' },
+          { status: 400 }
+        );
+      }
+
+      // Verify expense belongs to user
+      const expense = await prisma.expense.findFirst({
+        where: { id: expenseId, userId },
+      });
+
+      if (!expense) {
+        return NextResponse.json(
+          { success: false, error: 'Expense not found' },
+          { status: 404 }
+        );
+      }
+
+      // Link the recurring payment to the expense
+      const updatedPayment = await prisma.recurringPayment.update({
+        where: { id },
+        data: {
+          linkedExpenseId: expenseId,
+          matchStatus: 'LINKED',
+          matchConfidence: body.confidence || null,
+        },
+        include: {
+          linkedExpense: true,
+          account: true,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: updatedPayment,
+        message: 'Recurring payment linked to expense',
+      });
+    } catch (error) {
+      console.error('Link recurring payment error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to link recurring payment' },
+        { status: 500 }
+      );
+    }
+  });
+}
+
+// =============================================================================
+// DELETE - Unlink from Expense
+// =============================================================================
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  return withAuth(request, async (authReq) => {
+    try {
+      const { id } = await params;
+      const userId = authReq.user!.userId;
+
+      // Verify recurring payment belongs to user
+      const recurringPayment = await prisma.recurringPayment.findFirst({
+        where: { id, userId },
+      });
+
+      if (!recurringPayment) {
+        return NextResponse.json(
+          { success: false, error: 'Recurring payment not found' },
+          { status: 404 }
+        );
+      }
+
+      // Unlink the recurring payment
+      const updatedPayment = await prisma.recurringPayment.update({
+        where: { id },
+        data: {
+          linkedExpenseId: null,
+          matchStatus: 'UNMATCHED',
+          matchConfidence: null,
+        },
+        include: {
+          account: true,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: updatedPayment,
+        message: 'Recurring payment unlinked from expense',
+      });
+    } catch (error) {
+      console.error('Unlink recurring payment error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to unlink recurring payment' },
+        { status: 500 }
+      );
+    }
+  });
+}
+
+// =============================================================================
+// PATCH - Dismiss Match Suggestion
+// =============================================================================
+
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  return withAuth(request, async (authReq) => {
+    try {
+      const { id } = await params;
+      const userId = authReq.user!.userId;
+
+      // Verify recurring payment belongs to user
+      const recurringPayment = await prisma.recurringPayment.findFirst({
+        where: { id, userId },
+      });
+
+      if (!recurringPayment) {
+        return NextResponse.json(
+          { success: false, error: 'Recurring payment not found' },
+          { status: 404 }
+        );
+      }
+
+      // Dismiss the match suggestion
+      const updatedPayment = await prisma.recurringPayment.update({
+        where: { id },
+        data: {
+          matchStatus: 'DISMISSED',
+          matchConfidence: null,
+        },
+        include: {
+          account: true,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: updatedPayment,
+        message: 'Match suggestion dismissed',
+      });
+    } catch (error) {
+      console.error('Dismiss match suggestion error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to dismiss match suggestion' },
+        { status: 500 }
+      );
+    }
+  });
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+function mapPatternToFrequency(
+  pattern: string
+): 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' {
+  if (pattern === 'ANNUALLY') return 'ANNUAL';
+  if (pattern === 'IRREGULAR') return 'MONTHLY';
+  return pattern as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY';
+}

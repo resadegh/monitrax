@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
 
       const recurringPayments = await prisma.recurringPayment.findMany({
         where,
-        include: { account: true },
+        include: {
+          account: true,
+          linkedExpense: true,
+        },
         orderBy: { nextExpected: 'asc' },
       });
 
