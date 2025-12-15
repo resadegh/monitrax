@@ -103,13 +103,13 @@ const navGroups: NavGroup[] = [
     icon: Lightbulb,
     tourId: 'nav-planning',
     items: [
-      { name: 'Cashflow', href: '/cashflow', icon: LineChart, tourId: 'nav-cashflow' },
-      { name: 'Financial Health', href: '/health', icon: Activity, tourId: 'nav-health' },
-      { name: 'Strategy', href: '/strategy', icon: Lightbulb, tourId: 'nav-strategy' },
       { name: 'Household Profile', href: '/dashboard/household-profile', icon: Users, tourId: 'nav-household' },
       { name: 'Budget Analysis', href: '/dashboard/budget-analysis', icon: Target, tourId: 'nav-budget-analysis' },
       { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator, tourId: 'nav-debt' },
+      { name: 'Cashflow', href: '/cashflow', icon: LineChart, tourId: 'nav-cashflow' },
+      { name: 'Financial Health', href: '/health', icon: Activity, tourId: 'nav-health' },
       { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt, tourId: 'nav-tax' },
+      { name: 'Strategy', href: '/strategy', icon: Lightbulb, tourId: 'nav-strategy' },
     ],
   },
   {
