@@ -65,6 +65,7 @@ enum ExpenseCategory {
   LOAN_INTEREST
   REGISTRATION    // Vehicle registration, license fees
   MODIFICATIONS   // Vehicle modifications, upgrades
+  SUBSCRIPTION    // Recurring subscriptions (streaming, software, etc.)
   OTHER
 }
 
