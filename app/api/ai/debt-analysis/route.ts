@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         if (income.type === 'SALARY' && income.salaryType === 'GROSS') {
           // GROSS salary: calculate PAYG tax
           const takeHome = calculateTakeHomePay(annualAmount, income.frequency as any);
-          annualNet = takeHome.annualNet;
+          annualNet = takeHome.netAmount;
         } else if (income.netAmount) {
           // User provided NET amount directly
           annualNet = convertToMonthly(income.netAmount, income.frequency) * 12;
