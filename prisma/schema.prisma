@@ -337,6 +337,7 @@ model User {
   // Phase 28: Realistic Budget Integration
   householdProfile        HouseholdProfile?
   budgetAnalyses          BudgetAnalysis[]
+  debtAnalyses            DebtAnalysis[]
 
   @@map("users")
 }
@@ -2613,4 +2614,50 @@ model BudgetAnalysis {
   @@index([userId])
   @@index([analysisDate])
   @@map("budget_analyses")
+}
+
+// Phase 28.6: AI Debt Strategy Analysis - Persisted recommendations
+model DebtAnalysis {
+  id                      String   @id @default(uuid())
+  userId                  String
+
+  // Analysis Date
+  analysisDate            DateTime @default(now())
+
+  // AI Analysis Results (stored as JSON for flexibility)
+  summary                 String   @db.Text         // AI summary text
+  debtHealthScore         Int                       // 0-100 score
+  recommendedStrategy     String                    // TAX_AWARE_MINIMUM_INTEREST, AVALANCHE, SNOWBALL
+  strategyReason          String   @db.Text         // Why this strategy
+
+  // Optimal Surplus Recommendations
+  surplusMinimum          Float                     // 30% of available
+  surplusRecommended      Float                     // 60% of available
+  surplusAggressive       Float                     // 90% of available
+  surplusReasoning        String?  @db.Text         // Explanation
+
+  // Detailed Analysis (stored as JSON)
+  keyInsights             Json?                     // Array of insights
+  loanPriority            Json?                     // Array of loan priorities
+  actionPlan              Json?                     // Array of action steps
+  projections             Json?                     // Debt-free date, savings, etc.
+  warnings                Json?                     // Array of warning strings
+
+  // Context at time of analysis (for reference)
+  totalDebt               Float                     // Total debt at analysis time
+  monthlyIncome           Float                     // NET income used
+  monthlyExpenses         Float                     // Budget used
+  availableForExtra       Float                     // Available for extra repayments
+  loanCount               Int                       // Number of loans
+
+  // Metadata
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relationships
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([analysisDate])
+  @@map("debt_analyses")
 }

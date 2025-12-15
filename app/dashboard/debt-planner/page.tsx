@@ -127,6 +127,7 @@ export default function DebtPlannerPage() {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiError, setAiError] = useState('');
   const [showAIPanel, setShowAIPanel] = useState(true);
+  const [analysisSavedAt, setAnalysisSavedAt] = useState<Date | null>(null);
 
   // Phase 28: Budget status pre-check
   const [budgetStatus, setBudgetStatus] = useState<BudgetStatus | null>(null);
@@ -207,6 +208,41 @@ export default function DebtPlannerPage() {
     fetchBudgetStatus();
   }, [token]);
 
+  // Load saved AI analysis on page load
+  useEffect(() => {
+    const fetchSavedAnalysis = async () => {
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/ai/debt-analysis/latest', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success && result.data?.analysis) {
+          setAiAnalysis(result.data.analysis);
+          setAnalysisSavedAt(new Date(result.data.savedAt));
+          console.log('[DebtPlanner] Loaded saved AI analysis from', result.data.savedAt);
+
+          // Auto-apply saved settings if they exist
+          if (result.data.analysis.recommendedStrategy) {
+            setSettings(prev => ({
+              ...prev,
+              strategy: result.data.analysis.recommendedStrategy,
+              surplusPerPeriod: result.data.analysis.optimalSurplus?.recommended || prev.surplusPerPeriod,
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch saved AI analysis:', err);
+        // Don't show error - it's okay if there's no saved analysis
+      }
+    };
+
+    fetchSavedAnalysis();
+  }, [token]);
+
   const runPlan = async () => {
     setIsLoading(true);
     setError('');
@@ -262,6 +298,7 @@ export default function DebtPlannerPage() {
 
       if (result.success && result.data?.analysis) {
         setAiAnalysis(result.data.analysis);
+        setAnalysisSavedAt(new Date()); // Mark as just generated
 
         // Auto-apply AI recommended settings
         if (result.data.analysis.recommendedStrategy) {
@@ -534,6 +571,17 @@ export default function DebtPlannerPage() {
                   </CardTitle>
                   <CardDescription>
                     Get personalized debt reduction strategy based on your financial situation
+                    {analysisSavedAt && (
+                      <span className="block text-xs mt-1 text-purple-600 dark:text-purple-400">
+                        Last generated: {analysisSavedAt.toLocaleDateString('en-AU', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    )}
                   </CardDescription>
                 </div>
               </div>
