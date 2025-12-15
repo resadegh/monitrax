@@ -650,6 +650,7 @@ function ExpensesPageContent() {
       FOOD: { variant: 'outline', label: 'Food' },
       TRANSPORT: { variant: 'secondary', label: 'Transport' },
       ENTERTAINMENT: { variant: 'outline', label: 'Entertainment' },
+      SUBSCRIPTION: { variant: 'outline', label: 'Subscription' },
       STRATA: { variant: 'default', label: 'Strata' },
       LAND_TAX: { variant: 'destructive', label: 'Land Tax' },
       LOAN_INTEREST: { variant: 'destructive', label: 'Loan Interest' },
