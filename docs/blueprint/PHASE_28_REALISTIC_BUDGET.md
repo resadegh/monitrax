@@ -296,11 +296,19 @@ The Debt Planner now fully integrates with Budget Analysis:
 **Cashflow Breakdown Display:**
 ```
 Monthly NET Income:    $23,061  ← After PAYG/tax (not gross!)
-- Total Budget:        -$9,850 (recurring + variable)
+- Total Budget:        -$10,721 (recurring $6,833 + variable $3,888)
 - Loan Repayments:     -$11,847
 ─────────────────────────────────
-= Available for Debt:  $1,364/month
+= Available for Debt:  $494/month
 ```
+
+**AI Debt Strategy Integration:**
+- Gemini AI receives the confirmed "Available for Extra Repayments" amount
+- AI does NOT generate its own budget analysis (removed duplicate section)
+- Surplus recommendations stay within available amount:
+  - Minimum: 20-30% of available (~$100-150)
+  - Recommended: 50-60% of available (~$250-300)
+  - Aggressive: 80-90% of available (~$400-450)
 
 **Conditional UI States:**
 
