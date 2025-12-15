@@ -33,7 +33,7 @@ import {
 interface RecurringPayment {
   id: string;
   merchantStandardised: string;
-  pattern: string;
+  pattern: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'IRREGULAR';
   expectedAmount: number;
   amountVariance: number;
   lastOccurrence: string;
