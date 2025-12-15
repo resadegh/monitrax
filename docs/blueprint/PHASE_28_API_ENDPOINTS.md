@@ -590,3 +590,8 @@ All endpoints have been implemented with the following additions:
 3. **TypeScript Strict Mode Compliance**:
    - All JSON fields use explicit type casts (`as any`)
    - Proper type annotations for reduce/map callbacks
+
+4. **Debt Planner Integration** uses `/api/calculate/cashflow`:
+   - Fetches NET income (after PAYG/tax) instead of GROSS income
+   - Ensures consistency with Cashflow section numbers
+   - Example: Gross $26,787 → PAYG $3,726 → **NET $23,061**
