@@ -171,6 +171,90 @@ After deployment, verify:
 
 ---
 
+---
+
+## Phase 28.7: Persist AI Debt Analysis
+
+### Summary
+
+AI debt analysis results now persist across page loads and navigation. Users no longer lose their analysis when refreshing or navigating away from the Debt Planner page.
+
+### Database Changes
+
+New table `debt_analyses`:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | String | UUID primary key |
+| userId | String | Foreign key to User |
+| analysisDate | DateTime | When analysis was generated |
+| summary | Text | AI summary text |
+| debtHealthScore | Int | 0-100 health score |
+| recommendedStrategy | String | TAX_AWARE, AVALANCHE, or SNOWBALL |
+| strategyReason | Text | Why this strategy was recommended |
+| surplusMinimum | Float | 30% of available |
+| surplusRecommended | Float | 60% of available |
+| surplusAggressive | Float | 90% of available |
+| surplusReasoning | Text | Explanation for surplus amounts |
+| keyInsights | Json | Array of insights |
+| loanPriority | Json | Array of loan priorities |
+| actionPlan | Json | Array of action steps |
+| projections | Json | Debt-free date, savings, etc. |
+| warnings | Json | Array of warning strings |
+| totalDebt | Float | Total debt at analysis time |
+| monthlyIncome | Float | NET income used |
+| monthlyExpenses | Float | Budget used |
+| availableForExtra | Float | Available for extra repayments |
+| loanCount | Int | Number of loans |
+
+### New API Endpoint
+
+**GET /api/ai/debt-analysis/latest**
+
+Returns the most recent saved debt analysis for the authenticated user.
+
+```typescript
+// Response
+{
+  success: true,
+  data: {
+    analysis: { /* Full AIAnalysis object */ },
+    context: { /* Context at time of analysis */ },
+    savedAt: "2025-12-15T10:30:00Z"
+  }
+}
+```
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/api/ai/debt-analysis/latest/route.ts` | GET endpoint to fetch saved analysis |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `prisma/schema.prisma` | Added DebtAnalysis model |
+| `app/api/ai/debt-analysis/route.ts` | Added save to database after generation |
+| `app/dashboard/debt-planner/page.tsx` | Load saved analysis on page mount, show "Last generated" date |
+
+### User Experience
+
+1. **First visit**: User clicks "Get AI Analysis" to generate recommendations
+2. **Analysis saved**: Results automatically saved to database
+3. **Return visit**: Analysis loads automatically on page load
+4. **Refresh**: User can click "Refresh Analysis" to regenerate with latest data
+5. **Timestamp**: UI shows "Last generated: 15 Dec 2025, 10:30 AM"
+
+### Commits
+
+| Hash | Message |
+|------|---------|
+| `226944d` | feat(debt-planner): persist AI debt analysis across page loads |
+
+---
+
 *Status: Complete*
 *Author: Claude Code*
 *Branch: claude/fix-budget-analysis-integration-zjyOX*

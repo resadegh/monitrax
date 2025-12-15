@@ -256,6 +256,39 @@ export async function POST(request: NextRequest) {
       console.log(`  AI Original - Min: $${data.optimalSurplus?.minimum}, Rec: $${data.optimalSurplus?.recommended}, Agg: $${data.optimalSurplus?.aggressive}`);
       console.log(`  After Cap - Min: $${validatedAnalysis.optimalSurplus.minimum}, Rec: $${validatedAnalysis.optimalSurplus.recommended}, Agg: $${validatedAnalysis.optimalSurplus.aggressive}`);
 
+      // =======================================================================
+      // PERSIST: Save the analysis to database so it persists across page loads
+      // =======================================================================
+      try {
+        await prisma.debtAnalysis.create({
+          data: {
+            userId,
+            summary: validatedAnalysis.summary || '',
+            debtHealthScore: validatedAnalysis.debtHealthScore || 0,
+            recommendedStrategy: validatedAnalysis.recommendedStrategy || 'AVALANCHE',
+            strategyReason: validatedAnalysis.strategyReason || '',
+            surplusMinimum: validatedAnalysis.optimalSurplus?.minimum || 0,
+            surplusRecommended: validatedAnalysis.optimalSurplus?.recommended || 0,
+            surplusAggressive: validatedAnalysis.optimalSurplus?.aggressive || 0,
+            surplusReasoning: validatedAnalysis.optimalSurplus?.reasoning || null,
+            keyInsights: validatedAnalysis.keyInsights || [],
+            loanPriority: validatedAnalysis.loanPriority || [],
+            actionPlan: validatedAnalysis.actionPlan || [],
+            projections: validatedAnalysis.projections || null,
+            warnings: validatedAnalysis.warnings || [],
+            totalDebt,
+            monthlyIncome: monthlyNetIncome,
+            monthlyExpenses,
+            availableForExtra: availableForExtraRepayments,
+            loanCount: loans.length,
+          },
+        });
+        console.log('[API] Debt analysis saved to database');
+      } catch (saveError) {
+        // Don't fail the request if save fails - just log it
+        console.error('[API] Failed to save debt analysis to database:', saveError);
+      }
+
       return NextResponse.json({
         success: true,
         data: {
