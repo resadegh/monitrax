@@ -19,6 +19,8 @@ import {
   formatCurrencyForPrompt,
   formatPercentageForPrompt,
 } from '@/lib/ai/google';
+import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
+import { toMonthly } from '@/lib/utils/frequencies';
 
 // =============================================================================
 // Types
@@ -118,7 +120,13 @@ export async function POST(request: NextRequest) {
       const [incomes, expenses, accounts, budgetAnalysis] = await Promise.all([
         prisma.income.findMany({
           where: { userId },
-          select: { amount: true, frequency: true },
+          select: {
+            amount: true,
+            frequency: true,
+            type: true,
+            salaryType: true,  // GROSS or NET
+            netAmount: true,   // User-provided NET amount
+          },
         }),
         prisma.expense.findMany({
           where: { userId },
@@ -138,8 +146,8 @@ export async function POST(request: NextRequest) {
         }),
       ]);
 
-      // Calculate monthly totals
-      const toMonthly = (amount: number, freq: string): number => {
+      // Calculate monthly totals - helper function
+      const convertToMonthly = (amount: number, freq: string): number => {
         switch (freq) {
           case 'WEEKLY': return amount * 52 / 12;
           case 'FORTNIGHTLY': return amount * 26 / 12;
@@ -150,26 +158,46 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency), 0);
-      const trackedExpenses = expenses.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency), 0);
+      // Calculate NET income (after PAYG tax) - same as Cashflow API
+      let monthlyNetIncome = 0;
+      for (const income of incomes) {
+        const annualAmount = convertToMonthly(income.amount, income.frequency) * 12;
+        let annualNet: number;
+
+        if (income.type === 'SALARY' && income.salaryType === 'GROSS') {
+          // GROSS salary: calculate PAYG tax
+          const takeHome = calculateTakeHomePay(annualAmount, income.frequency as any);
+          annualNet = takeHome.netAmount;
+        } else if (income.netAmount) {
+          // User provided NET amount directly
+          annualNet = convertToMonthly(income.netAmount, income.frequency) * 12;
+        } else {
+          // Already NET or non-taxable (rental, dividends, etc.)
+          annualNet = annualAmount;
+        }
+
+        monthlyNetIncome += annualNet / 12;
+      }
+
+      const trackedExpenses = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
 
       // Phase 28: Use realistic budget if available, otherwise use tracked expenses only
       const hasRealisticBudget = budgetAnalysis && budgetAnalysis.userFinalBudget;
       const monthlyExpenses = hasRealisticBudget
         ? budgetAnalysis.userFinalBudget!
         : trackedExpenses;
-      const monthlySurplus = monthlyIncome - monthlyExpenses;
-      const totalLoanRepayments = loans.reduce((sum, l) => sum + toMonthly(l.minRepayment, l.repaymentFrequency), 0);
+      const monthlySurplus = monthlyNetIncome - monthlyExpenses;
+      const totalLoanRepayments = loans.reduce((sum, l) => sum + convertToMonthly(l.minRepayment, l.repaymentFrequency), 0);
       const totalDebt = loans.reduce((sum, l) => sum + l.principal, 0);
       const totalOffsetBalance = loans.reduce((sum, l) => sum + (l.offsetAccount?.currentBalance || 0), 0);
       const cashBalance = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
       // CRITICAL: Calculate the ACTUAL available cashflow for extra debt repayments
-      // This is AFTER expenses AND loan repayments
+      // This is AFTER expenses AND loan repayments (using NET income, not GROSS)
       const availableForExtraRepayments = Math.max(0, monthlySurplus - totalLoanRepayments);
 
       console.log('[API] Debt Analysis - Cash Flow Breakdown:');
-      console.log(`  Monthly Income: $${monthlyIncome.toFixed(0)}`);
+      console.log(`  Monthly NET Income: $${monthlyNetIncome.toFixed(0)}`);
       console.log(`  Monthly Expenses: $${monthlyExpenses.toFixed(0)}${hasRealisticBudget ? ' (realistic budget)' : ' (tracked only)'}`);
       if (hasRealisticBudget) {
         console.log(`    └── Tracked: $${trackedExpenses.toFixed(0)}, Variable Est: $${(budgetAnalysis.aiVariableEstimate || 0).toFixed(0)}`);
@@ -180,7 +208,7 @@ export async function POST(request: NextRequest) {
       // Build comprehensive prompt for AI
       const userPrompt = buildDebtAnalysisPrompt({
         loans,
-        monthlyIncome,
+        monthlyIncome: monthlyNetIncome,  // Use NET income, not GROSS
         monthlyExpenses,
         monthlySurplus,
         totalLoanRepayments,
@@ -220,11 +248,11 @@ export async function POST(request: NextRequest) {
           context: {
             totalDebt,
             totalOffsetBalance,
-            monthlyIncome,
+            monthlyIncome: monthlyNetIncome,  // Use NET income
             monthlyExpenses,
             monthlySurplus,
             totalLoanRepayments,
-            availableForExtraRepayments, // NEW: Include this for UI validation
+            availableForExtraRepayments,
             cashBalance,
             loanCount: loans.length,
 
@@ -244,7 +272,7 @@ export async function POST(request: NextRequest) {
             comparison: hasRealisticBudget ? {
               withoutBudgetAnalysis: {
                 monthlyExpenses: trackedExpenses,
-                availableForExtra: Math.max(0, (monthlyIncome - trackedExpenses) - totalLoanRepayments),
+                availableForExtra: Math.max(0, (monthlyNetIncome - trackedExpenses) - totalLoanRepayments),
               },
               withBudgetAnalysis: {
                 monthlyExpenses: monthlyExpenses,
