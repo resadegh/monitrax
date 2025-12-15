@@ -510,6 +510,83 @@ app/dashboard/planning/
 
 ---
 
-*Status: Pending Implementation*
+## Page 3: Debt Planner Integration (Updated)
+
+**Route:** `/dashboard/debt-planner`
+
+### New Pre-Check Logic
+
+On page load, the Debt Planner now:
+1. Fetches `/api/budget-analysis/latest` to check budget status
+2. Fetches income and loans to calculate full cashflow
+3. Displays appropriate UI based on budget state
+
+### Cashflow Breakdown Cards
+
+```
+┌────────────────────────────────────────────────────────────────────────────────┐
+│  ┌──────────┐  ┌──────────────┐  ┌────────────┐  ┌─────────────┐  ┌────────┐  │
+│  │ INCOME   │  │ TOTAL BUDGET │  │ LOAN       │  │ AVAILABLE   │  │ ADJUST │  │
+│  │          │  │              │  │ REPAYMENTS │  │ FOR DEBT    │  │ BUDGET │  │
+│  │ $23,061  │  │ -$9,850      │  │ -$11,847   │  │ $1,364      │  │  [→]   │  │
+│  │          │  │ ($6,245 +    │  │            │  │             │  │        │  │
+│  │          │  │  $3,605)     │  │            │  │             │  │        │  │
+│  └──────────┘  └──────────────┘  └────────────┘  └─────────────┘  └────────┘  │
+└────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Conditional UI States
+
+**State 1: No Confirmed Budget**
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  ⚠️ Complete Your Budget First                                       │
+│                                                                       │
+│  To get accurate debt repayment recommendations, you need to         │
+│  confirm your realistic budget. This includes variable expenses      │
+│  like groceries, fuel, and entertainment that aren't tracked.        │
+│                                                                       │
+│  [ 1. Set Up Household Profile ]  [ 2. Generate Budget Analysis ]   │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**State 2: Zero/Negative Cashflow**
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  ❌ No Money Available for Extra Debt Payments                       │
+│                                                                       │
+│  After your budget ($9,850) and minimum loan repayments ($11,847),  │
+│  you have -$2,636 remaining. You're spending more than you earn!    │
+│                                                                       │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  Suggestions:                                                   │ │
+│  │  1. Review your budget — Consider "Minimum" scenario            │ │
+│  │  2. Increase income — Side job, raise, etc.                     │ │
+│  │  3. Refinance loans — Extend terms to reduce repayments         │ │
+│  │  4. Seek financial advice — Professional help                   │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                       │
+│  [ Adjust Budget ]  [ Review Income ]                                │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**State 3: Positive Cashflow (Ready for Debt Planning)**
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  ✅ Budget Confirmed — Ready for Debt Planning          $1,364/mo   │
+│                                                                       │
+│  You have $1,364/month available for extra debt payments after      │
+│  your realistic budget and minimum loan repayments.                  │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+
+[AI Debt Strategy Advisor panel appears here - only when positive cashflow]
+```
+
+---
+
+*Status: ✅ Complete*
 *Author: Claude Code*
 *Phase: 28.4*

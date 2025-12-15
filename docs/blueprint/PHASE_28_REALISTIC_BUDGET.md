@@ -280,6 +280,43 @@ Pass ALL recurring expenses to AI with instruction to EXCLUDE them:
 4. **Benchmark Fallback** - Uses ABS household expenditure data when AI unavailable
 5. **Double-Count Prevention** - AI receives full list of tracked expenses to exclude
 
+### Debt Planner Integration (Phase 28.7)
+
+The Debt Planner now fully integrates with Budget Analysis:
+
+**Pre-Check on Page Load:**
+- Fetches `/api/budget-analysis/latest` to check if budget is confirmed
+- Also fetches income and loan data to calculate full cashflow picture
+
+**Cashflow Breakdown Display:**
+```
+Monthly Income:        $23,061
+- Total Budget:        -$9,850 (recurring + variable)
+- Loan Repayments:     -$11,847
+─────────────────────────────────
+= Available for Debt:  $1,364/month
+```
+
+**Conditional UI States:**
+
+| Scenario | UI Behavior |
+|----------|-------------|
+| No confirmed budget | Shows "Complete Your Budget First" prompt with buttons to Household Profile and Budget Analysis |
+| Zero/negative cashflow | Shows red warning with 4 suggestions: reduce budget, increase income, refinance loans, seek advice |
+| Positive cashflow | Shows green "Ready for Debt Planning" banner with available amount, enables AI analysis |
+
+**Integration Flow:**
+```
+1. Household Profile → User enters household data
+         ↓
+2. Budget Analysis → AI estimates variable expenses, user confirms budget
+         ↓
+3. Debt Planner → Pre-checks confirmed budget, shows cashflow breakdown
+         ↓
+4. If positive cashflow → AI debt strategy recommendations
+   If zero/negative → Suggestions to improve financial situation
+```
+
 ---
 
 ## Testing Requirements
