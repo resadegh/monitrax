@@ -1,0 +1,494 @@
+{
+  "scenario": {
+    "id": "multi-property-investor-001",
+    "name": "Multi-Property Investor with Consumer Debt",
+    "description": "Complex scenario with 4 properties, multiple investment loans, credit card debt, car loan, and dual income household"
+  },
+  "user": {
+    "email": "test-multi-property@monitrax.test",
+    "password": "TestPass123!",
+    "name": "Test Multi Property Investor"
+  },
+  "data": {
+    "properties": [
+      {
+        "id": "prop_goldcoast",
+        "name": "Gold Coast PPOR",
+        "address": "12 Ocean Drive, Gold Coast QLD 4217",
+        "type": "owner_occupied",
+        "purchaseDate": "2019-05-20",
+        "purchasePrice": 950000,
+        "currentValue": 1050000
+      },
+      {
+        "id": "prop_adelaide",
+        "name": "Adelaide Investment",
+        "address": "88 North Terrace, Adelaide SA 5000",
+        "type": "investment",
+        "purchaseDate": "2021-03-10",
+        "purchasePrice": 480000,
+        "currentValue": 520000
+      },
+      {
+        "id": "prop_perth",
+        "name": "Perth Investment",
+        "address": "45 Swan River Road, Perth WA 6000",
+        "type": "investment",
+        "purchaseDate": "2022-08-15",
+        "purchasePrice": 550000,
+        "currentValue": 580000
+      },
+      {
+        "id": "prop_hobart",
+        "name": "Hobart Investment",
+        "address": "22 Battery Point, Hobart TAS 7004",
+        "type": "investment",
+        "purchaseDate": "2023-11-01",
+        "purchasePrice": 420000,
+        "currentValue": 430000
+      }
+    ],
+    "loans": [
+      {
+        "id": "loan_goldcoast",
+        "name": "Gold Coast PPOR Loan",
+        "propertyId": "prop_goldcoast",
+        "type": "principal_and_interest",
+        "balance": 760000,
+        "interestRate": 0.058,
+        "monthlyRepayment": 4450,
+        "offsetAccountId": "acc_goldcoast_offset"
+      },
+      {
+        "id": "loan_adelaide",
+        "name": "Adelaide Investment Loan",
+        "propertyId": "prop_adelaide",
+        "type": "interest_only",
+        "balance": 432000,
+        "interestRate": 0.064,
+        "monthlyRepayment": 2304,
+        "offsetAccountId": "acc_adelaide_offset"
+      },
+      {
+        "id": "loan_perth",
+        "name": "Perth Investment Loan",
+        "propertyId": "prop_perth",
+        "type": "interest_only",
+        "balance": 493000,
+        "interestRate": 0.066,
+        "monthlyRepayment": 2711,
+        "offsetAccountId": "acc_perth_offset"
+      },
+      {
+        "id": "loan_hobart",
+        "name": "Hobart Investment Loan",
+        "propertyId": "prop_hobart",
+        "type": "interest_only",
+        "balance": 378000,
+        "interestRate": 0.068,
+        "monthlyRepayment": 2142,
+        "offsetAccountId": "acc_hobart_offset"
+      },
+      {
+        "id": "loan_creditcard",
+        "name": "Credit Card Debt",
+        "type": "credit_card",
+        "balance": 18000,
+        "interestRate": 0.1999,
+        "monthlyRepayment": 500
+      },
+      {
+        "id": "loan_car",
+        "name": "Car Loan (BMW X5)",
+        "type": "car_loan",
+        "balance": 45000,
+        "interestRate": 0.075,
+        "monthlyRepayment": 890
+      }
+    ],
+    "accounts": [
+      {
+        "id": "acc_goldcoast_offset",
+        "name": "Gold Coast PPOR Offset",
+        "type": "offset",
+        "balance": 12000
+      },
+      {
+        "id": "acc_adelaide_offset",
+        "name": "Adelaide Investment Offset",
+        "type": "offset",
+        "balance": 8000
+      },
+      {
+        "id": "acc_perth_offset",
+        "name": "Perth Investment Offset",
+        "type": "offset",
+        "balance": 5000
+      },
+      {
+        "id": "acc_hobart_offset",
+        "name": "Hobart Investment Offset",
+        "type": "offset",
+        "balance": 3000
+      },
+      {
+        "id": "acc_emergency",
+        "name": "Emergency Savings",
+        "type": "savings",
+        "balance": 22000
+      }
+    ],
+    "investments": [
+      {
+        "id": "inv_vanguard",
+        "name": "Vanguard ETF Portfolio",
+        "type": "brokerage",
+        "holdings": [
+          {
+            "name": "VAS - Vanguard Australian Shares",
+            "ticker": "VAS",
+            "units": 500,
+            "averagePrice": 95,
+            "currentPrice": 95
+          },
+          {
+            "name": "VGS - Vanguard International Shares",
+            "ticker": "VGS",
+            "units": 400,
+            "averagePrice": 118.75,
+            "currentPrice": 118.75
+          }
+        ]
+      },
+      {
+        "id": "inv_crypto",
+        "name": "Cryptocurrency Portfolio",
+        "type": "crypto",
+        "holdings": [
+          {
+            "name": "Bitcoin",
+            "ticker": "BTC",
+            "units": 0.12,
+            "averagePrice": 125000,
+            "currentPrice": 125000
+          }
+        ]
+      }
+    ],
+    "assets": [
+      {
+        "id": "asset_bmw",
+        "name": "BMW X5",
+        "category": "vehicle",
+        "purchaseDate": "2022-03-01",
+        "purchasePrice": 85000,
+        "currentValue": 65000,
+        "depreciationMethod": "STRAIGHT_LINE",
+        "usefulLifeYears": 8
+      }
+    ],
+    "income": [
+      {
+        "id": "inc_primary_salary",
+        "name": "Primary Salary (Senior Executive)",
+        "type": "salary",
+        "salaryType": "NET",
+        "amount": 14500,
+        "frequency": "monthly"
+      },
+      {
+        "id": "inc_partner_salary",
+        "name": "Partner Salary",
+        "type": "salary",
+        "salaryType": "NET",
+        "amount": 5200,
+        "frequency": "monthly"
+      },
+      {
+        "id": "inc_adelaide_rent",
+        "name": "Adelaide Rental Income",
+        "type": "rent",
+        "propertyId": "prop_adelaide",
+        "amount": 2100,
+        "frequency": "monthly"
+      },
+      {
+        "id": "inc_perth_rent",
+        "name": "Perth Rental Income",
+        "type": "rent",
+        "propertyId": "prop_perth",
+        "amount": 2400,
+        "frequency": "monthly"
+      },
+      {
+        "id": "inc_hobart_rent",
+        "name": "Hobart Rental Income",
+        "type": "rent",
+        "propertyId": "prop_hobart",
+        "amount": 1900,
+        "frequency": "monthly"
+      },
+      {
+        "id": "inc_dividends",
+        "name": "Dividend Income",
+        "type": "investment",
+        "amount": 600,
+        "frequency": "monthly"
+      }
+    ],
+    "expenses": [
+      {
+        "id": "exp_gc_rates",
+        "name": "Gold Coast Council Rates",
+        "category": "rates",
+        "propertyId": "prop_goldcoast",
+        "amount": 3200,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_gc_water",
+        "name": "Gold Coast Water Rates",
+        "category": "utilities",
+        "propertyId": "prop_goldcoast",
+        "amount": 1400,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_gc_insurance",
+        "name": "PPOR Home Insurance",
+        "category": "insurance",
+        "propertyId": "prop_goldcoast",
+        "amount": 2200,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_adl_rates",
+        "name": "Adelaide Council Rates",
+        "category": "rates",
+        "propertyId": "prop_adelaide",
+        "amount": 1900,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_adl_water",
+        "name": "Adelaide Water Rates",
+        "category": "utilities",
+        "propertyId": "prop_adelaide",
+        "amount": 700,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_adl_insurance",
+        "name": "Adelaide Property Insurance",
+        "category": "insurance",
+        "propertyId": "prop_adelaide",
+        "amount": 1400,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_adl_management",
+        "name": "Adelaide Property Management",
+        "category": "maintenance",
+        "propertyId": "prop_adelaide",
+        "amount": 168,
+        "frequency": "monthly",
+        "isEssential": true
+      },
+      {
+        "id": "exp_adl_strata",
+        "name": "Adelaide Strata Fees",
+        "category": "maintenance",
+        "propertyId": "prop_adelaide",
+        "amount": 900,
+        "frequency": "quarterly",
+        "isEssential": true
+      },
+      {
+        "id": "exp_perth_rates",
+        "name": "Perth Council Rates",
+        "category": "rates",
+        "propertyId": "prop_perth",
+        "amount": 2100,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_perth_water",
+        "name": "Perth Water Rates",
+        "category": "utilities",
+        "propertyId": "prop_perth",
+        "amount": 850,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_perth_insurance",
+        "name": "Perth Property Insurance",
+        "category": "insurance",
+        "propertyId": "prop_perth",
+        "amount": 1500,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_perth_management",
+        "name": "Perth Property Management",
+        "category": "maintenance",
+        "propertyId": "prop_perth",
+        "amount": 192,
+        "frequency": "monthly",
+        "isEssential": true
+      },
+      {
+        "id": "exp_perth_strata",
+        "name": "Perth Strata Fees",
+        "category": "maintenance",
+        "propertyId": "prop_perth",
+        "amount": 1100,
+        "frequency": "quarterly",
+        "isEssential": true
+      },
+      {
+        "id": "exp_hobart_rates",
+        "name": "Hobart Council Rates",
+        "category": "rates",
+        "propertyId": "prop_hobart",
+        "amount": 1600,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_hobart_water",
+        "name": "Hobart Water Rates",
+        "category": "utilities",
+        "propertyId": "prop_hobart",
+        "amount": 600,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_hobart_insurance",
+        "name": "Hobart Property Insurance",
+        "category": "insurance",
+        "propertyId": "prop_hobart",
+        "amount": 1200,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_hobart_management",
+        "name": "Hobart Property Management",
+        "category": "maintenance",
+        "propertyId": "prop_hobart",
+        "amount": 152,
+        "frequency": "monthly",
+        "isEssential": true
+      },
+      {
+        "id": "exp_health_insurance",
+        "name": "Health Insurance (Family)",
+        "category": "insurance",
+        "amount": 520,
+        "frequency": "monthly",
+        "isEssential": true
+      },
+      {
+        "id": "exp_car_insurance",
+        "name": "Car Insurance (BMW)",
+        "category": "insurance",
+        "amount": 1800,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_life_insurance",
+        "name": "Life Insurance (Both)",
+        "category": "insurance",
+        "amount": 280,
+        "frequency": "monthly",
+        "isEssential": true
+      },
+      {
+        "id": "exp_income_protection",
+        "name": "Income Protection Insurance",
+        "category": "insurance",
+        "amount": 180,
+        "frequency": "monthly",
+        "isEssential": true
+      },
+      {
+        "id": "exp_internet",
+        "name": "Internet & Phone",
+        "category": "utilities",
+        "amount": 180,
+        "frequency": "monthly",
+        "isEssential": true
+      },
+      {
+        "id": "exp_gym",
+        "name": "Gym Memberships",
+        "category": "health",
+        "amount": 140,
+        "frequency": "monthly",
+        "isEssential": false
+      },
+      {
+        "id": "exp_accountant",
+        "name": "Accountant Fees",
+        "category": "professional",
+        "amount": 3600,
+        "frequency": "annual",
+        "isEssential": true
+      },
+      {
+        "id": "exp_streaming",
+        "name": "Netflix/Streaming",
+        "category": "entertainment",
+        "amount": 45,
+        "frequency": "monthly",
+        "isEssential": false
+      }
+    ]
+  },
+  "expectedOutputs": {
+    "netWorth": {
+      "totalAssets": 2805000,
+      "totalLiabilities": 2126000,
+      "netWorth": 679000,
+      "breakdown": {
+        "properties": 2580000,
+        "cash": 50000,
+        "investments": 110000,
+        "otherAssets": 65000
+      }
+    },
+    "gearing": {
+      "portfolioLVR": 82.40,
+      "propertyLVRs": {
+        "goldCoast": 72.38,
+        "adelaide": 83.08,
+        "perth": 85.00,
+        "hobart": 87.91
+      }
+    },
+    "cashflow": {
+      "monthlyIncome": 26700,
+      "monthlyExpenses": 4528,
+      "monthlyLoanRepayments": 12997,
+      "monthlyNetCashflow": 9175,
+      "annualIncome": 320400
+    },
+    "savingsRate": 34.4,
+    "rentalYields": {
+      "adelaide": 4.85,
+      "perth": 4.97,
+      "hobart": 5.30
+    }
+  }
+}
