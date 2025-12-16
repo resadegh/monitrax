@@ -24,6 +24,7 @@ import {
   ChevronRight,
   Plus,
   Info,
+  Package,
 } from 'lucide-react';
 import type { GRDCSLinkedEntity, GRDCSMissingLink, GRDCSEntityType } from '@/lib/grdcs';
 
@@ -34,6 +35,7 @@ const ENTITY_ICONS: Record<GRDCSEntityType, React.ComponentType<{ className?: st
   income: TrendingUp,
   expense: TrendingDown,
   account: Wallet,
+  asset: Package,
   investmentAccount: BarChart3,
   investmentHolding: PieChart,
   investmentTransaction: Receipt,
@@ -47,6 +49,7 @@ const ENTITY_COLORS: Record<GRDCSEntityType, string> = {
   income: 'text-green-600 bg-green-100 dark:bg-green-900/30',
   expense: 'text-red-600 bg-red-100 dark:bg-red-900/30',
   account: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30',
+  asset: 'text-cyan-600 bg-cyan-100 dark:bg-cyan-900/30',
   investmentAccount: 'text-indigo-600 bg-indigo-100 dark:bg-indigo-900/30',
   investmentHolding: 'text-teal-600 bg-teal-100 dark:bg-teal-900/30',
   investmentTransaction: 'text-pink-600 bg-pink-100 dark:bg-pink-900/30',
@@ -60,6 +63,7 @@ const ENTITY_NAMES: Record<GRDCSEntityType, string> = {
   income: 'Income',
   expense: 'Expense',
   account: 'Account',
+  asset: 'Asset',
   investmentAccount: 'Investment Account',
   investmentHolding: 'Holding',
   investmentTransaction: 'Transaction',
@@ -73,6 +77,7 @@ const ADD_LINK_ROUTES: Record<GRDCSEntityType, string> = {
   income: '/dashboard/income',
   expense: '/dashboard/expenses',
   account: '/dashboard/accounts',
+  asset: '/dashboard/assets',
   investmentAccount: '/dashboard/investments/accounts',
   investmentHolding: '/dashboard/investments/holdings',
   investmentTransaction: '/dashboard/investments/transactions',
