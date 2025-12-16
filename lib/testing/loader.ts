@@ -6,6 +6,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { hashPassword } from '@/lib/auth';
 import type {
   TestScenarioInput,
   TestLoadResult,
@@ -19,6 +20,7 @@ import type {
   TestInvestmentTransactionInput,
   TestDepreciationScheduleInput,
 } from './types';
+import { normalizeScenario, type FlexibleScenarioInput } from './normalizer';
 
 // =============================================================================
 // CONSTANTS
@@ -60,9 +62,11 @@ export class TestScenarioLoader {
   }
 
   /**
-   * Load a complete test scenario
+   * Load a complete test scenario (accepts flexible input format)
    */
-  async loadScenario(scenario: TestScenarioInput): Promise<TestLoadResult> {
+  async loadScenario(rawScenario: TestScenarioInput | FlexibleScenarioInput): Promise<TestLoadResult> {
+    // Normalize the input to standardized format
+    const scenario = normalizeScenario(rawScenario as FlexibleScenarioInput);
     // Reset state
     this.entityMappings = {
       properties: {},
@@ -175,12 +179,16 @@ export class TestScenarioLoader {
     });
 
     if (!user) {
+      // Hash the password before storing
+      const plainPassword = testUser.password || DEFAULT_PASSWORD;
+      const hashedPassword = await hashPassword(plainPassword);
+
       // Create new user
       user = await this.prisma.user.create({
         data: {
           email: testUser.email,
           name: testUser.name,
-          password: testUser.password || DEFAULT_PASSWORD,
+          password: hashedPassword,
           emailVerified: true,
           onboardingCompleted: true,
         },

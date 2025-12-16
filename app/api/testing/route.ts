@@ -15,8 +15,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { runTestScenario, verifyOutputs } from '@/lib/testing';
-import type { TestScenarioInput } from '@/lib/testing/types';
+import { runTestScenario, verifyOutputs, normalizeScenario } from '@/lib/testing';
+import type { FlexibleScenarioInput } from '@/lib/testing/normalizer';
 
 // Only allow in development/test environments
 const isTestingEnabled = process.env.NODE_ENV !== 'production' ||
@@ -83,10 +83,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const scenario: TestScenarioInput = await request.json();
+    const rawScenario: FlexibleScenarioInput = await request.json();
 
     // Validate required fields
-    if (!scenario.scenarioId || !scenario.name || !scenario.testUser?.email) {
+    if (!rawScenario.scenarioId || !rawScenario.name || !rawScenario.testUser?.email) {
       return NextResponse.json(
         { error: 'Missing required fields: scenarioId, name, testUser.email' },
         { status: 400 }
@@ -94,19 +94,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure test user email is clearly marked as test
-    if (!scenario.testUser.email.includes('test') && !scenario.testUser.email.includes('@monitrax.test')) {
+    if (!rawScenario.testUser.email.includes('test') && !rawScenario.testUser.email.includes('@monitrax.test')) {
       return NextResponse.json(
         { error: 'Test user email must contain "test" or use @monitrax.test domain' },
         { status: 400 }
       );
     }
 
+    // Normalize the input to standard format
+    const scenario = normalizeScenario(rawScenario);
+
     // Run complete test cycle
     const { loadResult, exportResult } = await runTestScenario(scenario, prisma);
 
     // Verify against expected outputs if provided
     let verification = null;
-    if (scenario.expectedOutputs) {
+    if (rawScenario.expectedOutputs) {
       verification = verifyOutputs(exportResult, scenario.expectedOutputs);
     }
 

@@ -1,0 +1,188 @@
+{
+  "scenarioId": "simple-investor-001",
+  "name": "Simple Investor - Single Property",
+  "testUser": {
+    "email": "test-simple@monitrax.test",
+    "name": "Test User Simple"
+  },
+  "data": {
+    "properties": [
+      {
+        "id": "prop_001",
+        "name": "Brisbane Investment",
+        "address": "123 Rental St, Brisbane QLD 4000",
+        "type": "investment",
+        "purchaseDate": "2022-01-15",
+        "purchasePrice": 450000,
+        "currentValue": 500000
+      }
+    ],
+    "loans": [
+      {
+        "id": "loan_001",
+        "propertyId": "prop_001",
+        "name": "Brisbane Investment Loan",
+        "type": "principal_and_interest",
+        "balance": 350000,
+        "interestRate": 0.06,
+        "monthlyRepayment": 2100,
+        "offsetAccountId": "acc_001"
+      }
+    ],
+    "accounts": [
+      {
+        "id": "acc_001",
+        "name": "Offset Account",
+        "type": "offset",
+        "balance": 30000,
+        "linkedLoanId": "loan_001"
+      },
+      {
+        "id": "acc_002",
+        "name": "Emergency Savings",
+        "type": "savings",
+        "balance": 15000
+      }
+    ],
+    "income": [
+      {
+        "id": "inc_001",
+        "name": "Primary Salary",
+        "category": "salary",
+        "amount": 6000,
+        "frequency": "monthly",
+        "isNet": true
+      },
+      {
+        "id": "inc_002",
+        "name": "Partner Salary",
+        "category": "salary",
+        "amount": 4000,
+        "frequency": "monthly",
+        "isNet": true
+      },
+      {
+        "id": "inc_003",
+        "name": "Brisbane Rental",
+        "category": "rental",
+        "amount": 2200,
+        "frequency": "monthly",
+        "propertyId": "prop_001",
+        "isNet": true
+      }
+    ],
+    "expenses": [
+      {
+        "id": "exp_001",
+        "name": "Investment Property Insurance",
+        "category": "insurance",
+        "amount": 1200,
+        "frequency": "annual",
+        "propertyId": "prop_001"
+      },
+      {
+        "id": "exp_002",
+        "name": "Brisbane Council Rates",
+        "category": "rates",
+        "amount": 1600,
+        "frequency": "annual",
+        "propertyId": "prop_001"
+      },
+      {
+        "id": "exp_003",
+        "name": "Brisbane Water",
+        "category": "utilities",
+        "amount": 400,
+        "frequency": "annual",
+        "propertyId": "prop_001"
+      },
+      {
+        "id": "exp_004",
+        "name": "Property Management",
+        "category": "maintenance",
+        "amount": 180,
+        "frequency": "monthly",
+        "propertyId": "prop_001"
+      },
+      {
+        "id": "exp_005",
+        "name": "Health Insurance",
+        "category": "insurance",
+        "amount": 300,
+        "frequency": "monthly"
+      }
+    ],
+    "investmentAccounts": [
+      {
+        "id": "inv_001",
+        "name": "ETF Portfolio",
+        "type": "stocks",
+        "balance": 10000
+      }
+    ]
+  },
+  "expectedOutputs": {
+    "netWorth": {
+      "totalAssets": 555000,
+      "totalLiabilities": 350000,
+      "netWorth": 205000,
+      "assetBreakdown": {
+        "properties": 500000,
+        "accounts": 45000,
+        "investments": 10000
+      }
+    },
+    "cashflow": {
+      "monthlyIncome": 12200,
+      "incomeBreakdown": {
+        "SALARY": 10000,
+        "RENTAL": 2200
+      },
+      "monthlyRecurringExpenses": 746,
+      "expenseBreakdown": {
+        "INSURANCE": 400,
+        "RATES": 133,
+        "UTILITIES": 33,
+        "MAINTENANCE": 180
+      },
+      "monthlyLoanRepayments": 2100,
+      "monthlyNetCashflow": 9354,
+      "annualNetCashflow": 112248
+    },
+    "savingsRate": {
+      "cashflow": 9354,
+      "income": 12200,
+      "savingsRatePercentage": 76.67
+    },
+    "gearing": {
+      "portfolioLVR": 0.70,
+      "totalDebt": 350000,
+      "totalPropertyValue": 500000
+    },
+    "propertyMetrics": [
+      {
+        "propertyName": "Brisbane Investment",
+        "value": 500000,
+        "loanBalance": 350000,
+        "equity": 150000,
+        "lvr": 0.70,
+        "annualRentalIncome": 26400,
+        "rentalYield": 5.28,
+        "monthlyIncome": 2200,
+        "monthlyExpenses": 446,
+        "monthlyLoanRepayment": 2100,
+        "monthlyCashflow": -346
+      }
+    ],
+    "loanMetrics": [
+      {
+        "loanName": "Brisbane Investment Loan",
+        "balance": 350000,
+        "offsetBalance": 30000,
+        "effectiveBalance": 320000,
+        "monthlyRepayment": 2100,
+        "interestRate": 0.06
+      }
+    ]
+  }
+}
