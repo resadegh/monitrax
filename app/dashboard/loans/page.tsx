@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building, Link2, Lightbulb, LayoutGrid, List } from 'lucide-react';
+import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building, Link2, Lightbulb, LayoutGrid, List, Car, CreditCard, GraduationCap, Briefcase } from 'lucide-react';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -30,10 +30,20 @@ interface Expense {
   vendorName?: string;
 }
 
+interface Asset {
+  id: string;
+  name: string;
+  type: string;
+  currentValue: number;
+  vehicleMake?: string;
+  vehicleModel?: string;
+  vehicleYear?: number;
+}
+
 interface Loan {
   id: string;
   name: string;
-  type: 'HOME' | 'INVESTMENT';
+  type: 'HOME' | 'INVESTMENT' | 'CAR' | 'PERSONAL' | 'LINE_OF_CREDIT' | 'STUDENT' | 'BUSINESS';
   principal: number;
   interestRateAnnual: number;
   rateType: 'FIXED' | 'VARIABLE';
@@ -45,8 +55,12 @@ interface Loan {
   extraRepaymentCap?: number;
   propertyId?: string;
   offsetAccountId?: string;
+  linkedAssetId?: string;
+  linkedAccountId?: string;
   property?: { id: string; name: string; currentValue: number; address?: string };
   offsetAccount?: { id: string; name: string; currentBalance: number; institution?: string };
+  linkedAsset?: Asset;
+  linkedAccount?: { id: string; name: string; currentBalance: number; type?: string };
   expenses?: Expense[];
   // GRDCS fields
   _links?: {
@@ -81,6 +95,8 @@ function LoansPageContent() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [allAccounts, setAllAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
@@ -107,6 +123,8 @@ function LoansPageContent() {
     extraRepaymentCap: undefined,
     propertyId: undefined,
     offsetAccountId: undefined,
+    linkedAssetId: undefined,
+    linkedAccountId: undefined,
   });
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
@@ -162,10 +180,11 @@ function LoansPageContent() {
 
   const loadData = async () => {
     try {
-      const [loansRes, propertiesRes, accountsRes] = await Promise.all([
+      const [loansRes, propertiesRes, accountsRes, assetsRes] = await Promise.all([
         fetch('/api/loans', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/properties', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/accounts', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/assets', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       if (loansRes.ok) {
@@ -178,9 +197,17 @@ function LoansPageContent() {
       }
       if (accountsRes.ok) {
         const result = await accountsRes.json();
-        const allAccounts = result.data || result;
-        // Filter to show only OFFSET accounts
-        setAccounts(allAccounts.filter((a: Account) => a.type === 'OFFSET'));
+        const accountsList = result.data || result;
+        // Keep all accounts for linkedAccount (LINE_OF_CREDIT)
+        setAllAccounts(accountsList);
+        // Filter to show only OFFSET accounts for offset linking
+        setAccounts(accountsList.filter((a: Account) => a.type === 'OFFSET'));
+      }
+      if (assetsRes.ok) {
+        const result = await assetsRes.json();
+        const assetsList = result.data || result;
+        // Filter to show only VEHICLE assets for car loan linking
+        setAssets(assetsList.filter((a: Asset) => a.type === 'VEHICLE'));
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -206,6 +233,8 @@ function LoansPageContent() {
       extraRepaymentCap: formData.extraRepaymentCap ? Number(formData.extraRepaymentCap) : null,
       propertyId: formData.propertyId || null,
       offsetAccountId: formData.offsetAccountId || null,
+      linkedAssetId: formData.linkedAssetId || null,
+      linkedAccountId: formData.linkedAccountId || null,
     };
 
     try {
@@ -266,6 +295,8 @@ function LoansPageContent() {
       extraRepaymentCap: undefined,
       propertyId: undefined,
       offsetAccountId: undefined,
+      linkedAssetId: undefined,
+      linkedAccountId: undefined,
     });
     setAttachedDocumentId(null);
     setAutoFilledFields([]);
@@ -286,6 +317,8 @@ function LoansPageContent() {
       extraRepaymentCap: loan.extraRepaymentCap,
       propertyId: loan.propertyId,
       offsetAccountId: loan.offsetAccountId,
+      linkedAssetId: loan.linkedAssetId,
+      linkedAccountId: loan.linkedAccountId,
     });
     setEditingId(loan.id);
     setShowDialog(true);
@@ -375,6 +408,16 @@ function LoansPageContent() {
         return <Badge variant="default">Home Loan</Badge>;
       case 'INVESTMENT':
         return <Badge variant="secondary">Investment</Badge>;
+      case 'CAR':
+        return <Badge className="bg-blue-500 text-white hover:bg-blue-600">Car Loan</Badge>;
+      case 'PERSONAL':
+        return <Badge className="bg-purple-500 text-white hover:bg-purple-600">Personal</Badge>;
+      case 'LINE_OF_CREDIT':
+        return <Badge className="bg-amber-500 text-white hover:bg-amber-600">Line of Credit</Badge>;
+      case 'STUDENT':
+        return <Badge className="bg-cyan-500 text-white hover:bg-cyan-600">Student</Badge>;
+      case 'BUSINESS':
+        return <Badge className="bg-emerald-500 text-white hover:bg-emerald-600">Business</Badge>;
       default:
         return <Badge variant="outline">{type}</Badge>;
     }
@@ -641,6 +684,24 @@ function LoansPageContent() {
                         </span>
                       </div>
                     )}
+                    {loan.linkedAsset && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Car className="h-4 w-4 text-blue-600" />
+                        <span className="text-muted-foreground">Vehicle:</span>
+                        <span className="font-medium text-blue-600">
+                          {loan.linkedAsset.name} ({formatCurrency(loan.linkedAsset.currentValue)})
+                        </span>
+                      </div>
+                    )}
+                    {loan.linkedAccount && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <CreditCard className="h-4 w-4 text-amber-600" />
+                        <span className="text-muted-foreground">Account:</span>
+                        <span className="font-medium text-amber-600">
+                          {loan.linkedAccount.name} ({formatCurrency(loan.linkedAccount.currentBalance)})
+                        </span>
+                      </div>
+                    )}
                     {linkedExpenses > 0 && (
                       <div className="flex items-center gap-2 text-sm">
                         <Receipt className="h-4 w-4 text-muted-foreground" />
@@ -648,7 +709,7 @@ function LoansPageContent() {
                         <span className="font-medium">{linkedExpenses}</span>
                       </div>
                     )}
-                    {!loan.property && !loan.offsetAccount && linkedExpenses === 0 && (
+                    {!loan.property && !loan.offsetAccount && !loan.linkedAsset && !loan.linkedAccount && linkedExpenses === 0 && (
                       <p className="text-xs text-muted-foreground">Click to view details</p>
                     )}
                   </div>
@@ -699,7 +760,7 @@ function LoansPageContent() {
                 <Label htmlFor="type">Type</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value as Loan['type'] })}
+                  onValueChange={(value) => setFormData({ ...formData, type: value as Loan['type'], propertyId: undefined, linkedAssetId: undefined, linkedAccountId: undefined })}
                 >
                   <SelectTrigger id="type">
                     <SelectValue />
@@ -707,6 +768,11 @@ function LoansPageContent() {
                   <SelectContent>
                     <SelectItem value="HOME">Home Loan</SelectItem>
                     <SelectItem value="INVESTMENT">Investment Loan</SelectItem>
+                    <SelectItem value="CAR">Car Loan</SelectItem>
+                    <SelectItem value="PERSONAL">Personal Loan</SelectItem>
+                    <SelectItem value="LINE_OF_CREDIT">Line of Credit</SelectItem>
+                    <SelectItem value="STUDENT">Student / HECS-HELP</SelectItem>
+                    <SelectItem value="BUSINESS">Business Loan</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -841,45 +907,118 @@ function LoansPageContent() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Conditional Linking Section based on Loan Type */}
+            {(formData.type === 'HOME' || formData.type === 'INVESTMENT') && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="propertyId">Linked Property (Optional)</Label>
+                  <Select
+                    value={formData.propertyId || 'none'}
+                    onValueChange={(value) => setFormData({ ...formData, propertyId: value === 'none' ? undefined : value })}
+                  >
+                    <SelectTrigger id="propertyId">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {properties.map((prop) => (
+                        <SelectItem key={prop.id} value={prop.id}>{prop.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="offsetAccountId">Offset Account (Optional)</Label>
+                  <Select
+                    value={formData.offsetAccountId || 'none'}
+                    onValueChange={(value) => setFormData({ ...formData, offsetAccountId: value === 'none' ? undefined : value })}
+                  >
+                    <SelectTrigger id="offsetAccountId">
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {accounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name} ({formatCurrency(acc.currentBalance)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* CAR Loan - Link to Vehicle Asset */}
+            {formData.type === 'CAR' && (
               <div className="space-y-2">
-                <Label htmlFor="propertyId">Linked Property (Optional)</Label>
+                <Label htmlFor="linkedAssetId">Linked Vehicle (Optional)</Label>
+                <Select
+                  value={formData.linkedAssetId || 'none'}
+                  onValueChange={(value) => setFormData({ ...formData, linkedAssetId: value === 'none' ? undefined : value })}
+                >
+                  <SelectTrigger id="linkedAssetId">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {assets.map((asset) => (
+                      <SelectItem key={asset.id} value={asset.id}>
+                        {asset.name} {asset.vehicleMake && asset.vehicleModel && `(${asset.vehicleMake} ${asset.vehicleModel})`} - {formatCurrency(asset.currentValue)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {assets.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No vehicles found. Add a vehicle in Assets first to link it.</p>
+                )}
+              </div>
+            )}
+
+            {/* LINE_OF_CREDIT - Link to Account (e.g., credit card) */}
+            {formData.type === 'LINE_OF_CREDIT' && (
+              <div className="space-y-2">
+                <Label htmlFor="linkedAccountId">Linked Account (Optional)</Label>
+                <Select
+                  value={formData.linkedAccountId || 'none'}
+                  onValueChange={(value) => setFormData({ ...formData, linkedAccountId: value === 'none' ? undefined : value })}
+                >
+                  <SelectTrigger id="linkedAccountId">
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {allAccounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.name} ({acc.type}) - {formatCurrency(acc.currentBalance)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* BUSINESS Loan - May link to property for secured loans */}
+            {formData.type === 'BUSINESS' && properties.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="propertyId">Secured by Property (Optional)</Label>
                 <Select
                   value={formData.propertyId || 'none'}
                   onValueChange={(value) => setFormData({ ...formData, propertyId: value === 'none' ? undefined : value })}
                 >
                   <SelectTrigger id="propertyId">
-                    <SelectValue placeholder="None" />
+                    <SelectValue placeholder="None (Unsecured)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="none">None (Unsecured)</SelectItem>
                     {properties.map((prop) => (
                       <SelectItem key={prop.id} value={prop.id}>{prop.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="offsetAccountId">Offset Account (Optional)</Label>
-                <Select
-                  value={formData.offsetAccountId || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, offsetAccountId: value === 'none' ? undefined : value })}
-                >
-                  <SelectTrigger id="offsetAccountId">
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {accounts.map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name} ({formatCurrency(acc.currentBalance)})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
@@ -983,7 +1122,16 @@ function LoansPageContent() {
                   <CardContent className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Type</span>
-                      <span className="font-medium">{selectedLoan.type === 'HOME' ? 'Home Loan' : 'Investment Loan'}</span>
+                      <span className="font-medium">{
+                        selectedLoan.type === 'HOME' ? 'Home Loan' :
+                        selectedLoan.type === 'INVESTMENT' ? 'Investment Loan' :
+                        selectedLoan.type === 'CAR' ? 'Car Loan' :
+                        selectedLoan.type === 'PERSONAL' ? 'Personal Loan' :
+                        selectedLoan.type === 'LINE_OF_CREDIT' ? 'Line of Credit' :
+                        selectedLoan.type === 'STUDENT' ? 'Student / HECS-HELP' :
+                        selectedLoan.type === 'BUSINESS' ? 'Business Loan' :
+                        selectedLoan.type
+                      }</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Repayment Type</span>

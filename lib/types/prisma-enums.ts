@@ -18,7 +18,7 @@ export type Frequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'AN
 
 export type RepaymentFrequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY';
 
-export type LoanType = 'HOME' | 'INVESTMENT';
+export type LoanType = 'HOME' | 'INVESTMENT' | 'CAR' | 'PERSONAL' | 'LINE_OF_CREDIT' | 'STUDENT' | 'BUSINESS';
 
 export type RateType = 'VARIABLE' | 'FIXED';
 

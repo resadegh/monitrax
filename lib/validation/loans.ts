@@ -21,7 +21,7 @@ import {
 // ENUMS
 // ============================================
 
-export const LoanTypeSchema = z.enum(['HOME', 'INVESTMENT']);
+export const LoanTypeSchema = z.enum(['HOME', 'INVESTMENT', 'CAR', 'PERSONAL', 'LINE_OF_CREDIT', 'STUDENT', 'BUSINESS']);
 export const RateTypeSchema = z.enum(['VARIABLE', 'FIXED']);
 
 // ============================================
@@ -32,6 +32,8 @@ export const LoanCreateSchema = z.object({
   name: NameSchema,
   lender: z.string().max(100).optional(),
   propertyId: OptionalIdSchema,
+  linkedAssetId: OptionalIdSchema,       // For CAR loans - link to vehicle asset
+  linkedAccountId: OptionalIdSchema,     // For LINE_OF_CREDIT - link to credit card/account
   type: LoanTypeSchema,
   originalAmount: PositiveCurrencySchema,
   currentBalance: CurrencySchema,

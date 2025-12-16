@@ -14,6 +14,8 @@ export async function GET(
         include: {
           property: true,
           offsetAccount: true,
+          linkedAsset: true,      // For CAR loans
+          linkedAccount: true,    // For LINE_OF_CREDIT
           expenses: true,
         },
       });
@@ -52,6 +54,8 @@ export async function PUT(
         extraRepaymentCap,
         propertyId,
         offsetAccountId,
+        linkedAssetId,
+        linkedAccountId,
       } = body;
 
       // Verify ownership
@@ -74,7 +78,23 @@ export async function PUT(
       if (offsetAccountId) {
         const account = await prisma.account.findUnique({ where: { id: offsetAccountId } });
         if (!account || account.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Account not found or unauthorized' }, { status: 403 });
+          return NextResponse.json({ error: 'Offset account not found or unauthorized' }, { status: 403 });
+        }
+      }
+
+      // Validate linked asset (for CAR loans)
+      if (linkedAssetId) {
+        const asset = await prisma.asset.findUnique({ where: { id: linkedAssetId } });
+        if (!asset || asset.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Asset not found or unauthorized' }, { status: 403 });
+        }
+      }
+
+      // Validate linked account (for LINE_OF_CREDIT)
+      if (linkedAccountId) {
+        const account = await prisma.account.findUnique({ where: { id: linkedAccountId } });
+        if (!account || account.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Linked account not found or unauthorized' }, { status: 403 });
         }
       }
 
@@ -94,10 +114,14 @@ export async function PUT(
           extraRepaymentCap: extraRepaymentCap !== undefined ? extraRepaymentCap : undefined,
           propertyId,
           offsetAccountId,
+          linkedAssetId,
+          linkedAccountId,
         },
         include: {
           property: true,
           offsetAccount: true,
+          linkedAsset: true,
+          linkedAccount: true,
         },
       });
 

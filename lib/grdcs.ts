@@ -12,6 +12,7 @@ export type GRDCSEntityType =
   | 'income'
   | 'expense'
   | 'account'
+  | 'asset'
   | 'investmentAccount'
   | 'investmentHolding'
   | 'investmentTransaction'
@@ -64,6 +65,7 @@ const ROUTE_MAP: Record<GRDCSEntityType, string> = {
   income: '/dashboard/income',
   expense: '/dashboard/expenses',
   account: '/dashboard/accounts',
+  asset: '/dashboard/assets',
   investmentAccount: '/dashboard/investments/accounts',
   investmentHolding: '/dashboard/investments/holdings',
   investmentTransaction: '/dashboard/investments/transactions',
@@ -176,20 +178,23 @@ export function extractPropertyLinks(property: {
  */
 export function extractLoanLinks(loan: {
   id: string;
+  type?: string;
   property?: { id: string; name: string; currentValue: number } | null;
   offsetAccount?: { id: string; name: string; currentBalance: number } | null;
+  linkedAsset?: { id: string; name: string; currentValue: number; type?: string } | null;
+  linkedAccount?: { id: string; name: string; currentBalance: number; type?: string } | null;
   expenses?: Array<{ id: string; name: string; amount: number }>;
 }): { linked: GRDCSLinkedEntity[]; missing: GRDCSMissingLink[] } {
   const linked: GRDCSLinkedEntity[] = [];
   const missing: GRDCSMissingLink[] = [];
 
-  // Property
+  // Property (for HOME and INVESTMENT loans)
   if (loan.property) {
     linked.push(createLinkedEntity('property', loan.property.id, loan.property.name, {
       value: loan.property.currentValue,
       summary: `Value: $${loan.property.currentValue.toLocaleString()}`,
     }));
-  } else {
+  } else if (loan.type === 'HOME' || loan.type === 'INVESTMENT') {
     missing.push({
       type: 'property',
       reason: 'No property linked to this loan',
@@ -201,8 +206,38 @@ export function extractLoanLinks(loan: {
   if (loan.offsetAccount) {
     linked.push(createLinkedEntity('account', loan.offsetAccount.id, loan.offsetAccount.name, {
       value: loan.offsetAccount.currentBalance,
-      summary: `Balance: $${loan.offsetAccount.currentBalance.toLocaleString()}`,
+      summary: `Offset Balance: $${loan.offsetAccount.currentBalance.toLocaleString()}`,
     }));
+  }
+
+  // Linked Asset (for CAR loans)
+  if (loan.linkedAsset) {
+    linked.push(createLinkedEntity('asset', loan.linkedAsset.id, loan.linkedAsset.name, {
+      value: loan.linkedAsset.currentValue,
+      summary: `Vehicle Value: $${loan.linkedAsset.currentValue.toLocaleString()}`,
+      metadata: { assetType: loan.linkedAsset.type },
+    }));
+  } else if (loan.type === 'CAR') {
+    missing.push({
+      type: 'asset',
+      reason: 'No vehicle linked to this car loan',
+      suggestedAction: 'Link to a vehicle asset for accurate tracking',
+    });
+  }
+
+  // Linked Account (for LINE_OF_CREDIT)
+  if (loan.linkedAccount) {
+    linked.push(createLinkedEntity('account', loan.linkedAccount.id, loan.linkedAccount.name, {
+      value: loan.linkedAccount.currentBalance,
+      summary: `Credit Balance: $${loan.linkedAccount.currentBalance.toLocaleString()}`,
+      metadata: { accountType: loan.linkedAccount.type },
+    }));
+  } else if (loan.type === 'LINE_OF_CREDIT') {
+    missing.push({
+      type: 'account',
+      reason: 'No account linked to this line of credit',
+      suggestedAction: 'Link to a credit card or account for better tracking',
+    });
   }
 
   // Expenses (interest, fees)
