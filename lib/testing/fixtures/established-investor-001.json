@@ -1,0 +1,411 @@
+{
+  "scenarioId": "established-investor-001",
+  "name": "Established Investor - Multi-Property Portfolio",
+  "description": "Complex scenario with 3 properties, mixed loan types, diverse income, and comprehensive expenses",
+  "testUser": {
+    "email": "test-established@monitrax.test",
+    "name": "Test Established Investor"
+  },
+  "data": {
+    "properties": [
+      {
+        "id": "prop_sydney",
+        "name": "Sydney PPOR",
+        "address": "45 Harbour View, Sydney NSW 2000",
+        "type": "HOME",
+        "purchaseDate": "2018-03-15",
+        "purchasePrice": 800000,
+        "currentValue": 1100000,
+        "suburb": "Sydney",
+        "state": "NSW",
+        "postcode": "2000"
+      },
+      {
+        "id": "prop_melbourne",
+        "name": "Melbourne Investment",
+        "address": "78 Collins Street, Melbourne VIC 3000",
+        "type": "investment",
+        "purchaseDate": "2020-06-01",
+        "purchasePrice": 600000,
+        "currentValue": 680000,
+        "suburb": "Melbourne",
+        "state": "VIC",
+        "postcode": "3000"
+      },
+      {
+        "id": "prop_brisbane",
+        "name": "Brisbane Investment",
+        "address": "123 River Road, Brisbane QLD 4000",
+        "type": "investment",
+        "purchaseDate": "2022-09-15",
+        "purchasePrice": 520000,
+        "currentValue": 550000,
+        "suburb": "Brisbane",
+        "state": "QLD",
+        "postcode": "4000"
+      }
+    ],
+    "loans": [
+      {
+        "id": "loan_sydney",
+        "name": "Sydney PPOR Loan",
+        "propertyId": "prop_sydney",
+        "type": "principal_and_interest",
+        "balance": 650000,
+        "interestRate": 0.055,
+        "monthlyRepayment": 3700,
+        "offsetAccountId": "acc_sydney_offset"
+      },
+      {
+        "id": "loan_melbourne",
+        "name": "Melbourne Investment Loan",
+        "propertyId": "prop_melbourne",
+        "type": "interest_only",
+        "balance": 480000,
+        "interestRate": 0.062,
+        "monthlyRepayment": 2480,
+        "offsetAccountId": "acc_melbourne_offset"
+      },
+      {
+        "id": "loan_brisbane",
+        "name": "Brisbane Investment Loan",
+        "propertyId": "prop_brisbane",
+        "type": "principal_and_interest",
+        "balance": 420000,
+        "interestRate": 0.065,
+        "monthlyRepayment": 2700,
+        "offsetAccountId": "acc_brisbane_offset"
+      }
+    ],
+    "accounts": [
+      {
+        "id": "acc_sydney_offset",
+        "name": "Sydney PPOR Offset",
+        "type": "offset",
+        "balance": 85000,
+        "linkedLoanId": "loan_sydney"
+      },
+      {
+        "id": "acc_melbourne_offset",
+        "name": "Melbourne Investment Offset",
+        "type": "offset",
+        "balance": 25000,
+        "linkedLoanId": "loan_melbourne"
+      },
+      {
+        "id": "acc_brisbane_offset",
+        "name": "Brisbane Investment Offset",
+        "type": "offset",
+        "balance": 15000,
+        "linkedLoanId": "loan_brisbane"
+      },
+      {
+        "id": "acc_emergency",
+        "name": "Emergency Savings",
+        "type": "savings",
+        "balance": 40000
+      }
+    ],
+    "income": [
+      {
+        "id": "inc_primary_salary",
+        "name": "Primary Salary",
+        "category": "salary",
+        "amount": 9500,
+        "frequency": "monthly",
+        "isNet": true
+      },
+      {
+        "id": "inc_partner_salary",
+        "name": "Partner Salary",
+        "category": "salary",
+        "amount": 6800,
+        "frequency": "monthly",
+        "isNet": true
+      },
+      {
+        "id": "inc_freelance",
+        "name": "Freelance Consulting",
+        "category": "other",
+        "amount": 3200,
+        "frequency": "monthly",
+        "isNet": true
+      },
+      {
+        "id": "inc_melbourne_rent",
+        "name": "Melbourne Rental Income",
+        "category": "rental",
+        "amount": 3400,
+        "frequency": "monthly",
+        "propertyId": "prop_melbourne",
+        "isNet": true
+      },
+      {
+        "id": "inc_brisbane_rent",
+        "name": "Brisbane Rental Income",
+        "category": "rental",
+        "amount": 2600,
+        "frequency": "monthly",
+        "propertyId": "prop_brisbane",
+        "isNet": true
+      }
+    ],
+    "expenses": [
+      {
+        "id": "exp_sydney_rates",
+        "name": "Sydney Council Rates",
+        "category": "rates",
+        "amount": 2800,
+        "frequency": "annual",
+        "propertyId": "prop_sydney"
+      },
+      {
+        "id": "exp_sydney_water",
+        "name": "Sydney Water Rates",
+        "category": "utilities",
+        "amount": 1200,
+        "frequency": "annual",
+        "propertyId": "prop_sydney"
+      },
+      {
+        "id": "exp_sydney_insurance",
+        "name": "PPOR Home Insurance",
+        "category": "insurance",
+        "amount": 1800,
+        "frequency": "annual",
+        "propertyId": "prop_sydney"
+      },
+      {
+        "id": "exp_melbourne_rates",
+        "name": "Melbourne Council Rates",
+        "category": "rates",
+        "amount": 2200,
+        "frequency": "annual",
+        "propertyId": "prop_melbourne"
+      },
+      {
+        "id": "exp_melbourne_water",
+        "name": "Melbourne Water Rates",
+        "category": "utilities",
+        "amount": 800,
+        "frequency": "annual",
+        "propertyId": "prop_melbourne"
+      },
+      {
+        "id": "exp_melbourne_insurance",
+        "name": "Melbourne Property Insurance",
+        "category": "insurance",
+        "amount": 1600,
+        "frequency": "annual",
+        "propertyId": "prop_melbourne"
+      },
+      {
+        "id": "exp_melbourne_management",
+        "name": "Melbourne Property Management",
+        "category": "maintenance",
+        "amount": 272,
+        "frequency": "monthly",
+        "propertyId": "prop_melbourne"
+      },
+      {
+        "id": "exp_melbourne_strata",
+        "name": "Melbourne Strata Fees",
+        "category": "strata",
+        "amount": 1200,
+        "frequency": "quarterly",
+        "propertyId": "prop_melbourne"
+      },
+      {
+        "id": "exp_brisbane_rates",
+        "name": "Brisbane Council Rates",
+        "category": "rates",
+        "amount": 1800,
+        "frequency": "annual",
+        "propertyId": "prop_brisbane"
+      },
+      {
+        "id": "exp_brisbane_water",
+        "name": "Brisbane Water Rates",
+        "category": "utilities",
+        "amount": 600,
+        "frequency": "annual",
+        "propertyId": "prop_brisbane"
+      },
+      {
+        "id": "exp_brisbane_insurance",
+        "name": "Brisbane Property Insurance",
+        "category": "insurance",
+        "amount": 1400,
+        "frequency": "annual",
+        "propertyId": "prop_brisbane"
+      },
+      {
+        "id": "exp_brisbane_management",
+        "name": "Brisbane Property Management",
+        "category": "maintenance",
+        "amount": 208,
+        "frequency": "monthly",
+        "propertyId": "prop_brisbane"
+      },
+      {
+        "id": "exp_health_insurance",
+        "name": "Health Insurance (Family)",
+        "category": "insurance",
+        "amount": 480,
+        "frequency": "monthly"
+      },
+      {
+        "id": "exp_car_insurance",
+        "name": "Car Insurance (Both vehicles)",
+        "category": "insurance",
+        "amount": 2400,
+        "frequency": "annual"
+      },
+      {
+        "id": "exp_life_insurance",
+        "name": "Life Insurance",
+        "category": "insurance",
+        "amount": 180,
+        "frequency": "monthly"
+      },
+      {
+        "id": "exp_internet_phone",
+        "name": "Internet & Phone",
+        "category": "utilities",
+        "amount": 150,
+        "frequency": "monthly"
+      },
+      {
+        "id": "exp_gym",
+        "name": "Gym Memberships (2 people)",
+        "category": "health",
+        "amount": 160,
+        "frequency": "monthly"
+      }
+    ],
+    "investmentAccounts": [
+      {
+        "id": "inv_commsec",
+        "name": "Share Portfolio (Commsec)",
+        "type": "stocks",
+        "balance": 85000
+      },
+      {
+        "id": "inv_managed",
+        "name": "Managed Fund",
+        "type": "fund",
+        "balance": 45000
+      }
+    ],
+    "holdings": [],
+    "depreciationSchedules": []
+  },
+  "expectedOutputs": {
+    "netWorth": {
+      "totalAssets": 2750000,
+      "totalLiabilities": 1550000,
+      "netWorth": 1200000,
+      "assetBreakdown": {
+        "properties": 2330000,
+        "accounts": 165000,
+        "investments": 130000,
+        "personalAssets": 125000
+      }
+    },
+    "gearing": {
+      "portfolioLVR": 66.52,
+      "totalDebt": 1550000,
+      "totalPropertyValue": 2330000
+    },
+    "cashflow": {
+      "monthlyIncome": 25500,
+      "incomeBreakdown": {
+        "SALARY": 16300,
+        "OTHER": 3200,
+        "RENTAL": 6000
+      },
+      "monthlyRecurringExpenses": 3233,
+      "expenseBreakdown": {
+        "RATES": 567,
+        "UTILITIES": 267,
+        "INSURANCE": 1143,
+        "MAINTENANCE": 880,
+        "STRATA": 400,
+        "HEALTH": 160
+      },
+      "monthlyLoanRepayments": 8880,
+      "monthlyNetCashflow": 13387,
+      "annualNetCashflow": 160644
+    },
+    "savingsRate": {
+      "cashflow": 13387,
+      "income": 25500,
+      "savingsRatePercentage": 52.50
+    },
+    "propertyMetrics": [
+      {
+        "propertyName": "Sydney PPOR",
+        "value": 1100000,
+        "loanBalance": 650000,
+        "equity": 450000,
+        "lvr": 59.09,
+        "monthlyExpenses": 483,
+        "monthlyLoanRepayment": 3700,
+        "monthlyCashflow": -4183
+      },
+      {
+        "propertyName": "Melbourne Investment",
+        "value": 680000,
+        "loanBalance": 480000,
+        "equity": 200000,
+        "lvr": 70.59,
+        "annualRentalIncome": 40800,
+        "rentalYield": 6.00,
+        "monthlyIncome": 3400,
+        "monthlyExpenses": 1055,
+        "monthlyLoanRepayment": 2480,
+        "monthlyCashflow": -135
+      },
+      {
+        "propertyName": "Brisbane Investment",
+        "value": 550000,
+        "loanBalance": 420000,
+        "equity": 130000,
+        "lvr": 76.36,
+        "annualRentalIncome": 31200,
+        "rentalYield": 5.67,
+        "monthlyIncome": 2600,
+        "monthlyExpenses": 525,
+        "monthlyLoanRepayment": 2700,
+        "monthlyCashflow": -625
+      }
+    ],
+    "loanMetrics": [
+      {
+        "loanName": "Sydney PPOR Loan",
+        "balance": 650000,
+        "offsetBalance": 85000,
+        "effectiveBalance": 565000,
+        "monthlyRepayment": 3700,
+        "interestRate": 0.055
+      },
+      {
+        "loanName": "Melbourne Investment Loan",
+        "balance": 480000,
+        "offsetBalance": 25000,
+        "effectiveBalance": 455000,
+        "monthlyRepayment": 2480,
+        "interestRate": 0.062,
+        "isInterestOnly": true
+      },
+      {
+        "loanName": "Brisbane Investment Loan",
+        "balance": 420000,
+        "offsetBalance": 15000,
+        "effectiveBalance": 405000,
+        "monthlyRepayment": 2700,
+        "interestRate": 0.065
+      }
+    ]
+  }
+}
