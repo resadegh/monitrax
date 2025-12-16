@@ -136,7 +136,7 @@ function calculateComponents(
     emergencyBuffer: calculateEmergencyBuffer(accounts, expenses),
     investmentDiversification: calculateInvestmentDiversification(investments, properties),
     spendingControl: calculateSpendingControl(incomes, expenses),
-    savingsRate: calculateSavingsRate(incomes, expenses),
+    savingsRate: calculateSavingsRate(incomes, expenses, loans),
   };
 }
 
@@ -351,18 +351,25 @@ function calculateSpendingControl(
 
 /**
  * Savings Rate (0-100)
- * Measures percentage of income being saved
+ * Measures percentage of income being saved after expenses AND loan repayments
+ * Formula: (Income - Expenses - Loan Repayments) / Income
  */
 function calculateSavingsRate(
   incomes: IncomeData[],
-  expenses: ExpenseData[]
+  expenses: ExpenseData[],
+  loans: LoanData[]
 ): number {
   const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
   const monthlyExpenses = expenses.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
+  const monthlyLoanRepayments = loans.reduce(
+    (sum, l) => sum + monthlyize(l.minRepayment, l.repaymentFrequency),
+    0
+  );
 
   if (monthlyIncome === 0) return 0;
 
-  const savingsRate = (monthlyIncome - monthlyExpenses) / monthlyIncome;
+  // Savings Rate = (Income - Expenses - Loan Repayments) / Income
+  const savingsRate = (monthlyIncome - monthlyExpenses - monthlyLoanRepayments) / monthlyIncome;
 
   // Score based on savings rate
   // >= 30% = 100
