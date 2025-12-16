@@ -32,6 +32,8 @@ interface LoanRecord {
   id: string;
   userId: string;
   principal: number;
+  minRepayment: number;
+  repaymentFrequency: string;
 }
 
 interface PropertyRecord {
@@ -146,11 +148,15 @@ async function calculateMonthlyProgress(userId: string): Promise<MonthlyProgress
     ? (netWorthChange / lastMonthNetWorth) * 100
     : 0;
 
-  // Calculate savings rate
+  // Calculate savings rate (including loan repayments)
   const monthlyIncome = incomes.reduce((sum: number, i: IncomeRecord) => sum + monthlyize(i.amount, i.frequency), 0);
   const monthlyExpenses = expenses.reduce((sum: number, e: ExpenseRecord) => sum + monthlyize(e.amount, e.frequency), 0);
+  const monthlyLoanRepayments = loans.reduce(
+    (sum: number, l: LoanRecord) => sum + monthlyize(l.minRepayment, l.repaymentFrequency),
+    0
+  );
   const savingsRate = monthlyIncome > 0
-    ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100
+    ? ((monthlyIncome - monthlyExpenses - monthlyLoanRepayments) / monthlyIncome) * 100
     : 0;
 
   // Calculate debt reduction this month (simulated)

@@ -131,12 +131,12 @@ function calculateComponents(
   properties: PropertyData[]
 ): CFOScoreComponents {
   return {
-    cashflowStrength: calculateCashflowStrength(incomes, expenses, loans),
-    debtCoverage: calculateDebtCoverage(incomes, loans),
-    emergencyBuffer: calculateEmergencyBuffer(accounts, expenses),
-    investmentDiversification: calculateInvestmentDiversification(investments, properties),
-    spendingControl: calculateSpendingControl(incomes, expenses),
-    savingsRate: calculateSavingsRate(incomes, expenses, loans),
+    cashflowStrength: Math.round(calculateCashflowStrength(incomes, expenses, loans)),
+    debtCoverage: Math.round(calculateDebtCoverage(incomes, loans)),
+    emergencyBuffer: Math.round(calculateEmergencyBuffer(accounts, expenses)),
+    investmentDiversification: Math.round(calculateInvestmentDiversification(investments, properties)),
+    spendingControl: Math.round(calculateSpendingControl(incomes, expenses)),
+    savingsRate: Math.round(calculateSavingsRate(incomes, expenses, loans)),
   };
 }
 

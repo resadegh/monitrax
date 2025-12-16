@@ -172,9 +172,68 @@ if (inc.type === 'SALARY') {
 
 ---
 
+### Bug #4: CFO Monthly Progress Savings Rate Missing Loan Repayments
+
+**Location:** `lib/cfo/intelligenceEngine.ts:149-160`
+
+**Issue:** Monthly Progress savings rate in CFO dashboard excluded loan repayments, showing inflated rate of 87.3% instead of 52.5%.
+
+**Before (Wrong):**
+```typescript
+const savingsRate = monthlyIncome > 0
+  ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100
+  : 0;
+```
+
+**After (Correct):**
+```typescript
+const monthlyLoanRepayments = loans.reduce(
+  (sum, l) => sum + monthlyize(l.minRepayment, l.repaymentFrequency), 0
+);
+const savingsRate = monthlyIncome > 0
+  ? ((monthlyIncome - monthlyExpenses - monthlyLoanRepayments) / monthlyIncome) * 100
+  : 0;
+```
+
+**Impact:**
+| Scenario | Before | After |
+|----------|--------|-------|
+| Test: Established Investor Monthly Progress Savings Rate | 87.3% | **52.5%** ✓ |
+
+---
+
+### Bug #5: CFO Score Components Displaying Raw Floats
+
+**Location:** `lib/cfo/scoreCalculator.ts:133-141`
+
+**Issue:** CFO score components (especially Debt Coverage) displayed raw floating point numbers like "70.3529411764706/100" instead of rounded integers.
+
+**Before (Wrong):**
+```typescript
+return {
+  debtCoverage: calculateDebtCoverage(incomes, loans),
+  // ... other components without rounding
+};
+```
+
+**After (Correct):**
+```typescript
+return {
+  debtCoverage: Math.round(calculateDebtCoverage(incomes, loans)),
+  // ... all components rounded with Math.round()
+};
+```
+
+**Impact:** All CFO score components now display clean integer values (e.g., "70/100" instead of "70.3529411764706/100").
+
+---
+
 ## Commits
 
 ```
+241d55f fix: correct CFO savings rate and round score components
+e0f32cc feat: add established-investor-001 test fixture
+fed9bcd docs: add CHANGELOG_2025_12_16 for testing framework and bug fixes
 d2cca0b fix: respect NET salary type in cashflow calculation
 74757f0 fix: include loan repayments in CFO savings rate calculation
 5867aa6 fix: correct Portfolio LVR calculation to use property value
