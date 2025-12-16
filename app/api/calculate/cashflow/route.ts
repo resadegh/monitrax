@@ -87,7 +87,16 @@ interface CashflowResult {
 }
 
 function calculateCashflow(
-  income: Array<{ name: string; amount: number; frequency: string; isTaxable: boolean; type?: string }>,
+  income: Array<{
+    name: string;
+    amount: number;
+    frequency: string;
+    isTaxable: boolean;
+    type?: string;
+    salaryType?: string | null;
+    netAmount?: number | null;
+    grossAmount?: number | null;
+  }>,
   expenses: Array<{
     name: string;
     amount: number;
@@ -113,23 +122,44 @@ function calculateCashflow(
   const incomeByType: Record<string, number> = {};
 
   for (const inc of income) {
-    const monthlyGross = toMonthly(inc.amount, inc.frequency as Frequency);
-    monthlyGrossIncome += monthlyGross;
+    const monthlyAmount = toMonthly(inc.amount, inc.frequency as Frequency);
 
-    // For SALARY income, calculate net after PAYG withholding
-    let monthlyNet = monthlyGross;
+    // For SALARY income, handle differently based on salaryType
+    let monthlyGross = monthlyAmount;
+    let monthlyNet = monthlyAmount;
     let monthlyPayg = 0;
 
     if (inc.type === 'SALARY') {
-      // Calculate take-home pay using tax engine
-      const takeHome = calculateTakeHomePay(
-        inc.amount,
-        inc.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
-      );
-      monthlyNet = toMonthly(takeHome.netAmount, inc.frequency as Frequency);
-      monthlyPayg = toMonthly(takeHome.paygWithholding + takeHome.medicareLevy, inc.frequency as Frequency);
+      if (inc.salaryType === 'NET') {
+        // User entered NET income - don't re-calculate PAYG
+        // Use stored grossAmount if available, otherwise assume amount is the net
+        if (inc.grossAmount != null) {
+          monthlyGross = toMonthly(inc.grossAmount, inc.frequency as Frequency);
+          monthlyNet = monthlyAmount; // The entered amount is already net
+          monthlyPayg = monthlyGross - monthlyNet;
+        } else {
+          // No grossAmount stored, the entered amount IS the net income
+          monthlyGross = monthlyAmount; // Approximate (we don't know the gross)
+          monthlyNet = monthlyAmount;
+          monthlyPayg = 0;
+        }
+      } else {
+        // User entered GROSS income - calculate take-home pay
+        const takeHome = calculateTakeHomePay(
+          inc.amount,
+          inc.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
+        );
+        monthlyGross = monthlyAmount;
+        monthlyNet = toMonthly(takeHome.netAmount, inc.frequency as Frequency);
+        monthlyPayg = toMonthly(takeHome.paygWithholding + takeHome.medicareLevy, inc.frequency as Frequency);
+      }
+    } else {
+      // Non-salary income (rental, investment, etc.) - use as-is
+      monthlyGross = monthlyAmount;
+      monthlyNet = monthlyAmount;
     }
 
+    monthlyGrossIncome += monthlyGross;
     monthlyNetIncome += monthlyNet;
     monthlyPaygWithholding += monthlyPayg;
 
@@ -245,6 +275,9 @@ export async function POST(request: NextRequest) {
           frequency: i.frequency,
           isTaxable: i.isTaxable,
           type: i.type,
+          salaryType: i.salaryType,
+          netAmount: i.netAmount,
+          grossAmount: i.grossAmount,
         }));
       }
 
@@ -346,6 +379,9 @@ export async function GET(request: NextRequest) {
         frequency: i.frequency,
         isTaxable: i.isTaxable,
         type: i.type,
+        salaryType: i.salaryType,
+        netAmount: i.netAmount,
+        grossAmount: i.grossAmount,
       }));
 
       const expenseData = expenses.map((e: any) => ({
