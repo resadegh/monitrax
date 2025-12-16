@@ -471,6 +471,15 @@ function simulateRepayments(loans: LoanInput[], settings: SimulationSettings) {
 }
 
 /**
+ * Check if a loan type is tax-deductible
+ * INVESTMENT and BUSINESS loans are typically tax-deductible (used for income-generating purposes)
+ * Other loans (HOME, CAR, PERSONAL, LINE_OF_CREDIT, STUDENT) are typically non-deductible
+ */
+function isTaxDeductibleLoan(type: LoanType): boolean {
+  return type === 'INVESTMENT' || type === 'BUSINESS';
+}
+
+/**
  * Select target loan based on strategy
  */
 function selectTargetLoan(
@@ -485,15 +494,16 @@ function selectTargetLoan(
 
   switch (strategy) {
     case 'TAX_AWARE_MINIMUM_INTEREST':
-      // Pay off HOME loans first (non-deductible), then INVESTMENT loans
-      const homeLoans = activeLoans.filter((l) => l.type === 'HOME');
-      if (homeLoans.length > 0) {
-        // Within HOME loans, target highest rate
-        return homeLoans.reduce((highest, loan) =>
+      // Pay off non-deductible loans first (HOME, CAR, PERSONAL, LINE_OF_CREDIT, STUDENT)
+      // Then pay off deductible loans (INVESTMENT, BUSINESS)
+      const nonDeductibleLoans = activeLoans.filter((l) => !isTaxDeductibleLoan(l.type));
+      if (nonDeductibleLoans.length > 0) {
+        // Within non-deductible loans, target highest rate
+        return nonDeductibleLoans.reduce((highest, loan) =>
           loan.interestRateAnnual > highest.interestRateAnnual ? loan : highest
         );
       }
-      // All HOME loans paid off, target highest rate INVESTMENT loan
+      // All non-deductible loans paid off, target highest rate deductible loan
       return activeLoans.reduce((highest, loan) =>
         loan.interestRateAnnual > highest.interestRateAnnual ? loan : highest
       );

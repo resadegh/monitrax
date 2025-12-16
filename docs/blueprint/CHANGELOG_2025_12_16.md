@@ -1,5 +1,54 @@
 # Changelog — 2025-12-16
 
+## Expanded Loan Types Feature
+
+### Summary
+
+Extended the loan tracking system to support multiple loan types beyond HOME and INVESTMENT, with proper linking to related entities and accurate calculations across dashboards, cashflow, and debt planning.
+
+### New Loan Types
+
+| Type | Description | Tax Deductible | Links To |
+|------|-------------|----------------|----------|
+| CAR | Vehicle financing | No | Vehicle Asset |
+| PERSONAL | Unsecured personal loan | No | - |
+| LINE_OF_CREDIT | Revolving credit (credit cards) | No | Account |
+| STUDENT | Education/HECS-HELP debt | No | - |
+| BUSINESS | Business loan | Yes | Property (if secured) |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `prisma/schema.prisma` | Added new LoanType enum values, `linkedAssetId`, `linkedAccountId` fields |
+| `lib/types/prisma-enums.ts` | Updated LoanType union type |
+| `lib/validation/loans.ts` | Updated validation schema for new types and fields |
+| `lib/planning/debtPlanner.ts` | Added `isTaxDeductibleLoan()` function, updated tax-aware strategy |
+| `lib/grdcs.ts` | Added 'asset' entity type, updated `extractLoanLinks()` |
+| `app/api/loans/route.ts` | Handle new fields in GET/POST |
+| `app/api/loans/[id]/route.ts` | Handle new fields in GET/PUT |
+| `app/dashboard/loans/page.tsx` | New UI for loan types, conditional linking sections |
+| `docs/blueprint/03_DATA_MODEL.md` | Updated documentation |
+
+### Calculation Updates
+
+**Debt Planner Tax-Aware Strategy:**
+- Non-deductible loans (pay first): HOME, CAR, PERSONAL, LINE_OF_CREDIT, STUDENT
+- Deductible loans (pay last): INVESTMENT, BUSINESS
+
+**GRDCS Missing Link Suggestions:**
+- CAR loans without linked vehicle show suggestion
+- LINE_OF_CREDIT without linked account show suggestion
+
+### Database Migration Required
+
+After deployment, run:
+```bash
+npx prisma migrate dev --name add_expanded_loan_types
+```
+
+---
+
 ## Phase 30: Testing Framework & Calculation Bug Fixes
 
 ### Summary

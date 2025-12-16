@@ -22,6 +22,11 @@ enum PropertyType {
 enum LoanType {
   HOME
   INVESTMENT
+  CAR           // Vehicle financing - can be linked to Asset
+  PERSONAL      // Unsecured personal loan
+  LINE_OF_CREDIT // Revolving credit - can be linked to Account (e.g., credit card)
+  STUDENT       // Education/HECS-HELP debt
+  BUSINESS      // Business loan
 }
 
 enum RateType {
@@ -428,6 +433,8 @@ model Loan {
   userId               String
   propertyId           String?
   offsetAccountId      String?             @unique
+  linkedAssetId        String?             // For CAR loans - link to vehicle asset
+  linkedAccountId      String?             // For LINE_OF_CREDIT - link to credit card/account
   name                 String
   type                 LoanType
   principal            Float               // Current balance
@@ -446,11 +453,15 @@ model Loan {
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   property       Property?    @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   offsetAccount  Account?     @relation(fields: [offsetAccountId], references: [id], onDelete: SetNull)
+  linkedAsset    Asset?       @relation(fields: [linkedAssetId], references: [id], onDelete: SetNull)
+  linkedAccount  Account?     @relation("LoanLinkedAccount", fields: [linkedAccountId], references: [id], onDelete: SetNull)
   expenses       Expense[]
   debtPlanLoans  DebtPlanLoan[]
 
   @@index([userId])
   @@index([propertyId])
+  @@index([linkedAssetId])
+  @@index([linkedAccountId])
   @@map("loans")
 }
 
@@ -481,6 +492,7 @@ model Account {
   basiqConnection   BasiqConnection?  @relation(fields: [basiqConnectionId], references: [id], onDelete: SetNull)
   transactions      Transaction[]
   linkedLoan        Loan?             // One-to-one: this account can be an offset for one loan
+  creditLineLoans   Loan[]            @relation("LoanLinkedAccount") // LINE_OF_CREDIT loans linked to this account
 
   // Phase 13: Transactional Intelligence
   unifiedTransactions UnifiedTransaction[] @relation("UnifiedTransactions")
@@ -2500,6 +2512,7 @@ model Asset {
   expenses              Expense[]
   valueHistory          AssetValueHistory[]
   serviceRecords        AssetServiceRecord[]
+  linkedLoans           Loan[]              // CAR loans linked to this asset
 
   @@index([userId])
   @@index([type])

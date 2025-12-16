@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
         include: {
           property: true,
           offsetAccount: true,
+          linkedAsset: true,      // For CAR loans
+          linkedAccount: true,    // For LINE_OF_CREDIT
           expenses: true,
         },
         orderBy: { createdAt: 'desc' },
@@ -45,6 +47,8 @@ export async function POST(request: NextRequest) {
         type,
         propertyId,
         offsetAccountId,
+        linkedAssetId,
+        linkedAccountId,
         principal,
         interestRateAnnual,
         rateType,
@@ -83,7 +87,23 @@ export async function POST(request: NextRequest) {
       if (offsetAccountId) {
         const account = await prisma.account.findUnique({ where: { id: offsetAccountId } });
         if (!account || account.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Account not found or unauthorized' }, { status: 403 });
+          return NextResponse.json({ error: 'Offset account not found or unauthorized' }, { status: 403 });
+        }
+      }
+
+      // Validate linked asset (for CAR loans)
+      if (linkedAssetId) {
+        const asset = await prisma.asset.findUnique({ where: { id: linkedAssetId } });
+        if (!asset || asset.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Asset not found or unauthorized' }, { status: 403 });
+        }
+      }
+
+      // Validate linked account (for LINE_OF_CREDIT)
+      if (linkedAccountId) {
+        const account = await prisma.account.findUnique({ where: { id: linkedAccountId } });
+        if (!account || account.userId !== authReq.user!.userId) {
+          return NextResponse.json({ error: 'Linked account not found or unauthorized' }, { status: 403 });
         }
       }
 
@@ -94,6 +114,8 @@ export async function POST(request: NextRequest) {
           type,
           propertyId: propertyId || null,
           offsetAccountId: offsetAccountId || null,
+          linkedAssetId: linkedAssetId || null,
+          linkedAccountId: linkedAccountId || null,
           principal: parseFloat(principal),
           interestRateAnnual: parseFloat(interestRateAnnual),
           rateType,
