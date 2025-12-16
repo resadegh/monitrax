@@ -125,30 +125,50 @@ id: string
 type: "loan"
 name: string
 lender: string
-loanType: "HOME" | "INVESTMENT"
+loanType: "HOME" | "INVESTMENT" | "CAR" | "PERSONAL" | "LINE_OF_CREDIT" | "STUDENT" | "BUSINESS"
 principal: number
 interestRateAnnual: number
 rateType: "VARIABLE" | "FIXED"
 isInterestOnly: boolean
 fixedExpiry?: string
 offsetAccountId?: string
+linkedAssetId?: string      // For CAR loans - link to vehicle asset
+linkedAccountId?: string    // For LINE_OF_CREDIT - link to credit card/account
 redrawBalance?: number
 extraRepaymentCap?: number
 ```
 
+### **Loan Types**
+
+| Type | Description | Tax Deductible | Can Link To |
+|------|-------------|----------------|-------------|
+| HOME | Primary residence mortgage | No | Property, Offset Account |
+| INVESTMENT | Investment property loan | Yes | Property, Offset Account |
+| CAR | Vehicle financing | No | Asset (Vehicle) |
+| PERSONAL | Unsecured personal loan | No | - |
+| LINE_OF_CREDIT | Revolving credit facility | No | Account (Credit Card) |
+| STUDENT | Education/HECS-HELP debt | No | - |
+| BUSINESS | Business loan | Yes | Property (if secured) |
+
 ### **Relationships**
 
 ```
-loan → property?
-loan → account[]
+loan → property?          (HOME, INVESTMENT, BUSINESS)
+loan → account[]          (offset for HOME/INVESTMENT)
+loan → asset?             (CAR - vehicle)
+loan → account?           (LINE_OF_CREDIT - credit card)
 loan → transaction[]
+loan → expense[]
 ```
 
 ### **Financial Rules**
 
-- Drives repayment schedules  
-- Interest-only rules change amortisation  
-- Offset account integration reduces interest  
+- Drives repayment schedules
+- Interest-only rules change amortisation
+- Offset account integration reduces interest (HOME/INVESTMENT only)
+- Tax-aware debt planner prioritises non-deductible loans first
+- CAR loans can track vehicle depreciation via linked asset
+- LINE_OF_CREDIT tracks revolving balance via linked account  
 
 ---
 
@@ -317,11 +337,18 @@ property → income
 property → account (offset)
 
 loan → property
-loan → account
+loan → account (offset or linked for LINE_OF_CREDIT)
+loan → asset (vehicle for CAR loans)
 loan → transaction
+loan → expense
 
 account → transaction
-account → loan
+account → loan (offset or credit line)
+
+asset → loan (CAR loans)
+asset → expense
+asset → valueHistory
+asset → serviceRecord
 
 investmentAccount → holding
 investmentAccount → transaction
@@ -330,6 +357,22 @@ holding → transaction
 ```
 
 GRDCS stores this as adjacency lists.
+
+### **GRDCS Entity Types**
+
+```typescript
+type GRDCSEntityType =
+  | 'property'
+  | 'loan'
+  | 'income'
+  | 'expense'
+  | 'account'
+  | 'asset'           // Phase 21: Asset Management
+  | 'investmentAccount'
+  | 'investmentHolding'
+  | 'investmentTransaction'
+  | 'depreciationSchedule';
+```
 
 ---
 
