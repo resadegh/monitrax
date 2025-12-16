@@ -42,6 +42,11 @@ export const ROUTE_MAP: Record<GRDCSEntityType, RouteConfig> = {
     dialogParam: 'id',
     defaultTab: 'details',
   },
+  asset: {
+    basePath: '/dashboard/assets',
+    dialogParam: 'id',
+    defaultTab: 'details',
+  },
   investmentAccount: {
     basePath: '/dashboard/investments/accounts',
     dialogParam: 'id',
@@ -107,6 +112,7 @@ export function getEntityTypeDisplayName(type: GRDCSEntityType): string {
     income: 'Income',
     expense: 'Expense',
     account: 'Account',
+    asset: 'Asset',
     investmentAccount: 'Investment Account',
     investmentHolding: 'Holding',
     investmentTransaction: 'Transaction',
@@ -125,6 +131,7 @@ export function getEntityTypeIcon(type: GRDCSEntityType): string {
     income: 'TrendingUp',
     expense: 'TrendingDown',
     account: 'Wallet',
+    asset: 'Package',
     investmentAccount: 'Briefcase',
     investmentHolding: 'PieChart',
     investmentTransaction: 'ArrowLeftRight',
