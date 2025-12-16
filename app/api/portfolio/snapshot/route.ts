@@ -937,8 +937,8 @@ export async function GET(request: NextRequest) {
 
         // Gearing metrics
         gearing: {
-          portfolioLVR: totalAssets > 0
-            ? Math.round((totalLiabilities / totalAssets) * 10000) / 100
+          portfolioLVR: totalPropertyValue > 0
+            ? Math.round((totalLiabilities / totalPropertyValue) * 10000) / 100
             : 0,
           debtToIncome: totalAnnualIncome > 0
             ? Math.round((totalLiabilities / totalAnnualIncome) * 100) / 100
