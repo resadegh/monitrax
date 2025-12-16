@@ -18,6 +18,9 @@
 // Types
 export * from './types';
 
+// Normalizer (for flexible input format)
+export { normalizeScenario, type FlexibleScenarioInput } from './normalizer';
+
 // Loader
 export { TestScenarioLoader, loadTestScenario, loadTestScenarioFromFile } from './loader';
 
@@ -62,15 +65,17 @@ export function getFixturePath(fixture: keyof typeof FIXTURES | string): string 
 
 import { PrismaClient } from '@prisma/client';
 import type { TestScenarioInput, TestLoadResult, TestExportOutput, TestResetResult } from './types';
+import type { FlexibleScenarioInput } from './normalizer';
 import { TestScenarioLoader } from './loader';
 import { TestScenarioExporter } from './exporter';
 import { TestScenarioReset } from './reset';
 
 /**
  * Run a complete test cycle: reset -> load -> export
+ * Accepts flexible input format (with IDs or name-based references)
  */
 export async function runTestScenario(
-  scenario: TestScenarioInput,
+  scenario: TestScenarioInput | FlexibleScenarioInput,
   prisma?: PrismaClient
 ): Promise<{
   loadResult: TestLoadResult;

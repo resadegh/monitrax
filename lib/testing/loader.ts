@@ -19,6 +19,7 @@ import type {
   TestInvestmentTransactionInput,
   TestDepreciationScheduleInput,
 } from './types';
+import { normalizeScenario, type FlexibleScenarioInput } from './normalizer';
 
 // =============================================================================
 // CONSTANTS
@@ -60,9 +61,11 @@ export class TestScenarioLoader {
   }
 
   /**
-   * Load a complete test scenario
+   * Load a complete test scenario (accepts flexible input format)
    */
-  async loadScenario(scenario: TestScenarioInput): Promise<TestLoadResult> {
+  async loadScenario(rawScenario: TestScenarioInput | FlexibleScenarioInput): Promise<TestLoadResult> {
+    // Normalize the input to standardized format
+    const scenario = normalizeScenario(rawScenario as FlexibleScenarioInput);
     // Reset state
     this.entityMappings = {
       properties: {},

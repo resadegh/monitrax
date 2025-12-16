@@ -159,6 +159,116 @@ Clears all data for a test user (security: only allows test user emails).
 
 # **4. Test Scenario Input Schema**
 
+The testing framework accepts **flexible input formats**. You can use either:
+1. **Name-based references** (`propertyRef: "Main Residence"`)
+2. **ID-based references** (`propertyId: "prop_001"`)
+
+The system automatically normalizes input to the internal format.
+
+## **4.0 Flexible Input Format (Recommended)**
+
+This is the user-friendly format with explicit IDs and ID-based references:
+
+```json
+{
+  "scenarioId": "simple-investor-001",
+  "name": "Simple Investor - Single Property",
+  "testUser": {
+    "email": "test-simple@monitrax.test",
+    "name": "Test User Simple"
+  },
+  "data": {
+    "properties": [
+      {
+        "id": "prop_001",
+        "name": "Brisbane Investment",
+        "address": "123 Rental St, Brisbane QLD 4000",
+        "type": "investment",
+        "purchaseDate": "2022-01-15",
+        "purchasePrice": 450000,
+        "currentValue": 500000
+      }
+    ],
+    "loans": [
+      {
+        "id": "loan_001",
+        "propertyId": "prop_001",
+        "name": "Brisbane Investment Loan",
+        "type": "principal_and_interest",
+        "balance": 350000,
+        "interestRate": 0.06,
+        "monthlyRepayment": 2100,
+        "offsetAccountId": "acc_001"
+      }
+    ],
+    "accounts": [
+      {
+        "id": "acc_001",
+        "name": "Offset Account",
+        "type": "offset",
+        "balance": 30000
+      }
+    ],
+    "income": [
+      {
+        "id": "inc_001",
+        "name": "Primary Salary",
+        "category": "salary",
+        "amount": 6000,
+        "frequency": "monthly",
+        "isNet": true
+      },
+      {
+        "id": "inc_002",
+        "name": "Brisbane Rental",
+        "category": "rental",
+        "amount": 2200,
+        "frequency": "monthly",
+        "propertyId": "prop_001"
+      }
+    ],
+    "expenses": [
+      {
+        "id": "exp_001",
+        "name": "Council Rates",
+        "category": "rates",
+        "amount": 1600,
+        "frequency": "annual",
+        "propertyId": "prop_001"
+      }
+    ]
+  },
+  "expectedOutputs": {
+    "netWorth": {
+      "totalAssets": 580000,
+      "totalLiabilities": 350000,
+      "netWorth": 230000
+    },
+    "gearing": {
+      "portfolioLVR": 0.70
+    }
+  }
+}
+```
+
+### **Field Mapping (Flexible → Internal)**
+
+| Flexible Field | Internal Field | Notes |
+|----------------|----------------|-------|
+| `id` | (used for reference resolution) | Optional, for linking entities |
+| `propertyId` | `propertyRef` | Links by ID → converted to name |
+| `offsetAccountId` | `offsetAccountRef` | Links by ID → converted to name |
+| `loanId` | `loanRef` | Links by ID → converted to name |
+| `balance` | `principal` / `currentBalance` | For loans/accounts |
+| `interestRate` | `interestRateAnnual` | Decimal format |
+| `monthlyRepayment` | `minRepayment` | Assumes MONTHLY frequency |
+| `category` | `type` | For income (salary/rental/etc) |
+| `isNet` | `salaryType: "NET"` | Boolean → enum conversion |
+| `type: "investment"` | `type: "INVESTMENT"` | Case-insensitive |
+| `type: "principal_and_interest"` | `isInterestOnly: false` | Loan type parsing |
+
+---
+
 ## **4.1 Root Structure**
 
 ```typescript
