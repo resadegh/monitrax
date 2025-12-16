@@ -6,6 +6,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { hashPassword } from '@/lib/auth';
 import type {
   TestScenarioInput,
   TestLoadResult,
@@ -178,12 +179,16 @@ export class TestScenarioLoader {
     });
 
     if (!user) {
+      // Hash the password before storing
+      const plainPassword = testUser.password || DEFAULT_PASSWORD;
+      const hashedPassword = await hashPassword(plainPassword);
+
       // Create new user
       user = await this.prisma.user.create({
         data: {
           email: testUser.email,
           name: testUser.name,
-          password: testUser.password || DEFAULT_PASSWORD,
+          password: hashedPassword,
           emailVerified: true,
           onboardingCompleted: true,
         },
