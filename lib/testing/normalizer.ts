@@ -291,6 +291,19 @@ function normalizeFrequency(
 }
 
 /**
+ * Normalize loan repayment frequency (only WEEKLY, FORTNIGHTLY, MONTHLY allowed)
+ */
+function normalizeLoanRepaymentFrequency(
+  frequency?: string
+): 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' {
+  if (!frequency) return 'MONTHLY';
+  const normalized = frequency.toUpperCase();
+  if (normalized === 'WEEKLY') return 'WEEKLY';
+  if (normalized === 'FORTNIGHTLY') return 'FORTNIGHTLY';
+  return 'MONTHLY';
+}
+
+/**
  * Normalize investment account type
  */
 function normalizeInvestmentAccountType(
@@ -395,7 +408,7 @@ export function normalizeScenario(input: FlexibleScenarioInput): TestScenarioInp
       isInterestOnly,
       termMonthsRemaining: l.termMonthsRemaining ?? 360,
       minRepayment: monthlyRepayment,
-      repaymentFrequency: normalizeFrequency(l.repaymentFrequency || 'MONTHLY'),
+      repaymentFrequency: normalizeLoanRepaymentFrequency(l.repaymentFrequency),
       fixedExpiry: l.fixedExpiry,
       extraRepaymentCap: l.extraRepaymentCap,
       propertyRef,
