@@ -461,53 +461,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks and tools</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Link href="/dashboard/income">
-                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-950/20">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                    <div className="text-left">
-                      <div className="font-semibold">Income</div>
-                      <div className="text-xs text-muted-foreground">Track your earnings</div>
-                    </div>
-                  </Button>
-                </Link>
-                <Link href="/dashboard/expenses">
-                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20">
-                    <ArrowDownRight className="h-5 w-5 text-orange-600" />
-                    <div className="text-left">
-                      <div className="font-semibold">Expenses</div>
-                      <div className="text-xs text-muted-foreground">Monitor spending</div>
-                    </div>
-                  </Button>
-                </Link>
-                <Link href="/dashboard/debt-planner">
-                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20">
-                    <Calculator className="h-5 w-5 text-blue-600" />
-                    <div className="text-left">
-                      <div className="font-semibold">Debt Planner</div>
-                      <div className="text-xs text-muted-foreground">Optimize repayments</div>
-                    </div>
-                  </Button>
-                </Link>
-                <Link href="/dashboard/tax">
-                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/20">
-                    <Receipt className="h-5 w-5 text-purple-600" />
-                    <div className="text-left">
-                      <div className="font-semibold">Tax Calculator</div>
-                      <div className="text-xs text-muted-foreground">View estimates</div>
-                    </div>
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       ) : (
         <div className="space-y-6">
@@ -893,54 +846,6 @@ export default function DashboardPage() {
               )}
             </TabsContent>
           </Tabs>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks and tools</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Link href="/dashboard/income">
-                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4 hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-950/20">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                    <div className="text-left">
-                      <div className="font-semibold">Income</div>
-                      <div className="text-xs text-muted-foreground">Track your earnings</div>
-                    </div>
-                  </Button>
-                </Link>
-                <Link href="/dashboard/expenses">
-                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4 hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20">
-                    <ArrowDownRight className="h-5 w-5 text-orange-600" />
-                    <div className="text-left">
-                      <div className="font-semibold">Expenses</div>
-                      <div className="text-xs text-muted-foreground">Monitor spending</div>
-                    </div>
-                  </Button>
-                </Link>
-                <Link href="/dashboard/debt-planner">
-                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20">
-                    <Calculator className="h-5 w-5 text-blue-600" />
-                    <div className="text-left">
-                      <div className="font-semibold">Debt Planner</div>
-                      <div className="text-xs text-muted-foreground">Optimize repayments</div>
-                    </div>
-                  </Button>
-                </Link>
-                <Link href="/dashboard/tax">
-                  <Button variant="outline" className="w-full h-auto flex-col items-start gap-2 p-4 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-950/20">
-                    <Receipt className="h-5 w-5 text-purple-600" />
-                    <div className="text-left">
-                      <div className="font-semibold">Tax Calculator</div>
-                      <div className="text-xs text-muted-foreground">View estimates</div>
-                    </div>
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Detail Breakdown Dialog */}
           <Dialog open={selectedDetail !== null} onOpenChange={() => setSelectedDetail(null)}>
