@@ -1,0 +1,142 @@
+{
+  "scenarioId": "simple-homeowner",
+  "name": "Simple Homeowner",
+  "description": "Basic scenario: Single home with mortgage, salary income, and general expenses",
+  "testUser": {
+    "email": "test-simple-homeowner@monitrax.test",
+    "name": "Test Simple Homeowner"
+  },
+  "data": {
+    "properties": [
+      {
+        "name": "Family Home",
+        "type": "HOME",
+        "address": "123 Main Street, Sydney NSW 2000",
+        "purchasePrice": 850000,
+        "purchaseDate": "2020-06-15",
+        "currentValue": 950000,
+        "valuationDate": "2024-12-01",
+        "suburb": "Sydney",
+        "state": "NSW",
+        "postcode": "2000"
+      }
+    ],
+    "loans": [
+      {
+        "name": "Home Loan",
+        "lender": "Commonwealth Bank",
+        "type": "HOME",
+        "principal": 520000,
+        "interestRateAnnual": 0.0625,
+        "rateType": "VARIABLE",
+        "isInterestOnly": false,
+        "termMonthsRemaining": 300,
+        "minRepayment": 3580,
+        "repaymentFrequency": "MONTHLY",
+        "propertyRef": "Family Home",
+        "offsetAccountRef": "Offset Account"
+      }
+    ],
+    "accounts": [
+      {
+        "name": "Offset Account",
+        "type": "OFFSET",
+        "institution": "Commonwealth Bank",
+        "currentBalance": 45000
+      },
+      {
+        "name": "Everyday Account",
+        "type": "TRANSACTIONAL",
+        "institution": "Commonwealth Bank",
+        "currentBalance": 5000
+      },
+      {
+        "name": "Savings Account",
+        "type": "SAVINGS",
+        "institution": "ING",
+        "currentBalance": 25000,
+        "interestRate": 0.05
+      }
+    ],
+    "income": [
+      {
+        "name": "Primary Salary",
+        "type": "SALARY",
+        "sourceType": "GENERAL",
+        "amount": 130000,
+        "frequency": "ANNUAL",
+        "isTaxable": true,
+        "salaryType": "GROSS",
+        "superGuaranteeRate": 0.115
+      }
+    ],
+    "expenses": [
+      {
+        "name": "Council Rates",
+        "category": "RATES",
+        "sourceType": "PROPERTY",
+        "amount": 2400,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": false,
+        "propertyRef": "Family Home"
+      },
+      {
+        "name": "Home Insurance",
+        "category": "INSURANCE",
+        "sourceType": "PROPERTY",
+        "amount": 2200,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": false,
+        "propertyRef": "Family Home"
+      },
+      {
+        "name": "Groceries",
+        "category": "FOOD",
+        "sourceType": "GENERAL",
+        "amount": 250,
+        "frequency": "WEEKLY",
+        "isEssential": true,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Utilities",
+        "category": "UTILITIES",
+        "sourceType": "GENERAL",
+        "amount": 350,
+        "frequency": "MONTHLY",
+        "isEssential": true,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Car Registration",
+        "category": "REGISTRATION",
+        "sourceType": "GENERAL",
+        "amount": 850,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Streaming Services",
+        "category": "SUBSCRIPTION",
+        "sourceType": "GENERAL",
+        "amount": 45,
+        "frequency": "MONTHLY",
+        "isEssential": false,
+        "isTaxDeductible": false
+      }
+    ]
+  },
+  "expectedOutputs": {
+    "netWorth": {
+      "totalAssets": 1025000,
+      "totalLiabilities": 520000,
+      "netWorth": 505000
+    },
+    "gearing": {
+      "portfolioLVR": 0.5474
+    }
+  }
+}

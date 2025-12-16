@@ -1,0 +1,487 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://monitrax.com/schemas/test-scenario.json",
+  "title": "Monitrax Test Scenario",
+  "description": "Complete test scenario input for Monitrax automated testing",
+  "type": "object",
+  "required": ["scenarioId", "name", "description", "testUser", "data"],
+  "properties": {
+    "scenarioId": {
+      "type": "string",
+      "description": "Unique identifier for this test scenario",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable scenario name",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of what this scenario tests"
+    },
+    "testUser": {
+      "type": "object",
+      "required": ["email", "name"],
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Test user email (must be unique per scenario)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Test user display name"
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional password (defaults to test password)"
+        }
+      }
+    },
+    "data": {
+      "type": "object",
+      "description": "All entities to load for this scenario",
+      "properties": {
+        "properties": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/property" }
+        },
+        "loans": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/loan" }
+        },
+        "accounts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/account" }
+        },
+        "income": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/income" }
+        },
+        "expenses": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/expense" }
+        },
+        "investmentAccounts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/investmentAccount" }
+        },
+        "holdings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/holding" }
+        },
+        "investmentTransactions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/investmentTransaction" }
+        },
+        "depreciationSchedules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/depreciationSchedule" }
+        }
+      }
+    },
+    "expectedOutputs": {
+      "type": "object",
+      "description": "Optional expected outputs for verification",
+      "properties": {
+        "netWorth": {
+          "type": "object",
+          "properties": {
+            "totalAssets": { "type": "number" },
+            "totalLiabilities": { "type": "number" },
+            "netWorth": { "type": "number" }
+          }
+        },
+        "cashflow": {
+          "type": "object",
+          "properties": {
+            "monthlyNetCashflow": { "type": "number" },
+            "annualNetCashflow": { "type": "number" },
+            "savingsRate": { "type": "number" }
+          }
+        },
+        "gearing": {
+          "type": "object",
+          "properties": {
+            "portfolioLVR": { "type": "number" },
+            "debtToIncomeRatio": { "type": "number" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "property": {
+      "type": "object",
+      "required": ["name", "type", "purchasePrice", "purchaseDate", "currentValue"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Property name (used as reference key)"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["HOME", "INVESTMENT"]
+        },
+        "address": { "type": "string" },
+        "purchasePrice": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Purchase price in dollars"
+        },
+        "purchaseDate": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO date format (YYYY-MM-DD)"
+        },
+        "currentValue": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Current market value"
+        },
+        "valuationDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "suburb": { "type": "string" },
+        "state": { "type": "string" },
+        "postcode": { "type": "string" }
+      }
+    },
+    "loan": {
+      "type": "object",
+      "required": ["name", "type", "principal", "interestRateAnnual", "rateType", "isInterestOnly", "termMonthsRemaining", "minRepayment", "repaymentFrequency"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Loan name (used as reference key)"
+        },
+        "lender": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["HOME", "INVESTMENT"]
+        },
+        "principal": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Current loan balance"
+        },
+        "interestRateAnnual": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Annual interest rate as decimal (e.g., 0.0625 for 6.25%)"
+        },
+        "rateType": {
+          "type": "string",
+          "enum": ["VARIABLE", "FIXED"]
+        },
+        "isInterestOnly": { "type": "boolean" },
+        "termMonthsRemaining": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minRepayment": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum required repayment per frequency"
+        },
+        "repaymentFrequency": {
+          "type": "string",
+          "enum": ["WEEKLY", "FORTNIGHTLY", "MONTHLY"]
+        },
+        "fixedExpiry": {
+          "type": "string",
+          "format": "date",
+          "description": "Required if rateType is FIXED"
+        },
+        "extraRepaymentCap": {
+          "type": "number",
+          "description": "Annual cap for extra repayments on fixed loans"
+        },
+        "propertyRef": {
+          "type": "string",
+          "description": "Reference to property by name"
+        },
+        "offsetAccountRef": {
+          "type": "string",
+          "description": "Reference to offset account by name"
+        }
+      }
+    },
+    "account": {
+      "type": "object",
+      "required": ["name", "type", "currentBalance"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Account name (used as reference key)"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["OFFSET", "SAVINGS", "TRANSACTIONAL", "CREDIT_CARD"]
+        },
+        "institution": { "type": "string" },
+        "currentBalance": {
+          "type": "number",
+          "description": "Current balance (negative for credit cards)"
+        },
+        "interestRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Annual interest rate as decimal"
+        }
+      }
+    },
+    "income": {
+      "type": "object",
+      "required": ["name", "type", "amount", "frequency"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["SALARY", "RENT", "RENTAL", "INVESTMENT", "OTHER"]
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["GENERAL", "PROPERTY", "INVESTMENT"]
+        },
+        "amount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["WEEKLY", "FORTNIGHTLY", "MONTHLY", "QUARTERLY", "ANNUAL"]
+        },
+        "isTaxable": {
+          "type": "boolean",
+          "default": true
+        },
+        "salaryType": {
+          "type": "string",
+          "enum": ["GROSS", "NET"],
+          "description": "For SALARY type: whether amount is gross or net"
+        },
+        "superGuaranteeRate": {
+          "type": "number",
+          "description": "Super guarantee rate (e.g., 0.115 for 11.5%)"
+        },
+        "salarySacrifice": {
+          "type": "number",
+          "description": "Annual salary sacrifice amount"
+        },
+        "frankingPercentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "For INVESTMENT type: franking percentage"
+        },
+        "propertyRef": {
+          "type": "string",
+          "description": "Reference to property by name (for rental income)"
+        },
+        "investmentAccountRef": {
+          "type": "string",
+          "description": "Reference to investment account by name"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "expense": {
+      "type": "object",
+      "required": ["name", "category", "amount", "frequency"],
+      "properties": {
+        "name": { "type": "string" },
+        "vendorName": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": [
+            "HOUSING", "RATES", "INSURANCE", "MAINTENANCE",
+            "PERSONAL", "UTILITIES", "FOOD", "TRANSPORT",
+            "ENTERTAINMENT", "SUBSCRIPTION", "STRATA",
+            "LAND_TAX", "LOAN_INTEREST", "REGISTRATION",
+            "MODIFICATIONS", "OTHER"
+          ]
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["GENERAL", "PROPERTY", "LOAN", "INVESTMENT", "ASSET"]
+        },
+        "amount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["WEEKLY", "FORTNIGHTLY", "MONTHLY", "QUARTERLY", "ANNUAL"]
+        },
+        "isEssential": {
+          "type": "boolean",
+          "default": true
+        },
+        "isTaxDeductible": {
+          "type": "boolean",
+          "default": false
+        },
+        "propertyRef": { "type": "string" },
+        "loanRef": { "type": "string" },
+        "investmentAccountRef": { "type": "string" },
+        "assetRef": { "type": "string" }
+      }
+    },
+    "investmentAccount": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Account name (used as reference key)"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["BROKERAGE", "SUPERS", "FUND", "TRUST", "ETF_CRYPTO"]
+        },
+        "platform": {
+          "type": "string",
+          "description": "e.g., CommSec, SelfWealth"
+        },
+        "currency": {
+          "type": "string",
+          "default": "AUD"
+        },
+        "cashBalance": {
+          "type": "number",
+          "default": 0
+        },
+        "openingBalance": {
+          "type": "number",
+          "default": 0
+        },
+        "costBasisMethod": {
+          "type": "string",
+          "enum": ["FIFO", "LIFO", "HIFO", "SPECIFIC", "AVERAGE"],
+          "default": "FIFO"
+        }
+      }
+    },
+    "holding": {
+      "type": "object",
+      "required": ["ticker", "type", "units", "averagePrice", "investmentAccountRef"],
+      "properties": {
+        "ticker": {
+          "type": "string",
+          "description": "Stock/ETF ticker symbol"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name (e.g., Vanguard Australian Shares ETF)"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["SHARE", "ETF", "MANAGED_FUND", "CRYPTO"]
+        },
+        "units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "averagePrice": {
+          "type": "number",
+          "minimum": 0
+        },
+        "currentPrice": {
+          "type": "number",
+          "minimum": 0
+        },
+        "frankingPercentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Franking percentage for AU shares (0-100)"
+        },
+        "investmentAccountRef": {
+          "type": "string",
+          "description": "Reference to investment account by name"
+        }
+      }
+    },
+    "investmentTransaction": {
+      "type": "object",
+      "required": ["type", "date", "price", "units", "investmentAccountRef"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["BUY", "SELL", "DIVIDEND", "DISTRIBUTION", "DRP", "DEPOSIT", "WITHDRAWAL"]
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "price": {
+          "type": "number",
+          "minimum": 0
+        },
+        "units": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fees": {
+          "type": "number",
+          "default": 0
+        },
+        "notes": { "type": "string" },
+        "investmentAccountRef": { "type": "string" },
+        "holdingRef": {
+          "type": "string",
+          "description": "Reference to holding by ticker"
+        }
+      }
+    },
+    "depreciationSchedule": {
+      "type": "object",
+      "required": ["assetName", "category", "method", "cost", "rate", "startDate", "propertyRef"],
+      "properties": {
+        "assetName": { "type": "string" },
+        "category": {
+          "type": "string",
+          "enum": ["DIV40", "DIV43"]
+        },
+        "method": {
+          "type": "string",
+          "enum": ["PRIME_COST", "DIMINISHING_VALUE"]
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Annual depreciation rate (e.g., 0.025 for 2.5%)"
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "notes": { "type": "string" },
+        "propertyRef": {
+          "type": "string",
+          "description": "Reference to property by name"
+        }
+      }
+    }
+  }
+}
