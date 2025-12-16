@@ -1,0 +1,375 @@
+{
+  "scenarioId": "edge-cases",
+  "name": "Edge Cases Portfolio",
+  "description": "Edge case testing: High LVR (>90%), interest-only loans, maxed offset, credit card debt, CGT scenarios",
+  "testUser": {
+    "email": "test-edge-cases@monitrax.test",
+    "name": "Test Edge Cases"
+  },
+  "data": {
+    "properties": [
+      {
+        "name": "High LVR Property",
+        "type": "INVESTMENT",
+        "address": "Unit 3/22 Risk Street, Darwin NT 0800",
+        "purchasePrice": 380000,
+        "purchaseDate": "2023-06-15",
+        "currentValue": 365000,
+        "valuationDate": "2024-12-01",
+        "suburb": "Darwin",
+        "state": "NT",
+        "postcode": "0800"
+      },
+      {
+        "name": "PPOR with Maxed Offset",
+        "type": "HOME",
+        "address": "15 Safety Lane, Hobart TAS 7000",
+        "purchasePrice": 550000,
+        "purchaseDate": "2020-01-10",
+        "currentValue": 620000,
+        "valuationDate": "2024-12-01",
+        "suburb": "Hobart",
+        "state": "TAS",
+        "postcode": "7000"
+      }
+    ],
+    "loans": [
+      {
+        "name": "High LVR IO Loan",
+        "lender": "Pepper Money",
+        "type": "INVESTMENT",
+        "principal": 342000,
+        "interestRateAnnual": 0.0795,
+        "rateType": "VARIABLE",
+        "isInterestOnly": true,
+        "termMonthsRemaining": 48,
+        "minRepayment": 2266,
+        "repaymentFrequency": "MONTHLY",
+        "propertyRef": "High LVR Property"
+      },
+      {
+        "name": "Home Loan - Nearly Offset",
+        "lender": "ME Bank",
+        "type": "HOME",
+        "principal": 320000,
+        "interestRateAnnual": 0.0589,
+        "rateType": "FIXED",
+        "fixedExpiry": "2025-06-15",
+        "isInterestOnly": false,
+        "termMonthsRemaining": 240,
+        "minRepayment": 2350,
+        "repaymentFrequency": "MONTHLY",
+        "extraRepaymentCap": 15000,
+        "propertyRef": "PPOR with Maxed Offset",
+        "offsetAccountRef": "Large Offset"
+      },
+      {
+        "name": "Split Loan - Variable",
+        "lender": "ME Bank",
+        "type": "HOME",
+        "principal": 80000,
+        "interestRateAnnual": 0.0645,
+        "rateType": "VARIABLE",
+        "isInterestOnly": false,
+        "termMonthsRemaining": 240,
+        "minRepayment": 620,
+        "repaymentFrequency": "MONTHLY",
+        "propertyRef": "PPOR with Maxed Offset"
+      }
+    ],
+    "accounts": [
+      {
+        "name": "Large Offset",
+        "type": "OFFSET",
+        "institution": "ME Bank",
+        "currentBalance": 295000
+      },
+      {
+        "name": "Everyday Account",
+        "type": "TRANSACTIONAL",
+        "institution": "Commonwealth Bank",
+        "currentBalance": 2500
+      },
+      {
+        "name": "Credit Card - High Balance",
+        "type": "CREDIT_CARD",
+        "institution": "ANZ",
+        "currentBalance": -12500,
+        "interestRate": 0.2199
+      },
+      {
+        "name": "Credit Card - Small Balance",
+        "type": "CREDIT_CARD",
+        "institution": "Westpac",
+        "currentBalance": -3200,
+        "interestRate": 0.1999
+      }
+    ],
+    "investmentAccounts": [
+      {
+        "name": "CommSec Account",
+        "type": "BROKERAGE",
+        "platform": "CommSec",
+        "currency": "AUD",
+        "cashBalance": 850,
+        "costBasisMethod": "FIFO"
+      }
+    ],
+    "holdings": [
+      {
+        "ticker": "BHP",
+        "name": "BHP Group Ltd",
+        "type": "SHARE",
+        "units": 150,
+        "averagePrice": 48.50,
+        "currentPrice": 42.80,
+        "frankingPercentage": 100,
+        "investmentAccountRef": "CommSec Account"
+      },
+      {
+        "ticker": "CBA",
+        "name": "Commonwealth Bank",
+        "type": "SHARE",
+        "units": 80,
+        "averagePrice": 95.00,
+        "currentPrice": 145.00,
+        "frankingPercentage": 100,
+        "investmentAccountRef": "CommSec Account"
+      },
+      {
+        "ticker": "WOW",
+        "name": "Woolworths Group",
+        "type": "SHARE",
+        "units": 200,
+        "averagePrice": 38.00,
+        "currentPrice": 32.50,
+        "frankingPercentage": 80,
+        "investmentAccountRef": "CommSec Account"
+      }
+    ],
+    "investmentTransactions": [
+      {
+        "type": "BUY",
+        "date": "2021-03-10",
+        "price": 48.50,
+        "units": 150,
+        "fees": 19.95,
+        "investmentAccountRef": "CommSec Account",
+        "holdingRef": "BHP"
+      },
+      {
+        "type": "BUY",
+        "date": "2020-08-15",
+        "price": 72.00,
+        "units": 50,
+        "fees": 19.95,
+        "investmentAccountRef": "CommSec Account",
+        "holdingRef": "CBA"
+      },
+      {
+        "type": "BUY",
+        "date": "2022-11-20",
+        "price": 118.00,
+        "units": 30,
+        "fees": 19.95,
+        "investmentAccountRef": "CommSec Account",
+        "holdingRef": "CBA"
+      },
+      {
+        "type": "BUY",
+        "date": "2023-05-08",
+        "price": 38.00,
+        "units": 200,
+        "fees": 19.95,
+        "investmentAccountRef": "CommSec Account",
+        "holdingRef": "WOW"
+      },
+      {
+        "type": "SELL",
+        "date": "2024-06-15",
+        "price": 145.00,
+        "units": 20,
+        "fees": 19.95,
+        "investmentAccountRef": "CommSec Account",
+        "holdingRef": "CBA",
+        "notes": "Partial sale - realised gain for CGT testing"
+      }
+    ],
+    "income": [
+      {
+        "name": "Primary Salary",
+        "type": "SALARY",
+        "sourceType": "GENERAL",
+        "amount": 95000,
+        "frequency": "ANNUAL",
+        "isTaxable": true,
+        "salaryType": "GROSS",
+        "superGuaranteeRate": 0.115
+      },
+      {
+        "name": "Darwin Rental Income",
+        "type": "RENTAL",
+        "sourceType": "PROPERTY",
+        "amount": 380,
+        "frequency": "WEEKLY",
+        "isTaxable": true,
+        "propertyRef": "High LVR Property"
+      },
+      {
+        "name": "Dividend Income - BHP",
+        "type": "INVESTMENT",
+        "sourceType": "INVESTMENT",
+        "amount": 450,
+        "frequency": "ANNUAL",
+        "isTaxable": true,
+        "frankingPercentage": 100,
+        "investmentAccountRef": "CommSec Account"
+      },
+      {
+        "name": "Dividend Income - CBA",
+        "type": "INVESTMENT",
+        "sourceType": "INVESTMENT",
+        "amount": 580,
+        "frequency": "ANNUAL",
+        "isTaxable": true,
+        "frankingPercentage": 100,
+        "investmentAccountRef": "CommSec Account"
+      }
+    ],
+    "expenses": [
+      {
+        "name": "Darwin IP - Council Rates",
+        "category": "RATES",
+        "sourceType": "PROPERTY",
+        "amount": 2800,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "High LVR Property"
+      },
+      {
+        "name": "Darwin IP - Insurance",
+        "category": "INSURANCE",
+        "sourceType": "PROPERTY",
+        "amount": 3200,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "High LVR Property"
+      },
+      {
+        "name": "Darwin IP - Property Management",
+        "category": "MAINTENANCE",
+        "sourceType": "PROPERTY",
+        "amount": 165,
+        "frequency": "MONTHLY",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "High LVR Property"
+      },
+      {
+        "name": "Darwin IP - Cyclone Levy",
+        "category": "INSURANCE",
+        "sourceType": "PROPERTY",
+        "amount": 1200,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "High LVR Property"
+      },
+      {
+        "name": "Home Council Rates",
+        "category": "RATES",
+        "sourceType": "PROPERTY",
+        "amount": 2200,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": false,
+        "propertyRef": "PPOR with Maxed Offset"
+      },
+      {
+        "name": "Home Insurance",
+        "category": "INSURANCE",
+        "sourceType": "PROPERTY",
+        "amount": 1800,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": false,
+        "propertyRef": "PPOR with Maxed Offset"
+      },
+      {
+        "name": "Groceries",
+        "category": "FOOD",
+        "sourceType": "GENERAL",
+        "amount": 200,
+        "frequency": "WEEKLY",
+        "isEssential": true,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Utilities",
+        "category": "UTILITIES",
+        "sourceType": "GENERAL",
+        "amount": 280,
+        "frequency": "MONTHLY",
+        "isEssential": true,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Credit Card Interest - ANZ",
+        "category": "LOAN_INTEREST",
+        "sourceType": "GENERAL",
+        "amount": 229,
+        "frequency": "MONTHLY",
+        "isEssential": false,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Credit Card Interest - Westpac",
+        "category": "LOAN_INTEREST",
+        "sourceType": "GENERAL",
+        "amount": 53,
+        "frequency": "MONTHLY",
+        "isEssential": false,
+        "isTaxDeductible": false
+      }
+    ],
+    "depreciationSchedules": [
+      {
+        "assetName": "Building Structure - Darwin",
+        "category": "DIV43",
+        "method": "PRIME_COST",
+        "cost": 228000,
+        "rate": 0.025,
+        "startDate": "2023-06-15",
+        "propertyRef": "High LVR Property"
+      },
+      {
+        "assetName": "Air Conditioning - Darwin",
+        "category": "DIV40",
+        "method": "DIMINISHING_VALUE",
+        "cost": 12000,
+        "rate": 0.1,
+        "startDate": "2023-06-15",
+        "propertyRef": "High LVR Property",
+        "notes": "Heavy duty tropical AC unit"
+      }
+    ]
+  },
+  "expectedOutputs": {
+    "netWorth": {
+      "totalAssets": 1327070,
+      "totalLiabilities": 757700,
+      "netWorth": 569370
+    },
+    "gearing": {
+      "portfolioLVR": 0.7530
+    },
+    "propertyMetrics": [
+      {
+        "propertyName": "High LVR Property",
+        "lvr": 0.9370
+      }
+    ]
+  }
+}

@@ -1,0 +1,410 @@
+{
+  "scenarioId": "mixed-portfolio",
+  "name": "Mixed Portfolio",
+  "description": "Diversified portfolio with PPOR, investment property, ETF holdings, and multiple income streams",
+  "testUser": {
+    "email": "test-mixed-portfolio@monitrax.test",
+    "name": "Test Mixed Portfolio"
+  },
+  "data": {
+    "properties": [
+      {
+        "name": "Family Home",
+        "type": "HOME",
+        "address": "88 Park Avenue, Perth WA 6000",
+        "purchasePrice": 780000,
+        "purchaseDate": "2019-11-20",
+        "currentValue": 920000,
+        "valuationDate": "2024-12-01",
+        "suburb": "Perth",
+        "state": "WA",
+        "postcode": "6000"
+      },
+      {
+        "name": "Investment Unit - Adelaide",
+        "type": "INVESTMENT",
+        "address": "Unit 12/55 King William Street, Adelaide SA 5000",
+        "purchasePrice": 420000,
+        "purchaseDate": "2022-04-05",
+        "currentValue": 465000,
+        "valuationDate": "2024-12-01",
+        "suburb": "Adelaide",
+        "state": "SA",
+        "postcode": "5000"
+      }
+    ],
+    "loans": [
+      {
+        "name": "Home Mortgage",
+        "lender": "Bankwest",
+        "type": "HOME",
+        "principal": 485000,
+        "interestRateAnnual": 0.0615,
+        "rateType": "VARIABLE",
+        "isInterestOnly": false,
+        "termMonthsRemaining": 312,
+        "minRepayment": 3150,
+        "repaymentFrequency": "MONTHLY",
+        "propertyRef": "Family Home",
+        "offsetAccountRef": "Home Offset"
+      },
+      {
+        "name": "Investment Loan - Adelaide",
+        "lender": "ING",
+        "type": "INVESTMENT",
+        "principal": 336000,
+        "interestRateAnnual": 0.0659,
+        "rateType": "VARIABLE",
+        "isInterestOnly": false,
+        "termMonthsRemaining": 348,
+        "minRepayment": 2280,
+        "repaymentFrequency": "MONTHLY",
+        "propertyRef": "Investment Unit - Adelaide"
+      }
+    ],
+    "accounts": [
+      {
+        "name": "Home Offset",
+        "type": "OFFSET",
+        "institution": "Bankwest",
+        "currentBalance": 38000
+      },
+      {
+        "name": "Everyday Account",
+        "type": "TRANSACTIONAL",
+        "institution": "Bankwest",
+        "currentBalance": 4500
+      },
+      {
+        "name": "High Interest Savings",
+        "type": "SAVINGS",
+        "institution": "Macquarie",
+        "currentBalance": 32000,
+        "interestRate": 0.055
+      }
+    ],
+    "investmentAccounts": [
+      {
+        "name": "SelfWealth Brokerage",
+        "type": "BROKERAGE",
+        "platform": "SelfWealth",
+        "currency": "AUD",
+        "cashBalance": 2500,
+        "costBasisMethod": "FIFO"
+      },
+      {
+        "name": "Australian Super",
+        "type": "SUPERS",
+        "platform": "Australian Super",
+        "currency": "AUD",
+        "cashBalance": 0,
+        "openingBalance": 145000
+      }
+    ],
+    "holdings": [
+      {
+        "ticker": "VAS",
+        "name": "Vanguard Australian Shares ETF",
+        "type": "ETF",
+        "units": 520,
+        "averagePrice": 82.50,
+        "currentPrice": 92.00,
+        "frankingPercentage": 80,
+        "investmentAccountRef": "SelfWealth Brokerage"
+      },
+      {
+        "ticker": "VGS",
+        "name": "Vanguard MSCI International ETF",
+        "type": "ETF",
+        "units": 380,
+        "averagePrice": 98.00,
+        "currentPrice": 118.50,
+        "frankingPercentage": 0,
+        "investmentAccountRef": "SelfWealth Brokerage"
+      },
+      {
+        "ticker": "A200",
+        "name": "Betashares Australia 200 ETF",
+        "type": "ETF",
+        "units": 250,
+        "averagePrice": 125.00,
+        "currentPrice": 138.00,
+        "frankingPercentage": 85,
+        "investmentAccountRef": "SelfWealth Brokerage"
+      },
+      {
+        "ticker": "NDQ",
+        "name": "Betashares NASDAQ 100 ETF",
+        "type": "ETF",
+        "units": 180,
+        "averagePrice": 32.00,
+        "currentPrice": 45.50,
+        "frankingPercentage": 0,
+        "investmentAccountRef": "SelfWealth Brokerage"
+      }
+    ],
+    "investmentTransactions": [
+      {
+        "type": "BUY",
+        "date": "2022-06-15",
+        "price": 78.00,
+        "units": 300,
+        "fees": 9.50,
+        "investmentAccountRef": "SelfWealth Brokerage",
+        "holdingRef": "VAS"
+      },
+      {
+        "type": "BUY",
+        "date": "2023-02-20",
+        "price": 86.50,
+        "units": 220,
+        "fees": 9.50,
+        "investmentAccountRef": "SelfWealth Brokerage",
+        "holdingRef": "VAS"
+      },
+      {
+        "type": "BUY",
+        "date": "2022-08-10",
+        "price": 95.00,
+        "units": 200,
+        "fees": 9.50,
+        "investmentAccountRef": "SelfWealth Brokerage",
+        "holdingRef": "VGS"
+      },
+      {
+        "type": "BUY",
+        "date": "2023-05-18",
+        "price": 102.50,
+        "units": 180,
+        "fees": 9.50,
+        "investmentAccountRef": "SelfWealth Brokerage",
+        "holdingRef": "VGS"
+      },
+      {
+        "type": "BUY",
+        "date": "2023-01-12",
+        "price": 125.00,
+        "units": 250,
+        "fees": 9.50,
+        "investmentAccountRef": "SelfWealth Brokerage",
+        "holdingRef": "A200"
+      },
+      {
+        "type": "BUY",
+        "date": "2023-09-05",
+        "price": 32.00,
+        "units": 180,
+        "fees": 9.50,
+        "investmentAccountRef": "SelfWealth Brokerage",
+        "holdingRef": "NDQ"
+      },
+      {
+        "type": "DIVIDEND",
+        "date": "2024-03-15",
+        "price": 1.85,
+        "units": 520,
+        "fees": 0,
+        "investmentAccountRef": "SelfWealth Brokerage",
+        "holdingRef": "VAS",
+        "notes": "March 2024 distribution"
+      },
+      {
+        "type": "DIVIDEND",
+        "date": "2024-06-15",
+        "price": 1.92,
+        "units": 520,
+        "fees": 0,
+        "investmentAccountRef": "SelfWealth Brokerage",
+        "holdingRef": "VAS",
+        "notes": "June 2024 distribution"
+      }
+    ],
+    "income": [
+      {
+        "name": "Primary Salary",
+        "type": "SALARY",
+        "sourceType": "GENERAL",
+        "amount": 145000,
+        "frequency": "ANNUAL",
+        "isTaxable": true,
+        "salaryType": "GROSS",
+        "superGuaranteeRate": 0.115
+      },
+      {
+        "name": "Partner Salary",
+        "type": "SALARY",
+        "sourceType": "GENERAL",
+        "amount": 85000,
+        "frequency": "ANNUAL",
+        "isTaxable": true,
+        "salaryType": "GROSS",
+        "superGuaranteeRate": 0.115
+      },
+      {
+        "name": "Adelaide Rental Income",
+        "type": "RENTAL",
+        "sourceType": "PROPERTY",
+        "amount": 420,
+        "frequency": "WEEKLY",
+        "isTaxable": true,
+        "propertyRef": "Investment Unit - Adelaide"
+      },
+      {
+        "name": "ETF Dividends",
+        "type": "INVESTMENT",
+        "sourceType": "INVESTMENT",
+        "amount": 3800,
+        "frequency": "ANNUAL",
+        "isTaxable": true,
+        "frankingPercentage": 65,
+        "investmentAccountRef": "SelfWealth Brokerage"
+      }
+    ],
+    "expenses": [
+      {
+        "name": "Home Council Rates",
+        "category": "RATES",
+        "sourceType": "PROPERTY",
+        "amount": 2600,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": false,
+        "propertyRef": "Family Home"
+      },
+      {
+        "name": "Home Insurance",
+        "category": "INSURANCE",
+        "sourceType": "PROPERTY",
+        "amount": 2200,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": false,
+        "propertyRef": "Family Home"
+      },
+      {
+        "name": "Adelaide IP - Council Rates",
+        "category": "RATES",
+        "sourceType": "PROPERTY",
+        "amount": 1800,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Unit - Adelaide"
+      },
+      {
+        "name": "Adelaide IP - Strata",
+        "category": "STRATA",
+        "sourceType": "PROPERTY",
+        "amount": 3600,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Unit - Adelaide"
+      },
+      {
+        "name": "Adelaide IP - Insurance",
+        "category": "INSURANCE",
+        "sourceType": "PROPERTY",
+        "amount": 1400,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Unit - Adelaide"
+      },
+      {
+        "name": "Adelaide IP - Property Management",
+        "category": "MAINTENANCE",
+        "sourceType": "PROPERTY",
+        "amount": 185,
+        "frequency": "MONTHLY",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Unit - Adelaide"
+      },
+      {
+        "name": "Groceries",
+        "category": "FOOD",
+        "sourceType": "GENERAL",
+        "amount": 320,
+        "frequency": "WEEKLY",
+        "isEssential": true,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Utilities",
+        "category": "UTILITIES",
+        "sourceType": "GENERAL",
+        "amount": 380,
+        "frequency": "MONTHLY",
+        "isEssential": true,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Internet & Phone",
+        "category": "UTILITIES",
+        "sourceType": "GENERAL",
+        "amount": 150,
+        "frequency": "MONTHLY",
+        "isEssential": true,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Streaming & Subscriptions",
+        "category": "SUBSCRIPTION",
+        "sourceType": "GENERAL",
+        "amount": 85,
+        "frequency": "MONTHLY",
+        "isEssential": false,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Gym Membership",
+        "category": "ENTERTAINMENT",
+        "sourceType": "GENERAL",
+        "amount": 120,
+        "frequency": "MONTHLY",
+        "isEssential": false,
+        "isTaxDeductible": false
+      }
+    ],
+    "depreciationSchedules": [
+      {
+        "assetName": "Building Structure - Adelaide",
+        "category": "DIV43",
+        "method": "PRIME_COST",
+        "cost": 252000,
+        "rate": 0.025,
+        "startDate": "2022-04-05",
+        "propertyRef": "Investment Unit - Adelaide"
+      },
+      {
+        "assetName": "Carpet - Adelaide",
+        "category": "DIV40",
+        "method": "DIMINISHING_VALUE",
+        "cost": 4500,
+        "rate": 0.125,
+        "startDate": "2022-04-05",
+        "propertyRef": "Investment Unit - Adelaide"
+      },
+      {
+        "assetName": "Blinds - Adelaide",
+        "category": "DIV40",
+        "method": "PRIME_COST",
+        "cost": 2200,
+        "rate": 0.1,
+        "startDate": "2022-04-05",
+        "propertyRef": "Investment Unit - Adelaide"
+      }
+    ]
+  },
+  "expectedOutputs": {
+    "netWorth": {
+      "totalAssets": 1752290,
+      "totalLiabilities": 821000,
+      "netWorth": 931290
+    },
+    "gearing": {
+      "portfolioLVR": 0.5927
+    }
+  }
+}

@@ -1,0 +1,321 @@
+{
+  "scenarioId": "property-investor",
+  "name": "Property Investor",
+  "description": "Property investor with PPOR plus 2 investment properties, depreciation schedules, and rental income",
+  "testUser": {
+    "email": "test-property-investor@monitrax.test",
+    "name": "Test Property Investor"
+  },
+  "data": {
+    "properties": [
+      {
+        "name": "Family Home",
+        "type": "HOME",
+        "address": "45 Harbour View, Melbourne VIC 3000",
+        "purchasePrice": 1100000,
+        "purchaseDate": "2018-03-20",
+        "currentValue": 1350000,
+        "valuationDate": "2024-12-01",
+        "suburb": "Melbourne",
+        "state": "VIC",
+        "postcode": "3000"
+      },
+      {
+        "name": "Investment Property 1 - Sydney",
+        "type": "INVESTMENT",
+        "address": "Unit 5/88 George Street, Sydney NSW 2000",
+        "purchasePrice": 650000,
+        "purchaseDate": "2019-08-15",
+        "currentValue": 720000,
+        "valuationDate": "2024-12-01",
+        "suburb": "Sydney",
+        "state": "NSW",
+        "postcode": "2000"
+      },
+      {
+        "name": "Investment Property 2 - Brisbane",
+        "type": "INVESTMENT",
+        "address": "12 River Road, Brisbane QLD 4000",
+        "purchasePrice": 480000,
+        "purchaseDate": "2021-02-10",
+        "currentValue": 540000,
+        "valuationDate": "2024-12-01",
+        "suburb": "Brisbane",
+        "state": "QLD",
+        "postcode": "4000"
+      }
+    ],
+    "loans": [
+      {
+        "name": "Home Loan",
+        "lender": "ANZ",
+        "type": "HOME",
+        "principal": 680000,
+        "interestRateAnnual": 0.0599,
+        "rateType": "VARIABLE",
+        "isInterestOnly": false,
+        "termMonthsRemaining": 336,
+        "minRepayment": 4250,
+        "repaymentFrequency": "MONTHLY",
+        "propertyRef": "Family Home",
+        "offsetAccountRef": "Home Offset"
+      },
+      {
+        "name": "IP1 Loan - Sydney",
+        "lender": "Westpac",
+        "type": "INVESTMENT",
+        "principal": 520000,
+        "interestRateAnnual": 0.0685,
+        "rateType": "VARIABLE",
+        "isInterestOnly": false,
+        "termMonthsRemaining": 348,
+        "minRepayment": 3650,
+        "repaymentFrequency": "MONTHLY",
+        "propertyRef": "Investment Property 1 - Sydney"
+      },
+      {
+        "name": "IP2 Loan - Brisbane",
+        "lender": "NAB",
+        "type": "INVESTMENT",
+        "principal": 432000,
+        "interestRateAnnual": 0.0649,
+        "rateType": "FIXED",
+        "fixedExpiry": "2026-02-10",
+        "isInterestOnly": true,
+        "termMonthsRemaining": 360,
+        "minRepayment": 2337,
+        "repaymentFrequency": "MONTHLY",
+        "extraRepaymentCap": 10000,
+        "propertyRef": "Investment Property 2 - Brisbane"
+      }
+    ],
+    "accounts": [
+      {
+        "name": "Home Offset",
+        "type": "OFFSET",
+        "institution": "ANZ",
+        "currentBalance": 75000
+      },
+      {
+        "name": "Everyday Account",
+        "type": "TRANSACTIONAL",
+        "institution": "ANZ",
+        "currentBalance": 8500
+      },
+      {
+        "name": "Emergency Fund",
+        "type": "SAVINGS",
+        "institution": "UBank",
+        "currentBalance": 45000,
+        "interestRate": 0.0525
+      }
+    ],
+    "income": [
+      {
+        "name": "Primary Salary",
+        "type": "SALARY",
+        "sourceType": "GENERAL",
+        "amount": 180000,
+        "frequency": "ANNUAL",
+        "isTaxable": true,
+        "salaryType": "GROSS",
+        "superGuaranteeRate": 0.115
+      },
+      {
+        "name": "Sydney Rental Income",
+        "type": "RENTAL",
+        "sourceType": "PROPERTY",
+        "amount": 650,
+        "frequency": "WEEKLY",
+        "isTaxable": true,
+        "propertyRef": "Investment Property 1 - Sydney"
+      },
+      {
+        "name": "Brisbane Rental Income",
+        "type": "RENTAL",
+        "sourceType": "PROPERTY",
+        "amount": 480,
+        "frequency": "WEEKLY",
+        "isTaxable": true,
+        "propertyRef": "Investment Property 2 - Brisbane"
+      }
+    ],
+    "expenses": [
+      {
+        "name": "Home Council Rates",
+        "category": "RATES",
+        "sourceType": "PROPERTY",
+        "amount": 3200,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": false,
+        "propertyRef": "Family Home"
+      },
+      {
+        "name": "Home Insurance",
+        "category": "INSURANCE",
+        "sourceType": "PROPERTY",
+        "amount": 2800,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": false,
+        "propertyRef": "Family Home"
+      },
+      {
+        "name": "Sydney IP - Council Rates",
+        "category": "RATES",
+        "sourceType": "PROPERTY",
+        "amount": 2400,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Property 1 - Sydney"
+      },
+      {
+        "name": "Sydney IP - Strata",
+        "category": "STRATA",
+        "sourceType": "PROPERTY",
+        "amount": 4800,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Property 1 - Sydney"
+      },
+      {
+        "name": "Sydney IP - Insurance",
+        "category": "INSURANCE",
+        "sourceType": "PROPERTY",
+        "amount": 1800,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Property 1 - Sydney"
+      },
+      {
+        "name": "Sydney IP - Property Management",
+        "category": "MAINTENANCE",
+        "sourceType": "PROPERTY",
+        "amount": 280,
+        "frequency": "MONTHLY",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Property 1 - Sydney"
+      },
+      {
+        "name": "Brisbane IP - Council Rates",
+        "category": "RATES",
+        "sourceType": "PROPERTY",
+        "amount": 2100,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Property 2 - Brisbane"
+      },
+      {
+        "name": "Brisbane IP - Insurance",
+        "category": "INSURANCE",
+        "sourceType": "PROPERTY",
+        "amount": 1600,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Property 2 - Brisbane"
+      },
+      {
+        "name": "Brisbane IP - Property Management",
+        "category": "MAINTENANCE",
+        "sourceType": "PROPERTY",
+        "amount": 220,
+        "frequency": "MONTHLY",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Property 2 - Brisbane"
+      },
+      {
+        "name": "Brisbane IP - Land Tax",
+        "category": "LAND_TAX",
+        "sourceType": "PROPERTY",
+        "amount": 1800,
+        "frequency": "ANNUAL",
+        "isEssential": true,
+        "isTaxDeductible": true,
+        "propertyRef": "Investment Property 2 - Brisbane"
+      },
+      {
+        "name": "Groceries",
+        "category": "FOOD",
+        "sourceType": "GENERAL",
+        "amount": 300,
+        "frequency": "WEEKLY",
+        "isEssential": true,
+        "isTaxDeductible": false
+      },
+      {
+        "name": "Utilities",
+        "category": "UTILITIES",
+        "sourceType": "GENERAL",
+        "amount": 450,
+        "frequency": "MONTHLY",
+        "isEssential": true,
+        "isTaxDeductible": false
+      }
+    ],
+    "depreciationSchedules": [
+      {
+        "assetName": "Building Structure - Sydney",
+        "category": "DIV43",
+        "method": "PRIME_COST",
+        "cost": 390000,
+        "rate": 0.025,
+        "startDate": "2019-08-15",
+        "propertyRef": "Investment Property 1 - Sydney"
+      },
+      {
+        "assetName": "Air Conditioning - Sydney",
+        "category": "DIV40",
+        "method": "DIMINISHING_VALUE",
+        "cost": 8500,
+        "rate": 0.1,
+        "startDate": "2019-08-15",
+        "propertyRef": "Investment Property 1 - Sydney"
+      },
+      {
+        "assetName": "Carpet & Flooring - Sydney",
+        "category": "DIV40",
+        "method": "DIMINISHING_VALUE",
+        "cost": 6000,
+        "rate": 0.125,
+        "startDate": "2019-08-15",
+        "propertyRef": "Investment Property 1 - Sydney"
+      },
+      {
+        "assetName": "Building Structure - Brisbane",
+        "category": "DIV43",
+        "method": "PRIME_COST",
+        "cost": 288000,
+        "rate": 0.025,
+        "startDate": "2021-02-10",
+        "propertyRef": "Investment Property 2 - Brisbane"
+      },
+      {
+        "assetName": "Hot Water System - Brisbane",
+        "category": "DIV40",
+        "method": "PRIME_COST",
+        "cost": 3500,
+        "rate": 0.1,
+        "startDate": "2021-02-10",
+        "propertyRef": "Investment Property 2 - Brisbane"
+      }
+    ]
+  },
+  "expectedOutputs": {
+    "netWorth": {
+      "totalAssets": 2738500,
+      "totalLiabilities": 1632000,
+      "netWorth": 1106500
+    },
+    "gearing": {
+      "portfolioLVR": 0.6256
+    }
+  }
+}
