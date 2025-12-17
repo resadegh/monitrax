@@ -170,9 +170,13 @@ function calculateLinkageHealth(
   // CANONICAL RELATIONSHIP VALIDATION
   // ============================================================================
 
-  // Rule 1: Loans must link to exactly 1 property
-  const orphanedLoans = loans.filter((l: any) => !l.propertyId);
-  orphanedLoans.forEach((loan: any) => {
+  // Rule 1: HOME and INVESTMENT loans should link to a property
+  // CAR loans should link to an asset, LINE_OF_CREDIT should link to an account
+  // PERSONAL, STUDENT, BUSINESS loans don't require links
+  const loansNeedingProperty = loans.filter((l: any) =>
+    (l.type === 'HOME' || l.type === 'INVESTMENT') && !l.propertyId
+  );
+  loansNeedingProperty.forEach((loan: any) => {
     orphanCount++;
     relationalWarnings.push({
       type: 'warning',
@@ -189,9 +193,51 @@ function calculateLinkageHealth(
       suggestedAction: 'Link to a property for accurate LVR calculation',
     });
   });
-  if (orphanedLoans.length > 0) {
-    warnings.push(`${orphanedLoans.length} loan(s) not linked to any property`);
+  if (loansNeedingProperty.length > 0) {
+    warnings.push(`${loansNeedingProperty.length} loan(s) not linked to any property`);
   }
+
+  // Rule 1b: CAR loans should link to a vehicle asset
+  const carLoansWithoutAsset = loans.filter((l: any) =>
+    l.type === 'CAR' && !l.linkedAssetId
+  );
+  carLoansWithoutAsset.forEach((loan: any) => {
+    relationalWarnings.push({
+      type: 'info',
+      category: 'missing_link',
+      entityType: 'loan',
+      entityId: loan.id,
+      entityName: loan.name,
+      message: `Car loan "${loan.name}" is not linked to a vehicle`,
+      suggestedAction: 'Link this loan to a vehicle asset for better tracking',
+    });
+    allMissingLinks.push({
+      type: 'asset',
+      reason: `Car loan "${loan.name}" has no vehicle linked`,
+      suggestedAction: 'Link to a vehicle asset for accurate tracking',
+    });
+  });
+
+  // Rule 1c: LINE_OF_CREDIT loans should link to an account
+  const locLoansWithoutAccount = loans.filter((l: any) =>
+    l.type === 'LINE_OF_CREDIT' && !l.linkedAccountId
+  );
+  locLoansWithoutAccount.forEach((loan: any) => {
+    relationalWarnings.push({
+      type: 'info',
+      category: 'missing_link',
+      entityType: 'loan',
+      entityId: loan.id,
+      entityName: loan.name,
+      message: `Line of credit "${loan.name}" is not linked to an account`,
+      suggestedAction: 'Link this loan to an account for better tracking',
+    });
+    allMissingLinks.push({
+      type: 'account',
+      reason: `Line of credit "${loan.name}" has no account linked`,
+      suggestedAction: 'Link to an account (e.g., credit card) for better tracking',
+    });
+  });
 
   // Rule 2: Holdings must link to exactly 1 investment account
   const orphanedHoldings = holdings.filter((h: any) => !h.investmentAccountId);
