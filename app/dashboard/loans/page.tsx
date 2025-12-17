@@ -822,21 +822,31 @@ function LoansPageContent() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="isInterestOnly">Loan Type</Label>
-                <Select
-                  value={formData.isInterestOnly ? 'true' : 'false'}
-                  onValueChange={(value) => setFormData({ ...formData, isInterestOnly: value === 'true' })}
-                >
-                  <SelectTrigger id="isInterestOnly">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="false">Principal & Interest</SelectItem>
-                    <SelectItem value="true">Interest Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Interest-only option only for HOME, INVESTMENT, LINE_OF_CREDIT, BUSINESS loans */}
+              {(formData.type === 'HOME' || formData.type === 'INVESTMENT' || formData.type === 'LINE_OF_CREDIT' || formData.type === 'BUSINESS') ? (
+                <div className="space-y-2">
+                  <Label htmlFor="isInterestOnly">Repayment Type</Label>
+                  <Select
+                    value={formData.isInterestOnly ? 'true' : 'false'}
+                    onValueChange={(value) => setFormData({ ...formData, isInterestOnly: value === 'true' })}
+                  >
+                    <SelectTrigger id="isInterestOnly">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="false">Principal & Interest</SelectItem>
+                      <SelectItem value="true">Interest Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Repayment Type</Label>
+                  <div className="h-10 flex items-center text-sm text-muted-foreground">
+                    Principal & Interest (standard for {formData.type?.toLowerCase().replace('_', ' ')} loans)
+                  </div>
+                </div>
+              )}
             </div>
 
             {formData.rateType === 'FIXED' && (
