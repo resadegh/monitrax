@@ -414,11 +414,14 @@ export default function CashflowPage() {
   const [isLiteMode, setIsLiteMode] = useState(false);
 
   // Fetch full data with timeout fallback
-  const fetchCashflowData = useCallback(async (useLite = false) => {
+  const fetchCashflowData = useCallback(async (useLite = false, isBackgroundFetch = false) => {
     if (!token) return;
 
     try {
-      setError(null);
+      // Don't clear error on background fetch - keep existing data visible
+      if (!isBackgroundFetch) {
+        setError(null);
+      }
 
       // Use AbortController for timeout
       const controller = new AbortController();
@@ -431,38 +434,58 @@ export default function CashflowPage() {
       });
       clearTimeout(timeoutId);
 
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
+      }
+
       const json = await response.json();
 
       if (response.ok && json.success) {
         setData(json.data);
         setIsLiteMode(useLite || json.data.metadata?.mode === 'lite');
+        setError(null); // Clear any previous errors
 
-        // If we loaded lite mode, try to load full data in background
+        // If we loaded lite mode, try to load full data in background (silently)
         if (useLite && !refreshing) {
-          setTimeout(() => fetchCashflowData(false), 1000);
+          setTimeout(() => fetchCashflowData(false, true), 2000);
         }
       } else {
-        // If full mode failed, try lite mode
-        if (!useLite) {
+        // If full mode failed, try lite mode (but not if this is a background fetch)
+        if (!useLite && !isBackgroundFetch) {
           console.log('Full cashflow load failed, trying lite mode...');
           fetchCashflowData(true);
           return;
         }
-        setError(json.error || json.details || 'Failed to load cashflow data');
+        // Only show error if we don't have any data yet
+        if (!data && !isBackgroundFetch) {
+          setError(json.error || json.details || 'Failed to load cashflow data');
+        }
       }
     } catch (err) {
-      // If full mode timed out, try lite mode
-      if (!useLite && err instanceof Error && err.name === 'AbortError') {
+      // If full mode timed out, try lite mode (but not if background fetch)
+      if (!useLite && !isBackgroundFetch && err instanceof Error && err.name === 'AbortError') {
         console.log('Cashflow request timed out, trying lite mode...');
         fetchCashflowData(true);
         return;
       }
-      setError(err instanceof Error ? err.message : 'Network error');
+      // Silently fail background fetches - we already have lite data
+      if (isBackgroundFetch) {
+        console.log('Background full data fetch failed, keeping lite mode data');
+        return;
+      }
+      // Only show error if we don't have data
+      if (!data) {
+        setError(err instanceof Error ? err.message : 'Network error');
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!isBackgroundFetch) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [token, refreshing]);
+  }, [token, refreshing, data]);
 
   useEffect(() => {
     if (token) {
