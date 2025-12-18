@@ -2,10 +2,10 @@
 
 /**
  * WATERFALL CHART COMPONENT
- * Phase 29 - Cashflow Intelligence Center
+ * Phase 31 - Cashflow Intelligence Center
  *
  * Visualizes money flow from income through expenses to net result.
- * Shows where money goes at a glance.
+ * Shows green (remaining) being "eaten away" by red (expenses).
  */
 
 import { useMemo } from 'react';
@@ -53,20 +53,22 @@ function formatCurrency(amount: number): string {
   }).format(Math.abs(amount));
 }
 
-function getBarColor(type: 'income' | 'expense' | 'net', value: number): string {
-  if (type === 'income') return '#22c55e'; // green-500
-  if (type === 'expense') return '#ef4444'; // red-500
-  return value >= 0 ? '#22c55e' : '#ef4444'; // net based on value
-}
-
 // =============================================================================
 // CUSTOM TOOLTIP
 // =============================================================================
 
+interface TooltipData {
+  name: string;
+  value: number;
+  type: 'income' | 'expense' | 'net';
+  runningTotal: number;
+  remaining: number;
+  expense: number;
+}
+
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: WaterfallItem & { displayValue: number; runningTotal: number } }>;
-  label?: string;
+  payload?: Array<{ payload: TooltipData }>;
 }
 
 function CustomTooltip({ active, payload }: CustomTooltipProps) {
@@ -76,13 +78,23 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 
   return (
     <div className="bg-white px-4 py-3 rounded-lg shadow-lg border border-gray-200">
-      <p className="font-semibold text-gray-900 mb-1">{data.name}</p>
-      <p className={`text-lg font-bold ${data.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-        {data.value >= 0 ? '+' : ''}{formatCurrency(data.value)}
-      </p>
-      {data.type === 'net' && (
-        <p className="text-xs text-gray-500 mt-1">
-          {data.value >= 0 ? 'Monthly surplus' : 'Monthly deficit'}
+      <p className="font-semibold text-gray-900 mb-2">{data.name}</p>
+      {data.type === 'income' ? (
+        <p className="text-lg font-bold text-green-600">
+          +{formatCurrency(data.value)}
+        </p>
+      ) : data.type === 'expense' ? (
+        <>
+          <p className="text-sm text-red-600 font-medium">
+            -{formatCurrency(Math.abs(data.value))}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Remaining: {formatCurrency(data.runningTotal)}
+          </p>
+        </>
+      ) : (
+        <p className={`text-lg font-bold ${data.value >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          {data.value >= 0 ? 'Surplus: ' : 'Deficit: '}{formatCurrency(data.value)}
         </p>
       )}
     </div>
@@ -129,8 +141,8 @@ export default function WaterfallChart({
   totalExpenses,
   surplus,
 }: Props) {
-  // Transform data for the waterfall chart
-  // For waterfall: positive values go UP from running total, negative values go DOWN
+  // Transform data for stacked bar visualization
+  // Shows: remaining green (positive) + red expense at each step
   const chartData = useMemo(() => {
     let runningTotal = 0;
 
@@ -138,28 +150,75 @@ export default function WaterfallChart({
       const prevTotal = runningTotal;
       runningTotal += item.value;
 
-      // For waterfall effect:
-      // - Positive values: bar starts at previous total, goes up
-      // - Negative values: bar starts at NEW total, goes up to previous total
-      const barBottom = item.value >= 0 ? prevTotal : runningTotal;
-      const barHeight = Math.abs(item.value);
+      if (item.type === 'income') {
+        // Income: just show green bar
+        return {
+          ...item,
+          remaining: item.value, // Green portion (the income)
+          expense: 0, // No red
+          negative: 0, // No negative portion
+          runningTotal,
+        };
+      } else if (item.type === 'expense') {
+        // Expense: show remaining green + red expense
+        // If running total is still positive, show green remaining + red expense
+        // If running total goes negative, show the negative portion in red below zero
+        const expenseAmount = Math.abs(item.value);
 
-      return {
-        ...item,
-        start: barBottom, // Where the visible bar starts (bottom)
-        displayValue: barHeight, // Height of the bar
-        runningTotal,
-        prevTotal,
-      };
+        if (runningTotal >= 0) {
+          // Still positive - show remaining green + red on top
+          return {
+            ...item,
+            remaining: runningTotal, // Green portion (what's left)
+            expense: expenseAmount, // Red portion on top
+            negative: 0,
+            runningTotal,
+          };
+        } else if (prevTotal > 0) {
+          // Crossed into negative - split the expense
+          return {
+            ...item,
+            remaining: 0, // No green left
+            expense: prevTotal, // Red portion above zero
+            negative: Math.abs(runningTotal), // Red portion below zero
+            runningTotal,
+          };
+        } else {
+          // Already negative - all red below zero
+          return {
+            ...item,
+            remaining: 0,
+            expense: 0,
+            negative: Math.abs(runningTotal),
+            runningTotal,
+          };
+        }
+      } else {
+        // Net/subtotal: show final result
+        if (runningTotal >= 0) {
+          return {
+            ...item,
+            remaining: runningTotal,
+            expense: 0,
+            negative: 0,
+            runningTotal,
+          };
+        } else {
+          return {
+            ...item,
+            remaining: 0,
+            expense: 0,
+            negative: Math.abs(runningTotal),
+            runningTotal,
+          };
+        }
+      }
     });
   }, [items]);
 
   // Calculate chart bounds
-  const allValues = chartData.flatMap(d => [d.start, d.start + d.displayValue, d.runningTotal]);
-  const maxValue = Math.max(...allValues, 0);
-  const minValue = Math.min(...allValues, 0);
-  const padding = (maxValue - minValue) * 0.1;
-  const yDomain = [minValue - padding, maxValue + padding];
+  const maxValue = Math.max(netIncome * 1.1, ...chartData.map(d => d.remaining + d.expense));
+  const minValue = Math.min(0, ...chartData.map(d => -d.negative)) * 1.1;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -183,47 +242,74 @@ export default function WaterfallChart({
           >
             <XAxis
               dataKey="name"
-              tick={{ fontSize: 11, fill: '#6b7280' }}
+              tick={{ fontSize: 10, fill: '#6b7280' }}
               tickLine={false}
               axisLine={{ stroke: '#e5e7eb' }}
               interval={0}
               angle={-45}
               textAnchor="end"
-              height={60}
+              height={70}
             />
             <YAxis
-              domain={yDomain as [number, number]}
-              tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+              domain={[minValue, maxValue]}
+              tickFormatter={(value) => {
+                if (Math.abs(value) >= 1000) {
+                  return `$${(value / 1000).toFixed(0)}k`;
+                }
+                return `$${value}`;
+              }}
               tick={{ fontSize: 11, fill: '#6b7280' }}
               tickLine={false}
               axisLine={false}
             />
             <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine y={0} stroke="#e5e7eb" />
+            <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1} />
 
-            {/* Invisible bar for positioning */}
+            {/* Green bar: remaining positive balance */}
             <Bar
-              dataKey="start"
+              dataKey="remaining"
               stackId="stack"
-              fill="transparent"
+              fill="#22c55e"
+              radius={[0, 0, 0, 0]}
             />
 
-            {/* Visible bar for values */}
+            {/* Red bar: expense amount (stacked on top of green) */}
             <Bar
-              dataKey="displayValue"
+              dataKey="expense"
               stackId="stack"
+              fill="#ef4444"
               radius={[4, 4, 0, 0]}
+            />
+
+            {/* Red bar below zero for negative values */}
+            <Bar
+              dataKey="negative"
+              fill="#ef4444"
+              radius={[0, 0, 4, 4]}
             >
               {chartData.map((entry, index) => (
                 <Cell
-                  key={`cell-${index}`}
-                  fill={getBarColor(entry.type, entry.value)}
-                  opacity={entry.isSubtotal ? 1 : 0.85}
+                  key={`negative-${index}`}
+                  fill="#ef4444"
                 />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Legend explanation */}
+      <div className="px-6 pb-2">
+        <div className="flex items-center justify-center gap-6 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-green-500" />
+            <span>Remaining balance</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-red-500" />
+            <span>Expense/Outflow</span>
+          </div>
+        </div>
       </div>
 
       {/* Summary */}
