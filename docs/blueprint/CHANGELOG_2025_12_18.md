@@ -85,6 +85,14 @@ Major enhancements to the Transactions module including QIF import support, acco
 - Previous/Next controls when more than 20 transactions
 - Page counter shows "Page X of Y (N transactions)"
 
+### 6. QIF Closing Balance Not Calculated Without Opening Balance
+**File:** `lib/bank/parsers/qif.ts`
+
+- Account balance showing $0 after QIF import
+- Australian bank QIF exports typically don't include opening balance (B field)
+- Parser now calculates closing balance from transaction sum even without opening balance
+- Allows account balance to be populated from QIF imports
+
 ---
 
 ## Schema Changes
@@ -158,6 +166,7 @@ model Account {
 | `d78dc83` | feat: Add account filter to transactions page |
 | `81e1288` | feat: Add Asset source option to transaction link dialog |
 | `67f8f8a` | fix: Display full decimal amounts and add pagination |
+| `d72d77a` | fix: Calculate QIF closing balance from transaction sum without opening balance |
 
 ---
 
