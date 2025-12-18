@@ -310,3 +310,163 @@ UI pages built and tested
 Blueprint updated
 
 Unit tests written
+
+---
+
+## 18.12 Implementation Notes
+
+> **Status: QIF PARSER & ACCOUNT CREATION IMPLEMENTED** (December 2025)
+
+### 18.12.1 QIF Parser Implementation
+
+**File:** `lib/bank/parsers/qif.ts`
+
+The QIF parser supports the standard Quicken Interchange Format used by MYOB, Quicken, and Australian banks (NAB tested).
+
+#### QIF Field Mapping:
+| Field | Description | Example |
+|-------|-------------|---------|
+| `!Type:Bank` | Account type header | Bank, CCard, Cash |
+| `D` | Date (DD/MM/YY Australian format) | D18/12/25 |
+| `T` | Amount (negative = debit) | T-500.00 |
+| `N` | Reference/Check number | N123456 |
+| `P` | Payee/Description | PCOLES SUPERMARKETS |
+| `M` | Memo | Additional notes |
+| `L` | Category | L[Groceries] |
+| `^` | Record separator | End of transaction |
+
+#### Key Functions:
+```typescript
+parseQIF(content: string): ParsedFile
+isValidQIF(content: string): boolean
+parseQIFDate(dateStr: string): Date
+detectBankFromTransactions(transactions: RawTransaction[]): string | undefined
+```
+
+#### Bank Detection:
+Auto-detects Australian banks from transaction patterns:
+- **NAB**: Patterns like "NABATM", "NAB ", "PV9037"
+- **CBA**: Patterns like "COMMBANK", "NETBANK"
+- **ANZ**: Patterns like "ANZ ", "ANZ-"
+- **Westpac**: Patterns like "WESTPAC", "WBC "
+
+---
+
+### 18.12.2 Account Creation During Import
+
+**File:** `components/bank/ImportWizard.tsx`
+
+Users can now create a new account directly from the Import Wizard:
+
+#### New Props:
+```typescript
+interface ImportWizardProps {
+  accounts: Account[];
+  onComplete?: () => void;
+  onClose?: () => void;
+  onAccountCreated?: (account: Account) => void;  // NEW
+}
+```
+
+#### Features:
+- "Create New Account" button in account selection dropdown
+- Auto-fills institution name from detected bank (QIF metadata)
+- Sets opening balance from file's closing balance
+- Supports all account types: TRANSACTIONAL, SAVINGS, OFFSET, CREDIT_CARD
+- Created account is automatically selected for import
+
+---
+
+### 18.12.3 Balance Source Tracking
+
+**File:** `prisma/schema.prisma`
+
+New enum and fields for tracking balance origin:
+
+```prisma
+enum BalanceSource {
+  MANUAL     // User manually entered balance
+  IMPORT     // Balance from CSV/QIF/OFX import
+  BASIQ      // Balance from Open Banking (Basiq)
+}
+
+model Account {
+  // ... existing fields ...
+
+  // Balance Source Tracking
+  balanceSource        BalanceSource @default(MANUAL)
+  balanceLastUpdatedAt DateTime?
+  lastImportedBalance  Float?
+}
+```
+
+#### Import API Updates:
+- Sets `balanceSource: 'IMPORT'` when updating from file
+- Records `balanceLastUpdatedAt` timestamp
+- Stores `lastImportedBalance` for reference
+- **Prevents override** if account is Basiq-connected
+
+---
+
+### 18.12.4 Basiq Integration Priority
+
+**File:** `lib/bank/basiqSync.ts`
+
+When Basiq (Open Banking) is active for an account:
+
+1. **Manual imports are blocked** for that account
+2. **Existing imported transactions are tagged** as `SUPERSEDED_BY_BASIQ`
+3. **Balance always comes from Basiq** (cannot be overridden by import)
+
+#### Key Functions:
+```typescript
+// Check if account can accept manual import
+canAcceptManualImport(accountId: string): Promise<{
+  canImport: boolean;
+  reason?: string;
+  basiqStatus?: string;
+}>
+
+// Sync transactions from Basiq
+syncBasiqTransactions(
+  userId: string,
+  accountId: string,
+  options?: BasiqSyncOptions
+): Promise<BasiqSyncResult>
+
+// Get transaction counts by source
+getTransactionSourceCounts(
+  userId: string,
+  accountId: string
+): Promise<Record<string, number>>
+```
+
+---
+
+### 18.12.5 API Endpoint Updates
+
+#### Preview API (`POST /api/bank/preview`)
+- Now accepts QIF files
+- Returns `metadata.detectedBank` for QIF files
+- Returns `format: 'QIF' | 'CSV' | 'OFX'`
+
+#### Import API (`POST /api/bank/import`)
+- Processes QIF files using new parser
+- Sets `source: format` (CSV, QIF, OFX) on transactions
+- Checks Basiq connection before updating balance
+- Updates balance with source tracking fields
+
+---
+
+### 18.12.6 Migration Required
+
+After deployment, run:
+```bash
+npx prisma migrate dev --name add_balance_source_tracking
+```
+
+This adds:
+- `BalanceSource` enum
+- `balanceSource` field on Account
+- `balanceLastUpdatedAt` field on Account
+- `lastImportedBalance` field on Account
