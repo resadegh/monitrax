@@ -130,27 +130,36 @@ export default function WaterfallChart({
   surplus,
 }: Props) {
   // Transform data for the waterfall chart
+  // For waterfall: positive values go UP from running total, negative values go DOWN
   const chartData = useMemo(() => {
     let runningTotal = 0;
 
     return items.map((item) => {
-      const start = runningTotal;
+      const prevTotal = runningTotal;
       runningTotal += item.value;
+
+      // For waterfall effect:
+      // - Positive values: bar starts at previous total, goes up
+      // - Negative values: bar starts at NEW total, goes up to previous total
+      const barBottom = item.value >= 0 ? prevTotal : runningTotal;
+      const barHeight = Math.abs(item.value);
 
       return {
         ...item,
-        start,
-        end: runningTotal,
-        displayValue: Math.abs(item.value),
+        start: barBottom, // Where the visible bar starts (bottom)
+        displayValue: barHeight, // Height of the bar
         runningTotal,
+        prevTotal,
       };
     });
   }, [items]);
 
   // Calculate chart bounds
-  const maxValue = Math.max(...chartData.map(d => Math.max(d.start, d.end)));
-  const minValue = Math.min(...chartData.map(d => Math.min(d.start, d.end)));
-  const yDomain = [Math.min(0, minValue * 1.1), maxValue * 1.1];
+  const allValues = chartData.flatMap(d => [d.start, d.start + d.displayValue, d.runningTotal]);
+  const maxValue = Math.max(...allValues, 0);
+  const minValue = Math.min(...allValues, 0);
+  const padding = (maxValue - minValue) * 0.1;
+  const yDomain = [minValue - padding, maxValue + padding];
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
