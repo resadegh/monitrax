@@ -29,7 +29,7 @@ Major enhancements to the Transactions module including QIF import support, acco
 
 - Added "Create New Account" option in Import Wizard
 - Auto-fills institution name from detected bank in QIF files
-- Sets opening balance from file's closing balance
+- **Mandatory Current Balance field** - Users must enter their actual bank balance
 - New account automatically selected for import
 - `onAccountCreated` callback prop for parent component
 
@@ -167,6 +167,7 @@ model Account {
 | `81e1288` | feat: Add Asset source option to transaction link dialog |
 | `67f8f8a` | fix: Display full decimal amounts and add pagination |
 | `d72d77a` | fix: Calculate QIF closing balance from transaction sum without opening balance |
+| `e785f1a` | feat: Add mandatory Current Balance field when creating account during import |
 
 ---
 
