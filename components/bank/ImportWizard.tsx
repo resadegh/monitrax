@@ -157,12 +157,20 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountType, setNewAccountType] = useState<string>('TRANSACTIONAL');
   const [newAccountInstitution, setNewAccountInstitution] = useState('');
+  const [newAccountBalance, setNewAccountBalance] = useState<string>('');
   const [creatingAccount, setCreatingAccount] = useState(false);
   const [localAccounts, setLocalAccounts] = useState<Account[]>(accounts);
 
   // Create new account handler
   const handleCreateAccount = async () => {
     if (!newAccountName.trim()) return;
+
+    // Validate balance is provided
+    const balanceValue = parseFloat(newAccountBalance);
+    if (isNaN(balanceValue)) {
+      setError('Please enter a valid current balance');
+      return;
+    }
 
     setCreatingAccount(true);
     setError(null);
@@ -178,7 +186,7 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
           name: newAccountName.trim(),
           type: newAccountType,
           institution: newAccountInstitution.trim() || null,
-          currentBalance: preview?.balanceInfo?.closingBalance ?? 0,
+          currentBalance: balanceValue,
         }),
       });
 
@@ -199,6 +207,7 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
       setShowCreateAccount(false);
       setNewAccountName('');
       setNewAccountInstitution('');
+      setNewAccountBalance('');
 
       // Notify parent if callback provided
       onAccountCreated?.(newAccount);
@@ -597,16 +606,27 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
                         placeholder="e.g., NAB, CommBank, ANZ"
                       />
                     </div>
-                    {preview?.balanceInfo?.closingBalance !== undefined && (
-                      <p className="text-sm text-muted-foreground">
-                        Opening balance: <span className="font-medium">{formatCurrency(preview.balanceInfo.closingBalance)}</span>
-                        <span className="text-xs ml-1">(from file)</span>
+                    <div>
+                      <Label htmlFor="currentBalance">
+                        Current Balance <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="currentBalance"
+                        type="number"
+                        step="0.01"
+                        value={newAccountBalance}
+                        onChange={(e) => setNewAccountBalance(e.target.value)}
+                        placeholder="Enter your current bank balance"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enter your actual bank balance from your bank statement
                       </p>
-                    )}
+                    </div>
                     <Button
                       type="button"
                       onClick={handleCreateAccount}
-                      disabled={!newAccountName.trim() || creatingAccount}
+                      disabled={!newAccountName.trim() || !newAccountBalance.trim() || creatingAccount}
                       className="w-full"
                     >
                       {creatingAccount ? (
