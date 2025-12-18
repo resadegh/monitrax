@@ -1,13 +1,100 @@
 # Changelog — 2025-12-18
 
-## Summary
+## Phase 31: Cashflow Intelligence Center
+
+### Summary
+
+Complete redesign of the cashflow page into a comprehensive "Cashflow Intelligence Center" - the heart and soul of Monitrax. Aggregates data from all existing financial engines into a unified, actionable dashboard with AI-powered insights.
+
+### Key Features
+
+1. **Unified Health Score**: 0-100 score combining 5 weighted categories (Liquidity, Cashflow Stability, Forecast Risk, Budget Adherence, Debt Health)
+2. **Money Leak Detection**: Identifies spending leaks with transaction drill-down links
+3. **Waterfall Chart**: Visual money flow from income through expenses to surplus/deficit
+4. **AI Summary**: Gemini-powered natural language insights with persistent caching
+5. **Budget vs Actual**: Real-time budget tracking with variance indicators
+6. **Tax Optimization**: Tax summary with estimated savings recommendations
+7. **Smart Actions**: Ranked recommendations with navigation links
+
+### Architecture
+
+- Zero hallucination policy: AI receives only real calculated numbers
+- Transaction drill-down: All leaks link to actual transactions
+- Simplified actions: "View Details" and "Learn How" instead of direct actions
+- Mobile-first responsive design
+
+### Files Added
+
+| File | Purpose |
+|------|---------|
+| `lib/cashflow-intelligence/types.ts` | Core type definitions |
+| `lib/cashflow-intelligence/healthScoreAggregator.ts` | Health score calculation |
+| `lib/cashflow-intelligence/leakDetector.ts` | Money leak detection |
+| `lib/cashflow-intelligence/geminiSummary.ts` | AI summary generation |
+| `lib/cashflow-intelligence/index.ts` | Module exports |
+| `app/api/cashflow/intelligence/route.ts` | Intelligence aggregation API |
+| `app/api/cashflow/summary/route.ts` | Gemini summary API (GET/POST) |
+| `app/(dashboard)/cashflow/components/intelligence/CashflowHealthScore.tsx` | Health score gauge component |
+| `app/(dashboard)/cashflow/components/intelligence/WaterfallChart.tsx` | Money flow visualization |
+| `app/(dashboard)/cashflow/components/intelligence/MoneyLeakDetector.tsx` | Leak cards with drill-down |
+| `app/(dashboard)/cashflow/components/intelligence/BudgetVsActual.tsx` | Budget comparison |
+| `app/(dashboard)/cashflow/components/intelligence/TaxOptimization.tsx` | Tax summary widget |
+| `app/(dashboard)/cashflow/components/intelligence/GeminiSummary.tsx` | AI summary with regenerate |
+| `app/(dashboard)/cashflow/components/intelligence/SmartActionsEnhanced.tsx` | Ranked action cards |
+| `app/(dashboard)/cashflow/components/intelligence/index.ts` | Component exports |
+| `docs/blueprint/PHASE_31_CASHFLOW_INTELLIGENCE_CENTER.md` | Documentation |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `prisma/schema.prisma` | Added CashflowSummary model for AI summary persistence |
+| `app/(dashboard)/cashflow/page.tsx` | Complete redesign for Intelligence Center |
+
+### API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/cashflow/intelligence` | GET | Aggregated intelligence data |
+| `/api/cashflow/summary` | GET | Cached or new AI summary |
+| `/api/cashflow/summary` | POST | Force summary regeneration |
+
+### Health Score Weights
+
+| Category | Weight | Source |
+|----------|--------|--------|
+| Liquidity | 25% | Emergency buffer, accessible cash |
+| Cashflow Stability | 25% | Income vs expenses, surplus |
+| Forecast Risk | 20% | Shortfall risk, break-even timing |
+| Budget Adherence | 15% | Budget vs actual spending |
+| Debt Health | 15% | DTI ratio, repayment load |
+
+### Leak Detection Categories
+
+1. **Subscriptions**: Unused services, streaming stacking, price increases
+2. **Category Overspending**: Above Australian benchmarks (ABS data)
+3. **Impulse Spending**: High-frequency small purchases
+4. **Takeaway/Delivery**: Food delivery over-reliance (>5% of income)
+
+### Numbers Verification
+
+- Income calculation uses NET amounts (after PAYG) via `normalizeIncomeStream()`
+- Tax brackets verified against 2024-25 Australian rates
+- Health score weights sum to 1.0
+- Spending benchmarks based on ABS Household Expenditure Survey
+
+---
+
+## Transaction Module Enhancements
+
+### Summary
 Major enhancements to the Transactions module including QIF import support, account filtering, Basiq integration priority, and UI improvements for transaction display.
 
 ---
 
-## Features Added
+### Features Added
 
-### 1. QIF File Import Support
+#### 1. QIF File Import Support
 **Files:** `lib/bank/parsers/qif.ts`, `app/api/bank/preview/route.ts`, `app/api/bank/import/route.ts`
 
 - Added QIF (Quicken Interchange Format) parser for MYOB/Quicken bank exports
@@ -15,7 +102,7 @@ Major enhancements to the Transactions module including QIF import support, acco
 - Auto-detects Australian banks from transaction patterns (NAB, CBA, ANZ, Westpac)
 - Exports `parseQIF()`, `isValidQIF()`, `parseQIFDate()` functions
 
-### 2. Account Filter on Transactions Page
+#### 2. Account Filter on Transactions Page
 **File:** `app/(dashboard)/transactions/page.tsx`
 
 - Added prominent account selector at top of transactions page
@@ -24,7 +111,7 @@ Major enhancements to the Transactions module including QIF import support, acco
 - Clear filter button for quick reset
 - Filter integrates with existing search, category, and date filters
 
-### 3. Create New Account During Import
+#### 3. Create New Account During Import
 **File:** `components/bank/ImportWizard.tsx`
 
 - Added "Create New Account" option in Import Wizard
@@ -33,7 +120,7 @@ Major enhancements to the Transactions module including QIF import support, acco
 - New account automatically selected for import
 - `onAccountCreated` callback prop for parent component
 
-### 4. Asset Source Type in Transaction Link Dialog
+#### 4. Asset Source Type in Transaction Link Dialog
 **Files:** `components/transactions/TransactionLinkDialog.tsx`, `app/api/transactions/[id]/link/route.ts`
 
 - Added "Asset" option to expense source type dropdown
@@ -41,7 +128,7 @@ Major enhancements to the Transactions module including QIF import support, acco
 - Asset selector dropdown when Asset source is selected
 - API support for `assetId` in expense creation
 
-### 5. Basiq (Open Banking) Transaction Priority
+#### 5. Basiq (Open Banking) Transaction Priority
 **File:** `lib/bank/basiqSync.ts`
 
 - When Basiq is activated, its transactions override manual imports
@@ -51,33 +138,33 @@ Major enhancements to the Transactions module including QIF import support, acco
 
 ---
 
-## Bug Fixes
+### Bug Fixes
 
-### 1. TransactionSource Enum Missing QIF
+#### 1. TransactionSource Enum Missing QIF
 **File:** `prisma/schema.prisma`
 
 - Added `QIF` to `TransactionSource` enum
 - Fixes Vercel build error for QIF imports
 
-### 2. lastSyncedAt Field Name
+#### 2. lastSyncedAt Field Name
 **File:** `lib/bank/basiqSync.ts`
 
 - Fixed incorrect field reference `lastSynced` → `lastSyncedAt`
 
-### 3. merchantStandardised Type Mismatch
+#### 3. merchantStandardised Type Mismatch
 **File:** `lib/bank/basiqSync.ts`
 
 - Fixed null/undefined type mismatch using nullish coalescing
 - `merchantStandardised: merchantCleaned ?? undefined`
 
-### 4. Transaction Amounts Showing Rounded Values
+#### 4. Transaction Amounts Showing Rounded Values
 **File:** `app/dashboard/accounts/page.tsx`
 
 - Transaction amounts in Account dialog were showing rounded values
 - Added `formatCurrencyFull()` function with 2 decimal places
 - Now shows -$15.70 instead of -$16
 
-### 5. Limited Transactions in Account Dialog
+#### 5. Limited Transactions in Account Dialog
 **File:** `app/dashboard/accounts/page.tsx`
 
 - Only showing first 15 transactions with no pagination
@@ -85,7 +172,7 @@ Major enhancements to the Transactions module including QIF import support, acco
 - Previous/Next controls when more than 20 transactions
 - Page counter shows "Page X of Y (N transactions)"
 
-### 6. QIF Closing Balance Not Calculated Without Opening Balance
+#### 6. QIF Closing Balance Not Calculated Without Opening Balance
 **File:** `lib/bank/parsers/qif.ts`
 
 - Account balance showing $0 after QIF import
@@ -98,6 +185,21 @@ Major enhancements to the Transactions module including QIF import support, acco
 ## Schema Changes
 
 ### Prisma Schema Updates
+
+**New Model (Phase 31):**
+```prisma
+model CashflowSummary {
+  id           String   @id @default(uuid())
+  userId       String
+  content      String   @db.Text
+  keyInsights  Json
+  dataHash     String
+  generatedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(...)
+}
+```
 
 **New Enum:**
 ```prisma
@@ -116,46 +218,26 @@ enum TransactionSource {
 }
 ```
 
-**Account Model Additions:**
-```prisma
-model Account {
-  // ... existing fields ...
-  balanceSource        BalanceSource @default(MANUAL)
-  balanceLastUpdatedAt DateTime?
-  lastImportedBalance  Float?
-}
+---
+
+## Database Migration Required
+
+After deployment, run:
+```bash
+npx prisma db push
 ```
-
----
-
-## Files Modified
-
-| File | Changes |
-|------|---------|
-| `lib/bank/parsers/qif.ts` | NEW: QIF parser implementation |
-| `lib/bank/basiqSync.ts` | NEW: Basiq sync service with priority logic |
-| `lib/bank/index.ts` | Export new parser and sync functions |
-| `app/api/bank/preview/route.ts` | Added QIF format detection |
-| `app/api/bank/import/route.ts` | Added QIF processing, balance source tracking |
-| `app/api/transactions/[id]/link/route.ts` | Added ASSET source type, assetId field |
-| `app/(dashboard)/transactions/page.tsx` | Added account filter state and UI |
-| `app/dashboard/accounts/page.tsx` | Added formatCurrencyFull, pagination for transactions |
-| `components/bank/ImportWizard.tsx` | Added account creation during import |
-| `components/transactions/TransactionLinkDialog.tsx` | Added Asset source option |
-| `prisma/schema.prisma` | Added BalanceSource enum, QIF to TransactionSource |
-
----
-
-## Documentation Updated
-
-- `PHASE_18_BANK_TRANSACTIONS.md` - QIF parser, account filter, account dialog fixes
-- `PHASE_13_TRANSACTIONAL_INTELLIGENCE.md` - Basiq integration, Asset source type
-- `PHASE_21_ASSET_MANAGEMENT.md` - Transaction link dialog integration
 
 ---
 
 ## Commits
 
+### Phase 31: Cashflow Intelligence Center
+```
+feat: add Cashflow Intelligence Center (Phase 31)
+fix: resolve syntax and TypeScript errors in cashflow intelligence
+```
+
+### Transaction Module
 | Hash | Message |
 |------|---------|
 | `8e424ef` | feat: Add QIF import support and Basiq priority override |
@@ -171,14 +253,5 @@ model Account {
 
 ---
 
-## Migration Required
-
-After deployment, run:
-```bash
-npx prisma migrate dev --name add_balance_source_and_qif
-```
-
----
-
-*Changelog Version: 1.0*
+*Changelog Version: 1.1*
 *Date: 2025-12-18*

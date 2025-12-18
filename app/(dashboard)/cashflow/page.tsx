@@ -1,351 +1,178 @@
 'use client';
 
 /**
- * CASHFLOW PAGE - PREMIUM REDESIGN
- * Phase 14 - Cashflow Optimisation Engine UI
+ * CASHFLOW INTELLIGENCE CENTER
+ * Phase 29 - The Heart and Soul of Monitrax
  *
- * A premium financial command center that shows users
- * WHEN and WHERE their money moves, not just how much.
+ * A premium financial command center that provides:
+ * - Unified health score across all financial dimensions
+ * - Money leak detection with transaction drill-down
+ * - AI-powered insights (Gemini)
+ * - Budget vs actual tracking
+ * - Tax optimization tips
+ * - Smart actionable recommendations
  *
- * Design Philosophy: Bloomberg Terminal meets Apple design
- * - Sophisticated, minimal, actionable
- * - Every chart tells a story, every number drives a decision
+ * Key Principles:
+ * - Uses ONLY real calculated numbers (zero hallucination)
+ * - All sources from existing engines (CFE, COE, Health, Tax, Budget)
+ * - Transaction-level drill-down for accountability
  */
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
   RefreshCw,
-  Wallet,
   Loader2,
+  AlertCircle,
+  LineChart,
 } from 'lucide-react';
 
-// Components
+// Intelligence Center Components
 import {
-  CashPositionChart,
-  UpcomingMovements,
-  BreakEvenTimeline,
-  SmartAllocation,
-  LiquidityHealth,
-  StabilityScore,
-  SmartActions,
-} from './components';
+  CashflowHealthScore,
+  WaterfallChart,
+  MoneyLeakDetector,
+  BudgetVsActual,
+  TaxOptimization,
+  GeminiSummary,
+  SmartActionsEnhanced,
+} from './components/intelligence';
+
+// Existing Components (retained for forecast chart)
+import { CashPositionChart, BreakEvenTimeline } from './components';
 
 // Design system
-import { formatCurrency, componentClasses } from './design-system';
+import { componentClasses } from './design-system';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-interface ForecastPoint {
-  date: string;
-  predictedBalance: number;
-  predictedIncome: number;
-  predictedExpenses: number;
-  confidenceScore: number;
-  shortfallRisk: boolean;
-  upperBound?: number;
-  lowerBound?: number;
-}
-
-interface ForecastSummary {
-  avgDailyBalance30: number;
-  totalIncome30: number;
-  totalExpenses30: number;
-  netCashflow30: number;
-  avgDailyBalance90: number;
-  totalIncome90: number;
-  totalExpenses90: number;
-  netCashflow90: number;
-  monthlyBurnRate: number;
-  threeMonthBurnRate: number;
-  withdrawableCash: number;
-}
-
-interface RecurringEntry {
-  date: string;
-  merchantStandardised: string;
-  expectedAmount: number;
-  accountId: string;
-}
-
-interface FundMovement {
-  fromAccountId: string;
-  fromAccountName: string;
-  toAccountId: string;
-  toAccountName: string;
-  amount: number;
-  reason: string;
-  projectedBenefit: number;
-  urgency: 'LOW' | 'MEDIUM' | 'HIGH';
-}
-
-interface CashflowData {
-  forecast: {
-    globalForecast: ForecastPoint[];
-    summary: ForecastSummary;
-    shortfallAnalysis: {
-      hasShortfall: boolean;
-      shortfallDates: string[];
-      maxShortfallAmount: number;
-      totalShortfallDays: number;
-      firstShortfallDate?: string;
-      accountsAtRisk: string[];
-    };
-    volatilityIndex: number;
-    recurringTimeline: RecurringEntry[];
-    accountForecasts?: {
-      accountId: string;
-      accountName: string;
-      averageBalance: number;
+interface IntelligenceData {
+  healthScore: {
+    overallScore: number;
+    tier: 'EXCELLENT' | 'GOOD' | 'MODERATE' | 'CONCERNING' | 'CRITICAL';
+    breakdown: {
+      category: string;
+      score: number;
+      weight: number;
+      description: string;
+      trend: 'IMPROVING' | 'STABLE' | 'DECLINING';
     }[];
+    confidence: number;
+    lastCalculated: string;
   };
-  optimisations: {
-    fundMovements: FundMovement[];
+  forecast: {
+    current: {
+      balance: number;
+      income: number;
+      expenses: number;
+      net: number;
+    };
+    forecast30Day: {
+      predictedBalance: number;
+      confidence: number;
+      risk: 'LOW' | 'MEDIUM' | 'HIGH';
+    };
+    forecast90Day: {
+      predictedBalance: number;
+      confidence: number;
+      risk: 'LOW' | 'MEDIUM' | 'HIGH';
+    };
     breakEvenDay: number;
-    summary: {
-      totalPotentialSavings: number;
-    };
-    strategies?: { id: string; title: string; summary: string; projectedBenefit: number }[];
+    shortfallRisk: boolean;
+  };
+  leaks: {
+    totalLeakage: number;
+    leaks: {
+      id: string;
+      category: string;
+      description: string;
+      monthlyAmount: number;
+      percentOfIncome: number;
+      severity: 'HIGH' | 'MEDIUM' | 'LOW';
+      trend: 'INCREASING' | 'STABLE' | 'DECREASING';
+      transactionIds: string[];
+      recommendation: string;
+    }[];
+    topCategories: {
+      category: string;
+      amount: number;
+      percentage: number;
+    }[];
+    analyzedFrom: string;
+    analyzedTo: string;
+    transactionCount: number;
+  };
+  waterfall: {
+    items: {
+      name: string;
+      value: number;
+      type: 'income' | 'expense' | 'net';
+      isSubtotal?: boolean;
+      category?: string;
+    }[];
+    netIncome: number;
+    totalExpenses: number;
+    surplus: number;
+  };
+  budgetComparison?: {
+    categories: {
+      name: string;
+      budgeted: number;
+      actual: number;
+      variance: number;
+      variancePercent: number;
+      status: 'UNDER' | 'ON_TRACK' | 'OVER';
+    }[];
+    totalBudgeted: number;
+    totalActual: number;
+    totalVariance: number;
+    overallStatus: 'UNDER' | 'ON_TRACK' | 'OVER';
+    period: { start: string; end: string };
+  };
+  taxOptimization?: {
+    estimatedAnnualTax: number;
+    deductibleExpenses: number;
+    potentialSavings: number;
+    recommendations: {
+      id: string;
+      title: string;
+      description: string;
+      potentialSaving: number;
+      priority: 'HIGH' | 'MEDIUM' | 'LOW';
+      actionUrl?: string;
+    }[];
+    effectiveTaxRate: number;
+    paygWithheld: number;
+  };
+  smartActions: {
+    id: string;
+    rank: number;
+    title: string;
+    description: string;
+    impact: number;
+    impactDescription: string;
+    category: 'SAVE' | 'TRANSFER' | 'CANCEL' | 'OPTIMIZE' | 'REVIEW';
+    priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+    source: 'COE' | 'HEALTH' | 'TAX' | 'BUDGET' | 'FORECAST';
+    actionUrl?: string;
+    learnMoreUrl?: string;
+  }[];
+  dataQuality: {
+    transactionCoverage: number;
+    incomeCoverage: number;
+    expenseCoverage: number;
+    confidence: number;
   };
 }
 
-// =============================================================================
-// DATA TRANSFORMATION
-// =============================================================================
-
-function transformToMovements(recurring: RecurringEntry[]): {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  type: 'inflow' | 'outflow';
-  isRecurring: boolean;
-}[] {
-  return recurring.map((r, i) => ({
-    id: `recurring-${i}`,
-    date: r.date,
-    description: r.merchantStandardised,
-    amount: r.expectedAmount,
-    type: 'outflow' as const,
-    isRecurring: true,
-  }));
-}
-
-function transformToAllocationRecommendations(movements: FundMovement[]): {
-  id: string;
-  fromAccountId: string;
-  fromAccountName: string;
-  toAccountId: string;
-  toAccountName: string;
-  amount: number;
-  reason: string;
-  projectedBenefit: number;
-  urgency: 'LOW' | 'MEDIUM' | 'HIGH';
-  type: 'offset' | 'shortfall' | 'optimization';
-}[] {
-  return movements.map((m, i) => ({
-    id: `alloc-${i}`,
-    ...m,
-    type: m.reason.toLowerCase().includes('offset')
-      ? 'offset'
-      : m.reason.toLowerCase().includes('shortfall')
-      ? 'shortfall'
-      : 'optimization',
-  }));
-}
-
-function calculateLiquidityTiers(
-  accountForecasts?: { accountId: string; accountName: string; averageBalance: number }[],
-  withdrawableCash = 0
-) {
-  // Default tiers if no account data
-  if (!accountForecasts || accountForecasts.length === 0) {
-    return {
-      today: {
-        label: 'Today',
-        description: 'Immediately accessible',
-        amount: withdrawableCash,
-        accounts: [],
-      },
-      week: {
-        label: '7 Days',
-        description: 'Short-term access',
-        amount: 0,
-        accounts: [],
-      },
-      month: {
-        label: '30 Days',
-        description: 'Medium-term access',
-        amount: 0,
-        accounts: [],
-      },
-    };
-  }
-
-  // Split accounts into tiers (simplified - in production would check account types)
-  const allAccounts = accountForecasts.map((a) => ({
-    name: a.accountName,
-    balance: a.averageBalance,
-  }));
-
-  const todayAccounts = allAccounts.filter(
-    (a) =>
-      a.name.toLowerCase().includes('transaction') ||
-      a.name.toLowerCase().includes('everyday') ||
-      a.name.toLowerCase().includes('checking')
-  );
-
-  const weekAccounts = allAccounts.filter(
-    (a) =>
-      a.name.toLowerCase().includes('savings') ||
-      a.name.toLowerCase().includes('offset')
-  );
-
-  const monthAccounts = allAccounts.filter(
-    (a) =>
-      a.name.toLowerCase().includes('term') ||
-      a.name.toLowerCase().includes('investment')
-  );
-
-  // If no categorization worked, put all in today
-  if (todayAccounts.length === 0 && weekAccounts.length === 0 && monthAccounts.length === 0) {
-    todayAccounts.push(...allAccounts);
-  }
-
-  return {
-    today: {
-      label: 'Today',
-      description: 'Immediately accessible',
-      amount: todayAccounts.reduce((sum, a) => sum + a.balance, 0),
-      accounts: todayAccounts,
-    },
-    week: {
-      label: '7 Days',
-      description: 'Short-term access',
-      amount: weekAccounts.reduce((sum, a) => sum + a.balance, 0),
-      accounts: weekAccounts,
-    },
-    month: {
-      label: '30 Days',
-      description: 'Medium-term access',
-      amount: monthAccounts.reduce((sum, a) => sum + a.balance, 0),
-      accounts: monthAccounts,
-    },
-  };
-}
-
-function generateSmartActions(
-  data: CashflowData
-): {
-  id: string;
-  title: string;
-  description: string;
-  impact: number;
-  timeEstimate: string;
-  priority: 'critical' | 'high' | 'medium' | 'low';
-  category: 'transfer' | 'cancel' | 'schedule' | 'review' | 'save';
-}[] {
-  const actions: ReturnType<typeof generateSmartActions> = [];
-
-  // Add fund movement actions
-  data.optimisations.fundMovements.slice(0, 2).forEach((m, i) => {
-    actions.push({
-      id: `action-fund-${i}`,
-      title: `Transfer to ${m.toAccountName}`,
-      description: m.reason,
-      impact: m.projectedBenefit,
-      timeEstimate: '5 min',
-      priority: m.urgency === 'HIGH' ? 'critical' : m.urgency === 'MEDIUM' ? 'high' : 'medium',
-      category: 'transfer',
-    });
-  });
-
-  // Add shortfall prevention action if needed
-  if (data.forecast.shortfallAnalysis.hasShortfall) {
-    actions.unshift({
-      id: 'action-shortfall',
-      title: 'Prevent upcoming shortfall',
-      description: `Move funds to avoid ${formatCurrency(data.forecast.shortfallAnalysis.maxShortfallAmount)} shortfall`,
-      impact: data.forecast.shortfallAnalysis.maxShortfallAmount * 0.1,
-      timeEstimate: '10 min',
-      priority: 'critical',
-      category: 'transfer',
-    });
-  }
-
-  // Add break-even optimization if late
-  if (data.optimisations.breakEvenDay > 20) {
-    actions.push({
-      id: 'action-breakeven',
-      title: 'Optimize payment dates',
-      description: 'Move bill dates closer to income date to improve cashflow timing',
-      impact: 100,
-      timeEstimate: '15 min',
-      priority: 'medium',
-      category: 'schedule',
-    });
-  }
-
-  // Add strategy-based actions
-  data.optimisations.strategies?.slice(0, 2).forEach((s, i) => {
-    actions.push({
-      id: `action-strategy-${i}`,
-      title: s.title,
-      description: s.summary,
-      impact: s.projectedBenefit,
-      timeEstimate: '10 min',
-      priority: s.projectedBenefit > 500 ? 'high' : 'medium',
-      category: 'review',
-    });
-  });
-
-  return actions.slice(0, 5);
-}
-
-function calculateStabilityScore(volatilityIndex: number): number {
-  // Convert volatility (0-100 where higher = more volatile) to stability (0-100 where higher = more stable)
-  return Math.max(0, Math.min(100, 100 - volatilityIndex));
-}
-
-function generateRiskFactors(data: CashflowData) {
-  const factors: { name: string; impact: 'high' | 'medium' | 'low'; description: string }[] = [];
-
-  if (data.forecast.volatilityIndex > 50) {
-    factors.push({
-      name: 'High spending variability',
-      impact: 'high',
-      description: 'Your expenses vary significantly month to month',
-    });
-  }
-
-  if (data.forecast.shortfallAnalysis.hasShortfall) {
-    factors.push({
-      name: 'Shortfall risk',
-      impact: 'high',
-      description: 'Predicted cash shortfall in the forecast period',
-    });
-  }
-
-  if (data.optimisations.breakEvenDay > 25 || data.optimisations.breakEvenDay === -1) {
-    factors.push({
-      name: 'Late break-even',
-      impact: 'medium',
-      description: 'Income catches expenses late in the month',
-    });
-  }
-
-  if (data.forecast.summary.netCashflow30 < 0) {
-    factors.push({
-      name: 'Negative cashflow',
-      impact: 'high',
-      description: 'Spending exceeds income this month',
-    });
-  }
-
-  return factors;
+interface SummaryData {
+  content: string;
+  keyInsights: string[];
+  generatedAt: string;
+  isStale: boolean;
 }
 
 // =============================================================================
@@ -354,8 +181,7 @@ function generateRiskFactors(data: CashflowData) {
 
 function PageSkeleton() {
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header skeleton */}
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div>
           <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
@@ -363,14 +189,11 @@ function PageSkeleton() {
         </div>
         <div className="h-10 w-28 bg-gray-200 rounded-lg animate-pulse" />
       </div>
-
-      {/* Chart skeleton */}
-      <div className="h-96 bg-gray-100 rounded-xl animate-pulse mb-8" />
-
-      {/* Grid skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="h-80 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="lg:col-span-2 h-80 bg-gray-100 rounded-xl animate-pulse" />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="h-80 bg-gray-100 rounded-xl animate-pulse" />
-        <div className="h-80 bg-gray-100 rounded-xl animate-pulse" />
         <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
         <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
       </div>
@@ -387,10 +210,10 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="text-center max-w-md">
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Wallet className="h-8 w-8 text-red-500" />
+          <AlertCircle className="h-8 w-8 text-red-500" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Unable to load cashflow data
+          Unable to load intelligence data
         </h3>
         <p className="text-gray-500 mb-6">{error}</p>
         <button onClick={onRetry} className={componentClasses.buttonPrimary}>
@@ -407,34 +230,24 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
 
 export default function CashflowPage() {
   const { token } = useAuth();
-  const [data, setData] = useState<CashflowData | null>(null);
+  const [intelligence, setIntelligence] = useState<IntelligenceData | null>(null);
+  const [summary, setSummary] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLiteMode, setIsLiteMode] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
-  // Fetch full data with timeout fallback
-  const fetchCashflowData = useCallback(async (useLite = false, isBackgroundFetch = false) => {
+  // Fetch intelligence data
+  const fetchIntelligence = useCallback(async () => {
     if (!token) return;
 
     try {
-      // Don't clear error on background fetch - keep existing data visible
-      if (!isBackgroundFetch) {
-        setError(null);
-      }
+      setError(null);
 
-      // Use AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), useLite ? 10000 : 25000);
-
-      const url = useLite ? '/api/cashflow?type=lite' : '/api/cashflow?type=full&days=90';
-      const response = await fetch(url, {
+      const response = await fetch('/api/cashflow/intelligence', {
         headers: { Authorization: `Bearer ${token}` },
-        signal: controller.signal,
       });
-      clearTimeout(timeoutId);
 
-      // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error('Server returned non-JSON response');
@@ -443,98 +256,88 @@ export default function CashflowPage() {
       const json = await response.json();
 
       if (response.ok && json.success) {
-        setData(json.data);
-        setIsLiteMode(useLite || json.data.metadata?.mode === 'lite');
-        setError(null); // Clear any previous errors
-
-        // If we loaded lite mode, try to load full data in background (silently)
-        if (useLite && !refreshing) {
-          setTimeout(() => fetchCashflowData(false, true), 2000);
-        }
+        setIntelligence(json.data);
       } else {
-        // If full mode failed, try lite mode (but not if this is a background fetch)
-        if (!useLite && !isBackgroundFetch) {
-          console.log('Full cashflow load failed, trying lite mode...');
-          fetchCashflowData(true);
-          return;
-        }
-        // Only show error if we don't have any data yet
-        if (!data && !isBackgroundFetch) {
-          setError(json.error || json.details || 'Failed to load cashflow data');
-        }
+        setError(json.error || 'Failed to load intelligence data');
       }
     } catch (err) {
-      // If full mode timed out, try lite mode (but not if background fetch)
-      if (!useLite && !isBackgroundFetch && err instanceof Error && err.name === 'AbortError') {
-        console.log('Cashflow request timed out, trying lite mode...');
-        fetchCashflowData(true);
-        return;
-      }
-      // Silently fail background fetches - we already have lite data
-      if (isBackgroundFetch) {
-        console.log('Background full data fetch failed, keeping lite mode data');
-        return;
-      }
-      // Only show error if we don't have data
-      if (!data) {
-        setError(err instanceof Error ? err.message : 'Network error');
-      }
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally {
-      if (!isBackgroundFetch) {
-        setLoading(false);
-        setRefreshing(false);
-      }
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [token, refreshing, data]);
+  }, [token]);
+
+  // Fetch AI summary
+  const fetchSummary = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/cashflow/summary', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        return; // Silently fail for summary
+      }
+
+      const json = await response.json();
+
+      if (response.ok && json.success && json.data) {
+        setSummary({
+          content: json.data.content,
+          keyInsights: json.data.keyInsights || [],
+          generatedAt: json.data.generatedAt,
+          isStale: json.data.isStale || false,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load summary:', err);
+    }
+  }, [token]);
+
+  // Regenerate AI summary
+  const regenerateSummary = useCallback(async () => {
+    if (!token) return;
+
+    setSummaryLoading(true);
+
+    try {
+      const response = await fetch('/api/cashflow/summary', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const json = await response.json();
+
+      if (response.ok && json.success && json.data) {
+        setSummary({
+          content: json.data.content,
+          keyInsights: json.data.keyInsights || [],
+          generatedAt: json.data.generatedAt,
+          isStale: false,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to regenerate summary:', err);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
     if (token) {
-      fetchCashflowData(false);
+      fetchIntelligence();
+      fetchSummary();
     }
-  }, [token, fetchCashflowData]);
+  }, [token, fetchIntelligence, fetchSummary]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    setIsLiteMode(false);
-    await fetchCashflowData(false);
+    await fetchIntelligence();
+    await fetchSummary();
   };
-
-  // Transform data for components
-  const movements = useMemo(
-    () => (data ? transformToMovements(data.forecast.recurringTimeline) : []),
-    [data]
-  );
-
-  const allocationRecommendations = useMemo(
-    () => (data ? transformToAllocationRecommendations(data.optimisations.fundMovements) : []),
-    [data]
-  );
-
-  const liquidityTiers = useMemo(
-    () =>
-      data
-        ? calculateLiquidityTiers(
-            data.forecast.accountForecasts,
-            data.forecast.summary.withdrawableCash
-          )
-        : calculateLiquidityTiers(),
-    [data]
-  );
-
-  const smartActions = useMemo(
-    () => (data ? generateSmartActions(data) : []),
-    [data]
-  );
-
-  const stabilityScore = useMemo(
-    () => (data ? calculateStabilityScore(data.forecast.volatilityIndex) : 0),
-    [data]
-  );
-
-  const riskFactors = useMemo(
-    () => (data ? generateRiskFactors(data) : []),
-    [data]
-  );
 
   // Render loading state
   if (loading) {
@@ -549,21 +352,21 @@ export default function CashflowPage() {
   if (error) {
     return (
       <DashboardLayout>
-        <div className="p-6 max-w-7xl mx-auto">
-          <ErrorState error={error} onRetry={fetchCashflowData} />
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+          <ErrorState error={error} onRetry={fetchIntelligence} />
         </div>
       </DashboardLayout>
     );
   }
 
   // Render empty state
-  if (!data) {
+  if (!intelligence) {
     return (
       <DashboardLayout>
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
           <ErrorState
-            error="No cashflow data available. Add accounts and transactions to see your forecast."
-            onRetry={fetchCashflowData}
+            error="No financial data available. Add accounts, income, and expenses to see your intelligence dashboard."
+            onRetry={fetchIntelligence}
           />
         </div>
       </DashboardLayout>
@@ -572,15 +375,15 @@ export default function CashflowPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Cash Position
+              Cashflow Intelligence
             </h1>
             <p className="text-gray-500 mt-1">
-              Your 90-day financial forecast and optimization
+              Your complete financial picture in one place
             </p>
           </div>
           <button
@@ -597,55 +400,141 @@ export default function CashflowPage() {
           </button>
         </div>
 
-        {/* Section 1: Cash Position Forecast (Hero) */}
-        <div className="mb-8">
-          <CashPositionChart
-            forecast={data.forecast.globalForecast}
-            emergencyBuffer={data.forecast.summary.monthlyBurnRate * 3}
-          />
-        </div>
-
-        {/* Sections 2 & 3: Upcoming Movements + Break-Even */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <UpcomingMovements movements={movements} />
-          <BreakEvenTimeline
-            breakEvenDay={data.optimisations.breakEvenDay}
-            totalIncome30={data.forecast.summary.totalIncome30}
-            totalExpenses30={data.forecast.summary.totalExpenses30}
-          />
-        </div>
-
-        {/* Section 4: Smart Cash Allocation */}
-        {allocationRecommendations.length > 0 && (
-          <div className="mb-8">
-            <SmartAllocation
-              recommendations={allocationRecommendations}
-              // onTransfer would connect to actual transfer API
+        {/* Section 1: AI Summary (Hero) */}
+        {summary && (
+          <div className="mb-6">
+            <GeminiSummary
+              content={summary.content}
+              keyInsights={summary.keyInsights}
+              generatedAt={new Date(summary.generatedAt)}
+              isStale={summary.isStale}
+              isLoading={summaryLoading}
+              onRegenerate={regenerateSummary}
             />
           </div>
         )}
 
-        {/* Sections 5 & 6: Liquidity Health + Stability Score */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <LiquidityHealth
-            tiers={liquidityTiers}
-            monthlyExpenses={data.forecast.summary.monthlyBurnRate}
+        {/* Section 2: Health Score + Forecast Summary */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Health Score */}
+          <CashflowHealthScore
+            overallScore={intelligence.healthScore.overallScore}
+            tier={intelligence.healthScore.tier}
+            breakdown={intelligence.healthScore.breakdown}
+            confidence={intelligence.healthScore.confidence}
+            lastCalculated={new Date(intelligence.healthScore.lastCalculated)}
           />
-          <StabilityScore
-            score={stabilityScore}
-            riskFactors={riskFactors}
+
+          {/* Quick Stats */}
+          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <LineChart className="h-5 w-5 text-indigo-500" />
+              <h3 className="text-lg font-semibold text-gray-900">Forecast Summary</h3>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Current Balance</p>
+                <p className="text-xl font-bold text-gray-900">
+                  ${intelligence.forecast.current.balance.toLocaleString()}
+                </p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Monthly Net</p>
+                <p className={`text-xl font-bold ${intelligence.forecast.current.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {intelligence.forecast.current.net >= 0 ? '+' : ''}${intelligence.forecast.current.net.toLocaleString()}
+                </p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">30-Day Forecast</p>
+                <p className={`text-xl font-bold ${intelligence.forecast.forecast30Day.risk === 'HIGH' ? 'text-red-600' : 'text-gray-900'}`}>
+                  ${intelligence.forecast.forecast30Day.predictedBalance.toLocaleString()}
+                </p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Break-Even Day</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {intelligence.forecast.breakEvenDay > 0 ? `Day ${intelligence.forecast.breakEvenDay}` : 'N/A'}
+                </p>
+              </div>
+            </div>
+
+            {intelligence.forecast.shortfallRisk && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <span className="text-sm text-red-800">Shortfall risk detected in forecast period</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Section 3: Money Flow (Waterfall) + Leaks */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <WaterfallChart
+            items={intelligence.waterfall.items}
+            netIncome={intelligence.waterfall.netIncome}
+            totalExpenses={intelligence.waterfall.totalExpenses}
+            surplus={intelligence.waterfall.surplus}
+          />
+          <MoneyLeakDetector
+            totalLeakage={intelligence.leaks.totalLeakage}
+            leaks={intelligence.leaks.leaks}
+            topCategories={intelligence.leaks.topCategories}
+            analyzedFrom={new Date(intelligence.leaks.analyzedFrom)}
+            analyzedTo={new Date(intelligence.leaks.analyzedTo)}
+            transactionCount={intelligence.leaks.transactionCount}
           />
         </div>
 
-        {/* Section 7: Smart Actions */}
-        {smartActions.length > 0 && (
-          <div className="mb-8">
-            <SmartActions
-              actions={smartActions}
-              // onComplete and onDismiss would update state/API
+        {/* Section 4: Budget vs Actual + Tax */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {intelligence.budgetComparison ? (
+            <BudgetVsActual
+              categories={intelligence.budgetComparison.categories}
+              totalBudgeted={intelligence.budgetComparison.totalBudgeted}
+              totalActual={intelligence.budgetComparison.totalActual}
+              totalVariance={intelligence.budgetComparison.totalVariance}
+              overallStatus={intelligence.budgetComparison.overallStatus}
+              periodStart={new Date(intelligence.budgetComparison.period.start)}
+              periodEnd={new Date(intelligence.budgetComparison.period.end)}
             />
+          ) : (
+            <BudgetVsActual
+              categories={[]}
+              totalBudgeted={0}
+              totalActual={0}
+              totalVariance={0}
+              overallStatus="ON_TRACK"
+              periodStart={new Date()}
+              periodEnd={new Date()}
+            />
+          )}
+
+          {intelligence.taxOptimization && (
+            <TaxOptimization
+              estimatedAnnualTax={intelligence.taxOptimization.estimatedAnnualTax}
+              deductibleExpenses={intelligence.taxOptimization.deductibleExpenses}
+              potentialSavings={intelligence.taxOptimization.potentialSavings}
+              recommendations={intelligence.taxOptimization.recommendations}
+              effectiveTaxRate={intelligence.taxOptimization.effectiveTaxRate}
+              paygWithheld={intelligence.taxOptimization.paygWithheld}
+            />
+          )}
+        </div>
+
+        {/* Section 5: Smart Actions */}
+        {intelligence.smartActions.length > 0 && (
+          <div className="mb-6">
+            <SmartActionsEnhanced actions={intelligence.smartActions} />
           </div>
         )}
+
+        {/* Footer: Data Quality Indicator */}
+        <div className="flex items-center justify-center gap-4 py-4 text-xs text-gray-400">
+          <span>Data coverage: {intelligence.dataQuality.confidence.toFixed(0)}%</span>
+          <span>•</span>
+          <span>{intelligence.leaks.transactionCount} transactions analyzed</span>
+        </div>
       </div>
     </DashboardLayout>
   );
