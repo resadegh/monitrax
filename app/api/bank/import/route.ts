@@ -9,6 +9,8 @@ import { prisma } from '@/lib/db';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 import {
   parseCSV,
+  parseQIF,
+  isValidQIF,
   normaliseTransactions,
   categoriseTransactions,
   detectDuplicates,
@@ -138,8 +140,17 @@ export async function POST(request: NextRequest) {
         let parsedFile;
         if (format === 'CSV') {
           parsedFile = parseCSV(content, mappings);
+        } else if (format === 'QIF') {
+          // Validate QIF content
+          if (!isValidQIF(content)) {
+            return NextResponse.json(
+              { error: 'Invalid QIF file format. Please ensure the file is a valid QIF export.' },
+              { status: 400 }
+            );
+          }
+          parsedFile = parseQIF(content);
         } else {
-          // TODO: Implement OFX and QIF parsers
+          // TODO: Implement OFX parser
           return NextResponse.json(
             { error: `${format} format not yet implemented` },
             { status: 501 }
@@ -322,7 +333,7 @@ export async function POST(request: NextRequest) {
                 categoryLevel2: tx.categoryLevel2,
                 subcategory: tx.subcategory,
                 confidenceScore: tx.confidenceScore,
-                source: 'CSV' as const,
+                source: format as 'CSV' | 'QIF' | 'OFX',
                 importBatchId: importFile.id,
                 processedAt: new Date(),
                 // Apply income/expense links
@@ -354,11 +365,24 @@ export async function POST(request: NextRequest) {
 
         // Update account balance if requested and an account was linked
         if (accountId && updateAccountBalance && parsedFile.closingBalance !== undefined) {
-          // Use the closing balance from the CSV file
-          await prisma.account.update({
+          // Check if account is Basiq-connected (should not override Basiq balance)
+          const account = await prisma.account.findUnique({
             where: { id: accountId },
-            data: { currentBalance: parsedFile.closingBalance },
+            select: { basiqAccountId: true, balanceSource: true },
           });
+
+          // Only update if not Basiq-connected or if explicitly requested
+          if (!account?.basiqAccountId) {
+            await prisma.account.update({
+              where: { id: accountId },
+              data: {
+                currentBalance: parsedFile.closingBalance,
+                balanceSource: 'IMPORT',
+                balanceLastUpdatedAt: new Date(),
+                lastImportedBalance: parsedFile.closingBalance,
+              },
+            });
+          }
         }
 
         return NextResponse.json({

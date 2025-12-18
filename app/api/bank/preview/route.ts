@@ -7,9 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { prisma } from '@/lib/db';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
-import { parseCSV, suggestColumnMappings, normaliseTransactions, countPotentialDuplicates } from '@/lib/bank';
+import { parseCSV, parseQIF, isValidQIF, suggestColumnMappings, normaliseTransactions, countPotentialDuplicates } from '@/lib/bank';
 import { batchFindMatches, getMatchSummary, type RecurringMatch } from '@/lib/bank/recurringMatcher';
-import type { ParseOptions } from '@/lib/bank/types';
+import type { ParseOptions, ImportFileFormat } from '@/lib/bank/types';
 
 export async function POST(request: NextRequest) {
   return withAuth(request, async (authReq: AuthenticatedRequest) => {
@@ -33,11 +33,23 @@ export async function POST(request: NextRequest) {
       const filename = file.name;
       const extension = filename.split('.').pop()?.toLowerCase();
 
-      if (extension !== 'csv') {
-        return NextResponse.json(
-          { error: 'Preview currently only supports CSV files' },
-          { status: 400 }
-        );
+      let format: ImportFileFormat;
+      switch (extension) {
+        case 'csv':
+          format = 'CSV';
+          break;
+        case 'qif':
+          format = 'QIF';
+          break;
+        case 'ofx':
+        case 'qfx':
+          format = 'OFX';
+          break;
+        default:
+          return NextResponse.json(
+            { error: `Unsupported file format: ${extension}. Supported formats: CSV, QIF, OFX` },
+            { status: 400 }
+          );
       }
 
       // Read and parse file
@@ -58,7 +70,25 @@ export async function POST(request: NextRequest) {
         ? JSON.parse(mappingsStr)
         : undefined;
 
-      const parsedFile = parseCSV(content, mappings);
+      // Parse file based on format
+      let parsedFile;
+      if (format === 'CSV') {
+        parsedFile = parseCSV(content, mappings);
+      } else if (format === 'QIF') {
+        // Validate QIF content
+        if (!isValidQIF(content)) {
+          return NextResponse.json(
+            { error: 'Invalid QIF file format. Please ensure the file is a valid QIF export.' },
+            { status: 400 }
+          );
+        }
+        parsedFile = parseQIF(content);
+      } else {
+        return NextResponse.json(
+          { error: `${format} format preview not yet implemented` },
+          { status: 501 }
+        );
+      }
 
       // Get suggested mappings if none provided
       const suggestedMappings = parsedFile.headers
@@ -177,7 +207,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         filename,
         fileHash,
-        format: 'CSV',
+        format,
         alreadyImported: !!existingFile,
         existingFileId: existingFile?.id,
         headers: parsedFile.headers,
