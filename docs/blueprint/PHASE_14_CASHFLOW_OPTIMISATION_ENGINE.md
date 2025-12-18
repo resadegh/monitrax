@@ -422,20 +422,90 @@ Body: { strategyId, action: 'accept' | 'dismiss', dismissReason? }
 
 ---
 
-## 14.10.7 UI Components
+## 14.10.7 UI Components - REDESIGNED (December 2025)
 
-### Cashflow Dashboard
+### Cashflow Dashboard - Premium Redesign
 **File:** `app/(dashboard)/cashflow/page.tsx`
 
-Features:
-- 90-day forecast chart (bar chart with shortfall highlighting)
-- Key metrics: Net Cashflow, Burn Rate, Withdrawable Cash, Potential Savings
-- Shortfall alert banner
-- Upcoming payments list from recurring timeline
-- Strategy cards with accept/dismiss actions
-- Insight cards with severity badges
-- Break-even day indicator
-- Volatility index warning
+> **Design Philosophy:** Premium financial command center - Bloomberg Terminal meets Apple design. Sophisticated, minimal, actionable.
+
+### Design System
+
+| Element | Specification |
+|---------|---------------|
+| **Primary Color** | Deep navy `#1a1f36` |
+| **Accent Color** | Vibrant purple `#6366f1` |
+| **Success** | Fresh green `#10b981` |
+| **Warning** | Warm amber `#f59e0b` |
+| **Danger** | Soft red `#ef4444` |
+| **Typography** | Inter (Bold headings, Regular body, Tabular numbers) |
+| **Spacing** | 8px base unit, 24-32px padding |
+| **Cards** | Soft shadows, 12px rounded corners, hover lift |
+
+### Core Sections (In Order)
+
+#### 1. Cash Position Forecast
+- **What:** Beautiful line chart showing projected bank balance over 90 days
+- **Features:** Smooth animated line, markers for large movements, emergency buffer threshold line
+- **Library:** Recharts with gradient fills and smooth curves
+- **Interactions:** Hover tooltips, click to drill down
+
+#### 2. Upcoming Movements (30 Days)
+- **What:** Timeline of exact dates/amounts for next month's inflows and outflows
+- **Features:** Collapsible inflow/outflow sections, sorted by date, color-coded
+- **Display:** Calendar-like precision, green for inflows, red for outflows
+
+#### 3. Break-Even Timeline
+- **What:** Visual bar showing when monthly income catches up with expenses
+- **Features:** Split red/green timeline bar with actionable improvement tips
+- **Calculation:** Day of month when cumulative income ≥ cumulative expenses
+
+#### 4. Smart Cash Allocation
+- **What:** AI recommendations for moving money between accounts TODAY
+- **Features:** One-click transfer buttons with calculated savings
+- **Algorithm:** Offset maximization, shortfall prevention, idle cash detection
+
+#### 5. Liquidity Health
+- **What:** How fast can you access cash if emergency hits
+- **Features:** Tiered access levels (Today, 7 Days, 30 Days) with coverage metrics
+- **Calculation:** Cash + offset balances → immediate; Term deposits → delayed
+
+#### 6. Stability Score
+- **What:** How predictable is your cash flow (volatility index)
+- **Features:** Score out of 100 with risk factors breakdown
+- **Calculation:** Based on coefficient of variation of spending patterns
+
+#### 7. Smart Actions (This Week)
+- **What:** Time-sensitive cash-specific actions (not long-term strategy)
+- **Features:** Prioritized list with time estimates and impact scores
+- **Focus:** 3-5 things to do THIS WEEK to improve cash position
+
+### Component Files
+
+| Component | File | Description |
+|-----------|------|-------------|
+| `CashflowPage` | `page.tsx` | Main page layout with all sections |
+| `CashPositionChart` | `components/CashPositionChart.tsx` | 90-day line chart with Recharts |
+| `UpcomingMovements` | `components/UpcomingMovements.tsx` | Collapsible timeline |
+| `BreakEvenTimeline` | `components/BreakEvenTimeline.tsx` | Visual progress bar |
+| `SmartAllocation` | `components/SmartAllocation.tsx` | AI recommendations |
+| `LiquidityHealth` | `components/LiquidityHealth.tsx` | Tiered access display |
+| `StabilityScore` | `components/StabilityScore.tsx` | Score gauge |
+| `SmartActions` | `components/SmartActions.tsx` | Prioritized action list |
+
+### Performance Requirements
+- Page load under 1 second
+- Charts render smoothly (60fps)
+- Lazy load sections below fold
+- Mobile responsive breakpoints
+
+### What's NOT Shown (Avoid Redundancy)
+- ❌ Net Worth (Dashboard)
+- ❌ Savings Rate (Dashboard)
+- ❌ Budget Analysis details (Budget page)
+- ❌ Debt Strategy details (Debt Planner)
+- ❌ Generic stock charts
+- ❌ Dark mode styling
 
 ---
 
