@@ -144,7 +144,7 @@ export async function syncBasiqTransactions(
     // Step 5: Update Basiq connection last synced timestamp
     await prisma.basiqConnection.update({
       where: { id: account.basiqConnectionId! },
-      data: { lastSynced: new Date() },
+      data: { lastSyncedAt: new Date() },
     });
 
     await prisma.account.update({
