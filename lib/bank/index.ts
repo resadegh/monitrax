@@ -8,6 +8,7 @@ export * from './types';
 
 // Parsers
 export { parseCSV, suggestColumnMappings } from './parsers/csv';
+export { parseQIF, isValidQIF } from './parsers/qif';
 
 // Normalisation
 export {
@@ -39,3 +40,10 @@ export {
   generateHealthNarrative,
   getAvailableMonths,
 } from './budgetComparison';
+
+// Basiq Sync (Open Banking transaction priority)
+export {
+  syncBasiqTransactions,
+  canAcceptManualImport,
+  getTransactionSourceCounts,
+} from './basiqSync';
