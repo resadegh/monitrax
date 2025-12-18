@@ -23,7 +23,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  TooltipProps,
 } from 'recharts';
 import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { colors, formatCurrency, formatDate, componentClasses } from '../design-system';
@@ -53,11 +52,17 @@ interface CashPositionChartProps {
 // CUSTOM TOOLTIP
 // =============================================================================
 
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: ForecastPoint }>;
+  label?: string;
+}
+
 function CustomTooltip({
   active,
   payload,
   label,
-}: TooltipProps<number, string>) {
+}: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
 
   const data = payload[0].payload as ForecastPoint;

@@ -53,7 +53,7 @@ export async function lookupEntities(
         address: true,
       },
     });
-    properties.forEach(p => {
+    properties.forEach((p: typeof properties[0]) => {
       result[p.id] = {
         id: p.id,
         name: p.name || p.address || 'Unnamed Property',
@@ -82,7 +82,7 @@ export async function lookupEntities(
         },
       },
     });
-    loans.forEach(l => {
+    loans.forEach((l: typeof loans[0]) => {
       result[l.id] = {
         id: l.id,
         name: l.name || `${l.type || 'Unknown'} Loan`,
@@ -114,7 +114,7 @@ export async function lookupEntities(
         },
       },
     });
-    expenses.forEach(e => {
+    expenses.forEach((e: typeof expenses[0]) => {
       result[e.id] = {
         id: e.id,
         name: e.name || e.category || 'Unnamed Expense',
@@ -146,7 +146,7 @@ export async function lookupEntities(
         },
       },
     });
-    incomes.forEach(i => {
+    incomes.forEach((i: typeof incomes[0]) => {
       result[i.id] = {
         id: i.id,
         name: i.name || i.type || 'Unnamed Income',
@@ -172,7 +172,7 @@ export async function lookupEntities(
         type: true,
       },
     });
-    accounts.forEach(a => {
+    accounts.forEach((a: typeof accounts[0]) => {
       result[a.id] = {
         id: a.id,
         name: a.name || `${a.institution || 'Bank'} - ${a.type || 'Account'}`,
@@ -194,7 +194,7 @@ export async function lookupEntities(
         platform: true,
       },
     });
-    investmentAccounts.forEach(ia => {
+    investmentAccounts.forEach((ia: typeof investmentAccounts[0]) => {
       result[ia.id] = {
         id: ia.id,
         name: ia.name || ia.platform || 'Investment Account',
@@ -224,7 +224,7 @@ export async function lookupEntities(
         },
       },
     });
-    holdings.forEach(h => {
+    holdings.forEach((h: typeof holdings[0]) => {
       result[h.id] = {
         id: h.id,
         name: h.name || h.ticker || 'Holding',
@@ -299,12 +299,12 @@ export async function getAllUserEntities(userId: string): Promise<{
   ]);
 
   return {
-    properties: properties.map(p => ({
+    properties: properties.map((p: typeof properties[0]) => ({
       id: p.id,
       name: p.name || p.address || 'Unnamed Property',
       type: LinkedEntityType.PROPERTY,
     })),
-    loans: loans.map(l => ({
+    loans: loans.map((l: typeof loans[0]) => ({
       id: l.id,
       name: l.name || `${l.type || 'Unknown'} Loan`,
       type: LinkedEntityType.LOAN,
@@ -312,7 +312,7 @@ export async function getAllUserEntities(userId: string): Promise<{
       parentName: (l.property?.name || l.property?.address) ?? undefined,
       parentType: l.property ? LinkedEntityType.PROPERTY : undefined,
     })),
-    expenses: expenses.map(e => ({
+    expenses: expenses.map((e: typeof expenses[0]) => ({
       id: e.id,
       name: e.name || e.category || 'Unnamed Expense',
       type: LinkedEntityType.EXPENSE,
@@ -320,7 +320,7 @@ export async function getAllUserEntities(userId: string): Promise<{
       parentName: (e.property?.name || e.property?.address) ?? undefined,
       parentType: e.property ? LinkedEntityType.PROPERTY : undefined,
     })),
-    income: income.map(i => ({
+    income: income.map((i: typeof income[0]) => ({
       id: i.id,
       name: i.name || i.type || 'Unnamed Income',
       type: LinkedEntityType.INCOME,
@@ -328,12 +328,12 @@ export async function getAllUserEntities(userId: string): Promise<{
       parentName: (i.property?.name || i.property?.address) ?? undefined,
       parentType: i.property ? LinkedEntityType.PROPERTY : undefined,
     })),
-    accounts: accounts.map(a => ({
+    accounts: accounts.map((a: typeof accounts[0]) => ({
       id: a.id,
       name: a.name || `${a.institution || 'Bank'} - ${a.type || 'Account'}`,
       type: LinkedEntityType.ACCOUNT,
     })),
-    investmentAccounts: investmentAccounts.map(ia => ({
+    investmentAccounts: investmentAccounts.map((ia: typeof investmentAccounts[0]) => ({
       id: ia.id,
       name: ia.name || ia.platform || 'Investment Account',
       type: LinkedEntityType.INVESTMENT_ACCOUNT,

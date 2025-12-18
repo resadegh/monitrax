@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
         monthlyNetIncome += annualNet / 12;
       }
 
-      const trackedExpenses = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+      const trackedExpenses = expenses.reduce((sum: number, e: typeof expenses[0]) => sum + convertToMonthly(e.amount, e.frequency), 0);
 
       // Phase 28: Use realistic budget if available, otherwise use tracked expenses only
       const hasRealisticBudget = budgetAnalysis && budgetAnalysis.userFinalBudget;
@@ -195,10 +195,10 @@ export async function POST(request: NextRequest) {
         ? budgetAnalysis.userFinalBudget!
         : trackedExpenses;
       const monthlySurplus = monthlyNetIncome - monthlyExpenses;
-      const totalLoanRepayments = loans.reduce((sum, l) => sum + convertToMonthly(l.minRepayment, l.repaymentFrequency), 0);
-      const totalDebt = loans.reduce((sum, l) => sum + l.principal, 0);
-      const totalOffsetBalance = loans.reduce((sum, l) => sum + (l.offsetAccount?.currentBalance || 0), 0);
-      const cashBalance = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
+      const totalLoanRepayments = loans.reduce((sum: number, l: typeof loans[0]) => sum + convertToMonthly(l.minRepayment, l.repaymentFrequency), 0);
+      const totalDebt = loans.reduce((sum: number, l: typeof loans[0]) => sum + l.principal, 0);
+      const totalOffsetBalance = loans.reduce((sum: number, l: typeof loans[0]) => sum + (l.offsetAccount?.currentBalance || 0), 0);
+      const cashBalance = accounts.reduce((sum: number, a: typeof accounts[0]) => sum + a.currentBalance, 0);
 
       // CRITICAL: Use the pre-calculated availableForExtraRepayments from frontend if provided
       // This ensures the AI uses the EXACT same value shown in the UI header ($494)

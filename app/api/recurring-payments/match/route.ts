@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       });
 
       // Convert to matcher types
-      const paymentsForMatch: RecurringPaymentForMatch[] = recurringPayments.map(p => ({
+      const paymentsForMatch: RecurringPaymentForMatch[] = recurringPayments.map((p: typeof recurringPayments[0]) => ({
         id: p.id,
         merchantStandardised: p.merchantStandardised,
         pattern: p.pattern as RecurringPaymentForMatch['pattern'],
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         matchStatus: p.matchStatus as RecurringPaymentForMatch['matchStatus'],
       }));
 
-      const expensesForMatch: ExpenseForMatch[] = expenses.map(e => ({
+      const expensesForMatch: ExpenseForMatch[] = expenses.map((e: typeof expenses[0]) => ({
         id: e.id,
         name: e.name,
         vendorName: e.vendorName,
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 
       // Enrich results with full recurring payment data
       const enrichedResults = filteredResults.map(result => {
-        const payment = recurringPayments.find(p => p.id === result.recurringPaymentId);
+        const payment = recurringPayments.find((p: typeof recurringPayments[0]) => p.id === result.recurringPaymentId);
         return {
           ...result,
           recurringPayment: payment ? {
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
         summary: {
           ...summary,
           totalRecurringPayments: recurringPayments.length,
-          alreadyLinked: recurringPayments.filter(p => p.matchStatus === 'LINKED').length,
+          alreadyLinked: recurringPayments.filter((p: typeof recurringPayments[0]) => p.matchStatus === 'LINKED').length,
         },
       });
     } catch (error) {
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Convert to matcher types
-      const paymentsForMatch: RecurringPaymentForMatch[] = recurringPayments.map(p => ({
+      const paymentsForMatch: RecurringPaymentForMatch[] = recurringPayments.map((p: typeof recurringPayments[0]) => ({
         id: p.id,
         merchantStandardised: p.merchantStandardised,
         pattern: p.pattern as RecurringPaymentForMatch['pattern'],
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
         matchStatus: p.matchStatus as RecurringPaymentForMatch['matchStatus'],
       }));
 
-      const expensesForMatch: ExpenseForMatch[] = expenses.map(e => ({
+      const expensesForMatch: ExpenseForMatch[] = expenses.map((e: typeof expenses[0]) => ({
         id: e.id,
         name: e.name,
         vendorName: e.vendorName,
