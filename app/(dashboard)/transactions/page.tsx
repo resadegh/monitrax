@@ -303,6 +303,7 @@ export default function TransactionExplorer() {
 
   // Filters
   const [search, setSearch] = useState('');
+  const [accountFilter, setAccountFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [showRecurringOnly, setShowRecurringOnly] = useState(false);
@@ -330,6 +331,7 @@ export default function TransactionExplorer() {
       });
 
       if (search) params.append('search', search);
+      if (accountFilter) params.append('accountId', accountFilter);
       if (categoryFilter) params.append('category', categoryFilter);
       if (dateRange.start) params.append('startDate', dateRange.start);
       if (dateRange.end) params.append('endDate', dateRange.end);
@@ -352,7 +354,7 @@ export default function TransactionExplorer() {
     } finally {
       setLoading(false);
     }
-  }, [token, page, search, categoryFilter, dateRange, showRecurringOnly, showAnomaliesOnly]);
+  }, [token, page, search, accountFilter, categoryFilter, dateRange, showRecurringOnly, showAnomaliesOnly]);
 
   const fetchSummary = useCallback(async () => {
     if (!token) return;
@@ -426,6 +428,43 @@ export default function TransactionExplorer() {
 
         {/* Summary Cards */}
         {summary && <SummaryCards summary={summary} />}
+
+        {/* Account Filter - Prominent Selector */}
+        <div className="bg-white rounded-lg shadow mb-4 p-4">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              <Building className="h-4 w-4 inline mr-2" />
+              View Account:
+            </label>
+            <select
+              value={accountFilter}
+              onChange={(e) => {
+                setAccountFilter(e.target.value);
+                setPage(1);
+              }}
+              className="flex-1 max-w-xs border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Accounts</option>
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} ({account.type})
+                </option>
+              ))}
+            </select>
+            {accountFilter && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountFilter('');
+                  setPage(1);
+                }}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Search & Filters */}
         <div className="bg-white rounded-lg shadow mb-6">
@@ -608,8 +647,12 @@ export default function TransactionExplorer() {
                   setShowImportWizard(false);
                   fetchTransactions();
                   fetchSummary();
+                  fetchAccounts();
                 }}
                 onClose={() => setShowImportWizard(false)}
+                onAccountCreated={(newAccount) => {
+                  setAccounts((prev) => [...prev, newAccount]);
+                }}
               />
             </div>
           </div>
