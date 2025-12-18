@@ -268,7 +268,7 @@ async function importBasiqTransactions(
       sourceFileId: `basiq_${basiqAccountId}`,
       hash: generateHash(date, amount, basiqTx.description),
       merchantRaw,
-      merchantStandardised: merchantCleaned,
+      merchantStandardised: merchantCleaned ?? undefined,
       balance: basiqTx.balance,
     };
 
