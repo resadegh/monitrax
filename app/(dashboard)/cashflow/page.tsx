@@ -411,39 +411,69 @@ export default function CashflowPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLiteMode, setIsLiteMode] = useState(false);
 
-  const fetchCashflowData = useCallback(async () => {
+  // Fetch full data with timeout fallback
+  const fetchCashflowData = useCallback(async (useLite = false) => {
     if (!token) return;
 
     try {
       setError(null);
-      const response = await fetch('/api/cashflow?type=full&days=90', {
+
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), useLite ? 10000 : 25000);
+
+      const url = useLite ? '/api/cashflow?type=lite' : '/api/cashflow?type=full&days=90';
+      const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
       const json = await response.json();
 
       if (response.ok && json.success) {
         setData(json.data);
+        setIsLiteMode(useLite || json.data.metadata?.mode === 'lite');
+
+        // If we loaded lite mode, try to load full data in background
+        if (useLite && !refreshing) {
+          setTimeout(() => fetchCashflowData(false), 1000);
+        }
       } else {
+        // If full mode failed, try lite mode
+        if (!useLite) {
+          console.log('Full cashflow load failed, trying lite mode...');
+          fetchCashflowData(true);
+          return;
+        }
         setError(json.error || json.details || 'Failed to load cashflow data');
       }
     } catch (err) {
+      // If full mode timed out, try lite mode
+      if (!useLite && err instanceof Error && err.name === 'AbortError') {
+        console.log('Cashflow request timed out, trying lite mode...');
+        fetchCashflowData(true);
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token]);
+  }, [token, refreshing]);
 
   useEffect(() => {
     if (token) {
-      fetchCashflowData();
+      fetchCashflowData(false);
     }
   }, [token, fetchCashflowData]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchCashflowData();
+    setIsLiteMode(false);
+    await fetchCashflowData(false);
   };
 
   // Transform data for components

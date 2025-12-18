@@ -284,10 +284,12 @@ async function buildCOEInput(
  * GET /api/cashflow
  *
  * Query params:
- * - type: 'forecast' | 'optimisation' | 'full' (default: 'full')
+ * - type: 'forecast' | 'optimisation' | 'full' | 'lite' (default: 'full')
  * - days: number (default: 90)
  *
  * Returns cashflow forecast and/or optimisation recommendations
+ *
+ * Note: 'lite' mode returns minimal data for faster loading on cold starts
  */
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq) => {
@@ -296,6 +298,68 @@ export async function GET(request: NextRequest) {
       const { searchParams } = new URL(request.url);
       const type = searchParams.get('type') || 'full';
       const days = parseInt(searchParams.get('days') || '90', 10);
+
+      // Lite mode - return minimal data quickly (useful for cold starts)
+      if (type === 'lite') {
+        const [accounts, income] = await Promise.all([
+          prisma.account.findMany({
+            where: { userId },
+            select: { id: true, name: true, currentBalance: true, type: true },
+          }),
+          prisma.income.findMany({
+            where: { userId },
+            select: { amount: true, frequency: true },
+          }),
+        ]);
+
+        const totalBalance = accounts.reduce((sum, a) => sum + Number(a.currentBalance), 0);
+        const monthlyIncome = income.reduce((sum, i) => sum + normalizeToMonthly(Number(i.amount), i.frequency), 0);
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            forecast: {
+              globalForecast: [],
+              summary: {
+                avgDailyBalance30: totalBalance,
+                totalIncome30: monthlyIncome,
+                totalExpenses30: 0,
+                netCashflow30: monthlyIncome,
+                avgDailyBalance90: totalBalance,
+                totalIncome90: monthlyIncome * 3,
+                totalExpenses90: 0,
+                netCashflow90: monthlyIncome * 3,
+                monthlyBurnRate: 0,
+                threeMonthBurnRate: 0,
+                withdrawableCash: totalBalance,
+              },
+              shortfallAnalysis: {
+                hasShortfall: false,
+                shortfallDates: [],
+                maxShortfallAmount: 0,
+                totalShortfallDays: 0,
+                accountsAtRisk: [],
+              },
+              volatilityIndex: 0,
+              recurringTimeline: [],
+              accountForecasts: accounts.map(a => ({
+                accountId: a.id,
+                accountName: a.name,
+                averageBalance: Number(a.currentBalance),
+              })),
+            },
+            optimisations: {
+              fundMovements: [],
+              breakEvenDay: 0,
+              summary: { totalPotentialSavings: 0 },
+              strategies: [],
+            },
+            insights: [],
+            generatedAt: new Date(),
+            metadata: { mode: 'lite', message: 'Lite mode - run full analysis for complete data' },
+          },
+        });
+      }
 
       // Build CFE input
       const cfeInput = await buildCFEInput(userId, days);
