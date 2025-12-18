@@ -1,41 +1,39 @@
-/**
- * CASHFLOW DASHBOARD
- * Phase 14 - Cashflow Optimisation Engine UI
- *
- * Displays:
- * - 90-day forecast curve
- * - Shortfall predictions
- * - Monthly cashflow histogram
- * - Surplus/deficit gauges
- * - Category impact panel
- * - Strategy recommendations
- */
-
 'use client';
 
-import { useEffect, useState } from 'react';
+/**
+ * CASHFLOW PAGE - PREMIUM REDESIGN
+ * Phase 14 - Cashflow Optimisation Engine UI
+ *
+ * A premium financial command center that shows users
+ * WHEN and WHERE their money moves, not just how much.
+ *
+ * Design Philosophy: Bloomberg Terminal meets Apple design
+ * - Sophisticated, minimal, actionable
+ * - Every chart tells a story, every number drives a decision
+ */
+
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  CheckCircle,
   RefreshCw,
-  DollarSign,
-  Calendar,
-  ArrowRight,
-  ChevronDown,
-  ChevronUp,
-  Target,
-  Zap,
-  Shield,
-  Clock,
-  CreditCard,
   Wallet,
+  Loader2,
 } from 'lucide-react';
+
+// Components
+import {
+  CashPositionChart,
+  UpcomingMovements,
+  BreakEvenTimeline,
+  SmartAllocation,
+  LiquidityHealth,
+  StabilityScore,
+  SmartActions,
+} from './components';
+
+// Design system
+import { formatCurrency, componentClasses } from './design-system';
 
 // =============================================================================
 // TYPES
@@ -66,15 +64,6 @@ interface ForecastSummary {
   withdrawableCash: number;
 }
 
-interface ShortfallAnalysis {
-  hasShortfall: boolean;
-  shortfallDates: string[];
-  maxShortfallAmount: number;
-  totalShortfallDays: number;
-  firstShortfallDate?: string;
-  accountsAtRisk: string[];
-}
-
 interface RecurringEntry {
   date: string;
   merchantStandardised: string;
@@ -82,380 +71,331 @@ interface RecurringEntry {
   accountId: string;
 }
 
-interface Strategy {
-  id: string;
-  type: string;
-  priority: number;
-  title: string;
-  summary: string;
-  detail?: string;
-  confidence: number;
+interface FundMovement {
+  fromAccountId: string;
+  fromAccountName: string;
+  toAccountId: string;
+  toAccountName: string;
+  amount: number;
+  reason: string;
   projectedBenefit: number;
-  recommendedSteps: { order: number; action: string; description: string }[];
-  status: string;
-}
-
-interface Inefficiency {
-  id: string;
-  category: string;
-  merchantOrCategory: string;
-  description: string;
-  currentSpend: number;
-  potentialSavings: number;
-  confidenceScore: number;
-}
-
-interface CashflowInsight {
-  id: string;
-  severity: string;
-  category: string;
-  title: string;
-  description: string;
-  recommendedAction: string;
-  valueEstimate?: number;
-  savingsPotential?: number;
-}
-
-interface OptimisationSummary {
-  totalPotentialSavings: number;
-  inefficiencyCount: number;
-  subscriptionCount: number;
-  priceIncreaseCount: number;
-  strategyCount: number;
-  highPriorityActions: number;
+  urgency: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
 interface CashflowData {
   forecast: {
     globalForecast: ForecastPoint[];
     summary: ForecastSummary;
-    shortfallAnalysis: ShortfallAnalysis;
+    shortfallAnalysis: {
+      hasShortfall: boolean;
+      shortfallDates: string[];
+      maxShortfallAmount: number;
+      totalShortfallDays: number;
+      firstShortfallDate?: string;
+      accountsAtRisk: string[];
+    };
     volatilityIndex: number;
     recurringTimeline: RecurringEntry[];
+    accountForecasts?: {
+      accountId: string;
+      accountName: string;
+      averageBalance: number;
+    }[];
   };
   optimisations: {
-    inefficiencies: Inefficiency[];
-    strategies: Strategy[];
+    fundMovements: FundMovement[];
     breakEvenDay: number;
-    summary: OptimisationSummary;
+    summary: {
+      totalPotentialSavings: number;
+    };
+    strategies?: { id: string; title: string; summary: string; projectedBenefit: number }[];
   };
-  insights: CashflowInsight[];
 }
 
 // =============================================================================
-// HELPERS
+// DATA TRANSFORMATION
 // =============================================================================
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-AU', {
-    style: 'currency',
-    currency: 'AUD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+function transformToMovements(recurring: RecurringEntry[]): {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'inflow' | 'outflow';
+  isRecurring: boolean;
+}[] {
+  return recurring.map((r, i) => ({
+    id: `recurring-${i}`,
+    date: r.date,
+    description: r.merchantStandardised,
+    amount: r.expectedAmount,
+    type: 'outflow' as const,
+    isRecurring: true,
+  }));
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-AU', {
-    month: 'short',
-    day: 'numeric',
-  });
+function transformToAllocationRecommendations(movements: FundMovement[]): {
+  id: string;
+  fromAccountId: string;
+  fromAccountName: string;
+  toAccountId: string;
+  toAccountName: string;
+  amount: number;
+  reason: string;
+  projectedBenefit: number;
+  urgency: 'LOW' | 'MEDIUM' | 'HIGH';
+  type: 'offset' | 'shortfall' | 'optimization';
+}[] {
+  return movements.map((m, i) => ({
+    id: `alloc-${i}`,
+    ...m,
+    type: m.reason.toLowerCase().includes('offset')
+      ? 'offset'
+      : m.reason.toLowerCase().includes('shortfall')
+      ? 'shortfall'
+      : 'optimization',
+  }));
 }
 
-function getSeverityColor(severity: string): string {
-  switch (severity) {
-    case 'CRITICAL':
-      return 'text-red-600 bg-red-100';
-    case 'HIGH':
-      return 'text-orange-600 bg-orange-100';
-    case 'MEDIUM':
-      return 'text-yellow-600 bg-yellow-100';
-    default:
-      return 'text-blue-600 bg-blue-100';
+function calculateLiquidityTiers(
+  accountForecasts?: { accountId: string; accountName: string; averageBalance: number }[],
+  withdrawableCash = 0
+) {
+  // Default tiers if no account data
+  if (!accountForecasts || accountForecasts.length === 0) {
+    return {
+      today: {
+        label: 'Today',
+        description: 'Immediately accessible',
+        amount: withdrawableCash,
+        accounts: [],
+      },
+      week: {
+        label: '7 Days',
+        description: 'Short-term access',
+        amount: 0,
+        accounts: [],
+      },
+      month: {
+        label: '30 Days',
+        description: 'Medium-term access',
+        amount: 0,
+        accounts: [],
+      },
+    };
   }
-}
 
-function getStrategyTypeIcon(type: string) {
-  switch (type) {
-    case 'PREVENT_SHORTFALL':
-      return <Shield className="h-5 w-5 text-red-500" />;
-    case 'MAXIMISE_OFFSET':
-      return <DollarSign className="h-5 w-5 text-green-500" />;
-    case 'REDUCE_WASTE':
-      return <Zap className="h-5 w-5 text-yellow-500" />;
-    case 'REPAYMENT_OPTIMISE':
-      return <Target className="h-5 w-5 text-blue-500" />;
-    default:
-      return <Target className="h-5 w-5 text-gray-500" />;
+  // Split accounts into tiers (simplified - in production would check account types)
+  const allAccounts = accountForecasts.map((a) => ({
+    name: a.accountName,
+    balance: a.averageBalance,
+  }));
+
+  const todayAccounts = allAccounts.filter(
+    (a) =>
+      a.name.toLowerCase().includes('transaction') ||
+      a.name.toLowerCase().includes('everyday') ||
+      a.name.toLowerCase().includes('checking')
+  );
+
+  const weekAccounts = allAccounts.filter(
+    (a) =>
+      a.name.toLowerCase().includes('savings') ||
+      a.name.toLowerCase().includes('offset')
+  );
+
+  const monthAccounts = allAccounts.filter(
+    (a) =>
+      a.name.toLowerCase().includes('term') ||
+      a.name.toLowerCase().includes('investment')
+  );
+
+  // If no categorization worked, put all in today
+  if (todayAccounts.length === 0 && weekAccounts.length === 0 && monthAccounts.length === 0) {
+    todayAccounts.push(...allAccounts);
   }
+
+  return {
+    today: {
+      label: 'Today',
+      description: 'Immediately accessible',
+      amount: todayAccounts.reduce((sum, a) => sum + a.balance, 0),
+      accounts: todayAccounts,
+    },
+    week: {
+      label: '7 Days',
+      description: 'Short-term access',
+      amount: weekAccounts.reduce((sum, a) => sum + a.balance, 0),
+      accounts: weekAccounts,
+    },
+    month: {
+      label: '30 Days',
+      description: 'Medium-term access',
+      amount: monthAccounts.reduce((sum, a) => sum + a.balance, 0),
+      accounts: monthAccounts,
+    },
+  };
 }
 
-// =============================================================================
-// COMPONENTS
-// =============================================================================
-
-function MetricCard({
-  title,
-  value,
-  subtitle,
-  icon,
-  trend,
-  color = 'blue',
-}: {
+function generateSmartActions(
+  data: CashflowData
+): {
+  id: string;
   title: string;
-  value: string;
-  subtitle?: string;
-  icon: React.ReactNode;
-  trend?: 'up' | 'down' | 'neutral';
-  color?: 'blue' | 'green' | 'red' | 'yellow';
-}) {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    red: 'bg-red-50 text-red-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-  };
+  description: string;
+  impact: number;
+  timeEstimate: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  category: 'transfer' | 'cancel' | 'schedule' | 'review' | 'save';
+}[] {
+  const actions: ReturnType<typeof generateSmartActions> = [];
 
-  return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <div className="flex items-center justify-between">
-        <div className={`p-2 rounded-lg ${colorClasses[color]}`}>{icon}</div>
-        {trend && (
-          <div
-            className={`flex items-center text-sm ${
-              trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-500'
-            }`}
-          >
-            {trend === 'up' && <TrendingUp className="h-4 w-4" />}
-            {trend === 'down' && <TrendingDown className="h-4 w-4" />}
-          </div>
-        )}
-      </div>
-      <div className="mt-3">
-        <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-2xl font-bold">{value}</p>
-        {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
+  // Add fund movement actions
+  data.optimisations.fundMovements.slice(0, 2).forEach((m, i) => {
+    actions.push({
+      id: `action-fund-${i}`,
+      title: `Transfer to ${m.toAccountName}`,
+      description: m.reason,
+      impact: m.projectedBenefit,
+      timeEstimate: '5 min',
+      priority: m.urgency === 'HIGH' ? 'critical' : m.urgency === 'MEDIUM' ? 'high' : 'medium',
+      category: 'transfer',
+    });
+  });
 
-function ForecastChart({ forecast }: { forecast: ForecastPoint[] }) {
-  // Handle empty or invalid forecast data
-  if (!forecast || forecast.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow p-4">
-        <h3 className="font-semibold mb-4">90-Day Forecast</h3>
-        <div className="h-40 flex items-center justify-center text-gray-400">
-          <div className="text-center">
-            <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No forecast data available</p>
-            <p className="text-xs mt-1">Add accounts and transactions to see predictions</p>
-          </div>
-        </div>
-      </div>
-    );
+  // Add shortfall prevention action if needed
+  if (data.forecast.shortfallAnalysis.hasShortfall) {
+    actions.unshift({
+      id: 'action-shortfall',
+      title: 'Prevent upcoming shortfall',
+      description: `Move funds to avoid ${formatCurrency(data.forecast.shortfallAnalysis.maxShortfallAmount)} shortfall`,
+      impact: data.forecast.shortfallAnalysis.maxShortfallAmount * 0.1,
+      timeEstimate: '10 min',
+      priority: 'critical',
+      category: 'transfer',
+    });
   }
 
-  // Simple text-based chart (in production, use a charting library)
-  const balances = forecast.map((f) => f.predictedBalance);
-  const maxBalance = Math.max(...balances);
-  const minBalance = Math.min(...balances);
+  // Add break-even optimization if late
+  if (data.optimisations.breakEvenDay > 20) {
+    actions.push({
+      id: 'action-breakeven',
+      title: 'Optimize payment dates',
+      description: 'Move bill dates closer to income date to improve cashflow timing',
+      impact: 100,
+      timeEstimate: '15 min',
+      priority: 'medium',
+      category: 'schedule',
+    });
+  }
 
-  // Ensure we have a valid range (avoid division by zero or -Infinity issues)
-  const range = maxBalance - minBalance;
-  const validRange = !isNaN(range) && isFinite(range) && range > 0 ? range : 1;
+  // Add strategy-based actions
+  data.optimisations.strategies?.slice(0, 2).forEach((s, i) => {
+    actions.push({
+      id: `action-strategy-${i}`,
+      title: s.title,
+      description: s.summary,
+      impact: s.projectedBenefit,
+      timeEstimate: '10 min',
+      priority: s.projectedBenefit > 500 ? 'high' : 'medium',
+      category: 'review',
+    });
+  });
 
-  // Sample 30 points for display
-  const sampled = forecast.filter((_, i) => i % 3 === 0).slice(0, 30);
-
-  // If all balances are the same, show a flat line at 50%
-  const allSame = range === 0;
-
-  return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <h3 className="font-semibold mb-4">90-Day Forecast</h3>
-      <div className="h-40 flex items-end gap-1">
-        {sampled.map((point, i) => {
-          const height = allSame
-            ? 50
-            : ((point.predictedBalance - minBalance) / validRange) * 100;
-          return (
-            <div
-              key={i}
-              className="flex-1 group relative"
-              title={`${formatDate(point.date)}: ${formatCurrency(point.predictedBalance)}`}
-            >
-              <div
-                className={`w-full rounded-t ${
-                  point.shortfallRisk ? 'bg-red-400' : 'bg-blue-400'
-                }`}
-                style={{ height: `${Math.max(5, Math.min(100, height))}%` }}
-              />
-              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
-                {formatDate(point.date)}: {formatCurrency(point.predictedBalance)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex justify-between text-xs text-gray-500 mt-2">
-        <span>{formatDate(forecast[0]?.date || '')}</span>
-        <span>{formatDate(forecast[forecast.length - 1]?.date || '')}</span>
-      </div>
-      <div className="flex items-center gap-4 mt-4 text-xs">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-blue-400 rounded" />
-          <span>Normal</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 bg-red-400 rounded" />
-          <span>Shortfall Risk</span>
-        </div>
-      </div>
-    </div>
-  );
+  return actions.slice(0, 5);
 }
 
-function ShortfallAlert({ analysis }: { analysis: ShortfallAnalysis }) {
-  if (!analysis.hasShortfall) return null;
+function calculateStabilityScore(volatilityIndex: number): number {
+  // Convert volatility (0-100 where higher = more volatile) to stability (0-100 where higher = more stable)
+  return Math.max(0, Math.min(100, 100 - volatilityIndex));
+}
 
+function generateRiskFactors(data: CashflowData) {
+  const factors: { name: string; impact: 'high' | 'medium' | 'low'; description: string }[] = [];
+
+  if (data.forecast.volatilityIndex > 50) {
+    factors.push({
+      name: 'High spending variability',
+      impact: 'high',
+      description: 'Your expenses vary significantly month to month',
+    });
+  }
+
+  if (data.forecast.shortfallAnalysis.hasShortfall) {
+    factors.push({
+      name: 'Shortfall risk',
+      impact: 'high',
+      description: 'Predicted cash shortfall in the forecast period',
+    });
+  }
+
+  if (data.optimisations.breakEvenDay > 25 || data.optimisations.breakEvenDay === -1) {
+    factors.push({
+      name: 'Late break-even',
+      impact: 'medium',
+      description: 'Income catches expenses late in the month',
+    });
+  }
+
+  if (data.forecast.summary.netCashflow30 < 0) {
+    factors.push({
+      name: 'Negative cashflow',
+      impact: 'high',
+      description: 'Spending exceeds income this month',
+    });
+  }
+
+  return factors;
+}
+
+// =============================================================================
+// LOADING SKELETON
+// =============================================================================
+
+function PageSkeleton() {
   return (
-    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-      <div className="flex items-start gap-3">
-        <AlertCircle className="h-6 w-6 text-red-500 flex-shrink-0 mt-0.5" />
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Header skeleton */}
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h4 className="font-semibold text-red-800">Shortfall Predicted</h4>
-          <p className="text-sm text-red-700 mt-1">
-            You may experience a cash shortfall of up to{' '}
-            {formatCurrency(analysis.maxShortfallAmount)} in{' '}
-            {analysis.totalShortfallDays} days.
-          </p>
-          {analysis.firstShortfallDate && (
-            <p className="text-sm text-red-600 mt-2">
-              First shortfall expected: {formatDate(analysis.firstShortfallDate)}
-            </p>
-          )}
+          <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-48 bg-gray-100 rounded animate-pulse mt-2" />
         </div>
+        <div className="h-10 w-28 bg-gray-200 rounded-lg animate-pulse" />
+      </div>
+
+      {/* Chart skeleton */}
+      <div className="h-96 bg-gray-100 rounded-xl animate-pulse mb-8" />
+
+      {/* Grid skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-80 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="h-80 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
+        <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
       </div>
     </div>
   );
 }
 
-function UpcomingPayments({ recurring }: { recurring: RecurringEntry[] }) {
-  const upcoming = recurring.slice(0, 10);
+// =============================================================================
+// ERROR STATE
+// =============================================================================
 
+function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <h3 className="font-semibold mb-4 flex items-center gap-2">
-        <Calendar className="h-5 w-5 text-gray-500" />
-        Upcoming Payments
-      </h3>
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {upcoming.map((payment, i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-          >
-            <div>
-              <p className="font-medium text-sm">{payment.merchantStandardised}</p>
-              <p className="text-xs text-gray-500">{formatDate(payment.date)}</p>
-            </div>
-            <p className="font-medium text-red-600">
-              -{formatCurrency(payment.expectedAmount)}
-            </p>
-          </div>
-        ))}
-        {upcoming.length === 0 && (
-          <p className="text-gray-500 text-sm text-center py-4">
-            No upcoming payments detected
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StrategyCard({
-  strategy,
-  onAccept,
-  onDismiss,
-}: {
-  strategy: Strategy;
-  onAccept: () => void;
-  onDismiss: () => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="border rounded-lg p-4 bg-white shadow-sm">
-      <div className="flex items-start gap-3">
-        {getStrategyTypeIcon(strategy.type)}
-        <div className="flex-1">
-          <div className="flex justify-between items-start">
-            <h4 className="font-medium">{strategy.title}</h4>
-            <span className="text-sm font-semibold text-green-600">
-              +{formatCurrency(strategy.projectedBenefit)}
-            </span>
-          </div>
-          <p className="text-sm text-gray-600 mt-1">{strategy.summary}</p>
-
-          {expanded && strategy.recommendedSteps.length > 0 && (
-            <div className="mt-3 bg-gray-50 rounded p-3">
-              <p className="text-xs font-medium text-gray-700 mb-2">Steps:</p>
-              <ol className="text-xs text-gray-600 space-y-1">
-                {strategy.recommendedSteps.map((step) => (
-                  <li key={step.order}>
-                    {step.order}. {step.description}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 mt-3">
-            <button
-              onClick={onAccept}
-              className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              Accept
-            </button>
-            <button
-              onClick={onDismiss}
-              className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-            >
-              Dismiss
-            </button>
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="ml-auto text-gray-500 text-xs flex items-center gap-1"
-            >
-              {expanded ? 'Less' : 'More'}
-              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </button>
-          </div>
+    <div className="min-h-[400px] flex items-center justify-center">
+      <div className="text-center max-w-md">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Wallet className="h-8 w-8 text-red-500" />
         </div>
-      </div>
-    </div>
-  );
-}
-
-function InsightCard({ insight }: { insight: CashflowInsight }) {
-  return (
-    <div className="border rounded-lg p-3 bg-white">
-      <div className="flex items-start gap-2">
-        <span className={`px-2 py-0.5 text-xs rounded-full ${getSeverityColor(insight.severity)}`}>
-          {insight.severity}
-        </span>
-        <div className="flex-1">
-          <h4 className="font-medium text-sm">{insight.title}</h4>
-          <p className="text-xs text-gray-600 mt-1">{insight.description}</p>
-          {insight.savingsPotential && (
-            <p className="text-xs text-green-600 mt-1">
-              Potential: {formatCurrency(insight.savingsPotential)}
-            </p>
-          )}
-        </div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          Unable to load cashflow data
+        </h3>
+        <p className="text-gray-500 mb-6">{error}</p>
+        <button onClick={onRetry} className={componentClasses.buttonPrimary}>
+          Try Again
+        </button>
       </div>
     </div>
   );
@@ -465,24 +405,17 @@ function InsightCard({ insight }: { insight: CashflowInsight }) {
 // MAIN COMPONENT
 // =============================================================================
 
-export default function CashflowDashboard() {
+export default function CashflowPage() {
   const { token } = useAuth();
   const [data, setData] = useState<CashflowData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (token) {
-      fetchCashflowData();
-    }
-  }, [token]);
-
-  async function fetchCashflowData() {
+  const fetchCashflowData = useCallback(async () => {
     if (!token) return;
 
     try {
-      setLoading(true);
       setError(null);
       const response = await fetch('/api/cashflow?type=full&days=90', {
         headers: { Authorization: `Bearer ${token}` },
@@ -498,230 +431,166 @@ export default function CashflowDashboard() {
       setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }
+  }, [token]);
 
-  async function handleRefresh() {
+  useEffect(() => {
+    if (token) {
+      fetchCashflowData();
+    }
+  }, [token, fetchCashflowData]);
+
+  const handleRefresh = async () => {
     setRefreshing(true);
     await fetchCashflowData();
-    setRefreshing(false);
-  }
+  };
 
-  async function handleStrategyAction(strategyId: string, action: 'accept' | 'dismiss') {
-    if (!token) return;
+  // Transform data for components
+  const movements = useMemo(
+    () => (data ? transformToMovements(data.forecast.recurringTimeline) : []),
+    [data]
+  );
 
-    try {
-      await fetch('/api/cashflow/strategies', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ strategyId, action }),
-      });
-      // Refresh data
-      await fetchCashflowData();
-    } catch (err) {
-      console.error('Failed to update strategy:', err);
-    }
-  }
+  const allocationRecommendations = useMemo(
+    () => (data ? transformToAllocationRecommendations(data.optimisations.fundMovements) : []),
+    [data]
+  );
 
+  const liquidityTiers = useMemo(
+    () =>
+      data
+        ? calculateLiquidityTiers(
+            data.forecast.accountForecasts,
+            data.forecast.summary.withdrawableCash
+          )
+        : calculateLiquidityTiers(),
+    [data]
+  );
+
+  const smartActions = useMemo(
+    () => (data ? generateSmartActions(data) : []),
+    [data]
+  );
+
+  const stabilityScore = useMemo(
+    () => (data ? calculateStabilityScore(data.forecast.volatilityIndex) : 0),
+    [data]
+  );
+
+  const riskFactors = useMemo(
+    () => (data ? generateRiskFactors(data) : []),
+    [data]
+  );
+
+  // Render loading state
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="p-6">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-24 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-            <div className="h-48 bg-gray-200 rounded mb-6"></div>
-          </div>
+        <PageSkeleton />
+      </DashboardLayout>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 max-w-7xl mx-auto">
+          <ErrorState error={error} onRetry={fetchCashflowData} />
         </div>
       </DashboardLayout>
     );
   }
 
+  // Render empty state
   if (!data) {
     return (
       <DashboardLayout>
-        <div className="p-6">
-          <div className="text-center py-12">
-            <Wallet className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">
-              {error ? 'Error Loading Cashflow Data' : 'No Cashflow Data Available'}
-            </h3>
-            <p className="text-gray-500 mt-2">
-              {error || 'Add transactions and accounts to see your cashflow forecast.'}
-            </p>
-            {error && (
-              <button
-                onClick={fetchCashflowData}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Try Again
-              </button>
-            )}
-          </div>
+        <div className="p-6 max-w-7xl mx-auto">
+          <ErrorState
+            error="No cashflow data available. Add accounts and transactions to see your forecast."
+            onRetry={fetchCashflowData}
+          />
         </div>
       </DashboardLayout>
     );
   }
 
-  const { forecast, optimisations, insights } = data;
-  const summary = forecast.summary;
-
   return (
     <DashboardLayout>
-      <div className="p-6">
+      <div className="p-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold">Cashflow Forecast</h1>
-            <p className="text-gray-500 text-sm">90-day prediction & optimisation</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Cash Position
+            </h1>
+            <p className="text-gray-500 mt-1">
+              Your 90-day financial forecast and optimization
+            </p>
           </div>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className={`${componentClasses.buttonSecondary} min-w-[120px]`}
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            {refreshing ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            {refreshing ? 'Updating...' : 'Refresh'}
           </button>
         </div>
 
-        {/* Shortfall Alert */}
-        {forecast.shortfallAnalysis.hasShortfall && (
-          <div className="mb-6">
-            <ShortfallAlert analysis={forecast.shortfallAnalysis} />
+        {/* Section 1: Cash Position Forecast (Hero) */}
+        <div className="mb-8">
+          <CashPositionChart
+            forecast={data.forecast.globalForecast}
+            emergencyBuffer={data.forecast.summary.monthlyBurnRate * 3}
+          />
+        </div>
+
+        {/* Sections 2 & 3: Upcoming Movements + Break-Even */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <UpcomingMovements movements={movements} />
+          <BreakEvenTimeline
+            breakEvenDay={data.optimisations.breakEvenDay}
+            totalIncome30={data.forecast.summary.totalIncome30}
+            totalExpenses30={data.forecast.summary.totalExpenses30}
+          />
+        </div>
+
+        {/* Section 4: Smart Cash Allocation */}
+        {allocationRecommendations.length > 0 && (
+          <div className="mb-8">
+            <SmartAllocation
+              recommendations={allocationRecommendations}
+              // onTransfer would connect to actual transfer API
+            />
           </div>
         )}
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <MetricCard
-            title="30-Day Net Cashflow"
-            value={formatCurrency(summary.netCashflow30)}
-            icon={<DollarSign className="h-5 w-5" />}
-            trend={summary.netCashflow30 >= 0 ? 'up' : 'down'}
-            color={summary.netCashflow30 >= 0 ? 'green' : 'red'}
+        {/* Sections 5 & 6: Liquidity Health + Stability Score */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <LiquidityHealth
+            tiers={liquidityTiers}
+            monthlyExpenses={data.forecast.summary.monthlyBurnRate}
           />
-          <MetricCard
-            title="Monthly Burn Rate"
-            value={formatCurrency(summary.monthlyBurnRate)}
-            subtitle="Average monthly expenses"
-            icon={<CreditCard className="h-5 w-5" />}
-            color="yellow"
-          />
-          <MetricCard
-            title="Withdrawable Cash"
-            value={formatCurrency(summary.withdrawableCash)}
-            subtitle="After 3-month buffer"
-            icon={<Wallet className="h-5 w-5" />}
-            color="blue"
-          />
-          <MetricCard
-            title="Potential Savings"
-            value={formatCurrency(optimisations.summary.totalPotentialSavings)}
-            subtitle={`${optimisations.summary.strategyCount} strategies`}
-            icon={<Zap className="h-5 w-5" />}
-            color="green"
+          <StabilityScore
+            score={stabilityScore}
+            riskFactors={riskFactors}
           />
         </div>
 
-        {/* Forecast Chart + Upcoming Payments */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="md:col-span-2">
-            <ForecastChart forecast={forecast.globalForecast} />
-          </div>
-          <div>
-            <UpcomingPayments recurring={forecast.recurringTimeline} />
-          </div>
-        </div>
-
-        {/* Strategies + Insights */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Strategies */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Target className="h-5 w-5 text-blue-500" />
-              Recommended Strategies
-              {optimisations.strategies.length > 0 && (
-                <span className="text-sm font-normal text-gray-500">
-                  ({optimisations.strategies.length})
-                </span>
-              )}
-            </h3>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {optimisations.strategies.map((strategy) => (
-                <StrategyCard
-                  key={strategy.id}
-                  strategy={strategy}
-                  onAccept={() => handleStrategyAction(strategy.id, 'accept')}
-                  onDismiss={() => handleStrategyAction(strategy.id, 'dismiss')}
-                />
-              ))}
-              {optimisations.strategies.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <CheckCircle className="h-12 w-12 mx-auto text-green-400 mb-2" />
-                  <p>No strategies needed - you&apos;re doing great!</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Insights */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Info className="h-5 w-5 text-yellow-500" />
-              Cashflow Insights
-              {insights.length > 0 && (
-                <span className="text-sm font-normal text-gray-500">({insights.length})</span>
-              )}
-            </h3>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {insights.map((insight) => (
-                <InsightCard key={insight.id} insight={insight} />
-              ))}
-              {insights.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <CheckCircle className="h-12 w-12 mx-auto text-green-400 mb-2" />
-                  <p>No issues detected</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Break-even Info */}
-        {optimisations.breakEvenDay > 0 && (
-          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-blue-800">
-              <Clock className="h-5 w-5" />
-              <span className="font-medium">
-                Break-even Day: {optimisations.breakEvenDay} of each month
-              </span>
-            </div>
-            <p className="text-sm text-blue-700 mt-1">
-              This is when your monthly income catches up with expenses.
-            </p>
-          </div>
-        )}
-
-        {/* Volatility Index */}
-        {forecast.volatilityIndex > 30 && (
-          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-yellow-800">
-              <AlertTriangle className="h-5 w-5" />
-              <span className="font-medium">
-                Volatility Index: {forecast.volatilityIndex.toFixed(0)}/100
-              </span>
-            </div>
-            <p className="text-sm text-yellow-700 mt-1">
-              Your spending patterns show some variability. Consider tracking expenses more closely.
-            </p>
+        {/* Section 7: Smart Actions */}
+        {smartActions.length > 0 && (
+          <div className="mb-8">
+            <SmartActions
+              actions={smartActions}
+              // onComplete and onDismiss would update state/API
+            />
           </div>
         )}
       </div>
