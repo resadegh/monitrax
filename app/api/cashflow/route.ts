@@ -301,7 +301,7 @@ export async function GET(request: NextRequest) {
 
       // Lite mode - return minimal data quickly (useful for cold starts)
       if (type === 'lite') {
-        const [accounts, income] = await Promise.all([
+        const [accounts, income, expenses] = await Promise.all([
           prisma.account.findMany({
             where: { userId },
             select: { id: true, name: true, currentBalance: true, type: true },
@@ -310,37 +310,65 @@ export async function GET(request: NextRequest) {
             where: { userId },
             select: { amount: true, frequency: true },
           }),
+          prisma.expense.findMany({
+            where: { userId },
+            select: { amount: true, frequency: true },
+          }),
         ]);
 
         const totalBalance = accounts.reduce((sum, a) => sum + Number(a.currentBalance), 0);
         const monthlyIncome = income.reduce((sum, i) => sum + normalizeToMonthly(Number(i.amount), i.frequency), 0);
+        const monthlyExpenses = expenses.reduce((sum, e) => sum + normalizeToMonthly(Number(e.amount), e.frequency), 0);
+        const dailyNet = (monthlyIncome - monthlyExpenses) / 30;
+
+        // Generate simple 90-day forecast
+        const globalForecast = [];
+        let runningBalance = totalBalance;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        for (let day = 0; day < 90; day++) {
+          const forecastDate = new Date(today);
+          forecastDate.setDate(forecastDate.getDate() + day);
+
+          globalForecast.push({
+            date: forecastDate.toISOString(),
+            predictedBalance: runningBalance,
+            predictedIncome: day % 30 === 14 ? monthlyIncome : 0, // Assume income on 15th
+            predictedExpenses: monthlyExpenses / 30,
+            confidenceScore: Math.max(0.5, 0.95 - day * 0.005),
+            shortfallRisk: runningBalance < 0,
+          });
+
+          runningBalance += dailyNet;
+        }
 
         return NextResponse.json({
           success: true,
           data: {
             forecast: {
-              globalForecast: [],
+              globalForecast,
               summary: {
-                avgDailyBalance30: totalBalance,
+                avgDailyBalance30: totalBalance + (dailyNet * 15),
                 totalIncome30: monthlyIncome,
-                totalExpenses30: 0,
-                netCashflow30: monthlyIncome,
-                avgDailyBalance90: totalBalance,
+                totalExpenses30: monthlyExpenses,
+                netCashflow30: monthlyIncome - monthlyExpenses,
+                avgDailyBalance90: totalBalance + (dailyNet * 45),
                 totalIncome90: monthlyIncome * 3,
-                totalExpenses90: 0,
-                netCashflow90: monthlyIncome * 3,
-                monthlyBurnRate: 0,
-                threeMonthBurnRate: 0,
-                withdrawableCash: totalBalance,
+                totalExpenses90: monthlyExpenses * 3,
+                netCashflow90: (monthlyIncome - monthlyExpenses) * 3,
+                monthlyBurnRate: monthlyExpenses,
+                threeMonthBurnRate: monthlyExpenses * 3,
+                withdrawableCash: Math.max(0, totalBalance - monthlyExpenses * 3),
               },
               shortfallAnalysis: {
-                hasShortfall: false,
+                hasShortfall: runningBalance < 0,
                 shortfallDates: [],
                 maxShortfallAmount: 0,
                 totalShortfallDays: 0,
                 accountsAtRisk: [],
               },
-              volatilityIndex: 0,
+              volatilityIndex: 20, // Low estimate for lite mode
               recurringTimeline: [],
               accountForecasts: accounts.map(a => ({
                 accountId: a.id,
@@ -350,13 +378,13 @@ export async function GET(request: NextRequest) {
             },
             optimisations: {
               fundMovements: [],
-              breakEvenDay: 0,
+              breakEvenDay: monthlyIncome > 0 ? Math.ceil(monthlyExpenses / (monthlyIncome / 30)) : -1,
               summary: { totalPotentialSavings: 0 },
               strategies: [],
             },
             insights: [],
             generatedAt: new Date(),
-            metadata: { mode: 'lite', message: 'Lite mode - run full analysis for complete data' },
+            metadata: { mode: 'lite', message: 'Lite mode - click Refresh for full analysis' },
           },
         });
       }
