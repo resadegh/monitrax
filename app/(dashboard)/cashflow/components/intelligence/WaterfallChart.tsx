@@ -161,8 +161,6 @@ export default function WaterfallChart({
         };
       } else if (item.type === 'expense') {
         // Expense: show remaining green + red expense
-        // If running total is still positive, show green remaining + red expense
-        // If running total goes negative, show the negative portion in red below zero
         const expenseAmount = Math.abs(item.value);
 
         if (runningTotal >= 0) {
@@ -180,16 +178,16 @@ export default function WaterfallChart({
             ...item,
             remaining: 0, // No green left
             expense: prevTotal, // Red portion above zero
-            negative: Math.abs(runningTotal), // Red portion below zero
+            negative: runningTotal, // Negative value (will render below zero)
             runningTotal,
           };
         } else {
-          // Already negative - all red below zero
+          // Already negative - show how much MORE negative
           return {
             ...item,
             remaining: 0,
             expense: 0,
-            negative: Math.abs(runningTotal),
+            negative: runningTotal, // Negative value (will render below zero)
             runningTotal,
           };
         }
@@ -208,7 +206,7 @@ export default function WaterfallChart({
             ...item,
             remaining: 0,
             expense: 0,
-            negative: Math.abs(runningTotal),
+            negative: runningTotal, // Negative value renders below zero
             runningTotal,
           };
         }
@@ -218,7 +216,7 @@ export default function WaterfallChart({
 
   // Calculate chart bounds
   const maxValue = Math.max(netIncome * 1.1, ...chartData.map(d => d.remaining + d.expense));
-  const minValue = Math.min(0, ...chartData.map(d => -d.negative)) * 1.1;
+  const minValue = Math.min(0, ...chartData.map(d => d.negative)) * 1.1;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
