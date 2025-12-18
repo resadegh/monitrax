@@ -121,8 +121,8 @@ export async function POST(request: NextRequest) {
 
     // Collect all entity links for lookup
     const allLinks: { entityType: string; entityId: string }[] = [];
-    documents.forEach(doc => {
-      doc.links.forEach(link => {
+    documents.forEach((doc: typeof documents[0]) => {
+      doc.links.forEach((link: typeof doc.links[0]) => {
         allLinks.push({ entityType: link.entityType, entityId: link.entityId });
       });
     });

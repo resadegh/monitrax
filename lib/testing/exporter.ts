@@ -171,9 +171,9 @@ export class TestScenarioExporter {
         income: income.length,
         expenses: expenses.length,
         investmentAccounts: investmentAccounts.length,
-        holdings: investmentAccounts.reduce((sum, a) => sum + a.holdings.length, 0),
+        holdings: investmentAccounts.reduce((sum: number, a: typeof investmentAccounts[0]) => sum + a.holdings.length, 0),
         investmentTransactions: investmentAccounts.reduce(
-          (sum, a) => sum + a.transactions.length,
+          (sum: number, a: typeof investmentAccounts[0]) => sum + a.transactions.length,
           0
         ),
         depreciationSchedules: depreciationSchedules.length,
