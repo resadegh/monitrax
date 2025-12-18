@@ -1291,6 +1291,7 @@ enum TransactionSource {
   BANK        // Bank feed integration
   CSV         // CSV import
   OFX         // OFX/QFX file import
+  QIF         // QIF file import (legacy)
   MANUAL      // Manual entry
 }
 
