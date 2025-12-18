@@ -344,6 +344,9 @@ model User {
   budgetAnalyses          BudgetAnalysis[]
   debtAnalyses            DebtAnalysis[]
 
+  // Phase 29: Cashflow Intelligence Center
+  cashflowSummaries       CashflowSummary[]
+
   @@map("users")
 }
 
@@ -2692,4 +2695,31 @@ model DebtAnalysis {
   @@index([userId])
   @@index([analysisDate])
   @@map("debt_analyses")
+}
+
+// =============================================================================
+// PHASE 29: CASHFLOW INTELLIGENCE CENTER
+// =============================================================================
+
+// Cached Gemini AI summaries (regenerated only on significant data changes)
+model CashflowSummary {
+  id           String   @id @default(uuid())
+  userId       String
+
+  // Summary content
+  content      String   @db.Text          // Gemini-generated summary
+  keyInsights  Json                       // Array of key insight strings
+  dataHash     String                     // Hash of input data for change detection
+
+  // Timestamps
+  generatedAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationships
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([generatedAt])
+  @@map("cashflow_summaries")
 }
