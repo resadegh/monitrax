@@ -105,6 +105,10 @@ function AccountsPageContent() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncingConnectionId, setSyncingConnectionId] = useState<string | null>(null);
 
+  // Transaction pagination in account detail dialog
+  const [txPage, setTxPage] = useState(1);
+  const TX_PER_PAGE = 20;
+
   useEffect(() => {
     if (token) {
       loadAccounts();
@@ -293,6 +297,7 @@ function AccountsPageContent() {
 
   const handleViewDetails = (account: Account) => {
     setSelectedAccount(account);
+    setTxPage(1); // Reset pagination when viewing a new account
     setShowDetailDialog(true);
   };
 
@@ -316,6 +321,15 @@ function AccountsPageContent() {
       currency: 'AUD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
+    }).format(amount);
+
+  // Full decimal currency formatting for transaction amounts
+  const formatCurrencyFull = (amount: number) =>
+    new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
 
   const formatDate = (dateString: string) => {
@@ -867,36 +881,74 @@ function AccountsPageContent() {
               <TabsContent value="transactions" className="space-y-4 pt-4">
                 {selectedAccount.transactions && selectedAccount.transactions.length > 0 ? (
                   <div className="space-y-2">
-                    {selectedAccount.transactions.slice(0, 15).map((tx) => (
-                      <Card key={tx.id}>
-                        <CardContent className="pt-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex items-start gap-3">
-                              {tx.type === 'CREDIT' ? (
-                                <ArrowDownRight className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <ArrowUpRight className="h-4 w-4 text-red-600" />
-                              )}
-                              <div>
-                                <p className="font-medium">{tx.description}</p>
-                                <p className="text-sm text-muted-foreground">{formatDate(tx.date)}</p>
-                                {tx.category && (
-                                  <Badge variant="outline" className="mt-1">{tx.category}</Badge>
-                                )}
-                              </div>
+                    {(() => {
+                      const totalTx = selectedAccount.transactions?.length || 0;
+                      const totalPages = Math.ceil(totalTx / TX_PER_PAGE);
+                      const startIdx = (txPage - 1) * TX_PER_PAGE;
+                      const endIdx = startIdx + TX_PER_PAGE;
+                      const paginatedTx = selectedAccount.transactions?.slice(startIdx, endIdx) || [];
+
+                      return (
+                        <>
+                          {paginatedTx.map((tx) => (
+                            <Card key={tx.id}>
+                              <CardContent className="pt-4">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex items-start gap-3">
+                                    {tx.type === 'CREDIT' ? (
+                                      <ArrowDownRight className="h-4 w-4 text-green-600" />
+                                    ) : (
+                                      <ArrowUpRight className="h-4 w-4 text-red-600" />
+                                    )}
+                                    <div>
+                                      <p className="font-medium">{tx.description}</p>
+                                      <p className="text-sm text-muted-foreground">{formatDate(tx.date)}</p>
+                                      {tx.category && (
+                                        <Badge variant="outline" className="mt-1">{tx.category}</Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className={`font-semibold ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
+                                    {tx.type === 'CREDIT' ? '+' : '-'}{formatCurrencyFull(Math.abs(tx.amount))}
+                                  </p>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+
+                          {/* Pagination controls */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between pt-4 border-t">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setTxPage((p) => Math.max(1, p - 1))}
+                                disabled={txPage === 1}
+                              >
+                                Previous
+                              </Button>
+                              <span className="text-sm text-muted-foreground">
+                                Page {txPage} of {totalPages} ({totalTx} transactions)
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setTxPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={txPage === totalPages}
+                              >
+                                Next
+                              </Button>
                             </div>
-                            <p className={`font-semibold ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
-                              {tx.type === 'CREDIT' ? '+' : '-'}{formatCurrency(Math.abs(tx.amount))}
+                          )}
+
+                          {totalPages === 1 && (
+                            <p className="text-center text-sm text-muted-foreground pt-2">
+                              {totalTx} transaction{totalTx !== 1 ? 's' : ''}
                             </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                    {selectedAccount.transactions.length > 15 && (
-                      <p className="text-center text-sm text-muted-foreground">
-                        Showing 15 of {selectedAccount.transactions.length} transactions
-                      </p>
-                    )}
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
