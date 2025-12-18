@@ -185,7 +185,7 @@ function extractKeyInsights(input: SummaryInput): string[] {
     const savingsRate = ((input.netSurplus / input.monthlyIncome) * 100).toFixed(0);
     insights.push(`You're saving ${savingsRate}% of your income each month`);
   } else {
-    insights.push('You're spending more than you earn - review expenses');
+    insights.push("You're spending more than you earn - review expenses");
   }
 
   // Leakage insight

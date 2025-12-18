@@ -316,9 +316,9 @@ export async function GET(request: NextRequest) {
           }),
         ]);
 
-        const totalBalance = accounts.reduce((sum, a) => sum + Number(a.currentBalance), 0);
-        const monthlyIncome = income.reduce((sum, i) => sum + normalizeToMonthly(Number(i.amount), i.frequency), 0);
-        const monthlyExpenses = expenses.reduce((sum, e) => sum + normalizeToMonthly(Number(e.amount), e.frequency), 0);
+        const totalBalance = accounts.reduce((sum: number, a: any) => sum + Number(a.currentBalance), 0);
+        const monthlyIncome = income.reduce((sum: number, i: any) => sum + normalizeToMonthly(Number(i.amount), i.frequency), 0);
+        const monthlyExpenses = expenses.reduce((sum: number, e: any) => sum + normalizeToMonthly(Number(e.amount), e.frequency), 0);
         const dailyNet = (monthlyIncome - monthlyExpenses) / 30;
 
         // Generate simple 90-day forecast
@@ -370,7 +370,7 @@ export async function GET(request: NextRequest) {
               },
               volatilityIndex: 20, // Low estimate for lite mode
               recurringTimeline: [],
-              accountForecasts: accounts.map(a => ({
+              accountForecasts: accounts.map((a: any) => ({
                 accountId: a.id,
                 accountName: a.name,
                 averageBalance: Number(a.currentBalance),

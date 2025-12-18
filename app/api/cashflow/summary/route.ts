@@ -62,7 +62,7 @@ async function buildSummaryInput(userId: string) {
   ]);
 
   // Calculate monthly income (NET after PAYG)
-  const monthlyIncome = income.reduce((sum, i: any) => {
+  const monthlyIncome = income.reduce((sum: number, i: any) => {
     const baseStream = {
       id: i.id,
       name: i.name,
@@ -81,19 +81,19 @@ async function buildSummaryInput(userId: string) {
 
   // Calculate monthly expenses
   const monthlyExpenses = expenses.reduce(
-    (sum, e: any) => sum + normalizeToMonthly(Number(e.amount), e.frequency),
+    (sum: number, e: any) => sum + normalizeToMonthly(Number(e.amount), e.frequency),
     0
   );
 
   // Calculate monthly loan repayments
   const monthlyLoanRepayments = loans.reduce(
-    (sum, l: any) => sum + Number(l.minRepayment || 0),
+    (sum: number, l: any) => sum + Number(l.minRepayment || 0),
     0
   );
 
   // Calculate total balance
   const totalBalance = accounts.reduce(
-    (sum, a: any) => sum + Number(a.currentBalance),
+    (sum: number, a: any) => sum + Number(a.currentBalance),
     0
   );
 
@@ -107,7 +107,7 @@ async function buildSummaryInput(userId: string) {
   // Calculate leakage (simplified - from price increases)
   const leakageTotal = leaks
     .filter((l: any) => l.priceIncreaseAlert && l.lastPriceChange)
-    .reduce((sum, l: any) => sum + Number(l.lastPriceChange || 0), 0);
+    .reduce((sum: number, l: any) => sum + Number(l.lastPriceChange || 0), 0);
 
   const topLeaks = leaks
     .filter((l: any) => l.priceIncreaseAlert)
