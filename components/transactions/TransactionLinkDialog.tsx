@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link2, Plus, RefreshCw, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign } from 'lucide-react';
+import { Link2, Plus, RefreshCw, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
   Dialog,
@@ -128,15 +128,21 @@ export function TransactionLinkDialog({
     type: string;
     platform: string | null;
   }>>([]);
+  const [assets, setAssets] = useState<Array<{
+    id: string;
+    name: string;
+    type: string;
+  }>>([]);
 
   // Create new form state
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [newFrequency, setNewFrequency] = useState('MONTHLY');
-  const [sourceType, setSourceType] = useState<'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT'>('GENERAL');
+  const [sourceType, setSourceType] = useState<'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET'>('GENERAL');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
   const [selectedInvestmentAccountId, setSelectedInvestmentAccountId] = useState<string | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [isEssential, setIsEssential] = useState(true);
   const [isTaxDeductible, setIsTaxDeductible] = useState(false);
 
@@ -154,6 +160,7 @@ export function TransactionLinkDialog({
       setSelectedPropertyId(null);
       setSelectedLoanId(null);
       setSelectedInvestmentAccountId(null);
+      setSelectedAssetId(null);
       setIsEssential(true);
       setIsTaxDeductible(false);
       setUpdateAmountOnLink(false);
@@ -184,6 +191,7 @@ export function TransactionLinkDialog({
       setProperties(data.availableSources?.properties || []);
       setSourceLoansList(data.availableSources?.loans || []);
       setInvestmentAccounts(data.availableSources?.investmentAccounts || []);
+      setAssets(data.availableSources?.assets || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load matches');
     } finally {
@@ -275,6 +283,8 @@ export function TransactionLinkDialog({
           requestBody.loanId = selectedLoanId;
         } else if (sourceType === 'INVESTMENT' && selectedInvestmentAccountId) {
           requestBody.investmentAccountId = selectedInvestmentAccountId;
+        } else if (sourceType === 'ASSET' && selectedAssetId) {
+          requestBody.assetId = selectedAssetId;
         }
         requestBody.isEssential = isEssential;
         requestBody.isTaxDeductible = isTaxDeductible;
@@ -647,12 +657,13 @@ export function TransactionLinkDialog({
                 <Label>Source</Label>
                 <Select
                   value={sourceType}
-                  onValueChange={(value: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT') => {
+                  onValueChange={(value: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET') => {
                     setSourceType(value);
                     // Clear entity selections when source type changes
                     setSelectedPropertyId(null);
                     setSelectedLoanId(null);
                     setSelectedInvestmentAccountId(null);
+                    setSelectedAssetId(null);
                     // Auto-set tax deductible for property/loan expenses
                     if (!isIncome && (value === 'PROPERTY' || value === 'LOAN')) {
                       setIsTaxDeductible(true);
@@ -693,6 +704,14 @@ export function TransactionLinkDialog({
                         Investment
                       </div>
                     </SelectItem>
+                    {!isIncome && (
+                      <SelectItem value="ASSET">
+                        <div className="flex items-center gap-2">
+                          <Package className="h-4 w-4 text-teal-500" />
+                          Asset
+                        </div>
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -775,6 +794,35 @@ export function TransactionLinkDialog({
                             <div className="flex items-center gap-2">
                               <Briefcase className="h-4 w-4" />
                               {account.name}
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Asset Selector (expenses only) */}
+              {sourceType === 'ASSET' && !isIncome && (
+                <div className="space-y-2">
+                  <Label>Linked Asset</Label>
+                  <Select
+                    value={selectedAssetId || ''}
+                    onValueChange={(value) => setSelectedAssetId(value || null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an asset" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assets.length === 0 ? (
+                        <SelectItem value="" disabled>No assets available</SelectItem>
+                      ) : (
+                        assets.map((asset) => (
+                          <SelectItem key={asset.id} value={asset.id}>
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4" />
+                              {asset.name}
                             </div>
                           </SelectItem>
                         ))

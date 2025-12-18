@@ -24,10 +24,11 @@ interface LinkRequest {
   frequency?: string;
   isRecurring?: boolean;
   // Source type and entity linking (for expense creation)
-  sourceType?: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT';
+  sourceType?: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
   propertyId?: string;
   loanId?: string;
   investmentAccountId?: string;
+  assetId?: string;
   // For income
   incomeSourceType?: 'GENERAL' | 'PROPERTY' | 'INVESTMENT';
   isTaxable?: boolean;
@@ -228,10 +229,11 @@ export async function POST(
               category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
               amount: number;
               frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
-              sourceType?: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT';
+              sourceType?: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
               propertyId?: string;
               loanId?: string;
               investmentAccountId?: string;
+              assetId?: string;
               isEssential?: boolean;
               isTaxDeductible?: boolean;
             } = {
@@ -255,6 +257,8 @@ export async function POST(
                 expenseData.isTaxDeductible = true;
               } else if (body.sourceType === 'INVESTMENT' && body.investmentAccountId) {
                 expenseData.investmentAccountId = body.investmentAccountId;
+              } else if (body.sourceType === 'ASSET' && body.assetId) {
+                expenseData.assetId = body.assetId;
               }
             }
             if (body.isEssential !== undefined) {
@@ -490,6 +494,17 @@ export async function GET(
         orderBy: { name: 'asc' },
       });
 
+      // Get all assets for source linking
+      const assets = await prisma.asset.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+
       // Find potential matches using similarity
       const searchText = (transaction.merchantStandardised || transaction.description).toLowerCase();
       const txAmount = transaction.amount;
@@ -624,6 +639,7 @@ export async function GET(
           properties,
           loans: loanEntries,
           investmentAccounts,
+          assets,
         },
       });
     } catch (error) {
