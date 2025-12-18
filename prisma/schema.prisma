@@ -1303,7 +1303,6 @@ enum TransactionSource {
   CSV         // CSV import
   QIF         // QIF file import (MYOB/Quicken)
   OFX         // OFX/QFX file import
-  QIF         // QIF file import (legacy)
   MANUAL      // Manual entry
 }
 
