@@ -403,13 +403,23 @@ export function parseQIF(content: string): ParsedFile {
   let openingBalance = qifResult.openingBalance;
   let closingBalance: number | undefined;
 
-  if (openingBalance !== undefined && transactions.length > 0) {
-    // Calculate closing balance from opening + all transactions
-    closingBalance = openingBalance;
+  if (transactions.length > 0) {
+    // Calculate the sum of all transactions
+    let transactionSum = 0;
     for (const tx of qifResult.transactions) {
       if (tx.amount !== undefined) {
-        closingBalance += tx.amount;
+        transactionSum += tx.amount;
       }
+    }
+
+    if (openingBalance !== undefined) {
+      // If we have opening balance, calculate closing from it
+      closingBalance = openingBalance + transactionSum;
+    } else {
+      // Without opening balance, use transaction sum as relative closing balance
+      // This represents the net change - useful for showing current position
+      // Note: For accurate balance, user should manually verify/adjust after import
+      closingBalance = transactionSum;
     }
   }
 
