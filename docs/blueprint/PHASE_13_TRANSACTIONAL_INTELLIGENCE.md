@@ -529,3 +529,98 @@ export {
 3. **Historical Data Merge:**
    - Option to preserve categorization from imports
    - Apply learned merchant mappings to Basiq transactions
+
+---
+
+## 13.11 Transaction Link Dialog Enhancements
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.11.1 Asset Source Type for Expenses
+
+**Files:**
+- `components/transactions/TransactionLinkDialog.tsx`
+- `app/api/transactions/[id]/link/route.ts`
+
+When linking a transaction to create a new expense entry, users can now select "Asset" as the expense source type, matching the Add New Expense dialog.
+
+#### Available Source Types (Expenses):
+| Source Type | Icon | Description |
+|-------------|------|-------------|
+| General | DollarSign | General expenses not linked to any entity |
+| Property | Home | Property-related expenses |
+| Loan | Landmark | Loan-related expenses (auto-sets LOAN_INTEREST category) |
+| Investment | Briefcase | Investment account expenses |
+| **Asset** | Package | **NEW:** Asset-related expenses (vehicles, equipment, etc.) |
+
+#### Implementation:
+
+**State Management:**
+```typescript
+const [sourceType, setSourceType] = useState<'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET'>('GENERAL');
+const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+```
+
+**API Request Body:**
+```typescript
+if (sourceType === 'ASSET' && selectedAssetId) {
+  requestBody.assetId = selectedAssetId;
+}
+```
+
+**API LinkRequest Interface:**
+```typescript
+interface LinkRequest {
+  // ... existing fields ...
+  sourceType?: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
+  assetId?: string;  // NEW
+}
+```
+
+#### Asset Selector UI:
+```tsx
+{sourceType === 'ASSET' && !isIncome && (
+  <div className="space-y-2">
+    <Label>Linked Asset</Label>
+    <Select
+      value={selectedAssetId || ''}
+      onValueChange={(value) => setSelectedAssetId(value || null)}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Select an asset" />
+      </SelectTrigger>
+      <SelectContent>
+        {assets.map((asset) => (
+          <SelectItem key={asset.id} value={asset.id}>
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              {asset.name}
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+)}
+```
+
+### 13.11.2 API Updates for Asset Source
+
+**GET `/api/transactions/[id]/link`:**
+Now returns assets in `availableSources`:
+```typescript
+availableSources: {
+  properties: Property[],
+  loans: Loan[],
+  investmentAccounts: InvestmentAccount[],
+  assets: Asset[],  // NEW
+}
+```
+
+**POST `/api/transactions/[id]/link` (action: create):**
+When creating an expense with `sourceType: 'ASSET'`:
+```typescript
+if (body.sourceType === 'ASSET' && body.assetId) {
+  expenseData.assetId = body.assetId;
+}
+```

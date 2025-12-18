@@ -470,3 +470,107 @@ This adds:
 - `balanceSource` field on Account
 - `balanceLastUpdatedAt` field on Account
 - `lastImportedBalance` field on Account
+
+---
+
+### 18.12.7 Transactions Page Account Filter
+
+> **Status: IMPLEMENTED** (December 2025)
+
+**File:** `app/(dashboard)/transactions/page.tsx`
+
+The transactions page now includes a prominent account filter to allow users to view transactions per bank account instead of all transactions mixed together.
+
+#### Features:
+- **Account Selector** - Dropdown at top of page showing all accounts
+- **Clear Filter Button** - Quick reset to view all accounts
+- **Filter Integration** - Works with existing search, category, date range filters
+- **Automatic Reset** - Pagination resets to page 1 when filter changes
+
+#### UI Implementation:
+```tsx
+// Account filter - prominent selector
+<div className="bg-white rounded-lg shadow mb-4 p-4">
+  <div className="flex items-center gap-4">
+    <label>View Account:</label>
+    <select
+      value={accountFilter}
+      onChange={(e) => {
+        setAccountFilter(e.target.value);
+        setPage(1);
+      }}
+    >
+      <option value="">All Accounts</option>
+      {accounts.map((account) => (
+        <option key={account.id} value={account.id}>
+          {account.name} ({account.type})
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
+```
+
+#### API Integration:
+The filter passes `accountId` parameter to the unified-transactions API:
+```typescript
+if (accountFilter) params.append('accountId', accountFilter);
+```
+
+---
+
+### 18.12.8 Account Dialog Transactions Tab Improvements
+
+> **Status: IMPLEMENTED** (December 2025)
+
+**File:** `app/dashboard/accounts/page.tsx`
+
+Fixed two issues with the transactions tab in the Account detail dialog:
+
+#### Issue 1: Incorrect Amount Formatting
+**Problem:** Transaction amounts were rounded (showing -$16 instead of -$15.70)
+
+**Root Cause:** The `formatCurrency` function used `maximumFractionDigits: 0`
+
+**Solution:** Added `formatCurrencyFull` function for transaction amounts:
+```typescript
+const formatCurrencyFull = (amount: number) =>
+  new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+```
+
+#### Issue 2: Limited Transactions Display
+**Problem:** Only showing first 15 transactions with no way to see more
+
+**Solution:** Added pagination with 20 transactions per page:
+```typescript
+const [txPage, setTxPage] = useState(1);
+const TX_PER_PAGE = 20;
+
+// Pagination controls
+{totalPages > 1 && (
+  <div className="flex items-center justify-between">
+    <Button onClick={() => setTxPage((p) => Math.max(1, p - 1))} disabled={txPage === 1}>
+      Previous
+    </Button>
+    <span>Page {txPage} of {totalPages} ({totalTx} transactions)</span>
+    <Button onClick={() => setTxPage((p) => Math.min(totalPages, p + 1))} disabled={txPage === totalPages}>
+      Next
+    </Button>
+  </div>
+)}
+```
+
+#### Pagination Reset:
+Page resets to 1 when viewing a different account:
+```typescript
+const handleViewDetails = (account: Account) => {
+  setSelectedAccount(account);
+  setTxPage(1); // Reset pagination
+  setShowDetailDialog(true);
+};
+```
