@@ -400,11 +400,14 @@ export async function GET(request: NextRequest) {
       });
     } catch (error) {
       console.error('Cashflow API error:', error);
+      const errorMessage = error instanceof Error
+        ? `${error.message}\n${error.stack}`
+        : 'Unknown error';
       return NextResponse.json(
         {
           success: false,
           error: 'Failed to generate cashflow data',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          details: errorMessage,
         },
         { status: 500 }
       );
