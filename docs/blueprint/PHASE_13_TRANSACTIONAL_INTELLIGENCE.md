@@ -402,3 +402,225 @@ const CATEGORIES = [
    - Split transaction support
    - Bulk category corrections
    - Export functionality
+
+---
+
+## 13.10 Basiq Integration & Data Source Priority
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.10.1 Data Source Hierarchy
+
+Transaction data can come from multiple sources. The following priority order applies:
+
+```
+BASIQ (Open Banking) > IMPORT (CSV/QIF/OFX) > MANUAL
+```
+
+When Basiq is activated for an account, it becomes the **source of truth** for that account's transactions.
+
+### 13.10.2 Basiq Sync Service
+
+**File:** `lib/bank/basiqSync.ts`
+
+The Basiq sync service handles:
+1. **Transaction Import from Basiq API**
+2. **Superseding existing imported transactions**
+3. **Balance synchronization**
+4. **Import eligibility checking**
+
+#### Key Exports:
+```typescript
+// Sync transactions from Basiq
+export async function syncBasiqTransactions(
+  userId: string,
+  accountId: string,
+  options?: BasiqSyncOptions
+): Promise<BasiqSyncResult>
+
+// Check if manual import is allowed
+export async function canAcceptManualImport(
+  accountId: string
+): Promise<{ canImport: boolean; reason?: string; basiqStatus?: string }>
+
+// Get transaction counts by source
+export async function getTransactionSourceCounts(
+  userId: string,
+  accountId: string
+): Promise<Record<string, number>>
+```
+
+### 13.10.3 Transaction Supersession
+
+When Basiq is activated for an account with existing imported transactions:
+
+1. Existing CSV/QIF/OFX transactions are tagged with `SUPERSEDED_BY_BASIQ`
+2. Superseded transactions are excluded from normal views but retained for audit
+3. Basiq transactions replace them as the authoritative source
+
+```typescript
+// Transactions table structure
+{
+  source: 'CSV' | 'QIF' | 'OFX' | 'BANK' | 'MANUAL',
+  tags: string[],  // includes 'SUPERSEDED_BY_BASIQ' when applicable
+  externalId: string  // Basiq transaction ID for BANK source
+}
+```
+
+### 13.10.4 Balance Source Tracking
+
+**Schema Changes:**
+```prisma
+enum BalanceSource {
+  MANUAL     // User manually entered
+  IMPORT     // From CSV/QIF/OFX file
+  BASIQ      // From Open Banking
+}
+
+model Account {
+  balanceSource        BalanceSource @default(MANUAL)
+  balanceLastUpdatedAt DateTime?
+  lastImportedBalance  Float?
+}
+```
+
+**Priority Rules:**
+- Basiq balance always takes priority when connection is ACTIVE
+- Import cannot override Basiq-connected account balance
+- Manual entry can set balance when no Basiq connection
+
+### 13.10.5 Import Flow with Basiq Check
+
+When a user attempts to import transactions to an account:
+
+```
+1. User selects account in Import Wizard
+2. System calls canAcceptManualImport(accountId)
+3. If account has active Basiq connection:
+   - Import is blocked
+   - User sees: "This account is connected to Open Banking.
+     Transactions are synced automatically from your bank."
+4. If no Basiq or inactive:
+   - Import proceeds normally
+   - Balance updated with source: 'IMPORT'
+```
+
+### 13.10.6 API Updates
+
+**New Exports from `lib/bank/`:**
+```typescript
+export {
+  syncBasiqTransactions,
+  canAcceptManualImport,
+  getTransactionSourceCounts,
+} from './basiqSync';
+```
+
+### 13.10.7 Future Enhancements
+
+1. **Basiq Webhook Integration:**
+   - Real-time transaction sync on bank updates
+   - Push notifications for new transactions
+
+2. **Reconciliation Report:**
+   - Show differences between imported and Basiq data
+   - Allow user to resolve conflicts before supersession
+
+3. **Historical Data Merge:**
+   - Option to preserve categorization from imports
+   - Apply learned merchant mappings to Basiq transactions
+
+---
+
+## 13.11 Transaction Link Dialog Enhancements
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.11.1 Asset Source Type for Expenses
+
+**Files:**
+- `components/transactions/TransactionLinkDialog.tsx`
+- `app/api/transactions/[id]/link/route.ts`
+
+When linking a transaction to create a new expense entry, users can now select "Asset" as the expense source type, matching the Add New Expense dialog.
+
+#### Available Source Types (Expenses):
+| Source Type | Icon | Description |
+|-------------|------|-------------|
+| General | DollarSign | General expenses not linked to any entity |
+| Property | Home | Property-related expenses |
+| Loan | Landmark | Loan-related expenses (auto-sets LOAN_INTEREST category) |
+| Investment | Briefcase | Investment account expenses |
+| **Asset** | Package | **NEW:** Asset-related expenses (vehicles, equipment, etc.) |
+
+#### Implementation:
+
+**State Management:**
+```typescript
+const [sourceType, setSourceType] = useState<'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET'>('GENERAL');
+const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+```
+
+**API Request Body:**
+```typescript
+if (sourceType === 'ASSET' && selectedAssetId) {
+  requestBody.assetId = selectedAssetId;
+}
+```
+
+**API LinkRequest Interface:**
+```typescript
+interface LinkRequest {
+  // ... existing fields ...
+  sourceType?: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
+  assetId?: string;  // NEW
+}
+```
+
+#### Asset Selector UI:
+```tsx
+{sourceType === 'ASSET' && !isIncome && (
+  <div className="space-y-2">
+    <Label>Linked Asset</Label>
+    <Select
+      value={selectedAssetId || ''}
+      onValueChange={(value) => setSelectedAssetId(value || null)}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Select an asset" />
+      </SelectTrigger>
+      <SelectContent>
+        {assets.map((asset) => (
+          <SelectItem key={asset.id} value={asset.id}>
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              {asset.name}
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+)}
+```
+
+### 13.11.2 API Updates for Asset Source
+
+**GET `/api/transactions/[id]/link`:**
+Now returns assets in `availableSources`:
+```typescript
+availableSources: {
+  properties: Property[],
+  loans: Loan[],
+  investmentAccounts: InvestmentAccount[],
+  assets: Asset[],  // NEW
+}
+```
+
+**POST `/api/transactions/[id]/link` (action: create):**
+When creating an expense with `sourceType: 'ASSET'`:
+```typescript
+if (body.sourceType === 'ASSET' && body.assetId) {
+  expenseData.assetId = body.assetId;
+}
+```

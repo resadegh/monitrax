@@ -310,3 +310,267 @@ UI pages built and tested
 Blueprint updated
 
 Unit tests written
+
+---
+
+## 18.12 Implementation Notes
+
+> **Status: QIF PARSER & ACCOUNT CREATION IMPLEMENTED** (December 2025)
+
+### 18.12.1 QIF Parser Implementation
+
+**File:** `lib/bank/parsers/qif.ts`
+
+The QIF parser supports the standard Quicken Interchange Format used by MYOB, Quicken, and Australian banks (NAB tested).
+
+#### QIF Field Mapping:
+| Field | Description | Example |
+|-------|-------------|---------|
+| `!Type:Bank` | Account type header | Bank, CCard, Cash |
+| `D` | Date (DD/MM/YY Australian format) | D18/12/25 |
+| `T` | Amount (negative = debit) | T-500.00 |
+| `N` | Reference/Check number | N123456 |
+| `P` | Payee/Description | PCOLES SUPERMARKETS |
+| `M` | Memo | Additional notes |
+| `L` | Category | L[Groceries] |
+| `^` | Record separator | End of transaction |
+
+#### Key Functions:
+```typescript
+parseQIF(content: string): ParsedFile
+isValidQIF(content: string): boolean
+parseQIFDate(dateStr: string): Date
+detectBankFromTransactions(transactions: RawTransaction[]): string | undefined
+```
+
+#### Bank Detection:
+Auto-detects Australian banks from transaction patterns:
+- **NAB**: Patterns like "NABATM", "NAB ", "PV9037"
+- **CBA**: Patterns like "COMMBANK", "NETBANK"
+- **ANZ**: Patterns like "ANZ ", "ANZ-"
+- **Westpac**: Patterns like "WESTPAC", "WBC "
+
+---
+
+### 18.12.2 Account Creation During Import
+
+**File:** `components/bank/ImportWizard.tsx`
+
+Users can now create a new account directly from the Import Wizard:
+
+#### New Props:
+```typescript
+interface ImportWizardProps {
+  accounts: Account[];
+  onComplete?: () => void;
+  onClose?: () => void;
+  onAccountCreated?: (account: Account) => void;  // NEW
+}
+```
+
+#### Features:
+- "Create New Account" button in account selection dropdown
+- Auto-fills institution name from detected bank (QIF metadata)
+- Sets opening balance from file's closing balance
+- Supports all account types: TRANSACTIONAL, SAVINGS, OFFSET, CREDIT_CARD
+- Created account is automatically selected for import
+
+---
+
+### 18.12.3 Balance Source Tracking
+
+**File:** `prisma/schema.prisma`
+
+New enum and fields for tracking balance origin:
+
+```prisma
+enum BalanceSource {
+  MANUAL     // User manually entered balance
+  IMPORT     // Balance from CSV/QIF/OFX import
+  BASIQ      // Balance from Open Banking (Basiq)
+}
+
+model Account {
+  // ... existing fields ...
+
+  // Balance Source Tracking
+  balanceSource        BalanceSource @default(MANUAL)
+  balanceLastUpdatedAt DateTime?
+  lastImportedBalance  Float?
+}
+```
+
+#### Import API Updates:
+- Sets `balanceSource: 'IMPORT'` when updating from file
+- Records `balanceLastUpdatedAt` timestamp
+- Stores `lastImportedBalance` for reference
+- **Prevents override** if account is Basiq-connected
+
+---
+
+### 18.12.4 Basiq Integration Priority
+
+**File:** `lib/bank/basiqSync.ts`
+
+When Basiq (Open Banking) is active for an account:
+
+1. **Manual imports are blocked** for that account
+2. **Existing imported transactions are tagged** as `SUPERSEDED_BY_BASIQ`
+3. **Balance always comes from Basiq** (cannot be overridden by import)
+
+#### Key Functions:
+```typescript
+// Check if account can accept manual import
+canAcceptManualImport(accountId: string): Promise<{
+  canImport: boolean;
+  reason?: string;
+  basiqStatus?: string;
+}>
+
+// Sync transactions from Basiq
+syncBasiqTransactions(
+  userId: string,
+  accountId: string,
+  options?: BasiqSyncOptions
+): Promise<BasiqSyncResult>
+
+// Get transaction counts by source
+getTransactionSourceCounts(
+  userId: string,
+  accountId: string
+): Promise<Record<string, number>>
+```
+
+---
+
+### 18.12.5 API Endpoint Updates
+
+#### Preview API (`POST /api/bank/preview`)
+- Now accepts QIF files
+- Returns `metadata.detectedBank` for QIF files
+- Returns `format: 'QIF' | 'CSV' | 'OFX'`
+
+#### Import API (`POST /api/bank/import`)
+- Processes QIF files using new parser
+- Sets `source: format` (CSV, QIF, OFX) on transactions
+- Checks Basiq connection before updating balance
+- Updates balance with source tracking fields
+
+---
+
+### 18.12.6 Migration Required
+
+After deployment, run:
+```bash
+npx prisma migrate dev --name add_balance_source_tracking
+```
+
+This adds:
+- `BalanceSource` enum
+- `balanceSource` field on Account
+- `balanceLastUpdatedAt` field on Account
+- `lastImportedBalance` field on Account
+
+---
+
+### 18.12.7 Transactions Page Account Filter
+
+> **Status: IMPLEMENTED** (December 2025)
+
+**File:** `app/(dashboard)/transactions/page.tsx`
+
+The transactions page now includes a prominent account filter to allow users to view transactions per bank account instead of all transactions mixed together.
+
+#### Features:
+- **Account Selector** - Dropdown at top of page showing all accounts
+- **Clear Filter Button** - Quick reset to view all accounts
+- **Filter Integration** - Works with existing search, category, date range filters
+- **Automatic Reset** - Pagination resets to page 1 when filter changes
+
+#### UI Implementation:
+```tsx
+// Account filter - prominent selector
+<div className="bg-white rounded-lg shadow mb-4 p-4">
+  <div className="flex items-center gap-4">
+    <label>View Account:</label>
+    <select
+      value={accountFilter}
+      onChange={(e) => {
+        setAccountFilter(e.target.value);
+        setPage(1);
+      }}
+    >
+      <option value="">All Accounts</option>
+      {accounts.map((account) => (
+        <option key={account.id} value={account.id}>
+          {account.name} ({account.type})
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
+```
+
+#### API Integration:
+The filter passes `accountId` parameter to the unified-transactions API:
+```typescript
+if (accountFilter) params.append('accountId', accountFilter);
+```
+
+---
+
+### 18.12.8 Account Dialog Transactions Tab Improvements
+
+> **Status: IMPLEMENTED** (December 2025)
+
+**File:** `app/dashboard/accounts/page.tsx`
+
+Fixed two issues with the transactions tab in the Account detail dialog:
+
+#### Issue 1: Incorrect Amount Formatting
+**Problem:** Transaction amounts were rounded (showing -$16 instead of -$15.70)
+
+**Root Cause:** The `formatCurrency` function used `maximumFractionDigits: 0`
+
+**Solution:** Added `formatCurrencyFull` function for transaction amounts:
+```typescript
+const formatCurrencyFull = (amount: number) =>
+  new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+```
+
+#### Issue 2: Limited Transactions Display
+**Problem:** Only showing first 15 transactions with no way to see more
+
+**Solution:** Added pagination with 20 transactions per page:
+```typescript
+const [txPage, setTxPage] = useState(1);
+const TX_PER_PAGE = 20;
+
+// Pagination controls
+{totalPages > 1 && (
+  <div className="flex items-center justify-between">
+    <Button onClick={() => setTxPage((p) => Math.max(1, p - 1))} disabled={txPage === 1}>
+      Previous
+    </Button>
+    <span>Page {txPage} of {totalPages} ({totalTx} transactions)</span>
+    <Button onClick={() => setTxPage((p) => Math.min(totalPages, p + 1))} disabled={txPage === totalPages}>
+      Next
+    </Button>
+  </div>
+)}
+```
+
+#### Pagination Reset:
+Page resets to 1 when viewing a different account:
+```typescript
+const handleViewDetails = (account: Account) => {
+  setSelectedAccount(account);
+  setTxPage(1); // Reset pagination
+  setShowDetailDialog(true);
+};
+```

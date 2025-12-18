@@ -47,6 +47,12 @@ enum AccountType {
   CREDIT_CARD
 }
 
+enum BalanceSource {
+  MANUAL     // User manually entered balance
+  IMPORT     // Balance from CSV/QIF/OFX import
+  BASIQ      // Balance from Open Banking (Basiq)
+}
+
 enum IncomeType {
   SALARY
   RENT
@@ -482,6 +488,11 @@ model Account {
   interestRate   Float?       // Annual interest rate (e.g., 0.025 for 2.5%)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+
+  // Balance Source Tracking
+  balanceSource       BalanceSource @default(MANUAL)  // Where the balance came from
+  balanceLastUpdatedAt DateTime?                      // When balance was last updated
+  lastImportedBalance Float?                          // Balance from most recent import
 
   // Basiq Open Banking Integration
   basiqAccountId    String?      @unique  // Basiq account ID (if linked via Open Banking)
@@ -1290,6 +1301,7 @@ model EmailMFACode {
 enum TransactionSource {
   BANK        // Bank feed integration
   CSV         // CSV import
+  QIF         // QIF file import (MYOB/Quicken)
   OFX         // OFX/QFX file import
   QIF         // QIF file import (legacy)
   MANUAL      // Manual entry

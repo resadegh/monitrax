@@ -669,7 +669,7 @@ Assets used for income-producing purposes may be depreciable:
 
 ### Phase 21.2: Expense Linking
 - [x] Add assetId to Expense model
-- [ ] Update expense forms to allow asset linking
+- [x] Update expense forms to allow asset linking (via Transaction Link Dialog)
 - [x] Asset expense summary calculations
 - [x] TCO calculations
 
@@ -765,7 +765,47 @@ The API automatically calculates:
 
 ---
 
-*Document Version: 1.1*
+---
+
+## 18. Transaction Link Dialog Integration
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 18.1 Asset Source Type in Transaction Linking
+
+When linking bank transactions to create new expense entries via the Transaction Link Dialog, users can now select "Asset" as the expense source type.
+
+**Files Modified:**
+- `components/transactions/TransactionLinkDialog.tsx`
+- `app/api/transactions/[id]/link/route.ts`
+
+#### Features:
+- **Asset Option in Source Dropdown** - Shows Package icon with "Asset" label
+- **Asset Selector** - Dropdown to select which asset to link the expense to
+- **API Support** - `assetId` field in expense creation payload
+
+#### UI Flow:
+1. User clicks on transaction in Transactions page
+2. Selects "Create New" tab
+3. Chooses "Asset" from Source dropdown
+4. Selects the specific asset from the asset dropdown
+5. Fills in other expense details (name, category, frequency)
+6. Submits to create expense linked to the asset
+
+#### Source Options (Expense):
+```
+General     - General expenses (default)
+Property    - Property-related expenses
+Loan        - Loan expenses (auto-sets category)
+Investment  - Investment account expenses
+Asset       - Asset-related expenses (NEW)
+```
+
+This completes **Phase 21.2: Expense Linking** by enabling asset linking from the transaction flow, not just the expense form.
+
+---
+
+*Document Version: 1.2*
 *Created: 2025-12-01*
-*Updated: 2025-12-04*
-*Phase Status: IMPLEMENTED (Core Features)*
+*Updated: 2025-12-18*
+*Phase Status: IMPLEMENTED (Core Features + Transaction Linking)*

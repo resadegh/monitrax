@@ -3,15 +3,17 @@
 /**
  * Phase 18: Bank Statement Import Wizard
  * Multi-step wizard for importing bank statements
+ * Supports CSV, QIF, and OFX file formats
  */
 
 import { useState, useCallback } from 'react';
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, X, Link2, AlertTriangle } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, X, Link2, AlertTriangle, Plus, Building2 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +39,11 @@ interface PreviewData {
   alreadyImported: boolean;
   headers?: string[];
   suggestedMappings?: Record<string, string>;
+  metadata?: {
+    detectedBank?: string;
+    accountType?: string;
+    accountName?: string;
+  };
   statistics: {
     totalRows: number;
     validTransactions: number;
@@ -126,11 +133,12 @@ interface ImportWizardProps {
   accounts: Account[];
   onComplete?: () => void;
   onClose?: () => void;
+  onAccountCreated?: (account: Account) => void;
 }
 
 type WizardStep = 'upload' | 'preview' | 'settings' | 'importing' | 'complete';
 
-export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProps) {
+export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }: ImportWizardProps) {
   const { token } = useAuth();
   const [step, setStep] = useState<WizardStep>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -143,6 +151,72 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
   const [importProgress, setImportProgress] = useState(0);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // New account creation state
+  const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const [newAccountName, setNewAccountName] = useState('');
+  const [newAccountType, setNewAccountType] = useState<string>('TRANSACTIONAL');
+  const [newAccountInstitution, setNewAccountInstitution] = useState('');
+  const [newAccountBalance, setNewAccountBalance] = useState<string>('');
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [localAccounts, setLocalAccounts] = useState<Account[]>(accounts);
+
+  // Create new account handler
+  const handleCreateAccount = async () => {
+    if (!newAccountName.trim()) return;
+
+    // Validate balance is provided
+    const balanceValue = parseFloat(newAccountBalance);
+    if (isNaN(balanceValue)) {
+      setError('Please enter a valid current balance');
+      return;
+    }
+
+    setCreatingAccount(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newAccountName.trim(),
+          type: newAccountType,
+          institution: newAccountInstitution.trim() || null,
+          currentBalance: balanceValue,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create account');
+      }
+
+      // Add to local accounts and select it
+      const newAccount: Account = {
+        id: data.id,
+        name: data.name,
+        type: data.type,
+      };
+      setLocalAccounts([...localAccounts, newAccount]);
+      setSelectedAccount(newAccount.id);
+      setShowCreateAccount(false);
+      setNewAccountName('');
+      setNewAccountInstitution('');
+      setNewAccountBalance('');
+
+      // Notify parent if callback provided
+      onAccountCreated?.(newAccount);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create account');
+    } finally {
+      setCreatingAccount(false);
+    }
+  };
 
   // Handle file drop/selection
   const handleFileDrop = useCallback(async (e: React.DragEvent | React.ChangeEvent<HTMLInputElement>) => {
@@ -316,11 +390,22 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
             {/* File info */}
             <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
               <FileSpreadsheet className="h-8 w-8 text-blue-500" />
-              <div>
+              <div className="flex-1">
                 <p className="font-medium">{preview.filename}</p>
-                <p className="text-sm text-muted-foreground">
-                  {preview.statistics.totalRows} rows • {preview.format}
-                </p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>{preview.statistics.totalRows} rows</span>
+                  <span>•</span>
+                  <Badge variant="secondary">{preview.format}</Badge>
+                  {preview.metadata?.detectedBank && (
+                    <>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />
+                        {preview.metadata.detectedBank}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -443,20 +528,121 @@ export function ImportWizard({ accounts, onComplete, onClose }: ImportWizardProp
             {/* Settings */}
             <div className="space-y-4 pt-4 border-t">
               <div>
-                <Label>Link to Account (Optional)</Label>
-                <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {accounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name} ({account.type})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Link to Account</Label>
+                {!showCreateAccount ? (
+                  <div className="space-y-2">
+                    <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None - Import without account</SelectItem>
+                        {localAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name} ({account.type})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        setShowCreateAccount(true);
+                        // Pre-fill with detected bank name if available
+                        if (preview?.metadata?.detectedBank) {
+                          setNewAccountInstitution(preview.metadata.detectedBank);
+                        }
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New Account
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3 p-3 border rounded-lg bg-slate-50 dark:bg-slate-800">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-medium">Create New Account</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowCreateAccount(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div>
+                      <Label htmlFor="accountName">Account Name</Label>
+                      <Input
+                        id="accountName"
+                        value={newAccountName}
+                        onChange={(e) => setNewAccountName(e.target.value)}
+                        placeholder="e.g., NAB Everyday Account"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="accountType">Account Type</Label>
+                      <Select value={newAccountType} onValueChange={setNewAccountType}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="TRANSACTIONAL">Transactional</SelectItem>
+                          <SelectItem value="SAVINGS">Savings</SelectItem>
+                          <SelectItem value="OFFSET">Offset</SelectItem>
+                          <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="institution">Institution (Optional)</Label>
+                      <Input
+                        id="institution"
+                        value={newAccountInstitution}
+                        onChange={(e) => setNewAccountInstitution(e.target.value)}
+                        placeholder="e.g., NAB, CommBank, ANZ"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="currentBalance">
+                        Current Balance <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="currentBalance"
+                        type="number"
+                        step="0.01"
+                        value={newAccountBalance}
+                        onChange={(e) => setNewAccountBalance(e.target.value)}
+                        placeholder="Enter your current bank balance"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enter your actual bank balance from your bank statement
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleCreateAccount}
+                      disabled={!newAccountName.trim() || !newAccountBalance.trim() || creatingAccount}
+                      className="w-full"
+                    >
+                      {creatingAccount ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Account
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div>
