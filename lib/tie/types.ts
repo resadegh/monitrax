@@ -86,6 +86,10 @@ export interface UnifiedTransaction {
   expenseId?: string | null;
   investmentAccountId?: string | null;
 
+  // Transfer tracking
+  isTransfer?: boolean;
+  transferToAccountId?: string | null;
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;

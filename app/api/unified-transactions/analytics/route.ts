@@ -71,6 +71,8 @@ export async function GET(request: NextRequest) {
         incomeId: tx.incomeId,
         expenseId: tx.expenseId,
         investmentAccountId: tx.investmentAccountId,
+        isTransfer: tx.isTransfer,
+        transferToAccountId: tx.transferToAccountId,
         createdAt: tx.createdAt,
         updatedAt: tx.updatedAt,
         processedAt: tx.processedAt,

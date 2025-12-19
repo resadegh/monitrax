@@ -137,6 +137,25 @@ setBankAccounts(data.accounts || []);
 setBankAccounts(data.data || []);
 ```
 
+### 2. Transfers Not Excluded from Income/Expense Totals
+**Files:** `lib/tie/types.ts`, `lib/tie/analytics.ts`, `app/api/unified-transactions/analytics/route.ts`
+
+**Issue:** When a transaction was marked as a transfer, it was still being included in the Total Income and Total Spend calculations on the Transactions page.
+
+**Root Cause:** The TIE analytics functions (`calculateSpendingSummary`, `calculateMonthlyTotals`) were not checking the `isTransfer` flag when calculating totals.
+
+**Fix:**
+1. Added `isTransfer` and `transferToAccountId` to `UnifiedTransaction` type in TIE
+2. Updated analytics API to pass `isTransfer` when mapping transactions
+3. Updated `calculateSpendingSummary` and `calculateMonthlyTotals` to exclude transfers:
+
+```typescript
+// Exclude transfers from income/expense calculations
+const nonTransfers = filtered.filter((tx) => !tx.isTransfer);
+const outgoing = nonTransfers.filter((tx) => tx.direction === 'OUT');
+const incoming = nonTransfers.filter((tx) => tx.direction === 'IN');
+```
+
 ---
 
 ## Files Modified
@@ -149,6 +168,9 @@ setBankAccounts(data.data || []);
 | `app/api/transactions/[id]/link/route.ts` | Pass `isRecurring` when creating expense, category-based matching |
 | `app/dashboard/expenses/page.tsx` | Major update: tiles, filtering, form checkbox, badges |
 | `components/transactions/TransactionLinkDialog.tsx` | Transfer for incoming, frequency selector fix, dropdown fix |
+| `lib/tie/types.ts` | Added `isTransfer` and `transferToAccountId` to UnifiedTransaction |
+| `lib/tie/analytics.ts` | Exclude transfers from spending summary and monthly totals |
+| `app/api/unified-transactions/analytics/route.ts` | Pass `isTransfer` when mapping transactions to TIE |
 
 ---
 
