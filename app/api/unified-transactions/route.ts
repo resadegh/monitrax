@@ -46,6 +46,8 @@ export async function GET(request: NextRequest) {
       const hasAnomalies = searchParams.get('hasAnomalies');
       const isTransfer = searchParams.get('isTransfer');
       const excludeTransfers = searchParams.get('excludeTransfers');
+      const uncategorized = searchParams.get('uncategorized');
+      const direction = searchParams.get('direction');
 
       // Build where clause
       const where: Record<string, unknown> = {
@@ -69,6 +71,15 @@ export async function GET(request: NextRequest) {
       if (isTransfer === 'true') where.isTransfer = true;
       if (isTransfer === 'false') where.isTransfer = false;
       if (excludeTransfers === 'true') where.isTransfer = { not: true };
+      if (direction) where.direction = direction;
+
+      // Uncategorized filter: no income/expense/loan link and not a transfer
+      if (uncategorized === 'true') {
+        where.incomeId = null;
+        where.expenseId = null;
+        where.loanId = null;
+        where.isTransfer = false;
+      }
 
       if (startDate || endDate) {
         where.date = {};
