@@ -869,3 +869,265 @@ Now transfers are properly excluded from:
 - Total Spend calculation
 - Net Cashflow calculation
 - Monthly totals and trends
+
+---
+
+## 13.14 Batch Vendor Categorization
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.14.1 Overview
+
+When categorizing a transaction, the system now finds and displays other uncategorized transactions from the same merchant, allowing users to categorize multiple transactions at once.
+
+### 13.14.2 Same-Vendor Detection
+
+**File:** `app/api/transactions/[id]/link/route.ts`
+
+The API finds uncategorized transactions from the same merchant:
+
+```typescript
+const sameVendorTransactions = await prisma.unifiedTransaction.findMany({
+  where: {
+    userId,
+    id: { not: transactionId }, // Exclude current transaction
+    OR: [
+      { merchantStandardised: merchantName },
+      { description: { contains: merchantName, mode: 'insensitive' } },
+    ],
+    // Only uncategorized transactions
+    incomeId: null,
+    expenseId: null,
+    loanId: null,
+    isTransfer: false,
+  },
+  orderBy: { date: 'desc' },
+  take: 20, // Limit to most recent 20
+});
+```
+
+### 13.14.3 Batch Selection UI
+
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+A purple "Same Vendor" panel displays matching transactions with checkboxes:
+
+```tsx
+{sameVendorTransactions.length > 0 && (
+  <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200">
+    <div className="flex items-center justify-between mb-2">
+      <span>Same Vendor ({sameVendorTransactions.length} more)</span>
+      <Button onClick={toggleAllVendorTransactions}>
+        {allSelected ? 'Deselect All' : 'Select All'}
+      </Button>
+    </div>
+    {sameVendorTransactions.map((tx) => (
+      <div onClick={() => toggleVendorTransaction(tx.id)}>
+        <Checkbox checked={selectedVendorTransactions.has(tx.id)} />
+        <span>{tx.merchantStandardised || tx.description}</span>
+        <span>{formatCurrency(tx.amount)}</span>
+      </div>
+    ))}
+  </div>
+)}
+```
+
+### 13.14.4 Batch Categorization API
+
+The POST endpoint accepts additional transaction IDs for batch processing:
+
+```typescript
+interface LinkRequest {
+  // ... existing fields ...
+  additionalTransactionIds?: string[]; // Batch categorize multiple transactions
+}
+```
+
+Implementation:
+```typescript
+if (body.additionalTransactionIds?.length > 0) {
+  const validIds = await prisma.unifiedTransaction.findMany({
+    where: { id: { in: body.additionalTransactionIds }, userId },
+    select: { id: true },
+  });
+
+  await prisma.unifiedTransaction.updateMany({
+    where: { id: { in: validIds.map(t => t.id) } },
+    data: {
+      expenseId: expense.id,
+      categoryLevel1: body.category,
+    },
+  });
+}
+```
+
+### 13.14.5 Visual Indicators
+
+Button labels show the batch count:
+- **Suggested matches tab:** "Link (3)" when 2 additional transactions selected
+- **Create new tab:** "Create Expense Entry (+2 more)" when 2 additional transactions selected
+
+---
+
+## 13.15 Merchant Learning (Auto-Suggestions)
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.15.1 Overview
+
+When a user categorizes a transaction, the system learns the merchant-to-category mapping and uses it to suggest categories for future transactions from the same vendor.
+
+### 13.15.2 MerchantMapping Model
+
+**File:** `prisma/schema.prisma`
+
+```prisma
+model MerchantMapping {
+  id                    String    @id @default(uuid())
+  userId                String?   // Null = global mapping, set = user-specific
+  merchantRaw           String    // Original merchant string pattern
+  merchantStandardised  String    // Normalised name
+  merchantCategoryCode  String?   // MCC if known
+  categoryLevel1        String    // Mapped category
+  categoryLevel2        String?
+  subcategory           String?
+  confidence            Float     @default(1.0)
+  source                String    @default("RULE") // RULE, USER, AI
+  usageCount            Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([userId, merchantRaw])
+  @@index([merchantRaw])
+}
+```
+
+### 13.15.3 Learning on Categorization
+
+**File:** `app/api/transactions/[id]/link/route.ts`
+
+When categorizing a transaction with `learnMerchant: true`:
+
+```typescript
+if (body.learnMerchant && transaction.merchantStandardised && category) {
+  await prisma.merchantMapping.upsert({
+    where: {
+      userId_merchantRaw: {
+        userId,
+        merchantRaw: transaction.merchantStandardised,
+      },
+    },
+    update: {
+      categoryLevel1: category,
+      usageCount: { increment: 1 },
+      updatedAt: new Date(),
+    },
+    create: {
+      userId,
+      merchantRaw: transaction.merchantStandardised,
+      merchantStandardised: transaction.merchantStandardised,
+      categoryLevel1: category,
+      source: 'USER',
+      confidence: 1.0,
+      usageCount: 1,
+    },
+  });
+}
+```
+
+### 13.15.4 Learned Category Lookup
+
+When loading the transaction link dialog, check for existing mappings:
+
+```typescript
+let learnedCategory: string | null = null;
+if (transaction.merchantStandardised) {
+  const merchantMapping = await prisma.merchantMapping.findFirst({
+    where: {
+      merchantRaw: transaction.merchantStandardised,
+      OR: [
+        { userId }, // User-specific mapping takes priority
+        { userId: null }, // Fall back to global mapping
+      ],
+    },
+    orderBy: [
+      { userId: 'desc' }, // User mappings first (non-null)
+      { usageCount: 'desc' },
+    ],
+  });
+  if (merchantMapping) {
+    learnedCategory = merchantMapping.categoryLevel1;
+  }
+}
+```
+
+### 13.15.5 UI Components
+
+**Learned Category Badge:**
+```tsx
+{learnedCategory && (
+  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+    Previously: {learnedCategory}
+  </Badge>
+)}
+```
+
+**Learn Merchant Checkbox:**
+```tsx
+<div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200">
+  <Checkbox
+    id="learnMerchant"
+    checked={learnMerchant}
+    onCheckedChange={(checked) => setLearnMerchant(checked as boolean)}
+  />
+  <Label>Remember for future {transaction.merchantStandardised} transactions</Label>
+  <p className="text-xs text-muted-foreground">
+    Future transactions from this vendor will be auto-suggested with this category
+  </p>
+</div>
+```
+
+### 13.15.6 Category Pre-fill Priority
+
+The suggested category follows this priority:
+1. **Learned category** - From previous user categorizations
+2. **Predicted category** - From transaction analysis (MCC, description parsing)
+3. **None** - User selects manually
+
+```typescript
+suggestedCategory: learnedCategory || mappedCategory
+```
+
+### 13.15.7 API Response Updates
+
+**GET `/api/transactions/[id]/link`:**
+```typescript
+{
+  transaction: { ... },
+  suggestedMatches: [ ... ],
+  suggestedCategory: 'UTILITIES',     // Learned or predicted
+  learnedCategory: 'UTILITIES',       // From MerchantMapping if exists
+  sameVendorTransactions: [ ... ],    // For batch categorization
+  availableEntries: { ... }
+}
+```
+
+**POST `/api/transactions/[id]/link`:**
+```typescript
+// Request body
+{
+  action: 'create',
+  type: 'expense',
+  category: 'FOOD',
+  additionalTransactionIds: ['tx-2', 'tx-3'],  // Batch categorize
+  learnMerchant: true                           // Store mapping
+}
+
+// Response
+{
+  success: true,
+  created: { type: 'expense', id: '...', name: 'Soul Origin' },
+  batchCount: 2,  // Number of additional transactions categorized
+  message: 'Categorized 3 transactions as Soul Origin'
+}
+```
