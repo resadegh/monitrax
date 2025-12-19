@@ -254,6 +254,50 @@ const outgoing = nonTransfers.filter((tx) => tx.direction === 'OUT');
 const incoming = nonTransfers.filter((tx) => tx.direction === 'IN');
 ```
 
+### 3. Auto-Navigate Not Working After Categorization
+**Files:** `components/transactions/TransactionLinkDialog.tsx`, `app/(dashboard)/transactions/page.tsx`
+
+**Issue:** After categorizing a transaction, the dialog stayed on the same transaction instead of moving to the next uncategorized one.
+
+**Root Cause:** The `onNavigateNext` callback was using a stale `transactions` array from a JavaScript closure. When `fetchTransactions()` was called asynchronously, the navigation timer (800ms) fired before the React state update completed, so it used outdated data that still included the just-categorized transaction.
+
+**Fix:**
+1. Changed `onLinked` prop type to return `Promise<void>` so the dialog can await it
+2. Added a `transactionsRef` to track the latest transactions value
+3. Updated `fetchTransactions` to synchronously update the ref when data arrives
+4. `onNavigateNext` now reads from the ref to get fresh data
+
+```typescript
+// In transactions/page.tsx
+const transactionsRef = useRef<Transaction[]>([]);
+transactionsRef.current = transactions;
+
+// In fetchTransactions
+if (response.ok && json.success) {
+  setTransactions(json.data);
+  // Update ref immediately so navigation callback has fresh data
+  transactionsRef.current = json.data;
+}
+
+// In onNavigateNext callback
+onNavigateNext={() => {
+  const currentTransactions = transactionsRef.current;
+  if (currentTransactions.length > 0) {
+    setLinkingTransaction(currentTransactions[0]);
+  } else {
+    setShowLinkDialog(false);
+  }
+}}
+
+// In TransactionLinkDialog - await onLinked before navigating
+await onLinked?.();
+setTimeout(() => {
+  if (hasMoreTransactions && onNavigateNext) {
+    onNavigateNext();
+  }
+}, 800);
+```
+
 ---
 
 ## Files Modified
@@ -293,8 +337,9 @@ npx prisma migrate dev --name add_expense_is_recurring
 | `2485592` | feat: Use predicted category for transaction suggestions and pre-fill |
 | `1e41704` | fix: Convert categoryMatch to explicit boolean for TypeScript compatibility |
 | `d944772` | fix: Fix transfer account dropdown not loading accounts |
+| `66681cd` | fix: Auto-navigate to next transaction after categorization |
 
 ---
 
-*Changelog Version: 1.0*
+*Changelog Version: 1.1*
 *Date: 2025-12-19*
