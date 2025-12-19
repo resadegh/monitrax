@@ -70,6 +70,32 @@ Click behavior:
 - Maps display category names (Utilities, Groceries, etc.) to ExpenseCategory enum values
 - Helps users quickly categorize transactions to existing expenses in the same category
 
+### 8. Batch Vendor Categorization
+**Files:** `app/api/transactions/[id]/link/route.ts`, `components/transactions/TransactionLinkDialog.tsx`
+
+When categorizing a transaction, the system now:
+- **Same-Vendor Detection**: Finds all other uncategorized transactions from the same merchant
+- **Batch Selection**: Shows a purple "Same Vendor" panel with checkboxes for each matching transaction
+- **Pre-selected by Default**: All same-vendor transactions are pre-selected for convenience
+- **Batch Categorization**: Apply the same category to all selected transactions at once
+- **Visual Indicators**: Button labels show count (e.g., "Link (3)" or "Create Expense (+2 more)")
+
+Example: Categorizing "Soul Origin" will show other Soul Origin transactions and categorize them all together.
+
+### 9. Merchant Learning (Auto-Suggestions)
+**Files:** `app/api/transactions/[id]/link/route.ts`, `prisma/schema.prisma` (MerchantMapping model)
+
+When categorizing transactions:
+- **Learn Checkbox**: "Remember for future [merchant] transactions" option (enabled by default)
+- **Store Mapping**: Creates/updates `MerchantMapping` record with user -> merchant -> category
+- **Future Suggestions**: New transactions from the same merchant auto-suggest the learned category
+- **Confidence Tracking**: Tracks usage count to improve confidence over time
+- **User-Specific**: Mappings are per-user, not global
+
+UI Indicators:
+- **Learned Category Badge**: Shows "Previously: [category]" badge on transactions with learned mappings
+- **Pre-filled Category**: Category dropdown auto-selects the learned category
+
 ---
 
 ## API Changes
@@ -86,6 +112,31 @@ Click behavior:
 
 - Create expense action now passes `isRecurring` flag
 - Defaults to `false` for new expenses created from transactions (since these are typically one-off)
+
+#### POST Request - New Parameters:
+```typescript
+interface LinkRequest {
+  // ... existing fields ...
+  additionalTransactionIds?: string[]; // Batch categorize multiple transactions
+  learnMerchant?: boolean;             // Store merchant -> category mapping
+}
+```
+
+#### GET Response - New Fields:
+```typescript
+{
+  // ... existing fields ...
+  sameVendorTransactions: Array<{      // Other transactions from same merchant
+    id: string;
+    date: string;
+    description: string;
+    merchantStandardised: string | null;
+    amount: number;
+    direction: 'IN' | 'OUT';
+  }>;
+  learnedCategory: string | null;      // Previously learned category for this merchant
+}
+```
 
 ---
 
@@ -165,9 +216,9 @@ const incoming = nonTransfers.filter((tx) => tx.direction === 'IN');
 | `prisma/schema.prisma` | Added `isRecurring` field to Expense model |
 | `app/api/expenses/route.ts` | Added `isRecurring` to POST handler |
 | `app/api/expenses/[id]/route.ts` | Added `isRecurring` to PUT handler |
-| `app/api/transactions/[id]/link/route.ts` | Pass `isRecurring` when creating expense, category-based matching |
+| `app/api/transactions/[id]/link/route.ts` | Batch categorization, merchant learning, same-vendor detection |
 | `app/dashboard/expenses/page.tsx` | Major update: tiles, filtering, form checkbox, badges |
-| `components/transactions/TransactionLinkDialog.tsx` | Transfer for incoming, frequency selector fix, dropdown fix |
+| `components/transactions/TransactionLinkDialog.tsx` | Transfer options, batch vendor UI, merchant learning toggle |
 | `lib/tie/types.ts` | Added `isTransfer` and `transferToAccountId` to UnifiedTransaction |
 | `lib/tie/analytics.ts` | Exclude transfers from spending summary and monthly totals |
 | `app/api/unified-transactions/analytics/route.ts` | Pass `isTransfer` when mapping transactions to TIE |

@@ -692,3 +692,51 @@ The frequency selector now only appears when the "Recurring expense" checkbox is
 ```
 
 This ensures a cleaner UI when categorizing one-off transactions that don't need frequency settings.
+
+---
+
+### 18.12.11 Batch Vendor Categorization
+
+> **Status: IMPLEMENTED** (December 2025)
+
+**Files:** `app/api/transactions/[id]/link/route.ts`, `components/transactions/TransactionLinkDialog.tsx`
+
+When categorizing a transaction, the system now finds and displays other uncategorized transactions from the same vendor for batch categorization.
+
+#### Features:
+
+| Feature | Description |
+|---------|-------------|
+| Same-vendor detection | Finds uncategorized transactions with matching merchant name |
+| Batch selection UI | Purple panel with checkboxes for each matching transaction |
+| Pre-selected by default | All same-vendor transactions are pre-selected for convenience |
+| Visual indicators | Button labels show count (e.g., "Link (3)" or "+2 more") |
+
+#### Example Use Case:
+When categorizing a "Soul Origin" transaction, the system will find and display other Soul Origin transactions, allowing the user to categorize all of them at once.
+
+---
+
+### 18.12.12 Merchant Learning (Auto-Suggestions)
+
+> **Status: IMPLEMENTED** (December 2025)
+
+**Files:** `app/api/transactions/[id]/link/route.ts`, `components/transactions/TransactionLinkDialog.tsx`
+
+The system learns merchant-to-category mappings when users categorize transactions, then uses these mappings to auto-suggest categories for future transactions from the same vendor.
+
+#### Features:
+
+| Feature | Description |
+|---------|-------------|
+| Learn checkbox | "Remember for future [merchant] transactions" option (enabled by default) |
+| Learned category badge | Shows "Previously: [category]" on transactions with learned mappings |
+| Auto pre-fill | Category dropdown auto-selects the learned category |
+| User-specific | Mappings are stored per-user, not global |
+
+#### Priority Order:
+1. Learned category (from previous categorizations)
+2. Predicted category (from transaction analysis)
+3. Manual selection
+
+See [PHASE_13_TRANSACTIONAL_INTELLIGENCE.md](./PHASE_13_TRANSACTIONAL_INTELLIGENCE.md) sections 13.14-13.15 for detailed implementation.

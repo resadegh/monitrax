@@ -37,6 +37,9 @@ interface LinkRequest {
   isTaxDeductible?: boolean;
   // For transfer
   transferToAccountId?: string;
+  // For batch categorization
+  additionalTransactionIds?: string[]; // Other transactions to categorize the same way
+  learnMerchant?: boolean; // Store merchant -> category mapping for future suggestions
 }
 
 export async function POST(
@@ -149,12 +152,70 @@ export async function POST(
             },
           });
 
+          // Batch link additional transactions if provided
+          let batchCount = 0;
+          if (body.additionalTransactionIds && body.additionalTransactionIds.length > 0) {
+            // Verify all transactions belong to user
+            const validIds = await prisma.unifiedTransaction.findMany({
+              where: {
+                id: { in: body.additionalTransactionIds },
+                userId,
+              },
+              select: { id: true },
+            });
+
+            if (validIds.length > 0) {
+              await prisma.unifiedTransaction.updateMany({
+                where: {
+                  id: { in: validIds.map((t: { id: string }) => t.id) },
+                },
+                data: {
+                  incomeId: body.type === 'income' ? body.targetId : null,
+                  expenseId: body.type === 'expense' ? body.targetId : null,
+                  loanId: body.type === 'loan' ? body.targetId : null,
+                  isRecurring: true,
+                  categoryLevel1: targetCategory,
+                },
+              });
+              batchCount = validIds.length;
+            }
+          }
+
+          // Learn merchant mapping for future suggestions
+          if (body.learnMerchant && transaction.merchantStandardised && targetCategory) {
+            await prisma.merchantMapping.upsert({
+              where: {
+                userId_merchantRaw: {
+                  userId,
+                  merchantRaw: transaction.merchantStandardised,
+                },
+              },
+              update: {
+                categoryLevel1: targetCategory,
+                usageCount: { increment: 1 },
+                updatedAt: new Date(),
+              },
+              create: {
+                userId,
+                merchantRaw: transaction.merchantStandardised,
+                merchantStandardised: transaction.merchantStandardised,
+                categoryLevel1: targetCategory,
+                source: 'USER',
+                confidence: 1.0,
+                usageCount: 1,
+              },
+            });
+          }
+
           return NextResponse.json({
             success: true,
             transaction: updated,
-            message: body.updateAmount
-              ? `Linked to ${targetName} and updated amount to $${transaction.amount}`
-              : `Linked to ${targetName}`,
+            batchCount,
+            message: batchCount > 0
+              ? `Linked ${batchCount + 1} transactions to ${targetName}`
+              : (body.updateAmount
+                  ? `Linked to ${targetName} and updated amount to $${transaction.amount}`
+                  : `Linked to ${targetName}`),
           });
         }
 
@@ -288,12 +349,69 @@ export async function POST(
               },
             });
 
+            // Batch link additional transactions if provided
+            let batchCount = 0;
+            if (body.additionalTransactionIds && body.additionalTransactionIds.length > 0) {
+              // Verify all transactions belong to user
+              const validIds = await prisma.unifiedTransaction.findMany({
+                where: {
+                  id: { in: body.additionalTransactionIds },
+                  userId,
+                },
+                select: { id: true },
+              });
+
+              if (validIds.length > 0) {
+                await prisma.unifiedTransaction.updateMany({
+                  where: {
+                    id: { in: validIds.map((t: { id: string }) => t.id) },
+                  },
+                  data: {
+                    expenseId: expense.id,
+                    isRecurring: body.isRecurring ?? false,
+                    isEssential: body.isEssential ?? false,
+                    categoryLevel1: body.category || 'Expense',
+                  },
+                });
+                batchCount = validIds.length;
+              }
+            }
+
+            // Learn merchant mapping for future suggestions
+            if (body.learnMerchant && transaction.merchantStandardised && body.category) {
+              await prisma.merchantMapping.upsert({
+                where: {
+                  userId_merchantRaw: {
+                    userId,
+                    merchantRaw: transaction.merchantStandardised,
+                  },
+                },
+                update: {
+                  categoryLevel1: body.category,
+                  usageCount: { increment: 1 },
+                  updatedAt: new Date(),
+                },
+                create: {
+                  userId,
+                  merchantRaw: transaction.merchantStandardised,
+                  merchantStandardised: transaction.merchantStandardised,
+                  categoryLevel1: body.category,
+                  source: 'USER',
+                  confidence: 1.0,
+                  usageCount: 1,
+                },
+              });
+            }
+
             return NextResponse.json({
               success: true,
               created: { type: 'expense', id: expense.id, name: expense.name },
-              message: body.isRecurring
-                ? 'New recurring expense created and linked'
-                : 'Transaction categorized',
+              batchCount,
+              message: batchCount > 0
+                ? `Categorized ${batchCount + 1} transactions as ${expense.name}`
+                : (body.isRecurring
+                    ? 'New recurring expense created and linked'
+                    : 'Transaction categorized'),
             });
           }
         }
@@ -556,8 +674,59 @@ export async function GET(
         orderBy: { name: 'asc' },
       });
 
+      // Find same-vendor uncategorized transactions
+      const merchantName = transaction.merchantStandardised || transaction.description;
+      const sameVendorTransactions = await prisma.unifiedTransaction.findMany({
+        where: {
+          userId,
+          id: { not: transactionId }, // Exclude current transaction
+          OR: merchantName
+            ? [
+                { merchantStandardised: merchantName },
+                { description: { contains: merchantName, mode: 'insensitive' as const } },
+              ]
+            : [{ merchantStandardised: merchantName }],
+          // Only uncategorized transactions
+          incomeId: null,
+          expenseId: null,
+          loanId: null,
+          isTransfer: false,
+        },
+        select: {
+          id: true,
+          date: true,
+          description: true,
+          merchantStandardised: true,
+          amount: true,
+          direction: true,
+        },
+        orderBy: { date: 'desc' },
+        take: 20, // Limit to most recent 20
+      });
+
+      // Check for existing merchant mapping (learned category)
+      let learnedCategory: string | null = null;
+      if (transaction.merchantStandardised) {
+        const merchantMapping = await prisma.merchantMapping.findFirst({
+          where: {
+            merchantRaw: transaction.merchantStandardised,
+            OR: [
+              { userId }, // User-specific mapping takes priority
+              { userId: null }, // Fall back to global mapping
+            ],
+          },
+          orderBy: [
+            { userId: 'desc' }, // User mappings first (non-null)
+            { usageCount: 'desc' },
+          ],
+        });
+        if (merchantMapping) {
+          learnedCategory = merchantMapping.categoryLevel1;
+        }
+      }
+
       // Find potential matches using similarity
-      const searchText = (transaction.merchantStandardised || transaction.description).toLowerCase();
+      const searchText = merchantName.toLowerCase();
       const txAmount = transaction.amount;
 
       // Get the predicted category from the transaction (normalized to uppercase for matching)
@@ -722,8 +891,12 @@ export async function GET(
         },
         currentLink,
         suggestedMatches: matches.slice(0, 5),
-        // Suggested category for creating new expenses based on transaction prediction
-        suggestedCategory: mappedCategory,
+        // Suggested category for creating new expenses based on transaction prediction or learned mapping
+        suggestedCategory: learnedCategory || mappedCategory,
+        // Learned category from previous user categorizations
+        learnedCategory,
+        // Same-vendor uncategorized transactions for batch categorization
+        sameVendorTransactions,
         availableEntries: {
           income: incomeEntries,
           expenses: expenseEntries,
