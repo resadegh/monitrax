@@ -37,9 +37,10 @@ const MERCHANT_MAPPINGS: Record<string, string> = {
   'dominos': 'Domino\'s',
   'pizza hut': 'Pizza Hut',
 
-  // Coffee
+  // Coffee & Cafes
   'starbucks': 'Starbucks',
   'gloria jeans': 'Gloria Jeans',
+  'soul origin': 'Soul Origin',
 
   // Petrol
   'bp': 'BP',
@@ -51,7 +52,7 @@ const MERCHANT_MAPPINGS: Record<string, string> = {
 
   // Utilities
   'agl': 'AGL',
-  'origin': 'Origin Energy',
+  'origin energy': 'Origin Energy',
   'energy australia': 'Energy Australia',
   'telstra': 'Telstra',
   'optus': 'Optus',
