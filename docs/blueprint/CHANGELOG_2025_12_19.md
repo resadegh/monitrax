@@ -51,6 +51,16 @@ Click behavior:
 - Fixed: Frequency selector now only appears when "Recurring expense" checkbox is checked
 - Previously was always visible regardless of checkbox state
 
+### 6. Transfer Option for Incoming Transactions
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+- Transfer toggle now appears for BOTH income and expense transactions
+- For incoming money: Shows "Transfer From Account" with appropriate labels
+- For outgoing money: Shows "Transfer To Account" (existing behavior)
+- Button labels: "Mark as Incoming Transfer" / "Mark as Outgoing Transfer"
+- Account selection is optional (user may not know the source account)
+- Allows categorizing incoming transfers (e.g., money from another account) without counting as income
+
 ---
 
 ## API Changes
@@ -127,7 +137,8 @@ npx prisma migrate dev --name add_expense_is_recurring
 | Hash | Message |
 |------|---------|
 | `e94c8ec` | fix: Show frequency selector only when recurring expense checkbox is checked |
-| TBD | feat: Add recurring vs discretionary expense separation with clickable tiles |
+| `7d89f2c` | feat: Add recurring vs discretionary expense separation with clickable tiles |
+| `c8d459e` | feat: Allow incoming transactions to be marked as transfers |
 
 ---
 
