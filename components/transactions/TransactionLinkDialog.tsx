@@ -193,7 +193,8 @@ export function TransactionLinkDialog({
       });
       const data = await response.json();
       if (response.ok) {
-        setBankAccounts(data.accounts || []);
+        // API returns { data: [...accounts], _meta: {...} }
+        setBankAccounts(data.data || []);
       }
     } catch {
       // Silently fail - bank accounts are optional
