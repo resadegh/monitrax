@@ -964,22 +964,6 @@ export function TransactionLinkDialog({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Frequency</Label>
-                <Select value={newFrequency} onValueChange={setNewFrequency}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="WEEKLY">Weekly</SelectItem>
-                    <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
-                    <SelectItem value="MONTHLY">Monthly</SelectItem>
-                    <SelectItem value="QUARTERLY">Quarterly</SelectItem>
-                    <SelectItem value="ANNUAL">Annual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Expense-specific options */}
               {!isIncome && (
                 <div className="space-y-3 border-t pt-3">
@@ -995,9 +979,26 @@ export function TransactionLinkDialog({
                     </Label>
                   </div>
                   {isRecurringExpense && (
-                    <p className="text-xs text-muted-foreground ml-6">
-                      This will create a recurring expense entry that appears in your regular expenses
-                    </p>
+                    <>
+                      <p className="text-xs text-muted-foreground ml-6">
+                        This will create a recurring expense entry that appears in your regular expenses
+                      </p>
+                      <div className="space-y-2 ml-6">
+                        <Label>Frequency</Label>
+                        <Select value={newFrequency} onValueChange={setNewFrequency}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="WEEKLY">Weekly</SelectItem>
+                            <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                            <SelectItem value="MONTHLY">Monthly</SelectItem>
+                            <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                            <SelectItem value="ANNUAL">Annual</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
                   )}
                   {/* Essential checkbox */}
                   <div className="flex items-center space-x-2">
