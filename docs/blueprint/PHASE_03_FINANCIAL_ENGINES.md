@@ -429,3 +429,63 @@ Features:
 
 ---
 
+## **3.8 Expense Classification Engine**
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### Overview
+
+The expense classification system now distinguishes between recurring and discretionary expenses, enabling more accurate cashflow calculations and financial health assessments.
+
+### Expense Types
+
+| Type | Field Value | Description | Impact |
+|------|-------------|-------------|--------|
+| **Recurring** | `isRecurring: true` | Bills, subscriptions, regular payments | Counted in committed outgoings |
+| **Discretionary** | `isRecurring: false` | One-off purchases, variable spending | Counted in flexible spending |
+
+### Cashflow Engine Integration
+
+The cashflow engine uses expense classification to separate:
+
+**Committed Outgoings:**
+```typescript
+const recurringExpenses = expenses.filter(e => e.isRecurring !== false);
+const recurringMonthly = recurringExpenses.reduce((sum, e) =>
+  sum + convertToMonthly(e.amount, e.frequency), 0
+);
+```
+
+**Flexible Spending:**
+```typescript
+const discretionaryExpenses = expenses.filter(e => e.isRecurring === false);
+const discretionaryMonthly = discretionaryExpenses.reduce((sum, e) =>
+  sum + convertToMonthly(e.amount, e.frequency), 0
+);
+```
+
+**Total Outgoings:**
+```typescript
+const totalOutgoings = recurringMonthly + discretionaryMonthly + loanRepayments;
+```
+
+### Financial Health Implications
+
+This separation enables:
+
+1. **Better Savings Predictions** - Recurring expenses are predictable; discretionary can be reduced
+2. **Spending Analysis** - Identify areas of flexible vs. fixed costs
+3. **Budget Planning** - Set targets for discretionary spending while accounting for fixed costs
+4. **Financial Stress Indicators** - High discretionary spending relative to income is flagged
+
+### API Endpoints
+
+**Expenses API** (`/api/expenses`):
+- POST: Accepts `isRecurring` field (default: `true`)
+- PUT: Updates `isRecurring` field
+
+**Transaction Link API** (`/api/transactions/[id]/link`):
+- When creating expense from transaction, `isRecurring` defaults to `false` (assuming one-off transaction)
+
+---
+
