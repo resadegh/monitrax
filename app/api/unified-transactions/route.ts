@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
       const search = searchParams.get('search');
       const source = searchParams.get('source');
       const hasAnomalies = searchParams.get('hasAnomalies');
+      const isTransfer = searchParams.get('isTransfer');
+      const excludeTransfers = searchParams.get('excludeTransfers');
 
       // Build where clause
       const where: Record<string, unknown> = {
@@ -64,6 +66,9 @@ export async function GET(request: NextRequest) {
       if (hasAnomalies === 'true') {
         where.anomalyFlags = { isEmpty: false };
       }
+      if (isTransfer === 'true') where.isTransfer = true;
+      if (isTransfer === 'false') where.isTransfer = false;
+      if (excludeTransfers === 'true') where.isTransfer = { not: true };
 
       if (startDate || endDate) {
         where.date = {};

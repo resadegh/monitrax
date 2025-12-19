@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
             gte: startDate,
             lte: endDate,
           },
+          isTransfer: { not: true }, // Exclude transfers from budget calculations
         },
         orderBy: { date: 'desc' },
       });
