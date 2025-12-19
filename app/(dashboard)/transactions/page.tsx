@@ -15,7 +15,7 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
@@ -344,6 +344,9 @@ interface ImportAccount {
 export default function TransactionExplorer() {
   const { token } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Ref to track latest transactions for navigation callback (avoids stale closure)
+  const transactionsRef = useRef<Transaction[]>([]);
+  transactionsRef.current = transactions;
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -411,6 +414,8 @@ export default function TransactionExplorer() {
 
       if (response.ok && json.success) {
         setTransactions(json.data);
+        // Update ref immediately so navigation callback has fresh data
+        transactionsRef.current = json.data;
         setTotalPages(json.pagination.totalPages);
       } else {
         setError(json.error || 'Failed to load transactions');
@@ -753,24 +758,22 @@ export default function TransactionExplorer() {
           setShowLinkDialog(open);
           if (!open) setLinkingTransaction(null);
         }}
-        onLinked={() => {
-          fetchTransactions();
+        onLinked={async () => {
+          // Return the promise so dialog can wait for refresh before navigating
+          await fetchTransactions();
           fetchSummary();
         }}
         hasMoreTransactions={transactions.length > 1}
         onNavigateNext={() => {
-          // Find next uncategorized transaction (excluding current one)
-          const currentIndex = transactions.findIndex(t => t.id === linkingTransaction?.id);
-          const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+          // Use ref to get fresh transactions after fetch completes (avoids stale closure)
+          const currentTransactions = transactionsRef.current;
 
-          if (nextIndex < transactions.length) {
-            // Navigate to next transaction
-            setLinkingTransaction(transactions[nextIndex]);
-          } else if (transactions.length > 0 && currentIndex > 0) {
-            // If we're at the end, try the first one
-            setLinkingTransaction(transactions[0]);
+          if (currentTransactions.length > 0) {
+            // Navigate to the first transaction in the refreshed list
+            // (the just-categorized one is no longer in the list)
+            setLinkingTransaction(currentTransactions[0]);
           } else {
-            // No more transactions, close dialog
+            // No more uncategorized transactions, close dialog
             setShowLinkDialog(false);
             setLinkingTransaction(null);
           }

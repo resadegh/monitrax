@@ -78,7 +78,7 @@ interface TransactionLinkDialogProps {
   transaction: Transaction | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onLinked?: () => void;
+  onLinked?: () => Promise<void> | void; // Returns Promise to wait for refresh before navigation
   onNavigateNext?: () => void; // Called to navigate to next uncategorized transaction
   hasMoreTransactions?: boolean; // Whether there are more uncategorized transactions
 }
@@ -293,7 +293,9 @@ export function TransactionLinkDialog({
 
       setSuccess(data.message || `Linked to ${type}`);
       setCurrentLink({ type, id: targetId, name: data.message });
-      onLinked?.();
+
+      // Wait for refresh to complete before navigating
+      await onLinked?.();
 
       // Auto-navigate to next transaction after a brief delay to show success
       setTimeout(() => {
@@ -362,7 +364,9 @@ export function TransactionLinkDialog({
         if (!response.ok) throw new Error(data.error);
 
         setSuccess(data.message || 'Marked as transfer');
-        onLinked?.();
+
+        // Wait for refresh to complete before navigating
+        await onLinked?.();
 
         // Auto-navigate to next transaction after a brief delay to show success
         setTimeout(() => {
@@ -435,7 +439,9 @@ export function TransactionLinkDialog({
       if (!response.ok) throw new Error(data.error);
 
       setSuccess(data.message);
-      onLinked?.();
+
+      // Wait for refresh to complete before navigating
+      await onLinked?.();
 
       // Auto-navigate to next transaction after a brief delay to show success
       setTimeout(() => {
