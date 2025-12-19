@@ -111,6 +111,19 @@ The Transaction Explorer page now defaults to showing only uncategorized transac
 
 This allows users to focus on categorizing their backlog while still being able to view all transactions when needed.
 
+### 11. Auto-Navigate to Next Transaction
+**Files:** `components/transactions/TransactionLinkDialog.tsx`, `app/(dashboard)/transactions/page.tsx`
+
+After successfully categorizing a transaction, the dialog now:
+- **Auto-Navigate**: Automatically moves to the next uncategorized transaction after 800ms delay
+- **Auto-Close**: Closes the dialog if there are no more uncategorized transactions
+- **Visual Feedback**: Brief success message shown before navigation
+- **Seamless Flow**: Users can categorize multiple transactions without manually reopening the dialog
+
+New dialog props:
+- `onNavigateNext?: () => void` - Callback to navigate to next transaction
+- `hasMoreTransactions?: boolean` - Whether more uncategorized transactions exist
+
 ---
 
 ## API Changes

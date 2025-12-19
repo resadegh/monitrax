@@ -79,6 +79,8 @@ interface TransactionLinkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLinked?: () => void;
+  onNavigateNext?: () => void; // Called to navigate to next uncategorized transaction
+  hasMoreTransactions?: boolean; // Whether there are more uncategorized transactions
 }
 
 export function TransactionLinkDialog({
@@ -86,6 +88,8 @@ export function TransactionLinkDialog({
   open,
   onOpenChange,
   onLinked,
+  onNavigateNext,
+  hasMoreTransactions = false,
 }: TransactionLinkDialogProps) {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -290,7 +294,15 @@ export function TransactionLinkDialog({
       setSuccess(data.message || `Linked to ${type}`);
       setCurrentLink({ type, id: targetId, name: data.message });
       onLinked?.();
-      loadMatches(); // Refresh to show updated data
+
+      // Auto-navigate to next transaction after a brief delay to show success
+      setTimeout(() => {
+        if (hasMoreTransactions && onNavigateNext) {
+          onNavigateNext();
+        } else {
+          onOpenChange(false);
+        }
+      }, 800);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to link');
     } finally {
@@ -351,7 +363,15 @@ export function TransactionLinkDialog({
 
         setSuccess(data.message || 'Marked as transfer');
         onLinked?.();
-        loadMatches();
+
+        // Auto-navigate to next transaction after a brief delay to show success
+        setTimeout(() => {
+          if (hasMoreTransactions && onNavigateNext) {
+            onNavigateNext();
+          } else {
+            onOpenChange(false);
+          }
+        }, 800);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to mark as transfer');
       } finally {
@@ -416,7 +436,15 @@ export function TransactionLinkDialog({
 
       setSuccess(data.message);
       onLinked?.();
-      loadMatches();
+
+      // Auto-navigate to next transaction after a brief delay to show success
+      setTimeout(() => {
+        if (hasMoreTransactions && onNavigateNext) {
+          onNavigateNext();
+        } else {
+          onOpenChange(false);
+        }
+      }, 800);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create');
     } finally {

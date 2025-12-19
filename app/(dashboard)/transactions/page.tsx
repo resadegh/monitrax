@@ -757,6 +757,24 @@ export default function TransactionExplorer() {
           fetchTransactions();
           fetchSummary();
         }}
+        hasMoreTransactions={transactions.length > 1}
+        onNavigateNext={() => {
+          // Find next uncategorized transaction (excluding current one)
+          const currentIndex = transactions.findIndex(t => t.id === linkingTransaction?.id);
+          const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+
+          if (nextIndex < transactions.length) {
+            // Navigate to next transaction
+            setLinkingTransaction(transactions[nextIndex]);
+          } else if (transactions.length > 0 && currentIndex > 0) {
+            // If we're at the end, try the first one
+            setLinkingTransaction(transactions[0]);
+          } else {
+            // No more transactions, close dialog
+            setShowLinkDialog(false);
+            setLinkingTransaction(null);
+          }
+        }}
       />
     </DashboardLayout>
   );
