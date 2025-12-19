@@ -636,7 +636,7 @@ export async function GET(
           const amountMatch = amountDiff < 1 || amountDiff / expense.amount < 0.05;
 
           // Check if the expense category matches the predicted category
-          const categoryMatch = mappedCategory && expense.category === mappedCategory;
+          const categoryMatch = Boolean(mappedCategory && expense.category === mappedCategory);
 
           // Include if name matches, amount matches, OR category matches
           if (similarity > 0.3 || amountMatch || categoryMatch) {
