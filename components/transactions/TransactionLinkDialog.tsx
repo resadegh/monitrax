@@ -223,6 +223,10 @@ export function TransactionLinkDialog({
       setSourceLoansList(data.availableSources?.loans || []);
       setInvestmentAccounts(data.availableSources?.investmentAccounts || []);
       setAssets(data.availableSources?.assets || []);
+      // Pre-fill category from transaction prediction if available
+      if (data.suggestedCategory && !isIncome) {
+        setNewCategory(data.suggestedCategory);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load matches');
     } finally {
