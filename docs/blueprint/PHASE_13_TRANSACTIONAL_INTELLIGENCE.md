@@ -1131,3 +1131,184 @@ suggestedCategory: learnedCategory || mappedCategory
   message: 'Categorized 3 transactions as Soul Origin'
 }
 ```
+
+---
+
+## 13.16 Uncategorized Transactions Default View
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.16.1 Overview
+
+The Transaction Explorer page now defaults to showing only uncategorized transactions, helping users focus on categorizing their backlog while still being able to view all transactions when needed.
+
+### 13.16.2 API Filter Support
+
+**File:** `app/api/unified-transactions/route.ts`
+
+New query parameters:
+- `uncategorized=true` - Filter to only show uncategorized transactions
+- `direction=IN|OUT` - Filter by transaction direction
+
+```typescript
+// Uncategorized filter: no income/expense/loan link and not a transfer
+if (uncategorized === 'true') {
+  where.incomeId = null;
+  where.expenseId = null;
+  where.loanId = null;
+  where.isTransfer = false;
+}
+
+if (direction) where.direction = direction;
+```
+
+### 13.16.3 Tile Filter State
+
+**File:** `app/(dashboard)/transactions/page.tsx`
+
+```typescript
+// Tile filter: 'uncategorized' (default), 'spend', 'income', 'all'
+const [tileFilter, setTileFilter] = useState<'uncategorized' | 'spend' | 'income' | 'all' | null>('uncategorized');
+```
+
+Filter behavior:
+| Tile Filter | API Parameters |
+|------------|----------------|
+| `uncategorized` | `uncategorized=true` |
+| `spend` | `direction=OUT&excludeTransfers=true` |
+| `income` | `direction=IN&excludeTransfers=true` |
+| `all` | No additional filters |
+
+### 13.16.4 Clickable Summary Cards
+
+The summary cards are now interactive:
+
+```tsx
+function SummaryCards({ summary, activeFilter, onFilterChange }) {
+  const getTileClasses = (tileType) => {
+    const isActive = activeFilter === tileType;
+    return `bg-white rounded-lg shadow p-4 cursor-pointer transition-all hover:shadow-md ${
+      isActive ? 'ring-2 ring-blue-500 ring-offset-1' : ''
+    }`;
+  };
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div
+        className={getTileClasses('spend')}
+        onClick={() => onFilterChange(activeFilter === 'spend' ? 'uncategorized' : 'spend')}
+      >
+        {/* Total Spend content */}
+        {activeFilter === 'spend' && <div className="text-xs text-blue-600 mt-1">Showing all</div>}
+      </div>
+      {/* Similar for Income, Net Cashflow, Transactions tiles */}
+    </div>
+  );
+}
+```
+
+### 13.16.5 Visual Indicators
+
+**Uncategorized Banner:**
+```tsx
+{tileFilter === 'uncategorized' && (
+  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+    <div className="flex items-center gap-2 text-amber-800">
+      <AlertTriangle className="h-4 w-4" />
+      <span className="text-sm font-medium">Showing uncategorized transactions only</span>
+      <span className="text-xs text-amber-600">(click a tile above to view all)</span>
+    </div>
+  </div>
+)}
+```
+
+**Active Tile Indicators:**
+- Blue ring (`ring-2 ring-blue-500`) around active tile
+- "Showing all" label when tile is selected
+
+### 13.16.6 Auto-Refresh on Categorization
+
+When a transaction is categorized via the link dialog:
+```typescript
+onLinked={() => {
+  fetchTransactions();  // Refreshes list - categorized items disappear in uncategorized view
+  fetchSummary();       // Updates totals
+}}
+```
+
+### 13.16.7 User Experience Flow
+
+1. **Default State**: User sees only uncategorized transactions
+2. **Categorization**: User clicks a transaction and categorizes it
+3. **Auto-Disappear**: Transaction disappears from the list (if in uncategorized view)
+4. **View All**: User can click a tile to see all transactions of that type
+5. **Return**: Click the same tile again to return to uncategorized view
+
+---
+
+## 13.17 Auto-Navigate to Next Transaction
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.17.1 Overview
+
+After successfully categorizing a transaction, the dialog automatically navigates to the next uncategorized transaction, providing a seamless batch categorization experience.
+
+### 13.17.2 Dialog Props
+
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+```typescript
+interface TransactionLinkDialogProps {
+  transaction: Transaction | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onLinked?: () => void;
+  onNavigateNext?: () => void;       // Navigate to next transaction
+  hasMoreTransactions?: boolean;     // Whether more transactions exist
+}
+```
+
+### 13.17.3 Auto-Navigation Logic
+
+After successful categorization (link, create, or transfer):
+
+```typescript
+// Auto-navigate to next transaction after a brief delay to show success
+setTimeout(() => {
+  if (hasMoreTransactions && onNavigateNext) {
+    onNavigateNext();
+  } else {
+    onOpenChange(false);
+  }
+}, 800);
+```
+
+### 13.17.4 Parent Component Implementation
+
+**File:** `app/(dashboard)/transactions/page.tsx`
+
+```typescript
+<TransactionLinkDialog
+  transaction={linkingTransaction}
+  hasMoreTransactions={transactions.length > 1}
+  onNavigateNext={() => {
+    const currentIndex = transactions.findIndex(t => t.id === linkingTransaction?.id);
+    const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+
+    if (nextIndex < transactions.length) {
+      setLinkingTransaction(transactions[nextIndex]);
+    } else {
+      setShowLinkDialog(false);
+    }
+  }}
+/>
+```
+
+### 13.17.5 User Experience
+
+1. User opens transaction categorization dialog
+2. User categorizes the transaction (link, create expense, or mark as transfer)
+3. Success message displays for 800ms
+4. Dialog automatically shows the next uncategorized transaction
+5. If no more transactions, dialog closes automatically
