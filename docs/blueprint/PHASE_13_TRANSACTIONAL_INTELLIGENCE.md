@@ -820,3 +820,24 @@ Transfers (both incoming and outgoing) are excluded from:
 - Financial health metrics
 
 This prevents double-counting when money moves between tracked accounts.
+
+### 13.13.7 Bug Fix: Transfer Account Dropdown
+
+> **Status: FIXED** (December 2025)
+
+**Issue:** The "Transfer From Account" / "Transfer To Account" dropdown was not showing any accounts.
+
+**Root Cause:** The `loadBankAccounts` function was looking for `data.accounts` but the `/api/accounts` endpoint returns `{ data: [...accounts], _meta: {...} }`.
+
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+**Fix Applied:**
+```typescript
+// Before (broken)
+setBankAccounts(data.accounts || []);
+
+// After (fixed)
+setBankAccounts(data.data || []);
+```
+
+The dropdown now correctly loads all user bank accounts for transfer selection.

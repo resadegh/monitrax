@@ -119,6 +119,26 @@ model Expense {
 
 ---
 
+## Bug Fixes
+
+### 1. Transfer Account Dropdown Not Loading
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+**Issue:** The "Transfer From Account" / "Transfer To Account" dropdown was not showing any accounts when marking a transaction as a transfer.
+
+**Root Cause:** The `loadBankAccounts` function was looking for `data.accounts` but the `/api/accounts` endpoint returns `{ data: [...accounts], _meta: {...} }`.
+
+**Fix:**
+```typescript
+// Before (broken)
+setBankAccounts(data.accounts || []);
+
+// After (fixed)
+setBankAccounts(data.data || []);
+```
+
+---
+
 ## Files Modified
 
 | File | Changes |
@@ -126,9 +146,9 @@ model Expense {
 | `prisma/schema.prisma` | Added `isRecurring` field to Expense model |
 | `app/api/expenses/route.ts` | Added `isRecurring` to POST handler |
 | `app/api/expenses/[id]/route.ts` | Added `isRecurring` to PUT handler |
-| `app/api/transactions/[id]/link/route.ts` | Pass `isRecurring` when creating expense |
+| `app/api/transactions/[id]/link/route.ts` | Pass `isRecurring` when creating expense, category-based matching |
 | `app/dashboard/expenses/page.tsx` | Major update: tiles, filtering, form checkbox, badges |
-| `components/transactions/TransactionLinkDialog.tsx` | Fix frequency selector conditional display |
+| `components/transactions/TransactionLinkDialog.tsx` | Transfer for incoming, frequency selector fix, dropdown fix |
 
 ---
 
@@ -149,6 +169,8 @@ npx prisma migrate dev --name add_expense_is_recurring
 | `7d89f2c` | feat: Add recurring vs discretionary expense separation with clickable tiles |
 | `c8d459e` | feat: Allow incoming transactions to be marked as transfers |
 | `2485592` | feat: Use predicted category for transaction suggestions and pre-fill |
+| `1e41704` | fix: Convert categoryMatch to explicit boolean for TypeScript compatibility |
+| `d944772` | fix: Fix transfer account dropdown not loading accounts |
 
 ---
 
