@@ -134,16 +134,36 @@ function extractMerchant(description: string): { raw: string; standardised: stri
 // =============================================================================
 
 /**
- * Clean transaction description
+ * Clean transaction description - preserves original merchant name
+ * Removes bank-specific prefixes while keeping the actual description
  */
 function cleanDescription(description: string): string {
   if (!description) return '';
 
-  return description
-    .replace(/[^\w\s\-\.\/&']/g, ' ') // Remove special chars except common ones
+  let cleaned = description
+    // Remove bank transaction prefixes (NAB, CBA, etc.)
+    .replace(/^(PPOS|PV\d+|PP\d+|EFTPOS|VISA|MASTERCARD|DEBIT|CREDIT)\s+/i, '')
+    // Remove date patterns at start (DD/MM, DD-MM)
+    .replace(/^\d{1,2}[\/\-]\d{1,2}\s+/g, '')
+    // Remove common payment prefixes
+    .replace(/^(PURCHASE|PAYMENT|WITHDRAWAL|DEPOSIT|TRANSFER|DIRECT DEBIT|BPAY|OSKO|PAY\/ID)\s*/i, '')
+    // Remove special chars except common ones
+    .replace(/[^\w\s\-\.\/&'()]/g, ' ')
+    // Remove trailing reference numbers (long digit sequences)
+    .replace(/\s+\d{6,}$/g, '')
+    // Remove duplicate location names at end (e.g., "MERRYLANDS MERRYLANDS")
+    .replace(/\b(\w+)\s+\1\b$/i, '$1')
+    // Clean up whitespace
     .replace(/\s+/g, ' ')
-    .trim()
-    .substring(0, 500);
+    .trim();
+
+  // Capitalise properly (Title Case)
+  cleaned = cleaned
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+
+  return cleaned.substring(0, 500);
 }
 
 // =============================================================================
