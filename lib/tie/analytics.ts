@@ -105,8 +105,10 @@ export function calculateSpendingSummary(
     filtered = filtered.filter((tx) => new Date(tx.date) <= options.endDate!);
   }
 
-  const outgoing = filtered.filter((tx) => tx.direction === 'OUT');
-  const incoming = filtered.filter((tx) => tx.direction === 'IN');
+  // Exclude transfers from income/expense calculations
+  const nonTransfers = filtered.filter((tx) => !tx.isTransfer);
+  const outgoing = nonTransfers.filter((tx) => tx.direction === 'OUT');
+  const incoming = nonTransfers.filter((tx) => tx.direction === 'IN');
 
   const totalSpend = outgoing.reduce((sum, tx) => sum + tx.amount, 0);
   const totalIncome = incoming.reduce((sum, tx) => sum + tx.amount, 0);
@@ -161,13 +163,17 @@ export function calculateSpendingSummary(
 
 /**
  * Calculate monthly spending totals
+ * Excludes transfers from income/spend calculations
  */
 export function calculateMonthlyTotals(
   transactions: UnifiedTransaction[]
 ): Map<string, { spend: number; income: number; count: number }> {
   const monthlyTotals = new Map<string, { spend: number; income: number; count: number }>();
 
-  for (const tx of transactions) {
+  // Exclude transfers from calculations
+  const nonTransfers = transactions.filter((tx) => !tx.isTransfer);
+
+  for (const tx of nonTransfers) {
     const monthKey = getMonthKey(new Date(tx.date));
     const current = monthlyTotals.get(monthKey) || { spend: 0, income: 0, count: 0 };
 

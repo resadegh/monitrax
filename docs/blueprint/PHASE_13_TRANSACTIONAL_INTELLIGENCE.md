@@ -841,3 +841,31 @@ setBankAccounts(data.data || []);
 ```
 
 The dropdown now correctly loads all user bank accounts for transfer selection.
+
+### 13.13.8 Bug Fix: Transfers Not Excluded from Totals
+
+> **Status: FIXED** (December 2025)
+
+**Issue:** Transactions marked as transfers were still being included in Total Income and Total Spend calculations on the Transactions page.
+
+**Root Cause:** The TIE analytics functions weren't checking `isTransfer` flag when calculating totals.
+
+**Files Fixed:**
+- `lib/tie/types.ts` - Added `isTransfer` and `transferToAccountId` to UnifiedTransaction interface
+- `lib/tie/analytics.ts` - Updated `calculateSpendingSummary` and `calculateMonthlyTotals` to exclude transfers
+- `app/api/unified-transactions/analytics/route.ts` - Pass `isTransfer` when mapping transactions
+
+**Fix Applied:**
+```typescript
+// In calculateSpendingSummary and calculateMonthlyTotals:
+// Exclude transfers from income/expense calculations
+const nonTransfers = filtered.filter((tx) => !tx.isTransfer);
+const outgoing = nonTransfers.filter((tx) => tx.direction === 'OUT');
+const incoming = nonTransfers.filter((tx) => tx.direction === 'IN');
+```
+
+Now transfers are properly excluded from:
+- Total Income calculation
+- Total Spend calculation
+- Net Cashflow calculation
+- Monthly totals and trends
