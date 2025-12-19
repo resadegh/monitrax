@@ -229,20 +229,46 @@ income → property?
 id: string
 type: "expense"
 name: string
-category: "MAINTENANCE" | "MANAGEMENT" | "INSURANCE" | "LOAN" | "OTHER"
+category: "HOUSING" | "RATES" | "INSURANCE" | "MAINTENANCE" | "PERSONAL" | "UTILITIES" | "FOOD" | "TRANSPORT" | "ENTERTAINMENT" | "SUBSCRIPTION" | "STRATA" | "LAND_TAX" | "LOAN_INTEREST" | "REGISTRATION" | "MODIFICATIONS" | "OTHER"
+sourceType: "GENERAL" | "PROPERTY" | "LOAN" | "INVESTMENT" | "ASSET"
 amount: number
-frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "ANNUAL"
-startDate: string
+frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL"
+vendorName?: string
+isEssential: boolean          // Is this an essential expense? (default: true)
+isTaxDeductible: boolean      // Is this expense tax deductible? (default: false)
+isRecurring: boolean          // Is this a recurring expense or one-off? (default: true)
+startDate?: string
 endDate?: string
 propertyId?: string
 loanId?: string
+investmentAccountId?: string
+assetId?: string
 ```
+
+### **Expense Type Classification**
+
+| isRecurring | Description | Examples |
+|-------------|-------------|----------|
+| `true` | Recurring/committed expenses | Bills, subscriptions, regular payments |
+| `false` | One-off/discretionary spending | Impulse purchases, variable spending |
+
+### **Source Types**
+
+| Source Type | Description | Links To |
+|-------------|-------------|----------|
+| GENERAL | General household expenses | None |
+| PROPERTY | Property-related expenses | Property |
+| LOAN | Loan-related expenses (interest) | Loan |
+| INVESTMENT | Investment account expenses | Investment Account |
+| ASSET | Asset-related expenses | Asset (Vehicle, Equipment) |
 
 ### **Relationships**
 
 ```
 expense → property?
 expense → loan?
+expense → investmentAccount?
+expense → asset?
 ```
 
 ---

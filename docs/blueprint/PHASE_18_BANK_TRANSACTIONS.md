@@ -574,3 +574,121 @@ const handleViewDetails = (account: Account) => {
   setShowDetailDialog(true);
 };
 ```
+
+---
+
+### 18.12.9 Recurring vs Discretionary Expense Separation
+
+> **Status: IMPLEMENTED** (December 2025)
+
+**File:** `app/dashboard/expenses/page.tsx`
+
+The expenses page now separates recurring expenses from discretionary (one-off) spending with interactive summary tiles.
+
+#### Schema Changes:
+
+**Added to Expense model:**
+```prisma
+model Expense {
+  // ... existing fields ...
+  isRecurring  Boolean  @default(true)  // Is this a recurring expense or one-off/discretionary?
+}
+```
+
+#### Summary Tiles:
+
+Four clickable tiles provide expense breakdown:
+
+| Tile | Color | Filter | Description |
+|------|-------|--------|-------------|
+| Recurring Expenses | Blue | `isRecurring !== false` | Bills, subscriptions, regular payments |
+| Discretionary Spending | Purple | `isRecurring === false` | One-off purchases, impulse buys |
+| Loan Repayments | Orange | Loans section | All loan minimum repayments |
+| Total Outgoings | Red gradient | All | Combined expenses + loans |
+
+#### Tile Interaction:
+- Click a tile to filter the expense list to that category
+- Click again to deselect (show all expenses)
+- Active tile shows a ring highlight
+- Filter indicator badge appears below tiles when filter is active
+
+```tsx
+const handleTileClick = (filter: TileFilter) => {
+  setActiveTileFilter(prev => prev === filter ? 'all' : filter);
+};
+```
+
+#### API Updates:
+
+**POST `/api/expenses`:**
+- Added `isRecurring` field (defaults to `true` for backwards compatibility)
+
+**PUT `/api/expenses/[id]`:**
+- Added `isRecurring` field to update handler
+
+**POST `/api/transactions/[id]/link` (action: create):**
+- `isRecurring` defaults to `false` for expenses created from transactions (typically one-off purchases)
+
+#### UI Form Updates:
+
+New "This is a recurring expense" checkbox in expense add/edit form:
+```tsx
+<Checkbox
+  id="isRecurring"
+  checked={formData.isRecurring}
+  onCheckedChange={(checked) => setFormData({ ...formData, isRecurring: checked as boolean })}
+/>
+<Label htmlFor="isRecurring">This is a recurring expense</Label>
+<p className="text-xs text-muted-foreground">
+  {formData.isRecurring
+    ? 'Recurring expenses (bills, subscriptions) appear in your committed outgoings'
+    : 'One-off expenses (discretionary purchases) appear in your flexible spending'
+  }
+</p>
+```
+
+#### Expense Card Badges:
+
+Expense cards now display type badges:
+- **Recurring** (blue badge with calendar icon)
+- **One-off** (purple badge with credit card icon)
+
+---
+
+### 18.12.10 Frequency Selector Conditional Display
+
+> **Status: IMPLEMENTED** (December 2025)
+
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+Fixed an issue where the frequency selector was always visible in the transaction link dialog regardless of the recurring expense checkbox state.
+
+#### Fix Applied:
+The frequency selector now only appears when the "Recurring expense" checkbox is checked:
+
+```tsx
+{isRecurringExpense && (
+  <>
+    <p className="text-xs text-muted-foreground ml-6">
+      This will create a recurring expense entry that appears in your regular expenses
+    </p>
+    <div className="space-y-2 ml-6">
+      <Label>Frequency</Label>
+      <Select value={newFrequency} onValueChange={setNewFrequency}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="WEEKLY">Weekly</SelectItem>
+          <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+          <SelectItem value="MONTHLY">Monthly</SelectItem>
+          <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+          <SelectItem value="ANNUAL">Annual</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  </>
+)}
+```
+
+This ensures a cleaner UI when categorizing one-off transactions that don't need frequency settings.

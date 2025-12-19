@@ -624,3 +624,199 @@ if (body.sourceType === 'ASSET' && body.assetId) {
   expenseData.assetId = body.assetId;
 }
 ```
+
+---
+
+## 13.12 Category-Based Transaction Suggestions
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.12.1 Overview
+
+Transaction suggestions now leverage the predicted category from transaction analysis to provide more relevant matching options. When a transaction has a predicted category (e.g., "Utilities" for Origin Energy), expenses with matching categories are included in suggestions with boosted confidence.
+
+### 13.12.2 Category Mapping
+
+**File:** `app/api/transactions/[id]/link/route.ts`
+
+The system maps common category names from transaction predictions to ExpenseCategory enum values:
+
+```typescript
+const categoryMapping: Record<string, string> = {
+  'UTILITIES': 'UTILITIES',
+  'UTILITY': 'UTILITIES',
+  'GROCERIES': 'GROCERIES',
+  'GROCERY': 'GROCERIES',
+  'FOOD_DINING': 'FOOD',
+  'FOOD___DINING': 'FOOD',
+  'FOOD': 'FOOD',
+  'DINING': 'FOOD',
+  'TRANSPORT': 'TRANSPORT',
+  'TRANSPORTATION': 'TRANSPORT',
+  'SHOPPING': 'PERSONAL',
+  'ENTERTAINMENT': 'ENTERTAINMENT',
+  'SUBSCRIPTION': 'SUBSCRIPTION',
+  'SUBSCRIPTIONS': 'SUBSCRIPTION',
+  'INSURANCE': 'INSURANCE',
+  'HOUSING': 'HOUSING',
+  'HEALTH': 'PERSONAL',
+  'MEDICAL': 'PERSONAL',
+};
+```
+
+### 13.12.3 Matching Algorithm Updates
+
+The expense matching algorithm now includes category matching:
+
+```typescript
+// Check if the expense category matches the predicted category
+const categoryMatch = Boolean(mappedCategory && expense.category === mappedCategory);
+
+// Include if name matches, amount matches, OR category matches
+if (similarity > 0.3 || amountMatch || categoryMatch) {
+  // Boost confidence for category matches
+  let confidence = similarity * (amountMatch ? 1.5 : 1);
+  if (categoryMatch) {
+    confidence += 0.5; // Boost for matching predicted category
+  }
+  // Add to matches...
+}
+```
+
+### 13.12.4 Category Pre-fill for New Expenses
+
+When creating a new expense from a transaction, the category dropdown is pre-filled based on the transaction's predicted category:
+
+**API Response:**
+```typescript
+{
+  transaction: { ... },
+  suggestedMatches: [ ... ],
+  suggestedCategory: 'UTILITIES',  // Mapped category for pre-fill
+  availableEntries: { ... }
+}
+```
+
+**UI Implementation:**
+```typescript
+// Pre-fill category from transaction prediction if available
+if (data.suggestedCategory && !isIncome) {
+  setNewCategory(data.suggestedCategory);
+}
+```
+
+### 13.12.5 Match Result Interface
+
+The `MatchResult` interface now includes a `categoryMatch` flag:
+
+```typescript
+interface MatchResult {
+  id: string;
+  name: string;
+  type: 'income' | 'expense' | 'loan';
+  category: string;
+  amount: number;
+  frequency: string;
+  confidence: number;
+  amountMatch: boolean;
+  amountDiff: number;
+  categoryMatch?: boolean;  // NEW: Indicates category-based match
+}
+```
+
+---
+
+## 13.13 Transfer Option for Incoming Transactions
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.13.1 Overview
+
+Previously, only outgoing (expense) transactions could be marked as transfers. Now, incoming transactions can also be categorized as transfers to properly handle money moving between accounts without counting it as income.
+
+### 13.13.2 Use Cases
+
+- Money transferred from external savings account
+- Refunds from credit card to bank account
+- Inter-account transfers where source account is not tracked in Monitrax
+- Loan disbursements to bank account
+
+### 13.13.3 UI Changes
+
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+The transfer toggle now appears for both income and expense transactions:
+
+```tsx
+{/* Transfer Toggle - for both income and expense transactions */}
+<div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+  <Checkbox
+    id="isTransfer"
+    checked={isTransfer}
+    onCheckedChange={(checked) => {
+      setIsTransfer(checked as boolean);
+      if (checked) {
+        setIsRecurringExpense(false);
+        setIsEssential(false);
+      }
+    }}
+  />
+  <Label>This is a transfer between accounts</Label>
+  <p className="text-xs text-muted-foreground">
+    Transfers are excluded from income/expense calculations
+  </p>
+</div>
+```
+
+### 13.13.4 Direction-Aware Labels
+
+Labels change based on transaction direction:
+
+| Transaction Direction | Account Label | Button Label |
+|----------------------|---------------|--------------|
+| IN (Income) | Transfer From Account | Mark as Incoming Transfer |
+| OUT (Expense) | Transfer To Account | Mark as Outgoing Transfer |
+
+```tsx
+<Label>{isIncome ? 'Transfer From Account' : 'Transfer To Account'}</Label>
+<p className="text-xs text-muted-foreground">
+  {isIncome
+    ? 'Select the account this money was transferred from'
+    : 'Select the account this money was transferred to'
+  }
+</p>
+```
+
+### 13.13.5 Optional Account Selection
+
+For incoming transfers, the source account selection is optional since the user may not know or track the source account:
+
+```tsx
+<Select
+  value={transferToAccountId || ''}
+  onValueChange={(value) => setTransferToAccountId(value || null)}
+>
+  <SelectTrigger>
+    <SelectValue placeholder={isIncome ? 'Select source account' : 'Select target account'} />
+  </SelectTrigger>
+  <SelectContent>
+    {bankAccounts
+      .filter(acc => acc.id !== transaction?.id)
+      .map((account) => (
+        <SelectItem key={account.id} value={account.id}>
+          {account.name} ({account.type})
+        </SelectItem>
+      ))}
+  </SelectContent>
+</Select>
+```
+
+### 13.13.6 Transfer Exclusion from Calculations
+
+Transfers (both incoming and outgoing) are excluded from:
+- Cashflow calculations
+- Budget comparisons
+- Income/expense summaries
+- Financial health metrics
+
+This prevents double-counting when money moves between tracked accounts.

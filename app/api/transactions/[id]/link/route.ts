@@ -560,6 +560,33 @@ export async function GET(
       const searchText = (transaction.merchantStandardised || transaction.description).toLowerCase();
       const txAmount = transaction.amount;
 
+      // Get the predicted category from the transaction (normalized to uppercase for matching)
+      const predictedCategory = transaction.categoryLevel1?.toUpperCase().replace(/[^A-Z_]/g, '_') || null;
+
+      // Map common category names to ExpenseCategory enum values
+      const categoryMapping: Record<string, string> = {
+        'UTILITIES': 'UTILITIES',
+        'UTILITY': 'UTILITIES',
+        'GROCERIES': 'GROCERIES',
+        'GROCERY': 'GROCERIES',
+        'FOOD_DINING': 'FOOD',
+        'FOOD___DINING': 'FOOD',
+        'FOOD': 'FOOD',
+        'DINING': 'FOOD',
+        'TRANSPORT': 'TRANSPORT',
+        'TRANSPORTATION': 'TRANSPORT',
+        'SHOPPING': 'PERSONAL',
+        'ENTERTAINMENT': 'ENTERTAINMENT',
+        'SUBSCRIPTION': 'SUBSCRIPTION',
+        'SUBSCRIPTIONS': 'SUBSCRIPTION',
+        'INSURANCE': 'INSURANCE',
+        'HOUSING': 'HOUSING',
+        'HEALTH': 'PERSONAL',
+        'MEDICAL': 'PERSONAL',
+      };
+
+      const mappedCategory = predictedCategory ? (categoryMapping[predictedCategory] || predictedCategory) : null;
+
       interface MatchResult {
         id: string;
         name: string;
@@ -570,6 +597,7 @@ export async function GET(
         confidence: number;
         amountMatch: boolean;
         amountDiff: number;
+        categoryMatch?: boolean;
       }
 
       const matches: MatchResult[] = [];
@@ -607,7 +635,17 @@ export async function GET(
           const amountDiff = Math.abs(txAmount - expense.amount);
           const amountMatch = amountDiff < 1 || amountDiff / expense.amount < 0.05;
 
-          if (similarity > 0.3 || amountMatch) {
+          // Check if the expense category matches the predicted category
+          const categoryMatch = Boolean(mappedCategory && expense.category === mappedCategory);
+
+          // Include if name matches, amount matches, OR category matches
+          if (similarity > 0.3 || amountMatch || categoryMatch) {
+            // Boost confidence for category matches
+            let confidence = similarity * (amountMatch ? 1.5 : 1);
+            if (categoryMatch) {
+              confidence += 0.5; // Boost for matching predicted category
+            }
+
             matches.push({
               id: expense.id,
               name: expense.name,
@@ -615,9 +653,10 @@ export async function GET(
               category: expense.category,
               amount: expense.amount,
               frequency: expense.frequency,
-              confidence: similarity * (amountMatch ? 1.5 : 1),
+              confidence,
               amountMatch,
               amountDiff,
+              categoryMatch,
             });
           }
         }
@@ -680,6 +719,8 @@ export async function GET(
         },
         currentLink,
         suggestedMatches: matches.slice(0, 5),
+        // Suggested category for creating new expenses based on transaction prediction
+        suggestedCategory: mappedCategory,
         availableEntries: {
           income: incomeEntries,
           expenses: expenseEntries,

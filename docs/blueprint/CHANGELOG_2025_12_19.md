@@ -61,6 +61,15 @@ Click behavior:
 - Account selection is optional (user may not know the source account)
 - Allows categorizing incoming transfers (e.g., money from another account) without counting as income
 
+### 7. Category-Based Transaction Suggestions
+**Files:** `app/api/transactions/[id]/link/route.ts`, `components/transactions/TransactionLinkDialog.tsx`
+
+- Transaction suggestions now use the predicted category (e.g., "Utilities" for Origin Energy)
+- Expenses matching the predicted category are included in suggestions with boosted confidence
+- Category dropdown is pre-filled when creating a new expense based on the prediction
+- Maps display category names (Utilities, Groceries, etc.) to ExpenseCategory enum values
+- Helps users quickly categorize transactions to existing expenses in the same category
+
 ---
 
 ## API Changes
@@ -139,6 +148,7 @@ npx prisma migrate dev --name add_expense_is_recurring
 | `e94c8ec` | fix: Show frequency selector only when recurring expense checkbox is checked |
 | `7d89f2c` | feat: Add recurring vs discretionary expense separation with clickable tiles |
 | `c8d459e` | feat: Allow incoming transactions to be marked as transfers |
+| `2485592` | feat: Use predicted category for transaction suggestions and pre-fill |
 
 ---
 
