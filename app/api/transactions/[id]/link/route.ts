@@ -687,9 +687,11 @@ export async function GET(
       // Sort by confidence
       matches.sort((a, b) => b.confidence - a.confidence);
 
-      // Get current link status
+      // Get current link status (including transfers)
       let currentLink = null;
-      if (transaction.incomeId) {
+      if (transaction.isTransfer) {
+        currentLink = { type: 'transfer', id: transaction.id, name: 'Transfer between accounts' };
+      } else if (transaction.incomeId) {
         const income = incomeEntries.find((i: typeof incomeEntries[number]) => i.id === transaction.incomeId);
         if (income) {
           currentLink = { type: 'income', id: income.id, name: income.name };
@@ -716,6 +718,7 @@ export async function GET(
           direction: transaction.direction,
           categoryLevel1: transaction.categoryLevel1,
           isRecurring: transaction.isRecurring,
+          isTransfer: transaction.isTransfer,
         },
         currentLink,
         suggestedMatches: matches.slice(0, 5),
