@@ -59,6 +59,15 @@ interface MatchResult {
   amountDiff: number;
 }
 
+interface SameVendorTransaction {
+  id: string;
+  date: string;
+  description: string;
+  merchantStandardised?: string | null;
+  amount: number;
+  direction: 'IN' | 'OUT';
+}
+
 interface CurrentLink {
   type: 'income' | 'expense' | 'loan' | 'transfer';
   id: string;
@@ -141,6 +150,12 @@ export function TransactionLinkDialog({
     type: string;
   }>>([]);
 
+  // Same-vendor transactions for batch categorization
+  const [sameVendorTransactions, setSameVendorTransactions] = useState<SameVendorTransaction[]>([]);
+  const [selectedVendorTransactions, setSelectedVendorTransactions] = useState<Set<string>>(new Set());
+  const [learnedCategory, setLearnedCategory] = useState<string | null>(null);
+  const [learnMerchant, setLearnMerchant] = useState(true); // Default to learning
+
   // Create new form state
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('');
@@ -180,6 +195,10 @@ export function TransactionLinkDialog({
       setIsTransfer(false);
       setTransferToAccountId(null);
       setUpdateAmountOnLink(false);
+      setSameVendorTransactions([]);
+      setSelectedVendorTransactions(new Set());
+      setLearnedCategory(null);
+      setLearnMerchant(true);
       setSuccess(null);
       setError(null);
     }
@@ -224,10 +243,18 @@ export function TransactionLinkDialog({
       setSourceLoansList(data.availableSources?.loans || []);
       setInvestmentAccounts(data.availableSources?.investmentAccounts || []);
       setAssets(data.availableSources?.assets || []);
-      // Pre-fill category from transaction prediction if available
+      // Pre-fill category from transaction prediction or learned mapping if available
       if (data.suggestedCategory && !isIncome) {
         setNewCategory(data.suggestedCategory);
       }
+      // Load same-vendor transactions for batch categorization
+      setSameVendorTransactions(data.sameVendorTransactions || []);
+      // Pre-select all same-vendor transactions by default
+      if (data.sameVendorTransactions && data.sameVendorTransactions.length > 0) {
+        setSelectedVendorTransactions(new Set(data.sameVendorTransactions.map((t: SameVendorTransaction) => t.id)));
+      }
+      // Store learned category for display
+      setLearnedCategory(data.learnedCategory || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load matches');
     } finally {
@@ -247,7 +274,14 @@ export function TransactionLinkDialog({
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ action: 'link', type, targetId, updateAmount: shouldUpdateAmount }),
+        body: JSON.stringify({
+          action: 'link',
+          type,
+          targetId,
+          updateAmount: shouldUpdateAmount,
+          additionalTransactionIds: Array.from(selectedVendorTransactions),
+          learnMerchant,
+        }),
       });
 
       const data = await response.json();
@@ -337,6 +371,8 @@ export function TransactionLinkDialog({
         category: newCategory,
         frequency: isRecurringExpense ? newFrequency : 'MONTHLY', // Default frequency for non-recurring
         isRecurring: isRecurringExpense,
+        additionalTransactionIds: Array.from(selectedVendorTransactions),
+        learnMerchant,
       };
 
       // Add source type and entity linking for expenses
@@ -416,6 +452,28 @@ export function TransactionLinkDialog({
     }
   };
 
+  // Toggle selection of a same-vendor transaction
+  const toggleVendorTransaction = (transactionId: string) => {
+    setSelectedVendorTransactions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(transactionId)) {
+        newSet.delete(transactionId);
+      } else {
+        newSet.add(transactionId);
+      }
+      return newSet;
+    });
+  };
+
+  // Toggle all same-vendor transactions
+  const toggleAllVendorTransactions = () => {
+    if (selectedVendorTransactions.size === sameVendorTransactions.length) {
+      setSelectedVendorTransactions(new Set());
+    } else {
+      setSelectedVendorTransactions(new Set(sameVendorTransactions.map(t => t.id)));
+    }
+  };
+
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
 
@@ -453,6 +511,13 @@ export function TransactionLinkDialog({
                 {transaction.merchantStandardised || transaction.description}
               </p>
               <p className="text-sm text-muted-foreground">{formatDate(transaction.date)}</p>
+              {learnedCategory && (
+                <div className="flex items-center gap-1 mt-1">
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                    Previously: {learnedCategory}
+                  </Badge>
+                </div>
+              )}
             </div>
             <div className="text-right">
               <p className={`font-semibold ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
@@ -464,6 +529,64 @@ export function TransactionLinkDialog({
             </div>
           </div>
         </div>
+
+        {/* Same-Vendor Transactions */}
+        {sameVendorTransactions.length > 0 && (
+          <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                  Same Vendor ({sameVendorTransactions.length} more)
+                </span>
+                <Badge variant="outline" className="text-xs border-purple-300 text-purple-600">
+                  Batch Categorize
+                </Badge>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={toggleAllVendorTransactions}
+                className="text-xs h-7"
+              >
+                {selectedVendorTransactions.size === sameVendorTransactions.length ? 'Deselect All' : 'Select All'}
+              </Button>
+            </div>
+            <div className="max-h-32 overflow-auto space-y-1">
+              {sameVendorTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
+                    selectedVendorTransactions.has(tx.id)
+                      ? 'bg-purple-100 dark:bg-purple-900/50'
+                      : 'hover:bg-purple-100/50 dark:hover:bg-purple-900/30'
+                  }`}
+                  onClick={() => toggleVendorTransaction(tx.id)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedVendorTransactions.has(tx.id)}
+                      onCheckedChange={() => toggleVendorTransaction(tx.id)}
+                    />
+                    <div>
+                      <p className="text-sm font-medium truncate max-w-[180px]">
+                        {tx.merchantStandardised || tx.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{formatDate(tx.date)}</p>
+                    </div>
+                  </div>
+                  <span className={`text-sm font-semibold ${tx.direction === 'IN' ? 'text-green-600' : 'text-red-600'}`}>
+                    {tx.direction === 'IN' ? '+' : '-'}{formatCurrency(tx.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {selectedVendorTransactions.size > 0 && (
+              <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                {selectedVendorTransactions.size} transaction{selectedVendorTransactions.size > 1 ? 's' : ''} will be categorized together
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Current Link */}
         {currentLink && (
@@ -550,7 +673,7 @@ export function TransactionLinkDialog({
                         disabled={saving}
                       >
                         <Link2 className="h-3 w-3 mr-1" />
-                        Link Only
+                        Link{selectedVendorTransactions.size > 0 && ` (${selectedVendorTransactions.size + 1})`}
                       </Button>
                       <Button
                         size="sm"
@@ -1047,6 +1170,23 @@ export function TransactionLinkDialog({
                 </div>
               )}
 
+              {/* Merchant Learning */}
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="learnMerchant"
+                    checked={learnMerchant}
+                    onCheckedChange={(checked) => setLearnMerchant(checked as boolean)}
+                  />
+                  <Label htmlFor="learnMerchant" className="text-sm font-normal cursor-pointer">
+                    Remember for future {transaction.merchantStandardised || 'similar'} transactions
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 ml-6">
+                  Future transactions from this vendor will be auto-suggested with this category
+                </p>
+              </div>
+
               <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                 <p className="text-sm text-muted-foreground">
                   Amount: <strong>{formatCurrency(transaction.amount)}</strong>
@@ -1060,6 +1200,11 @@ export function TransactionLinkDialog({
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create {isIncome ? 'Income' : 'Expense'} Entry
+                {selectedVendorTransactions.size > 0 && (
+                  <span className="ml-1 text-xs opacity-75">
+                    (+{selectedVendorTransactions.size} more)
+                  </span>
+                )}
               </Button>
               </>
               )}
