@@ -168,6 +168,81 @@ model Account {
 | `67f8f8a` | fix: Display full decimal amounts and add pagination |
 | `d72d77a` | fix: Calculate QIF closing balance from transaction sum without opening balance |
 | `e785f1a` | feat: Add mandatory Current Balance field when creating account during import |
+| `9beb8d5` | feat: Add transaction categorization with recurring/essential flags and transfer handling |
+
+---
+
+## New Features - Transaction Categorization
+
+### 7. Transfer Transaction Handling
+**Files:** `components/transactions/TransactionLinkDialog.tsx`, `app/api/transactions/[id]/link/route.ts`
+
+- New "Transfer" option when categorizing transactions
+- Select target account for inter-account transfers
+- Transfers are **excluded** from income/expense calculations
+- Prevents double-counting when money moves between accounts
+- Category automatically set to "Transfer" when marked
+
+### 8. Recurring vs One-off Transaction Categorization
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+- New "Recurring expense" checkbox (no longer always true)
+- One-off expenses just get categorized without creating recurring entry
+- Recurring expenses ask for frequency and create recurring expense entries
+- Essential checkbox works independently of recurring status
+
+### 9. Essential Expense Tracking
+**Files:** `prisma/schema.prisma`, `components/transactions/TransactionLinkDialog.tsx`
+
+- New `isEssential` flag on UnifiedTransaction model
+- Essential expenses included in minimum outgoings calculations
+- Works independently of recurring status
+- Examples: Insurance (recurring + essential), Coffee (one-off + non-essential)
+
+### 10. New Expense Categories
+**Files:** `prisma/schema.prisma`, `lib/categories/unified.ts`
+
+New categories added:
+- `GROCERIES` - Essential groceries (separate from Food & Dining)
+- `HEALTH` - Health, medical, pharmacy expenses
+- `EDUCATION` - Education, courses, training
+- `SUBSCRIPTION` - Recurring subscriptions (Netflix, Spotify, etc.)
+- `REGISTRATION` - Vehicle registration, license fees
+- `MODIFICATIONS` - Vehicle modifications, upgrades
+
+### 11. Transfer Exclusion from Calculations
+**Files:** `app/api/cashflow/route.ts`, `app/api/budget/comparison/route.ts`, `app/api/unified-transactions/route.ts`
+
+- Cashflow API excludes transfers from calculations
+- Budget comparison excludes transfers
+- New `isTransfer` and `excludeTransfers` filters on transactions API
+
+---
+
+## Additional Schema Changes
+
+### UnifiedTransaction Model Additions
+```prisma
+model UnifiedTransaction {
+  // ... existing fields ...
+  isEssential           Boolean  @default(false)  // Is this an essential expense?
+  isTransfer            Boolean  @default(false)  // Is this a transfer between accounts?
+  transferToAccountId   String?                   // Target account for transfers
+}
+```
+
+### ExpenseCategory Enum Additions
+```prisma
+enum ExpenseCategory {
+  // ... existing values ...
+  GROCERIES       // Essential groceries
+  HEALTH          // Health, medical, pharmacy
+  EDUCATION       // Education, courses, training
+  SUBSCRIPTION    // (already existed but now in unified.ts)
+  REGISTRATION    // (already existed)
+  MODIFICATIONS   // (already existed)
+}
+```
 
 ---
 
