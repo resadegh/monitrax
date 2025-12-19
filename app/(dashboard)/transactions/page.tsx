@@ -257,20 +257,49 @@ function TransactionRow({
   );
 }
 
-function SummaryCards({ summary }: { summary: AnalyticsSummary }) {
+function SummaryCards({
+  summary,
+  activeFilter,
+  onFilterChange,
+}: {
+  summary: AnalyticsSummary;
+  activeFilter: 'uncategorized' | 'spend' | 'income' | 'all' | null;
+  onFilterChange: (filter: 'uncategorized' | 'spend' | 'income' | 'all' | null) => void;
+}) {
+  const getTileClasses = (tileType: 'spend' | 'income' | 'all') => {
+    const isActive = activeFilter === tileType;
+    return `bg-white rounded-lg shadow p-4 cursor-pointer transition-all hover:shadow-md ${
+      isActive ? 'ring-2 ring-blue-500 ring-offset-1' : ''
+    }`;
+  };
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div className="bg-white rounded-lg shadow p-4">
+      <div
+        className={getTileClasses('spend')}
+        onClick={() => onFilterChange(activeFilter === 'spend' ? 'uncategorized' : 'spend')}
+        title="Click to show all expenses"
+      >
         <div className="text-sm text-gray-500">Total Spend</div>
         <div className="text-xl font-bold text-red-600">
           {formatCurrency(summary.totalSpend)}
         </div>
+        {activeFilter === 'spend' && (
+          <div className="text-xs text-blue-600 mt-1">Showing all</div>
+        )}
       </div>
-      <div className="bg-white rounded-lg shadow p-4">
+      <div
+        className={getTileClasses('income')}
+        onClick={() => onFilterChange(activeFilter === 'income' ? 'uncategorized' : 'income')}
+        title="Click to show all income"
+      >
         <div className="text-sm text-gray-500">Total Income</div>
         <div className="text-xl font-bold text-green-600">
           {formatCurrency(summary.totalIncome)}
         </div>
+        {activeFilter === 'income' && (
+          <div className="text-xs text-blue-600 mt-1">Showing all</div>
+        )}
       </div>
       <div className="bg-white rounded-lg shadow p-4">
         <div className="text-sm text-gray-500">Net Cashflow</div>
@@ -287,9 +316,16 @@ function SummaryCards({ summary }: { summary: AnalyticsSummary }) {
           {formatCurrency(Math.abs(summary.netCashflow))}
         </div>
       </div>
-      <div className="bg-white rounded-lg shadow p-4">
+      <div
+        className={getTileClasses('all')}
+        onClick={() => onFilterChange(activeFilter === 'all' ? 'uncategorized' : 'all')}
+        title="Click to show all transactions"
+      >
         <div className="text-sm text-gray-500">Transactions</div>
         <div className="text-xl font-bold">{summary.transactionCount}</div>
+        {activeFilter === 'all' && (
+          <div className="text-xs text-blue-600 mt-1">Showing all</div>
+        )}
       </div>
     </div>
   );
@@ -325,6 +361,9 @@ export default function TransactionExplorer() {
   const [showAnomaliesOnly, setShowAnomaliesOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Tile filter: null = uncategorized (default), 'spend' = all expenses, 'income' = all income, 'all' = all transactions
+  const [tileFilter, setTileFilter] = useState<'uncategorized' | 'spend' | 'income' | 'all' | null>('uncategorized');
+
   // Pagination
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -353,6 +392,18 @@ export default function TransactionExplorer() {
       if (showRecurringOnly) params.append('recurring', 'true');
       if (showAnomaliesOnly) params.append('hasAnomalies', 'true');
 
+      // Apply tile filter
+      if (tileFilter === 'uncategorized') {
+        params.append('uncategorized', 'true');
+      } else if (tileFilter === 'spend') {
+        params.append('direction', 'OUT');
+        params.append('excludeTransfers', 'true');
+      } else if (tileFilter === 'income') {
+        params.append('direction', 'IN');
+        params.append('excludeTransfers', 'true');
+      }
+      // 'all' filter shows everything without additional filters
+
       const response = await fetch(`/api/unified-transactions?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -369,7 +420,7 @@ export default function TransactionExplorer() {
     } finally {
       setLoading(false);
     }
-  }, [token, page, search, accountFilter, categoryFilter, dateRange, showRecurringOnly, showAnomaliesOnly]);
+  }, [token, page, search, accountFilter, categoryFilter, dateRange, showRecurringOnly, showAnomaliesOnly, tileFilter]);
 
   const fetchSummary = useCallback(async () => {
     if (!token) return;
@@ -442,7 +493,27 @@ export default function TransactionExplorer() {
         </div>
 
         {/* Summary Cards */}
-        {summary && <SummaryCards summary={summary} />}
+        {summary && (
+          <SummaryCards
+            summary={summary}
+            activeFilter={tileFilter}
+            onFilterChange={(filter) => {
+              setTileFilter(filter);
+              setPage(1);
+            }}
+          />
+        )}
+
+        {/* Filter indicator */}
+        {tileFilter === 'uncategorized' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-800">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">Showing uncategorized transactions only</span>
+              <span className="text-xs text-amber-600">(click a tile above to view all)</span>
+            </div>
+          </div>
+        )}
 
         {/* Account Filter - Prominent Selector */}
         <div className="bg-white rounded-lg shadow mb-4 p-4">
@@ -684,6 +755,7 @@ export default function TransactionExplorer() {
         }}
         onLinked={() => {
           fetchTransactions();
+          fetchSummary();
         }}
       />
     </DashboardLayout>
