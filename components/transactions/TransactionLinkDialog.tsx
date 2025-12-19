@@ -60,7 +60,7 @@ interface MatchResult {
 }
 
 interface CurrentLink {
-  type: 'income' | 'expense' | 'loan';
+  type: 'income' | 'expense' | 'loan' | 'transfer';
   id: string;
   name: string;
 }
@@ -467,14 +467,25 @@ export function TransactionLinkDialog({
 
         {/* Current Link */}
         {currentLink && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className={`p-3 rounded-lg border ${
+            currentLink.type === 'transfer'
+              ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800'
+              : 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800'
+          }`}>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-blue-600" />
+                {currentLink.type === 'transfer' ? (
+                  <ArrowRightLeft className="h-4 w-4 text-amber-600" />
+                ) : (
+                  <Check className="h-4 w-4 text-blue-600" />
+                )}
                 <span className="text-sm">
-                  Linked to: <strong>{currentLink.name}</strong>
+                  {currentLink.type === 'transfer' ? 'Marked as: ' : 'Linked to: '}
+                  <strong>{currentLink.name}</strong>
                 </span>
-                <Badge variant="outline">{currentLink.type}</Badge>
+                <Badge variant="outline" className={
+                  currentLink.type === 'transfer' ? 'border-amber-300 text-amber-700' : ''
+                }>{currentLink.type}</Badge>
               </div>
               <Button
                 size="sm"

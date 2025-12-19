@@ -24,6 +24,7 @@ import {
   RefreshCw,
   ArrowUpRight,
   ArrowDownLeft,
+  ArrowLeftRight,
   AlertTriangle,
   ChevronRight,
   Calendar,
@@ -55,6 +56,7 @@ interface Transaction {
   tags: string[];
   confidenceScore: number | null;
   isRecurring: boolean;
+  isTransfer: boolean;
   anomalyFlags: string[];
   incomeId?: string | null;
   expenseId?: string | null;
@@ -157,6 +159,8 @@ function TransactionRow({
   onLink: (tx: Transaction) => void;
 }) {
   const isLinked = transaction.incomeId || transaction.expenseId;
+  const isTransfer = transaction.isTransfer;
+  const hasStatus = isLinked || isTransfer;
 
   return (
     <div
@@ -187,7 +191,12 @@ function TransactionRow({
               <Link2 className="h-4 w-4" />
             </span>
           )}
-          {transaction.isRecurring && !isLinked && (
+          {isTransfer && (
+            <span title="Transfer between accounts" className="text-amber-500">
+              <ArrowLeftRight className="h-4 w-4" />
+            </span>
+          )}
+          {transaction.isRecurring && !hasStatus && (
             <span title="Recurring">
               <Repeat className="h-4 w-4 text-blue-500" />
             </span>
@@ -219,8 +228,14 @@ function TransactionRow({
         {getConfidenceBadge(transaction.confidenceScore)}
       </div>
 
-      {/* Link Status Badge */}
-      {isLinked && (
+      {/* Link/Transfer Status Badge */}
+      {isTransfer && (
+        <span className="hidden sm:flex px-3 py-1.5 text-xs rounded-lg items-center gap-1 bg-amber-100 text-amber-700">
+          <ArrowLeftRight className="h-3 w-3" />
+          Transfer
+        </span>
+      )}
+      {isLinked && !isTransfer && (
         <span className="hidden sm:flex px-3 py-1.5 text-xs rounded-lg items-center gap-1 bg-blue-100 text-blue-700">
           <Link2 className="h-3 w-3" />
           Linked
