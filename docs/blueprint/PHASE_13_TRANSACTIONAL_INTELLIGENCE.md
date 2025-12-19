@@ -1243,3 +1243,72 @@ onLinked={() => {
 3. **Auto-Disappear**: Transaction disappears from the list (if in uncategorized view)
 4. **View All**: User can click a tile to see all transactions of that type
 5. **Return**: Click the same tile again to return to uncategorized view
+
+---
+
+## 13.17 Auto-Navigate to Next Transaction
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.17.1 Overview
+
+After successfully categorizing a transaction, the dialog automatically navigates to the next uncategorized transaction, providing a seamless batch categorization experience.
+
+### 13.17.2 Dialog Props
+
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+```typescript
+interface TransactionLinkDialogProps {
+  transaction: Transaction | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onLinked?: () => void;
+  onNavigateNext?: () => void;       // Navigate to next transaction
+  hasMoreTransactions?: boolean;     // Whether more transactions exist
+}
+```
+
+### 13.17.3 Auto-Navigation Logic
+
+After successful categorization (link, create, or transfer):
+
+```typescript
+// Auto-navigate to next transaction after a brief delay to show success
+setTimeout(() => {
+  if (hasMoreTransactions && onNavigateNext) {
+    onNavigateNext();
+  } else {
+    onOpenChange(false);
+  }
+}, 800);
+```
+
+### 13.17.4 Parent Component Implementation
+
+**File:** `app/(dashboard)/transactions/page.tsx`
+
+```typescript
+<TransactionLinkDialog
+  transaction={linkingTransaction}
+  hasMoreTransactions={transactions.length > 1}
+  onNavigateNext={() => {
+    const currentIndex = transactions.findIndex(t => t.id === linkingTransaction?.id);
+    const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
+
+    if (nextIndex < transactions.length) {
+      setLinkingTransaction(transactions[nextIndex]);
+    } else {
+      setShowLinkDialog(false);
+    }
+  }}
+/>
+```
+
+### 13.17.5 User Experience
+
+1. User opens transaction categorization dialog
+2. User categorizes the transaction (link, create expense, or mark as transfer)
+3. Success message displays for 800ms
+4. Dialog automatically shows the next uncategorized transaction
+5. If no more transactions, dialog closes automatically
