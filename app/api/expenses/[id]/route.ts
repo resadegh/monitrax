@@ -39,7 +39,7 @@ export async function PUT(
     try {
       const { id } = await params;
       const body = await request.json();
-      const { name, category, amount, frequency, isEssential, isTaxDeductible, propertyId, loanId, investmentAccountId, assetId, vendorName, sourceType } = body;
+      const { name, category, amount, frequency, isEssential, isTaxDeductible, isRecurring, propertyId, loanId, investmentAccountId, assetId, vendorName, sourceType } = body;
 
       // Verify ownership
       const existing = await prisma.expense.findUnique({
@@ -89,6 +89,7 @@ export async function PUT(
           frequency,
           isEssential,
           isTaxDeductible,
+          isRecurring: isRecurring !== undefined ? isRecurring : undefined,
           propertyId: propertyId !== undefined ? propertyId : undefined,
           loanId: loanId !== undefined ? loanId : undefined,
           investmentAccountId: investmentAccountId !== undefined ? investmentAccountId : undefined,

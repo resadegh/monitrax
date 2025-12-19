@@ -238,6 +238,7 @@ export async function POST(
               assetId?: string;
               isEssential?: boolean;
               isTaxDeductible?: boolean;
+              isRecurring?: boolean;
             } = {
               userId,
               name,
@@ -269,6 +270,8 @@ export async function POST(
             if (body.isTaxDeductible !== undefined) {
               expenseData.isTaxDeductible = body.isTaxDeductible;
             }
+            // Set isRecurring based on the checkbox - defaults to false for one-off/discretionary
+            expenseData.isRecurring = body.isRecurring ?? false;
 
             const expense = await prisma.expense.create({
               data: expenseData,

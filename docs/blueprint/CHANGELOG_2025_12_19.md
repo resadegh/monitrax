@@ -1,0 +1,135 @@
+# Changelog — 2025-12-19
+
+## Summary
+Enhanced expenses page with separation of recurring vs discretionary expenses, clickable summary tiles for filtering, and improved UI for expense management.
+
+---
+
+## Features Added
+
+### 1. Recurring vs Discretionary Expense Separation
+**Files:** `app/dashboard/expenses/page.tsx`, `prisma/schema.prisma`
+
+- New `isRecurring` field on Expense model to distinguish between recurring and one-off expenses
+- **Recurring Expenses**: Bills, subscriptions, regular payments (isRecurring: true)
+- **Discretionary Spending**: One-off purchases, impulse buys, variable spending (isRecurring: false)
+- Existing expenses default to recurring for backwards compatibility
+
+### 2. Clickable Summary Tiles on Expenses Page
+**File:** `app/dashboard/expenses/page.tsx`
+
+Four summary tiles with click-to-filter functionality:
+- **Recurring Expenses** (blue) - Shows all recurring/committed expenses
+- **Discretionary Spending** (purple) - Shows one-off/flexible expenses
+- **Loan Repayments** (orange) - Shows loan repayment section
+- **Total Outgoings** (red gradient) - Shows all expenses and loans
+
+Click behavior:
+- Click a tile to filter the expense list to that category
+- Click again to deselect (show all)
+- Active tile shows ring highlight
+- Filter indicator badge shows current filter with clear button
+
+### 3. Recurring Checkbox in Add/Edit Expense Form
+**File:** `app/dashboard/expenses/page.tsx`
+
+- New "This is a recurring expense" checkbox
+- Helpful description changes based on checkbox state:
+  - Checked: "Recurring expenses (bills, subscriptions) appear in your committed outgoings"
+  - Unchecked: "One-off expenses (discretionary purchases) appear in your flexible spending"
+
+### 4. Recurring/Discretionary Badges on Expense Cards
+**File:** `app/dashboard/expenses/page.tsx`
+
+- Expense cards now show Recurring (blue) or One-off (purple) badge
+- Badge displays in both Tiles view and Detail dialog
+- Helps users quickly identify expense type
+
+### 5. Frequency Selector Conditional Display
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+- Fixed: Frequency selector now only appears when "Recurring expense" checkbox is checked
+- Previously was always visible regardless of checkbox state
+
+---
+
+## API Changes
+
+### Expenses API
+**Files:** `app/api/expenses/route.ts`, `app/api/expenses/[id]/route.ts`
+
+- POST: Added `isRecurring` field to expense creation
+- PUT: Added `isRecurring` field to expense updates
+- Default value: `true` (for backwards compatibility)
+
+### Transaction Link API
+**File:** `app/api/transactions/[id]/link/route.ts`
+
+- Create expense action now passes `isRecurring` flag
+- Defaults to `false` for new expenses created from transactions (since these are typically one-off)
+
+---
+
+## Schema Changes
+
+### Expense Model Addition
+```prisma
+model Expense {
+  // ... existing fields ...
+  isRecurring           Boolean            @default(true)  // Is this a recurring expense or one-off/discretionary?
+}
+```
+
+---
+
+## UI/UX Improvements
+
+### Expenses Page Layout
+- Summary tiles changed from 3-column to 4-column grid on large screens
+- Tiles are now clickable with hover shadow effect
+- Active filter shows ring highlight around tile
+- Filter indicator badge below tiles when filter active
+
+### Expense Tile View
+- Added Recurring/One-off badge to expense cards
+- Improved badge color scheme for better visibility
+
+### Expense Detail Dialog
+- Added "Type" field showing Recurring (blue) or Discretionary (purple)
+- Positioned between Frequency and Essential fields
+
+---
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `prisma/schema.prisma` | Added `isRecurring` field to Expense model |
+| `app/api/expenses/route.ts` | Added `isRecurring` to POST handler |
+| `app/api/expenses/[id]/route.ts` | Added `isRecurring` to PUT handler |
+| `app/api/transactions/[id]/link/route.ts` | Pass `isRecurring` when creating expense |
+| `app/dashboard/expenses/page.tsx` | Major update: tiles, filtering, form checkbox, badges |
+| `components/transactions/TransactionLinkDialog.tsx` | Fix frequency selector conditional display |
+
+---
+
+## Migration Required
+
+After deployment, run:
+```bash
+npx prisma migrate dev --name add_expense_is_recurring
+```
+
+---
+
+## Commits
+
+| Hash | Message |
+|------|---------|
+| `e94c8ec` | fix: Show frequency selector only when recurring expense checkbox is checked |
+| TBD | feat: Add recurring vs discretionary expense separation with clickable tiles |
+
+---
+
+*Changelog Version: 1.0*
+*Date: 2025-12-19*
