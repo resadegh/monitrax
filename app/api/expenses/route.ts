@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   return withAuth(request, async (authReq) => {
     try {
       const body = await request.json();
-      const { name, category, amount, frequency, isTaxDeductible, isEssential, propertyId, loanId, investmentAccountId, assetId, vendorName, sourceType } = body;
+      const { name, category, amount, frequency, isTaxDeductible, isEssential, isRecurring, propertyId, loanId, investmentAccountId, assetId, vendorName, sourceType } = body;
 
       if (!name || !category || amount === undefined || !frequency) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
           frequency,
           isTaxDeductible: isTaxDeductible !== undefined ? Boolean(isTaxDeductible) : false,
           isEssential: isEssential !== undefined ? Boolean(isEssential) : true,
+          isRecurring: isRecurring !== undefined ? Boolean(isRecurring) : true,
           propertyId: propertyId || null,
           loanId: loanId || null,
           investmentAccountId: investmentAccountId || null,

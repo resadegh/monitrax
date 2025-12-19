@@ -631,6 +631,7 @@ model Expense {
   frequency             Frequency
   isEssential           Boolean            @default(true)
   isTaxDeductible       Boolean            @default(false)
+  isRecurring           Boolean            @default(true)  // Is this a recurring expense or one-off/discretionary?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

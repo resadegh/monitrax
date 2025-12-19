@@ -106,6 +106,7 @@ interface Expense {
   frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
   isEssential: boolean;
   isTaxDeductible: boolean;
+  isRecurring: boolean;
   propertyId: string | null;
   loanId: string | null;
   investmentAccountId: string | null;
@@ -136,11 +137,15 @@ type ExpenseFormData = {
   frequency: Expense['frequency'];
   isEssential: boolean;
   isTaxDeductible: boolean;
+  isRecurring: boolean;
   propertyId: string | null;
   loanId: string | null;
   investmentAccountId: string | null;
   assetId: string | null;
 };
+
+// Tile filter type for expense breakdown
+type TileFilter = 'all' | 'recurring' | 'discretionary' | 'loans';
 
 function ExpensesPageContent() {
   const { token } = useAuth();
@@ -173,6 +178,7 @@ function ExpensesPageContent() {
     frequency: 'MONTHLY',
     isEssential: true,
     isTaxDeductible: false,
+    isRecurring: true,
     propertyId: null,
     loanId: null,
     investmentAccountId: null,
@@ -187,6 +193,7 @@ function ExpensesPageContent() {
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
+  const [activeTileFilter, setActiveTileFilter] = useState<TileFilter>('all');
 
   // Handle auto-fill from document analysis
   const handleFieldsExtracted = (mappings: Record<string, FieldMapping>) => {
@@ -458,6 +465,7 @@ function ExpensesPageContent() {
       frequency: 'MONTHLY',
       isEssential: true,
       isTaxDeductible: false,
+      isRecurring: true,
       propertyId: null,
       loanId: null,
       investmentAccountId: null,
@@ -484,6 +492,7 @@ function ExpensesPageContent() {
       frequency: item.frequency,
       isEssential: item.isEssential,
       isTaxDeductible: item.isTaxDeductible || false,
+      isRecurring: item.isRecurring ?? true,
       propertyId: item.propertyId,
       loanId: item.loanId,
       investmentAccountId: item.investmentAccountId,
@@ -539,6 +548,12 @@ function ExpensesPageContent() {
   const totalMonthly = filteredExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
   const allTotalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
 
+  // Calculate recurring vs discretionary expenses
+  const recurringExpenses = expenses.filter(e => e.isRecurring !== false); // Default to recurring if not set
+  const discretionaryExpenses = expenses.filter(e => e.isRecurring === false);
+  const recurringMonthly = recurringExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+  const discretionaryMonthly = discretionaryExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
+
   // Calculate total loan repayments (monthly)
   const totalLoanRepaymentsMonthly = loans.reduce((sum, loan) =>
     sum + convertLoanRepaymentToMonthly(loan.minRepayment, loan.repaymentFrequency), 0
@@ -547,6 +562,25 @@ function ExpensesPageContent() {
   // Total outgoings = expenses + loan repayments
   const totalOutgoingsMonthly = totalMonthly + totalLoanRepaymentsMonthly;
   const allTotalOutgoingsMonthly = allTotalMonthly + totalLoanRepaymentsMonthly;
+
+  // Apply tile filter to display expenses
+  const displayedExpenses = useMemo(() => {
+    switch (activeTileFilter) {
+      case 'recurring':
+        return filteredExpenses.filter(e => e.isRecurring !== false);
+      case 'discretionary':
+        return filteredExpenses.filter(e => e.isRecurring === false);
+      case 'loans':
+        return []; // Loans are shown separately
+      default:
+        return filteredExpenses;
+    }
+  }, [filteredExpenses, activeTileFilter]);
+
+  // Handle tile click
+  const handleTileClick = (filter: TileFilter) => {
+    setActiveTileFilter(prev => prev === filter ? 'all' : filter);
+  };
 
   const toggleGroupExpanded = (groupId: string) => {
     setExpandedGroups(prev => {
@@ -583,7 +617,7 @@ function ExpensesPageContent() {
   // Group expenses by category
   const groupByCategory = (): ExpenseGroup[] => {
     const groups: Record<string, Expense[]> = {};
-    filteredExpenses.forEach(exp => {
+    displayedExpenses.forEach(exp => {
       if (!groups[exp.category]) {
         groups[exp.category] = [];
       }
@@ -616,7 +650,7 @@ function ExpensesPageContent() {
     });
 
     // Distribute expenses
-    filteredExpenses.forEach(exp => {
+    displayedExpenses.forEach(exp => {
       if (exp.sourceType === 'PROPERTY' && exp.propertyId) {
         const key = `property-${exp.propertyId}`;
         if (groups[key]) {
@@ -833,23 +867,46 @@ function ExpensesPageContent() {
 
       {/* Outgoings Summary */}
       {(expenses.length > 0 || loans.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {/* Regular Expenses */}
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Recurring Expenses */}
+          <Card
+            className={`cursor-pointer transition-all hover:shadow-md ${activeTileFilter === 'recurring' ? 'ring-2 ring-blue-500 bg-blue-50/50 dark:bg-blue-950/30' : ''}`}
+            onClick={() => handleTileClick('recurring')}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Regular Expenses</p>
-                  <p className="text-2xl font-bold text-red-600">{formatCurrency(totalMonthly)}</p>
-                  <p className="text-xs text-muted-foreground">{filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Recurring Expenses</p>
+                  <p className="text-2xl font-bold text-blue-600">{formatCurrency(recurringMonthly)}</p>
+                  <p className="text-xs text-muted-foreground">{recurringExpenses.length} expense{recurringExpenses.length !== 1 ? 's' : ''}</p>
                 </div>
-                <TrendingDown className="h-8 w-8 text-red-500/20" />
+                <Calendar className="h-8 w-8 text-blue-500/20" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Discretionary Spending */}
+          <Card
+            className={`cursor-pointer transition-all hover:shadow-md ${activeTileFilter === 'discretionary' ? 'ring-2 ring-purple-500 bg-purple-50/50 dark:bg-purple-950/30' : ''}`}
+            onClick={() => handleTileClick('discretionary')}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Discretionary Spending</p>
+                  <p className="text-2xl font-bold text-purple-600">{formatCurrency(discretionaryMonthly)}</p>
+                  <p className="text-xs text-muted-foreground">{discretionaryExpenses.length} expense{discretionaryExpenses.length !== 1 ? 's' : ''}</p>
+                </div>
+                <CreditCard className="h-8 w-8 text-purple-500/20" />
               </div>
             </CardContent>
           </Card>
 
           {/* Loan Repayments */}
-          <Card>
+          <Card
+            className={`cursor-pointer transition-all hover:shadow-md ${activeTileFilter === 'loans' ? 'ring-2 ring-orange-500 bg-orange-50/50 dark:bg-orange-950/30' : ''}`}
+            onClick={() => handleTileClick('loans')}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -863,13 +920,16 @@ function ExpensesPageContent() {
           </Card>
 
           {/* Total Outgoings */}
-          <Card className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-red-200 dark:border-red-800">
+          <Card
+            className={`bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-red-200 dark:border-red-800 cursor-pointer transition-all hover:shadow-md ${activeTileFilter === 'all' ? 'ring-2 ring-red-500' : ''}`}
+            onClick={() => setActiveTileFilter('all')}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Outgoings</p>
-                  <p className="text-2xl font-bold text-red-700 dark:text-red-400">{formatCurrency(totalOutgoingsMonthly)}</p>
-                  <p className="text-xs text-muted-foreground">{formatCurrency(totalOutgoingsMonthly * 12)}/year</p>
+                  <p className="text-2xl font-bold text-red-700 dark:text-red-400">{formatCurrency(allTotalOutgoingsMonthly)}</p>
+                  <p className="text-xs text-muted-foreground">{formatCurrency(allTotalOutgoingsMonthly * 12)}/year</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-red-500/30" />
               </div>
@@ -878,8 +938,21 @@ function ExpensesPageContent() {
         </div>
       )}
 
+      {/* Active filter indicator */}
+      {activeTileFilter !== 'all' && (
+        <div className="mb-4 flex items-center gap-2">
+          <Badge variant="secondary" className="text-sm">
+            Showing: {activeTileFilter === 'recurring' ? 'Recurring Expenses' : activeTileFilter === 'discretionary' ? 'Discretionary Spending' : 'Loan Repayments'}
+          </Badge>
+          <Button variant="ghost" size="sm" onClick={() => setActiveTileFilter('all')}>
+            <X className="h-4 w-4 mr-1" />
+            Clear filter
+          </Button>
+        </div>
+      )}
+
       {/* Loan Repayments Detail */}
-      {loans.length > 0 && (
+      {loans.length > 0 && (activeTileFilter === 'all' || activeTileFilter === 'loans') && (
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -961,7 +1034,7 @@ function ExpensesPageContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {filteredExpenses.map((item) => {
+                  {displayedExpenses.map((item) => {
                     const monthlyAmount = convertToMonthly(item.amount, item.frequency);
                     return (
                       <tr
@@ -1037,7 +1110,7 @@ function ExpensesPageContent() {
       ) : viewMode === 'all' ? (
         /* All expenses view - individual tiles */
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredExpenses.map((item) => {
+          {displayedExpenses.map((item) => {
             const monthlyAmount = convertToMonthly(item.amount, item.frequency);
 
             return (
@@ -1051,8 +1124,19 @@ function ExpensesPageContent() {
                       </CardTitle>
                       <div className="flex gap-2 flex-wrap">
                         {getCategoryBadge(item.category)}
+                        {item.isRecurring !== false ? (
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            Recurring
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                            <CreditCard className="h-3 w-3 mr-1" />
+                            One-off
+                          </Badge>
+                        )}
                         {item.linkedRecurringPayments && item.linkedRecurringPayments.length > 0 && (
-                          <Badge className="bg-blue-100 text-blue-800">
+                          <Badge className="bg-green-100 text-green-800">
                             <Radio className="h-3 w-3 mr-1" />
                             Bank Detected
                           </Badge>
@@ -1553,6 +1637,23 @@ function ExpensesPageContent() {
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <Checkbox
+                  id="isRecurring"
+                  checked={formData.isRecurring}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isRecurring: checked as boolean })}
+                />
+                <Label htmlFor="isRecurring" className="text-sm font-normal cursor-pointer">
+                  This is a recurring expense
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground ml-6">
+                {formData.isRecurring
+                  ? 'Recurring expenses (bills, subscriptions) appear in your committed outgoings'
+                  : 'One-off expenses (discretionary purchases) appear in your flexible spending'
+                }
+              </p>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
                   id="isEssential"
                   checked={formData.isEssential}
                   onCheckedChange={(checked) => setFormData({ ...formData, isEssential: checked as boolean })}
@@ -1753,6 +1854,12 @@ function ExpensesPageContent() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Frequency</span>
                       <span className="font-medium capitalize">{selectedExpense.frequency.toLowerCase()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Type</span>
+                      <span className={`font-medium ${selectedExpense.isRecurring !== false ? 'text-blue-600' : 'text-purple-600'}`}>
+                        {selectedExpense.isRecurring !== false ? 'Recurring' : 'Discretionary'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Essential</span>
