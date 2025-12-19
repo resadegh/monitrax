@@ -680,11 +680,12 @@ export async function GET(
         where: {
           userId,
           id: { not: transactionId }, // Exclude current transaction
-          OR: [
-            { merchantStandardised: merchantName },
-            // Also match if description contains the merchant name
-            merchantName ? { description: { contains: merchantName, mode: 'insensitive' } } : {},
-          ].filter(cond => Object.keys(cond).length > 0),
+          OR: merchantName
+            ? [
+                { merchantStandardised: merchantName },
+                { description: { contains: merchantName, mode: 'insensitive' as const } },
+              ]
+            : [{ merchantStandardised: merchantName }],
           // Only uncategorized transactions
           incomeId: null,
           expenseId: null,
