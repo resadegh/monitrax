@@ -69,6 +69,7 @@ enum ExpenseCategory {
   PERSONAL
   UTILITIES
   FOOD
+  GROCERIES       // Essential groceries - separate from dining out
   TRANSPORT
   ENTERTAINMENT
   SUBSCRIPTION    // Recurring subscriptions (streaming, software, memberships)
@@ -77,6 +78,8 @@ enum ExpenseCategory {
   LOAN_INTEREST
   REGISTRATION    // Vehicle registration, license fees
   MODIFICATIONS   // Vehicle modifications, upgrades
+  HEALTH          // Health, medical, pharmacy
+  EDUCATION       // Education, courses, training
   OTHER
 }
 
@@ -1369,6 +1372,13 @@ model UnifiedTransaction {
   isRecurring           Boolean              @default(false)
   recurrencePattern     RecurrencePattern?
   recurrenceGroupId     String?              // Links recurring transactions together
+
+  // Essential expense tracking (independent of recurring)
+  isEssential           Boolean              @default(false)  // Is this an essential expense?
+
+  // Transfer tracking (internal transfers between accounts)
+  isTransfer            Boolean              @default(false)  // Is this a transfer between accounts?
+  transferToAccountId   String?                               // Target account for transfers
 
   // Anomaly detection
   anomalyFlags          AnomalyType[]

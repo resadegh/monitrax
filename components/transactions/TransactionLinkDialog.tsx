@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link2, Plus, RefreshCw, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package } from 'lucide-react';
+import { Link2, Plus, RefreshCw, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
   Dialog,
@@ -134,6 +134,13 @@ export function TransactionLinkDialog({
     type: string;
   }>>([]);
 
+  // Bank accounts for transfer targeting
+  const [bankAccounts, setBankAccounts] = useState<Array<{
+    id: string;
+    name: string;
+    type: string;
+  }>>([]);
+
   // Create new form state
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('');
@@ -145,6 +152,11 @@ export function TransactionLinkDialog({
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [isEssential, setIsEssential] = useState(true);
   const [isTaxDeductible, setIsTaxDeductible] = useState(false);
+  const [isRecurringExpense, setIsRecurringExpense] = useState(false);
+
+  // Transfer state
+  const [isTransfer, setIsTransfer] = useState(false);
+  const [transferToAccountId, setTransferToAccountId] = useState<string | null>(null);
 
   // Link options
   const [updateAmountOnLink, setUpdateAmountOnLink] = useState(false);
@@ -153,6 +165,7 @@ export function TransactionLinkDialog({
   useEffect(() => {
     if (open && transaction) {
       loadMatches();
+      loadBankAccounts();
       setNewName(transaction.merchantStandardised || transaction.description);
       setNewCategory('');
       setNewFrequency('MONTHLY');
@@ -163,11 +176,29 @@ export function TransactionLinkDialog({
       setSelectedAssetId(null);
       setIsEssential(true);
       setIsTaxDeductible(false);
+      setIsRecurringExpense(false);
+      setIsTransfer(false);
+      setTransferToAccountId(null);
       setUpdateAmountOnLink(false);
       setSuccess(null);
       setError(null);
     }
   }, [open, transaction]);
+
+  // Load bank accounts for transfer targeting
+  const loadBankAccounts = async () => {
+    try {
+      const response = await fetch('/api/accounts', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setBankAccounts(data.accounts || []);
+      }
+    } catch {
+      // Silently fail - bank accounts are optional
+    }
+  };
 
   const loadMatches = async () => {
     if (!transaction) return;
@@ -257,9 +288,38 @@ export function TransactionLinkDialog({
   };
 
   const handleCreate = async () => {
-    if (!transaction || !newName || !newCategory) return;
+    if (!transaction || !newName || (!newCategory && !isTransfer)) return;
     setSaving(true);
     setError(null);
+
+    // Handle transfer transactions
+    if (isTransfer) {
+      try {
+        const response = await fetch(`/api/transactions/${transaction.id}/link`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: 'transfer',
+            transferToAccountId,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        setSuccess(data.message || 'Marked as transfer');
+        onLinked?.();
+        loadMatches();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to mark as transfer');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
 
     const type = transaction.direction === 'IN' ? 'income' : 'expense';
 
@@ -270,8 +330,8 @@ export function TransactionLinkDialog({
         type,
         name: newName,
         category: newCategory,
-        frequency: newFrequency,
-        isRecurring: true,
+        frequency: isRecurringExpense ? newFrequency : 'MONTHLY', // Default frequency for non-recurring
+        isRecurring: isRecurringExpense,
       };
 
       // Add source type and entity linking for expenses
@@ -643,14 +703,70 @@ export function TransactionLinkDialog({
 
             {/* Create New */}
             <TabsContent value="create" className="space-y-4 max-h-80 overflow-auto">
-              <div className="space-y-2">
-                <Label>Name</Label>
-                <Input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder={isIncome ? 'Income name' : 'Expense name'}
-                />
-              </div>
+              {/* Transfer Toggle - for expense transactions only */}
+              {!isIncome && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isTransfer"
+                      checked={isTransfer}
+                      onCheckedChange={(checked) => {
+                        setIsTransfer(checked as boolean);
+                        if (checked) {
+                          setIsRecurringExpense(false);
+                          setIsEssential(false);
+                        }
+                      }}
+                    />
+                    <Label htmlFor="isTransfer" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                      <ArrowRightLeft className="h-4 w-4 text-amber-600" />
+                      This is a transfer between accounts
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6">
+                    Transfers are excluded from income/expense calculations
+                  </p>
+                </div>
+              )}
+
+              {/* Transfer Target Account */}
+              {isTransfer && (
+                <div className="space-y-2">
+                  <Label>Transfer To Account</Label>
+                  <Select
+                    value={transferToAccountId || ''}
+                    onValueChange={(value) => setTransferToAccountId(value || null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select target account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bankAccounts
+                        .filter(acc => acc.id !== transaction?.id) // Exclude current account
+                        .map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            <div className="flex items-center gap-2">
+                              <ArrowRightLeft className="h-4 w-4" />
+                              {account.name} ({account.type})
+                            </div>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Regular categorization options - hidden when transfer is selected */}
+              {!isTransfer && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder={isIncome ? 'Income name' : 'Expense name'}
+                    />
+                  </div>
 
               {/* Source Type Selection */}
               <div className="space-y-2">
@@ -867,6 +983,23 @@ export function TransactionLinkDialog({
               {/* Expense-specific options */}
               {!isIncome && (
                 <div className="space-y-3 border-t pt-3">
+                  {/* Recurring checkbox */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isRecurringExpense"
+                      checked={isRecurringExpense}
+                      onCheckedChange={(checked) => setIsRecurringExpense(checked as boolean)}
+                    />
+                    <Label htmlFor="isRecurringExpense" className="text-sm font-normal cursor-pointer">
+                      Recurring expense
+                    </Label>
+                  </div>
+                  {isRecurringExpense && (
+                    <p className="text-xs text-muted-foreground ml-6">
+                      This will create a recurring expense entry that appears in your regular expenses
+                    </p>
+                  )}
+                  {/* Essential checkbox */}
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="isEssential"
@@ -877,6 +1010,9 @@ export function TransactionLinkDialog({
                       Essential expense
                     </Label>
                   </div>
+                  <p className="text-xs text-muted-foreground ml-6">
+                    Essential expenses are included in minimum outgoings calculations
+                  </p>
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="isTaxDeductible"
@@ -904,6 +1040,27 @@ export function TransactionLinkDialog({
                 <Plus className="h-4 w-4 mr-2" />
                 Create {isIncome ? 'Income' : 'Expense'} Entry
               </Button>
+              </>
+              )}
+
+              {/* Transfer button */}
+              {isTransfer && (
+                <>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      Amount: <strong>{formatCurrency(transaction.amount)}</strong>
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleCreate}
+                    disabled={saving || !transferToAccountId}
+                    className="w-full"
+                  >
+                    <ArrowRightLeft className="h-4 w-4 mr-2" />
+                    Mark as Transfer
+                  </Button>
+                </>
+              )}
             </TabsContent>
           </Tabs>
         )}

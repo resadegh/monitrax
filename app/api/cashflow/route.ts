@@ -67,6 +67,7 @@ async function buildCFEInput(
         date: {
           gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // Last 90 days
         },
+        isTransfer: { not: true }, // Exclude transfers from cashflow calculations
       },
       orderBy: { date: 'desc' },
     }),

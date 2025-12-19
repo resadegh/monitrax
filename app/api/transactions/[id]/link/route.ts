@@ -14,7 +14,7 @@ import { prisma } from '@/lib/db';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 
 interface LinkRequest {
-  action: 'link' | 'create' | 'update' | 'unlink';
+  action: 'link' | 'create' | 'update' | 'unlink' | 'transfer';
   type?: 'income' | 'expense' | 'loan';
   targetId?: string; // For link/update actions
   updateAmount?: boolean; // Whether to update the linked entry's amount
@@ -35,6 +35,8 @@ interface LinkRequest {
   // For expense
   isEssential?: boolean;
   isTaxDeductible?: boolean;
+  // For transfer
+  transferToAccountId?: string;
 }
 
 export async function POST(
@@ -277,7 +279,8 @@ export async function POST(
               where: { id: transactionId },
               data: {
                 expenseId: expense.id,
-                isRecurring: true,
+                isRecurring: body.isRecurring ?? false,
+                isEssential: body.isEssential ?? false,
                 categoryLevel1: body.category || 'Expense',
               },
             });
@@ -285,7 +288,9 @@ export async function POST(
             return NextResponse.json({
               success: true,
               created: { type: 'expense', id: expense.id, name: expense.name },
-              message: 'New expense created and linked',
+              message: body.isRecurring
+                ? 'New recurring expense created and linked'
+                : 'Transaction categorized',
             });
           }
         }
@@ -379,12 +384,55 @@ export async function POST(
               expenseId: null,
               loanId: null,
               isRecurring: false,
+              isTransfer: false,
+              transferToAccountId: null,
+              isEssential: false,
             },
           });
 
           return NextResponse.json({
             success: true,
             message: 'Transaction unlinked',
+          });
+        }
+
+        case 'transfer': {
+          // Mark transaction as a transfer between accounts
+          // This excludes it from income/expense calculations
+
+          // Verify target account exists and belongs to user
+          if (body.transferToAccountId) {
+            const targetAccount = await prisma.account.findFirst({
+              where: { id: body.transferToAccountId, userId },
+            });
+            if (!targetAccount) {
+              return NextResponse.json(
+                { error: 'Target account not found' },
+                { status: 404 }
+              );
+            }
+          }
+
+          await prisma.unifiedTransaction.update({
+            where: { id: transactionId },
+            data: {
+              isTransfer: true,
+              transferToAccountId: body.transferToAccountId || null,
+              isRecurring: false,
+              isEssential: false,
+              // Clear any existing links
+              incomeId: null,
+              expenseId: null,
+              loanId: null,
+              categoryLevel1: 'Transfer',
+            },
+          });
+
+          return NextResponse.json({
+            success: true,
+            message: body.transferToAccountId
+              ? 'Marked as transfer to another account'
+              : 'Marked as transfer',
           });
         }
 
