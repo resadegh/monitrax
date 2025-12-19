@@ -703,42 +703,40 @@ export function TransactionLinkDialog({
 
             {/* Create New */}
             <TabsContent value="create" className="space-y-4 max-h-80 overflow-auto">
-              {/* Transfer Toggle - for expense transactions only */}
-              {!isIncome && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isTransfer"
-                      checked={isTransfer}
-                      onCheckedChange={(checked) => {
-                        setIsTransfer(checked as boolean);
-                        if (checked) {
-                          setIsRecurringExpense(false);
-                          setIsEssential(false);
-                        }
-                      }}
-                    />
-                    <Label htmlFor="isTransfer" className="text-sm font-medium cursor-pointer flex items-center gap-2">
-                      <ArrowRightLeft className="h-4 w-4 text-amber-600" />
-                      This is a transfer between accounts
-                    </Label>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 ml-6">
-                    Transfers are excluded from income/expense calculations
-                  </p>
+              {/* Transfer Toggle - for both income and expense transactions */}
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isTransfer"
+                    checked={isTransfer}
+                    onCheckedChange={(checked) => {
+                      setIsTransfer(checked as boolean);
+                      if (checked) {
+                        setIsRecurringExpense(false);
+                        setIsEssential(false);
+                      }
+                    }}
+                  />
+                  <Label htmlFor="isTransfer" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                    <ArrowRightLeft className="h-4 w-4 text-amber-600" />
+                    This is a transfer between accounts
+                  </Label>
                 </div>
-              )}
+                <p className="text-xs text-muted-foreground mt-1 ml-6">
+                  Transfers are excluded from income/expense calculations
+                </p>
+              </div>
 
-              {/* Transfer Target Account */}
+              {/* Transfer Source/Target Account */}
               {isTransfer && (
                 <div className="space-y-2">
-                  <Label>Transfer To Account</Label>
+                  <Label>{isIncome ? 'Transfer From Account' : 'Transfer To Account'}</Label>
                   <Select
                     value={transferToAccountId || ''}
                     onValueChange={(value) => setTransferToAccountId(value || null)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select target account" />
+                      <SelectValue placeholder={isIncome ? 'Select source account' : 'Select target account'} />
                     </SelectTrigger>
                     <SelectContent>
                       {bankAccounts
@@ -753,6 +751,12 @@ export function TransactionLinkDialog({
                         ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {isIncome
+                      ? 'Select the account this money was transferred from'
+                      : 'Select the account this money was transferred to'
+                    }
+                  </p>
                 </div>
               )}
 
@@ -1054,11 +1058,11 @@ export function TransactionLinkDialog({
                   </div>
                   <Button
                     onClick={handleCreate}
-                    disabled={saving || !transferToAccountId}
+                    disabled={saving}
                     className="w-full"
                   >
                     <ArrowRightLeft className="h-4 w-4 mr-2" />
-                    Mark as Transfer
+                    Mark as {isIncome ? 'Incoming' : 'Outgoing'} Transfer
                   </Button>
                 </>
               )}
