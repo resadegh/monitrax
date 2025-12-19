@@ -96,6 +96,21 @@ UI Indicators:
 - **Learned Category Badge**: Shows "Previously: [category]" badge on transactions with learned mappings
 - **Pre-filled Category**: Category dropdown auto-selects the learned category
 
+### 10. Uncategorized Transactions Default View
+**Files:** `app/(dashboard)/transactions/page.tsx`, `app/api/unified-transactions/route.ts`
+
+The Transaction Explorer page now defaults to showing only uncategorized transactions:
+- **Default Filter**: Shows only transactions not linked to income/expense/loan and not marked as transfer
+- **Clickable Summary Tiles**: Click on "Total Spend", "Total Income", or "Transactions" tile to view all related
+- **Toggle Behavior**: Click the same tile again to return to uncategorized view
+- **Visual Indicators**:
+  - Amber banner shows "Showing uncategorized transactions only" when in default view
+  - Blue ring highlight shows which tile is active
+  - "Showing all" label appears on active tiles
+- **Auto-Disappear**: When a transaction is categorized, it automatically disappears from the uncategorized list
+
+This allows users to focus on categorizing their backlog while still being able to view all transactions when needed.
+
 ---
 
 ## API Changes
@@ -136,6 +151,25 @@ interface LinkRequest {
   }>;
   learnedCategory: string | null;      // Previously learned category for this merchant
 }
+```
+
+### Unified Transactions API
+**File:** `app/api/unified-transactions/route.ts`
+
+New query parameters added:
+- `uncategorized=true` - Filter to only show uncategorized transactions (no income/expense/loan link and not a transfer)
+- `direction=IN|OUT` - Filter by transaction direction
+
+```typescript
+// Uncategorized filter: no income/expense/loan link and not a transfer
+if (uncategorized === 'true') {
+  where.incomeId = null;
+  where.expenseId = null;
+  where.loanId = null;
+  where.isTransfer = false;
+}
+
+if (direction) where.direction = direction;
 ```
 
 ---
@@ -217,6 +251,8 @@ const incoming = nonTransfers.filter((tx) => tx.direction === 'IN');
 | `app/api/expenses/route.ts` | Added `isRecurring` to POST handler |
 | `app/api/expenses/[id]/route.ts` | Added `isRecurring` to PUT handler |
 | `app/api/transactions/[id]/link/route.ts` | Batch categorization, merchant learning, same-vendor detection |
+| `app/api/unified-transactions/route.ts` | Added `uncategorized` and `direction` filter parameters |
+| `app/(dashboard)/transactions/page.tsx` | Tile filter state, clickable summary cards, uncategorized default |
 | `app/dashboard/expenses/page.tsx` | Major update: tiles, filtering, form checkbox, badges |
 | `components/transactions/TransactionLinkDialog.tsx` | Transfer options, batch vendor UI, merchant learning toggle |
 | `lib/tie/types.ts` | Added `isTransfer` and `transferToAccountId` to UnifiedTransaction |

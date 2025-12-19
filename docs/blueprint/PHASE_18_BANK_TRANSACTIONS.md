@@ -740,3 +740,27 @@ The system learns merchant-to-category mappings when users categorize transactio
 3. Manual selection
 
 See [PHASE_13_TRANSACTIONAL_INTELLIGENCE.md](./PHASE_13_TRANSACTIONAL_INTELLIGENCE.md) sections 13.14-13.15 for detailed implementation.
+
+---
+
+### 18.12.13 Uncategorized Transactions Default View
+
+> **Status: IMPLEMENTED** (December 2025)
+
+**Files:** `app/(dashboard)/transactions/page.tsx`, `app/api/unified-transactions/route.ts`
+
+The Transaction Explorer now defaults to showing only uncategorized transactions:
+
+| Feature | Description |
+|---------|-------------|
+| Default filter | Shows only transactions not linked to income/expense/loan and not marked as transfer |
+| Clickable tiles | Click "Total Spend", "Total Income", or "Transactions" to view all related |
+| Toggle behavior | Click same tile again to return to uncategorized view |
+| Visual feedback | Amber banner when in uncategorized view, blue ring on active tile |
+| Auto-disappear | Categorized transactions automatically disappear from uncategorized view |
+
+#### API Parameters:
+- `uncategorized=true` - Show only uncategorized transactions
+- `direction=IN|OUT` - Filter by transaction direction
+
+See [PHASE_13_TRANSACTIONAL_INTELLIGENCE.md](./PHASE_13_TRANSACTIONAL_INTELLIGENCE.md) section 13.16 for detailed implementation.
