@@ -13,6 +13,16 @@ export async function GET(request: NextRequest) {
           loan: true,
           investmentAccount: true,
           asset: true,
+          // Include custom category if set
+          customCategory: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              color: true,
+              icon: true,
+            },
+          },
           // Phase 29: Include linked recurring payments
           linkedRecurringPayments: {
             select: {
@@ -51,10 +61,16 @@ export async function POST(request: NextRequest) {
   return withAuth(request, async (authReq) => {
     try {
       const body = await request.json();
-      const { name, category, amount, frequency, isTaxDeductible, isEssential, isRecurring, propertyId, loanId, investmentAccountId, assetId, vendorName, sourceType } = body;
+      const { name, category, customCategoryId, amount, frequency, isTaxDeductible, isEssential, isRecurring, propertyId, loanId, investmentAccountId, assetId, vendorName, sourceType } = body;
 
-      if (!name || !category || amount === undefined || !frequency) {
+      // Category is required, but can be 'OTHER' if using a custom category
+      if (!name || amount === undefined || !frequency) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      }
+
+      // Must have either category or customCategoryId
+      if (!category && !customCategoryId) {
+        return NextResponse.json({ error: 'Category or custom category is required' }, { status: 400 });
       }
 
       // Validate ownership of related entities
@@ -87,11 +103,22 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Validate custom category ownership
+      if (customCategoryId) {
+        const customCategory = await prisma.category.findFirst({
+          where: { id: customCategoryId, userId: authReq.user!.userId, type: 'EXPENSE' },
+        });
+        if (!customCategory) {
+          return NextResponse.json({ error: 'Custom category not found or unauthorized' }, { status: 403 });
+        }
+      }
+
       const expense = await prisma.expense.create({
         data: {
           userId: authReq.user!.userId,
           name,
-          category,
+          category: category || 'OTHER',
+          customCategoryId: customCategoryId || null,
           amount: parseFloat(amount),
           frequency,
           isTaxDeductible: isTaxDeductible !== undefined ? Boolean(isTaxDeductible) : false,
@@ -104,7 +131,15 @@ export async function POST(request: NextRequest) {
           vendorName: vendorName || null,
           sourceType: sourceType || 'GENERAL',
         },
-        include: { property: true, loan: true, investmentAccount: true, asset: true },
+        include: {
+          property: true,
+          loan: true,
+          investmentAccount: true,
+          asset: true,
+          customCategory: {
+            select: { id: true, name: true, code: true, color: true, icon: true },
+          },
+        },
       });
 
       return NextResponse.json(expense, { status: 201 });

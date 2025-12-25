@@ -35,6 +35,7 @@ import {
   INCOME_TYPES,
   INCOME_TYPE_LABELS,
 } from '@/lib/categories/unified';
+import { CategorySelect } from '@/components/categories/CategorySelect';
 
 interface Transaction {
   id: string;
@@ -163,6 +164,7 @@ export function TransactionLinkDialog({
   // Create new form state
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  const [isCustomCategory, setIsCustomCategory] = useState(false); // Track if category is custom
   const [newFrequency, setNewFrequency] = useState('MONTHLY');
   const [sourceType, setSourceType] = useState<'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET'>('GENERAL');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
@@ -187,6 +189,7 @@ export function TransactionLinkDialog({
       loadBankAccounts();
       setNewName(transaction.merchantStandardised || transaction.description);
       setNewCategory('');
+      setIsCustomCategory(false);
       setNewFrequency('MONTHLY');
       setSourceType('GENERAL');
       setSelectedPropertyId(null);
@@ -392,7 +395,10 @@ export function TransactionLinkDialog({
         action: 'create',
         type,
         name: newName,
-        category: newCategory,
+        // Use customCategoryId for custom categories, category for system categories
+        ...(isCustomCategory
+          ? { customCategoryId: newCategory, category: 'OTHER' }
+          : { category: newCategory }),
         frequency: isRecurringExpense ? newFrequency : 'MONTHLY', // Default frequency for non-recurring
         isRecurring: isRecurringExpense,
         additionalTransactionIds: Array.from(selectedVendorTransactions),
@@ -1127,18 +1133,16 @@ export function TransactionLinkDialog({
 
               <div className="space-y-2">
                 <Label>Category</Label>
-                <Select value={newCategory} onValueChange={setNewCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoryOptions.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {categoryLabels[cat as keyof typeof categoryLabels]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CategorySelect
+                  type={isIncome ? 'INCOME' : 'EXPENSE'}
+                  value={newCategory}
+                  onChange={(value, isCustom) => {
+                    setNewCategory(value);
+                    setIsCustomCategory(isCustom);
+                  }}
+                  placeholder="Select category"
+                  allowCustom={true}
+                />
               </div>
 
               {/* Expense-specific options */}
