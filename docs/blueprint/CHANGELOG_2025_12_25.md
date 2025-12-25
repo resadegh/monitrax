@@ -44,10 +44,27 @@ Added **Investment Contribution** as a new transaction categorization option.
 ### Financial Impact
 
 - ✅ Excluded from expense totals
-- ✅ Excluded from income totals  
+- ✅ Excluded from income totals
 - ✅ Tracked in Net Worth calculations (as part of investment account value)
 - ✅ Visible in investment account transaction history
 - ✅ Used for cost basis calculations when selling holdings
+
+### Recurring Investment Contributions
+
+Investment contributions can be marked as recurring:
+
+1. Check "Recurring investment contribution" checkbox
+2. Select frequency (Weekly, Fortnightly, Monthly, Quarterly, Annual)
+3. System will:
+   - Mark the bank transaction as recurring
+   - Learn the merchant mapping for future auto-suggestions
+   - Label the investment transaction with the frequency
+
+**Use cases:**
+- Regular superannuation contributions
+- Monthly share purchases
+- Recurring crypto deposits
+- Dollar-cost averaging strategies
 
 ### Migration Required
 

@@ -40,6 +40,8 @@ interface LinkRequest {
   transferToAccountId?: string;
   // For investment contribution
   investmentContributionAccountId?: string; // Target investment account for deposit
+  investmentIsRecurring?: boolean; // Is this a recurring investment contribution?
+  investmentFrequency?: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'; // Frequency of contribution
   // For batch categorization
   additionalTransactionIds?: string[]; // Other transactions to categorize the same way
   learnMerchant?: boolean; // Store merchant -> category mapping for future suggestions
@@ -645,6 +647,10 @@ export async function POST(
             );
           }
 
+          // Determine if this is a recurring contribution
+          const isRecurring = body.investmentIsRecurring ?? false;
+          const frequency = body.investmentFrequency || 'MONTHLY';
+
           // Create an investment transaction (DEPOSIT) to track the contribution
           const investmentTransaction = await prisma.investmentTransaction.create({
             data: {
@@ -654,7 +660,9 @@ export async function POST(
               price: transaction.amount, // Amount deposited
               units: 1, // For deposits, units = 1
               totalAmount: transaction.amount,
-              notes: `Bank transfer: ${transaction.merchantStandardised || transaction.description}`,
+              notes: isRecurring
+                ? `Recurring ${frequency.toLowerCase()} contribution: ${transaction.merchantStandardised || transaction.description}`
+                : `Bank transfer: ${transaction.merchantStandardised || transaction.description}`,
             },
           });
 
@@ -674,7 +682,7 @@ export async function POST(
               investmentAccountId: investmentAccount.id,
               investmentTransactionId: investmentTransaction.id,
               isTransfer: false,
-              isRecurring: false,
+              isRecurring: isRecurring,
               isEssential: false,
               // Clear any existing links
               incomeId: null,
@@ -684,14 +692,44 @@ export async function POST(
             },
           });
 
+          // Learn merchant mapping for recurring investment contributions
+          if (isRecurring && transaction.merchantStandardised) {
+            await prisma.merchantMapping.upsert({
+              where: {
+                userId_merchantRaw: {
+                  userId,
+                  merchantRaw: transaction.merchantStandardised,
+                },
+              },
+              update: {
+                categoryLevel1: 'Investment',
+                usageCount: { increment: 1 },
+                updatedAt: new Date(),
+              },
+              create: {
+                userId,
+                merchantRaw: transaction.merchantStandardised,
+                merchantStandardised: transaction.merchantStandardised,
+                categoryLevel1: 'Investment',
+                source: 'USER',
+                confidence: 1.0,
+                usageCount: 1,
+              },
+            });
+          }
+
           return NextResponse.json({
             success: true,
             investmentTransaction: {
               id: investmentTransaction.id,
               type: 'DEPOSIT',
               amount: transaction.amount,
+              isRecurring,
+              frequency: isRecurring ? frequency : null,
             },
-            message: `Investment contribution of $${transaction.amount.toFixed(2)} recorded to ${investmentAccount.name}`,
+            message: isRecurring
+              ? `Recurring ${frequency.toLowerCase()} investment of $${transaction.amount.toFixed(2)} recorded to ${investmentAccount.name}`
+              : `Investment contribution of $${transaction.amount.toFixed(2)} recorded to ${investmentAccount.name}`,
           });
         }
 

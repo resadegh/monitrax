@@ -182,6 +182,8 @@ export function TransactionLinkDialog({
   // Investment contribution state
   const [isInvestmentContribution, setIsInvestmentContribution] = useState(false);
   const [investmentContributionAccountId, setInvestmentContributionAccountId] = useState<string | null>(null);
+  const [isRecurringInvestment, setIsRecurringInvestment] = useState(false);
+  const [investmentFrequency, setInvestmentFrequency] = useState('MONTHLY');
 
   // Link options
   const [updateAmountOnLink, setUpdateAmountOnLink] = useState(false);
@@ -207,6 +209,8 @@ export function TransactionLinkDialog({
       setTransferToAccountId(null);
       setIsInvestmentContribution(false);
       setInvestmentContributionAccountId(null);
+      setIsRecurringInvestment(false);
+      setInvestmentFrequency('MONTHLY');
       setUpdateAmountOnLink(false);
       setSameVendorTransactions([]);
       setSelectedVendorTransactions(new Set());
@@ -372,6 +376,8 @@ export function TransactionLinkDialog({
           body: JSON.stringify({
             action: 'investment',
             investmentContributionAccountId,
+            investmentIsRecurring: isRecurringInvestment,
+            investmentFrequency: isRecurringInvestment ? investmentFrequency : undefined,
           }),
         });
 
@@ -1025,36 +1031,74 @@ export function TransactionLinkDialog({
 
               {/* Investment Account Selector for Investment Contributions */}
               {isInvestmentContribution && (
-                <div className="space-y-2">
-                  <Label>Investment Account</Label>
-                  <Select
-                    value={investmentContributionAccountId || ''}
-                    onValueChange={(value) => setInvestmentContributionAccountId(value || null)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select investment account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {investmentAccounts.length === 0 ? (
-                        <SelectItem value="" disabled>No investment accounts available</SelectItem>
-                      ) : (
-                        investmentAccounts.map((account) => (
-                          <SelectItem key={account.id} value={account.id}>
-                            <div className="flex items-center gap-2">
-                              <TrendingUp className="h-4 w-4 text-purple-500" />
-                              {account.name}
-                              {account.platform && (
-                                <span className="text-xs text-muted-foreground">({account.platform})</span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    This will record a deposit in your investment account and track the contribution
-                  </p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Investment Account</Label>
+                    <Select
+                      value={investmentContributionAccountId || ''}
+                      onValueChange={(value) => setInvestmentContributionAccountId(value || null)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select investment account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {investmentAccounts.length === 0 ? (
+                          <SelectItem value="" disabled>No investment accounts available</SelectItem>
+                        ) : (
+                          investmentAccounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id}>
+                              <div className="flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4 text-purple-500" />
+                                {account.name}
+                                {account.platform && (
+                                  <span className="text-xs text-muted-foreground">({account.platform})</span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      This will record a deposit in your investment account and track the contribution
+                    </p>
+                  </div>
+
+                  {/* Recurring Investment Option */}
+                  <div className="space-y-3 border-t pt-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="isRecurringInvestment"
+                        checked={isRecurringInvestment}
+                        onCheckedChange={(checked) => setIsRecurringInvestment(checked as boolean)}
+                      />
+                      <Label htmlFor="isRecurringInvestment" className="text-sm font-normal cursor-pointer">
+                        Recurring investment contribution
+                      </Label>
+                    </div>
+                    {isRecurringInvestment && (
+                      <>
+                        <p className="text-xs text-muted-foreground ml-6">
+                          Future transactions from this source will be auto-suggested as investment contributions
+                        </p>
+                        <div className="space-y-2 ml-6">
+                          <Label>Frequency</Label>
+                          <Select value={investmentFrequency} onValueChange={setInvestmentFrequency}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="WEEKLY">Weekly</SelectItem>
+                              <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                              <SelectItem value="MONTHLY">Monthly</SelectItem>
+                              <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                              <SelectItem value="ANNUAL">Annual</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1393,7 +1437,9 @@ export function TransactionLinkDialog({
                       Amount: <strong>{formatCurrency(transaction.amount)}</strong>
                     </p>
                     <p className="text-xs text-purple-600 mt-1">
-                      This will be recorded as a deposit in your investment account
+                      {isRecurringInvestment
+                        ? `This will be recorded as a recurring ${investmentFrequency.toLowerCase()} investment`
+                        : 'This will be recorded as a deposit in your investment account'}
                     </p>
                   </div>
                   <Button
@@ -1402,7 +1448,9 @@ export function TransactionLinkDialog({
                     className="w-full bg-purple-600 hover:bg-purple-700"
                   >
                     <TrendingUp className="h-4 w-4 mr-2" />
-                    Record Investment Contribution
+                    {isRecurringInvestment
+                      ? `Record Recurring Investment`
+                      : 'Record Investment Contribution'}
                   </Button>
                 </>
               )}
