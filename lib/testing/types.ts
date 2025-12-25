@@ -91,7 +91,7 @@ export interface TestExpenseInput {
   name: string;
   vendorName?: string;
   category:
-    | 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE'
+    | 'HOUSING' | 'RENT' | 'RATES' | 'INSURANCE' | 'MAINTENANCE'
     | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT'
     | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA'
     | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION'
