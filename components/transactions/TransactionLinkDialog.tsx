@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link2, Plus, RefreshCw, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package, ArrowRightLeft } from 'lucide-react';
+import { Link2, Plus, RefreshCw, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package, ArrowRightLeft, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
   Dialog,
@@ -70,7 +70,7 @@ interface SameVendorTransaction {
 }
 
 interface CurrentLink {
-  type: 'income' | 'expense' | 'loan' | 'transfer';
+  type: 'income' | 'expense' | 'loan' | 'transfer' | 'investment';
   id: string;
   name: string;
 }
@@ -179,6 +179,10 @@ export function TransactionLinkDialog({
   const [isTransfer, setIsTransfer] = useState(false);
   const [transferToAccountId, setTransferToAccountId] = useState<string | null>(null);
 
+  // Investment contribution state
+  const [isInvestmentContribution, setIsInvestmentContribution] = useState(false);
+  const [investmentContributionAccountId, setInvestmentContributionAccountId] = useState<string | null>(null);
+
   // Link options
   const [updateAmountOnLink, setUpdateAmountOnLink] = useState(false);
 
@@ -201,6 +205,8 @@ export function TransactionLinkDialog({
       setIsRecurringExpense(false);
       setIsTransfer(false);
       setTransferToAccountId(null);
+      setIsInvestmentContribution(false);
+      setInvestmentContributionAccountId(null);
       setUpdateAmountOnLink(false);
       setSameVendorTransactions([]);
       setSelectedVendorTransactions(new Set());
@@ -344,9 +350,54 @@ export function TransactionLinkDialog({
   };
 
   const handleCreate = async () => {
-    if (!transaction || !newName || (!newCategory && !isTransfer)) return;
+    if (!transaction || !newName || (!newCategory && !isTransfer && !isInvestmentContribution)) return;
     setSaving(true);
     setError(null);
+
+    // Handle investment contribution transactions
+    if (isInvestmentContribution) {
+      if (!investmentContributionAccountId) {
+        setError('Please select an investment account');
+        setSaving(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/transactions/${transaction.id}/link`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: 'investment',
+            investmentContributionAccountId,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        setSuccess(data.message || 'Investment contribution recorded');
+
+        // Wait for refresh to complete before navigating
+        await onLinked?.();
+
+        // Auto-navigate to next transaction after a brief delay to show success
+        setTimeout(() => {
+          if (hasMoreTransactions && onNavigateNext) {
+            onNavigateNext();
+          } else {
+            onOpenChange(false);
+          }
+        }, 800);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to record investment contribution');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
 
     // Handle transfer transactions
     if (isTransfer) {
@@ -633,21 +684,26 @@ export function TransactionLinkDialog({
           <div className={`p-3 rounded-lg border ${
             currentLink.type === 'transfer'
               ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800'
+              : currentLink.type === 'investment'
+              ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800'
               : 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800'
           }`}>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 {currentLink.type === 'transfer' ? (
                   <ArrowRightLeft className="h-4 w-4 text-amber-600" />
+                ) : currentLink.type === 'investment' ? (
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
                 ) : (
                   <Check className="h-4 w-4 text-blue-600" />
                 )}
                 <span className="text-sm">
-                  {currentLink.type === 'transfer' ? 'Marked as: ' : 'Linked to: '}
+                  {currentLink.type === 'transfer' ? 'Marked as: ' : currentLink.type === 'investment' ? 'Invested to: ' : 'Linked to: '}
                   <strong>{currentLink.name}</strong>
                 </span>
                 <Badge variant="outline" className={
-                  currentLink.type === 'transfer' ? 'border-amber-300 text-amber-700' : ''
+                  currentLink.type === 'transfer' ? 'border-amber-300 text-amber-700' :
+                  currentLink.type === 'investment' ? 'border-purple-300 text-purple-700' : ''
                 }>{currentLink.type}</Badge>
               </div>
               <Button
@@ -893,6 +949,7 @@ export function TransactionLinkDialog({
                       if (checked) {
                         setIsRecurringExpense(false);
                         setIsEssential(false);
+                        setIsInvestmentContribution(false);
                       }
                     }}
                   />
@@ -905,6 +962,33 @@ export function TransactionLinkDialog({
                   Transfers are excluded from income/expense calculations
                 </p>
               </div>
+
+              {/* Investment Contribution Toggle - for outgoing transactions going to investment accounts */}
+              {!isIncome && (
+                <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isInvestmentContribution"
+                      checked={isInvestmentContribution}
+                      onCheckedChange={(checked) => {
+                        setIsInvestmentContribution(checked as boolean);
+                        if (checked) {
+                          setIsTransfer(false);
+                          setIsRecurringExpense(false);
+                          setIsEssential(false);
+                        }
+                      }}
+                    />
+                    <Label htmlFor="isInvestmentContribution" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-purple-600" />
+                      This is an investment contribution
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6">
+                    Money deposited into an investment account (shares, crypto, etc.)
+                  </p>
+                </div>
+              )}
 
               {/* Transfer Source/Target Account */}
               {isTransfer && (
@@ -939,8 +1023,43 @@ export function TransactionLinkDialog({
                 </div>
               )}
 
-              {/* Regular categorization options - hidden when transfer is selected */}
-              {!isTransfer && (
+              {/* Investment Account Selector for Investment Contributions */}
+              {isInvestmentContribution && (
+                <div className="space-y-2">
+                  <Label>Investment Account</Label>
+                  <Select
+                    value={investmentContributionAccountId || ''}
+                    onValueChange={(value) => setInvestmentContributionAccountId(value || null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select investment account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {investmentAccounts.length === 0 ? (
+                        <SelectItem value="" disabled>No investment accounts available</SelectItem>
+                      ) : (
+                        investmentAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-purple-500" />
+                              {account.name}
+                              {account.platform && (
+                                <span className="text-xs text-muted-foreground">({account.platform})</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    This will record a deposit in your investment account and track the contribution
+                  </p>
+                </div>
+              )}
+
+              {/* Regular categorization options - hidden when transfer or investment contribution is selected */}
+              {!isTransfer && !isInvestmentContribution && (
                 <>
                   <div className="space-y-2">
                     <Label>Name</Label>
@@ -1262,6 +1381,28 @@ export function TransactionLinkDialog({
                   >
                     <ArrowRightLeft className="h-4 w-4 mr-2" />
                     Mark as {isIncome ? 'Incoming' : 'Outgoing'} Transfer
+                  </Button>
+                </>
+              )}
+
+              {/* Investment contribution button */}
+              {isInvestmentContribution && (
+                <>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      Amount: <strong>{formatCurrency(transaction.amount)}</strong>
+                    </p>
+                    <p className="text-xs text-purple-600 mt-1">
+                      This will be recorded as a deposit in your investment account
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleCreate}
+                    disabled={saving || !investmentContributionAccountId}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                  >
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Record Investment Contribution
                   </Button>
                 </>
               )}

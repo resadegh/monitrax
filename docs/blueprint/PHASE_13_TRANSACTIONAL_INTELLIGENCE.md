@@ -1581,3 +1581,112 @@ This migration:
 2. Creates `categories` table
 3. Adds `customCategoryId` nullable field to `expenses` and `income` tables
 4. Creates indexes for efficient querying
+
+
+---
+
+## 13.19 Investment Contribution Tracking
+
+**Added:** 2025-12-25
+
+### 13.19.1 Problem Statement
+
+When money flows from a bank account to an investment account (shares, crypto, managed funds):
+- It appears as an outgoing transaction in the bank account
+- It is NOT an expense (no consumption occurred)
+- It is NOT a simple transfer (the value will change over time)
+- The original contribution amount (cost basis) needs to be tracked separately from current value
+
+### 13.19.2 Solution
+
+A new transaction type: **Investment Contribution**
+
+When a user marks a bank transaction as an investment contribution:
+1. The bank transaction is linked to the target investment account
+2. A `DEPOSIT` type `InvestmentTransaction` is created in the investment account
+3. The investment account cash balance is incremented
+4. The transaction is excluded from expense/income calculations
+5. The original contribution is tracked for cost basis calculations
+
+### 13.19.3 Schema Changes
+
+**UnifiedTransaction additions:**
+
+```prisma
+model UnifiedTransaction {
+  // ... existing fields ...
+  
+  // Investment contribution tracking
+  isInvestmentContribution Boolean  @default(false)
+  investmentTransactionId  String?  @unique  // Links to InvestmentTransaction
+}
+```
+
+### 13.19.4 API Changes
+
+**New action in Transaction Link API:**
+
+```typescript
+// POST /api/transactions/[id]/link
+{
+  "action": "investment",
+  "investmentContributionAccountId": "uuid-of-investment-account"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "investmentTransaction": {
+    "id": "uuid",
+    "type": "DEPOSIT",
+    "amount": 1000.00
+  },
+  "message": "Investment contribution of $1000.00 recorded to Shares Portfolio"
+}
+```
+
+### 13.19.5 UI Changes
+
+**TransactionLinkDialog Updates:**
+
+1. New checkbox option: "This is an investment contribution" (purple themed)
+2. Investment account selector dropdown
+3. Purple-themed "Record Investment Contribution" button
+4. Investment contributions displayed with purple badge when viewing linked transactions
+
+### 13.19.6 Investment Transaction Integration
+
+When an investment contribution is recorded:
+1. Creates `InvestmentTransaction` of type `DEPOSIT`
+2. Sets `totalAmount` to the transaction amount
+3. Links the bank transaction via `investmentTransactionId`
+4. Updates `cashBalance` on the investment account
+
+### 13.19.7 Unlinking Behavior
+
+When an investment contribution is unlinked:
+1. The created `InvestmentTransaction` is deleted
+2. The investment account `cashBalance` is decremented
+3. The bank transaction fields are cleared
+
+### 13.19.8 Financial Reporting Impact
+
+Investment contributions:
+- ✅ Excluded from expense totals
+- ✅ Excluded from income totals  
+- ✅ Tracked in Net Worth calculations (as part of investment account value)
+- ✅ Visible in investment account transaction history
+- ✅ Used for cost basis calculations when selling holdings
+
+### 13.19.9 Migration Required
+
+```bash
+npx prisma migrate dev --name add_investment_contribution_tracking
+```
+
+This migration:
+1. Adds `isInvestmentContribution` boolean field to `unified_transactions`
+2. Adds `investmentTransactionId` nullable unique field to `unified_transactions`
+
