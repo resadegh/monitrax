@@ -30,3 +30,17 @@ export {
 export type {
   UseNavigationAnalyticsReturn,
 } from './useNavigationAnalytics';
+
+export {
+  useCategories,
+  getCategoryDisplayName,
+  isCustomCategoryId,
+} from './useCategories';
+
+export type {
+  Category,
+  UseCategoriesOptions,
+  UseCategoriesReturn,
+  CreateCategoryData,
+  UpdateCategoryData,
+} from './useCategories';

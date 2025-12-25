@@ -83,6 +83,12 @@ enum ExpenseCategory {
   OTHER
 }
 
+// Category type for custom categories
+enum CategoryType {
+  EXPENSE
+  INCOME
+}
+
 enum Frequency {
   WEEKLY
   FORTNIGHTLY
@@ -356,7 +362,40 @@ model User {
   // Phase 29: Cashflow Intelligence Center
   cashflowSummaries       CashflowSummary[]
 
+  // Custom Categories
+  categories              Category[]
+
   @@map("users")
+}
+
+// =============================================================================
+// CUSTOM CATEGORIES - User-defined expense and income categories
+// =============================================================================
+
+model Category {
+  id          String       @id @default(uuid())
+  userId      String
+  name        String       // Display name (e.g., "Pet Care", "Side Business")
+  type        CategoryType // EXPENSE or INCOME
+  code        String       // Unique code for the category (e.g., "PET_CARE")
+  description String?      // Optional description
+  color       String?      // Optional hex color for UI (e.g., "#FF5733")
+  icon        String?      // Optional icon name (e.g., "paw", "briefcase")
+  isSystem    Boolean      @default(false) // True for system-default categories
+  isActive    Boolean      @default(true)  // Allow soft-delete/deactivation
+  sortOrder   Int          @default(0)     // For custom ordering
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relationships
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses    Expense[]    @relation("ExpenseCustomCategory")
+  income      Income[]     @relation("IncomeCustomCategory")
+
+  @@unique([userId, code])           // Each user can have unique category codes
+  @@index([userId])
+  @@index([userId, type])
+  @@map("categories")
 }
 
 // =============================================================================
@@ -566,8 +605,9 @@ model Income {
   userId                String
   propertyId            String?
   investmentAccountId   String?
+  customCategoryId      String?           // Custom user-defined category (overrides 'type' enum if set)
   name                  String
-  type                  IncomeType
+  type                  IncomeType        @default(OTHER)  // System type (fallback when customCategoryId is null)
   sourceType            IncomeSourceType  @default(GENERAL)
   amount                Float
   frequency             Frequency
@@ -606,12 +646,14 @@ model Income {
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   property          Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   investmentAccount InvestmentAccount? @relation(fields: [investmentAccountId], references: [id], onDelete: SetNull)
+  customCategory    Category?          @relation("IncomeCustomCategory", fields: [customCategoryId], references: [id], onDelete: SetNull)
   transactions      Transaction[]
   superContributions SuperContribution[]
 
   @@index([userId])
   @@index([propertyId])
   @@index([investmentAccountId])
+  @@index([customCategoryId])
   @@map("income")
 }
 
@@ -626,9 +668,10 @@ model Expense {
   loanId                String?
   investmentAccountId   String?
   assetId               String?            // Phase 21: Link to asset
+  customCategoryId      String?            // Custom user-defined category (overrides 'category' enum if set)
   name                  String
   vendorName            String?
-  category              ExpenseCategory
+  category              ExpenseCategory    @default(OTHER)  // System category (fallback when customCategoryId is null)
   sourceType            ExpenseSourceType  @default(GENERAL)
   amount                Float
   frequency             Frequency
@@ -644,6 +687,7 @@ model Expense {
   loan              Loan?              @relation(fields: [loanId], references: [id], onDelete: SetNull)
   investmentAccount InvestmentAccount? @relation(fields: [investmentAccountId], references: [id], onDelete: SetNull)
   asset             Asset?             @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  customCategory    Category?          @relation("ExpenseCustomCategory", fields: [customCategoryId], references: [id], onDelete: SetNull)
   transactions      Transaction[]
 
   // Phase 29: Linked recurring payments from bank detection
@@ -654,6 +698,7 @@ model Expense {
   @@index([loanId])
   @@index([investmentAccountId])
   @@index([assetId])
+  @@index([customCategoryId])
   @@map("expenses")
 }
 

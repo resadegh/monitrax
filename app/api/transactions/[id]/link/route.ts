@@ -20,7 +20,8 @@ interface LinkRequest {
   updateAmount?: boolean; // Whether to update the linked entry's amount
   // For create action
   name?: string;
-  category?: string; // ExpenseCategory for expense, IncomeType for income
+  category?: string; // ExpenseCategory for expense, IncomeType for income (system categories)
+  customCategoryId?: string; // User-defined custom category ID (takes precedence over category)
   frequency?: string;
   isRecurring?: boolean;
   // Source type and entity linking (for expense creation)
@@ -233,10 +234,13 @@ export async function POST(
 
           if (body.type === 'income') {
             // Create new Income entry with source type support
+            type IncomeTypeType = 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
+
             const incomeData: {
               userId: string;
               name: string;
-              type: 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
+              type: IncomeTypeType;
+              customCategoryId?: string; // Custom user-defined category
               amount: number;
               frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
               sourceType?: 'GENERAL' | 'PROPERTY' | 'INVESTMENT';
@@ -246,10 +250,25 @@ export async function POST(
             } = {
               userId,
               name,
-              type: (body.category as 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER') || 'OTHER',
+              type: (body.category as IncomeTypeType) || 'OTHER',
               amount: transaction.amount,
               frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
             };
+
+            // If custom category is provided, add it and validate ownership
+            if (body.customCategoryId) {
+              const customCategory = await prisma.category.findFirst({
+                where: { id: body.customCategoryId, userId, type: 'INCOME' },
+              });
+              if (!customCategory) {
+                return NextResponse.json(
+                  { error: 'Custom category not found' },
+                  { status: 404 }
+                );
+              }
+              incomeData.customCategoryId = body.customCategoryId;
+              incomeData.type = 'OTHER'; // Use OTHER as fallback for system type field
+            }
 
             // Add source type and entity linking
             if (body.incomeSourceType) {
@@ -285,11 +304,14 @@ export async function POST(
             });
           } else {
             // Create new Expense entry with source type and entity linking
+            type ExpenseCategoryType = 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'GROCERIES' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'HEALTH' | 'EDUCATION' | 'OTHER';
+
             const expenseData: {
               userId: string;
               name: string;
               vendorName?: string | null;
-              category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
+              category: ExpenseCategoryType;
+              customCategoryId?: string; // Custom user-defined category
               amount: number;
               frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
               sourceType?: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
@@ -304,10 +326,25 @@ export async function POST(
               userId,
               name,
               vendorName: transaction.merchantStandardised,
-              category: (body.category as 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER') || 'OTHER',
+              category: (body.category as ExpenseCategoryType) || 'OTHER',
               amount: transaction.amount,
               frequency: frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL',
             };
+
+            // If custom category is provided, add it and validate ownership
+            if (body.customCategoryId) {
+              const customCategory = await prisma.category.findFirst({
+                where: { id: body.customCategoryId, userId, type: 'EXPENSE' },
+              });
+              if (!customCategory) {
+                return NextResponse.json(
+                  { error: 'Custom category not found' },
+                  { status: 404 }
+                );
+              }
+              expenseData.customCategoryId = body.customCategoryId;
+              expenseData.category = 'OTHER'; // Use OTHER as fallback for system category field
+            }
 
             // Add source type and entity linking
             if (body.sourceType) {
