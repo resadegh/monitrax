@@ -111,7 +111,54 @@ The Transaction Explorer page now defaults to showing only uncategorized transac
 
 This allows users to focus on categorizing their backlog while still being able to view all transactions when needed.
 
-### 11. Auto-Navigate to Next Transaction
+### 11. Custom Category Support
+**Files:** `prisma/schema.prisma`, `app/api/categories/route.ts`, `app/api/categories/[id]/route.ts`, `hooks/useCategories.ts`, `components/categories/CategorySelect.tsx`
+
+Users can now create custom expense and income categories when the system categories don't fit their needs:
+
+**Schema Changes:**
+- Added `CategoryType` enum (EXPENSE, INCOME)
+- Added `Category` model with: id, userId, name, code, type, color, icon, description, isSystem, isActive, sortOrder
+- Added `customCategoryId` optional field to both `Expense` and `Income` models
+- Categories are user-specific and can be soft-deleted (isActive flag)
+
+**New API Endpoints:**
+- `GET /api/categories` - List all categories (system + custom), with optional type filter
+- `POST /api/categories` - Create a new custom category
+- `GET /api/categories/[id]` - Get single category
+- `PUT /api/categories/[id]` - Update a category
+- `DELETE /api/categories/[id]` - Soft delete (or force delete if unused)
+
+**UI Components:**
+- `CategorySelect` - Dropdown showing system categories and user's custom categories
+- Inline "Add new category" option opens a dialog to create a new category
+- `CategoryBadge` - Displays category with custom color support
+- `useCategories` hook - Centralized hook for fetching and managing categories
+
+**Integration:**
+- TransactionLinkDialog now uses CategorySelect for category selection
+- When a custom category is selected, the expense/income is created with `customCategoryId`
+- System categories continue to use the `category` or `type` enum fields
+- Custom categories appear in "My Categories" section of the dropdown
+
+**Example Usage:**
+```typescript
+// Using the CategorySelect component
+<CategorySelect
+  type="EXPENSE"
+  value={selectedCategory}
+  onChange={(value, isCustom) => {
+    setCategory(value);
+    setIsCustomCategory(isCustom);
+  }}
+  allowCustom={true}
+/>
+
+// Using the useCategories hook
+const { categories, createCategory, expenseCategories } = useCategories();
+```
+
+### 12. Auto-Navigate to Next Transaction
 **Files:** `components/transactions/TransactionLinkDialog.tsx`, `app/(dashboard)/transactions/page.tsx`
 
 After successfully categorizing a transaction, the dialog now:
@@ -304,14 +351,18 @@ setTimeout(() => {
 
 | File | Changes |
 |------|---------|
-| `prisma/schema.prisma` | Added `isRecurring` field to Expense model |
-| `app/api/expenses/route.ts` | Added `isRecurring` to POST handler |
+| `prisma/schema.prisma` | Added `isRecurring` to Expense, `CategoryType` enum, `Category` model, `customCategoryId` to Expense/Income |
+| `app/api/expenses/route.ts` | Added `isRecurring` to POST, custom category support |
 | `app/api/expenses/[id]/route.ts` | Added `isRecurring` to PUT handler |
-| `app/api/transactions/[id]/link/route.ts` | Batch categorization, merchant learning, same-vendor detection |
+| `app/api/categories/route.ts` | NEW: Categories CRUD API |
+| `app/api/categories/[id]/route.ts` | NEW: Individual category operations |
+| `app/api/transactions/[id]/link/route.ts` | Batch categorization, merchant learning, custom category support |
 | `app/api/unified-transactions/route.ts` | Added `uncategorized` and `direction` filter parameters |
 | `app/(dashboard)/transactions/page.tsx` | Tile filter state, clickable summary cards, uncategorized default |
 | `app/dashboard/expenses/page.tsx` | Major update: tiles, filtering, form checkbox, badges |
-| `components/transactions/TransactionLinkDialog.tsx` | Transfer options, batch vendor UI, merchant learning toggle |
+| `components/transactions/TransactionLinkDialog.tsx` | Transfer options, batch vendor UI, CategorySelect integration |
+| `components/categories/CategorySelect.tsx` | NEW: Category dropdown with inline add functionality |
+| `hooks/useCategories.ts` | NEW: React hook for category management |
 | `lib/tie/types.ts` | Added `isTransfer` and `transferToAccountId` to UnifiedTransaction |
 | `lib/tie/analytics.ts` | Exclude transfers from spending summary and monthly totals |
 | `app/api/unified-transactions/analytics/route.ts` | Pass `isTransfer` when mapping transactions to TIE |
@@ -322,8 +373,17 @@ setTimeout(() => {
 
 After deployment, run:
 ```bash
+# For the initial expense isRecurring field
 npx prisma migrate dev --name add_expense_is_recurring
+
+# For the custom categories feature
+npx prisma migrate dev --name add_custom_categories
 ```
+
+The custom categories migration will:
+1. Create the `CategoryType` enum
+2. Create the `categories` table
+3. Add `customCategoryId` nullable field to `expenses` and `income` tables
 
 ---
 
@@ -338,8 +398,10 @@ npx prisma migrate dev --name add_expense_is_recurring
 | `1e41704` | fix: Convert categoryMatch to explicit boolean for TypeScript compatibility |
 | `d944772` | fix: Fix transfer account dropdown not loading accounts |
 | `66681cd` | fix: Auto-navigate to next transaction after categorization |
+| `1627963` | docs: Document auto-navigate bug fix in changelog |
+| `8659850` | feat: Add custom category support for expenses and income |
 
 ---
 
-*Changelog Version: 1.1*
-*Date: 2025-12-19*
+*Changelog Version: 1.2*
+*Date: 2025-12-25*
