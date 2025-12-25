@@ -688,6 +688,7 @@ function ExpensesPageContent() {
   const getCategoryBadge = (category: Expense['category']) => {
     const variants: Record<Expense['category'], { variant: 'default' | 'secondary' | 'outline' | 'destructive'; label: string }> = {
       HOUSING: { variant: 'default', label: 'Housing' },
+      RENT: { variant: 'default', label: 'Rent' },
       RATES: { variant: 'secondary', label: 'Rates' },
       INSURANCE: { variant: 'default', label: 'Insurance' },
       MAINTENANCE: { variant: 'secondary', label: 'Maintenance' },
