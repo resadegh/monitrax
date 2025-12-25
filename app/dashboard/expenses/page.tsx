@@ -597,6 +597,7 @@ function ExpensesPageContent() {
   // Category info with icons and colors
   const categoryInfo: Record<Expense['category'], { label: string; icon: React.ReactNode; color: string }> = {
     HOUSING: { label: 'Housing', icon: <Home className="h-5 w-5" />, color: 'text-blue-500' },
+    RENT: { label: 'Rent', icon: <Home className="h-5 w-5" />, color: 'text-blue-600' },
     RATES: { label: 'Rates', icon: <Building2 className="h-5 w-5" />, color: 'text-amber-500' },
     INSURANCE: { label: 'Insurance', icon: <Receipt className="h-5 w-5" />, color: 'text-green-500' },
     MAINTENANCE: { label: 'Maintenance', icon: <TrendingDown className="h-5 w-5" />, color: 'text-orange-500' },
