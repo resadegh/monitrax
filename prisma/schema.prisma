@@ -17,6 +17,7 @@ datasource db {
 enum PropertyType {
   HOME
   INVESTMENT
+  RENTAL      // User is renting this property (not owned)
 }
 
 enum LoanType {
@@ -63,6 +64,7 @@ enum IncomeType {
 
 enum ExpenseCategory {
   HOUSING
+  RENT        // Rental payments for rented property
   RATES
   INSURANCE
   MAINTENANCE

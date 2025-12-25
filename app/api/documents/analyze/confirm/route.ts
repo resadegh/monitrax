@@ -18,7 +18,7 @@ import { SuggestedActionType } from '@/lib/documents/intelligence';
 
 // Types defined locally to avoid dependency on Prisma client regeneration timing
 type ExpenseCategory =
-  | 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL'
+  | 'HOUSING' | 'RENT' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL'
   | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION'
   | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
 

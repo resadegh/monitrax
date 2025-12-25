@@ -11,6 +11,7 @@
 
 export type ExpenseCategory =
   | 'HOUSING'
+  | 'RENT'
   | 'RATES'
   | 'INSURANCE'
   | 'MAINTENANCE'
@@ -33,6 +34,7 @@ export type AssetType = 'VEHICLE' | 'ELECTRONICS' | 'FURNITURE' | 'EQUIPMENT' | 
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   HOUSING: 'Housing',
+  RENT: 'Rent',
   RATES: 'Rates',
   INSURANCE: 'Insurance',
   MAINTENANCE: 'Maintenance',
@@ -53,12 +55,12 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 // Categories allowed for each source type
 const EXPENSE_CATEGORIES_BY_SOURCE: Record<ExpenseSourceType, ExpenseCategory[]> = {
   GENERAL: [
-    'HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL',
+    'HOUSING', 'RENT', 'RATES', 'INSURANCE', 'MAINTENANCE', 'PERSONAL',
     'UTILITIES', 'FOOD', 'TRANSPORT', 'ENTERTAINMENT', 'SUBSCRIPTION',
     'STRATA', 'LAND_TAX', 'LOAN_INTEREST', 'REGISTRATION', 'MODIFICATIONS', 'OTHER'
   ],
   PROPERTY: [
-    'HOUSING', 'RATES', 'INSURANCE', 'MAINTENANCE', 'UTILITIES',
+    'HOUSING', 'RENT', 'RATES', 'INSURANCE', 'MAINTENANCE', 'UTILITIES',
     'STRATA', 'LAND_TAX', 'OTHER'
   ],
   LOAN: [
