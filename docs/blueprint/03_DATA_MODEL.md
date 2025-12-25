@@ -205,18 +205,32 @@ account → property? (rare)
 id: string
 type: "income"
 name: string
-category: "RENT" | "SALARY" | "BUSINESS" | "OTHER"
+incomeType: "SALARY" | "RENT" | "RENTAL" | "INVESTMENT" | "OTHER"
+customCategoryId?: string     // Reference to user-defined Category (takes precedence over incomeType if set)
+sourceType: "GENERAL" | "PROPERTY" | "INVESTMENT"
 amount: number
 frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "ANNUAL"
-startDate: string
+startDate?: string
 endDate?: string
 propertyId?: string
+investmentAccountId?: string
+isTaxable: boolean            // Is this income taxable? (default: true)
 ```
+
+### **Source Types**
+
+| Source Type | Description | Links To |
+|-------------|-------------|----------|
+| GENERAL | General income (salary, etc.) | None |
+| PROPERTY | Property rental income | Property |
+| INVESTMENT | Investment returns | Investment Account |
 
 ### **Relationships**
 
 ```
 income → property?
+income → investmentAccount?
+income → customCategory?      // User-defined category
 ```
 
 ---
@@ -230,6 +244,7 @@ id: string
 type: "expense"
 name: string
 category: "HOUSING" | "RATES" | "INSURANCE" | "MAINTENANCE" | "PERSONAL" | "UTILITIES" | "FOOD" | "TRANSPORT" | "ENTERTAINMENT" | "SUBSCRIPTION" | "STRATA" | "LAND_TAX" | "LOAN_INTEREST" | "REGISTRATION" | "MODIFICATIONS" | "OTHER"
+customCategoryId?: string     // Reference to user-defined Category (takes precedence over category if set)
 sourceType: "GENERAL" | "PROPERTY" | "LOAN" | "INVESTMENT" | "ASSET"
 amount: number
 frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL"
@@ -269,11 +284,59 @@ expense → property?
 expense → loan?
 expense → investmentAccount?
 expense → asset?
+expense → customCategory?    // User-defined category
 ```
 
 ---
 
-# **3.6 Investment Accounts**
+# **3.6 Categories (Custom)**
+
+### **Entity: Category**
+
+User-defined categories for expenses and income, allowing customization beyond system categories.
+
+```
+id: string
+type: "category"
+userId: string               // Owner of the category
+name: string                 // Display name (e.g., "Pet Care", "Side Business")
+code: string                 // Unique code per user (auto-generated from name)
+categoryType: "EXPENSE" | "INCOME"
+description?: string         // Optional description
+color?: string               // Hex color for UI (e.g., "#FF5733")
+icon?: string                // Icon name for UI
+isSystem: boolean            // True for system defaults (false for user-created)
+isActive: boolean            // Soft delete flag (default: true)
+sortOrder: number            // Custom ordering
+createdAt: string
+updatedAt: string
+```
+
+### **Relationships**
+
+```
+category → user
+category → expense[]         // Expenses using this category
+category → income[]          // Income entries using this category
+```
+
+### **Category Types**
+
+| Type | Description | System Categories |
+|------|-------------|-------------------|
+| EXPENSE | Expense categories | HOUSING, RATES, INSURANCE, UTILITIES, FOOD, TRANSPORT, etc. |
+| INCOME | Income types | SALARY, RENT, RENTAL, INVESTMENT, OTHER |
+
+### **Usage Notes**
+
+- System categories are available to all users and cannot be modified or deleted
+- Custom categories are user-specific and appear in "My Categories" section
+- When `customCategoryId` is set on an Expense/Income, it takes precedence over the system `category` field
+- Categories can be soft-deleted (isActive: false) if in use, or permanently deleted if unused
+
+---
+
+# **3.7 Investment Accounts**
 
 ### **Entity: InvestmentAccount**
 
@@ -376,6 +439,9 @@ asset → expense
 asset → valueHistory
 asset → serviceRecord
 
+category → expense[]
+category → income[]
+
 investmentAccount → holding
 investmentAccount → transaction
 
@@ -394,6 +460,7 @@ type GRDCSEntityType =
   | 'expense'
   | 'account'
   | 'asset'           // Phase 21: Asset Management
+  | 'category'        // Custom user-defined categories
   | 'investmentAccount'
   | 'investmentHolding'
   | 'investmentTransaction'

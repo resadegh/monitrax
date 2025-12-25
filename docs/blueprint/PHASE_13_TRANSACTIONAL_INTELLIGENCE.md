@@ -1312,3 +1312,381 @@ setTimeout(() => {
 3. Success message displays for 800ms
 4. Dialog automatically shows the next uncategorized transaction
 5. If no more transactions, dialog closes automatically
+
+### 13.17.6 Bug Fix: Stale Closure Issue
+
+> **Status: FIXED** (December 2025)
+
+**Issue:** The dialog stayed on the same transaction after categorization instead of navigating to the next one.
+
+**Root Cause:** The `onNavigateNext` callback was using a stale `transactions` array from a JavaScript closure. When `fetchTransactions()` was called asynchronously, the navigation timer (800ms) fired before the React state update completed.
+
+**Solution:**
+1. Changed `onLinked` prop type to return `Promise<void>` so dialog can await it
+2. Added a `transactionsRef` to track the latest transactions value
+3. Updated `fetchTransactions` to synchronously update the ref when data arrives
+4. `onNavigateNext` now reads from the ref to get fresh data
+
+**Implementation:**
+```typescript
+// In transactions/page.tsx
+const transactionsRef = useRef<Transaction[]>([]);
+transactionsRef.current = transactions;
+
+// In fetchTransactions
+if (response.ok && json.success) {
+  setTransactions(json.data);
+  transactionsRef.current = json.data; // Update ref immediately
+}
+
+// In onNavigateNext
+onNavigateNext={() => {
+  const currentTransactions = transactionsRef.current;
+  if (currentTransactions.length > 0) {
+    setLinkingTransaction(currentTransactions[0]);
+  } else {
+    setShowLinkDialog(false);
+  }
+}}
+
+// In TransactionLinkDialog
+await onLinked?.(); // Wait for fetch to complete
+setTimeout(() => {
+  if (hasMoreTransactions && onNavigateNext) {
+    onNavigateNext();
+  }
+}, 800);
+```
+
+---
+
+## 13.18 Custom Category Support
+
+> **Status: IMPLEMENTED** (December 2025)
+
+### 13.18.1 Overview
+
+Users can now create custom expense and income categories when the system-defined categories don't fit their needs. Custom categories are stored in a centralized `Category` table and are available across all areas of the application.
+
+### 13.18.2 Category Model
+
+**File:** `prisma/schema.prisma`
+
+```prisma
+enum CategoryType {
+  EXPENSE
+  INCOME
+}
+
+model Category {
+  id          String       @id @default(uuid())
+  userId      String
+  name        String       // Display name (e.g., "Pet Care", "Side Business")
+  code        String       // Unique code per user (auto-generated from name)
+  type        CategoryType // EXPENSE or INCOME
+  description String?
+  color       String?      // Hex color for UI (e.g., "#FF5733")
+  icon        String?      // Icon name for UI
+  isSystem    Boolean      @default(false) // True for system defaults
+  isActive    Boolean      @default(true)  // Soft delete flag
+  sortOrder   Int          @default(0)     // Custom ordering
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses    Expense[]    @relation("ExpenseCustomCategory")
+  income      Income[]     @relation("IncomeCustomCategory")
+
+  @@unique([userId, code])
+  @@index([userId])
+  @@index([userId, type])
+  @@map("categories")
+}
+```
+
+**Updates to Expense and Income models:**
+```prisma
+model Expense {
+  // ... existing fields ...
+  customCategoryId  String?   // Optional: overrides 'category' if set
+  customCategory    Category? @relation("ExpenseCustomCategory", fields: [customCategoryId], references: [id])
+}
+
+model Income {
+  // ... existing fields ...
+  customCategoryId  String?   // Optional: overrides 'type' if set
+  customCategory    Category? @relation("IncomeCustomCategory", fields: [customCategoryId], references: [id])
+}
+```
+
+### 13.18.3 Categories API
+
+**File:** `app/api/categories/route.ts`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/categories` | GET | List all categories (system + custom) |
+| `/api/categories` | POST | Create new custom category |
+| `/api/categories/[id]` | GET | Get single category |
+| `/api/categories/[id]` | PUT | Update category (name, description, color, icon) |
+| `/api/categories/[id]` | DELETE | Soft delete (or force delete if unused) |
+
+**Query Parameters (GET):**
+- `type=EXPENSE|INCOME` - Filter by category type
+- `includeSystem=true|false` - Include/exclude system categories (default: true)
+
+**System Categories:**
+System categories are generated from existing enums (`EXPENSE_CATEGORIES`, `INCOME_TYPES`) and returned with IDs in format `system:expense:HOUSING` or `system:income:SALARY`.
+
+### 13.18.4 useCategories Hook
+
+**File:** `hooks/useCategories.ts`
+
+```typescript
+interface Category {
+  id: string;
+  code: string;
+  name: string;
+  type: 'EXPENSE' | 'INCOME';
+  isSystem: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  color: string | null;
+  icon: string | null;
+  description: string | null;
+}
+
+interface UseCategoriesReturn {
+  categories: Category[];
+  expenseCategories: Category[];
+  incomeCategories: Category[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+  createCategory: (data: CreateCategoryData) => Promise<Category | null>;
+  updateCategory: (id: string, data: UpdateCategoryData) => Promise<Category | null>;
+  deleteCategory: (id: string, force?: boolean) => Promise<boolean>;
+  getCategoryById: (id: string) => Category | undefined;
+  getCategoryByCode: (code: string, type: 'EXPENSE' | 'INCOME') => Category | undefined;
+}
+
+export function useCategories(options?: UseCategoriesOptions): UseCategoriesReturn;
+```
+
+### 13.18.5 CategorySelect Component
+
+**File:** `components/categories/CategorySelect.tsx`
+
+A dropdown component that displays both system and custom categories with inline add capability:
+
+```tsx
+<CategorySelect
+  type="EXPENSE"
+  value={selectedCategory}
+  onChange={(value, isCustom) => {
+    setCategory(value);
+    setIsCustomCategory(isCustom);
+  }}
+  placeholder="Select category"
+  allowCustom={true}
+/>
+```
+
+**Features:**
+- Groups categories: "Standard Categories" (system) and "My Categories" (custom)
+- "Add new category..." option opens a dialog to create new category inline
+- Returns whether selected category is custom or system
+- Custom categories display color indicator if set
+
+### 13.18.6 Integration with Transaction Link Dialog
+
+**File:** `components/transactions/TransactionLinkDialog.tsx`
+
+The dialog now uses `CategorySelect` instead of the static dropdown:
+
+```typescript
+// State to track if selected category is custom
+const [isCustomCategory, setIsCustomCategory] = useState(false);
+
+// CategorySelect usage
+<CategorySelect
+  type={isIncome ? 'INCOME' : 'EXPENSE'}
+  value={newCategory}
+  onChange={(value, isCustom) => {
+    setNewCategory(value);
+    setIsCustomCategory(isCustom);
+  }}
+/>
+
+// API request with custom category support
+const requestBody = {
+  action: 'create',
+  type,
+  name: newName,
+  ...(isCustomCategory
+    ? { customCategoryId: newCategory, category: 'OTHER' }
+    : { category: newCategory }),
+  // ... other fields
+};
+```
+
+### 13.18.7 API Updates
+
+**Transaction Link API (`app/api/transactions/[id]/link/route.ts`):**
+
+```typescript
+interface LinkRequest {
+  // ... existing fields ...
+  category?: string;           // System category enum
+  customCategoryId?: string;   // User-defined category ID
+}
+
+// When creating expense/income:
+if (body.customCategoryId) {
+  // Validate custom category ownership
+  const customCategory = await prisma.category.findFirst({
+    where: { id: body.customCategoryId, userId, type: 'EXPENSE' },
+  });
+  if (!customCategory) {
+    return NextResponse.json({ error: 'Custom category not found' }, { status: 404 });
+  }
+  expenseData.customCategoryId = body.customCategoryId;
+  expenseData.category = 'OTHER'; // Fallback for system field
+}
+```
+
+**Expenses API (`app/api/expenses/route.ts`):**
+
+- GET now includes `customCategory` relation in response
+- POST accepts `customCategoryId` and validates ownership
+
+### 13.18.8 Usage Flow
+
+1. User categorizes a transaction
+2. In category dropdown, user sees "Standard Categories" and "My Categories"
+3. If needed category doesn't exist, user clicks "Add new category..."
+4. Dialog appears to create new category with name and optional description
+5. New category is created and immediately selected
+6. Transaction is categorized with the new custom category
+7. Custom category is available for future transactions
+
+### 13.18.9 Migration Required
+
+```bash
+npx prisma migrate dev --name add_custom_categories
+```
+
+This migration:
+1. Creates `CategoryType` enum
+2. Creates `categories` table
+3. Adds `customCategoryId` nullable field to `expenses` and `income` tables
+4. Creates indexes for efficient querying
+
+
+---
+
+## 13.19 Investment Contribution Tracking
+
+**Added:** 2025-12-25
+
+### 13.19.1 Problem Statement
+
+When money flows from a bank account to an investment account (shares, crypto, managed funds):
+- It appears as an outgoing transaction in the bank account
+- It is NOT an expense (no consumption occurred)
+- It is NOT a simple transfer (the value will change over time)
+- The original contribution amount (cost basis) needs to be tracked separately from current value
+
+### 13.19.2 Solution
+
+A new transaction type: **Investment Contribution**
+
+When a user marks a bank transaction as an investment contribution:
+1. The bank transaction is linked to the target investment account
+2. A `DEPOSIT` type `InvestmentTransaction` is created in the investment account
+3. The investment account cash balance is incremented
+4. The transaction is excluded from expense/income calculations
+5. The original contribution is tracked for cost basis calculations
+
+### 13.19.3 Schema Changes
+
+**UnifiedTransaction additions:**
+
+```prisma
+model UnifiedTransaction {
+  // ... existing fields ...
+  
+  // Investment contribution tracking
+  isInvestmentContribution Boolean  @default(false)
+  investmentTransactionId  String?  @unique  // Links to InvestmentTransaction
+}
+```
+
+### 13.19.4 API Changes
+
+**New action in Transaction Link API:**
+
+```typescript
+// POST /api/transactions/[id]/link
+{
+  "action": "investment",
+  "investmentContributionAccountId": "uuid-of-investment-account"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "investmentTransaction": {
+    "id": "uuid",
+    "type": "DEPOSIT",
+    "amount": 1000.00
+  },
+  "message": "Investment contribution of $1000.00 recorded to Shares Portfolio"
+}
+```
+
+### 13.19.5 UI Changes
+
+**TransactionLinkDialog Updates:**
+
+1. New checkbox option: "This is an investment contribution" (purple themed)
+2. Investment account selector dropdown
+3. Purple-themed "Record Investment Contribution" button
+4. Investment contributions displayed with purple badge when viewing linked transactions
+
+### 13.19.6 Investment Transaction Integration
+
+When an investment contribution is recorded:
+1. Creates `InvestmentTransaction` of type `DEPOSIT`
+2. Sets `totalAmount` to the transaction amount
+3. Links the bank transaction via `investmentTransactionId`
+4. Updates `cashBalance` on the investment account
+
+### 13.19.7 Unlinking Behavior
+
+When an investment contribution is unlinked:
+1. The created `InvestmentTransaction` is deleted
+2. The investment account `cashBalance` is decremented
+3. The bank transaction fields are cleared
+
+### 13.19.8 Financial Reporting Impact
+
+Investment contributions:
+- ✅ Excluded from expense totals
+- ✅ Excluded from income totals  
+- ✅ Tracked in Net Worth calculations (as part of investment account value)
+- ✅ Visible in investment account transaction history
+- ✅ Used for cost basis calculations when selling holdings
+
+### 13.19.9 Migration Required
+
+```bash
+npx prisma migrate dev --name add_investment_contribution_tracking
+```
+
+This migration:
+1. Adds `isInvestmentContribution` boolean field to `unified_transactions`
+2. Adds `investmentTransactionId` nullable unique field to `unified_transactions`
+

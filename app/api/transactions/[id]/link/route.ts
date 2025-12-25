@@ -14,7 +14,7 @@ import { prisma } from '@/lib/db';
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
 
 interface LinkRequest {
-  action: 'link' | 'create' | 'update' | 'unlink' | 'transfer';
+  action: 'link' | 'create' | 'update' | 'unlink' | 'transfer' | 'investment';
   type?: 'income' | 'expense' | 'loan';
   targetId?: string; // For link/update actions
   updateAmount?: boolean; // Whether to update the linked entry's amount
@@ -38,6 +38,10 @@ interface LinkRequest {
   isTaxDeductible?: boolean;
   // For transfer
   transferToAccountId?: string;
+  // For investment contribution
+  investmentContributionAccountId?: string; // Target investment account for deposit
+  investmentIsRecurring?: boolean; // Is this a recurring investment contribution?
+  investmentFrequency?: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'; // Frequency of contribution
   // For batch categorization
   additionalTransactionIds?: string[]; // Other transactions to categorize the same way
   learnMerchant?: boolean; // Store merchant -> category mapping for future suggestions
@@ -535,6 +539,27 @@ export async function POST(
 
         case 'unlink': {
           // Remove link from transaction
+          // First check if it was an investment contribution and needs cleanup
+          const existingTx = await prisma.unifiedTransaction.findFirst({
+            where: { id: transactionId, userId },
+          });
+
+          if (existingTx?.isInvestmentContribution && existingTx?.investmentTransactionId) {
+            // Delete the investment transaction and reverse the balance
+            const investmentTx = await prisma.investmentTransaction.findFirst({
+              where: { id: existingTx.investmentTransactionId },
+            });
+            if (investmentTx) {
+              await prisma.investmentAccount.update({
+                where: { id: investmentTx.investmentAccountId },
+                data: { cashBalance: { decrement: investmentTx.price } },
+              });
+              await prisma.investmentTransaction.delete({
+                where: { id: existingTx.investmentTransactionId },
+              });
+            }
+          }
+
           await prisma.unifiedTransaction.update({
             where: { id: transactionId },
             data: {
@@ -544,7 +569,11 @@ export async function POST(
               isRecurring: false,
               isTransfer: false,
               transferToAccountId: null,
+              isInvestmentContribution: false,
+              investmentAccountId: null,
+              investmentTransactionId: null,
               isEssential: false,
+              categoryLevel1: null,
             },
           });
 
@@ -591,6 +620,116 @@ export async function POST(
             message: body.transferToAccountId
               ? 'Marked as transfer to another account'
               : 'Marked as transfer',
+          });
+        }
+
+        case 'investment': {
+          // Mark transaction as an investment contribution
+          // This moves money from bank account to investment account
+          // Creates a DEPOSIT transaction in the investment account
+
+          if (!body.investmentContributionAccountId) {
+            return NextResponse.json(
+              { error: 'investmentContributionAccountId required for investment action' },
+              { status: 400 }
+            );
+          }
+
+          // Verify investment account exists and belongs to user
+          const investmentAccount = await prisma.investmentAccount.findFirst({
+            where: { id: body.investmentContributionAccountId, userId },
+          });
+
+          if (!investmentAccount) {
+            return NextResponse.json(
+              { error: 'Investment account not found' },
+              { status: 404 }
+            );
+          }
+
+          // Determine if this is a recurring contribution
+          const isRecurring = body.investmentIsRecurring ?? false;
+          const frequency = body.investmentFrequency || 'MONTHLY';
+
+          // Create an investment transaction (DEPOSIT) to track the contribution
+          const investmentTransaction = await prisma.investmentTransaction.create({
+            data: {
+              investmentAccountId: investmentAccount.id,
+              date: transaction.date,
+              type: 'DEPOSIT',
+              price: transaction.amount, // Amount deposited
+              units: 1, // For deposits, units = 1
+              totalAmount: transaction.amount,
+              notes: isRecurring
+                ? `Recurring ${frequency.toLowerCase()} contribution: ${transaction.merchantStandardised || transaction.description}`
+                : `Bank transfer: ${transaction.merchantStandardised || transaction.description}`,
+            },
+          });
+
+          // Update the investment account balance
+          await prisma.investmentAccount.update({
+            where: { id: investmentAccount.id },
+            data: {
+              cashBalance: { increment: transaction.amount },
+            },
+          });
+
+          // Mark the bank transaction as investment contribution
+          await prisma.unifiedTransaction.update({
+            where: { id: transactionId },
+            data: {
+              isInvestmentContribution: true,
+              investmentAccountId: investmentAccount.id,
+              investmentTransactionId: investmentTransaction.id,
+              isTransfer: false,
+              isRecurring: isRecurring,
+              isEssential: false,
+              // Clear any existing links
+              incomeId: null,
+              expenseId: null,
+              loanId: null,
+              categoryLevel1: 'Investment',
+            },
+          });
+
+          // Learn merchant mapping for recurring investment contributions
+          if (isRecurring && transaction.merchantStandardised) {
+            await prisma.merchantMapping.upsert({
+              where: {
+                userId_merchantRaw: {
+                  userId,
+                  merchantRaw: transaction.merchantStandardised,
+                },
+              },
+              update: {
+                categoryLevel1: 'Investment',
+                usageCount: { increment: 1 },
+                updatedAt: new Date(),
+              },
+              create: {
+                userId,
+                merchantRaw: transaction.merchantStandardised,
+                merchantStandardised: transaction.merchantStandardised,
+                categoryLevel1: 'Investment',
+                source: 'USER',
+                confidence: 1.0,
+                usageCount: 1,
+              },
+            });
+          }
+
+          return NextResponse.json({
+            success: true,
+            investmentTransaction: {
+              id: investmentTransaction.id,
+              type: 'DEPOSIT',
+              amount: transaction.amount,
+              isRecurring,
+              frequency: isRecurring ? frequency : null,
+            },
+            message: isRecurring
+              ? `Recurring ${frequency.toLowerCase()} investment of $${transaction.amount.toFixed(2)} recorded to ${investmentAccount.name}`
+              : `Investment contribution of $${transaction.amount.toFixed(2)} recorded to ${investmentAccount.name}`,
           });
         }
 
@@ -893,9 +1032,16 @@ export async function GET(
       // Sort by confidence
       matches.sort((a, b) => b.confidence - a.confidence);
 
-      // Get current link status (including transfers)
+      // Get current link status (including transfers and investment contributions)
       let currentLink = null;
-      if (transaction.isTransfer) {
+      if (transaction.isInvestmentContribution && transaction.investmentAccountId) {
+        const invAccount = investmentAccounts.find((a: typeof investmentAccounts[number]) => a.id === transaction.investmentAccountId);
+        currentLink = {
+          type: 'investment',
+          id: transaction.investmentAccountId,
+          name: invAccount ? `Investment: ${invAccount.name}` : 'Investment contribution',
+        };
+      } else if (transaction.isTransfer) {
         currentLink = { type: 'transfer', id: transaction.id, name: 'Transfer between accounts' };
       } else if (transaction.incomeId) {
         const income = incomeEntries.find((i: typeof incomeEntries[number]) => i.id === transaction.incomeId);
@@ -925,6 +1071,8 @@ export async function GET(
           categoryLevel1: transaction.categoryLevel1,
           isRecurring: transaction.isRecurring,
           isTransfer: transaction.isTransfer,
+          isInvestmentContribution: transaction.isInvestmentContribution,
+          investmentAccountId: transaction.investmentAccountId,
         },
         currentLink,
         suggestedMatches: matches.slice(0, 5),

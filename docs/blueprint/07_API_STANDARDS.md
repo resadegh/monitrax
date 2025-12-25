@@ -275,10 +275,79 @@ Must include:
 
 Returns:
 
-- completenessScore  
-- orphanCount  
-- missingLinks[]  
-- module breakdown  
+- completenessScore
+- orphanCount
+- missingLinks[]
+- module breakdown
+
+---
+
+### **11.4 Categories API**
+```
+/api/categories
+/api/categories/{id}
+```
+
+Manages user-defined custom categories for expenses and income.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/categories` | GET | List all categories (system + user custom) |
+| `/api/categories` | POST | Create a new custom category |
+| `/api/categories/{id}` | GET | Get single category by ID |
+| `/api/categories/{id}` | PUT | Update a custom category |
+| `/api/categories/{id}` | DELETE | Soft delete or force delete category |
+
+**Query Parameters (GET /api/categories):**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | `EXPENSE` \| `INCOME` | Filter by category type |
+| `includeSystem` | `boolean` | Include system categories (default: true) |
+
+**System Category Prefixes:**
+System categories are returned with special IDs:
+- `system:expense:HOUSING`, `system:expense:UTILITIES`, etc.
+- `system:income:SALARY`, `system:income:RENT`, etc.
+
+System categories cannot be modified or deleted.
+
+**Response Shape (GET list):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "system:expense:HOUSING",
+      "code": "HOUSING",
+      "name": "Housing",
+      "type": "EXPENSE",
+      "isSystem": true,
+      "isActive": true,
+      "sortOrder": 0,
+      "color": null,
+      "icon": null,
+      "description": null
+    },
+    {
+      "id": "uuid-here",
+      "code": "PET_CARE",
+      "name": "Pet Care",
+      "type": "EXPENSE",
+      "isSystem": false,
+      "isActive": true,
+      "sortOrder": 0,
+      "color": "#FF5733",
+      "icon": "paw",
+      "description": "Vet bills, food, supplies"
+    }
+  ],
+  "_meta": {
+    "totalCount": 25,
+    "systemCount": 19,
+    "customCount": 6
+  }
+}
+```
 
 ---
 

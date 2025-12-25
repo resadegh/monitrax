@@ -1426,6 +1426,10 @@ model UnifiedTransaction {
   isTransfer            Boolean              @default(false)  // Is this a transfer between accounts?
   transferToAccountId   String?                               // Target account for transfers
 
+  // Investment contribution tracking (money going into investment accounts)
+  isInvestmentContribution Boolean           @default(false)  // Is this an investment contribution?
+  investmentTransactionId  String?           @unique          // Links to the InvestmentTransaction created
+
   // Anomaly detection
   anomalyFlags          AnomalyType[]
 
