@@ -594,15 +594,17 @@ function ExpensesPageContent() {
     });
   };
 
-  // Category info with icons and colors
-  const categoryInfo: Record<Expense['category'], { label: string; icon: React.ReactNode; color: string }> = {
+  // Category info with icons and colors - includes all possible categories for compatibility
+  const categoryInfo: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
     HOUSING: { label: 'Housing', icon: <Home className="h-5 w-5" />, color: 'text-blue-500' },
+    RENT: { label: 'Rent', icon: <Home className="h-5 w-5" />, color: 'text-blue-400' },
     RATES: { label: 'Rates', icon: <Building2 className="h-5 w-5" />, color: 'text-amber-500' },
     INSURANCE: { label: 'Insurance', icon: <Receipt className="h-5 w-5" />, color: 'text-green-500' },
     MAINTENANCE: { label: 'Maintenance', icon: <TrendingDown className="h-5 w-5" />, color: 'text-orange-500' },
     PERSONAL: { label: 'Personal', icon: <DollarSign className="h-5 w-5" />, color: 'text-purple-500' },
     UTILITIES: { label: 'Utilities', icon: <Landmark className="h-5 w-5" />, color: 'text-cyan-500' },
     FOOD: { label: 'Food', icon: <Store className="h-5 w-5" />, color: 'text-rose-500' },
+    GROCERIES: { label: 'Groceries', icon: <Store className="h-5 w-5" />, color: 'text-rose-400' },
     TRANSPORT: { label: 'Transport', icon: <Briefcase className="h-5 w-5" />, color: 'text-indigo-500' },
     ENTERTAINMENT: { label: 'Entertainment', icon: <CreditCard className="h-5 w-5" />, color: 'text-pink-500' },
     SUBSCRIPTION: { label: 'Subscription', icon: <Calendar className="h-5 w-5" />, color: 'text-fuchsia-500' },
@@ -611,6 +613,8 @@ function ExpensesPageContent() {
     LOAN_INTEREST: { label: 'Loan Interest', icon: <Landmark className="h-5 w-5" />, color: 'text-red-600' },
     REGISTRATION: { label: 'Registration', icon: <FileText className="h-5 w-5" />, color: 'text-sky-500' },
     MODIFICATIONS: { label: 'Modifications', icon: <TrendingDown className="h-5 w-5" />, color: 'text-violet-500' },
+    HEALTH: { label: 'Health', icon: <Receipt className="h-5 w-5" />, color: 'text-emerald-500' },
+    EDUCATION: { label: 'Education', icon: <FileText className="h-5 w-5" />, color: 'text-blue-600' },
     OTHER: { label: 'Other', icon: <CreditCard className="h-5 w-5" />, color: 'text-gray-500' },
   };
 
