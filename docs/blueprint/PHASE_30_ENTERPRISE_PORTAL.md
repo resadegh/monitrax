@@ -1,9 +1,23 @@
 # PHASE 30: ENTERPRISE PORTAL - Organization Client Management
 
-> **Status**: PLANNING
+> **Status**: APPROVED - READY FOR IMPLEMENTATION
 > **Author**: Claude AI
 > **Created**: 2026-01-19
+> **Updated**: 2026-01-19
 > **Target Audience**: Accountants, Financial Advisors, Wealth Managers, Bookkeepers
+
+---
+
+## Decision Log
+
+| Question | Decision | Date |
+|----------|----------|------|
+| Pricing Model | TBD - To be finalized later | 2026-01-19 |
+| White-Labeling | YES - Required (Phase 30.11) | 2026-01-19 |
+| SSO/SAML | YES - Required (Phase 30.12) | 2026-01-19 |
+| Multi-Organization Clients | YES - One client can belong to multiple orgs | 2026-01-19 |
+| API Access | **CRITICAL** - Required for Xero integration (Phase 30.13) | 2026-01-19 |
+| Xero Integration | **CRITICAL** - Primary accounting software integration | 2026-01-19 |
 
 ---
 
@@ -162,9 +176,18 @@ model Organization {
   description           String?
   type                  OrganizationType     @default(OTHER)
 
-  // Branding
+  // Branding (Phase 30.11: White-Labeling)
   logoUrl               String?
+  faviconUrl            String?
   primaryColor          String?              // Hex color for portal branding
+  secondaryColor        String?
+  accentColor           String?
+  fontFamily            String?              // Custom font (from approved list)
+  customCss             String?              @db.Text  // Advanced customization
+  emailHeaderHtml       String?              @db.Text  // Custom email header
+  emailFooterHtml       String?              @db.Text  // Custom email footer
+  customDomain          String?              @unique   // e.g., portal.accountingfirm.com
+  customDomainVerified  Boolean              @default(false)
 
   // Contact
   email                 String?
@@ -194,6 +217,23 @@ model Organization {
   canAddNotes           Boolean              @default(true)
   canCreateTasks        Boolean              @default(true)
   apiAccessEnabled      Boolean              @default(false)
+  whiteLabelEnabled     Boolean              @default(false)
+
+  // SSO Configuration (Phase 30.12)
+  ssoEnabled            Boolean              @default(false)
+  ssoProvider           String?              // "saml", "oidc"
+  ssoEntityId           String?              // SAML Entity ID
+  ssoMetadataUrl        String?              // SAML Metadata URL
+  ssoSignOnUrl          String?              // SAML SSO URL
+  ssoCertificate        String?              @db.Text  // SAML X.509 Certificate
+  oidcClientId          String?              // OIDC Client ID
+  oidcClientSecret      String?              // OIDC Client Secret (encrypted)
+  oidcIssuerUrl         String?              // OIDC Issuer URL
+  ssoEnforced           Boolean              @default(false)  // Require SSO for all users
+  ssoJitProvisioning    Boolean              @default(true)   // Auto-create users on first login
+
+  // API Access (Phase 30.13)
+  apiKeys               OrganizationApiKey[]
 
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
@@ -381,6 +421,196 @@ model ClientAccessLog {
   @@index([createdAt])
   @@map("client_access_logs")
 }
+
+// Organization API Keys (Phase 30.13)
+model OrganizationApiKey {
+  id                    String               @id @default(uuid())
+  organizationId        String
+
+  // Key details
+  name                  String               // "Production Key", "Testing Key"
+  keyHash               String               // Hashed API key (never store plaintext)
+  keyPrefix             String               // First 8 chars for identification (e.g., "mk_live_")
+
+  // Permissions
+  scopes                DataAccessScope[]    @default([])  // Which data types can be accessed
+  readOnly              Boolean              @default(true)
+
+  // Limits
+  rateLimit             Int                  @default(1000)  // Requests per hour
+
+  // Status
+  isActive              Boolean              @default(true)
+  lastUsedAt            DateTime?
+  expiresAt             DateTime?
+
+  // Audit
+  createdBy             String               // User ID who created the key
+  revokedAt             DateTime?
+  revokedBy             String?
+
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  // Relationships
+  organization          Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([keyPrefix])
+  @@index([isActive])
+  @@map("organization_api_keys")
+}
+
+// =============================================================================
+// ACCOUNTING INTEGRATIONS (Phase 30.14+)
+// Extensible design supporting Xero (primary), MYOB, QuickBooks, Sage, etc.
+// =============================================================================
+
+enum AccountingProvider {
+  XERO            // Primary - Australian market leader
+  MYOB            // Australia/NZ
+  QUICKBOOKS      // QuickBooks Online
+  SAGE            // Sage Business Cloud
+  FRESHBOOKS      // FreshBooks
+  WAVE            // Wave Accounting (free)
+  OTHER           // Generic/Custom
+}
+
+enum IntegrationSyncDirection {
+  OUTBOUND        // Monitrax → Accounting Software
+  INBOUND         // Accounting Software → Monitrax
+  BIDIRECTIONAL   // Two-way sync
+}
+
+enum IntegrationSyncStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+// Generic Accounting Integration (supports multiple providers)
+model AccountingIntegration {
+  id                    String               @id @default(uuid())
+  organizationId        String
+  provider              AccountingProvider
+
+  // OAuth Tokens (encrypted at rest)
+  accessToken           String               @db.Text
+  refreshToken          String?              @db.Text
+  tokenExpiresAt        DateTime?
+
+  // Provider-specific IDs
+  externalOrgId         String?              // Xero tenant ID, MYOB company file ID, etc.
+  externalOrgName       String?              // Name of the connected org in external system
+
+  // Connection Status
+  isActive              Boolean              @default(true)
+  isDefault             Boolean              @default(false)  // Primary integration for this org
+  lastSyncAt            DateTime?
+  connectionStatus      String               @default("CONNECTED")  // CONNECTED, EXPIRED, ERROR
+
+  // Sync Settings
+  autoSyncEnabled       Boolean              @default(false)
+  syncFrequencyHours    Int                  @default(24)
+  syncDirection         IntegrationSyncDirection @default(OUTBOUND)
+
+  // Data Mapping Configuration (JSON - provider-specific)
+  categoryMappings      Json?                // Monitrax category ID -> External account code
+  taxCodeMappings       Json?                // Monitrax tax type -> External tax code
+  customFieldMappings   Json?                // Additional field mappings
+
+  // Feature Flags (what this integration supports)
+  canSyncTransactions   Boolean              @default(true)
+  canSyncInvoices       Boolean              @default(true)
+  canSyncContacts       Boolean              @default(true)
+  canSyncBankFeeds      Boolean              @default(false)
+  canSyncDocuments      Boolean              @default(false)
+
+  // Metadata
+  providerMetadata      Json?                // Provider-specific config/data
+
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  createdBy             String               // User who set up the integration
+
+  // Relationships
+  organization          Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  syncLogs              IntegrationSyncLog[]
+
+  @@unique([organizationId, provider])  // One connection per provider per org
+  @@index([organizationId])
+  @@index([provider])
+  @@index([isActive])
+  @@map("accounting_integrations")
+}
+
+// Sync Log (tracks all sync operations across providers)
+model IntegrationSyncLog {
+  id                    String               @id @default(uuid())
+  integrationId         String
+  organizationClientId  String?              // Which client's data (null = org-wide)
+
+  // Sync Details
+  syncType              String               // "TRANSACTIONS", "INVOICES", "CONTACTS", "FULL", "INCREMENTAL"
+  direction             IntegrationSyncDirection
+  status                IntegrationSyncStatus
+  triggeredBy           String               // "MANUAL", "SCHEDULED", "WEBHOOK", "API"
+
+  // Results
+  itemsProcessed        Int                  @default(0)
+  itemsCreated          Int                  @default(0)
+  itemsUpdated          Int                  @default(0)
+  itemsSkipped          Int                  @default(0)
+  itemsFailed           Int                  @default(0)
+
+  // Error Tracking
+  errorSummary          String?
+  errorDetails          Json?                // Array of detailed errors
+
+  // Timing
+  startedAt             DateTime             @default(now())
+  completedAt           DateTime?
+  durationMs            Int?
+
+  // Relationships
+  integration           AccountingIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([organizationClientId])
+  @@index([startedAt])
+  @@index([status])
+  @@map("integration_sync_logs")
+}
+
+// Entity Mapping (tracks which Monitrax entities map to external entities)
+model IntegrationEntityMapping {
+  id                    String               @id @default(uuid())
+  integrationId         String
+
+  // Monitrax Entity
+  monitraxEntityType    String               // "Transaction", "Income", "Expense", "Contact"
+  monitraxEntityId      String
+
+  // External Entity
+  externalEntityType    String               // "Invoice", "Bill", "BankTransaction", etc.
+  externalEntityId      String
+
+  // Sync State
+  lastSyncedAt          DateTime?
+  syncHash              String?              // Hash of last synced data for change detection
+
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@unique([integrationId, monitraxEntityType, monitraxEntityId])
+  @@unique([integrationId, externalEntityType, externalEntityId])
+  @@index([integrationId])
+  @@index([monitraxEntityId])
+  @@index([externalEntityId])
+  @@map("integration_entity_mappings")
+}
 ```
 
 ### 3.2 User Model Updates
@@ -473,9 +703,241 @@ PUT    /api/settings/organizations/:orgId/consent        # Update consent settin
 DELETE /api/settings/organizations/:orgId/consent        # Revoke all consent
 ```
 
+### 4.7 White-Labeling APIs (Phase 30.11)
+
+```
+GET    /api/portal/organizations/:orgId/branding         # Get branding settings
+PUT    /api/portal/organizations/:orgId/branding         # Update branding
+POST   /api/portal/organizations/:orgId/branding/logo    # Upload logo
+DELETE /api/portal/organizations/:orgId/branding/logo    # Remove logo
+POST   /api/portal/organizations/:orgId/branding/favicon # Upload favicon
+
+# Custom Domain
+POST   /api/portal/organizations/:orgId/domain           # Set custom domain
+GET    /api/portal/organizations/:orgId/domain/verify    # Check domain verification
+DELETE /api/portal/organizations/:orgId/domain           # Remove custom domain
+```
+
+### 4.8 SSO/SAML APIs (Phase 30.12)
+
+```
+# SSO Configuration
+GET    /api/portal/organizations/:orgId/sso              # Get SSO configuration
+PUT    /api/portal/organizations/:orgId/sso              # Update SSO settings
+POST   /api/portal/organizations/:orgId/sso/test         # Test SSO connection
+DELETE /api/portal/organizations/:orgId/sso              # Disable SSO
+
+# SAML Endpoints
+GET    /api/auth/saml/:orgSlug/metadata                  # SAML Service Provider metadata
+POST   /api/auth/saml/:orgSlug/acs                       # SAML Assertion Consumer Service
+GET    /api/auth/saml/:orgSlug/login                     # Initiate SAML login
+
+# OIDC Endpoints
+GET    /api/auth/oidc/:orgSlug/callback                  # OIDC callback
+GET    /api/auth/oidc/:orgSlug/login                     # Initiate OIDC login
+```
+
+### 4.9 API Key Management APIs (Phase 30.13)
+
+```
+# API Keys
+GET    /api/portal/organizations/:orgId/api-keys         # List API keys
+POST   /api/portal/organizations/:orgId/api-keys         # Create API key
+GET    /api/portal/organizations/:orgId/api-keys/:id     # Get API key details
+PUT    /api/portal/organizations/:orgId/api-keys/:id     # Update API key
+DELETE /api/portal/organizations/:orgId/api-keys/:id     # Revoke API key
+
+# API Usage
+GET    /api/portal/organizations/:orgId/api-usage        # Get API usage stats
+```
+
+### 4.10 External API (for Organization API Keys)
+
+```
+# These endpoints are accessed using Organization API Keys
+# Base URL: /api/v1/org
+
+GET    /api/v1/org/clients                               # List clients (filtered by consent)
+GET    /api/v1/org/clients/:clientId                     # Get client data
+GET    /api/v1/org/clients/:clientId/properties          # Get client properties
+GET    /api/v1/org/clients/:clientId/loans               # Get client loans
+GET    /api/v1/org/clients/:clientId/accounts            # Get client accounts
+# ... similar endpoints for other data types
+```
+
+### 4.11 Accounting Integration APIs (Phase 30.14)
+
+```
+# Integration Management
+GET    /api/portal/organizations/:orgId/integrations              # List all integrations
+POST   /api/portal/organizations/:orgId/integrations              # Create new integration
+GET    /api/portal/organizations/:orgId/integrations/:id          # Get integration details
+PUT    /api/portal/organizations/:orgId/integrations/:id          # Update integration settings
+DELETE /api/portal/organizations/:orgId/integrations/:id          # Disconnect integration
+
+# OAuth Flow
+GET    /api/portal/integrations/:provider/authorize               # Start OAuth flow
+GET    /api/portal/integrations/:provider/callback                # OAuth callback
+
+# Sync Operations
+POST   /api/portal/organizations/:orgId/integrations/:id/sync     # Trigger manual sync
+GET    /api/portal/organizations/:orgId/integrations/:id/sync-logs # Get sync history
+GET    /api/portal/organizations/:orgId/integrations/:id/sync-logs/:logId  # Get sync details
+
+# Mapping Configuration
+GET    /api/portal/organizations/:orgId/integrations/:id/mappings/categories  # Get category mappings
+PUT    /api/portal/organizations/:orgId/integrations/:id/mappings/categories  # Update category mappings
+GET    /api/portal/organizations/:orgId/integrations/:id/mappings/tax-codes   # Get tax code mappings
+PUT    /api/portal/organizations/:orgId/integrations/:id/mappings/tax-codes   # Update tax code mappings
+
+# Provider-Specific Data
+GET    /api/portal/organizations/:orgId/integrations/:id/external/accounts    # Get external chart of accounts
+GET    /api/portal/organizations/:orgId/integrations/:id/external/tax-codes   # Get external tax codes
+
+# Client Data Sync
+POST   /api/portal/clients/:clientId/sync-to/:integrationId       # Sync specific client to integration
+GET    /api/portal/clients/:clientId/sync-status/:integrationId   # Get client sync status
+
+# Xero-Specific Endpoints
+GET    /api/portal/integrations/xero/practice-manager/clients     # Get Xero PM client list (for accountants)
+POST   /api/portal/clients/:clientId/send-to-xero                 # Send specific data to Xero
+```
+
 ---
 
 ## 5. UI/UX Design
+
+### 5.0 Unified Login & Authentication Flow
+
+> **Key Decision**: Single login page with role-based routing
+
+#### 5.0.1 Login Page Options
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        MONITRAX                             │
+│                         Login                               │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────────┐    ┌─────────────────┐                │
+│  │   Personal      │    │   Organization  │                │
+│  │   Account       │    │   Portal        │                │
+│  │                 │    │                 │                │
+│  │  Track your     │    │  Access your    │                │
+│  │  finances       │    │  client data    │                │
+│  └─────────────────┘    └─────────────────┘                │
+│                                                             │
+│  ─────────────────── OR ───────────────────                │
+│                                                             │
+│  [Email]                                                    │
+│  [Password]                                                 │
+│  [        Login        ]                                    │
+│                                                             │
+│  Forgot password?  |  Sign up                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 5.0.2 Authentication Flow
+
+```
+┌──────────────┐
+│  Login Page  │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Authenticate User   │
+│  (Email/Password,    │
+│   OAuth, SSO, etc.)  │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────────────────────┐
+│  Check User's Organization Memberships │
+└──────────────────┬───────────────────┘
+                   │
+       ┌───────────┴───────────┐
+       │                       │
+       ▼                       ▼
+┌────────────────┐    ┌────────────────────────┐
+│ No Org Members │    │ Has Org Memberships    │
+│ (Regular User) │    │ (Staff or Multi-Org)   │
+└───────┬────────┘    └──────────┬─────────────┘
+        │                        │
+        ▼                        ▼
+┌────────────────┐    ┌────────────────────────┐
+│ /dashboard     │    │  Context Selector      │
+│ (Personal)     │    │  - Personal Dashboard  │
+└────────────────┘    │  - Org 1 Portal        │
+                      │  - Org 2 Portal        │
+                      └──────────┬─────────────┘
+                                 │
+                    ┌────────────┴────────────┐
+                    │                         │
+                    ▼                         ▼
+           ┌────────────────┐       ┌────────────────┐
+           │ /dashboard     │       │ /portal/:slug  │
+           │ (Personal)     │       │ (Org Portal)   │
+           └────────────────┘       └────────────────┘
+```
+
+#### 5.0.3 Context Switcher (for Multi-Org Users)
+
+Users who belong to multiple organizations or have both personal and org access will see a context switcher in the navigation:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ┌─────────────────┐                                        │
+│  │  Monitrax  ▼    │   Dashboard   Clients   Settings       │
+│  └─────────────────┘                                        │
+│         │                                                    │
+│         ├── Personal Dashboard                               │
+│         │                                                    │
+│         ├── ABC Accounting (Owner)                           │
+│         │                                                    │
+│         └── XYZ Financial (Admin)                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 5.0.4 Post-Login Routing Logic
+
+```typescript
+// Pseudocode for post-login routing
+function getPostLoginRedirect(user: User): string {
+  const orgMemberships = user.organizationMemberships;
+  const lastContext = user.preferences?.lastContext;
+
+  // If user selected "Organization Portal" on login page
+  if (loginMode === 'organization') {
+    if (orgMemberships.length === 1) {
+      return `/portal/${orgMemberships[0].organization.slug}`;
+    } else if (orgMemberships.length > 1) {
+      return '/select-organization';  // Show org selector
+    } else {
+      return '/portal/create';  // No org? Prompt to create one
+    }
+  }
+
+  // If user selected "Personal Account" or default
+  if (loginMode === 'personal' || !lastContext) {
+    return '/dashboard';
+  }
+
+  // Restore last used context
+  return lastContext;
+}
+```
+
+#### 5.0.5 URL Structure
+
+| URL Pattern | Access Type | Description |
+|-------------|-------------|-------------|
+| `/login` | Public | Unified login page |
+| `/register` | Public | User registration |
+| `/dashboard/*` | Authenticated | Personal financial dashboard |
+| `/portal/:orgSlug/*` | Org Member | Organization portal |
+| `/settings/*` | Authenticated | Personal settings + org consent |
+| `/select-organization` | Multi-Org User | Organization selector |
 
 ### 5.1 Portal Navigation Structure
 
@@ -502,7 +964,11 @@ DELETE /api/settings/organizations/:orgId/consent        # Revoke all consent
 │   │   ├── /general            # Name, branding, contact
 │   │   ├── /security           # MFA, sessions, IP whitelist
 │   │   ├── /billing            # Subscription management
-│   │   └── /api                # API key management
+│   │   ├── /api                # API key management
+│   │   └── /integrations       # Accounting integrations (Xero, MYOB, etc.)
+│   │       ├── /xero           # Xero connection settings
+│   │       ├── /myob           # MYOB connection settings
+│   │       └── /[provider]     # Other provider settings
 │   └── /reports                # Compliance reports, exports
 ```
 
@@ -660,6 +1126,87 @@ Add to user Settings:
 - [ ] Documentation
 - [ ] Beta testing with pilot organizations
 
+### Phase 30.11: White-Labeling (Enterprise Feature)
+- [ ] Organization branding settings (logo, colors, fonts)
+- [ ] Custom email templates with org branding
+- [ ] Branded client onboarding experience
+- [ ] Custom domain support (optional)
+- [ ] Branded PDF exports with org logo
+- [ ] Theme customization UI for org admins
+
+### Phase 30.12: SSO/SAML Integration (Enterprise Feature)
+- [ ] SAML 2.0 identity provider support
+- [ ] OIDC (OpenID Connect) support
+- [ ] Organization SSO configuration UI
+- [ ] Just-in-time (JIT) user provisioning
+- [ ] SCIM user provisioning (optional)
+- [ ] SSO enforcement settings per organization
+- [ ] Integration testing with major IdPs (Okta, Azure AD, Google Workspace)
+
+### Phase 30.13: API Access (CRITICAL)
+- [ ] Organization API key management
+- [ ] API key generation and rotation
+- [ ] Scoped API permissions (read-only by default)
+- [ ] Rate limiting per organization/key
+- [ ] API usage tracking and analytics
+- [ ] Developer documentation portal
+- [ ] Webhook support for client events
+- [ ] API versioning strategy
+
+### Phase 30.14: Accounting Integrations (CRITICAL)
+> **Priority**: HIGH - Primary feature for accountants
+> **Primary Provider**: Xero (Australian market leader)
+
+#### 30.14.1 Integration Framework
+- [ ] Create AccountingIntegration, IntegrationSyncLog, IntegrationEntityMapping models
+- [ ] Build provider-agnostic integration service
+- [ ] OAuth 2.0 token management (storage, refresh, expiry handling)
+- [ ] Integration status monitoring and error handling
+- [ ] Integration settings UI (connect, configure, disconnect)
+
+#### 30.14.2 Xero Integration (Primary)
+- [ ] Register Monitrax as Xero App Partner
+- [ ] Implement Xero OAuth 2.0 flow
+- [ ] Xero-specific API client wrapper
+- [ ] Chart of accounts sync
+- [ ] Transaction/invoice export to Xero
+- [ ] Bank feed integration
+- [ ] Xero webhooks for real-time updates
+- [ ] Category → Account code mapping UI
+- [ ] Tax code mapping (GST, BAS codes)
+- [ ] "Send to Xero" button on transactions
+- [ ] Xero Practice Manager integration (for multi-client accounting firms)
+
+#### 30.14.3 Data Sync Engine
+- [ ] Configurable sync direction (outbound, inbound, bi-directional)
+- [ ] Scheduled sync (hourly, daily, weekly)
+- [ ] Manual sync trigger
+- [ ] Incremental sync (only changed records)
+- [ ] Full sync option
+- [ ] Conflict detection and resolution
+- [ ] Sync history and audit log
+- [ ] Failed sync retry logic
+
+#### 30.14.4 Entity Mapping System
+- [ ] Track Monitrax ↔ External entity relationships
+- [ ] Change detection (hash-based)
+- [ ] Prevent duplicate syncs
+- [ ] Entity unlinking option
+
+### Phase 30.15: Additional Accounting Providers
+> Extensible to support other providers using the same framework
+
+- [ ] **MYOB** - Australia/NZ market
+  - [ ] MYOB AccountRight API integration
+  - [ ] MYOB Essentials API integration
+- [ ] **QuickBooks Online** - Global market
+  - [ ] Intuit OAuth 2.0 flow
+  - [ ] QBO API integration
+- [ ] **Sage Business Cloud** - UK/Europe market
+- [ ] **FreshBooks** - Small business focus
+- [ ] **Wave** - Free accounting software
+- [ ] **Generic Export** - CSV, OFX, QIF formats for unsupported providers
+
 ---
 
 ## 8. Migration Strategy
@@ -692,13 +1239,21 @@ The current `Organization` and `OrganizationMember` tables will be extended with
 
 ## 10. Open Questions
 
-1. **Pricing Model**: What are the specific tier limits and pricing?
-2. **White-Labeling**: Should organizations be able to fully rebrand the client app?
-3. **SSO/SAML**: Do enterprise clients need SSO integration?
-4. **API Access**: Should organizations have programmatic API access?
-5. **Multi-Organization**: Can a client belong to multiple organizations?
-6. **Data Retention**: What is the retention period for access logs?
-7. **International**: Support for non-Australian organizations?
+### Resolved
+
+| Question | Resolution |
+|----------|------------|
+| **White-Labeling** | YES - Included in Phase 30.11 |
+| **SSO/SAML** | YES - Included in Phase 30.12 |
+| **API Access** | YES - Portal-first, API as premium feature in Phase 30.13 |
+| **Multi-Organization** | YES - Clients can belong to multiple organizations |
+
+### Pending (To Be Decided)
+
+1. **Pricing Model**: What are the specific tier limits and pricing? *(TBD)*
+2. **Data Retention**: What is the retention period for access logs?
+3. **International**: Support for non-Australian organizations?
+4. **Custom Domain**: Should white-labeling include custom domain support (e.g., portal.accountingfirm.com)?
 
 ---
 
@@ -735,5 +1290,19 @@ The current `Organization` and `OrganizationMember` tables will be extended with
 
 ---
 
-*Document Version: 1.0*
+### C. Multi-Organization Client Support
+
+A single user (client) can be linked to multiple organizations. For example:
+- John Doe uses Monitrax
+- He is a client of "ABC Accounting" (his accountant)
+- He is also a client of "XYZ Financial Advisors" (his financial planner)
+- Each organization has separate consent settings
+- John controls what data each organization can see independently
+
+This is supported by the `OrganizationClient` model which creates a many-to-many relationship between Users and Organizations with per-relationship consent.
+
+---
+
+*Document Version: 1.2*
 *Last Updated: 2026-01-19*
+*Approved for Implementation: 2026-01-19*
