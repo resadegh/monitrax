@@ -164,11 +164,11 @@ export default function ConsentPage() {
   return (
     <ConsentRequest
       organizationName={consentData.organizationName}
-      organizationLogo={consentData.organizationLogo}
+      organizationLogo={consentData.organizationLogo ?? undefined}
       organizationType={consentData.organizationType}
       requestedScopes={consentData.requestedScopes}
-      personalMessage={consentData.personalMessage}
-      requestedByName={consentData.requestedByName}
+      personalMessage={consentData.personalMessage ?? undefined}
+      requestedByName={consentData.requestedByName ?? undefined}
       expiryDays={consentData.expiryDays}
       onApprove={handleApprove}
       onDeny={handleDeny}
