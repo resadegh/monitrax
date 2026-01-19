@@ -389,6 +389,20 @@ export interface CreateApiKeyResponse {
   secret: string; // Only returned once at creation
 }
 
+// Type aliases for service compatibility
+export type CreateClientInviteInput = InviteClientRequest;
+export type CreateNoteInput = CreateNoteRequest;
+export type CreateTaskInput = CreateTaskRequest;
+export type UpdateTaskInput = UpdateTaskRequest;
+export type CreateOrganizationInput = CreateOrganizationRequest;
+export type UpdateOrganizationInput = UpdateOrganizationRequest;
+
+export interface UpdateClientInput {
+  clientReference?: string;
+  tags?: string[];
+  assignedToMemberId?: string | null;
+}
+
 // =============================================================================
 // PAGINATION & FILTERING
 // =============================================================================
