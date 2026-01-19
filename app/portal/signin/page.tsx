@@ -233,17 +233,25 @@ export default function PortalSignInPage() {
                     <div className="w-full border-t border-slate-200"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-slate-500">New to your organization?</span>
+                    <span className="px-2 bg-white text-slate-500">New to Monitrax?</span>
                   </div>
                 </div>
 
-                {/* Request Access */}
-                <p className="text-center text-sm text-slate-600">
-                  Contact your organization administrator to get an invitation, or{' '}
-                  <Link href="/portal/request-access" className="text-blue-600 hover:text-blue-700 font-medium">
-                    request access
-                  </Link>
-                </p>
+                {/* Register / Request Access */}
+                <div className="space-y-3 text-center text-sm text-slate-600">
+                  <p>
+                    <Link href="/portal/register" className="text-blue-600 hover:text-blue-700 font-medium">
+                      Register your organization
+                    </Link>
+                    {' '}to get started
+                  </p>
+                  <p>
+                    Already have an organization? Contact your administrator for an invitation, or{' '}
+                    <Link href="/portal/request-access" className="text-blue-600 hover:text-blue-700 font-medium">
+                      request access
+                    </Link>
+                  </p>
+                </div>
               </>
             )}
           </div>
