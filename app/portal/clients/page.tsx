@@ -76,8 +76,11 @@ export default function ClientsPage() {
       });
 
       if (response.data) {
-        // Map API response to PortalClient type
-        setClients(response.data.items as unknown as PortalClient[]);
+        // Map API response to PortalClient type - API returns 'clients' not 'items'
+        const clientsData = (response.data as { clients?: PortalClient[]; items?: PortalClient[] }).clients
+          || (response.data as { clients?: PortalClient[]; items?: PortalClient[] }).items
+          || [];
+        setClients(clientsData);
         setPagination({
           page: response.data.pagination.page,
           totalPages: response.data.pagination.totalPages,
