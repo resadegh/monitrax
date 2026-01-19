@@ -18,7 +18,7 @@ function hashPassword(password: string): string {
 async function seedAdmin() {
   console.log('Seeding Admin User...');
 
-  const adminEmail = 'admin@monitrax.com';
+  const adminEmail = 'admin@monitrax.com.au';
   const adminPassword = 'Admin123!'; // Default password - CHANGE IN PRODUCTION
 
   const admin = await prisma.adminUser.upsert({
