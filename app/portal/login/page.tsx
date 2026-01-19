@@ -46,9 +46,9 @@ export default function PortalLoginPage() {
     }
   }, [user, isLoading, portalEnabled, router]);
 
-  // Handle organization login click - redirect to main signin with portal redirect
+  // Handle organization login click - redirect to portal signin page
   const handleOrganizationLogin = () => {
-    router.push('/signin?redirect=/portal/dashboard');
+    router.push('/portal/signin');
   };
 
   // Show loading while checking auth or portal status

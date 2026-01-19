@@ -63,10 +63,10 @@ const secondaryNavigation = [
 ];
 
 // Pages that should NOT require authentication
-const PUBLIC_PAGES = ['/portal/login', '/portal/consent'];
+const PUBLIC_PAGES = ['/portal/login', '/portal/signin', '/portal/invite', '/portal/consent', '/portal/request-access'];
 
 // Pages that should NOT show the sidebar (login, etc.)
-const FULL_WIDTH_PAGES = ['/portal/login', '/portal', '/portal/consent'];
+const FULL_WIDTH_PAGES = ['/portal/login', '/portal/signin', '/portal/invite', '/portal', '/portal/consent', '/portal/request-access'];
 
 /**
  * Inner layout component that uses the organization context
@@ -79,18 +79,28 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
 
   // Check if current page is public (no auth required)
   const isPublicPage = PUBLIC_PAGES.some(
-    (page) => pathname === page || pathname?.startsWith('/portal/login') || pathname?.startsWith('/portal/consent')
+    (page) => pathname === page ||
+      pathname?.startsWith('/portal/login') ||
+      pathname?.startsWith('/portal/signin') ||
+      pathname?.startsWith('/portal/invite') ||
+      pathname?.startsWith('/portal/consent') ||
+      pathname?.startsWith('/portal/request-access')
   );
 
   // Check if current page should be full-width (no sidebar)
   const isFullWidthPage = FULL_WIDTH_PAGES.some(
-    (page) => pathname === page || pathname?.startsWith('/portal/login') || pathname?.startsWith('/portal/consent')
+    (page) => pathname === page ||
+      pathname?.startsWith('/portal/login') ||
+      pathname?.startsWith('/portal/signin') ||
+      pathname?.startsWith('/portal/invite') ||
+      pathname?.startsWith('/portal/consent') ||
+      pathname?.startsWith('/portal/request-access')
   );
 
-  // Redirect to signin if not authenticated and not on a public page
+  // Redirect to portal signin if not authenticated and not on a public page
   useEffect(() => {
     if (!isLoading && !user && !isPublicPage) {
-      router.push('/signin?redirect=' + encodeURIComponent(pathname || '/portal/dashboard'));
+      router.push('/portal/signin?redirect=' + encodeURIComponent(pathname || '/portal/dashboard'));
     }
   }, [user, isLoading, isPublicPage, pathname, router]);
 
