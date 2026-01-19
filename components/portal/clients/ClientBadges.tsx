@@ -62,7 +62,7 @@ export function ClientStatusBadge({ status, className = '' }: ClientStatusBadgeP
 
 interface ConsentBadgeProps extends BadgeProps {
   status: ConsentStatus;
-  expiresAt?: string | null;
+  expiresAt?: string | Date | null;
 }
 
 const consentStatusConfig: Record<ConsentStatus, { label: string; className: string; icon?: string }> = {
