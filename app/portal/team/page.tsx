@@ -7,16 +7,16 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { TeamList } from '@/components/portal/team';
 import { InviteModal, type InviteData } from '@/components/portal/team';
 import { createTeamService, type TeamMember } from '@/lib/portal/services/team';
-
-// TODO: Get from auth context
-const MOCK_ORG_ID = 'demo-org-id';
-const MOCK_USER_ID = 'demo-user-id';
+import { useOrganization } from '@/lib/portal';
+import { useAuth } from '@/lib/context/AuthContext';
 
 export default function TeamPage() {
+  const { currentOrg, isLoading: orgLoading } = useOrganization();
+  const { user } = useAuth();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -26,41 +26,52 @@ export default function TeamPage() {
     pending: 0,
   });
 
-  const teamApi = createTeamService(MOCK_ORG_ID);
+  // Create team service with current organization ID
+  const teamApi = useMemo(
+    () => (currentOrg ? createTeamService(currentOrg.id) : null),
+    [currentOrg]
+  );
+
+  const loadTeam = useCallback(async () => {
+    if (!teamApi) return;
+
+    setLoading(true);
+    try {
+      const response = await teamApi.list();
+
+      if (response.data) {
+        setMembers(response.data.items);
+        // Calculate stats from the response
+        const activeCount = response.data.items.filter((m) => m.isActive && m.joinedAt).length;
+        const pendingCount = response.data.items.filter((m) => !m.joinedAt).length;
+        setStats({
+          total: response.data.items.length,
+          active: activeCount,
+          pending: pendingCount,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load team:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [teamApi]);
 
   useEffect(() => {
-    // In production, this would call the API
-    // For now, set demo data showing current user as owner
-    setMembers([
-      {
-        id: 'member-1',
-        userId: MOCK_USER_ID,
-        role: 'PORTAL_OWNER',
-        invitedBy: null,
-        invitedAt: new Date().toISOString(),
-        joinedAt: new Date().toISOString(),
-        isActive: true,
-        user: {
-          id: MOCK_USER_ID,
-          email: 'owner@example.com',
-          name: 'Organization Owner',
-        },
-        stats: {
-          assignedClients: 0,
-          pendingTasks: 0,
-          notesCreated: 0,
-        },
-      },
-    ]);
-    setLoading(false);
-    setStats({
-      total: 1,
-      active: 1,
-      pending: 0,
-    });
-  }, []);
+    if (!orgLoading && currentOrg && teamApi) {
+      loadTeam();
+    } else if (!orgLoading && !currentOrg) {
+      // No organization selected
+      setMembers([]);
+      setLoading(false);
+    }
+  }, [orgLoading, currentOrg, teamApi, loadTeam]);
 
   const handleInvite = async (data: InviteData) => {
+    if (!teamApi) {
+      throw new Error('No organization selected');
+    }
+
     const response = await teamApi.invite({
       email: data.email,
       role: data.role || 'PORTAL_ADVISOR',
@@ -72,7 +83,7 @@ export default function TeamPage() {
     }
 
     // Refresh team list
-    // loadTeam();
+    loadTeam();
   };
 
   const handleEditRole = (member: TeamMember) => {
@@ -80,15 +91,55 @@ export default function TeamPage() {
     console.log('Edit role:', member);
   };
 
-  const handleRemove = (member: TeamMember) => {
+  const handleRemove = async (member: TeamMember) => {
+    if (!teamApi) return;
+
     // TODO: Show confirmation dialog
-    console.log('Remove member:', member);
+    const confirmed = window.confirm(`Are you sure you want to remove ${member.user?.name || member.user?.email}?`);
+    if (!confirmed) return;
+
+    const response = await teamApi.remove(member.id);
+    if (response.error) {
+      console.error('Failed to remove member:', response.error);
+      return;
+    }
+
+    // Refresh team list
+    loadTeam();
   };
 
   const handleViewMember = (member: TeamMember) => {
     // TODO: Navigate to member detail or show modal
     console.log('View member:', member);
   };
+
+  // Show loading while organization is loading
+  if (orgLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-slate-500 mt-4">Loading organization...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if no organization is selected
+  if (!currentOrg) {
+    return (
+      <div className="p-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+          <p className="text-amber-800 font-medium">No Organization Selected</p>
+          <p className="text-amber-600 text-sm mt-1">
+            Please select or create an organization to manage team members.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -101,7 +152,7 @@ export default function TeamPage() {
 
       <TeamList
         members={members}
-        currentUserId={MOCK_USER_ID}
+        currentUserId={user?.id || ''}
         loading={loading}
         stats={stats}
         onInvite={() => setShowInviteModal(true)}

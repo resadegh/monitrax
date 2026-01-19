@@ -7,16 +7,15 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ClientList, type ClientFilters } from '@/components/portal/clients';
 import { InviteModal, type InviteData } from '@/components/portal/team';
 import { createClientsService } from '@/lib/portal/services/clients';
+import { useOrganization } from '@/lib/portal';
 import type { PortalClient } from '@/lib/portal/types';
 
-// TODO: Get from auth context
-const MOCK_ORG_ID = 'demo-org-id';
-
 export default function ClientsPage() {
+  const { currentOrg, isLoading: orgLoading } = useOrganization();
   const [clients, setClients] = useState<PortalClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -32,9 +31,15 @@ export default function ClientsPage() {
     invited: 0,
   });
 
-  const clientsApi = createClientsService(MOCK_ORG_ID);
+  // Create clients service with current organization ID
+  const clientsApi = useMemo(
+    () => (currentOrg ? createClientsService(currentOrg.id) : null),
+    [currentOrg]
+  );
 
   const loadClients = useCallback(async (filters?: ClientFilters, page = 1) => {
+    if (!clientsApi) return;
+
     setLoading(true);
     try {
       const response = await clientsApi.list({
@@ -59,20 +64,17 @@ export default function ClientsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clientsApi]);
 
   useEffect(() => {
-    // In production, this would call the API
-    // For now, set demo data
-    setClients([]);
-    setLoading(false);
-    setStats({
-      total: 0,
-      active: 0,
-      pending: 0,
-      invited: 0,
-    });
-  }, []);
+    if (!orgLoading && currentOrg && clientsApi) {
+      loadClients();
+    } else if (!orgLoading && !currentOrg) {
+      // No organization selected
+      setClients([]);
+      setLoading(false);
+    }
+  }, [orgLoading, currentOrg, clientsApi, loadClients]);
 
   const handleFilterChange = (filters: ClientFilters) => {
     loadClients(filters, 1);
@@ -88,6 +90,10 @@ export default function ClientsPage() {
   };
 
   const handleInvite = async (data: InviteData) => {
+    if (!clientsApi) {
+      throw new Error('No organization selected');
+    }
+
     const response = await clientsApi.invite({
       email: data.email,
       requestedScopes: data.requestedScopes || [],
@@ -101,6 +107,34 @@ export default function ClientsPage() {
     // Refresh client list
     loadClients();
   };
+
+  // Show loading while organization is loading
+  if (orgLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="text-slate-500 mt-4">Loading organization...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if no organization is selected
+  if (!currentOrg) {
+    return (
+      <div className="p-6">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+          <p className="text-amber-800 font-medium">No Organization Selected</p>
+          <p className="text-amber-600 text-sm mt-1">
+            Please select or create an organization to manage clients.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
