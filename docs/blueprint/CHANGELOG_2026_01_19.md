@@ -195,3 +195,129 @@ MONITRAX (Source of Truth)
 *Status: Approved for Implementation (pending main app change approvals)*
 *Date: 2026-01-19*
 *Document Version: 1.4*
+
+---
+
+## Implementation Update: Portal Authentication Flow (v1.5)
+
+### Overview
+
+Implemented dedicated portal authentication system with centralized user management and invitation-based user creation.
+
+### New Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/portal/signin/page.tsx` | Dedicated portal login page |
+| `app/portal/invite/[token]/page.tsx` | Invitation acceptance flow |
+| `app/api/portal/invitations/[token]/validate/route.ts` | Validate invitation tokens |
+| `app/api/portal/invitations/[token]/accept/route.ts` | Accept invitations & create users |
+| `components/portal/layout/OrganizationSelector.tsx` | Organization switcher component |
+| `components/portal/team/RoleEditModal.tsx` | Role editing modal |
+| `lib/portal/context/OrganizationContext.tsx` | Organization state management |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/portal/PortalLayoutClient.tsx` | Updated to redirect to `/portal/signin` instead of main signin |
+| `app/portal/login/page.tsx` | Updated links to use dedicated portal signin |
+| `prisma/schema.prisma` | Added AdminRole enum for admin_users table |
+
+### Key Features Implemented
+
+1. **Centralized User Management**
+   - Single `User` table for all platforms (main app, portal, admin)
+   - `OrganizationMember` for role assignments per organization
+   - Manageable through admin portal
+
+2. **Dedicated Portal Authentication**
+   - `/portal/signin` - Portal-specific login page
+   - Same auth backend (`/api/auth/login`)
+   - Verifies organization access after authentication
+   - Shows "no access" message if user has no org memberships
+
+3. **Invitation-Based User Creation**
+   - `GET /api/portal/invitations/[token]/validate` - Validates token, checks if user exists
+   - `POST /api/portal/invitations/[token]/accept` - Creates user if needed, adds to organization
+   - Existing users: authenticate and link to organization
+   - New users: create account with password, auto-verify email
+
+4. **Organization Context & Switching**
+   - `OrganizationContext` for state management
+   - `OrganizationSelector` component for multi-org users
+   - Persists selected organization
+
+5. **Role-Based Access Controls**
+   - `PORTAL_OWNER` (level 4) - Full control
+   - `PORTAL_ADMIN` (level 3) - Manage team & settings
+   - `PORTAL_ADVISOR` (level 2) - Manage assigned clients
+   - `PORTAL_VIEWER` (level 1) - Read-only access
+
+### Schema Updates
+
+```prisma
+// Added AdminRole enum for Phase 33 admin portal
+enum AdminRole {
+  SUPER_ADMIN      // Full access to everything
+  BILLING_ADMIN    // Billing & subscriptions only
+  SUPPORT_ADMIN    // User lookup, impersonation, logs
+  VIEWER           // Read-only analytics
+}
+```
+
+### Bug Fixes During Implementation
+
+| Issue | Fix |
+|-------|-----|
+| `createToken` not exported | Changed to `generateToken` |
+| `include: { organization }` on OrganizationInvitation | Query organization separately (no relation exists) |
+| `emailVerified: new Date()` | Changed to `emailVerified: true` (boolean field) |
+| AdminUser schema mismatch | Matched model to existing table structure |
+| Merge conflict with main | Kept Phase 33 AdminUser implementation |
+
+### API Response Examples
+
+**Validate Invitation:**
+```json
+{
+  "invitation": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "role": "PORTAL_ADVISOR",
+    "organizationName": "ABC Accounting",
+    "organizationLogo": null,
+    "invitedBy": "John Smith",
+    "expiresAt": "2026-01-26T00:00:00.000Z",
+    "userExists": false
+  }
+}
+```
+
+**Accept Invitation (New User):**
+```json
+{
+  "success": true,
+  "message": "Successfully joined ABC Accounting",
+  "organization": {
+    "id": "org-uuid",
+    "name": "ABC Accounting"
+  },
+  "token": "jwt-token",
+  "user": {
+    "id": "user-uuid",
+    "email": "user@example.com",
+    "name": "Jane Doe",
+    "role": "OWNER"
+  }
+}
+```
+
+### Branch
+
+`claude/enterprise-sales-readiness-q6pPb`
+
+---
+
+*Updated: 2026-01-19*
+*Document Version: 1.5*
