@@ -33,7 +33,7 @@ interface PortalTableProps<T> {
   defaultSortOrder?: 'asc' | 'desc';
 }
 
-export function PortalTable<T extends Record<string, unknown>>({
+export function PortalTable<T extends object>({
   columns,
   data,
   keyExtractor,
@@ -53,8 +53,8 @@ export function PortalTable<T extends Record<string, unknown>>({
     if (!sortable || !sortKey) return data;
 
     return [...data].sort((a, b) => {
-      const aVal = a[sortKey];
-      const bVal = b[sortKey];
+      const aVal = (a as Record<string, unknown>)[sortKey];
+      const bVal = (b as Record<string, unknown>)[sortKey];
 
       if (aVal === bVal) return 0;
       if (aVal === null || aVal === undefined) return 1;
@@ -144,7 +144,7 @@ export function PortalTable<T extends Record<string, unknown>>({
                   >
                     {column.render
                       ? column.render(item, index)
-                      : String(item[column.key] ?? '-')}
+                      : String((item as Record<string, unknown>)[column.key] ?? '-')}
                   </td>
                 ))}
               </tr>
