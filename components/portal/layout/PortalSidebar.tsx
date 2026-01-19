@@ -131,7 +131,7 @@ function NavLink({
 }) {
   const hasChildren = item.children && item.children.length > 0;
   const isChildActive = hasChildren
-    ? item.children.some((child) => pathname.startsWith(child.href))
+    ? item.children?.some((child) => pathname.startsWith(child.href)) ?? false
     : false;
 
   return (
