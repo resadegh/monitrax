@@ -3,12 +3,15 @@
  *
  * MODULAR: Client-side layout with navigation.
  * Separated from server layout for hydration and state management.
+ *
+ * AUTHENTICATION: Uses existing AuthContext from main app.
  */
 
 'use client';
 
-import { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
+import { ReactNode, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/context/AuthContext';
 import { PortalSidebar, NavIcons } from '@/components/portal/layout/PortalSidebar';
 
 interface PortalLayoutClientProps {
@@ -57,16 +60,57 @@ const secondaryNavigation = [
   },
 ];
 
+// Pages that should NOT require authentication
+const PUBLIC_PAGES = ['/portal/login', '/portal/consent'];
+
 // Pages that should NOT show the sidebar (login, etc.)
 const FULL_WIDTH_PAGES = ['/portal/login', '/portal', '/portal/consent'];
 
 export function PortalLayoutClient({ children }: PortalLayoutClientProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+
+  // Check if current page is public (no auth required)
+  const isPublicPage = PUBLIC_PAGES.some(
+    (page) => pathname === page || pathname?.startsWith('/portal/login') || pathname?.startsWith('/portal/consent')
+  );
 
   // Check if current page should be full-width (no sidebar)
   const isFullWidthPage = FULL_WIDTH_PAGES.some(
     (page) => pathname === page || pathname?.startsWith('/portal/login') || pathname?.startsWith('/portal/consent')
   );
+
+  // Redirect to signin if not authenticated and not on a public page
+  useEffect(() => {
+    if (!isLoading && !user && !isPublicPage) {
+      router.push('/signin?redirect=' + encodeURIComponent(pathname || '/portal/dashboard'));
+    }
+  }, [user, isLoading, isPublicPage, pathname, router]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-slate-500 mt-4">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated and not on public page, show nothing (will redirect)
+  if (!user && !isPublicPage) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-slate-500 mt-4">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isFullWidthPage) {
     return (

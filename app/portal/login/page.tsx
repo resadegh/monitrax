@@ -3,13 +3,65 @@
  *
  * Unified login page with Personal/Organization mode selection.
  * Checks PORTAL_ENABLED environment variable to show/hide organization login.
+ *
+ * AUTHENTICATION: Redirects to main /signin for authentication, then returns
+ * to portal dashboard after successful login.
  */
 
-import { isPortalAccessible } from '@/lib/portal/featureFlags';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/context/AuthContext';
 
 export default function PortalLoginPage() {
-  // Check if portal is enabled (server-side)
-  const portalEnabled = isPortalAccessible();
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+  const [portalEnabled, setPortalEnabled] = useState(false);
+  const [checkingPortal, setCheckingPortal] = useState(true);
+
+  // Check if portal is enabled via API
+  useEffect(() => {
+    async function checkPortalEnabled() {
+      try {
+        const response = await fetch('/api/portal/status');
+        if (response.ok) {
+          const data = await response.json();
+          setPortalEnabled(data.enabled);
+        }
+      } catch {
+        // If API fails, assume portal is disabled
+        setPortalEnabled(false);
+      } finally {
+        setCheckingPortal(false);
+      }
+    }
+    checkPortalEnabled();
+  }, []);
+
+  // If already authenticated, redirect to portal dashboard
+  useEffect(() => {
+    if (!isLoading && user && portalEnabled) {
+      router.push('/portal/dashboard');
+    }
+  }, [user, isLoading, portalEnabled, router]);
+
+  // Handle organization login click - redirect to main signin with portal redirect
+  const handleOrganizationLogin = () => {
+    router.push('/signin?redirect=/portal/dashboard');
+  };
+
+  // Show loading while checking auth or portal status
+  if (isLoading || checkingPortal) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-slate-500 mt-4">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
@@ -41,6 +93,21 @@ export default function PortalLoginPage() {
             </div>
           )}
 
+          {/* Already logged in notice */}
+          {user && portalEnabled && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <span className="text-green-600 text-xl">✓</span>
+                <div>
+                  <p className="text-green-800 font-medium text-sm">Already Signed In</p>
+                  <p className="text-green-700 text-sm mt-1">
+                    Signed in as {user.email}. Redirecting to portal...
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Login Mode Selection */}
           <div className="space-y-4">
             <div className="text-center text-sm text-slate-500 mb-4">
@@ -57,12 +124,12 @@ export default function PortalLoginPage() {
 
             {/* Organization Login Button - Enabled when portal is active */}
             {portalEnabled ? (
-              <a
-                href="/portal/dashboard"
+              <button
+                onClick={handleOrganizationLogin}
                 className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg text-center font-medium text-white transition-colors"
               >
                 Organization Portal Login
-              </a>
+              </button>
             ) : (
               <button
                 disabled
