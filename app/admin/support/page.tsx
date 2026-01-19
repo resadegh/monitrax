@@ -70,7 +70,7 @@ const colorClasses: Record<string, string> = {
 
 export default function SupportPage() {
   return (
-    <AdminFeatureGate feature="supportTools">
+    <AdminFeatureGate feature="adminPortalEnabled">
       <AdminHeader
         title="Support Tools"
         description="Debugging and troubleshooting tools for customer support"

@@ -67,7 +67,7 @@ export default function OrganizationDetailPage() {
   };
 
   return (
-    <AdminFeatureGate feature="organizationManagement">
+    <AdminFeatureGate feature="adminPortalEnabled">
       <PageHeader
         title={mockOrg.name}
         backHref={ADMIN_ROUTES.ORGANIZATIONS}

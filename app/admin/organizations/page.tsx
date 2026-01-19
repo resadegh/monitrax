@@ -41,7 +41,7 @@ export default function OrganizationsPage() {
   });
 
   return (
-    <AdminFeatureGate feature="organizationManagement">
+    <AdminFeatureGate feature="adminPortalEnabled">
       <AdminHeader
         title="Organizations"
         description="Manage organization accounts and licenses"

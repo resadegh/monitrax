@@ -1,13 +1,111 @@
 # Monitrax Implementation Changelog
 
-**Last Updated:** 2025-12-15
-**Active Branch:** `claude/fix-cashflow-tax-deduction-Xpozc`
+**Last Updated:** 2026-01-19
+**Active Branch:** `claude/admin-monetization-licenses-Gf7rU`
 
 ---
 
 ## Summary
 
 This document tracks all implementation changes, features, and bug fixes made to the Monitrax platform.
+
+---
+
+## Recent Changes (January 2026)
+
+### Phase 33: Admin Portal - Monetization & License Management ✅
+**Date:** 2026-01-19
+**Branch:** `claude/admin-monetization-licenses-Gf7rU`
+
+#### Overview
+Full implementation of a dedicated Admin Portal at `/admin` for Monitrax staff to manage monetization, licenses, users, and organizations. Completely isolated from the existing user app (`/`) and enterprise portal (`/portal`).
+
+#### Files Created
+
+**Database Models (prisma/schema.prisma):**
+- `AdminUser` - Admin accounts with roles (SUPER_ADMIN, BILLING_ADMIN, SUPPORT_ADMIN, VIEWER)
+- `AdminSession` - Session management with token hashing
+- `AdminAuditLog` - Comprehensive audit logging for all admin actions
+- `ImpersonationSession` - User impersonation tracking
+- `GlobalFeatureFlag` - Feature flag management
+- `FeatureFlagOverride` - Per-user/org flag overrides
+- `UserSubscription` - Personal user tier management (FREE, BASIC, PRO, PREMIUM)
+- `OrganizationLicense` - Organization license management
+- `BillingTransaction` - Revenue tracking
+
+**Core Library (`/lib/admin/`):**
+| File | Purpose |
+|------|---------|
+| `index.ts` | Barrel exports |
+| `auth.ts` | Admin authentication (login, logout, session verification) |
+| `permissions.ts` | RBAC permission checks by role |
+| `constants.ts` | Routes, error codes, rate limits |
+| `types.ts` | TypeScript definitions |
+| `featureFlags.ts` | Feature flag utilities |
+
+**UI Components (`/components/admin/`):**
+| Directory | Components |
+|-----------|------------|
+| `layout/` | AdminSidebar, AdminHeader, AdminBreadcrumb |
+| `ui/` | AdminCard, AdminTable, AdminButton, AdminForm, AdminBadge, AdminStats, AdminChart, ButtonGroup, FormField, Modal, Select, Tabs |
+| `organizations/` | OrganizationList, OrganizationDetail |
+| `users/` | UserList, UserDetail |
+| `billing/` | RevenueOverview, SubscriptionBreakdown |
+| `analytics/` | GrowthCharts, FeatureUsageMetrics |
+| `feature-flags/` | GlobalFlagsList, FlagOverrideEditor |
+| `support/` | ImpersonationPanel, AccessLogsViewer |
+
+**Admin Pages (`/app/admin/`):**
+| Page | Path |
+|------|------|
+| Login | `/admin/login` |
+| Dashboard | `/admin/dashboard` |
+| Organizations | `/admin/organizations`, `/admin/organizations/[orgId]` |
+| Users | `/admin/users`, `/admin/users/[userId]` |
+| Billing | `/admin/billing` |
+| Analytics | `/admin/analytics` |
+| Feature Flags | `/admin/feature-flags` |
+| Support | `/admin/support`, `/admin/support/impersonate`, `/admin/support/logs` |
+| Settings | `/admin/settings` |
+
+**API Routes (`/app/api/admin/`):**
+| Endpoint | Methods | Purpose |
+|----------|---------|---------|
+| `/api/admin/auth/login` | POST | Admin login |
+| `/api/admin/auth/logout` | POST | Admin logout |
+| `/api/admin/auth/session` | GET | Session verification |
+| `/api/admin/dashboard` | GET | Real-time dashboard stats |
+| `/api/admin/organizations` | GET | List organizations |
+| `/api/admin/organizations/[orgId]` | GET, PATCH | Organization details |
+| `/api/admin/users` | GET | List users |
+| `/api/admin/users/[userId]` | GET, PATCH | User details |
+| `/api/admin/billing/overview` | GET | Revenue metrics |
+| `/api/admin/analytics/growth` | GET | Growth metrics |
+| `/api/admin/feature-flags` | GET, POST, PATCH | Flag management |
+| `/api/admin/audit` | GET | Audit log queries |
+
+**Seed Script:**
+- `prisma/seed-admin.ts` - Creates default admin user
+- Command: `npm run seed:admin`
+- Default credentials: `admin@monitrax.com.au` / `Admin123!`
+
+#### Bug Fixes
+
+| Issue | Fix | Commit |
+|-------|-----|--------|
+| Prisma import path error | Changed `@/lib/prisma` to `@/lib/db` | `47df7ae` |
+| ButtonGroup React.cloneElement type error | Added proper typing | `e097a92` |
+| Admin portal not enabled (503) | Use `NEXT_PUBLIC_` prefix | `a5cdf76` |
+| Invalid password (401) | Fixed seed to use `salt:hash` format | `c47917e` |
+| Blank pages after login | Fixed feature gate checks | `5ace7ee` |
+| Dashboard showing mock data | Created real data API | `5ace7ee` |
+| Template literal syntax errors | Removed escaped backticks | `27a2f5e` |
+
+#### Environment Configuration
+
+```env
+NEXT_PUBLIC_ADMIN_PORTAL_ENABLED=true
+```
 
 ---
 

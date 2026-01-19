@@ -1,5 +1,116 @@
 # Changelog - 2026-01-19
 
+## Phase 33: Admin Portal - Monetization & License Management ✅ IMPLEMENTED
+
+### Overview
+
+Full implementation of Phase 33: Admin Portal for Monitrax staff to manage monetization, licenses, users, and organizations. The portal is completely isolated from the existing user app (`/`) and enterprise portal (`/portal`).
+
+### Access Details
+
+| Item | Value |
+|------|-------|
+| **Login URL** | `/admin/login` |
+| **Default Admin Email** | `admin@monitrax.com.au` |
+| **Default Password** | `Admin123!` |
+| **Default Role** | SUPER_ADMIN |
+| **Environment Variable** | `NEXT_PUBLIC_ADMIN_PORTAL_ENABLED=true` |
+
+### Files Created
+
+#### Database Models (`prisma/schema.prisma`)
+- `AdminUser` - Admin accounts with roles and MFA support
+- `AdminSession` - Session management with token hashing
+- `AdminAuditLog` - Comprehensive audit logging
+- `ImpersonationSession` - User impersonation tracking
+- `GlobalFeatureFlag` - Feature flag management
+- `FeatureFlagOverride` - Per-user/org flag overrides
+- `UserSubscription` - Personal user tier management
+- `OrganizationLicense` - Organization license management
+- `BillingTransaction` - Revenue tracking
+
+#### Core Library (`/lib/admin/`)
+| File | Purpose |
+|------|---------|
+| `index.ts` | Barrel exports |
+| `auth.ts` | Admin authentication (login, logout, session) |
+| `permissions.ts` | RBAC permission checks |
+| `constants.ts` | Routes, error codes, limits |
+| `types.ts` | TypeScript definitions |
+| `featureFlags.ts` | Feature flag utilities |
+
+#### UI Components (`/components/admin/`)
+| Directory | Components |
+|-----------|------------|
+| `layout/` | AdminSidebar, AdminHeader, AdminBreadcrumb |
+| `ui/` | AdminCard, AdminTable, AdminButton, AdminForm, AdminBadge, AdminStats, AdminChart, etc. |
+| `organizations/` | OrganizationList, OrganizationDetail |
+| `users/` | UserList, UserDetail |
+| `billing/` | RevenueOverview, SubscriptionBreakdown |
+| `analytics/` | GrowthCharts, FeatureUsageMetrics |
+| `feature-flags/` | GlobalFlagsList, FlagOverrideEditor |
+| `support/` | ImpersonationPanel, AccessLogsViewer |
+
+#### Admin Pages (`/app/admin/`)
+| Page | Path | Description |
+|------|------|-------------|
+| Login | `/admin/login` | Admin authentication |
+| Dashboard | `/admin/dashboard` | Overview with real-time stats |
+| Organizations | `/admin/organizations` | Organization management |
+| Users | `/admin/users` | User management |
+| Billing | `/admin/billing` | Revenue dashboard |
+| Analytics | `/admin/analytics` | Growth metrics |
+| Feature Flags | `/admin/feature-flags` | Flag management |
+| Support | `/admin/support` | Support tools |
+| Settings | `/admin/settings` | Admin settings |
+
+#### API Routes (`/app/api/admin/`)
+| Endpoint | Methods | Purpose |
+|----------|---------|---------|
+| `/api/admin/auth/login` | POST | Admin login |
+| `/api/admin/auth/logout` | POST | Admin logout |
+| `/api/admin/auth/session` | GET | Session verification |
+| `/api/admin/dashboard` | GET | Real-time dashboard stats |
+| `/api/admin/organizations` | GET | List organizations |
+| `/api/admin/organizations/[orgId]` | GET, PATCH | Organization details |
+| `/api/admin/users` | GET | List users |
+| `/api/admin/users/[userId]` | GET, PATCH | User details |
+| `/api/admin/billing/overview` | GET | Revenue metrics |
+| `/api/admin/analytics/growth` | GET | Growth metrics |
+| `/api/admin/feature-flags` | GET, POST, PATCH | Flag management |
+| `/api/admin/audit` | GET | Audit log queries |
+
+### Bug Fixes During Implementation
+
+| Issue | Fix | Commit |
+|-------|-----|--------|
+| Prisma import path error | Changed `@/lib/prisma` to `@/lib/db` | `47df7ae` |
+| ButtonGroup React.cloneElement type error | Added proper typing for child elements | `e097a92` |
+| Admin portal not enabled (503) | Changed to `NEXT_PUBLIC_ADMIN_PORTAL_ENABLED` | `a5cdf76` |
+| Invalid password (401) | Fixed seed script to use `salt:hash` format | `c47917e` |
+| Blank pages after login | Changed all pages to use `adminPortalEnabled` feature gate | `5ace7ee` |
+| Dashboard showing mock data | Created `/api/admin/dashboard` for real data | `5ace7ee` |
+| Template literal syntax errors | Removed escaped backticks | `27a2f5e` |
+
+### Admin Roles
+
+| Role | Access Level |
+|------|--------------|
+| `SUPER_ADMIN` | Full system access |
+| `BILLING_ADMIN` | Billing & subscriptions only |
+| `SUPPORT_ADMIN` | User lookup, impersonation, logs |
+| `VIEWER` | Read-only analytics |
+
+### Seed Script
+
+```bash
+npm run seed:admin
+```
+
+Creates default admin user with SUPER_ADMIN role.
+
+---
+
 ## Phase 32: Enterprise Portal - APPROVED FOR IMPLEMENTATION
 
 ### Overview

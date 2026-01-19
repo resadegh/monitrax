@@ -61,7 +61,7 @@ export default function UserDetailPage() {
   };
 
   return (
-    <AdminFeatureGate feature="userManagement">
+    <AdminFeatureGate feature="adminPortalEnabled">
       <PageHeader
         title={mockUser.name}
         backHref={ADMIN_ROUTES.USERS}

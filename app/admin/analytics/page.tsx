@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState('month');
 
   return (
-    <AdminFeatureGate feature="analyticsDashboard">
+    <AdminFeatureGate feature="adminPortalEnabled">
       <AdminHeader
         title="Analytics"
         description="User growth, engagement, and feature usage metrics"
