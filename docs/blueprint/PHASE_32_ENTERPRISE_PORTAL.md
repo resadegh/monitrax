@@ -20,6 +20,7 @@
 | Xero Integration | **CRITICAL** - Primary accounting software integration | 2026-01-19 |
 | **Data Integrity** | **CRITICAL** - Monitrax = Single Source of Truth, export-only sync | 2026-01-19 |
 | **Isolation** | **CRITICAL** - Must NOT break/change main app without approval | 2026-01-19 |
+| **Accountant UX** | Portal designed like Xero Practice Manager, familiar to accountants | 2026-01-19 |
 
 ---
 
@@ -1014,6 +1015,388 @@ Add to user Settings:
   - View access history
   - Revoke consent button
 
+### 5.4 Accountant & Financial Advisor User Experience
+
+> **Design Principle**: The portal should feel familiar to accountants who use Xero Practice Manager, MYOB Practice, or similar tools. Use industry-standard terminology, workflows, and layouts.
+
+#### 5.4.1 Familiar Terminology Mapping
+
+| Monitrax Term | Accountant Term | Notes |
+|---------------|-----------------|-------|
+| Client User | Client | Standard accounting term |
+| Organization | Practice / Firm | How accountants refer to their business |
+| Team Members | Staff / Team | Familiar terminology |
+| Properties | Investment Properties / Real Estate | Tax-relevant categorization |
+| Income | Revenue / Receipts | Accounting terminology |
+| Expenses | Deductions / Costs | Tax-relevant terminology |
+| Transactions | Journal Entries / Line Items | Familiar to bookkeepers |
+| Tax Position | Tax Summary / BAS Position | Standard tax terminology |
+| Financial Year | FY / Tax Year | Always show FY context |
+
+#### 5.4.2 Client List (Practice Manager Style)
+
+Designed to mirror Xero Practice Manager / MYOB Practice client lists:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  CLIENTS                                              [+ Add Client] [⚙ Export] │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  🔍 Search clients...    [Filter ▼]  [Sort ▼]  [Group by: Manager ▼]           │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ ☐ │ CLIENT          │ MANAGER   │ LAST ACTIVITY │ LODGEMENTS │ STATUS   │   │
+│  ├───┼─────────────────┼───────────┼───────────────┼────────────┼──────────┤   │
+│  │ ☐ │ John Smith      │ Sarah T.  │ 2 days ago    │ ⚠️ BAS Due  │ 🟢 Active │   │
+│  │ ☐ │ Jane Doe        │ Mike R.   │ 1 week ago    │ ✅ Up to date│ 🟢 Active │   │
+│  │ ☐ │ ABC Pty Ltd     │ Sarah T.  │ 3 days ago    │ ⚠️ ITR Due  │ 🟢 Active │   │
+│  │ ☐ │ XYZ Trust       │ Unassigned│ 1 month ago   │ ❌ Overdue  │ 🟡 Review │   │
+│  └───┴─────────────────┴───────────┴───────────────┴────────────┴──────────┘   │
+│                                                                                 │
+│  Showing 1-50 of 234 clients                              [< Prev] [Next >]    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Features (Familiar to Accountants):**
+- **Bulk selection** for batch operations
+- **Manager assignment** (who's responsible for this client)
+- **Lodgement status** (BAS, ITR, FBT tracking)
+- **Activity indicators** (last data update)
+- **Grouping** by manager, status, or entity type
+- **Quick filters**: Active, Needs Review, Overdue, All
+
+#### 5.4.3 Client Detail View (Workpaper Style)
+
+Organized like a digital workpaper/client file:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  ← Back to Clients                                                              │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  JOHN SMITH                                               🟢 Active      │   │
+│  │  Individual • TFN: XXX-XXX-XXX • ABN: XX XXX XXX XXX                     │   │
+│  │  Manager: Sarah Thompson • Last Updated: 2 days ago                      │   │
+│  │                                                                          │   │
+│  │  [📧 Email]  [📞 Call]  [📄 Export]  [🔗 Send to Xero]  [📝 Add Note]   │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │ Overview │ Income │ Deductions │ Assets │ Investments │ Tax │ Documents │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+│  ┌─────────────────────────────┐  ┌─────────────────────────────────────────┐  │
+│  │  FY 2025-26 SUMMARY         │  │  QUICK ACTIONS                         │  │
+│  │                             │  │                                         │  │
+│  │  Total Income:    $125,430  │  │  [📊 Generate Tax Summary]             │  │
+│  │  Total Deductions: $23,850  │  │  [📤 Export to Xero]                   │  │
+│  │  Taxable Income:  $101,580  │  │  [📋 View Lodgement History]           │  │
+│  │  Est. Tax:         $24,380  │  │  [📝 Create Workpaper]                 │  │
+│  │                             │  │                                         │  │
+│  │  [View Full Tax Position]   │  │  [⚡ Sync All Data]                    │  │
+│  └─────────────────────────────┘  └─────────────────────────────────────────┘  │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  RECENT ACTIVITY                                         [View All →]   │   │
+│  │                                                                          │   │
+│  │  📥 Bank transactions synced (142 new)           2 days ago             │   │
+│  │  📄 Rental statement uploaded                    1 week ago             │   │
+│  │  💰 Dividend income recorded                     2 weeks ago            │   │
+│  │  🏠 Property valuation updated                   1 month ago            │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ┌───────────────────────────────────┐  ┌───────────────────────────────────┐  │
+│  │  NOTES (Private)         [+ Add]  │  │  TASKS                    [+ Add]  │  │
+│  │                                   │  │                                    │  │
+│  │  📌 Review rental deductions      │  │  ☐ Chase missing receipts (Due: 3d)│  │
+│  │     before EOFY - Sarah, 1 week   │  │  ☐ Prepare BAS Q3 (Due: 1 week)   │  │
+│  │                                   │  │  ☑ Review investment CGT (Done)   │  │
+│  └───────────────────────────────────┘  └───────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 5.4.4 Tax-Centric Data Views
+
+Accountants need data organized for tax purposes:
+
+**Income Tab:**
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  INCOME - FY 2025-26                                        [Export] [Sync]    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  📊 INCOME BY CATEGORY                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  Salary & Wages (PAYG)                              $95,000.00          │   │
+│  │  ├── Employer: ABC Corp (PAYG: $22,800)                                 │   │
+│  │                                                                          │   │
+│  │  Rental Income (Gross)                              $24,000.00          │   │
+│  │  ├── 123 Main St, Sydney                            $24,000.00          │   │
+│  │                                                                          │   │
+│  │  Interest Income                                     $1,230.00          │   │
+│  │  ├── CBA Savings                                       $430.00          │   │
+│  │  ├── ING Term Deposit                                  $800.00          │   │
+│  │                                                                          │   │
+│  │  Dividends (Franked)                                 $5,200.00          │   │
+│  │  ├── Franking Credits                                $2,228.57          │   │
+│  │  └── Grossed Up:                                     $7,428.57          │   │
+│  │                                                                          │   │
+│  │  TOTAL ASSESSABLE INCOME                           $127,658.57          │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  [📤 Export for ITR]  [🔗 Send to Xero]  [📊 Compare to Last Year]            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Deductions Tab:**
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  DEDUCTIONS - FY 2025-26                                    [Export] [Sync]    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  📊 DEDUCTIONS BY CATEGORY                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  D1: Work-Related Car Expenses                       $3,200.00          │   │
+│  │  D2: Work-Related Travel                             $1,500.00          │   │
+│  │  D3: Work-Related Clothing                             $350.00          │   │
+│  │  D4: Work-Related Self-Education                     $2,100.00          │   │
+│  │  D5: Other Work-Related Expenses                     $1,800.00          │   │
+│  │                                                                          │   │
+│  │  Rental Property Deductions (123 Main St)                               │   │
+│  │  ├── Interest on Loan                               $12,000.00          │   │
+│  │  ├── Council Rates                                   $1,800.00          │   │
+│  │  ├── Property Management                             $1,920.00          │   │
+│  │  ├── Repairs & Maintenance                             $850.00          │   │
+│  │  ├── Depreciation                                    $4,200.00          │   │
+│  │  └── Subtotal:                                      $20,770.00          │   │
+│  │                                                                          │   │
+│  │  TOTAL DEDUCTIONS                                   $29,720.00          │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ⚠️ 3 items need receipts    [View Items Missing Documentation]               │
+│                                                                                 │
+│  [📤 Export for ITR]  [📋 Substantiation Checklist]                           │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 5.4.5 Integration Hub (Accounting Software)
+
+Central place to manage all integrations:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  INTEGRATIONS                                                                   │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │  🔵 XERO                                              ✅ CONNECTED       │  │
+│  │                                                                          │  │
+│  │  Connected to: Smith & Associates Pty Ltd                               │  │
+│  │  Last Sync: 2 hours ago • 1,234 records synced                          │  │
+│  │                                                                          │  │
+│  │  [⚡ Sync Now]  [⚙️ Settings]  [📊 View Logs]  [❌ Disconnect]          │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │  🟣 MYOB                                              ⚪ NOT CONNECTED   │  │
+│  │                                                                          │  │
+│  │  Connect your MYOB account to sync client data.                         │  │
+│  │                                                                          │  │
+│  │  [🔗 Connect MYOB]                                                       │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │  🟢 QUICKBOOKS                                        ⚪ NOT CONNECTED   │  │
+│  │                                                                          │  │
+│  │  Connect your QuickBooks Online account.                                │  │
+│  │                                                                          │  │
+│  │  [🔗 Connect QuickBooks]                                                 │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│                                                                                 │
+│  📋 SYNC SETTINGS                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │  Auto-sync frequency:     [Daily ▼]                                     │  │
+│  │  Sync direction:          [Monitrax → Xero (Export Only) ▼]            │  │
+│  │  Default mapping:         [Use standard chart of accounts ▼]            │  │
+│  │  Notify on sync errors:   [✓] Email  [✓] In-app                        │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 5.4.6 Bulk Operations (Practice Management Essential)
+
+Accountants need to work with multiple clients at once:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  BULK ACTIONS                                              12 clients selected │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  What would you like to do?                                             │   │
+│  │                                                                          │   │
+│  │  📤 EXPORT                                                              │   │
+│  │     [Export Tax Summaries (PDF)]                                        │   │
+│  │     [Export All Data (Excel)]                                           │   │
+│  │     [Export for Xero Import]                                            │   │
+│  │                                                                          │   │
+│  │  🔗 SYNC                                                                │   │
+│  │     [Sync All to Xero]                                                  │   │
+│  │     [Refresh Data from Bank Feeds]                                      │   │
+│  │                                                                          │   │
+│  │  👤 ASSIGN                                                              │   │
+│  │     [Assign to Team Member...]                                          │   │
+│  │     [Add Tag...]                                                        │   │
+│  │                                                                          │   │
+│  │  📧 COMMUNICATE                                                         │   │
+│  │     [Send Reminder Email]                                               │   │
+│  │     [Request Missing Documents]                                         │   │
+│  │                                                                          │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  [Cancel]                                                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 5.4.7 Financial Year Navigation
+
+Always show FY context (critical for accountants):
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  📅 FINANCIAL YEAR                                                       │   │
+│  │                                                                          │   │
+│  │  [◀ FY 2024-25]   FY 2025-26 (Current)   [FY 2026-27 ▶]                │   │
+│  │                                                                          │   │
+│  │  Jul 1, 2025 - Jun 30, 2026 • 243 days remaining                        │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  Quick Jump: [Q1] [Q2] [Q3] [Q4] [YTD] [Full Year]                            │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 5.4.8 Lodgement Tracking Dashboard
+
+Track BAS, ITR, FBT obligations:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  LODGEMENT TRACKER                                          FY 2025-26         │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                          │   │
+│  │  📊 OVERVIEW                                                            │   │
+│  │                                                                          │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐                │   │
+│  │  │   BAS    │  │   ITR    │  │   FBT    │  │  PAYG    │                │   │
+│  │  │          │  │          │  │          │  │          │                │   │
+│  │  │  12/50   │  │  45/50   │  │  48/50   │  │  50/50   │                │   │
+│  │  │  Due     │  │  Lodged  │  │  Lodged  │  │  Done    │                │   │
+│  │  │          │  │          │  │          │  │          │                │   │
+│  │  │  ⚠️      │  │  ✅      │  │  ✅      │  │  ✅      │                │   │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘                │   │
+│  │                                                                          │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  ⚠️ UPCOMING DEADLINES                                                  │   │
+│  │                                                                          │   │
+│  │  BAS Q3 (Jan-Mar 2026)              Due: Apr 28, 2026    [12 clients]  │   │
+│  │  BAS Q4 (Apr-Jun 2026)              Due: Jul 28, 2026    [50 clients]  │   │
+│  │  ITR 2025-26 (Individuals)          Due: Oct 31, 2026    [45 clients]  │   │
+│  │  ITR 2025-26 (Companies)            Due: Feb 28, 2027    [5 clients]   │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  [📋 View All Obligations]  [📧 Send Bulk Reminders]  [📤 Export Calendar]    │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 5.4.9 One-Click Xero Actions
+
+Easy integration with Xero (primary accounting tool):
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  SEND TO XERO                                              Client: John Smith  │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  What data would you like to send?                                             │
+│                                                                                 │
+│  ☑ Income Transactions (142 items)                         $125,430.00        │
+│  ☑ Expense Transactions (89 items)                          $23,850.00        │
+│  ☐ Bank Transactions (already in Xero)                            N/A         │
+│  ☑ Invoices (12 items)                                      $18,500.00        │
+│  ☑ Bills (23 items)                                          $8,200.00        │
+│  ☐ Documents/Attachments (34 files)                         Optional          │
+│                                                                                 │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│                                                                                 │
+│  Mapping to Xero Chart of Accounts:                                            │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │  Monitrax Category          →    Xero Account                           │   │
+│  │  ─────────────────────────────────────────────────────────────────────  │   │
+│  │  Rental Income              →    4-1100 Rental Revenue                  │   │
+│  │  Interest Income            →    4-1200 Interest Income                 │   │
+│  │  Property Expenses          →    6-2100 Property Costs                  │   │
+│  │  Work Deductions            →    6-3100 Staff Expenses                  │   │
+│  │                                                                          │   │
+│  │  [⚙️ Edit Mappings]                                                     │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ─────────────────────────────────────────────────────────────────────────────  │
+│                                                                                 │
+│  ⓘ Data will be exported to Xero. Monitrax remains the source of truth.       │
+│    Changes in Xero will not affect Monitrax data.                              │
+│                                                                                 │
+│  [Cancel]                                          [Preview] [🚀 Send to Xero] │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 5.4.10 Reports for Accountants
+
+Pre-built reports that accountants need:
+
+| Report | Description | Export Formats |
+|--------|-------------|----------------|
+| **Tax Summary** | Complete income/deduction summary for ITR | PDF, Excel |
+| **Rental Schedule** | Property income & expenses for Schedule E | PDF, Excel |
+| **Capital Gains** | CGT events and calculations | PDF, Excel |
+| **Depreciation Schedule** | Asset depreciation for tax | PDF, Excel |
+| **BAS Worksheet** | GST calculations for BAS | PDF, Excel |
+| **Dividend Statement** | Dividend income with franking | PDF, Excel |
+| **Workpaper Pack** | Complete client file for review | PDF |
+| **Client Activity Log** | All data changes (audit trail) | PDF, Excel |
+
+#### 5.4.11 Mobile-Friendly Portal
+
+Accountants often work remotely or at client sites:
+
+- Responsive design for tablets/phones
+- Quick client lookup
+- View-only access on mobile (editing on desktop)
+- Push notifications for urgent items
+- Offline access to recent client summaries
+
+#### 5.4.12 Keyboard Shortcuts (Power Users)
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl + K` | Quick search (clients, actions) |
+| `Cmd/Ctrl + N` | New client |
+| `Cmd/Ctrl + E` | Export current view |
+| `Cmd/Ctrl + S` | Sync to Xero |
+| `Cmd/Ctrl + /` | Show all shortcuts |
+| `G then C` | Go to Clients |
+| `G then D` | Go to Dashboard |
+| `G then I` | Go to Integrations |
+
 ---
 
 ## 6. Security & Compliance
@@ -1895,7 +2278,7 @@ This is supported by the `OrganizationClient` model which creates a many-to-many
 
 ---
 
-*Document Version: 1.4*
+*Document Version: 1.5*
 *Last Updated: 2026-01-19*
 *Approved for Implementation: 2026-01-19*
 
@@ -1910,3 +2293,4 @@ This is supported by the `OrganizationClient` model which creates a many-to-many
 | 1.2 | 2026-01-19 | Added Accounting Integrations, unified login flow |
 | 1.3 | 2026-01-19 | Added Data Integrity Architecture (Section 7) |
 | 1.4 | 2026-01-19 | Added Isolation & Non-Breaking Implementation (Section 8) |
+| 1.5 | 2026-01-19 | Added Accountant & FA User Experience (Section 5.4) |
