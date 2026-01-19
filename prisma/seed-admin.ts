@@ -6,13 +6,15 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
 
-// Hash password using SHA-256 (simple for seeding - production should use bcrypt)
+// Hash password using salt:hash format (same as lib/admin/auth.ts)
 function hashPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex');
+  const salt = randomBytes(16).toString('hex');
+  const hash = createHash('sha256').update(password + salt).digest('hex');
+  return `${salt}:${hash}`;
 }
 
 async function seedAdmin() {
@@ -21,13 +23,18 @@ async function seedAdmin() {
   const adminEmail = 'admin@monitrax.com.au';
   const adminPassword = 'Admin123!'; // Default password - CHANGE IN PRODUCTION
 
+  const passwordHash = hashPassword(adminPassword);
+
   const admin = await prisma.adminUser.upsert({
     where: { email: adminEmail },
-    update: {},
+    update: {
+      passwordHash: passwordHash,
+      isActive: true,
+    },
     create: {
       email: adminEmail,
       name: 'Super Admin',
-      passwordHash: hashPassword(adminPassword),
+      passwordHash: passwordHash,
       role: 'SUPER_ADMIN',
       isActive: true,
       mfaEnabled: false,
