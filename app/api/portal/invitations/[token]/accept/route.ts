@@ -101,7 +101,7 @@ export async function POST(
           email: invitation.email.toLowerCase(),
           name,
           password: hashedPassword,
-          emailVerified: new Date(), // Mark as verified since they came through invitation
+          emailVerified: true, // Mark as verified since they came through invitation
         },
       });
     } else {
