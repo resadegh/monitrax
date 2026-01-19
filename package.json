@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --skip-generate && next build",
+    "build": "prisma generate && prisma db push --skip-generate && npx ts-node prisma/seed-admin.ts && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
@@ -16,6 +16,7 @@
     "test:sanity": "vitest run tests/sanity",
     "test:calculations": "vitest run tests/calculations",
     "seed:validation": "npx ts-node prisma/seed-validation.ts",
+    "seed:admin": "npx ts-node prisma/seed-admin.ts",
     "validate": "npm run seed:validation && npm run test && npm run generate:report",
     "generate:report": "npx ts-node tests/validation/generate-report.ts"
   },
