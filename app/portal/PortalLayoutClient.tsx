@@ -5,6 +5,7 @@
  * Separated from server layout for hydration and state management.
  *
  * AUTHENTICATION: Uses existing AuthContext from main app.
+ * ORGANIZATION: Provides OrganizationContext for organization selection.
  */
 
 'use client';
@@ -12,6 +13,7 @@
 import { ReactNode, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
+import { OrganizationProvider, useOrganization } from '@/lib/portal';
 import { PortalSidebar, NavIcons } from '@/components/portal/layout/PortalSidebar';
 
 interface PortalLayoutClientProps {
@@ -66,10 +68,14 @@ const PUBLIC_PAGES = ['/portal/login', '/portal/consent'];
 // Pages that should NOT show the sidebar (login, etc.)
 const FULL_WIDTH_PAGES = ['/portal/login', '/portal', '/portal/consent'];
 
-export function PortalLayoutClient({ children }: PortalLayoutClientProps) {
+/**
+ * Inner layout component that uses the organization context
+ */
+function PortalLayoutInner({ children }: PortalLayoutClientProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const { currentOrg, isLoading: orgLoading } = useOrganization();
 
   // Check if current page is public (no auth required)
   const isPublicPage = PUBLIC_PAGES.some(
@@ -88,8 +94,8 @@ export function PortalLayoutClient({ children }: PortalLayoutClientProps) {
     }
   }, [user, isLoading, isPublicPage, pathname, router]);
 
-  // Show loading state while checking authentication
-  if (isLoading) {
+  // Show loading state while checking authentication or loading organizations
+  if (isLoading || (orgLoading && !isPublicPage && !isFullWidthPage)) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
@@ -124,7 +130,7 @@ export function PortalLayoutClient({ children }: PortalLayoutClientProps) {
     <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar Navigation */}
       <PortalSidebar
-        organizationName="Demo Organization"
+        organizationName={currentOrg?.name || 'Select Organization'}
         navigation={mainNavigation}
         secondaryNavigation={secondaryNavigation}
       />
@@ -134,6 +140,17 @@ export function PortalLayoutClient({ children }: PortalLayoutClientProps) {
         {children}
       </main>
     </div>
+  );
+}
+
+/**
+ * Main layout component that provides the organization context
+ */
+export function PortalLayoutClient({ children }: PortalLayoutClientProps) {
+  return (
+    <OrganizationProvider>
+      <PortalLayoutInner>{children}</PortalLayoutInner>
+    </OrganizationProvider>
   );
 }
 

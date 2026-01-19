@@ -27,3 +27,6 @@ export * from './auth';
 
 // Permissions
 export * from './permissions';
+
+// Context
+export { OrganizationProvider, useOrganization, type Organization } from './context/OrganizationContext';

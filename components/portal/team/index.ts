@@ -6,4 +6,5 @@
 
 export { TeamList } from './TeamList';
 export { InviteModal } from './InviteModal';
+export { RoleEditModal } from './RoleEditModal';
 export type { InviteData } from './InviteModal';

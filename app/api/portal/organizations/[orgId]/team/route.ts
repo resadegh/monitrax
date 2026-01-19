@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
 import { isPortalAccessible, isPortalFeatureEnabled } from '@/lib/portal/featureFlags';
 import { PermissionGuards } from '@/lib/portal/permissions';
 import { PORTAL_ERROR_CODES, PLAN_LIMITS, INVITATION_CONSTANTS } from '@/lib/portal/constants';
@@ -40,11 +41,18 @@ interface MappedMember {
   stats: { assignedClients: number; pendingTasks: number; notesCreated: number };
 }
 
-// Placeholder for auth - to be replaced with actual auth
+// Get current user ID from auth token
 async function getCurrentUserId(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get('authorization');
-  if (!authHeader) return null;
-  return null;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+
+  try {
+    const token = authHeader.substring(7);
+    const payload = await verifyToken(token);
+    return payload?.userId || null;
+  } catch {
+    return null;
+  }
 }
 
 async function getMemberContext(userId: string, orgId: string) {
