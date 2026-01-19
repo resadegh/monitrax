@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyToken, createToken, hashPassword } from '@/lib/auth';
+import { verifyToken, generateToken, hashPassword } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
@@ -199,7 +199,7 @@ export async function POST(
     // Generate auth token for new users
     let authToken = null;
     if (createAccount) {
-      authToken = await createToken({
+      authToken = await generateToken({
         userId: user.id,
         email: user.email,
       });
