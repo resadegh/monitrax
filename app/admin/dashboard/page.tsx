@@ -123,7 +123,7 @@ export default function AdminDashboardPage() {
 
         <StatsCard
           title="Monthly Revenue"
-          value={\`$\${stats?.mrr?.toLocaleString() || '0'}\`}
+          value={`$${stats?.mrr?.toLocaleString() || '0'}`}
           change={stats?.mrrGrowth || 0}
           changeLabel="MRR growth"
           trend={stats?.mrrGrowth && stats.mrrGrowth > 0 ? 'up' : 'down'}
@@ -136,7 +136,7 @@ export default function AdminDashboardPage() {
 
         <StatsCard
           title="Churn Rate"
-          value={\`\${stats?.churnRate || 0}%\`}
+          value={`${stats?.churnRate || 0}%`}
           change={0}
           changeLabel="vs last month"
           trend="down"
@@ -175,7 +175,7 @@ export default function AdminDashboardPage() {
               ]}
               data={recentUsers}
               keyExtractor={(user) => user.id}
-              onRowClick={(user) => (window.location.href = \`/admin/users/\${user.id}\`)}
+              onRowClick={(user) => (window.location.href = `/admin/users/${user.id}`)}
             />
           ) : (
             <p className="text-gray-500 dark:text-gray-400 text-center py-8">No users yet</p>
@@ -253,7 +253,7 @@ export default function AdminDashboardPage() {
 
         <AdminCard className="text-center">
           <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-            \${((stats?.mrr || 0) * 12).toLocaleString()}
+            {`$${((stats?.mrr || 0) * 12).toLocaleString()}`}
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">Projected ARR</p>
         </AdminCard>
