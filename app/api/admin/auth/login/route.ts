@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
 import {
   verifyPassword,
