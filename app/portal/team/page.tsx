@@ -2,17 +2,33 @@
  * Phase 32: Portal Team Page
  *
  * Displays team members for the current organization.
- * Uses modular TeamList and InviteModal components.
+ * Includes role management and invitation functionality.
  */
 
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { TeamList } from '@/components/portal/team';
-import { InviteModal, type InviteData } from '@/components/portal/team';
+import { TeamList, InviteModal, RoleEditModal } from '@/components/portal/team';
+import type { InviteData } from '@/components/portal/team';
 import { createTeamService, type TeamMember } from '@/lib/portal/services/team';
 import { useOrganization } from '@/lib/portal';
 import { useAuth } from '@/lib/context/AuthContext';
+import type { PortalUserRole } from '@prisma/client';
+
+// Map organization role to portal role
+function mapToPortalRole(role: string): PortalUserRole {
+  const roleMap: Record<string, PortalUserRole> = {
+    OWNER: 'PORTAL_OWNER',
+    ADMIN: 'PORTAL_ADMIN',
+    CONTRIBUTOR: 'PORTAL_ADVISOR',
+    VIEWER: 'PORTAL_VIEWER',
+    PORTAL_OWNER: 'PORTAL_OWNER',
+    PORTAL_ADMIN: 'PORTAL_ADMIN',
+    PORTAL_ADVISOR: 'PORTAL_ADVISOR',
+    PORTAL_VIEWER: 'PORTAL_VIEWER',
+  };
+  return roleMap[role] || 'PORTAL_VIEWER';
+}
 
 export default function TeamPage() {
   const { currentOrg, isLoading: orgLoading } = useOrganization();
@@ -20,11 +36,18 @@ export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
     pending: 0,
   });
+
+  // Get current user's role in the organization
+  const currentUserRole = useMemo<PortalUserRole>(() => {
+    if (!currentOrg?.role) return 'PORTAL_VIEWER';
+    return mapToPortalRole(currentOrg.role);
+  }, [currentOrg]);
 
   // Create team service with current organization ID
   const teamApi = useMemo(
@@ -87,20 +110,36 @@ export default function TeamPage() {
   };
 
   const handleEditRole = (member: TeamMember) => {
-    // TODO: Show role edit modal
-    console.log('Edit role:', member);
+    setEditingMember(member);
+  };
+
+  const handleSaveRole = async (memberId: string, newRole: PortalUserRole) => {
+    if (!teamApi) {
+      throw new Error('No organization selected');
+    }
+
+    const response = await teamApi.updateRole(memberId, newRole);
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+
+    // Refresh team list
+    loadTeam();
   };
 
   const handleRemove = async (member: TeamMember) => {
     if (!teamApi) return;
 
-    // TODO: Show confirmation dialog
-    const confirmed = window.confirm(`Are you sure you want to remove ${member.user?.name || member.user?.email}?`);
+    const confirmed = window.confirm(
+      `Are you sure you want to remove ${member.user?.name || member.user?.email} from the team?\n\nThis will revoke their access to the organization.`
+    );
     if (!confirmed) return;
 
     const response = await teamApi.remove(member.id);
     if (response.error) {
       console.error('Failed to remove member:', response.error);
+      alert('Failed to remove member: ' + response.error.message);
       return;
     }
 
@@ -109,9 +148,12 @@ export default function TeamPage() {
   };
 
   const handleViewMember = (member: TeamMember) => {
-    // TODO: Navigate to member detail or show modal
-    console.log('View member:', member);
+    // For now, just open the edit modal to view details
+    setEditingMember(member);
   };
+
+  // Check if current user can manage team
+  const canManageTeam = ['PORTAL_OWNER', 'PORTAL_ADMIN'].includes(currentUserRole);
 
   // Show loading while organization is loading
   if (orgLoading) {
@@ -144,10 +186,15 @@ export default function TeamPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Team</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Team Management</h1>
         <p className="text-slate-500 mt-1">
-          Manage your team members and their access to client data
+          Manage your team members and their access permissions
         </p>
+        {/* Role indicator */}
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-sm text-slate-600">Your role:</span>
+          <RoleBadge role={currentUserRole} />
+        </div>
       </div>
 
       <TeamList
@@ -155,12 +202,13 @@ export default function TeamPage() {
         currentUserId={user?.id || ''}
         loading={loading}
         stats={stats}
-        onInvite={() => setShowInviteModal(true)}
-        onEditRole={handleEditRole}
-        onRemove={handleRemove}
+        onInvite={canManageTeam ? () => setShowInviteModal(true) : undefined}
+        onEditRole={canManageTeam ? handleEditRole : undefined}
+        onRemove={canManageTeam ? handleRemove : undefined}
         onViewMember={handleViewMember}
       />
 
+      {/* Invite Modal */}
       {showInviteModal && (
         <InviteModal
           type="staff"
@@ -168,6 +216,34 @@ export default function TeamPage() {
           onClose={() => setShowInviteModal(false)}
         />
       )}
+
+      {/* Role Edit Modal */}
+      {editingMember && (
+        <RoleEditModal
+          member={editingMember}
+          currentUserRole={currentUserRole}
+          onSave={handleSaveRole}
+          onClose={() => setEditingMember(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// Role Badge Component
+function RoleBadge({ role }: { role: PortalUserRole }) {
+  const config: Record<PortalUserRole, { label: string; className: string }> = {
+    PORTAL_OWNER: { label: 'Owner', className: 'bg-purple-100 text-purple-700' },
+    PORTAL_ADMIN: { label: 'Admin', className: 'bg-blue-100 text-blue-700' },
+    PORTAL_ADVISOR: { label: 'Advisor', className: 'bg-green-100 text-green-700' },
+    PORTAL_VIEWER: { label: 'Viewer', className: 'bg-slate-100 text-slate-600' },
+  };
+
+  const { label, className } = config[role] || { label: 'Unknown', className: 'bg-slate-100 text-slate-600' };
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${className}`}>
+      {label}
+    </span>
   );
 }

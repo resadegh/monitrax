@@ -2,7 +2,7 @@
  * Phase 32: Portal Clients Page
  *
  * Displays the client list for the current organization.
- * Uses modular ClientList and InviteModal components.
+ * Includes role-based access controls for inviting clients.
  */
 
 'use client';
@@ -13,6 +13,22 @@ import { InviteModal, type InviteData } from '@/components/portal/team';
 import { createClientsService } from '@/lib/portal/services/clients';
 import { useOrganization } from '@/lib/portal';
 import type { PortalClient } from '@/lib/portal/types';
+import type { PortalUserRole } from '@prisma/client';
+
+// Map organization role to portal role
+function mapToPortalRole(role: string): PortalUserRole {
+  const roleMap: Record<string, PortalUserRole> = {
+    OWNER: 'PORTAL_OWNER',
+    ADMIN: 'PORTAL_ADMIN',
+    CONTRIBUTOR: 'PORTAL_ADVISOR',
+    VIEWER: 'PORTAL_VIEWER',
+    PORTAL_OWNER: 'PORTAL_OWNER',
+    PORTAL_ADMIN: 'PORTAL_ADMIN',
+    PORTAL_ADVISOR: 'PORTAL_ADVISOR',
+    PORTAL_VIEWER: 'PORTAL_VIEWER',
+  };
+  return roleMap[role] || 'PORTAL_VIEWER';
+}
 
 export default function ClientsPage() {
   const { currentOrg, isLoading: orgLoading } = useOrganization();
@@ -30,6 +46,15 @@ export default function ClientsPage() {
     pending: 0,
     invited: 0,
   });
+
+  // Get current user's role in the organization
+  const currentUserRole = useMemo<PortalUserRole>(() => {
+    if (!currentOrg?.role) return 'PORTAL_VIEWER';
+    return mapToPortalRole(currentOrg.role);
+  }, [currentOrg]);
+
+  // Check if user can invite clients (Owners, Admins, and Advisors can invite)
+  const canInviteClients = ['PORTAL_OWNER', 'PORTAL_ADMIN', 'PORTAL_ADVISOR'].includes(currentUserRole);
 
   // Create clients service with current organization ID
   const clientsApi = useMemo(
@@ -143,6 +168,14 @@ export default function ClientsPage() {
         <p className="text-slate-500 mt-1">
           Manage your client relationships and access their financial data
         </p>
+        {/* Role indicator */}
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-sm text-slate-600">Your role:</span>
+          <RoleBadge role={currentUserRole} />
+          {!canInviteClients && (
+            <span className="text-xs text-slate-500">(View only)</span>
+          )}
+        </div>
       </div>
 
       <ClientList
@@ -152,7 +185,7 @@ export default function ClientsPage() {
         stats={stats}
         onPageChange={handlePageChange}
         onClientClick={handleClientClick}
-        onInviteClick={() => setShowInviteModal(true)}
+        onInviteClick={canInviteClients ? () => setShowInviteModal(true) : undefined}
         onFilterChange={handleFilterChange}
       />
 
@@ -164,5 +197,23 @@ export default function ClientsPage() {
         />
       )}
     </div>
+  );
+}
+
+// Role Badge Component
+function RoleBadge({ role }: { role: PortalUserRole }) {
+  const config: Record<PortalUserRole, { label: string; className: string }> = {
+    PORTAL_OWNER: { label: 'Owner', className: 'bg-purple-100 text-purple-700' },
+    PORTAL_ADMIN: { label: 'Admin', className: 'bg-blue-100 text-blue-700' },
+    PORTAL_ADVISOR: { label: 'Advisor', className: 'bg-green-100 text-green-700' },
+    PORTAL_VIEWER: { label: 'Viewer', className: 'bg-slate-100 text-slate-600' },
+  };
+
+  const { label, className } = config[role] || { label: 'Unknown', className: 'bg-slate-100 text-slate-600' };
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${className}`}>
+      {label}
+    </span>
   );
 }

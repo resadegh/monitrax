@@ -10,6 +10,7 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { OrganizationSelector } from './OrganizationSelector';
 
 interface NavItem {
   label: string;
@@ -45,25 +46,9 @@ export function PortalSidebar({
 
   return (
     <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen sticky top-0">
-      {/* Organization Header */}
-      <div className="p-4 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          {organizationLogo ? (
-            <img
-              src={organizationLogo}
-              alt={organizationName}
-              className="w-10 h-10 rounded-lg object-cover"
-            />
-          ) : (
-            <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center text-lg font-bold">
-              {organizationName.charAt(0)}
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{organizationName}</p>
-            <p className="text-xs text-slate-400">Enterprise Portal</p>
-          </div>
-        </div>
+      {/* Organization Selector */}
+      <div className="p-2 border-b border-slate-800">
+        <OrganizationSelector />
       </div>
 
       {/* Main Navigation */}
