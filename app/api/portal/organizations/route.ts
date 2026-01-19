@@ -9,6 +9,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isPortalAccessible } from '@/lib/portal/featureFlags';
 import { PORTAL_ERROR_CODES } from '@/lib/portal/constants';
+import type { Prisma } from '@prisma/client';
+
+// Type for organization data
+interface OrganizationData {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Type for membership with organization data from the query
+interface MembershipWithOrg {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: string;
+  invitedBy: string | null;
+  invitedAt: Date;
+  joinedAt: Date | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  organization: OrganizationData;
+}
 
 // Placeholder for auth - will integrate with existing auth system
 async function getCurrentUserId(request: NextRequest): Promise<string | null> {
@@ -56,7 +82,7 @@ export async function GET(request: NextRequest) {
 
     // Get portal settings for each organization
     const organizations = await Promise.all(
-      memberships.map(async (membership) => {
+      memberships.map(async (membership: MembershipWithOrg) => {
         const portalSettings = await prisma.organizationPortalSettings.findUnique({
           where: { organizationId: membership.organizationId },
         });
@@ -169,7 +195,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create organization with portal settings in a transaction
-    const organization = await prisma.$transaction(async (tx) => {
+    const organization = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Create the organization
       const org = await tx.organization.create({
         data: {

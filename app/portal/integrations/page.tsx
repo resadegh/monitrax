@@ -62,8 +62,8 @@ export default function IntegrationsPage() {
     try {
       await integrationsApi.disconnect(provider);
       // Refresh integrations list
-      setIntegrations((prev) =>
-        prev.map((i) => (i.provider === provider ? { ...i, isConnected: false } : i))
+      setIntegrations((prev: AccountingIntegration[]) =>
+        prev.map((i: AccountingIntegration) => (i.provider === provider ? { ...i, isConnected: false } : i))
       );
     } catch (error) {
       console.error('Failed to disconnect:', error);

@@ -12,6 +12,38 @@ import { PermissionGuards } from '@/lib/portal/permissions';
 import { PORTAL_ERROR_CODES, PLAN_LIMITS, INVITATION_CONSTANTS } from '@/lib/portal/constants';
 import type { PortalUserRole, ClientStatus, ConsentStatus, OrganizationPlan } from '@prisma/client';
 
+// Type for base client from query
+interface BaseClient {
+  id: string;
+  organizationId: string;
+  userId: string;
+  status: ClientStatus;
+  consentStatus: ConsentStatus;
+  accessScopes: string[];
+  consentGrantedAt: Date | null;
+  consentExpiresAt: Date | null;
+  consentRevokedAt: Date | null;
+  assignedToMemberId: string | null;
+  clientReference: string | null;
+  externalId: string | null;
+  tags: string[];
+  onboardedAt: Date | null;
+  lastAccessedAt: Date | null;
+  archivedAt: Date | null;
+  archivedReason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Type for enriched client with user data
+interface EnrichedClient extends BaseClient {
+  user: { id: string; email: string; name: string | null; createdAt: Date } | null;
+  assignedTo: { id: string; user: { id: string; email: string; name: string | null } } | null;
+  notesCount: number;
+  tasksCount: number;
+  pendingTasksCount: number;
+}
+
 // Placeholder for auth
 async function getCurrentUserId(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get('authorization');
@@ -134,8 +166,8 @@ export async function GET(
     });
 
     // Enrich with user data and counts
-    const enrichedClients = await Promise.all(
-      clients.map(async (client) => {
+    const enrichedClients: EnrichedClient[] = await Promise.all(
+      clients.map(async (client: BaseClient): Promise<EnrichedClient> => {
         const [user, notesCount, tasksCount, pendingTasksCount] = await Promise.all([
           prisma.user.findUnique({
             where: { id: client.userId },
@@ -182,11 +214,11 @@ export async function GET(
     );
 
     // Apply search filter after enrichment (search by user name/email)
-    let filteredClients = enrichedClients;
+    let filteredClients: EnrichedClient[] = enrichedClients;
     if (search) {
       const searchLower = search.toLowerCase();
       filteredClients = enrichedClients.filter(
-        (client) =>
+        (client: EnrichedClient) =>
           client.user?.name?.toLowerCase().includes(searchLower) ||
           client.user?.email?.toLowerCase().includes(searchLower) ||
           client.clientReference?.toLowerCase().includes(searchLower)

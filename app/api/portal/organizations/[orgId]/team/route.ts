@@ -12,6 +12,34 @@ import { PermissionGuards } from '@/lib/portal/permissions';
 import { PORTAL_ERROR_CODES, PLAN_LIMITS, INVITATION_CONSTANTS } from '@/lib/portal/constants';
 import type { PortalUserRole, OrganizationPlan } from '@prisma/client';
 
+// Type for member with user data from the query
+interface MemberWithUser {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: string;
+  invitedBy: string | null;
+  invitedAt: Date;
+  joinedAt: Date | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  user: { id: string; email: string; name: string | null };
+}
+
+// Type for mapped member returned in the response
+interface MappedMember {
+  id: string;
+  userId: string;
+  role: string;
+  invitedBy: null;
+  invitedAt: string;
+  joinedAt: string;
+  isActive: boolean;
+  user: { id: string; email: string; name: string | null };
+  stats: { assignedClients: number; pendingTasks: number; notesCreated: number };
+}
+
 // Placeholder for auth - to be replaced with actual auth
 async function getCurrentUserId(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get('authorization');
@@ -122,7 +150,7 @@ export async function GET(
 
     // Map to portal roles and add stats
     const mappedMembers = await Promise.all(
-      members.map(async (member) => {
+      members.map(async (member: MemberWithUser) => {
         const roleMapping: Record<string, PortalUserRole> = {
           OWNER: 'PORTAL_OWNER',
           ADMIN: 'PORTAL_ADMIN',
@@ -166,8 +194,8 @@ export async function GET(
     );
 
     // Filter by role if specified
-    const filteredMembers = role
-      ? mappedMembers.filter((m) => m.role === role)
+    const filteredMembers: MappedMember[] = role
+      ? mappedMembers.filter((m: MappedMember) => m.role === role)
       : mappedMembers;
 
     return NextResponse.json({

@@ -11,7 +11,7 @@ import { prisma } from '@/lib/db';
 import { isPortalAccessible } from '@/lib/portal/featureFlags';
 import { PermissionGuards } from '@/lib/portal/permissions';
 import { PORTAL_ERROR_CODES } from '@/lib/portal/constants';
-import type { PortalUserRole } from '@prisma/client';
+import type { PortalUserRole, Prisma } from '@prisma/client';
 
 // Placeholder for auth - will integrate with existing auth system
 async function getCurrentUserId(request: NextRequest): Promise<string | null> {
@@ -202,7 +202,7 @@ export async function PATCH(
     } = body;
 
     // Update in transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Update organization if name or description changed
       if (name !== undefined || description !== undefined) {
         await tx.organization.update({
