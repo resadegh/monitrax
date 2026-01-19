@@ -2825,11 +2825,6 @@ enum PortalUserRole {
   PORTAL_VIEWER     // Read-only access
 }
 
-enum AdminRole {
-  SUPER_ADMIN       // Full system access
-  ADMIN             // Administrative access
-}
-
 enum ClientStatus {
   INVITED           // Invitation sent, not accepted
   PENDING           // Accepted, awaiting consent
@@ -3334,21 +3329,271 @@ model IntegrationEntityMapping {
 }
 
 // =============================================================================
-// ADMIN USERS (Legacy - preserved for existing data)
+// PHASE 33: ADMIN PORTAL - ENUMS
+// =============================================================================
+
+// Admin user roles for Monitrax staff
+enum AdminRole {
+  SUPER_ADMIN      // Full access to everything
+  BILLING_ADMIN    // Billing & subscriptions only
+  SUPPORT_ADMIN    // User lookup, impersonation, logs
+  VIEWER           // Read-only analytics
+}
+
+// User subscription tiers for personal users
+enum UserTier {
+  FREE
+  BASIC
+  PRO
+  PREMIUM
+}
+
+// =============================================================================
+// PHASE 33: ADMIN USER (Separate from regular users)
 // =============================================================================
 
 model AdminUser {
-  id               String     @id @default(uuid())
-  email            String     @unique
-  passwordHash     String?
-  name             String?
-  role             AdminRole?
-  isActive         Boolean?   @default(true)
-  mfaEnabled       Boolean?   @default(false)
-  failedLoginCount Int?       @default(0)
-  ipWhitelist      String[]   @default([])
-  createdAt        DateTime?  @default(now())
-  updatedAt        DateTime?
+  id                String       @id @default(uuid())
+  email             String       @unique
+  passwordHash      String
+  name              String
+  role              AdminRole    @default(VIEWER)
+  isActive          Boolean      @default(true)
+  mfaEnabled        Boolean      @default(false)
+  mfaSecret         String?
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  failedLoginCount  Int          @default(0)
+  lockedUntil       DateTime?
+  ipWhitelist       String[]     @default([])
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdBy         String?      // AdminUser ID who created this admin
 
+  // Relations
+  sessions          AdminSession[]
+  auditLogs         AdminAuditLog[]
+  impersonations    ImpersonationSession[]
+
+  @@index([email])
+  @@index([role])
   @@map("admin_users")
+}
+
+// =============================================================================
+// PHASE 33: ADMIN SESSION
+// =============================================================================
+
+model AdminSession {
+  id                String       @id @default(uuid())
+  adminUserId       String
+  token             String       @unique
+  tokenHash         String       @unique
+  ipAddress         String
+  userAgent         String?
+  expiresAt         DateTime
+  createdAt         DateTime     @default(now())
+  lastActivityAt    DateTime     @default(now())
+  isRevoked         Boolean      @default(false)
+  revokedAt         DateTime?
+  revokedReason     String?
+
+  // Relations
+  adminUser         AdminUser    @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@map("admin_sessions")
+}
+
+// =============================================================================
+// PHASE 33: ADMIN AUDIT LOG
+// =============================================================================
+
+model AdminAuditLog {
+  id                String       @id @default(uuid())
+  adminUserId       String
+  action            String       // e.g., "USER_SUSPENDED", "LICENSE_UPDATED"
+  category          String       // e.g., "USER_MANAGEMENT", "BILLING", "FEATURE_FLAGS"
+  targetType        String?      // e.g., "User", "Organization"
+  targetId          String?      // ID of the affected entity
+  description       String       // Human-readable description
+  metadata          Json?        // Additional context (before/after values)
+  ipAddress         String
+  userAgent         String?
+  requestId         String?      // For correlating with application logs
+  timestamp         DateTime     @default(now())
+
+  // Relations
+  adminUser         AdminUser    @relation(fields: [adminUserId], references: [id])
+
+  @@index([adminUserId])
+  @@index([action])
+  @@index([category])
+  @@index([targetType, targetId])
+  @@index([timestamp])
+  @@map("admin_audit_logs")
+}
+
+// =============================================================================
+// PHASE 33: IMPERSONATION SESSION
+// =============================================================================
+
+model ImpersonationSession {
+  id                String       @id @default(uuid())
+  adminUserId       String
+  targetUserId      String       // User being impersonated
+  targetType        String       // "USER" or "ORGANIZATION_MEMBER"
+  reason            String       // Required justification
+  token             String       @unique
+  tokenHash         String       @unique
+  startedAt         DateTime     @default(now())
+  expiresAt         DateTime
+  endedAt           DateTime?
+  ipAddress         String
+  userAgent         String?
+  actionsPerformed  Json?        // Log of actions taken during impersonation
+
+  // Relations
+  adminUser         AdminUser    @relation(fields: [adminUserId], references: [id])
+
+  @@index([adminUserId])
+  @@index([targetUserId])
+  @@index([tokenHash])
+  @@map("impersonation_sessions")
+}
+
+// =============================================================================
+// PHASE 33: GLOBAL FEATURE FLAG
+// =============================================================================
+
+model GlobalFeatureFlag {
+  id                String       @id @default(uuid())
+  key               String       @unique // e.g., "DARK_MODE", "AI_INSIGHTS"
+  name              String       // Human-readable name
+  description       String?
+  enabled           Boolean      @default(false)
+  enabledForPercent Int          @default(0)  // Percentage rollout (0-100)
+  enabledForTiers   String[]     @default([]) // User tiers that have access
+  enabledForPlans   String[]     @default([]) // Organization plans that have access
+  metadata          Json?        // Additional configuration
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdBy         String?      // AdminUser ID
+  updatedBy         String?      // AdminUser ID
+
+  // Relations
+  overrides         FeatureFlagOverride[]
+
+  @@index([key])
+  @@index([enabled])
+  @@map("global_feature_flags")
+}
+
+// =============================================================================
+// PHASE 33: FEATURE FLAG OVERRIDE (Per-user or per-organization)
+// =============================================================================
+
+model FeatureFlagOverride {
+  id                String       @id @default(uuid())
+  flagId            String
+  targetType        String       // "USER" or "ORGANIZATION"
+  targetId          String       // User ID or Organization ID
+  enabled           Boolean
+  reason            String?      // Why this override exists
+  expiresAt         DateTime?    // Optional expiration for temporary overrides
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdBy         String?      // AdminUser ID
+
+  // Relations
+  flag              GlobalFeatureFlag @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  @@unique([flagId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@map("feature_flag_overrides")
+}
+
+// =============================================================================
+// PHASE 33: USER SUBSCRIPTION (extends User model)
+// =============================================================================
+
+model UserSubscription {
+  id                   String       @id @default(uuid())
+  userId               String       @unique
+  tier                 UserTier     @default(FREE)
+  status               String       @default("active") // active, suspended, cancelled
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean      @default(false)
+  suspendedAt          DateTime?
+  suspendedReason      String?
+  suspendedBy          String?      // AdminUser ID
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([tier])
+  @@index([status])
+  @@map("user_subscriptions")
+}
+
+// =============================================================================
+// PHASE 33: ORGANIZATION LICENSE (extends Organization model)
+// =============================================================================
+
+model OrganizationLicense {
+  id                   String           @id @default(uuid())
+  organizationId       String           @unique
+  tier                 OrganizationPlan @default(STARTER)
+  status               String           @default("active") // active, suspended, cancelled
+  clientLimit          Int              @default(10)
+  staffLimit           Int              @default(3)
+  customClientLimit    Int?             // Override for custom deals
+  customStaffLimit     Int?             // Override for custom deals
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean          @default(false)
+  suspendedAt          DateTime?
+  suspendedReason      String?
+  suspendedBy          String?          // AdminUser ID
+  notes                String?          // Internal notes about this license
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([organizationId])
+  @@index([tier])
+  @@index([status])
+  @@map("organization_licenses")
+}
+
+// =============================================================================
+// PHASE 33: BILLING TRANSACTION (Revenue Tracking)
+// =============================================================================
+
+model BillingTransaction {
+  id                String       @id @default(uuid())
+  type              String       // "subscription", "one_time", "refund"
+  entityType        String       // "USER" or "ORGANIZATION"
+  entityId          String       // User ID or Organization ID
+  amount            Decimal      @db.Decimal(10, 2)
+  currency          String       @default("AUD")
+  status            String       // "succeeded", "pending", "failed", "refunded"
+  stripePaymentId   String?
+  stripeInvoiceId   String?
+  description       String?
+  metadata          Json?
+  failureReason     String?
+  createdAt         DateTime     @default(now())
+
+  @@index([entityType, entityId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("billing_transactions")
 }
