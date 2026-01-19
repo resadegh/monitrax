@@ -63,7 +63,7 @@ const DEFAULT_ADMIN_FLAGS: AdminFeatureFlags = {
  */
 function loadAdminFeatureFlags(): AdminFeatureFlags {
   return {
-    adminPortalEnabled: process.env.ADMIN_PORTAL_ENABLED === 'true',
+    adminPortalEnabled: process.env.NEXT_PUBLIC_ADMIN_PORTAL_ENABLED === 'true',
     organizationManagement: process.env.ADMIN_ORGANIZATION_MANAGEMENT === 'true',
     userManagement: process.env.ADMIN_USER_MANAGEMENT === 'true',
     billingDashboard: process.env.ADMIN_BILLING_DASHBOARD === 'true',
@@ -106,9 +106,10 @@ export function resetAdminFeatureFlags(): void {
 
 /**
  * Check if the admin portal is accessible
+ * Reads directly from env to avoid caching issues
  */
 export function isAdminPortalAccessible(): boolean {
-  return getAdminFeatureFlags().adminPortalEnabled;
+  return process.env.NEXT_PUBLIC_ADMIN_PORTAL_ENABLED === 'true';
 }
 
 /**
