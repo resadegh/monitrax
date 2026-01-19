@@ -5,7 +5,7 @@
  * Handles admin session management, verification, and security.
  */
 
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 import { createHash, randomBytes } from 'crypto';
 import type { AdminRole } from '@prisma/client';
 import { isAdminPortalAccessible, isAdminFeatureEnabled } from './featureFlags';
