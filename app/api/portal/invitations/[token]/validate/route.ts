@@ -23,22 +23,6 @@ export async function GET(
         token,
         status: 'PENDING',
       },
-      include: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        invitedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
     });
 
     if (!invitation) {
@@ -47,6 +31,33 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    // Fetch organization separately
+    const organization = await prisma.organization.findUnique({
+      where: { id: invitation.organizationId },
+      select: { id: true, name: true, slug: true },
+    });
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: 'ORGANIZATION_NOT_FOUND', message: 'Organization not found' },
+        { status: 404 }
+      );
+    }
+
+    // Fetch inviter info from OrganizationMember
+    const inviter = await prisma.organizationMember.findUnique({
+      where: { id: invitation.invitedByMemberId },
+      select: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
 
     // Check if invitation has expired
     if (new Date(invitation.tokenExpiresAt) < new Date()) {
@@ -82,9 +93,9 @@ export async function GET(
         id: invitation.id,
         email: invitation.email,
         role: invitation.role,
-        organizationName: portalSettings?.brandName || invitation.organization.name,
+        organizationName: portalSettings?.brandName || organization.name,
         organizationLogo: portalSettings?.brandLogoUrl || null,
-        invitedBy: invitation.invitedBy?.name || invitation.invitedBy?.email || 'Unknown',
+        invitedBy: inviter?.user?.name || inviter?.user?.email || 'Unknown',
         expiresAt: invitation.tokenExpiresAt.toISOString(),
         userExists: !!existingUser,
       },

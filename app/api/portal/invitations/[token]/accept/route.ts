@@ -28,19 +28,24 @@ export async function POST(
         token,
         status: 'PENDING',
       },
-      include: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
     });
 
     if (!invitation) {
       return NextResponse.json(
         { error: 'INVITATION_NOT_FOUND', message: 'Invitation not found or already used' },
+        { status: 404 }
+      );
+    }
+
+    // Fetch the organization separately
+    const organization = await prisma.organization.findUnique({
+      where: { id: invitation.organizationId },
+      select: { id: true, name: true },
+    });
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: 'ORGANIZATION_NOT_FOUND', message: 'Organization not found' },
         { status: 404 }
       );
     }
@@ -184,7 +189,7 @@ export async function POST(
           userId: user.id,
           organizationId: invitation.organizationId,
           role: memberRole as 'OWNER' | 'ADMIN' | 'CONTRIBUTOR' | 'VIEWER',
-          invitedBy: invitation.invitedById,
+          invitedBy: invitation.invitedByMemberId,
           invitedAt: invitation.createdAt,
           joinedAt: new Date(),
           isActive: true,
@@ -207,10 +212,10 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `Successfully joined ${invitation.organization.name}`,
+      message: `Successfully joined ${organization.name}`,
       organization: {
-        id: invitation.organization.id,
-        name: invitation.organization.name,
+        id: organization.id,
+        name: organization.name,
       },
       ...(authToken && {
         token: authToken,
