@@ -1,4 +1,4 @@
-# PHASE 30: ENTERPRISE PORTAL - Organization Client Management
+# PHASE 32: ENTERPRISE PORTAL - Organization Client Management
 
 > **Status**: APPROVED - READY FOR IMPLEMENTATION
 > **Author**: Claude AI
@@ -13,11 +13,12 @@
 | Question | Decision | Date |
 |----------|----------|------|
 | Pricing Model | TBD - To be finalized later | 2026-01-19 |
-| White-Labeling | YES - Required (Phase 30.11) | 2026-01-19 |
-| SSO/SAML | YES - Required (Phase 30.12) | 2026-01-19 |
+| White-Labeling | YES - Required (Phase 32.11) | 2026-01-19 |
+| SSO/SAML | YES - Required (Phase 32.12) | 2026-01-19 |
 | Multi-Organization Clients | YES - One client can belong to multiple orgs | 2026-01-19 |
-| API Access | **CRITICAL** - Required for Xero integration (Phase 30.13) | 2026-01-19 |
+| API Access | **CRITICAL** - Required for Xero integration (Phase 32.13) | 2026-01-19 |
 | Xero Integration | **CRITICAL** - Primary accounting software integration | 2026-01-19 |
+| **Data Integrity** | **CRITICAL** - Monitrax = Single Source of Truth, export-only sync | 2026-01-19 |
 
 ---
 
@@ -176,7 +177,7 @@ model Organization {
   description           String?
   type                  OrganizationType     @default(OTHER)
 
-  // Branding (Phase 30.11: White-Labeling)
+  // Branding (Phase 32.11: White-Labeling)
   logoUrl               String?
   faviconUrl            String?
   primaryColor          String?              // Hex color for portal branding
@@ -219,7 +220,7 @@ model Organization {
   apiAccessEnabled      Boolean              @default(false)
   whiteLabelEnabled     Boolean              @default(false)
 
-  // SSO Configuration (Phase 30.12)
+  // SSO Configuration (Phase 32.12)
   ssoEnabled            Boolean              @default(false)
   ssoProvider           String?              // "saml", "oidc"
   ssoEntityId           String?              // SAML Entity ID
@@ -232,7 +233,7 @@ model Organization {
   ssoEnforced           Boolean              @default(false)  // Require SSO for all users
   ssoJitProvisioning    Boolean              @default(true)   // Auto-create users on first login
 
-  // API Access (Phase 30.13)
+  // API Access (Phase 32.13)
   apiKeys               OrganizationApiKey[]
 
   createdAt             DateTime             @default(now())
@@ -422,7 +423,7 @@ model ClientAccessLog {
   @@map("client_access_logs")
 }
 
-// Organization API Keys (Phase 30.13)
+// Organization API Keys (Phase 32.13)
 model OrganizationApiKey {
   id                    String               @id @default(uuid())
   organizationId        String
@@ -462,7 +463,7 @@ model OrganizationApiKey {
 }
 
 // =============================================================================
-// ACCOUNTING INTEGRATIONS (Phase 30.14+)
+// ACCOUNTING INTEGRATIONS (Phase 32.14+)
 // Extensible design supporting Xero (primary), MYOB, QuickBooks, Sage, etc.
 // =============================================================================
 
@@ -703,7 +704,7 @@ PUT    /api/settings/organizations/:orgId/consent        # Update consent settin
 DELETE /api/settings/organizations/:orgId/consent        # Revoke all consent
 ```
 
-### 4.7 White-Labeling APIs (Phase 30.11)
+### 4.7 White-Labeling APIs (Phase 32.11)
 
 ```
 GET    /api/portal/organizations/:orgId/branding         # Get branding settings
@@ -718,7 +719,7 @@ GET    /api/portal/organizations/:orgId/domain/verify    # Check domain verifica
 DELETE /api/portal/organizations/:orgId/domain           # Remove custom domain
 ```
 
-### 4.8 SSO/SAML APIs (Phase 30.12)
+### 4.8 SSO/SAML APIs (Phase 32.12)
 
 ```
 # SSO Configuration
@@ -737,7 +738,7 @@ GET    /api/auth/oidc/:orgSlug/callback                  # OIDC callback
 GET    /api/auth/oidc/:orgSlug/login                     # Initiate OIDC login
 ```
 
-### 4.9 API Key Management APIs (Phase 30.13)
+### 4.9 API Key Management APIs (Phase 32.13)
 
 ```
 # API Keys
@@ -765,7 +766,7 @@ GET    /api/v1/org/clients/:clientId/accounts            # Get client accounts
 # ... similar endpoints for other data types
 ```
 
-### 4.11 Accounting Integration APIs (Phase 30.14)
+### 4.11 Accounting Integration APIs (Phase 32.14)
 
 ```
 # Integration Management
@@ -1055,9 +1056,366 @@ Add to user Settings:
 
 ---
 
-## 7. Implementation Phases
+## 7. Data Integrity Architecture
 
-### Phase 30.1: Foundation (Core Infrastructure)
+> **CRITICAL PRINCIPLE**: Monitrax is the **Single Source of Truth**. Data is NEVER duplicated—only referenced or exported.
+
+### 7.1 Single Source of Truth Strategy
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    DATA OWNERSHIP MODEL                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│                    ┌─────────────────────┐                                  │
+│                    │     MONITRAX        │                                  │
+│                    │  (Source of Truth)  │                                  │
+│                    │                     │                                  │
+│                    │  • All client data  │                                  │
+│                    │  • Transactions     │                                  │
+│                    │  • Properties       │                                  │
+│                    │  • Documents        │                                  │
+│                    └──────────┬──────────┘                                  │
+│                               │                                             │
+│              ┌────────────────┼────────────────┐                            │
+│              │                │                │                            │
+│              ▼                ▼                ▼                            │
+│    ┌─────────────────┐ ┌─────────────┐ ┌─────────────────┐                 │
+│    │      XERO       │ │    MYOB     │ │   QuickBooks    │                 │
+│    │   (Consumer)    │ │  (Consumer) │ │   (Consumer)    │                 │
+│    │                 │ │             │ │                 │                 │
+│    │  Receives data  │ │ Receives    │ │  Receives data  │                 │
+│    │  from Monitrax  │ │ data from   │ │  from Monitrax  │                 │
+│    │                 │ │ Monitrax    │ │                 │                 │
+│    └─────────────────┘ └─────────────┘ └─────────────────┘                 │
+│                                                                             │
+│    Legend:                                                                  │
+│    ────► = One-way data flow (export only)                                 │
+│    Data NEVER flows back to overwrite Monitrax                             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 7.2 Data Flow Rules
+
+| Rule | Description | Enforcement |
+|------|-------------|-------------|
+| **R1: No Duplication** | Data exists ONLY in Monitrax database | External systems receive copies/references, not ownership |
+| **R2: Export-Only by Default** | Sync direction is OUTBOUND only | Monitrax → External, never External → Monitrax |
+| **R3: Reference Mapping** | Track what was sent where | `IntegrationEntityMapping` links Monitrax ID ↔ External ID |
+| **R4: No External Edits** | Changes made in Xero don't affect Monitrax | Users must edit in Monitrax, then re-sync |
+| **R5: Audit Everything** | Every sync operation is logged | `IntegrationSyncLog` with full details |
+
+### 7.3 Data Categories & Ownership
+
+| Data Category | Owner | Can Export To | Import From? |
+|---------------|-------|---------------|--------------|
+| **Client Profile** | Monitrax | All integrations | NO |
+| **Properties** | Monitrax | All integrations | NO |
+| **Loans** | Monitrax | All integrations | NO |
+| **Bank Accounts** | Monitrax | Xero (as contacts) | NO |
+| **Transactions** | Monitrax | Xero (as invoices/bills) | NO* |
+| **Income** | Monitrax | Xero (as invoices) | NO |
+| **Expenses** | Monitrax | Xero (as bills) | NO |
+| **Documents** | Monitrax | Xero (as attachments) | NO |
+| **Categories** | Monitrax | Mapped to Xero accounts | NO |
+| **Tax Settings** | Monitrax | Mapped to Xero tax codes | NO |
+
+*Note: Bank feed imports may be allowed as a **separate data source**, but they create NEW records in Monitrax rather than modifying existing ones.
+
+### 7.4 Sync Behavior Specification
+
+#### 7.4.1 Export Flow (Monitrax → External)
+
+```typescript
+// Pseudocode for export operation
+async function exportToXero(transaction: Transaction, integration: AccountingIntegration) {
+  // 1. Check if already exported
+  const existingMapping = await findEntityMapping(integration.id, transaction.id);
+
+  if (existingMapping) {
+    // 2a. Update existing record in Xero (if changed)
+    const currentHash = hashTransactionData(transaction);
+    if (currentHash !== existingMapping.syncHash) {
+      await xeroClient.updateInvoice(existingMapping.externalEntityId, transaction);
+      await updateSyncHash(existingMapping.id, currentHash);
+      logSyncOperation('UPDATE', transaction.id, existingMapping.externalEntityId);
+    } else {
+      logSyncOperation('SKIP_UNCHANGED', transaction.id);
+    }
+  } else {
+    // 2b. Create new record in Xero
+    const xeroInvoice = await xeroClient.createInvoice(transaction);
+    await createEntityMapping({
+      integrationId: integration.id,
+      monitraxEntityType: 'Transaction',
+      monitraxEntityId: transaction.id,
+      externalEntityType: 'Invoice',
+      externalEntityId: xeroInvoice.invoiceId,
+      syncHash: hashTransactionData(transaction),
+    });
+    logSyncOperation('CREATE', transaction.id, xeroInvoice.invoiceId);
+  }
+
+  // 3. Mark transaction as synced
+  await markAsSynced(transaction.id, integration.provider);
+}
+```
+
+#### 7.4.2 What Happens If Data Changes in External System?
+
+| Scenario | Monitrax Behavior |
+|----------|-------------------|
+| User edits invoice in Xero | **Ignored** - Monitrax remains unchanged |
+| User deletes invoice in Xero | **Logged as warning** - Mapping marked as "external_deleted" |
+| Next sync from Monitrax | **Re-creates** the record in Xero (or updates if still exists) |
+| User wants Xero changes | Must manually update in Monitrax, then re-sync |
+
+#### 7.4.3 Conflict Prevention
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  CONFLICT PREVENTION                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  MONITRAX (Source of Truth)                                │
+│  ┌─────────────────────────────────────────┐               │
+│  │  Transaction #1234                       │               │
+│  │  Amount: $500                            │               │
+│  │  Last Modified: 2026-01-19 10:00:00     │               │
+│  │  Sync Status: SYNCED                     │               │
+│  │  Synced To: [Xero: INV-001]             │               │
+│  └─────────────────────────────────────────┘               │
+│                     │                                       │
+│                     │ Export (one-way)                      │
+│                     ▼                                       │
+│  XERO (Consumer)                                           │
+│  ┌─────────────────────────────────────────┐               │
+│  │  Invoice INV-001                         │               │
+│  │  Amount: $500                            │               │
+│  │  Source: Monitrax                        │               │
+│  │  ⚠️ READ-ONLY RECOMMENDATION            │               │
+│  └─────────────────────────────────────────┘               │
+│                                                             │
+│  If user edits INV-001 in Xero to $600:                    │
+│  • Monitrax #1234 remains $500                             │
+│  • Next sync will reset Xero back to $500                  │
+│  • Or: Sync detects mismatch, logs warning                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 7.5 Data Validation Rules
+
+#### 7.5.1 Pre-Sync Validation
+
+| Check | Description | Action on Failure |
+|-------|-------------|-------------------|
+| **Data Completeness** | All required fields present | Skip record, log error |
+| **Data Format** | Dates, amounts, codes valid | Transform or skip |
+| **Business Rules** | Amount > 0, valid category | Skip record, log error |
+| **Duplicate Check** | Not already synced (same hash) | Skip, mark as duplicate |
+| **Consent Check** | Client has granted access | Skip all client data |
+
+#### 7.5.2 Post-Sync Verification
+
+```typescript
+// After sync, verify data integrity
+async function verifySyncIntegrity(syncLog: IntegrationSyncLog) {
+  const results = {
+    itemsVerified: 0,
+    mismatches: [],
+  };
+
+  for (const mapping of await getMappingsForSync(syncLog.id)) {
+    // Fetch from both systems
+    const monitraxData = await getMonitoraxEntity(mapping.monitraxEntityId);
+    const externalData = await fetchExternalEntity(mapping.externalEntityId);
+
+    // Compare critical fields
+    if (monitraxData.amount !== externalData.amount) {
+      results.mismatches.push({
+        entityId: mapping.monitraxEntityId,
+        field: 'amount',
+        expected: monitraxData.amount,
+        actual: externalData.amount,
+      });
+    }
+
+    results.itemsVerified++;
+  }
+
+  if (results.mismatches.length > 0) {
+    await alertAdminOfMismatches(results.mismatches);
+  }
+
+  return results;
+}
+```
+
+### 7.6 Data Consistency Guarantees
+
+| Guarantee | Implementation |
+|-----------|----------------|
+| **Atomicity** | Sync operations are transactional - all or nothing |
+| **Consistency** | Pre-validation ensures only valid data is synced |
+| **Isolation** | Concurrent syncs to same provider are queued |
+| **Durability** | All sync operations logged before execution |
+
+#### 7.6.1 Transaction Safety
+
+```typescript
+// All sync operations wrapped in transactions
+async function syncClientToXero(clientId: string, integrationId: string) {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Lock the client record (prevent concurrent edits)
+    const client = await tx.organizationClient.findUnique({
+      where: { id: clientId },
+      include: { user: true },
+    });
+
+    // 2. Create sync log entry FIRST
+    const syncLog = await tx.integrationSyncLog.create({
+      data: {
+        integrationId,
+        organizationClientId: clientId,
+        syncType: 'FULL',
+        status: 'IN_PROGRESS',
+        triggeredBy: 'MANUAL',
+      },
+    });
+
+    try {
+      // 3. Perform sync
+      const results = await performXeroSync(client, integrationId);
+
+      // 4. Update sync log with results
+      await tx.integrationSyncLog.update({
+        where: { id: syncLog.id },
+        data: {
+          status: 'COMPLETED',
+          itemsProcessed: results.processed,
+          itemsCreated: results.created,
+          completedAt: new Date(),
+        },
+      });
+
+      return results;
+    } catch (error) {
+      // 5. Log failure (sync log persists even on failure)
+      await tx.integrationSyncLog.update({
+        where: { id: syncLog.id },
+        data: {
+          status: 'FAILED',
+          errorSummary: error.message,
+          completedAt: new Date(),
+        },
+      });
+      throw error;
+    }
+  });
+}
+```
+
+### 7.7 Optional: Limited Inbound Data
+
+> **By default, inbound sync is DISABLED.** However, some organizations may want to import reference data.
+
+#### 7.7.1 Allowed Inbound Data (Optional Feature)
+
+| Data Type | Can Import? | Behavior |
+|-----------|-------------|----------|
+| Chart of Accounts | YES (reference only) | Creates mapping options, doesn't modify Monitrax categories |
+| Tax Codes | YES (reference only) | Creates mapping options, doesn't modify Monitrax tax settings |
+| Contacts | NO | - |
+| Invoices/Bills | NO | - |
+| Bank Transactions | SPECIAL* | Creates NEW records if enabled, never overwrites |
+
+*Bank feed import: If enabled, imports as new transactions with `source: 'XERO_BANK_FEED'` flag. User must manually reconcile with existing Monitrax data.
+
+#### 7.7.2 Inbound Data Handling
+
+```typescript
+// Inbound data NEVER overwrites - only creates new or maps references
+async function importXeroChartOfAccounts(integrationId: string) {
+  const xeroAccounts = await xeroClient.getChartOfAccounts();
+
+  // Store as REFERENCE DATA for mapping UI - not as Monitrax categories
+  await prisma.accountingIntegration.update({
+    where: { id: integrationId },
+    data: {
+      providerMetadata: {
+        ...existingMetadata,
+        xeroChartOfAccounts: xeroAccounts.map(acc => ({
+          code: acc.code,
+          name: acc.name,
+          type: acc.type,
+          // Used for dropdown in mapping UI
+        })),
+        lastChartOfAccountsSync: new Date(),
+      },
+    },
+  });
+
+  // No Monitrax categories are created or modified
+}
+```
+
+### 7.8 Data Integrity Monitoring
+
+#### 7.8.1 Automated Health Checks
+
+| Check | Frequency | Alert Threshold |
+|-------|-----------|-----------------|
+| Sync success rate | Every sync | < 95% success |
+| Data hash mismatches | Daily | Any mismatch |
+| Orphaned mappings | Weekly | > 10 orphans |
+| Stale syncs | Daily | Last sync > 7 days ago |
+| Token expiry | Hourly | Expiry within 24h |
+
+#### 7.8.2 Integrity Dashboard (for Organization Portal)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  INTEGRATION HEALTH                           Xero: ✅ OK   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Last Sync: 2 hours ago                                     │
+│  Records Synced: 1,234                                      │
+│  Success Rate: 99.2%                                        │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  Data Integrity Status                              │   │
+│  │  ✅ All Monitrax records are source of truth       │   │
+│  │  ✅ No duplicate records detected                   │   │
+│  │  ✅ All mappings valid                              │   │
+│  │  ⚠️ 3 records modified in Xero (will be overwritten)│   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  [View Sync History]  [Run Manual Sync]  [View Conflicts]  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 7.9 Summary: Data Integrity Principles
+
+| # | Principle | Implementation |
+|---|-----------|----------------|
+| 1 | **Monitrax = Single Source of Truth** | All data owned by Monitrax |
+| 2 | **Export-Only by Default** | One-way sync to external systems |
+| 3 | **No Duplication** | Entity mappings link IDs, don't copy data |
+| 4 | **External Edits Ignored** | Changes in Xero don't affect Monitrax |
+| 5 | **Hash-Based Change Detection** | Only sync if data actually changed |
+| 6 | **Full Audit Trail** | Every sync operation logged |
+| 7 | **Transactional Integrity** | Atomic operations, rollback on failure |
+| 8 | **Verification Checks** | Post-sync validation of critical fields |
+| 9 | **Conflict Alerting** | Warn when external data differs |
+| 10 | **Reference-Only Imports** | Inbound data for mapping, not overwriting |
+
+---
+
+## 8. Implementation Phases
+
+### Phase 32.1: Foundation (Core Infrastructure)
 - [ ] Extend Organization model in Prisma schema
 - [ ] Create OrganizationClient model
 - [ ] Create OrganizationInvitation model
@@ -1065,68 +1423,68 @@ Add to user Settings:
 - [ ] Create portal permission guards
 - [ ] Set up portal API route structure
 
-### Phase 30.2: Organization Management
+### Phase 32.2: Organization Management
 - [ ] Organization creation/edit API
 - [ ] Organization settings UI
 - [ ] Team invitation flow (API + UI)
 - [ ] Team management UI
 - [ ] Role assignment
 
-### Phase 30.3: Client Management
+### Phase 32.3: Client Management
 - [ ] Client invitation API
 - [ ] Client invitation email templates
 - [ ] Client list API with search/filter
 - [ ] Client list UI
 - [ ] Client status management
 
-### Phase 30.4: Consent System
+### Phase 32.4: Consent System
 - [ ] Consent model and API
 - [ ] Client-side consent UI (in Settings)
 - [ ] Granular scope selection
 - [ ] Consent audit logging
 - [ ] Consent expiry handling
 
-### Phase 30.5: Client Data Access
+### Phase 32.5: Client Data Access
 - [ ] Portal dashboard API
 - [ ] Client overview page (read-only snapshot)
 - [ ] Per-module data viewing (properties, loans, etc.)
 - [ ] Respect consent scopes in data retrieval
 - [ ] Client data caching strategy
 
-### Phase 30.6: Advisor Tools
+### Phase 32.6: Advisor Tools
 - [ ] ClientNote model and API
 - [ ] ClientTask model and API
 - [ ] Notes UI in client detail view
 - [ ] Tasks UI with due date tracking
 - [ ] Task notifications
 
-### Phase 30.7: Export & Reporting
+### Phase 32.7: Export & Reporting
 - [ ] Client data export (PDF, CSV, Excel)
 - [ ] Tax summary report generation
 - [ ] Bulk client export
 - [ ] Compliance/access log report
 
-### Phase 30.8: Audit & Compliance
+### Phase 32.8: Audit & Compliance
 - [ ] ClientAccessLog model
 - [ ] Log all data access automatically
 - [ ] Access log viewer UI
 - [ ] Compliance report generation
 - [ ] Data retention policies
 
-### Phase 30.9: Billing Integration
+### Phase 32.9: Billing Integration
 - [ ] Organization subscription management
 - [ ] Plan limits enforcement (max clients)
 - [ ] Upgrade/downgrade flows
 - [ ] Usage tracking
 
-### Phase 30.10: Polish & Testing
+### Phase 32.10: Polish & Testing
 - [ ] End-to-end testing
 - [ ] Security audit
 - [ ] Performance optimization
 - [ ] Documentation
 - [ ] Beta testing with pilot organizations
 
-### Phase 30.11: White-Labeling (Enterprise Feature)
+### Phase 32.11: White-Labeling (Enterprise Feature)
 - [ ] Organization branding settings (logo, colors, fonts)
 - [ ] Custom email templates with org branding
 - [ ] Branded client onboarding experience
@@ -1134,7 +1492,7 @@ Add to user Settings:
 - [ ] Branded PDF exports with org logo
 - [ ] Theme customization UI for org admins
 
-### Phase 30.12: SSO/SAML Integration (Enterprise Feature)
+### Phase 32.12: SSO/SAML Integration (Enterprise Feature)
 - [ ] SAML 2.0 identity provider support
 - [ ] OIDC (OpenID Connect) support
 - [ ] Organization SSO configuration UI
@@ -1143,7 +1501,7 @@ Add to user Settings:
 - [ ] SSO enforcement settings per organization
 - [ ] Integration testing with major IdPs (Okta, Azure AD, Google Workspace)
 
-### Phase 30.13: API Access (CRITICAL)
+### Phase 32.13: API Access (CRITICAL)
 - [ ] Organization API key management
 - [ ] API key generation and rotation
 - [ ] Scoped API permissions (read-only by default)
@@ -1153,18 +1511,18 @@ Add to user Settings:
 - [ ] Webhook support for client events
 - [ ] API versioning strategy
 
-### Phase 30.14: Accounting Integrations (CRITICAL)
+### Phase 32.14: Accounting Integrations (CRITICAL)
 > **Priority**: HIGH - Primary feature for accountants
 > **Primary Provider**: Xero (Australian market leader)
 
-#### 30.14.1 Integration Framework
+#### 32.14.1 Integration Framework
 - [ ] Create AccountingIntegration, IntegrationSyncLog, IntegrationEntityMapping models
 - [ ] Build provider-agnostic integration service
 - [ ] OAuth 2.0 token management (storage, refresh, expiry handling)
 - [ ] Integration status monitoring and error handling
 - [ ] Integration settings UI (connect, configure, disconnect)
 
-#### 30.14.2 Xero Integration (Primary)
+#### 32.14.2 Xero Integration (Primary)
 - [ ] Register Monitrax as Xero App Partner
 - [ ] Implement Xero OAuth 2.0 flow
 - [ ] Xero-specific API client wrapper
@@ -1177,7 +1535,7 @@ Add to user Settings:
 - [ ] "Send to Xero" button on transactions
 - [ ] Xero Practice Manager integration (for multi-client accounting firms)
 
-#### 30.14.3 Data Sync Engine
+#### 32.14.3 Data Sync Engine
 - [ ] Configurable sync direction (outbound, inbound, bi-directional)
 - [ ] Scheduled sync (hourly, daily, weekly)
 - [ ] Manual sync trigger
@@ -1187,13 +1545,13 @@ Add to user Settings:
 - [ ] Sync history and audit log
 - [ ] Failed sync retry logic
 
-#### 30.14.4 Entity Mapping System
+#### 32.14.4 Entity Mapping System
 - [ ] Track Monitrax ↔ External entity relationships
 - [ ] Change detection (hash-based)
 - [ ] Prevent duplicate syncs
 - [ ] Entity unlinking option
 
-### Phase 30.15: Additional Accounting Providers
+### Phase 32.15: Additional Accounting Providers
 > Extensible to support other providers using the same framework
 
 - [ ] **MYOB** - Australia/NZ market
@@ -1243,9 +1601,9 @@ The current `Organization` and `OrganizationMember` tables will be extended with
 
 | Question | Resolution |
 |----------|------------|
-| **White-Labeling** | YES - Included in Phase 30.11 |
-| **SSO/SAML** | YES - Included in Phase 30.12 |
-| **API Access** | YES - Portal-first, API as premium feature in Phase 30.13 |
+| **White-Labeling** | YES - Included in Phase 32.11 |
+| **SSO/SAML** | YES - Included in Phase 32.12 |
+| **API Access** | YES - Portal-first, API as premium feature in Phase 32.13 |
 | **Multi-Organization** | YES - Clients can belong to multiple organizations |
 
 ### Pending (To Be Decided)
@@ -1303,6 +1661,17 @@ This is supported by the `OrganizationClient` model which creates a many-to-many
 
 ---
 
-*Document Version: 1.2*
+*Document Version: 1.3*
 *Last Updated: 2026-01-19*
 *Approved for Implementation: 2026-01-19*
+
+---
+
+### Revision History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-01-19 | Initial blueprint |
+| 1.1 | 2026-01-19 | Added White-labeling, SSO, API access phases |
+| 1.2 | 2026-01-19 | Added Accounting Integrations, unified login flow |
+| 1.3 | 2026-01-19 | Added Data Integrity Architecture (Section 7) |

@@ -1,6 +1,6 @@
 # Changelog - 2026-01-19
 
-## Phase 30: Enterprise Portal - APPROVED FOR IMPLEMENTATION
+## Phase 32: Enterprise Portal - APPROVED FOR IMPLEMENTATION
 
 ### Overview
 
@@ -8,7 +8,7 @@ Comprehensive blueprint documentation for the Enterprise Portal feature has been
 
 ### Document
 
-- **PHASE_30_ENTERPRISE_PORTAL.md** (v1.2) - Complete specification
+- **PHASE_32_ENTERPRISE_PORTAL.md** (v1.2) - Complete specification
 
 ### Key Decisions Made
 
@@ -53,21 +53,21 @@ Comprehensive blueprint documentation for the Enterprise Portal feature has been
 
 | Phase | Focus | Priority |
 |-------|-------|----------|
-| **30.1** | Foundation (schema, auth, routes) | HIGH |
-| **30.2** | Organization Management | HIGH |
-| **30.3** | Client Management | HIGH |
-| **30.4** | Consent System | HIGH |
-| **30.5** | Client Data Access | HIGH |
-| **30.6** | Advisor Tools (notes, tasks) | MEDIUM |
-| **30.7** | Export & Reporting | MEDIUM |
-| **30.8** | Audit & Compliance | MEDIUM |
-| **30.9** | Billing Integration | MEDIUM |
-| **30.10** | Polish & Testing | HIGH |
-| **30.11** | White-Labeling | MEDIUM |
-| **30.12** | SSO/SAML | MEDIUM |
-| **30.13** | API Access | **CRITICAL** |
-| **30.14** | Accounting Integrations (Xero) | **CRITICAL** |
-| **30.15** | Additional Providers (MYOB, etc.) | LOW |
+| **32.1** | Foundation (schema, auth, routes) | HIGH |
+| **32.2** | Organization Management | HIGH |
+| **32.3** | Client Management | HIGH |
+| **32.4** | Consent System | HIGH |
+| **32.5** | Client Data Access | HIGH |
+| **32.6** | Advisor Tools (notes, tasks) | MEDIUM |
+| **32.7** | Export & Reporting | MEDIUM |
+| **32.8** | Audit & Compliance | MEDIUM |
+| **32.9** | Billing Integration | MEDIUM |
+| **32.10** | Polish & Testing | HIGH |
+| **32.11** | White-Labeling | MEDIUM |
+| **32.12** | SSO/SAML | MEDIUM |
+| **32.13** | API Access | **CRITICAL** |
+| **32.14** | Accounting Integrations (Xero) | **CRITICAL** |
+| **32.15** | Additional Providers (MYOB, etc.) | LOW |
 
 ### API Endpoints (60+)
 
@@ -94,6 +94,54 @@ Comprehensive blueprint documentation for the Enterprise Portal feature has been
 
 ---
 
+## Update: Data Integrity Architecture (v1.3)
+
+Added comprehensive **Section 7: Data Integrity Architecture** to ensure data correctness and prevent duplication.
+
+### Key Principles
+
+| # | Principle | Description |
+|---|-----------|-------------|
+| 1 | **Monitrax = Single Source of Truth** | All data owned by Monitrax only |
+| 2 | **Export-Only by Default** | One-way sync to external systems (Xero, etc.) |
+| 3 | **No Duplication** | Entity mappings link IDs, don't copy data |
+| 4 | **External Edits Ignored** | Changes in Xero don't affect Monitrax |
+| 5 | **Hash-Based Change Detection** | Only sync if data actually changed |
+| 6 | **Full Audit Trail** | Every sync operation logged |
+| 7 | **Transactional Integrity** | Atomic operations, rollback on failure |
+| 8 | **Verification Checks** | Post-sync validation of critical fields |
+| 9 | **Conflict Alerting** | Warn when external data differs |
+| 10 | **Reference-Only Imports** | Inbound data for mapping only, not overwriting |
+
+### Data Flow
+
+```
+MONITRAX (Source of Truth)
+    │
+    │  Export Only (one-way)
+    ▼
+┌──────────────────────────────────────┐
+│  XERO / MYOB / QuickBooks (Consumers) │
+│  - Receive data from Monitrax        │
+│  - Cannot modify Monitrax data       │
+│  - External edits are ignored/warned │
+└──────────────────────────────────────┘
+```
+
+### Additions to Blueprint
+
+- Section 7.1: Single Source of Truth Strategy
+- Section 7.2: Data Flow Rules
+- Section 7.3: Data Categories & Ownership
+- Section 7.4: Sync Behavior Specification
+- Section 7.5: Data Validation Rules
+- Section 7.6: Data Consistency Guarantees (ACID)
+- Section 7.7: Optional Limited Inbound Data
+- Section 7.8: Data Integrity Monitoring
+- Section 7.9: Summary of 10 Integrity Principles
+
+---
+
 ## Status: APPROVED
 
 **Ready to begin implementation** starting with Phase 30.1 (Foundation).
@@ -110,3 +158,4 @@ Comprehensive blueprint documentation for the Enterprise Portal feature has been
 *Author: Claude AI*
 *Status: Approved for Implementation*
 *Date: 2026-01-19*
+*Document Version: 1.3*
