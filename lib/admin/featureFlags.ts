@@ -106,9 +106,10 @@ export function resetAdminFeatureFlags(): void {
 
 /**
  * Check if the admin portal is accessible
+ * Reads directly from env to avoid caching issues
  */
 export function isAdminPortalAccessible(): boolean {
-  return getAdminFeatureFlags().adminPortalEnabled;
+  return process.env.NEXT_PUBLIC_ADMIN_PORTAL_ENABLED === 'true';
 }
 
 /**
