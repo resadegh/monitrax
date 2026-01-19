@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
 import { isPortalAccessible } from '@/lib/portal/featureFlags';
 import { PORTAL_ERROR_CODES } from '@/lib/portal/constants';
 import type { Prisma } from '@prisma/client';
@@ -36,15 +37,18 @@ interface MembershipWithOrg {
   organization: OrganizationData;
 }
 
-// Placeholder for auth - will integrate with existing auth system
+// Get current user ID from auth token
 async function getCurrentUserId(request: NextRequest): Promise<string | null> {
-  // TODO: Integrate with existing auth system
-  // This will use the same JWT auth as the main app
   const authHeader = request.headers.get('authorization');
-  if (!authHeader) return null;
+  if (!authHeader?.startsWith('Bearer ')) return null;
 
-  // For now, return null - actual implementation will parse JWT
-  return null;
+  try {
+    const token = authHeader.substring(7);
+    const payload = await verifyToken(token);
+    return payload?.userId || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
