@@ -3327,3 +3327,19 @@ model IntegrationEntityMapping {
   @@index([externalEntityType, externalEntityId])
   @@map("integration_entity_mappings")
 }
+
+// =============================================================================
+// ADMIN USERS (Legacy - preserved for existing data)
+// =============================================================================
+
+model AdminUser {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("admin")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
