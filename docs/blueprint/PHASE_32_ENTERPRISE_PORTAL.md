@@ -2294,3 +2294,142 @@ This is supported by the `OrganizationClient` model which creates a many-to-many
 | 1.3 | 2026-01-19 | Added Data Integrity Architecture (Section 7) |
 | 1.4 | 2026-01-19 | Added Isolation & Non-Breaking Implementation (Section 8) |
 | 1.5 | 2026-01-19 | Added Accountant & FA User Experience (Section 5.4) |
+| 1.6 | 2026-01-19 | Added Deployment Configuration (Section 15) |
+
+---
+
+## 15. Deployment Configuration
+
+### 15.1 Architecture Overview
+
+Monitrax uses a dual-deployment architecture:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    DEPLOYMENT ARCHITECTURE                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   ┌─────────────┐                      ┌─────────────┐              │
+│   │   VERCEL    │                      │   RENDER    │              │
+│   │  (Frontend) │                      │  (Backend)  │              │
+│   │             │                      │             │              │
+│   │ • Next.js   │◄────── API ─────────►│ • API       │              │
+│   │ • SSR/SSG   │                      │ • Database  │              │
+│   │ • Static    │                      │ • Prisma    │              │
+│   └─────────────┘                      └─────────────┘              │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 15.2 Environment Variables
+
+**BOTH Vercel AND Render require these environment variables:**
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORTAL_ENABLED` | **Yes** | `false` | Master switch for portal access |
+| `PORTAL_TEAM_MANAGEMENT` | No | `true` | Enable team management features |
+| `PORTAL_INTEGRATIONS` | No | `true` | Enable accounting integrations |
+| `PORTAL_NOTES` | No | `true` | Enable client notes |
+| `PORTAL_TASKS` | No | `true` | Enable client tasks |
+| `PORTAL_API_ACCESS` | No | `false` | Enable API key generation |
+| `PORTAL_WHITE_LABELING` | No | `false` | Enable white-labeling (Pro+) |
+| `PORTAL_SSO_SAML` | No | `false` | Enable SSO/SAML (Enterprise) |
+
+### 15.3 Vercel Configuration
+
+1. Go to **Vercel Dashboard** → Select your Monitrax project
+2. Click **Settings** → **Environment Variables**
+3. Add the following:
+
+```bash
+# Required
+PORTAL_ENABLED=true
+
+# Optional - Enable all features
+PORTAL_TEAM_MANAGEMENT=true
+PORTAL_INTEGRATIONS=true
+PORTAL_NOTES=true
+PORTAL_TASKS=true
+```
+
+4. Click **Save**
+5. Trigger a new deployment (Deployments → Redeploy)
+
+### 15.4 Render Configuration
+
+1. Go to **Render Dashboard** → Select your Monitrax service
+2. Click **Environment** tab
+3. Add the same environment variables as Vercel:
+
+```bash
+# Required
+PORTAL_ENABLED=true
+
+# Optional - Enable all features
+PORTAL_TEAM_MANAGEMENT=true
+PORTAL_INTEGRATIONS=true
+PORTAL_NOTES=true
+PORTAL_TASKS=true
+```
+
+4. Click **Save Changes**
+5. Render will automatically redeploy
+
+### 15.5 Database Migration
+
+After setting environment variables, run the database migration to create portal tables:
+
+**Option A: Via Render Build Command**
+
+Update your build command to include migration:
+```bash
+npx prisma generate && npx prisma db push && npm run build
+```
+
+**Option B: Manual Migration**
+
+Connect to your database environment and run:
+```bash
+npx prisma db push
+```
+
+Or with migrations:
+```bash
+npx prisma migrate deploy
+```
+
+### 15.6 Portal URLs
+
+Once enabled, the portal is accessible at:
+
+| URL | Description |
+|-----|-------------|
+| `/portal` | Portal home (redirects to dashboard or login) |
+| `/portal/login` | Portal login page |
+| `/portal/dashboard` | Organization dashboard |
+| `/portal/clients` | Client management |
+| `/portal/team` | Team management |
+| `/portal/integrations` | Accounting integrations |
+| `/portal/settings` | Organization settings |
+| `/portal/consent/[token]` | Client consent flow |
+
+### 15.7 Verification Checklist
+
+After deployment, verify the following:
+
+- [ ] Navigate to `https://your-domain.com/portal/login`
+- [ ] "Portal Not Yet Active" warning should be gone
+- [ ] "Organization Portal Login" button should be active (not grayed out)
+- [ ] API routes return data (not 503 errors)
+- [ ] Database tables are created (check `Organization`, `OrganizationMember`, etc.)
+
+### 15.8 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| "Portal Not Yet Active" message | Set `PORTAL_ENABLED=true` in both Vercel and Render |
+| "Organization Portal Login" grayed out | Ensure `PORTAL_ENABLED=true` and redeploy |
+| 503 Service Unavailable on `/api/portal/*` | Portal feature flag not enabled |
+| Database errors | Run `npx prisma db push` to create tables |
+| Type errors on build | Ensure Prisma client is generated: `npx prisma generate` |
