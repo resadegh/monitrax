@@ -156,7 +156,7 @@ function NavLink({
       {/* Child Navigation */}
       {hasChildren && (isActive || isChildActive) && (
         <div className="ml-8 mt-1 space-y-1">
-          {item.children.map((child) => (
+          {item.children?.map((child) => (
             <Link
               key={child.href}
               href={child.href}
