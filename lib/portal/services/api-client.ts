@@ -56,6 +56,14 @@ function buildUrl(path: string, params?: Record<string, string | number | boolea
 }
 
 /**
+ * Get the auth token from localStorage
+ */
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
+
+/**
  * Base fetch wrapper with error handling
  */
 async function baseFetch<T>(path: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
@@ -63,10 +71,18 @@ async function baseFetch<T>(path: string, options: RequestOptions = {}): Promise
 
   const url = buildUrl(path, params);
 
+  // Get auth token from localStorage (set by AuthContext)
+  const token = getAuthToken();
+  const authHeaders: Record<string, string> = {};
+  if (token) {
+    authHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
   const fetchOptions: RequestInit = {
     method,
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders,
       ...headers,
     },
     credentials: 'include', // Include cookies for auth
