@@ -12,6 +12,7 @@
  * - /team        → Team/staff management components
  * - /settings    → Organization settings components
  * - /integrations→ Accounting integration components
+ * - /consent     → Consent flow components
  *
  * Usage:
  * ```tsx
@@ -44,3 +45,6 @@ export * from './settings';
 
 // Integration Components
 export * from './integrations';
+
+// Consent Components
+export * from './consent';
