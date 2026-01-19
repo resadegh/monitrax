@@ -94,6 +94,42 @@ Comprehensive blueprint documentation for the Enterprise Portal feature has been
 
 ---
 
+## Update: Isolation & Non-Breaking Implementation (v1.4)
+
+Added **Section 8: Isolation & Non-Breaking Implementation** to ensure the Enterprise Portal does NOT interfere with the main application.
+
+### Core Isolation Principles
+
+| # | Principle | Description |
+|---|-----------|-------------|
+| 1 | **Additive Only** | Only ADD new code/tables, never modify existing |
+| 2 | **Separate Routes** | All portal routes under `/portal/*` and `/api/portal/*` |
+| 3 | **Separate Components** | New components in `/components/portal/*` |
+| 4 | **Feature Flags** | All features behind flags, disabled by default |
+| 5 | **No Existing API Changes** | Current APIs unchanged, new endpoints only |
+| 6 | **No Existing UI Changes** | Main dashboard untouched except context switcher |
+| 7 | **Approval Required** | ANY main app change requires explicit owner approval |
+
+### Changes Requiring Owner Approval
+
+| Change | Status |
+|--------|--------|
+| Login mode selector | ⏳ PENDING |
+| Context switcher | ⏳ PENDING |
+| `/api/auth/me` extension | ⏳ PENDING |
+| User settings: Organizations | ⏳ PENDING |
+| User model relation | ⏳ PENDING |
+| Organization model extension | ⏳ PENDING |
+| New permissions | ⏳ PENDING |
+
+### Rollback Strategy
+
+- Feature flags can disable all portal features instantly
+- New tables are isolated and don't affect main app
+- Emergency: git revert or disable flags
+
+---
+
 ## Update: Data Integrity Architecture (v1.3)
 
 Added comprehensive **Section 7: Data Integrity Architecture** to ensure data correctness and prevent duplication.
@@ -156,6 +192,6 @@ MONITRAX (Source of Truth)
 ---
 
 *Author: Claude AI*
-*Status: Approved for Implementation*
+*Status: Approved for Implementation (pending main app change approvals)*
 *Date: 2026-01-19*
-*Document Version: 1.3*
+*Document Version: 1.4*

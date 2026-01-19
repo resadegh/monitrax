@@ -19,6 +19,7 @@
 | API Access | **CRITICAL** - Required for Xero integration (Phase 32.13) | 2026-01-19 |
 | Xero Integration | **CRITICAL** - Primary accounting software integration | 2026-01-19 |
 | **Data Integrity** | **CRITICAL** - Monitrax = Single Source of Truth, export-only sync | 2026-01-19 |
+| **Isolation** | **CRITICAL** - Must NOT break/change main app without approval | 2026-01-19 |
 
 ---
 
@@ -1413,7 +1414,240 @@ async function importXeroChartOfAccounts(integrationId: string) {
 
 ---
 
-## 8. Implementation Phases
+## 8. Isolation & Non-Breaking Implementation
+
+> **CRITICAL REQUIREMENT**: The Enterprise Portal MUST NOT interfere with, break, or change ANY existing functionality in the main Monitrax application. All changes require explicit user approval.
+
+### 8.1 Core Isolation Principles
+
+| # | Principle | Enforcement |
+|---|-----------|-------------|
+| 1 | **Additive Only** | Only ADD new code/tables, never modify existing |
+| 2 | **Separate Routes** | All portal routes under `/portal/*` and `/api/portal/*` |
+| 3 | **Separate Components** | New components in `/components/portal/*` |
+| 4 | **Feature Flags** | All features behind flags, disabled by default |
+| 5 | **No Existing API Changes** | Current APIs unchanged, new endpoints only |
+| 6 | **No Existing UI Changes** | Main dashboard untouched except context switcher |
+| 7 | **Approval Required** | ANY main app change requires explicit owner approval |
+
+### 8.2 Code Organization
+
+```
+/home/user/monitrax/
+├── app/
+│   ├── dashboard/           # ❌ DO NOT MODIFY (existing)
+│   ├── api/                 # ❌ DO NOT MODIFY existing routes
+│   │   ├── auth/            # ❌ DO NOT MODIFY
+│   │   ├── accounts/        # ❌ DO NOT MODIFY
+│   │   ├── properties/      # ❌ DO NOT MODIFY
+│   │   └── portal/          # ✅ NEW - All portal APIs here
+│   │       ├── organizations/
+│   │       ├── clients/
+│   │       └── integrations/
+│   ├── portal/              # ✅ NEW - All portal UI here
+│   │   └── [orgSlug]/
+│   │       ├── dashboard/
+│   │       ├── clients/
+│   │       └── settings/
+│   └── login/               # ⚠️ MINIMAL CHANGE (add mode selector)
+│
+├── components/
+│   ├── ui/                  # ❌ DO NOT MODIFY (existing)
+│   ├── dashboard/           # ❌ DO NOT MODIFY (existing)
+│   └── portal/              # ✅ NEW - All portal components here
+│       ├── PortalLayout.tsx
+│       ├── ClientList.tsx
+│       └── ...
+│
+├── lib/
+│   ├── auth/                # ⚠️ EXTEND ONLY (add org context)
+│   │   ├── index.ts         # ❌ DO NOT MODIFY
+│   │   ├── permissions.ts   # ⚠️ ADD new permissions, don't change existing
+│   │   └── portalContext.ts # ✅ NEW - Portal-specific auth
+│   ├── db/
+│   │   ├── tenant.ts        # ❌ DO NOT MODIFY
+│   │   └── portalTenant.ts  # ✅ NEW - Portal data access
+│   └── portal/              # ✅ NEW - All portal business logic
+│       ├── organizations.ts
+│       ├── clients.ts
+│       └── integrations.ts
+│
+└── prisma/
+    └── schema.prisma        # ⚠️ ADD tables only, don't modify existing
+```
+
+### 8.3 Database Changes (Additive Only)
+
+#### 8.3.1 Rules for Schema Changes
+
+| Rule | Description |
+|------|-------------|
+| **ADD new models** | ✅ OrganizationClient, ClientNote, etc. |
+| **ADD new enums** | ✅ OrganizationType, ClientStatus, etc. |
+| **ADD new fields to Organization** | ⚠️ Only additive, all nullable or with defaults |
+| **ADD new fields to User** | ⚠️ Only additive (organizationClients relation) |
+| **MODIFY existing fields** | ❌ NEVER - requires approval |
+| **DELETE fields/models** | ❌ NEVER - requires approval |
+| **CHANGE field types** | ❌ NEVER - requires approval |
+| **CHANGE existing relations** | ❌ NEVER - requires approval |
+
+#### 8.3.2 Safe Schema Extension Pattern
+
+```prisma
+// ✅ SAFE: Adding new optional relation to User
+model User {
+  // ... all existing fields unchanged ...
+
+  // Phase 32: Enterprise Portal (NEW - optional relation)
+  organizationClients   OrganizationClient[]  // New, doesn't break anything
+}
+
+// ✅ SAFE: Adding new fields to Organization (all with defaults)
+model Organization {
+  // ... all existing fields unchanged ...
+
+  // Phase 32 additions (all have defaults, won't break existing)
+  type                  OrganizationType?    @default(OTHER)
+  logoUrl               String?
+  // ... etc
+}
+
+// ❌ UNSAFE: Would require approval
+model User {
+  email     String    // ❌ Changing from String? to String - BREAKS!
+  role      UserRole  @default(VIEWER)  // ❌ Changing default - BREAKS!
+}
+```
+
+### 8.4 API Isolation
+
+#### 8.4.1 New Routes Only
+
+```
+EXISTING APIs (DO NOT TOUCH):
+  /api/auth/*           - Leave unchanged
+  /api/accounts/*       - Leave unchanged
+  /api/properties/*     - Leave unchanged
+  /api/loans/*          - Leave unchanged
+  /api/income/*         - Leave unchanged
+  /api/expenses/*       - Leave unchanged
+  /api/transactions/*   - Leave unchanged
+  /api/settings/*       - Leave unchanged (mostly)
+
+NEW APIs (Portal-specific):
+  /api/portal/organizations/*      - NEW
+  /api/portal/clients/*            - NEW
+  /api/portal/integrations/*       - NEW
+  /api/v1/org/*                    - NEW (external API)
+
+MINIMAL ADDITIONS (requires approval):
+  /api/settings/organizations      - NEW (user's org consent)
+  /api/auth/me                     - EXTEND to include org memberships
+```
+
+#### 8.4.2 Response Format Compatibility
+
+```typescript
+// Existing API response format - DO NOT CHANGE
+{
+  "success": true,
+  "data": { ... },
+  "meta": { ... }
+}
+
+// Portal APIs use SAME format for consistency
+{
+  "success": true,
+  "data": { ... },
+  "meta": { ... }
+}
+```
+
+### 8.5 Feature Flags
+
+All Enterprise Portal features are behind feature flags, disabled by default.
+
+```typescript
+// lib/features/flags.ts (NEW FILE)
+export const FEATURE_FLAGS = {
+  // Phase 32: Enterprise Portal
+  ENTERPRISE_PORTAL_ENABLED: false,      // Master switch
+  PORTAL_ORG_MANAGEMENT: false,          // Organization CRUD
+  PORTAL_CLIENT_MANAGEMENT: false,       // Client invitations
+  PORTAL_DATA_ACCESS: false,             // View client data
+  PORTAL_INTEGRATIONS: false,            // Xero/MYOB sync
+  PORTAL_WHITE_LABEL: false,             // Custom branding
+  PORTAL_SSO: false,                     // SAML/OIDC
+  PORTAL_API_ACCESS: false,              // External API
+
+  // Login page mode selector (minimal main app change)
+  LOGIN_MODE_SELECTOR: false,            // Show Personal/Organization toggle
+};
+
+// Usage in code
+import { FEATURE_FLAGS } from '@/lib/features/flags';
+
+if (FEATURE_FLAGS.ENTERPRISE_PORTAL_ENABLED) {
+  // Portal feature code
+}
+```
+
+### 8.6 Main App Changes Requiring Approval
+
+The following changes touch the main application and require **explicit owner approval** before implementation:
+
+| Change | Location | Reason | Status |
+|--------|----------|--------|--------|
+| Login mode selector | `/app/login/page.tsx` | Add Personal/Org toggle | ⏳ PENDING APPROVAL |
+| Context switcher | `/components/layout/Sidebar.tsx` | Add org dropdown | ⏳ PENDING APPROVAL |
+| Org memberships in `/api/auth/me` | `/app/api/auth/me/route.ts` | Return org list | ⏳ PENDING APPROVAL |
+| User settings: Organizations | `/app/dashboard/settings/` | Add consent management | ⏳ PENDING APPROVAL |
+| User model relation | `/prisma/schema.prisma` | Add organizationClients | ⏳ PENDING APPROVAL |
+| Organization model extension | `/prisma/schema.prisma` | Add portal fields | ⏳ PENDING APPROVAL |
+| New permissions | `/lib/auth/permissions.ts` | Add portal.* permissions | ⏳ PENDING APPROVAL |
+
+### 8.7 Testing & Rollback Strategy
+
+#### 8.7.1 Testing Requirements
+
+| Test Type | Requirement |
+|-----------|-------------|
+| **Existing Tests** | ALL existing tests must pass, no modifications |
+| **Regression Tests** | Run full test suite before any deployment |
+| **Portal Tests** | New tests for portal features only |
+| **Integration Tests** | Test portal doesn't affect main app |
+
+#### 8.7.2 Rollback Plan
+
+If any issue is detected:
+
+1. **Feature Flags**: Disable all portal flags instantly
+2. **Database**: New tables can be ignored (not used by main app)
+3. **Code**: Portal routes/components are isolated
+4. **Emergency**: Revert to previous commit
+
+```bash
+# Emergency rollback command
+git revert HEAD --no-commit  # Revert portal changes
+# Or simply disable feature flags in production
+```
+
+### 8.8 Approval Checklist
+
+Before implementing Phase 32, the following must be approved:
+
+- [ ] Schema changes (new tables + minimal User/Organization extensions)
+- [ ] Login page modification (mode selector)
+- [ ] Sidebar context switcher
+- [ ] New permissions in permissions.ts
+- [ ] User settings page addition (Organizations section)
+- [ ] API endpoint `/api/auth/me` extension
+
+**To proceed with implementation, please approve the above changes.**
+
+---
+
+## 9. Implementation Phases
 
 ### Phase 32.1: Foundation (Core Infrastructure)
 - [ ] Extend Organization model in Prisma schema
@@ -1567,7 +1801,7 @@ async function importXeroChartOfAccounts(integrationId: string) {
 
 ---
 
-## 8. Migration Strategy
+## 10. Migration Strategy
 
 ### 8.1 Database Migration
 
@@ -1582,7 +1816,7 @@ The current `Organization` and `OrganizationMember` tables will be extended with
 
 ---
 
-## 9. Success Metrics
+## 11. Success Metrics
 
 | Metric | Target |
 |--------|--------|
@@ -1595,7 +1829,7 @@ The current `Organization` and `OrganizationMember` tables will be extended with
 
 ---
 
-## 10. Open Questions
+## 12. Open Questions
 
 ### Resolved
 
@@ -1615,7 +1849,7 @@ The current `Organization` and `OrganizationMember` tables will be extended with
 
 ---
 
-## 11. Dependencies
+## 13. Dependencies
 
 | Dependency | Status | Notes |
 |------------|--------|-------|
@@ -1627,7 +1861,7 @@ The current `Organization` and `OrganizationMember` tables will be extended with
 
 ---
 
-## 12. Appendix
+## 14. Appendix
 
 ### A. Glossary
 
@@ -1661,7 +1895,7 @@ This is supported by the `OrganizationClient` model which creates a many-to-many
 
 ---
 
-*Document Version: 1.3*
+*Document Version: 1.4*
 *Last Updated: 2026-01-19*
 *Approved for Implementation: 2026-01-19*
 
@@ -1675,3 +1909,4 @@ This is supported by the `OrganizationClient` model which creates a many-to-many
 | 1.1 | 2026-01-19 | Added White-labeling, SSO, API access phases |
 | 1.2 | 2026-01-19 | Added Accounting Integrations, unified login flow |
 | 1.3 | 2026-01-19 | Added Data Integrity Architecture (Section 7) |
+| 1.4 | 2026-01-19 | Added Isolation & Non-Breaking Implementation (Section 8) |
