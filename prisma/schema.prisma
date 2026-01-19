@@ -2797,3 +2797,533 @@ model CashflowSummary {
   @@index([generatedAt])
   @@map("cashflow_summaries")
 }
+
+// =============================================================================
+// PHASE 32: ENTERPRISE PORTAL - ENUMS
+// =============================================================================
+
+enum OrganizationType {
+  ACCOUNTING_FIRM
+  FINANCIAL_ADVISOR
+  MORTGAGE_BROKER
+  TAX_AGENT
+  BOOKKEEPER
+  OTHER
+}
+
+enum OrganizationPlan {
+  STARTER           // Up to 10 clients
+  PROFESSIONAL      // Up to 50 clients
+  BUSINESS          // Up to 200 clients
+  ENTERPRISE        // Unlimited clients
+}
+
+enum PortalUserRole {
+  PORTAL_OWNER      // Full organization control
+  PORTAL_ADMIN      // Manage staff and clients
+  PORTAL_ADVISOR    // Access assigned clients
+  PORTAL_VIEWER     // Read-only access
+}
+
+enum ClientStatus {
+  INVITED           // Invitation sent, not accepted
+  PENDING           // Accepted, awaiting consent
+  ACTIVE            // Full access granted
+  SUSPENDED         // Temporarily disabled
+  ARCHIVED          // Soft deleted
+}
+
+enum DataAccessScope {
+  FULL              // All data
+  FINANCIAL         // Accounts, transactions
+  INVESTMENTS       // Investment accounts, holdings
+  TAX               // Tax-related data
+  DOCUMENTS         // Document access
+  TRANSACTIONS      // Transaction history
+  PROPERTIES        // Property data
+  LOANS             // Loan data
+}
+
+enum ConsentStatus {
+  PENDING           // Waiting for client response
+  GRANTED           // Client approved access
+  REVOKED           // Client withdrew consent
+  EXPIRED           // Consent period ended
+}
+
+enum InvitationType {
+  STAFF             // Inviting staff member
+  CLIENT            // Inviting client
+}
+
+enum InvitationStatus {
+  PENDING           // Awaiting response
+  ACCEPTED          // Invitation accepted
+  DECLINED          // Invitation declined
+  EXPIRED           // Invitation expired
+  CANCELLED         // Cancelled by org
+}
+
+enum ClientTaskStatus {
+  TODO              // Not started
+  IN_PROGRESS       // Work in progress
+  WAITING           // Waiting on client/external
+  COMPLETED         // Done
+  CANCELLED         // Cancelled
+}
+
+enum ClientTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ApiKeyScope {
+  READ_CLIENTS      // List and view clients
+  READ_FINANCIAL    // Read financial data
+  READ_DOCUMENTS    // Access documents
+  SYNC_ACCOUNTING   // Sync with accounting software
+  FULL_ACCESS       // All permissions
+}
+
+enum AccountingProvider {
+  XERO              // Primary integration
+  MYOB              // Future
+  QUICKBOOKS        // Future
+  SAGE              // Future
+  FRESHBOOKS        // Future
+  WAVE              // Future
+  OTHER             // Generic
+}
+
+enum IntegrationSyncDirection {
+  OUTBOUND          // Monitrax → External (default)
+  INBOUND           // External → Monitrax (reference only)
+  BIDIRECTIONAL     // Both ways (future)
+}
+
+enum IntegrationSyncStatus {
+  PENDING           // Queued for sync
+  IN_PROGRESS       // Currently syncing
+  COMPLETED         // Sync successful
+  FAILED            // Sync failed
+  PARTIAL           // Some items failed
+}
+
+// =============================================================================
+// PHASE 32: ORGANIZATION PORTAL SETTINGS (extends Organization)
+// =============================================================================
+
+model OrganizationPortalSettings {
+  id                    String           @id @default(uuid())
+  organizationId        String           @unique
+
+  // Organization Type & Plan
+  organizationType      OrganizationType @default(ACCOUNTING_FIRM)
+  plan                  OrganizationPlan @default(STARTER)
+
+  // Portal Features
+  portalEnabled         Boolean          @default(false)
+  maxClients            Int              @default(10)
+  maxStaff              Int              @default(3)
+
+  // White-labeling
+  brandName             String?
+  brandLogoUrl          String?
+  brandPrimaryColor     String?          // Hex color
+  brandSecondaryColor   String?
+  customDomain          String?          // Future: custom domain support
+
+  // Contact Info
+  businessEmail         String?
+  businessPhone         String?
+  businessAddress       String?
+  abn                   String?          // Australian Business Number
+  acn                   String?          // Australian Company Number
+
+  // Compliance
+  afslNumber            String?          // AFSL license number
+  taxAgentNumber        String?          // Tax agent registration
+
+  // SSO/SAML (Phase 32.12)
+  ssoEnabled            Boolean          @default(false)
+  samlEntityId          String?
+  samlSsoUrl            String?
+  samlCertificate       String?          @db.Text
+
+  // Billing
+  billingEmail          String?
+  stripeCustomerId      String?
+  subscriptionStatus    String?          @default("trialing")
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@map("organization_portal_settings")
+}
+
+// =============================================================================
+// PHASE 32: ORGANIZATION CLIENT (Link between Org and User)
+// =============================================================================
+
+model OrganizationClient {
+  id                    String           @id @default(uuid())
+  organizationId        String
+  userId                String           // The client's user account
+
+  // Status
+  status                ClientStatus     @default(INVITED)
+
+  // Consent Management
+  consentStatus         ConsentStatus    @default(PENDING)
+  accessScopes          DataAccessScope[]@default([])
+  consentGrantedAt      DateTime?
+  consentExpiresAt      DateTime?        // Optional expiry
+  consentRevokedAt      DateTime?
+
+  // Assignment (which staff member manages this client)
+  assignedToMemberId    String?          // OrganizationMember ID
+
+  // Client Reference (org's internal reference)
+  clientReference       String?          // e.g., "CLI-001"
+  externalId            String?          // ID in external system (Xero, etc.)
+
+  // Metadata
+  tags                  String[]         @default([])
+  onboardedAt           DateTime?
+  lastAccessedAt        DateTime?
+  archivedAt            DateTime?
+  archivedReason        String?
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  // Relationships
+  notes                 ClientNote[]
+  tasks                 ClientTask[]
+  accessLogs            ClientAccessLog[]
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+  @@index([assignedToMemberId])
+  @@map("organization_clients")
+}
+
+// =============================================================================
+// PHASE 32: ORGANIZATION INVITATION
+// =============================================================================
+
+model OrganizationInvitation {
+  id                    String           @id @default(uuid())
+  organizationId        String
+
+  // Invitation Details
+  type                  InvitationType
+  email                 String
+  role                  PortalUserRole   @default(PORTAL_VIEWER)
+  status                InvitationStatus @default(PENDING)
+
+  // For client invitations: requested scopes
+  requestedScopes       DataAccessScope[]@default([])
+
+  // Token for verification
+  token                 String           @unique
+  tokenExpiresAt        DateTime
+
+  // Tracking
+  invitedByMemberId     String           // Who sent the invite
+  personalMessage       String?          // Optional message
+
+  // Response tracking
+  respondedAt           DateTime?
+  acceptedUserId        String?          // User ID if accepted
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("organization_invitations")
+}
+
+// =============================================================================
+// PHASE 32: ORGANIZATION API KEY (External API Access)
+// =============================================================================
+
+model OrganizationApiKey {
+  id                    String           @id @default(uuid())
+  organizationId        String
+
+  // Key Details
+  name                  String           // Friendly name
+  keyHash               String           @unique  // SHA-256 hash of the key
+  keyPrefix             String           // First 8 chars for identification (e.g., "mtrx_pk_")
+  scopes                ApiKeyScope[]    @default([READ_CLIENTS])
+
+  // Rate Limiting
+  rateLimit             Int              @default(1000)  // Requests per hour
+  rateLimitWindow       Int              @default(3600)  // Window in seconds
+
+  // Tracking
+  lastUsedAt            DateTime?
+  usageCount            Int              @default(0)
+  createdByMemberId     String           // Who created this key
+
+  // Status
+  isActive              Boolean          @default(true)
+  expiresAt             DateTime?
+  revokedAt             DateTime?
+  revokedByMemberId     String?
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@index([isActive])
+  @@map("organization_api_keys")
+}
+
+// =============================================================================
+// PHASE 32: CLIENT NOTE (Advisor Notes on Clients)
+// =============================================================================
+
+model ClientNote {
+  id                    String           @id @default(uuid())
+  organizationClientId  String
+
+  // Note Content
+  title                 String?
+  content               String           @db.Text
+  isPinned              Boolean          @default(false)
+  isPrivate             Boolean          @default(true)  // Only visible to creator
+
+  // Author
+  createdByMemberId     String           // OrganizationMember who wrote it
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  // Relationships
+  organizationClient    OrganizationClient @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationClientId])
+  @@index([createdByMemberId])
+  @@index([isPinned])
+  @@map("client_notes")
+}
+
+// =============================================================================
+// PHASE 32: CLIENT TASK (Tasks/Reminders for Clients)
+// =============================================================================
+
+model ClientTask {
+  id                    String             @id @default(uuid())
+  organizationClientId  String
+
+  // Task Details
+  title                 String
+  description           String?            @db.Text
+  status                ClientTaskStatus   @default(TODO)
+  priority              ClientTaskPriority @default(MEDIUM)
+
+  // Dates
+  dueDate               DateTime?
+  completedAt           DateTime?
+
+  // Assignment
+  assignedToMemberId    String?            // Staff member responsible
+  createdByMemberId     String             // Who created this task
+
+  // Timestamps
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  // Relationships
+  organizationClient    OrganizationClient @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationClientId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([assignedToMemberId])
+  @@map("client_tasks")
+}
+
+// =============================================================================
+// PHASE 32: CLIENT ACCESS LOG (Audit Trail)
+// =============================================================================
+
+model ClientAccessLog {
+  id                    String           @id @default(uuid())
+  organizationClientId  String
+
+  // Access Details
+  accessedByMemberId    String           // Who accessed
+  action                String           // VIEW_PROFILE, VIEW_TRANSACTIONS, EXPORT_DATA, etc.
+  resourceType          String?          // What type of data: "transactions", "documents", etc.
+  resourceId            String?          // Specific resource ID if applicable
+
+  // Context
+  ipAddress             String?
+  userAgent             String?
+
+  // Timestamp
+  accessedAt            DateTime         @default(now())
+
+  // Relationships
+  organizationClient    OrganizationClient @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationClientId])
+  @@index([accessedByMemberId])
+  @@index([accessedAt])
+  @@index([action])
+  @@map("client_access_logs")
+}
+
+// =============================================================================
+// PHASE 32: ACCOUNTING INTEGRATION (Multi-Provider Support)
+// =============================================================================
+
+model AccountingIntegration {
+  id                    String                   @id @default(uuid())
+  organizationId        String
+
+  // Provider Details
+  provider              AccountingProvider       @default(XERO)
+  providerTenantId      String?                  // Xero: tenant ID, MYOB: company file
+  providerOrganization  String?                  // Name in external system
+
+  // OAuth Credentials (encrypted)
+  accessToken           String?                  @db.Text
+  refreshToken          String?                  @db.Text
+  tokenExpiresAt        DateTime?
+  tokenScope            String?
+
+  // Connection Status
+  isConnected           Boolean                  @default(false)
+  lastConnectedAt       DateTime?
+  connectionError       String?
+
+  // Sync Configuration
+  syncDirection         IntegrationSyncDirection @default(OUTBOUND)
+  syncEnabled           Boolean                  @default(true)
+  autoSyncEnabled       Boolean                  @default(false)
+  syncIntervalHours     Int                      @default(24)
+
+  // What to sync
+  syncContacts          Boolean                  @default(true)
+  syncInvoices          Boolean                  @default(true)
+  syncBankTransactions  Boolean                  @default(false)
+  syncBankAccounts      Boolean                  @default(false)
+
+  // Sync Tracking
+  lastSyncAt            DateTime?
+  lastSyncStatus        IntegrationSyncStatus?
+  lastSyncError         String?
+
+  // Timestamps
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  // Relationships
+  syncLogs              IntegrationSyncLog[]
+  entityMappings        IntegrationEntityMapping[]
+
+  @@unique([organizationId, provider])
+  @@index([organizationId])
+  @@index([provider])
+  @@index([isConnected])
+  @@map("accounting_integrations")
+}
+
+// =============================================================================
+// PHASE 32: INTEGRATION SYNC LOG
+// =============================================================================
+
+model IntegrationSyncLog {
+  id                    String                @id @default(uuid())
+  integrationId         String
+
+  // Sync Details
+  direction             IntegrationSyncDirection
+  status                IntegrationSyncStatus @default(PENDING)
+  entityType            String                // "contact", "invoice", "transaction", etc.
+
+  // Statistics
+  totalRecords          Int                   @default(0)
+  successCount          Int                   @default(0)
+  errorCount            Int                   @default(0)
+  skippedCount          Int                   @default(0)
+
+  // Timing
+  startedAt             DateTime              @default(now())
+  completedAt           DateTime?
+  durationMs            Int?
+
+  // Error Details
+  errorMessage          String?               @db.Text
+  errorDetails          Json?                 // Detailed error info
+
+  // Triggered By
+  triggeredBy           String?               // "auto", "manual", "webhook", member ID
+
+  // Timestamps
+  createdAt             DateTime              @default(now())
+
+  // Relationships
+  integration           AccountingIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("integration_sync_logs")
+}
+
+// =============================================================================
+// PHASE 32: INTEGRATION ENTITY MAPPING (ID Linking)
+// =============================================================================
+
+model IntegrationEntityMapping {
+  id                    String                @id @default(uuid())
+  integrationId         String
+
+  // Monitrax Side
+  monitraxEntityType    String                // "user", "account", "transaction", etc.
+  monitraxEntityId      String
+
+  // External Side
+  externalEntityType    String                // "contact", "invoice", etc.
+  externalEntityId      String
+
+  // Change Detection
+  lastSyncedHash        String?               // Hash of data at last sync
+  lastSyncedAt          DateTime?
+
+  // Conflict Tracking
+  hasConflict           Boolean               @default(false)
+  conflictDetails       Json?                 // What differs
+
+  // Timestamps
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  // Relationships
+  integration           AccountingIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, monitraxEntityType, monitraxEntityId])
+  @@unique([integrationId, externalEntityType, externalEntityId])
+  @@index([integrationId])
+  @@index([monitraxEntityType, monitraxEntityId])
+  @@index([externalEntityType, externalEntityId])
+  @@map("integration_entity_mappings")
+}
