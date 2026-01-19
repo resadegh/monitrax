@@ -3333,13 +3333,17 @@ model IntegrationEntityMapping {
 // =============================================================================
 
 model AdminUser {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String?
-  name      String?
-  role      String?
-  createdAt DateTime? @map("created_at")
-  updatedAt DateTime? @map("updated_at")
+  id               String    @id @default(uuid())
+  email            String    @unique
+  passwordHash     String?
+  name             String?
+  role             String?
+  isActive         Boolean?  @default(true)
+  mfaEnabled       Boolean?  @default(false)
+  failedLoginCount Int?      @default(0)
+  ipWhitelist      String[]  @default([])
+  createdAt        DateTime? @default(now())
+  updatedAt        DateTime?
 
   @@map("admin_users")
 }
