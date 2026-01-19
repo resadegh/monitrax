@@ -146,18 +146,26 @@ export default function PortalLoginPage() {
             {!portalEnabled && (
               <p>
                 Interested in the Enterprise Portal?{' '}
-                <a href="#" className="text-blue-600 hover:underline">
-                  Contact Sales
+                <a href="/portal/register" className="text-blue-600 hover:underline">
+                  Register Your Organization
                 </a>
               </p>
             )}
             {portalEnabled && (
-              <p>
-                Need help?{' '}
-                <a href="/support" className="text-blue-600 hover:underline">
-                  Contact Support
-                </a>
-              </p>
+              <>
+                <p>
+                  Don&apos;t have an organization?{' '}
+                  <a href="/portal/register" className="text-blue-600 hover:underline">
+                    Register Now
+                  </a>
+                </p>
+                <p className="mt-2">
+                  Need help?{' '}
+                  <a href="/support" className="text-blue-600 hover:underline">
+                    Contact Support
+                  </a>
+                </p>
+              </>
             )}
           </div>
         </div>

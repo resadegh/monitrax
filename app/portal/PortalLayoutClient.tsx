@@ -63,10 +63,10 @@ const secondaryNavigation = [
 ];
 
 // Pages that should NOT require authentication
-const PUBLIC_PAGES = ['/portal/login', '/portal/signin', '/portal/invite', '/portal/consent', '/portal/request-access'];
+const PUBLIC_PAGES = ['/portal/login', '/portal/signin', '/portal/invite', '/portal/consent', '/portal/request-access', '/portal/register'];
 
 // Pages that should NOT show the sidebar (login, etc.)
-const FULL_WIDTH_PAGES = ['/portal/login', '/portal/signin', '/portal/invite', '/portal', '/portal/consent', '/portal/request-access'];
+const FULL_WIDTH_PAGES = ['/portal/login', '/portal/signin', '/portal/invite', '/portal', '/portal/consent', '/portal/request-access', '/portal/register'];
 
 /**
  * Inner layout component that uses the organization context
@@ -84,7 +84,8 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
       pathname?.startsWith('/portal/signin') ||
       pathname?.startsWith('/portal/invite') ||
       pathname?.startsWith('/portal/consent') ||
-      pathname?.startsWith('/portal/request-access')
+      pathname?.startsWith('/portal/request-access') ||
+      pathname?.startsWith('/portal/register')
   );
 
   // Check if current page should be full-width (no sidebar)
@@ -94,7 +95,8 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
       pathname?.startsWith('/portal/signin') ||
       pathname?.startsWith('/portal/invite') ||
       pathname?.startsWith('/portal/consent') ||
-      pathname?.startsWith('/portal/request-access')
+      pathname?.startsWith('/portal/request-access') ||
+      pathname?.startsWith('/portal/register')
   );
 
   // Redirect to portal signin if not authenticated and not on a public page
