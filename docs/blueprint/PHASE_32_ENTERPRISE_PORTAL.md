@@ -1019,6 +1019,7 @@ Portal roles with permission levels:
 | `/register` | Public | User registration |
 | `/portal/login` | Public | Portal entry with options |
 | `/portal/signin` | Public | Dedicated portal login |
+| `/portal/register` | Public | Organization registration |
 | `/portal/invite/[token]` | Public | Invitation acceptance |
 | `/portal/request-access` | Public | Request org access form |
 | `/dashboard/*` | Authenticated | Personal financial dashboard |
@@ -1032,12 +1033,104 @@ Portal roles with permission levels:
 | File | Purpose |
 |------|---------|
 | `app/portal/signin/page.tsx` | Dedicated portal login page |
+| `app/portal/register/page.tsx` | Organization registration wizard |
 | `app/portal/invite/[token]/page.tsx` | Invitation acceptance flow |
 | `app/api/portal/invitations/[token]/validate/route.ts` | Validate invitation |
 | `app/api/portal/invitations/[token]/accept/route.ts` | Accept invitation & create user |
+| `app/api/portal/organizations/register/route.ts` | Organization registration API |
 | `app/portal/PortalLayoutClient.tsx` | Auth guard & redirects |
 | `lib/portal/context/OrganizationContext.tsx` | Organization state management |
 | `components/portal/layout/OrganizationSelector.tsx` | Org switcher component |
+
+#### 5.0.9 Organization Registration Flow
+
+New organizations can self-register through `/portal/register`:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                 ORGANIZATION REGISTRATION                     │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│  Step 1: Organization Details                                 │
+│  ├── Organization Name *                                      │
+│  ├── Organization Type (dropdown)                             │
+│  │   ├── Accounting Firm                                      │
+│  │   ├── Financial Advisor                                    │
+│  │   ├── Wealth Manager                                       │
+│  │   ├── Bookkeeper                                           │
+│  │   ├── Tax Agent                                            │
+│  │   └── Other                                                │
+│  ├── Business Email *                                         │
+│  ├── Business Phone                                           │
+│  └── ABN (Australian Business Number)                         │
+│                                                               │
+│  Step 2: Admin Account                                        │
+│  ├── Your Name *                                              │
+│  ├── Email *                                                  │
+│  ├── Password * (min 8 chars)                                 │
+│  └── Confirm Password *                                       │
+│                                                               │
+│  Step 3: Plan Selection                                       │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ Starter    │ Professional │ Business    │ Enterprise   │ │
+│  │ $49/mo     │ $149/mo      │ $349/mo     │ Contact      │ │
+│  │            │ [Popular]    │             │ Sales        │ │
+│  │ 10 clients │ 50 clients   │ 200 clients │ Unlimited    │ │
+│  │ 3 staff    │ 10 staff     │ 25 staff    │ Unlimited    │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                               │
+│  Step 4: Review                                               │
+│  └── [Complete Registration]                                  │
+│       │                                                       │
+│       ├── Creates User (admin)                                │
+│       ├── Creates Organization                                │
+│       ├── Creates OrganizationPortalSettings                  │
+│       ├── Creates OrganizationMember (OWNER)                  │
+│       └── Returns auth token → Auto-login                     │
+│                                                               │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Pricing Tiers:**
+
+| Plan | Monthly | Clients | Staff | Key Features |
+|------|---------|---------|-------|--------------|
+| Starter | $49 | 10 | 3 | Basic reporting, email support |
+| Professional | $149 | 50 | 10 | Custom branding, priority support |
+| Business | $349 | 200 | 25 | API access, SSO/SAML |
+| Enterprise | Custom | Unlimited | Unlimited | Dedicated support, SLA |
+
+**Registration API:**
+
+```typescript
+POST /api/portal/organizations/register
+
+// Request
+{
+  organization: {
+    name: string;
+    type: OrganizationType;
+    businessEmail: string;
+    businessPhone?: string;
+    abn?: string;
+  },
+  admin: {
+    name: string;
+    email: string;
+    password: string;
+  },
+  plan: 'STARTER' | 'PROFESSIONAL' | 'BUSINESS'
+}
+
+// Response
+{
+  success: true,
+  token: string,  // JWT for immediate login
+  user: { id, email, name },
+  organization: { id, name, slug },
+  plan: string
+}
+```
 
 ### 5.1 Portal Navigation Structure
 

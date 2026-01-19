@@ -319,5 +319,114 @@ enum AdminRole {
 
 ---
 
+## Implementation Update: Organization Registration (v1.6)
+
+### Overview
+
+Added organization registration flow allowing new organizations to self-onboard with pricing tier selection.
+
+### New Files Created
+
+| File | Purpose |
+|------|---------|
+| `app/portal/register/page.tsx` | Multi-step organization registration wizard |
+| `app/api/portal/organizations/register/route.ts` | Organization creation API |
+
+### Registration Flow
+
+```
+Step 1: Organization Details
+├── Organization Name *
+├── Organization Type (Accounting Firm, Financial Advisor, etc.)
+├── Business Email *
+├── Business Phone
+└── ABN (Australian Business Number)
+
+Step 2: Admin Account
+├── Admin Name *
+├── Admin Email *
+├── Password *
+└── Confirm Password *
+
+Step 3: Plan Selection
+├── Starter ($49/mo) - 10 clients, 3 staff
+├── Professional ($149/mo) - 50 clients, 10 staff [Popular]
+├── Business ($349/mo) - 200 clients, 25 staff
+└── Enterprise (Contact Sales) - Unlimited
+
+Step 4: Review & Submit
+└── Complete Registration → Auto-login
+```
+
+### Pricing Tiers
+
+| Plan | Price | Max Clients | Max Staff | Features |
+|------|-------|-------------|-----------|----------|
+| Starter | $49/mo | 10 | 3 | Basic reporting, email support |
+| Professional | $149/mo | 50 | 10 | Custom branding, priority support |
+| Business | $349/mo | 200 | 25 | API access, SSO/SAML |
+| Enterprise | Custom | Unlimited | Unlimited | Dedicated support, custom integrations |
+
+### API Endpoint
+
+**POST `/api/portal/organizations/register`**
+
+Request:
+```json
+{
+  "organization": {
+    "name": "ABC Accounting",
+    "type": "ACCOUNTING_FIRM",
+    "businessEmail": "contact@abc.com.au",
+    "businessPhone": "02 9000 0000",
+    "abn": "12 345 678 901"
+  },
+  "admin": {
+    "name": "John Smith",
+    "email": "john@abc.com.au",
+    "password": "securepassword"
+  },
+  "plan": "PROFESSIONAL"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Organization registered successfully",
+  "token": "jwt-auth-token",
+  "user": { "id": "...", "email": "...", "name": "..." },
+  "organization": { "id": "...", "name": "...", "slug": "..." },
+  "plan": "PROFESSIONAL"
+}
+```
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `app/portal/login/page.tsx` | Added "Register Your Organization" link |
+| `app/portal/signin/page.tsx` | Added "Register your organization" link |
+| `app/portal/PortalLayoutClient.tsx` | Added `/portal/register` to public pages |
+
+---
+
+## Bug Fix: Client List Page (v1.6.1)
+
+### Issue
+Client list page crashed with error: `Cannot read properties of undefined (reading 'length')`
+
+### Cause
+API returns `{ clients: [...] }` but page expected `{ items: [...] }`
+
+### Fix
+Updated `app/portal/clients/page.tsx` to handle both property names:
+```typescript
+const clientsData = response.data.clients || response.data.items || [];
+```
+
+---
+
 *Updated: 2026-01-19*
-*Document Version: 1.5*
+*Document Version: 1.6*
