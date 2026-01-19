@@ -47,7 +47,7 @@ export default function BillingPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   return (
-    <AdminFeatureGate feature="billingDashboard">
+    <AdminFeatureGate feature="adminPortalEnabled">
       <AdminHeader
         title="Billing"
         description="Revenue metrics and transaction management"

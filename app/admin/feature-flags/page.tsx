@@ -39,7 +39,7 @@ export default function FeatureFlagsPage() {
   };
 
   return (
-    <AdminFeatureGate feature="featureFlagsManagement">
+    <AdminFeatureGate feature="adminPortalEnabled">
       <AdminHeader
         title="Feature Flags"
         description="Control feature rollout and A/B testing"

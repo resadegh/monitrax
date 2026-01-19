@@ -46,7 +46,7 @@ export default function UsersPage() {
   });
 
   return (
-    <AdminFeatureGate feature="userManagement">
+    <AdminFeatureGate feature="adminPortalEnabled">
       <AdminHeader
         title="Users"
         description="Manage personal user accounts and subscriptions"
