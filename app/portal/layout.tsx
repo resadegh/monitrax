@@ -3,9 +3,13 @@
  *
  * Root layout for the Enterprise Portal.
  * This layout is completely separate from the main app layout.
+ *
+ * MODULAR: Uses PortalLayoutClient for navigation which can be
+ * customized per organization without affecting other layouts.
  */
 
 import { Metadata } from 'next';
+import { PortalLayoutClient } from './PortalLayoutClient';
 
 export const metadata: Metadata = {
   title: 'Monitrax Portal',
@@ -17,10 +21,5 @@ export default function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Portal-specific layout wrapper */}
-      {children}
-    </div>
-  );
+  return <PortalLayoutClient>{children}</PortalLayoutClient>;
 }

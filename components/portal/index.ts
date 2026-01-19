@@ -9,6 +9,8 @@
  * - /ui          → Reusable UI primitives (cards, tables, forms, buttons)
  * - /layout      → Layout components (sidebar, navigation)
  * - /clients     → Client management components
+ * - /team        → Team/staff management components
+ * - /settings    → Organization settings components
  * - /integrations→ Accounting integration components
  *
  * Usage:
@@ -33,6 +35,12 @@ export { PortalSidebar, NavIcons } from './layout/PortalSidebar';
 
 // Client Components
 export * from './clients';
+
+// Team Components
+export * from './team';
+
+// Settings Components
+export * from './settings';
 
 // Integration Components
 export * from './integrations';
