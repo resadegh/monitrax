@@ -262,21 +262,70 @@ Disconnects a bank connection.
 
 ---
 
-## 24.6 Configuration
+## 24.6 Setup Guide
 
-### Environment Variables
+### Prerequisites
+
+Before using the Basiq integration, complete these steps:
+
+#### Step 1: Create Basiq Account
+1. Sign up at [Basiq Dashboard](https://dashboard.basiq.io)
+2. Choose between Sandbox (testing) or Production mode
+3. Complete any required verification steps
+
+#### Step 2: Get API Credentials
+1. In Basiq Dashboard, navigate to API Keys
+2. Create a new API key for your application
+3. Copy the API key securely (it won't be shown again)
+
+#### Step 3: Configure Environment Variables
+Add these to your `.env.local` (local development) and Vercel project settings (production):
 
 ```bash
 # Basiq API Configuration
-BASIQ_API_KEY="your-api-key"
+BASIQ_API_KEY="your-api-key-from-basiq-dashboard"
 BASIQ_API_URL="https://au-api.basiq.io"
 ```
 
-### Vercel Environment Variables
+#### Step 4: Vercel Deployment
+In Vercel project settings:
+1. Navigate to Settings → Environment Variables
+2. Add `BASIQ_API_KEY` with your production API key
+3. Add `BASIQ_API_URL` with value `https://au-api.basiq.io`
+4. Redeploy the application
 
-Add the same variables in Vercel project settings:
-- Settings → Environment Variables
-- Add `BASIQ_API_KEY` and `BASIQ_API_URL`
+#### Step 5: User Setup (Before Connecting Banks)
+Users must have an Australian mobile number in their profile:
+- Navigate to Settings → Profile
+- Add mobile number in format: `0412345678` or `+61412345678`
+- Mobile is required for Basiq's consent verification
+
+### Connection Flow
+
+When a user clicks "Connect Bank":
+
+```
+1. User clicks "Connect Bank" button
+2. System checks for valid mobile number
+3. Creates/retrieves Basiq user
+4. Generates consent URL with bank selection
+5. Opens Basiq consent UI in new window
+6. User selects their bank from Australian institutions
+7. User authenticates with bank credentials
+8. User approves data sharing consent
+9. User returns to Monitrax and clicks "Sync"
+10. Accounts and transactions are imported
+```
+
+### Troubleshooting
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Consent page shows no banks | API key not configured | Verify `BASIQ_API_KEY` in environment |
+| "Mobile required" error | User profile missing mobile | Add Australian mobile to profile |
+| Invalid mobile format | Non-Australian format | Use `04xxxxxxxx` or `+614xxxxxxxx` |
+| Connection stuck in PENDING | User didn't complete consent | Re-open consent and complete flow |
+| Sync returns no accounts | Bank not yet processed | Wait 30s and retry sync |
 
 ---
 
