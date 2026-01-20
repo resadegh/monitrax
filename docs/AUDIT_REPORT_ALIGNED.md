@@ -10,6 +10,17 @@
 
 This audit evaluates the Monitrax codebase against the specifications defined in the blueprint documents. The audit identifies areas where the implementation deviates from the architectural principles and provides recommendations for alignment.
 
+### Remediation Progress
+
+| Stage | Task | Status | Date |
+|-------|------|--------|------|
+| Stage 1 | formatCurrency deduplication | ✅ **COMPLETED** | Jan 20, 2026 |
+| Stage 2 | Frequency multiplier deduplication | 🔲 Pending | - |
+| Stage 3 | Ownership validation utility | 🔲 Pending | - |
+| Stage 4 | Onboarding component consolidation | 🔲 Pending | - |
+| Stage 5 | Route group consolidation | 🔲 Pending | - |
+| Stage 6 | Monetization activation | 🔲 Pending | - |
+
 ### Blueprint Principles Under Review
 
 | Principle | Blueprint Reference | Status |
@@ -32,9 +43,13 @@ This audit evaluates the Monitrax codebase against the specifications defined in
 
 > "If logic appears twice, it must become: a utility, an engine, or a shared component."
 
-#### Critical Violation: formatCurrency (15+ Duplications)
+#### ~~Critical Violation: formatCurrency (15+ Duplications)~~ ✅ RESOLVED
 
-A centralized `formatCurrency` utility exists at `/lib/utils/formatters.ts` as designed, but **15+ files** contain local implementations instead of using the centralized version.
+> **Status:** Resolved on January 20, 2026 (Stage 1 Complete)
+> **Commits:** `571e3bd`, `aa1f792`, `d405a62`
+> **Files Fixed:** 26 files now use centralized `formatCurrency`
+
+~~A centralized `formatCurrency` utility exists at `/lib/utils/formatters.ts` as designed, but **15+ files** contain local implementations instead of using the centralized version.~~
 
 **Centralized Utility (Correct Implementation):**
 ```typescript
@@ -345,11 +360,11 @@ property → loan → expense → transaction → account → holding → income
 
 ### Phase 1: Critical Blueprint Violations (Foundation)
 
-| Task | Blueprint Reference | Files Affected | Priority |
-|------|---------------------|----------------|----------|
-| Replace formatCurrency duplicates | 02_DESIGN_PRINCIPLES §5.1 | 15+ files | **Critical** |
-| Replace frequency multipliers | 03_DATA_MODEL §4 | 14+ files | **Critical** |
-| Create ownership validation utility | 07_API_STANDARDS §5 | 79+ API routes | **High** |
+| Task | Blueprint Reference | Files Affected | Priority | Status |
+|------|---------------------|----------------|----------|--------|
+| ~~Replace formatCurrency duplicates~~ | ~~02_DESIGN_PRINCIPLES §5.1~~ | ~~15+ files~~ | ~~Critical~~ | ✅ **DONE** |
+| Replace frequency multipliers | 03_DATA_MODEL §4 | 14+ files | **Critical** | 🔲 Next |
+| Create ownership validation utility | 07_API_STANDARDS §5 | 79+ API routes | **High** | 🔲 Pending |
 
 ### Phase 2: Single Source of Truth (Consolidation)
 
@@ -452,12 +467,12 @@ property → loan → expense → transaction → account → holding → income
 
 ### Critical Issues (Blueprint Violations)
 
-| Issue | Count | Blueprint Principle Violated |
-|-------|-------|------------------------------|
-| formatCurrency duplications | 15+ | "Never Duplicate Logic" |
-| Frequency multiplier duplications | 14+ | "Never Duplicate Logic" |
-| Ownership validation duplications | 79+ | API Standards centralization |
-| Duplicate onboarding components | 2 sets | "Single Source of Truth" |
+| Issue | Count | Blueprint Principle Violated | Status |
+|-------|-------|------------------------------|--------|
+| ~~formatCurrency duplications~~ | ~~15+~~ | ~~"Never Duplicate Logic"~~ | ✅ **RESOLVED** |
+| Frequency multiplier duplications | 14+ | "Never Duplicate Logic" | 🔲 Stage 2 |
+| Ownership validation duplications | 79+ | API Standards centralization | 🔲 Stage 3 |
+| Duplicate onboarding components | 2 sets | "Single Source of Truth" | 🔲 Stage 4 |
 
 ### Compliance Status
 
