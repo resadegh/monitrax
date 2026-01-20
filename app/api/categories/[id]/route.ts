@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyOwnership } from '@/lib/utils/ownership';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -34,13 +35,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         where: { id },
       });
 
-      if (!category) {
-        return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-      }
-
-      if (category.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-      }
+      const ownershipResult = verifyOwnership(category, authReq.user!.userId, 'Category');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       return NextResponse.json({
         success: true,
@@ -87,13 +83,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         where: { id },
       });
 
-      if (!category) {
-        return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-      }
-
-      if (category.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-      }
+      const ownershipResult = verifyOwnership(category, authReq.user!.userId, 'Category');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       // Prepare update data
       const updateData: Record<string, unknown> = {};
@@ -186,13 +177,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         },
       });
 
-      if (!category) {
-        return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-      }
-
-      if (category.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-      }
+      const ownershipResult = verifyOwnership(category, authReq.user!.userId, 'Category');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const hasExpenses = category.expenses.length > 0;
       const hasIncome = category.income.length > 0;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
 
 const createTransactionSchema = z.object({
@@ -78,9 +79,8 @@ export async function POST(request: NextRequest) {
         where: { id: investmentAccountId },
       });
 
-      if (!account || account.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(account, authReq.user!.userId, 'Investment account');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       // If holdingId provided, verify it belongs to the same account
       if (holdingId) {

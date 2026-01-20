@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { verifyOwnership } from '@/lib/utils/ownership';
 
 // GET /api/assets/:id - Get a single asset with full details
 export async function GET(
@@ -27,9 +28,8 @@ export async function GET(
         },
       });
 
-      if (!asset || asset.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(asset, authReq.user!.userId, 'Asset');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       // Type for expense
       type AssetExpense = (typeof asset.expenses)[number];
@@ -92,9 +92,8 @@ export async function PUT(
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Asset');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const {
         name,
@@ -201,9 +200,8 @@ export async function DELETE(
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Asset');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       // Delete the asset (cascades to value history and service records)
       await prisma.asset.delete({

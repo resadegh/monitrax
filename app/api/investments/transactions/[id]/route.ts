@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyIndirectOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
 
 const updateTransactionSchema = z.object({
@@ -28,11 +29,15 @@ export async function GET(
         },
       });
 
-      if (!transaction || transaction.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        transaction,
+        transaction?.investmentAccount,
+        authReq.user!.userId,
+        'Transaction'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
 
-      return NextResponse.json(transaction);
+      return NextResponse.json(ownershipResult.resource);
     } catch (error) {
       console.error('Get investment transaction error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -63,9 +68,13 @@ export async function PUT(
         include: { investmentAccount: true },
       });
 
-      if (!existing || existing.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        existing,
+        existing?.investmentAccount,
+        authReq.user!.userId,
+        'Transaction'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const { holdingId, date, type, price, units, fees, notes } = validation.data;
 
@@ -114,9 +123,13 @@ export async function DELETE(
         include: { investmentAccount: true },
       });
 
-      if (!existing || existing.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        existing,
+        existing?.investmentAccount,
+        authReq.user!.userId,
+        'Transaction'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
 
       await prisma.investmentTransaction.delete({
         where: { id },
