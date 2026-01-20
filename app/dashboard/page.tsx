@@ -48,6 +48,17 @@ import {
 } from '@/components/dashboard/InsightWidgets';
 import { DebtQualityWidget, calculateDebtQuality } from '@/components/dashboard/DebtQualityWidget';
 import { EntityCashflowSummary, calculateEntityCashflow } from '@/components/dashboard/EntityCashflowSummary';
+import {
+  CalculationTooltip,
+  InvestmentIncomeDisplay,
+  calculateInvestmentIncome,
+  LinkageHealthIndicator,
+  calculateLinkageHealthStatus,
+  EntityComparisonChart,
+  buildEntityComparisonData,
+  QuickActionsBar,
+} from '@/components/dashboard/Phase2Enhancements';
+import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '@/components/dashboard/NetWorthTrend';
 
 interface DashboardInsights {
   healthScore: {
@@ -206,6 +217,12 @@ interface PortfolioSnapshot {
         currentValue: number;
       }>;
     }>;
+  };
+  // Phase 3: Linkage health for data completeness indicator
+  linkageHealth?: {
+    completenessScore: number;
+    orphanCount: number;
+    warnings: string[];
   };
 }
 
@@ -539,16 +556,55 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Primary Metrics Row - Clickable for details */}
+          {/* Phase 3: Linkage Health & Quick Actions Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {snapshot.linkageHealth && (
+                <Link href="/dashboard/properties">
+                  <LinkageHealthIndicator
+                    data={calculateLinkageHealthStatus(
+                      snapshot.linkageHealth.completenessScore,
+                      snapshot.linkageHealth.orphanCount,
+                      snapshot.linkageHealth.warnings?.length || 0
+                    )}
+                    showDetails
+                  />
+                </Link>
+              )}
+            </div>
+            {/* Phase 4: Quick Actions */}
+            <QuickActionsBar
+              actions={[
+                { label: 'Budget Analysis', href: '/dashboard/budget-analysis', icon: <Calculator className="h-3 w-3" /> },
+                { label: 'Debt Planner', href: '/dashboard/debt-planner', icon: <Target className="h-3 w-3" /> },
+              ]}
+            />
+          </div>
+
+          {/* Primary Metrics Row - Clickable for details with calculation tooltips */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div onClick={() => setSelectedDetail('netWorth')} className="cursor-pointer">
-              <StatCard
-                title="Net Worth"
-                value={formatCompactCurrency(snapshot.netWorth)}
-                description={`${formatCompactCurrency(snapshot.totalAssets)} assets - ${formatCompactCurrency(snapshot.totalLiabilities)} debt`}
-                icon={Wallet}
-                variant="purple"
-              />
+              <CalculationTooltip
+                title="Net Worth Calculation"
+                formula="Total Assets - Total Liabilities"
+                components={[
+                  { label: 'Properties', value: snapshot.assets.properties.totalValue, color: 'blue' },
+                  { label: 'Accounts', value: snapshot.assets.accounts.totalValue, color: 'green', operator: '+' },
+                  { label: 'Investments', value: snapshot.assets.investments.totalValue, color: 'purple', operator: '+' },
+                  { label: 'Personal Assets', value: snapshot.assets.personalAssets?.totalValue || 0, operator: '+' },
+                  { label: 'Loans', value: snapshot.totalLiabilities, color: 'red', operator: '-' },
+                ]}
+                result={snapshot.netWorth}
+                resultLabel="Net Worth"
+              >
+                <StatCard
+                  title="Net Worth"
+                  value={formatCompactCurrency(snapshot.netWorth)}
+                  description={`${formatCompactCurrency(snapshot.totalAssets)} assets - ${formatCompactCurrency(snapshot.totalLiabilities)} debt`}
+                  icon={Wallet}
+                  variant="purple"
+                />
+              </CalculationTooltip>
             </div>
             <div className="relative">
               <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer">
@@ -582,22 +638,45 @@ export default function DashboardPage() {
               </div>
             </div>
             <div onClick={() => setSelectedDetail('savingsRate')} className="cursor-pointer">
-              <StatCard
-                title="Savings Rate"
-                value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
-                description={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year saved`}
-                icon={PiggyBank}
-                variant="teal"
-              />
+              <CalculationTooltip
+                title="Savings Rate Calculation"
+                formula="(Net Cashflow ÷ Net Income) × 100%"
+                components={[
+                  { label: 'Annual Net Income', value: snapshot.cashflow.totalIncome, color: 'green' },
+                  { label: 'Annual Expenses', value: snapshot.cashflow.totalExpenses, color: 'red', operator: '-' },
+                  { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '-' },
+                ]}
+                result={snapshot.cashflow.annualNetCashflow}
+                resultLabel="Annual Savings"
+              >
+                <StatCard
+                  title="Savings Rate"
+                  value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
+                  description={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year saved`}
+                  icon={PiggyBank}
+                  variant="teal"
+                />
+              </CalculationTooltip>
             </div>
             <div onClick={() => setSelectedDetail('lvr')} className="cursor-pointer">
-              <StatCard
-                title="Portfolio LVR"
-                value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
-                description={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
-                icon={Percent}
-                variant={snapshot.gearing.portfolioLVR > 80 ? 'orange' : 'blue'}
-              />
+              <CalculationTooltip
+                title="Portfolio LVR Calculation"
+                formula="(Total Debt ÷ Total Assets) × 100%"
+                components={[
+                  { label: 'Total Debt', value: snapshot.totalLiabilities, color: 'red' },
+                  { label: 'Total Assets', value: snapshot.totalAssets, color: 'green', operator: '÷' },
+                ]}
+                result={snapshot.gearing.portfolioLVR}
+                resultLabel="LVR %"
+              >
+                <StatCard
+                  title="Portfolio LVR"
+                  value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
+                  description={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
+                  icon={Percent}
+                  variant={snapshot.gearing.portfolioLVR > 80 ? 'orange' : 'blue'}
+                />
+              </CalculationTooltip>
             </div>
           </div>
 
@@ -656,6 +735,36 @@ export default function DashboardPage() {
               )}
             />
           )}
+
+          {/* Phase 3 & 4: Net Worth Trend & Entity Comparison */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Phase 3: Net Worth Trend */}
+            <NetWorthTrend
+              data={generateNetWorthTrendData(
+                snapshot.netWorth,
+                snapshot.cashflow.monthlyNetCashflow
+              )}
+            />
+
+            {/* Phase 4: Entity Comparison Chart */}
+            {(snapshot.properties.length > 0 || (snapshot.loans && snapshot.loans.length > 0)) && (
+              <EntityComparisonChart
+                items={buildEntityComparisonData(
+                  snapshot.properties,
+                  snapshot.investments.accounts.map(acc => ({
+                    name: acc.name,
+                    monthlyIncome: snapshot.income
+                      ? calculateInvestmentIncome(acc.id, snapshot.income).totalMonthlyIncome
+                      : 0,
+                  })),
+                  snapshot.loans?.map(loan => ({
+                    name: loan.name,
+                    netCashflowImpact: (loan.annualRepayment || 0) / 12,
+                  })) || []
+                )}
+              />
+            )}
+          </div>
 
           {/* Actionable Insights & Budget Section */}
           {insights && insights.insights.length > 0 && (
@@ -975,7 +1084,16 @@ export default function DashboardPage() {
                       <CardContent>
                         <div className="mb-3">
                           <p className="text-2xl font-bold">{formatCompactCurrency(account.totalValue)}</p>
-                          <p className="text-sm text-muted-foreground">{account.holdings.length} holding{account.holdings.length !== 1 ? 's' : ''}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">{account.holdings.length} holding{account.holdings.length !== 1 ? 's' : ''}</p>
+                            {/* Phase 2: Investment Income Display */}
+                            {snapshot.income && (
+                              <InvestmentIncomeDisplay
+                                data={calculateInvestmentIncome(account.id, snapshot.income)}
+                                compact
+                              />
+                            )}
+                          </div>
                         </div>
                         {account.holdings.length > 0 && (
                           <div className="space-y-2">
