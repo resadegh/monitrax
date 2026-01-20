@@ -262,5 +262,87 @@ const { total: monthlyExpenses } = aggregateExpenses(expenses, 'monthly');
 
 ---
 
+## Stage 6: Complete Ownership Validation Migration
+
+**Goal:** Migrate all remaining API routes to use centralized ownership validation utilities.
+
+### Files Updated (14 files)
+
+| File | Validation Functions Used |
+|------|--------------------------|
+| `app/api/assets/[id]/route.ts` | `verifyOwnership()` |
+| `app/api/categories/[id]/route.ts` | `verifyOwnership()` |
+| `app/api/loans/[id]/route.ts` | `verifyOwnership()`, `verifyRelatedOwnership()` |
+| `app/api/properties/[id]/route.ts` | `verifyOwnership()` |
+| `app/api/investments/accounts/[id]/route.ts` | `verifyOwnership()` |
+| `app/api/investments/holdings/[id]/route.ts` | `verifyIndirectOwnership()` |
+| `app/api/investments/transactions/[id]/route.ts` | `verifyIndirectOwnership()` |
+| `app/api/expenses/route.ts` | `verifyRelatedOwnership()` |
+| `app/api/income/route.ts` | `verifyRelatedOwnership()` |
+| `app/api/loans/route.ts` | `verifyRelatedOwnership()` |
+| `app/api/investments/holdings/route.ts` | `verifyOwnership()` |
+| `app/api/investments/transactions/route.ts` | `verifyOwnership()` |
+| `app/api/properties/[id]/depreciation/route.ts` | `verifyOwnership()` |
+| `app/api/properties/[id]/depreciation/[depId]/route.ts` | `verifyOwnership()`, `notFound()` |
+
+### Pattern Replaced
+```typescript
+// BEFORE - inline ownership checks
+if (!resource || resource.userId !== authReq.user!.userId) {
+  return NextResponse.json({ error: 'Not found' }, { status: 404 });
+}
+
+// AFTER - centralized utility
+import { verifyOwnership } from '@/lib/utils/ownership';
+const result = verifyOwnership(resource, authReq.user!.userId, 'Resource');
+if (!result.success) return result.response;
+```
+
+### Indirect Ownership Pattern (for child entities)
+```typescript
+// For entities owned via parent (e.g., holdings via investmentAccount)
+import { verifyIndirectOwnership } from '@/lib/utils/ownership';
+const result = verifyIndirectOwnership(
+  holding,
+  holding?.investmentAccount,
+  authReq.user!.userId,
+  'Holding'
+);
+if (!result.success) return result.response;
+```
+
+### Related Entity Pattern (for POST/PUT with linked entities)
+```typescript
+// For validating related entities in create/update operations
+import { verifyRelatedOwnership } from '@/lib/utils/ownership';
+if (propertyId) {
+  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+  if (!result.success) return result.response;
+}
+```
+
+### Impact
+- **0 inline ownership checks remaining** in `/app/api/` directory
+- Consistent 404/403 error responses across all routes
+- Type-safe validation with TypeScript generics
+- Net code reduction: -5 lines (148 additions, 153 deletions)
+
+---
+
+## Final Impact Summary
+
+| Stage | Files Changed | Description |
+|-------|--------------|-------------|
+| 1 | 26 | formatCurrency centralization |
+| 2 | 14 | Frequency multiplier deduplication |
+| 3 | 4 | Ownership utility creation |
+| 4 | 6 | Onboarding component consolidation |
+| 5 | 11 | Calculation engine centralization |
+| 6 | 14 | Complete ownership validation migration |
+| **Total** | **75** | **Full Blueprint §5.1 compliance** |
+
+---
+
 ## Testing
 All 132 utility tests pass after changes.
