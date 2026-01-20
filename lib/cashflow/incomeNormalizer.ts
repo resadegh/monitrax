@@ -7,6 +7,8 @@
 
 import { TaxEngine, getCurrentFinancialYear } from '@/lib/tax-engine';
 import type { IncomeStream } from './types';
+import { toAnnual, periodsPerYear } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 export interface IncomeWithTax extends IncomeStream {
   grossMonthlyAmount: number;
@@ -221,15 +223,8 @@ export function calculateTakeHomePay(
   medicareLevy: number;
   effectiveTaxRate: number;
 } {
-  // Convert to annual
-  const multipliers: Record<string, number> = {
-    WEEKLY: 52,
-    FORTNIGHTLY: 26,
-    MONTHLY: 12,
-    QUARTERLY: 4,
-    ANNUAL: 1,
-  };
-  const annualGross = grossAmount * (multipliers[frequency] || 1);
+  // Convert to annual using centralized utility
+  const annualGross = toAnnual(grossAmount, frequency as Frequency);
 
   const config = TaxEngine.getCurrentConfig();
 
@@ -256,8 +251,8 @@ export function calculateTakeHomePay(
   const netTax = Math.max(0, grossTax - offsetsResult.offsets.lito);
   const annualNet = annualGross - netTax;
 
-  // Convert back to original frequency
-  const divisor = multipliers[frequency] || 1;
+  // Convert back to original frequency using centralized utility
+  const divisor = periodsPerYear(frequency as Frequency);
 
   return {
     grossAmount: grossAmount,

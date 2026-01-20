@@ -9,6 +9,8 @@ import {
   CFOScoreComponents,
   CFOScoreHistory,
 } from './types';
+import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
+import { Frequency, RepaymentFrequency } from '@/lib/types/prisma-enums';
 
 // ============================================================================
 // Score Weights
@@ -95,19 +97,19 @@ interface LoanData {
   principal: number;
   interestRateAnnual: number;
   minRepayment: number;
-  repaymentFrequency: string;
+  repaymentFrequency: RepaymentFrequency;
 }
 
 interface IncomeData {
   id: string;
   amount: number;
-  frequency: string;
+  frequency: Frequency;
 }
 
 interface ExpenseData {
   id: string;
   amount: number;
-  frequency: string;
+  frequency: Frequency;
   isEssential: boolean;
 }
 
@@ -140,20 +142,7 @@ function calculateComponents(
   };
 }
 
-function annualize(amount: number, frequency: string): number {
-  switch (frequency.toUpperCase()) {
-    case 'WEEKLY': return amount * 52;
-    case 'FORTNIGHTLY': return amount * 26;
-    case 'MONTHLY': return amount * 12;
-    case 'QUARTERLY': return amount * 4;
-    case 'ANNUAL': return amount;
-    default: return amount * 12;
-  }
-}
-
-function monthlyize(amount: number, frequency: string): number {
-  return annualize(amount, frequency) / 12;
-}
+// Use centralized frequency utilities from lib/utils/frequencies.ts
 
 /**
  * Cashflow Strength (0-100)
@@ -164,9 +153,9 @@ function calculateCashflowStrength(
   expenses: ExpenseData[],
   loans: LoanData[]
 ): number {
-  const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
-  const monthlyExpenses = expenses.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
-  const monthlyLoanPayments = loans.reduce((sum, l) => sum + monthlyize(l.minRepayment, l.repaymentFrequency), 0);
+  const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency), 0);
+  const monthlyExpenses = expenses.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency), 0);
+  const monthlyLoanPayments = loans.reduce((sum, l) => sum + toMonthly(l.minRepayment, l.repaymentFrequency), 0);
 
   if (monthlyIncome === 0) return 0;
 
@@ -197,9 +186,9 @@ function calculateDebtCoverage(
   incomes: IncomeData[],
   loans: LoanData[]
 ): number {
-  const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
+  const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency), 0);
   const totalDebt = loans.reduce((sum, l) => sum + l.principal, 0);
-  const monthlyPayments = loans.reduce((sum, l) => sum + monthlyize(l.minRepayment, l.repaymentFrequency), 0);
+  const monthlyPayments = loans.reduce((sum, l) => sum + toMonthly(l.minRepayment, l.repaymentFrequency), 0);
 
   if (monthlyIncome === 0) return totalDebt === 0 ? 100 : 0;
 
@@ -234,7 +223,7 @@ function calculateEmergencyBuffer(
 
   const monthlyEssentialExpenses = expenses
     .filter(e => e.isEssential)
-    .reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
+    .reduce((sum, e) => sum + toMonthly(e.amount, e.frequency), 0);
 
   if (monthlyEssentialExpenses === 0) return liquidBalances > 0 ? 100 : 50;
 
@@ -326,10 +315,10 @@ function calculateSpendingControl(
   incomes: IncomeData[],
   expenses: ExpenseData[]
 ): number {
-  const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
+  const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency), 0);
   const monthlyDiscretionary = expenses
     .filter(e => !e.isEssential)
-    .reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
+    .reduce((sum, e) => sum + toMonthly(e.amount, e.frequency), 0);
 
   if (monthlyIncome === 0) return monthlyDiscretionary === 0 ? 100 : 0;
 
@@ -359,10 +348,10 @@ function calculateSavingsRate(
   expenses: ExpenseData[],
   loans: LoanData[]
 ): number {
-  const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
-  const monthlyExpenses = expenses.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
+  const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency), 0);
+  const monthlyExpenses = expenses.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency), 0);
   const monthlyLoanRepayments = loans.reduce(
-    (sum, l) => sum + monthlyize(l.minRepayment, l.repaymentFrequency),
+    (sum, l) => sum + toMonthly(l.minRepayment, l.repaymentFrequency),
     0
   );
 

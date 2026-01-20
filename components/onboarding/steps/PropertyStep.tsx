@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Home, Building2, DollarSign, Percent, ChevronDown, ChevronUp, KeyRound } from 'lucide-react';
+import { toAnnual } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 interface PropertyData {
   name: string;
@@ -256,10 +258,7 @@ export function PropertyStep({ value, onChange }: PropertyStepProps) {
           {rentAmount && (
             <div className="pt-2 border-t border-blue-200">
               <p className="text-sm text-blue-800">
-                <strong>Annual rent:</strong> ${(
-                  parseFloat(rentAmount) *
-                  (rentFrequency === 'WEEKLY' ? 52 : rentFrequency === 'FORTNIGHTLY' ? 26 : 12)
-                ).toLocaleString()}/year
+                <strong>Annual rent:</strong> ${toAnnual(parseFloat(rentAmount), rentFrequency as Frequency).toLocaleString()}/year
               </p>
               <p className="text-xs text-blue-600 mt-1">
                 This will be added as a recurring expense

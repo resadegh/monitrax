@@ -94,21 +94,7 @@ function calculateSimilarity(str1: string, str2: string): number {
 // FREQUENCY CONVERSION
 // =============================================================================
 
-/**
- * Convert frequency to monthly multiplier
- */
-function frequencyToMonthly(frequency: string): number {
-  const multipliers: Record<string, number> = {
-    'WEEKLY': 52 / 12,
-    'FORTNIGHTLY': 26 / 12,
-    'MONTHLY': 1,
-    'QUARTERLY': 1 / 3,
-    'ANNUAL': 1 / 12,
-    'ANNUALLY': 1 / 12,
-    'IRREGULAR': 1,
-  };
-  return multipliers[frequency.toUpperCase()] || 1;
-}
+// Removed unused frequencyToMonthly - use toMonthly from lib/utils/frequencies.ts if needed
 
 /**
  * Check if two frequencies are compatible

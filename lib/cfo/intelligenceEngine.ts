@@ -18,6 +18,8 @@ import {
   CFOAlert,
   CFOPreferences,
 } from './types';
+import { toMonthly } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 // Type definitions for Prisma models (to avoid Prisma client generation dependency)
 interface AccountRecord {
@@ -149,10 +151,10 @@ async function calculateMonthlyProgress(userId: string): Promise<MonthlyProgress
     : 0;
 
   // Calculate savings rate (including loan repayments)
-  const monthlyIncome = incomes.reduce((sum: number, i: IncomeRecord) => sum + monthlyize(i.amount, i.frequency), 0);
-  const monthlyExpenses = expenses.reduce((sum: number, e: ExpenseRecord) => sum + monthlyize(e.amount, e.frequency), 0);
+  const monthlyIncome = incomes.reduce((sum: number, i: IncomeRecord) => sum + toMonthly(i.amount, i.frequency as Frequency), 0);
+  const monthlyExpenses = expenses.reduce((sum: number, e: ExpenseRecord) => sum + toMonthly(e.amount, e.frequency as Frequency), 0);
   const monthlyLoanRepayments = loans.reduce(
-    (sum: number, l: LoanRecord) => sum + monthlyize(l.minRepayment, l.repaymentFrequency),
+    (sum: number, l: LoanRecord) => sum + toMonthly(l.minRepayment, l.repaymentFrequency as Frequency),
     0
   );
   const savingsRate = monthlyIncome > 0
@@ -219,7 +221,7 @@ async function calculateQuickStats(userId: string): Promise<CFOQuickStats> {
 
   const now = new Date();
   const daysRemaining = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
-  const dailyBurn = expenses.reduce((sum: number, e: ExpenseRecord) => sum + monthlyize(e.amount, e.frequency), 0) / 30;
+  const dailyBurn = expenses.reduce((sum: number, e: ExpenseRecord) => sum + toMonthly(e.amount, e.frequency as Frequency), 0) / 30;
 
   const projectedMonthEndBalance = totalLiquid - (dailyBurn * daysRemaining);
 
@@ -227,7 +229,7 @@ async function calculateQuickStats(userId: string): Promise<CFOQuickStats> {
   const subscriptions = expenses.filter((e: ExpenseRecord) =>
     !e.isEssential &&
     ['MONTHLY', 'ANNUAL'].includes(e.frequency.toUpperCase()) &&
-    monthlyize(e.amount, e.frequency) < 100
+    toMonthly(e.amount, e.frequency as Frequency) < 100
   );
 
   return {
@@ -303,16 +305,5 @@ export async function getActions(userId: string): Promise<ActionPrioritisationOu
 }
 
 // ============================================================================
-// Helpers
+// Helpers - Use centralized frequency utilities from lib/utils/frequencies.ts
 // ============================================================================
-
-function monthlyize(amount: number, frequency: string): number {
-  switch (frequency.toUpperCase()) {
-    case 'WEEKLY': return amount * 52 / 12;
-    case 'FORTNIGHTLY': return amount * 26 / 12;
-    case 'MONTHLY': return amount;
-    case 'QUARTERLY': return amount / 3;
-    case 'ANNUAL': return amount / 12;
-    default: return amount;
-  }
-}
