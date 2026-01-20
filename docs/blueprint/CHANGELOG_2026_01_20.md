@@ -346,3 +346,121 @@ if (propertyId) {
 
 ## Testing
 All 132 utility tests pass after changes.
+
+---
+
+## Stage 7: Master Financial Service - Single Source of Truth
+
+**Goal:** Create a centralized Master Financial Service that integrates ALL calculation engines into a unified API endpoint, eliminating data inconsistencies across pages.
+
+### Problem Addressed
+Data inconsistencies were found between different pages:
+- Dashboard showed $7,973/mo expenses
+- Budget Analysis showed $6,833/mo recurring
+- Expenses Page showed $7,698/mo recurring + $275 discretionary
+
+Root cause: Different APIs used different filtering logic and independent calculations.
+
+### Solution: Master Financial Service
+
+**New Files Created:**
+
+| File | Purpose |
+|------|---------|
+| `lib/services/masterFinancialService.ts` | **Single source of truth** for ALL financial calculations |
+| `lib/services/index.ts` | Service exports with clear documentation |
+| `app/api/master-snapshot/route.ts` | New API endpoint exposing the Master Financial Service |
+
+### What the Master Financial Service Provides
+
+```typescript
+const snapshot = await getMasterFinancialSnapshot(userId);
+
+// Access consistent data across the app:
+snapshot.expenses.monthly.all.total          // All expenses (no filter)
+snapshot.expenses.monthly.recurring.total    // Recurring only
+snapshot.expenses.monthly.essential.total    // Essential only
+snapshot.expenses.monthly.discretionary.total // Discretionary only
+snapshot.income.monthly.all.netTotal         // Net monthly income
+snapshot.cashflow.monthlyCashflow            // Income - Expenses - Loans
+snapshot.netWorth.netWorth                   // Total net worth
+snapshot.healthScore.score                   // Financial health score (0-100)
+snapshot.quickMetrics.*                      // Common values for fast access
+```
+
+### Data Categories Available
+
+| Category | Monthly & Annual |
+|----------|------------------|
+| Expenses | all, recurring, nonRecurring, essential, discretionary, taxDeductible, byCategory |
+| Income | all, primary, secondary, passive |
+| Net Worth | assets, liabilities, breakdown |
+| Cashflow | income, expenses, loanRepayments, netCashflow, savingsRate |
+| Properties | per-property metrics (LVR, equity, yield, cashflow) |
+| Investments | totalValue, costBase, unrealisedGains, allocation |
+| Debt | summary, metrics, debtToIncome, debtServiceRatio |
+| Tax | taxableIncome, taxPayable, deductions, PAYG |
+| Emergency Fund | liquidCash, monthsCovered, gap, status |
+| Health Score | score, grade, componentBreakdown |
+
+### API Endpoints Refactored
+
+| Endpoint | Change |
+|----------|--------|
+| `/api/dashboard/insights` | Now uses `getMasterFinancialSnapshot()` for consistent totals |
+| `/api/master-snapshot` | **NEW** - Canonical endpoint for all financial data |
+
+### Design Principle Updated
+
+Updated `docs/blueprint/02_DESIGN_PRINCIPLES.md`:
+- Section 5.1: Added Master Financial Service to canonical utility table
+- Section 6.2: Updated "Single Source of Financial Truth" to reference Master Financial Service
+
+### Usage Guide
+
+```typescript
+// In any API route or page
+import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+
+const snapshot = await getMasterFinancialSnapshot(userId);
+
+// Use consistent values everywhere
+const monthlyExpenses = snapshot.expenses.monthly.all.total;
+const monthlyIncome = snapshot.income.monthly.all.netTotal;
+const cashflow = snapshot.cashflow.monthlyCashflow;
+```
+
+### Convenience Getters
+
+```typescript
+import {
+  getNetWorth,
+  getMonthlyCashflow,
+  getQuickMetrics,
+  getHealthScore,
+  getTaxSummary,
+  getPropertyMetrics,
+  getInvestmentMetrics,
+} from '@/lib/services/masterFinancialService';
+```
+
+### Impact
+- **Eliminated data inconsistencies** between Dashboard, Budget Analysis, and Expenses pages
+- **Single source of truth** for all financial calculations
+- **Clear migration path** for other API endpoints
+- **~700 lines of new code** in Master Financial Service
+
+---
+
+## Updated Full Impact Summary
+
+| Stage | Files Changed | Description |
+|-------|--------------|-------------|
+| 1 | 26 | formatCurrency centralization |
+| 2 | 14 | Frequency multiplier deduplication |
+| 3 | 4 | Ownership utility creation |
+| 4 | 6 | Onboarding component consolidation |
+| 5 | 11 | Calculation engine centralization |
+| 6 | 14 | Complete ownership validation migration |
+| 7 | 4 | **Master Financial Service creation** |
+| **Total** | **79** | **Full Blueprint §5.1 compliance + Single Source of Truth** |
