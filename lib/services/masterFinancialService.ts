@@ -449,7 +449,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         type: true,
       },
     }),
-    prisma.superannuation.findMany({
+    prisma.superannuationAccount.findMany({
       where: { userId },
       select: {
         id: true,
