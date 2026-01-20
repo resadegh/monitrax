@@ -473,6 +473,13 @@ property → loan → expense → transaction → account → holding → income
 | Frequency multiplier duplications | 14+ | "Never Duplicate Logic" | 🔲 Stage 2 |
 | Ownership validation duplications | 79+ | API Standards centralization | 🔲 Stage 3 |
 | Duplicate onboarding components | 2 sets | "Single Source of Truth" | 🔲 Stage 4 |
+| Duplicate documentation files | 1+ | "Documentation Principles §7.3" | 🔲 Cleanup |
+
+### Documentation Violations
+
+| File | Issue | Resolution |
+|------|-------|------------|
+| `docs/MONITRAX_MASTER_BLUEPRINT.md` | Duplicates `docs/blueprint/MASTER_BLUEPRINT.md` | Delete or convert to redirect |
 
 ### Compliance Status
 
