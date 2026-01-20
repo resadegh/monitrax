@@ -327,7 +327,7 @@ interface RawInvestmentHolding {
   units: number;
   averagePrice: number;
   currentPrice: number | null;
-  assetType: string | null;
+  type: string;
 }
 
 interface RawSuperannuation {
@@ -446,7 +446,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         units: true,
         averagePrice: true,
         currentPrice: true,
-        assetType: true,
+        type: true,
       },
     }),
     prisma.superannuation.findMany({
@@ -655,7 +655,7 @@ function buildInvestmentMetrics(holdings: RawInvestmentHolding[]): InvestmentMet
     totalValue += value;
     totalCostBase += costBase;
 
-    const type = holding.assetType || 'Other';
+    const type = holding.type || 'Other';
     if (!byType[type]) {
       byType[type] = { value: 0, percentage: 0 };
     }
