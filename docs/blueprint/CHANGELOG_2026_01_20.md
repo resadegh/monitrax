@@ -171,6 +171,73 @@ Added `@deprecated` notice to `InitialSetupWizard.tsx`:
 
 ---
 
+## Stage 5: Calculation Engine Centralization
+
+**Goal:** Create centralized calculation engines to replace scattered calculations across API routes.
+
+### Critical Bug Fixed
+**`lib/income/netIncomeCalculator.ts`** had incorrect frequency multipliers:
+```typescript
+// BEFORE (wrong - ~8% error for weekly income)
+WEEKLY: 4,        // Weekly × 4 = Monthly
+FORTNIGHTLY: 2,   // Fortnightly × 2 = Monthly
+
+// AFTER (correct)
+// Now uses lib/utils/frequencies.ts:
+// Weekly × 52 / 12 = 4.33 (accurate monthly equivalent)
+```
+
+### API Routes Updated (5 files)
+Replaced local `normalizeToMonthly()` and `normalizeToAnnual()` functions with centralized imports:
+
+| File | Functions Removed |
+|------|------------------|
+| `app/api/financial-health/route.ts` | `normalizeToMonthly()` |
+| `app/api/cashflow/route.ts` | `normalizeToMonthly()` |
+| `app/api/cashflow/summary/route.ts` | `normalizeToMonthly()` |
+| `app/api/portfolio/snapshot/route.ts` | `normalizeToAnnual()`, `normalizeToMonthly()` |
+| `lib/income/netIncomeCalculator.ts` | `MONTHLY_MULTIPLIERS` object |
+
+### New Calculation Engines Created
+Located in `lib/calculations/`:
+
+| File | Purpose |
+|------|---------|
+| `index.ts` | Main exports for all engines |
+| `netWorthCalculator.ts` | Single source for net worth: `calculateNetWorth()`, `calculateTotalAssets()`, `calculateTotalLiabilities()` |
+| `cashflowOrchestrator.ts` | Single source for cashflow: `calculateCashflow()`, `calculateMonthlyCashflow()`, `calculateAnnualCashflow()` |
+| `expenseAggregator.ts` | `aggregateExpenses()`, `aggregateExpensesByCategory()` |
+| `incomeAggregator.ts` | `aggregateIncome()`, handles gross/net/PAYG |
+| `loanAggregator.ts` | `aggregateLoanRepayments()`, `calculateDebtMetrics()`, `calculateLVR()` |
+
+### Pattern Replaced
+```typescript
+// BEFORE - scattered across 4+ files
+const monthlyExpenses = expenses.reduce(
+  (sum, e) => sum + normalizeToMonthly(e.amount, e.frequency),
+  0
+);
+
+// AFTER - single source of truth
+import { aggregateExpenses } from '@/lib/calculations';
+const { total: monthlyExpenses } = aggregateExpenses(expenses, 'monthly');
+```
+
+---
+
+## Updated Impact Summary
+
+| Stage | Files Changed | Lines Changed | New Code |
+|-------|--------------|---------------|----------|
+| 1 | 26 | -150 | - |
+| 2 | 14 | -200 | `frequencies.ts` |
+| 3 | 4 | +200 | `ownership.ts` |
+| 4 | 6 | +343 | `shared/` components |
+| 5 | 11 | +880 | `lib/calculations/` |
+| **Total** | **61** | **+1073 net** | **5 modules** |
+
+---
+
 ## Alignment with Blueprint
 
 ### §5.1 Never Duplicate Logic
@@ -183,6 +250,11 @@ Added `@deprecated` notice to `InitialSetupWizard.tsx`:
 - Frequency conversion: `lib/utils/frequencies.ts`
 - Ownership validation: `lib/utils/ownership.ts`
 - Onboarding components: `components/onboarding/shared/`
+- **NEW** Net worth calculation: `lib/calculations/netWorthCalculator.ts`
+- **NEW** Cashflow calculation: `lib/calculations/cashflowOrchestrator.ts`
+- **NEW** Expense aggregation: `lib/calculations/expenseAggregator.ts`
+- **NEW** Income aggregation: `lib/calculations/incomeAggregator.ts`
+- **NEW** Loan aggregation: `lib/calculations/loanAggregator.ts`
 
 ### §7 Documentation Principles
 - Single source of truth in `docs/blueprint/`
