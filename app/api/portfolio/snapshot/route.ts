@@ -13,28 +13,14 @@ import {
   extractInvestmentAccountLinks,
   extractHoldingLinks,
 } from '@/lib/grdcs';
-import { getNetAnnualIncome, toAnnual } from '@/lib/income/netIncomeCalculator';
+import { getNetAnnualIncome } from '@/lib/income/netIncomeCalculator';
+import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 // ============================================================================
 // SNAPSHOT 2.0 - GRDCS-ENHANCED PORTFOLIO SNAPSHOT
+// Uses centralized frequency utilities from lib/utils/frequencies (Blueprint §5.1)
 // ============================================================================
-
-// Helper to normalize amount to annual
-function normalizeToAnnual(amount: number, frequency: string): number {
-  switch (frequency) {
-    case 'WEEKLY': return amount * 52;
-    case 'FORTNIGHTLY': return amount * 26;
-    case 'MONTHLY': return amount * 12;
-    case 'QUARTERLY': return amount * 4;
-    case 'ANNUAL': return amount;
-    default: return amount * 12;
-  }
-}
-
-// Helper to normalize amount to monthly
-function normalizeToMonthly(amount: number, frequency: string): number {
-  return normalizeToAnnual(amount, frequency) / 12;
-}
 
 // Helper to get gross income amount for salary types
 function getGrossIncomeAmount(incomeItem: {
@@ -54,14 +40,14 @@ function getGrossIncomeAmount(incomeItem: {
 
     // If user entered GROSS income, the amount field is the gross
     if (incomeItem.salaryType === 'GROSS') {
-      return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+      return toAnnual(incomeItem.amount, incomeItem.frequency as Frequency);
     }
 
     // Fallback: use amount as gross (legacy behavior)
-    return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+    return toAnnual(incomeItem.amount, incomeItem.frequency as Frequency);
   }
   // For non-salary income, use gross amount
-  return normalizeToAnnual(incomeItem.amount, incomeItem.frequency);
+  return toAnnual(incomeItem.amount, incomeItem.frequency as Frequency);
 }
 
 // Helper to get PAYG withholding for salary types
@@ -658,10 +644,10 @@ export async function GET(request: NextRequest) {
       // PAYG withholding - uses stored paygWithholding where available
       const totalAnnualPaygWithholding = income.reduce((sum: number, i: any) => sum + getPaygWithholding(i), 0);
 
-      const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
+      const totalAnnualExpenses = expenses.reduce((sum: number, e: any) => sum + toAnnual(e.amount, e.frequency as Frequency), 0);
       // Calculate total loan repayments
       const totalAnnualLoanRepayments = loans.reduce((sum: number, l: any) => {
-        return sum + normalizeToAnnual(l.minRepayment || 0, l.repaymentFrequency || 'MONTHLY');
+        return sum + toAnnual(l.minRepayment || 0, (l.repaymentFrequency || 'MONTHLY') as Frequency);
       }, 0);
       // Use NET income for cashflow (what's actually available to spend)
       // Cashflow = Income - Expenses - Loan Repayments
@@ -682,11 +668,11 @@ export async function GET(request: NextRequest) {
         const propertyIncome = income.filter((i: any) => i.propertyId === property.id);
         const annualRentalIncome = propertyIncome
           .filter((i: any) => i.type === 'RENT' || i.type === 'RENTAL')
-          .reduce((sum: number, i: any) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
+          .reduce((sum: number, i: any) => sum + toAnnual(i.amount, i.frequency as Frequency), 0);
         const rentalYield = calculateRentalYield(annualRentalIncome, property.currentValue);
 
         const propertyExpenses = expenses.filter((e: any) => e.propertyId === property.id);
-        const annualPropertyExpenses = propertyExpenses.reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
+        const annualPropertyExpenses = propertyExpenses.reduce((sum: number, e: any) => sum + toAnnual(e.amount, e.frequency as Frequency), 0);
 
         // Calculate interest (for reference/tax purposes)
         const annualInterest = propertyLoans.reduce((sum: number, l: any) => {
@@ -695,7 +681,7 @@ export async function GET(request: NextRequest) {
 
         // Calculate actual loan repayments
         const annualLoanRepayments = propertyLoans.reduce((sum: number, l: any) => {
-          return sum + normalizeToAnnual(l.minRepayment || 0, l.repaymentFrequency || 'MONTHLY');
+          return sum + toAnnual(l.minRepayment || 0, (l.repaymentFrequency || 'MONTHLY') as Frequency);
         }, 0);
 
         // Use actual loan repayments for cashflow (not just interest)
@@ -798,7 +784,7 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       const loanSnapshots = loans.map((loan: any) => {
         const grdcsLinks = extractLoanLinks(loan);
-        const annualRepayment = normalizeToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY');
+        const annualRepayment = toAnnual(loan.minRepayment || 0, (loan.repaymentFrequency || 'MONTHLY') as Frequency);
         return {
           id: loan.id,
           name: loan.name,
@@ -827,7 +813,7 @@ export async function GET(request: NextRequest) {
       // EXPENSE SNAPSHOTS FOR CASHFLOW BREAKDOWN
       // ============================================================================
       const expenseSnapshots = expenses.map((expense: any) => {
-        const annualAmount = normalizeToAnnual(expense.amount, expense.frequency);
+        const annualAmount = toAnnual(expense.amount, expense.frequency as Frequency);
         return {
           id: expense.id,
           name: expense.name,
@@ -851,7 +837,7 @@ export async function GET(request: NextRequest) {
         // Get expenses linked to this asset
         const assetExpenses = expenses.filter((e: any) => e.assetId === asset.id);
         const annualExpenses = assetExpenses.reduce((sum: number, e: any) => {
-          return sum + normalizeToAnnual(e.amount, e.frequency);
+          return sum + toAnnual(e.amount, e.frequency as Frequency);
         }, 0);
 
         // Calculate depreciation
@@ -916,11 +902,11 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       const taxableIncome = income
         .filter((i: any) => i.isTaxable)
-        .reduce((sum: number, i: any) => sum + normalizeToAnnual(i.amount, i.frequency), 0);
+        .reduce((sum: number, i: any) => sum + toAnnual(i.amount, i.frequency as Frequency), 0);
 
       const deductibleExpenses = expenses
         .filter((e: any) => e.isTaxDeductible)
-        .reduce((sum: number, e: any) => sum + normalizeToAnnual(e.amount, e.frequency), 0);
+        .reduce((sum: number, e: any) => sum + toAnnual(e.amount, e.frequency as Frequency), 0);
 
       // ============================================================================
       // BUILD SNAPSHOT 2.0 RESPONSE
