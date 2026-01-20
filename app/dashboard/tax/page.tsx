@@ -31,6 +31,7 @@ import {
   CheckCircle2,
   Info,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface TaxRecommendation {
   id: string;
@@ -143,14 +144,7 @@ export default function TaxPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // formatCurrency imported from lib/utils/formatters
 
   const formatPercent = (rate: number) => {
     return `${rate.toFixed(1)}%`;

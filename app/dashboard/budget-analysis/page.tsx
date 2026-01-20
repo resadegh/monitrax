@@ -25,6 +25,7 @@ import {
   Edit2,
   AlertTriangle,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface VariableCategory {
   estimate: number;
@@ -84,15 +85,7 @@ export default function BudgetAnalysisPage() {
   const [adjustments, setAdjustments] = useState<Record<string, number>>({});
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // formatCurrency imported from lib/utils/formatters
 
   // Fetch latest analysis
   useEffect(() => {

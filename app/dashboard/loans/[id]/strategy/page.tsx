@@ -24,6 +24,7 @@ import {
   Calendar,
   RefreshCw,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 // =============================================================================
 // TYPES
@@ -74,14 +75,7 @@ export default function LoanStrategyPage() {
     }
   }
 
-  function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  }
+  // formatCurrency imported from lib/utils/formatters
 
   if (loading) {
     return (

@@ -17,8 +17,10 @@ import {
   Home, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   Landmark, DollarSign, Receipt, Calendar, Building2,
   ChevronRight, Percent, PiggyBank, FileText, Eye, Link2, Lightbulb,
-  LayoutGrid, List, KeyRound
+  LayoutGrid, List, KeyRound,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
+import { toAnnual } from '@/lib/utils/frequencies';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -309,25 +311,9 @@ function PropertiesPageContent() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const convertToAnnual = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52;
-      case 'FORTNIGHTLY': return amount * 26;
-      case 'MONTHLY': return amount * 12;
-      case 'QUARTERLY': return amount * 4;
-      case 'ANNUAL': return amount;
-      default: return amount * 12;
-    }
-  };
+  // Use centralized utilities - formatCurrency from lib/utils/formatters, toAnnual from lib/utils/frequencies
+  const convertToAnnual = (amount: number, frequency: string) =>
+    toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
 
   const calculateGain = (property: Property) => {
     const gain = property.currentValue - property.purchasePrice;

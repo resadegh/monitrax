@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap, List, Radio } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
+import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -516,34 +518,14 @@ function ExpensesPageContent() {
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-
-  const convertToMonthly = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52 / 12;
-      case 'FORTNIGHTLY': return amount * 26 / 12;
-      case 'MONTHLY': return amount;
-      case 'QUARTERLY': return amount * 4 / 12;
-      case 'ANNUAL': return amount / 12;
-      default: return amount;
-    }
-  };
+  // formatCurrency imported from lib/utils/formatters
+  // Frequency conversions use centralized utilities from lib/utils/frequencies
+  const convertToMonthly = (amount: number, frequency: string) =>
+    toMonthly(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
 
   // Convert loan repayment to monthly
-  const convertLoanRepaymentToMonthly = (amount: number, frequency: Loan['repaymentFrequency']): number => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52 / 12;
-      case 'FORTNIGHTLY': return amount * 26 / 12;
-      case 'MONTHLY': return amount;
-      default: return amount;
-    }
-  };
+  const convertLoanRepaymentToMonthly = (amount: number, frequency: Loan['repaymentFrequency']): number =>
+    toMonthly(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY');
 
   const totalMonthly = filteredExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
   const allTotalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);

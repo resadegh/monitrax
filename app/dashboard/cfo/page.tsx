@@ -27,6 +27,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface CFOScore {
   overall: number;
@@ -124,12 +125,7 @@ export default function CFODashboardPage() {
     }
   }, [token]);
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-    }).format(amount);
+  // formatCurrency imported from lib/utils/formatters
 
   const getGradeColor = (grade: string) => {
     switch (grade) {

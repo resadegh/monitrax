@@ -37,6 +37,7 @@ import {
   X,
   Car,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface PortfolioSnapshot {
   generatedAt: string;
@@ -255,26 +256,8 @@ export default function DashboardPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatCompactCurrency = (amount: number) => {
-    if (Math.abs(amount) >= 1000000) {
-      return new Intl.NumberFormat('en-AU', {
-        style: 'currency',
-        currency: 'AUD',
-        notation: 'compact',
-        maximumFractionDigits: 1,
-      }).format(amount);
-    }
-    return formatCurrency(amount);
-  };
+  // Use centralized formatCurrency utility with abbreviate option for compact display
+  const formatCompactCurrency = (amount: number) => formatCurrency(amount, { abbreviate: true });
 
   // Generate insights based on portfolio data
   const generateInsights = () => {
