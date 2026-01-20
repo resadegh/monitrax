@@ -18,6 +18,7 @@ import {
   ArrowUpDown, Plus, Edit2, Trash2, Eye, TrendingUp, TrendingDown,
   DollarSign, Receipt, Wallet, BarChart3, Calendar, FileText, Briefcase, Link2
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
@@ -230,12 +231,9 @@ function TransactionsPageContent() {
     setShowDetailDialog(true);
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 2,
-    }).format(amount);
+  // Use imported formatCurrency with showCents for transaction amounts
+  const formatTransactionCurrency = (amount: number) =>
+    formatCurrency(amount, { showCents: true });
 
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('en-AU', {
@@ -343,25 +341,25 @@ function TransactionsPageContent() {
         <div className="grid gap-4 md:grid-cols-4 mb-6">
           <StatCard
             title="Total Purchases"
-            value={formatCurrency(stats.totalBuys)}
+            value={formatTransactionCurrency(stats.totalBuys)}
             description={`${stats.buyCount} buy transaction${stats.buyCount !== 1 ? 's' : ''}`}
             variant="green"
           />
           <StatCard
             title="Total Sales"
-            value={formatCurrency(stats.totalSells)}
+            value={formatTransactionCurrency(stats.totalSells)}
             description={`${stats.sellCount} sell transaction${stats.sellCount !== 1 ? 's' : ''}`}
             variant="orange"
           />
           <StatCard
             title="Dividends Received"
-            value={formatCurrency(stats.totalDividends)}
+            value={formatTransactionCurrency(stats.totalDividends)}
             description={`${stats.dividendCount} payment${stats.dividendCount !== 1 ? 's' : ''}`}
             variant="blue"
           />
           <StatCard
             title="Total Fees Paid"
-            value={formatCurrency(stats.totalFees)}
+            value={formatTransactionCurrency(stats.totalFees)}
             description={`Across all transactions`}
             variant="purple"
           />
@@ -444,7 +442,7 @@ function TransactionsPageContent() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Price</p>
-                      <p className="font-medium">{formatCurrency(transaction.price)}</p>
+                      <p className="font-medium">{formatTransactionCurrency(transaction.price)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Fees</p>
@@ -459,7 +457,7 @@ function TransactionsPageContent() {
                         isSell ? 'text-red-600' :
                         isIncome ? 'text-blue-600' : ''
                       }`}>
-                        {formatCurrency(totalValue)}
+                        {formatTransactionCurrency(totalValue)}
                       </p>
                     </div>
                   </div>
@@ -506,7 +504,7 @@ function TransactionsPageContent() {
                   <div>
                     <p className="text-xs text-muted-foreground">Gross Value</p>
                     <p className="text-2xl font-bold">
-                      {formatCurrency(selectedTransaction.price * selectedTransaction.units)}
+                      {formatTransactionCurrency(selectedTransaction.price * selectedTransaction.units)}
                     </p>
                   </div>
                   <div>
@@ -515,7 +513,7 @@ function TransactionsPageContent() {
                        selectedTransaction.type === 'SELL' ? 'Net Proceeds (after fees)' : 'Net Value'}
                     </p>
                     <p className="text-2xl font-bold">
-                      {formatCurrency(calculateTransactionTotal(selectedTransaction))}
+                      {formatTransactionCurrency(calculateTransactionTotal(selectedTransaction))}
                     </p>
                   </div>
                 </div>
@@ -542,7 +540,7 @@ function TransactionsPageContent() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Price per Unit</p>
-                      <p className="font-medium">{formatCurrency(selectedTransaction.price)}</p>
+                      <p className="font-medium">{formatTransactionCurrency(selectedTransaction.price)}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Brokerage/Fees</p>
@@ -586,12 +584,12 @@ function TransactionsPageContent() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                       <div>
                         <p className="text-xs text-amber-600 dark:text-amber-400">Sale Proceeds</p>
-                        <p className="font-medium">{formatCurrency(selectedTransaction.price * selectedTransaction.units)}</p>
+                        <p className="font-medium">{formatTransactionCurrency(selectedTransaction.price * selectedTransaction.units)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-amber-600 dark:text-amber-400">Estimated Cost Base</p>
                         <p className="font-medium">
-                          {formatCurrency(selectedTransaction.holding.averagePrice * selectedTransaction.units)}
+                          {formatTransactionCurrency(selectedTransaction.holding.averagePrice * selectedTransaction.units)}
                         </p>
                       </div>
                     </div>
@@ -627,12 +625,12 @@ function TransactionsPageContent() {
                       </div>
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">Average Price</p>
-                        <p className="font-medium">{formatCurrency(selectedTransaction.holding.averagePrice)}</p>
+                        <p className="font-medium">{formatTransactionCurrency(selectedTransaction.holding.averagePrice)}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">Total Cost Base</p>
                         <p className="font-medium">
-                          {formatCurrency(selectedTransaction.holding.units * selectedTransaction.holding.averagePrice)}
+                          {formatTransactionCurrency(selectedTransaction.holding.units * selectedTransaction.holding.averagePrice)}
                         </p>
                       </div>
                       {selectedTransaction.holding.frankingPercentage !== null && (
@@ -649,11 +647,11 @@ function TransactionsPageContent() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-muted-foreground">Transaction Price</p>
-                          <p className="font-medium">{formatCurrency(selectedTransaction.price)}</p>
+                          <p className="font-medium">{formatTransactionCurrency(selectedTransaction.price)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Holding Avg Price</p>
-                          <p className="font-medium">{formatCurrency(selectedTransaction.holding.averagePrice)}</p>
+                          <p className="font-medium">{formatTransactionCurrency(selectedTransaction.holding.averagePrice)}</p>
                         </div>
                         <div className="col-span-2">
                           <p className="text-xs text-muted-foreground">Price Difference</p>
@@ -661,7 +659,7 @@ function TransactionsPageContent() {
                             selectedTransaction.price > selectedTransaction.holding.averagePrice
                               ? 'text-red-600' : 'text-green-600'
                           }`}>
-                            {formatCurrency(selectedTransaction.price - selectedTransaction.holding.averagePrice)}
+                            {formatTransactionCurrency(selectedTransaction.price - selectedTransaction.holding.averagePrice)}
                             {' '}
                             ({selectedTransaction.price > selectedTransaction.holding.averagePrice ? '+' : ''}
                             {(((selectedTransaction.price - selectedTransaction.holding.averagePrice) / selectedTransaction.holding.averagePrice) * 100).toFixed(2)}%)
@@ -889,7 +887,7 @@ function TransactionsPageContent() {
               <div className="p-3 bg-muted/50 rounded-lg">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Gross Value:</span>
-                  <span className="font-medium">{formatCurrency((formData.units || 0) * (formData.price || 0))}</span>
+                  <span className="font-medium">{formatTransactionCurrency((formData.units || 0) * (formData.price || 0))}</span>
                 </div>
                 {formData.fees && (
                   <div className="flex justify-between text-sm">
@@ -897,7 +895,7 @@ function TransactionsPageContent() {
                       {formData.type === 'BUY' ? 'Total Cost:' : 'Net Proceeds:'}
                     </span>
                     <span className="font-medium">
-                      {formatCurrency(
+                      {formatTransactionCurrency(
                         formData.type === 'BUY'
                           ? (formData.units || 0) * (formData.price || 0) + (formData.fees || 0)
                           : (formData.units || 0) * (formData.price || 0) - (formData.fees || 0)

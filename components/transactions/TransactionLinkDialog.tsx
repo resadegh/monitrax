@@ -36,6 +36,7 @@ import {
   INCOME_TYPE_LABELS,
 } from '@/lib/categories/unified';
 import { CategorySelect } from '@/components/categories/CategorySelect';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface Transaction {
   id: string;
@@ -570,9 +571,6 @@ export function TransactionLinkDialog({
       setSelectedVendorTransactions(new Set(sameVendorTransactions.map(t => t.id)));
     }
   };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
 
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('en-AU', {

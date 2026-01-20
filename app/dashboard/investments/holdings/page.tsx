@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, Plus, Edit2, Trash2, Eye, TrendingUp, ArrowUpRight, ArrowDownRight, DollarSign, Percent, Link2, Lightbulb } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -193,12 +194,9 @@ function HoldingsPageContent() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'AUD') =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-    }).format(amount);
+  // Use imported formatCurrency with showCents for investment amounts
+  const formatHoldingCurrency = (amount: number, currency: string = 'AUD') =>
+    formatCurrency(amount, { currency, showCents: true });
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -254,7 +252,7 @@ function HoldingsPageContent() {
     <DashboardLayout>
       <PageHeader
         title="Investment Holdings"
-        description={`Manage your holdings • ${holdings.length} position(s) • Total: ${formatCurrency(totalValue)}`}
+        description={`Manage your holdings • ${holdings.length} position(s) • Total: ${formatHoldingCurrency(totalValue)}`}
         action={
           <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }} disabled={accounts.length === 0}>
             <Plus className="mr-2 h-4 w-4" />
@@ -321,7 +319,7 @@ function HoldingsPageContent() {
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Market Value</p>
-                    <p className="text-2xl font-bold">{formatCurrency(value, currency)}</p>
+                    <p className="text-2xl font-bold">{formatHoldingCurrency(value, currency)}</p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -331,7 +329,7 @@ function HoldingsPageContent() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Avg Price</p>
-                      <p className="font-medium">{formatCurrency(holding.averagePrice, currency)}</p>
+                      <p className="font-medium">{formatHoldingCurrency(holding.averagePrice, currency)}</p>
                     </div>
                   </div>
 
@@ -513,7 +511,7 @@ function HoldingsPageContent() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold">
-                        {formatCurrency(selectedHolding.units * selectedHolding.averagePrice, selectedHolding.investmentAccount?.currency)}
+                        {formatHoldingCurrency(selectedHolding.units * selectedHolding.averagePrice, selectedHolding.investmentAccount?.currency)}
                       </p>
                     </CardContent>
                   </Card>
@@ -542,7 +540,7 @@ function HoldingsPageContent() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold">
-                        {formatCurrency(selectedHolding.averagePrice, selectedHolding.investmentAccount?.currency)}
+                        {formatHoldingCurrency(selectedHolding.averagePrice, selectedHolding.investmentAccount?.currency)}
                       </p>
                     </CardContent>
                   </Card>
@@ -608,14 +606,14 @@ function HoldingsPageContent() {
                             </div>
                             <div className="text-right">
                               <p className={`font-semibold ${tx.type === 'BUY' || tx.type === 'TRANSFER_IN' ? 'text-green-600' : tx.type === 'SELL' || tx.type === 'TRANSFER_OUT' ? 'text-red-600' : ''}`}>
-                                {formatCurrency(tx.price * tx.units, selectedHolding.investmentAccount?.currency)}
+                                {formatHoldingCurrency(tx.price * tx.units, selectedHolding.investmentAccount?.currency)}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {tx.units.toLocaleString()} @ {formatCurrency(tx.price, selectedHolding.investmentAccount?.currency)}
+                                {tx.units.toLocaleString()} @ {formatHoldingCurrency(tx.price, selectedHolding.investmentAccount?.currency)}
                               </p>
                               {tx.fees && (
                                 <p className="text-xs text-muted-foreground">
-                                  Fees: {formatCurrency(tx.fees, selectedHolding.investmentAccount?.currency)}
+                                  Fees: {formatHoldingCurrency(tx.fees, selectedHolding.investmentAccount?.currency)}
                                 </p>
                               )}
                             </div>

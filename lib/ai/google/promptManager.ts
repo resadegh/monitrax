@@ -6,6 +6,8 @@
  * All prompts are optimized for Australian financial context.
  */
 
+import { formatCurrencyForPrompt, formatPercentageForPrompt } from './geminiClient';
+
 // =============================================================================
 // FINANCIAL ADVISOR PROMPTS
 // =============================================================================
@@ -354,28 +356,19 @@ export function buildFinancialContextPrompt(context: {
   investmentStyle?: string;
   timeHorizon?: number;
 }): string {
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      maximumFractionDigits: 0,
-    }).format(v);
-
-  const formatPercent = (v: number) => `${v.toFixed(2)}%`;
-
   let prompt = `
 PORTFOLIO OVERVIEW
 ==================
-Net Worth: ${formatCurrency(context.netWorth)}
-Total Assets: ${formatCurrency(context.totalAssets)}
-Total Liabilities: ${formatCurrency(context.totalDebt)}
+Net Worth: ${formatCurrencyForPrompt(context.netWorth)}
+Total Assets: ${formatCurrencyForPrompt(context.totalAssets)}
+Total Liabilities: ${formatCurrencyForPrompt(context.totalDebt)}
 
 CASH FLOW
 =========
-Monthly Income: ${formatCurrency(context.monthlyIncome)}
-Monthly Expenses: ${formatCurrency(context.monthlyExpenses)}
-Monthly Surplus: ${formatCurrency(context.monthlySurplus)}
-Savings Rate: ${context.monthlyIncome > 0 ? formatPercent((context.monthlySurplus / context.monthlyIncome) * 100) : '0%'}
+Monthly Income: ${formatCurrencyForPrompt(context.monthlyIncome)}
+Monthly Expenses: ${formatCurrencyForPrompt(context.monthlyExpenses)}
+Monthly Surplus: ${formatCurrencyForPrompt(context.monthlySurplus)}
+Savings Rate: ${context.monthlyIncome > 0 ? formatPercentageForPrompt((context.monthlySurplus / context.monthlyIncome) * 100) : '0%'}
 
 USER PREFERENCES
 ================
@@ -391,7 +384,7 @@ PROPERTIES (${context.properties.length})
 ==================
 `;
     context.properties.forEach((p, i) => {
-      prompt += `${i + 1}. ${p.name} - Value: ${formatCurrency(p.value)}, Equity: ${formatCurrency(p.equity)}\n`;
+      prompt += `${i + 1}. ${p.name} - Value: ${formatCurrencyForPrompt(p.value)}, Equity: ${formatCurrencyForPrompt(p.equity)}\n`;
     });
   }
 
@@ -402,7 +395,7 @@ LOANS (${context.loans.length})
 ==================
 `;
     context.loans.forEach((l, i) => {
-      prompt += `${i + 1}. ${l.name} - Balance: ${formatCurrency(l.balance)}, Rate: ${formatPercent(l.interestRate)}\n`;
+      prompt += `${i + 1}. ${l.name} - Balance: ${formatCurrencyForPrompt(l.balance)}, Rate: ${formatPercentageForPrompt(l.interestRate)}\n`;
     });
   }
 
@@ -413,7 +406,7 @@ INVESTMENTS (${context.investments.length})
 ==================
 `;
     context.investments.forEach((inv, i) => {
-      prompt += `${i + 1}. ${inv.name} - Value: ${formatCurrency(inv.currentValue)}\n`;
+      prompt += `${i + 1}. ${inv.name} - Value: ${formatCurrencyForPrompt(inv.currentValue)}\n`;
     });
   }
 
