@@ -3,6 +3,8 @@
 import React from 'react';
 import { Check, AlertCircle, TrendingUp, Home, Wallet, DollarSign, Receipt } from 'lucide-react';
 import type { OnboardingProfileType } from '@/hooks/useOnboardingState';
+import { toMonthly } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 interface WizardData {
   profileType: OnboardingProfileType | null;
@@ -254,14 +256,7 @@ export function ReviewStep({ data }: ReviewStepProps) {
   );
 }
 
-// Helper function
+// Helper function - use centralized utility
 function getMonthlyAmount(amount: number, frequency: string): number {
-  switch (frequency) {
-    case 'WEEKLY': return amount * 52 / 12;
-    case 'FORTNIGHTLY': return amount * 26 / 12;
-    case 'MONTHLY': return amount;
-    case 'QUARTERLY': return amount / 3;
-    case 'ANNUAL': return amount / 12;
-    default: return amount;
-  }
+  return toMonthly(amount, frequency as Frequency);
 }

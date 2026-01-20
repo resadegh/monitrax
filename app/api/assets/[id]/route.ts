@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { toAnnual } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 // GET /api/assets/:id - Get a single asset with full details
 export async function GET(
@@ -32,18 +34,9 @@ export async function GET(
       // Type for expense
       type AssetExpense = (typeof asset.expenses)[number];
 
-      // Calculate computed fields
-      const frequencyMultipliers: Record<string, number> = {
-        WEEKLY: 52,
-        FORTNIGHTLY: 26,
-        MONTHLY: 12,
-        QUARTERLY: 4,
-        ANNUAL: 1,
-      };
-
+      // Calculate computed fields using centralized utility
       const annualExpenses = asset.expenses.reduce((total: number, expense: AssetExpense) => {
-        const multiplier = frequencyMultipliers[expense.frequency] || 1;
-        return total + expense.amount * multiplier;
+        return total + toAnnual(expense.amount, expense.frequency as Frequency);
       }, 0);
 
       const totalExpenses = asset.expenses.reduce((total: number, expense: AssetExpense) => {

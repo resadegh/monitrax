@@ -1,5 +1,19 @@
 'use client';
 
+/**
+ * @deprecated This wizard component is deprecated and no longer used.
+ * Please use WizardContainer from './wizard/WizardContainer' instead.
+ *
+ * The new v2.0 wizard system offers:
+ * - Profile-aware step configuration
+ * - Enhanced AI assistance
+ * - Better type safety with centralized types
+ * - Support for multiple items per category
+ *
+ * This file and its associated /steps/ directory are kept for reference
+ * but should not be used in new code.
+ */
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';

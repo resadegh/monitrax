@@ -42,14 +42,16 @@ The system is built around **how financial entities relate to each other**, not 
 ### **2.3 Canonical Everything**
 There must always be exactly **one canonical representation** of truth for:
 
-- entities  
-- relations  
-- paths  
-- IDs  
-- navigation  
-- financial metrics  
+- entities
+- relations
+- paths
+- IDs
+- navigation
+- financial metrics
+- **documentation** (`docs/blueprint/` is the single source)
 
 Duplicated logic is an architectural failure.
+Duplicated documentation is a maintenance nightmare.
 
 ### **2.4 Predictable By Design**
 No hidden mutations, no inconsistent behaviours, no “magic.”
@@ -229,7 +231,67 @@ Other modules must *not* compute their own heuristics.
 
 ---
 
-## **7. Security Principles**
+## **7. Documentation Principles**
 
-### **7.1 Defense in Depth**
-Security enforced
+### **7.1 Single Source of Truth**
+The `docs/blueprint/` folder is the **canonical source** for all system documentation.
+
+- All architectural decisions, specifications, and design patterns MUST be documented in `docs/blueprint/`
+- External references MUST point to the blueprint folder, never duplicate content
+- Blueprint documents are versioned and authoritative
+
+### **7.2 Documentation Hierarchy**
+
+| Location | Purpose | Examples |
+|----------|---------|----------|
+| `docs/blueprint/` | **Canonical specifications** | Architecture, API standards, design principles |
+| `docs/` (root) | **Operational documents** | Audit reports, setup guides, changelogs |
+| `README.md` | **Entry point** | Links to blueprint, quick start |
+| Code comments | **Implementation notes** | Why, not what |
+
+### **7.3 Never Duplicate Blueprint Content**
+If documentation exists in `docs/blueprint/`, it MUST NOT be duplicated elsewhere.
+
+- ❌ Don't create `docs/MASTER_BLUEPRINT.md` (duplicate)
+- ✅ Reference `docs/blueprint/MASTER_BLUEPRINT.md` instead
+- ❌ Don't copy API specs into README
+- ✅ Link to `docs/blueprint/07_API_STANDARDS.md`
+
+### **7.4 Document Types**
+
+| Type | Location | Update Frequency |
+|------|----------|------------------|
+| **Specifications** | `docs/blueprint/*.md` | On design changes |
+| **Phase Docs** | `docs/blueprint/PHASE_*.md` | On feature completion |
+| **Changelogs** | `docs/blueprint/CHANGELOG_*.md` | Per release |
+| **Audit Reports** | `docs/AUDIT_*.md` | Per audit cycle |
+| **Setup Guides** | `docs/*-SETUP.md` | On dependency changes |
+
+### **7.5 AI/LLM Context Rule**
+When providing context to AI assistants (Claude, Copilot, etc.):
+
+- Always reference `docs/blueprint/` as the authoritative source
+- Include the blueprint folder URL for full context
+- Never summarize blueprint content into separate documents
+
+---
+
+## **8. Security Principles**
+
+### **8.1 Defense in Depth**
+Security enforced at every layer:
+
+- Authentication (JWT tokens)
+- Authorization (ownership validation)
+- Input validation (Zod schemas)
+- Output sanitization
+- Rate limiting
+- Audit logging
+
+### **8.2 Principle of Least Privilege**
+Every component has minimum required access:
+
+- API routes validate ownership
+- Database queries scoped to user
+- Feature flags control access
+- Admin roles are granular

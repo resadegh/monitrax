@@ -18,6 +18,8 @@ import { getCurrentTaxYearConfig, getTaxYearConfig } from '../config/taxYearConf
 import { calculateIncomeTax, calculateMarginalTax } from '../core/incomeTaxCalculator';
 import { calculateMedicareLevy } from '../core/medicareLevyCalculator';
 import { calculateAllOffsets, applyOffsets } from '../core/taxOffsets';
+import { toAnnual } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 import { determineTaxability } from '../income/taxabilityRules';
 
 // =============================================================================
@@ -69,29 +71,14 @@ export interface TaxPositionCalculationInput {
 }
 
 // =============================================================================
-// Helper Functions
+// Helper Functions - Use centralized frequency utilities from lib/utils/frequencies.ts
 // =============================================================================
-
-/**
- * Convert frequency to annual multiplier
- */
-function getFrequencyMultiplier(frequency: string): number {
-  const multipliers: Record<string, number> = {
-    WEEKLY: 52,
-    FORTNIGHTLY: 26,
-    MONTHLY: 12,
-    QUARTERLY: 4,
-    ANNUAL: 1,
-    ANNUALLY: 1,
-  };
-  return multipliers[frequency?.toUpperCase()] || 1;
-}
 
 /**
  * Annualize an amount based on frequency
  */
 function annualize(amount: number, frequency: string): number {
-  return amount * getFrequencyMultiplier(frequency);
+  return toAnnual(amount, frequency as Frequency);
 }
 
 // =============================================================================
