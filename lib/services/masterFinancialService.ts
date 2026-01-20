@@ -332,7 +332,7 @@ interface RawInvestmentHolding {
 
 interface RawSuperannuation {
   id: string;
-  balance: number;
+  currentBalance: number;
 }
 
 interface RawAsset {
@@ -453,7 +453,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
       where: { userId },
       select: {
         id: true,
-        balance: true,
+        currentBalance: true,
       },
     }),
     prisma.asset.findMany({
@@ -872,7 +872,7 @@ export async function getMasterFinancialSnapshot(
       type: l.type,
       propertyId: l.propertyId,
     })),
-    data.superannuation.map(s => ({ balance: s.balance })),
+    data.superannuation.map(s => ({ balance: s.currentBalance })),
     data.assets.map(a => ({ currentValue: a.currentValue }))
   );
 
