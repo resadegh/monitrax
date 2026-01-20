@@ -76,6 +76,9 @@ export async function PUT(
       );
       if (!ownershipResult.success) return ownershipResult.response;
 
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedTransaction = ownershipResult.resource;
+
       const { holdingId, date, type, price, units, fees, notes } = validation.data;
 
       // If holdingId is being updated, verify it belongs to the same account
@@ -84,7 +87,7 @@ export async function PUT(
           where: { id: holdingId },
         });
 
-        if (!holding || holding.investmentAccountId !== existing.investmentAccountId) {
+        if (!holding || holding.investmentAccountId !== verifiedTransaction.investmentAccountId) {
           return NextResponse.json({ error: 'Holding not found in this account' }, { status: 404 });
         }
       }
