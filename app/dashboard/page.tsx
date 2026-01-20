@@ -440,7 +440,7 @@ export default function DashboardPage() {
     snapshot.liabilities.loans.count === 0
   );
 
-  const insights = generateInsights();
+  const portfolioInsights = generateInsights();
 
   return (
     <DashboardLayout>
@@ -731,9 +731,9 @@ export default function DashboardPage() {
                 <CardDescription>Key observations about your portfolio</CardDescription>
               </CardHeader>
               <CardContent>
-                {insights.length > 0 ? (
+                {portfolioInsights.length > 0 ? (
                   <div className="space-y-3">
-                    {insights.map((insight, index) => (
+                    {portfolioInsights.map((insight, index) => (
                       <div
                         key={index}
                         className={`flex items-start gap-3 p-3 rounded-lg ${
