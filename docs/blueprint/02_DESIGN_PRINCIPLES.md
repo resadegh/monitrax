@@ -162,9 +162,24 @@ Rules:
 ### **5.1 Never Duplicate Logic**
 If logic appears twice, it must become:
 
-- a utility  
-- an engine  
-- or a shared component  
+- a utility
+- an engine
+- or a shared component
+
+**Canonical Utility Locations:**
+
+| Logic Type | Location | Functions |
+|------------|----------|-----------|
+| Currency formatting | `lib/utils/formatters.ts` | `formatCurrency()` |
+| Frequency conversion | `lib/utils/frequencies.ts` | `toAnnual()`, `toMonthly()`, `periodsPerYear()` |
+| Ownership validation | `lib/utils/ownership.ts` | `verifyOwnership()`, `verifyRelatedOwnership()` |
+| Net worth calculation | `lib/calculations/netWorthCalculator.ts` | `calculateNetWorth()`, `calculateTotalAssets()` |
+| Cashflow calculation | `lib/calculations/cashflowOrchestrator.ts` | `calculateCashflow()`, `calculateMonthlyCashflow()` |
+| Expense aggregation | `lib/calculations/expenseAggregator.ts` | `aggregateExpenses()`, `aggregateExpensesByCategory()` |
+| Income aggregation | `lib/calculations/incomeAggregator.ts` | `aggregateIncome()` |
+| Loan aggregation | `lib/calculations/loanAggregator.ts` | `aggregateLoanRepayments()`, `calculateLVR()` |
+
+**Before adding ANY calculation logic to a file, check if it exists in these locations.**  
 
 ### **5.2 API Responses Must Be Canonicalised**
 Every API route must:
