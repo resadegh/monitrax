@@ -18,7 +18,7 @@ import { Frequency } from '@/lib/types/prisma-enums';
 
 // Types for Prisma query results
 interface AccountData {
-  balance: number;
+  currentBalance: number;
   type: string;
 }
 
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
       const [accounts, expenses, income, loans] = await Promise.all([
         prisma.account.findMany({
           where: { userId },
-          select: { balance: true, type: true },
+          select: { currentBalance: true, type: true },
         }),
         prisma.expense.findMany({
           where: { userId },
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
       // Calculate liquid cash (savings + checking accounts)
       const liquidCash = (accounts as AccountData[])
         .filter((a: AccountData) => ['SAVINGS', 'CHECKING', 'OFFSET'].includes(a.type))
-        .reduce((sum: number, a: AccountData) => sum + a.balance, 0);
+        .reduce((sum: number, a: AccountData) => sum + a.currentBalance, 0);
 
       // Calculate monthly expenses
       const expensesByCategory: Record<string, CategorySpending> = {};
