@@ -19,6 +19,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 // =============================================================================
 // TYPES
@@ -144,16 +145,6 @@ export default function ForecastChart({
 
     return data;
   })();
-
-  // Format currency for tooltip
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
