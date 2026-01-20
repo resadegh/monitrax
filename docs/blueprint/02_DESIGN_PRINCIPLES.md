@@ -170,6 +170,7 @@ If logic appears twice, it must become:
 
 | Logic Type | Location | Functions |
 |------------|----------|-----------|
+| **ALL FINANCIAL DATA** | `lib/services/masterFinancialService.ts` | `getMasterFinancialSnapshot()` |
 | Currency formatting | `lib/utils/formatters.ts` | `formatCurrency()` |
 | Frequency conversion | `lib/utils/frequencies.ts` | `toAnnual()`, `toMonthly()`, `periodsPerYear()` |
 | Ownership validation | `lib/utils/ownership.ts` | `verifyOwnership()`, `verifyRelatedOwnership()` |
@@ -179,7 +180,10 @@ If logic appears twice, it must become:
 | Income aggregation | `lib/calculations/incomeAggregator.ts` | `aggregateIncome()` |
 | Loan aggregation | `lib/calculations/loanAggregator.ts` | `aggregateLoanRepayments()`, `calculateLVR()` |
 
-**Before adding ANY calculation logic to a file, check if it exists in these locations.**  
+**CRITICAL: Before adding ANY calculation logic to a file:**
+1. Check if it exists in the Master Financial Service (`lib/services/masterFinancialService.ts`)
+2. If not, check if it exists in the calculation utilities above
+3. If adding new calculations, add them to the Master Financial Service, NOT to individual API routes  
 
 ### **5.2 API Responses Must Be Canonicalised**
 Every API route must:
@@ -233,10 +237,41 @@ All engines depend on:
 - consistent shapes  
 - predictable relations  
 
-### **6.2 Snapshot Engine is the Single Source of Financial Truth**
-Everything requiring financial numbers must come from:
+### **6.2 Master Financial Service is the Single Source of Financial Truth**
 
-- /api/portfolio/snapshot  
+> **CRITICAL DESIGN PRINCIPLE (Updated Jan 2026)**
+
+Everything requiring financial numbers **MUST** come from:
+
+- **API Endpoint:** `/api/master-snapshot`
+- **Service Function:** `getMasterFinancialSnapshot()` from `lib/services/masterFinancialService.ts`
+
+**DO NOT:**
+- Calculate expenses/income/cashflow directly in API routes
+- Query database and aggregate financial data manually
+- Create new calculation logic outside the Master Financial Service
+
+**DO:**
+- Use `getMasterFinancialSnapshot(userId)` for ALL financial data needs
+- Use convenience getters: `getNetWorth()`, `getMonthlyCashflow()`, `getQuickMetrics()`, etc.
+- Extend the Master Financial Service if new calculations are needed
+
+**What the Master Financial Service provides:**
+| Category | Data |
+|----------|------|
+| Net Worth | Assets, liabilities, breakdown by type |
+| Expenses | All, recurring, non-recurring, essential, discretionary, tax-deductible, by category |
+| Income | All, primary, secondary, passive (monthly & annual) |
+| Cashflow | Income, expenses, loan repayments, net cashflow, savings rate |
+| Debt | Total principal, monthly repayments, debt-to-income, debt service ratio |
+| Properties | Per-property metrics: LVR, equity, rental yield, cashflow |
+| Investments | Total value, cost base, unrealised gains, allocation |
+| Tax | Estimated taxable income, tax payable, deductions, PAYG |
+| Emergency Fund | Liquid cash, months covered, gap, status |
+| Health Score | 0-100 score, grade, component breakdown |
+
+**Migration:**
+Legacy `/api/portfolio/snapshot` still works for GRDCS linkage health but should delegate to the Master Financial Service for all financial calculations  
 
 ### **6.3 LinkageHealth is the Single Source of Relational Truth**
 Missing or invalid relationships must always be detected there.
