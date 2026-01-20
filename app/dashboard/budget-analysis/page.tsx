@@ -37,11 +37,28 @@ interface VariableCategory {
 interface Scenario {
   total: number;
   description: string;
+  breakdown?: {
+    committed: number;
+    discretionary: number;
+    variable: number;
+  };
 }
 
 interface BudgetAnalysis {
   id: string;
   status: string;
+  // NEW: Properly separated committed vs discretionary
+  committed: {
+    total: number;
+    essentialExpenses: number;
+    loanRepayments: number;
+    breakdown: any;
+  };
+  discretionaryTracked: {
+    total: number;
+    breakdown: any;
+  };
+  // Legacy recurring (for backwards compatibility)
   recurring: {
     total: number;
     breakdown: any;
@@ -54,9 +71,12 @@ interface BudgetAnalysis {
     };
   };
   totals: {
-    recurringExpenses: number;
+    committedExpenses: number;
+    discretionaryTracked: number;
     variableExpenses: number;
     totalRealisticBudget: number;
+    // Legacy
+    recurringExpenses: number;
     userReportedTotal: number;
     missingExpenses: number;
   };
@@ -103,14 +123,27 @@ export default function BudgetAnalysisPage() {
           setAnalysis({
             id: result.data.id,
             status: result.data.status,
+            // NEW: Properly separated committed vs discretionary
+            committed: result.data.committed || {
+              total: result.data.recurringExpensesTotal || 0,
+              essentialExpenses: 0,
+              loanRepayments: 0,
+              breakdown: null,
+            },
+            discretionaryTracked: result.data.discretionaryTracked || {
+              total: 0,
+              breakdown: null,
+            },
             recurring: result.data.recurring,
             variable: result.data.variable,
             totals: {
-              recurringExpenses: result.data.recurringExpensesTotal,
-              variableExpenses: result.data.aiVariableEstimate,
-              totalRealisticBudget: result.data.totalRealisticBudget,
-              userReportedTotal: result.data.recurringExpensesTotal,
-              missingExpenses: result.data.aiVariableEstimate,
+              committedExpenses: result.data.totals?.committedExpenses || result.data.recurringExpensesTotal || 0,
+              discretionaryTracked: result.data.totals?.discretionaryTracked || 0,
+              variableExpenses: result.data.aiVariableEstimate || 0,
+              totalRealisticBudget: result.data.totalRealisticBudget || 0,
+              recurringExpenses: result.data.totals?.recurringExpenses || result.data.recurringExpensesTotal || 0,
+              userReportedTotal: result.data.userReportedTotal || result.data.recurringExpensesTotal || 0,
+              missingExpenses: result.data.aiVariableEstimate || 0,
             },
             scenarios: result.data.scenarios,
             aiExplanation: result.data.aiExplanation,
@@ -171,7 +204,37 @@ export default function BudgetAnalysisPage() {
         throw new Error(result.error || 'Failed to generate analysis');
       }
 
-      setAnalysis(result.data);
+      // Map the response data to our interface
+      setAnalysis({
+        id: result.data.id,
+        status: result.data.status,
+        committed: result.data.committed || {
+          total: result.data.totals?.committedExpenses || 0,
+          essentialExpenses: 0,
+          loanRepayments: 0,
+          breakdown: null,
+        },
+        discretionaryTracked: result.data.discretionaryTracked || {
+          total: result.data.totals?.discretionaryTracked || 0,
+          breakdown: null,
+        },
+        recurring: result.data.recurring,
+        variable: result.data.variable,
+        totals: result.data.totals || {
+          committedExpenses: 0,
+          discretionaryTracked: 0,
+          variableExpenses: 0,
+          totalRealisticBudget: 0,
+          recurringExpenses: 0,
+          userReportedTotal: 0,
+          missingExpenses: 0,
+        },
+        scenarios: result.data.scenarios,
+        aiExplanation: result.data.aiExplanation,
+        aiConfidence: result.data.aiConfidence,
+        userFinalBudget: result.data.userFinalBudget,
+        userOverrodeAi: result.data.userOverrodeAi,
+      });
 
       // Initialize adjustments
       if (result.data.variable?.breakdown?.categories) {
@@ -247,25 +310,39 @@ export default function BudgetAnalysisPage() {
   };
 
   // Calculate totals based on adjustments
+  // NEW: Properly separate committed, discretionary, and variable
   const calculateTotals = () => {
-    if (!analysis) return { recurring: 0, variable: 0, total: 0 };
+    if (!analysis) return { committed: 0, discretionary: 0, variable: 0, total: 0 };
 
-    const recurring = analysis.totals.recurringExpenses;
+    // Committed = essential expenses + loan repayments (MUST pay)
+    const committed = analysis.totals.committedExpenses || analysis.totals.recurringExpenses;
+
+    // Discretionary tracked = optional spending already tracked
+    const discretionary = analysis.totals.discretionaryTracked || 0;
+
     let variable = 0;
 
     if (selectedScenario === 'minimum') {
-      variable = analysis.scenarios.minimum.total;
+      // Minimum: Only committed expenses, no discretionary or variable
+      return {
+        committed,
+        discretionary: 0,
+        variable: 0,
+        total: committed,
+      };
     } else if (selectedScenario === 'comfortable') {
-      variable = analysis.scenarios.comfortable.total;
+      // Comfortable: Everything including generous variable
+      variable = analysis.scenarios.comfortable.breakdown?.variable || analysis.scenarios.comfortable.total;
     } else {
-      // Use adjustments for recommended
+      // Recommended: Use adjustments for variable expenses
       variable = Object.values(adjustments).reduce((sum, val) => sum + val, 0);
     }
 
     return {
-      recurring,
+      committed,
+      discretionary,
       variable,
-      total: recurring + variable,
+      total: committed + discretionary + variable,
     };
   };
 
@@ -385,29 +462,43 @@ export default function BudgetAnalysisPage() {
           </div>
         )}
 
-        {/* Summary Cards */}
+        {/* Summary Cards - NEW: Shows Committed, Discretionary, Variable, Total */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          {/* Committed Expenses (Essential + Loans) */}
+          <Card className="border-blue-200 dark:border-blue-800">
             <CardContent className="pt-6">
-              <div className="text-sm text-muted-foreground">Recurring (Tracked)</div>
-              <div className="text-2xl font-bold">{formatCurrency(analysis.totals.recurringExpenses)}</div>
+              <div className="text-sm text-muted-foreground">Committed (Must Pay)</div>
+              <div className="text-2xl font-bold text-blue-600">{formatCurrency(totals.committed)}</div>
               <div className="text-xs text-muted-foreground">/month</div>
+              {analysis.committed?.loanRepayments > 0 && (
+                <div className="text-xs text-blue-500 mt-1">
+                  Incl. {formatCurrency(analysis.committed.loanRepayments)} loans
+                </div>
+              )}
             </CardContent>
           </Card>
-          <Card>
+
+          {/* Discretionary Tracked */}
+          <Card className="border-purple-200 dark:border-purple-800">
+            <CardContent className="pt-6">
+              <div className="text-sm text-muted-foreground">Discretionary (Tracked)</div>
+              <div className="text-2xl font-bold text-purple-600">{formatCurrency(totals.discretionary)}</div>
+              <div className="text-xs text-muted-foreground">/month</div>
+              <div className="text-xs text-purple-500 mt-1">Optional spending</div>
+            </CardContent>
+          </Card>
+
+          {/* Variable (AI Estimated) */}
+          <Card className="border-amber-200 dark:border-amber-800">
             <CardContent className="pt-6">
               <div className="text-sm text-muted-foreground">Variable (AI Est.)</div>
-              <div className="text-2xl font-bold text-primary">{formatCurrency(totals.variable)}</div>
+              <div className="text-2xl font-bold text-amber-600">{formatCurrency(totals.variable)}</div>
               <div className="text-xs text-muted-foreground">/month</div>
+              <div className="text-xs text-amber-500 mt-1">Untracked expenses</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-sm text-muted-foreground">Total Realistic</div>
-              <div className="text-2xl font-bold text-green-600">{formatCurrency(totals.total)}</div>
-              <div className="text-xs text-muted-foreground">/month</div>
-            </CardContent>
-          </Card>
+
+          {/* Total Realistic */}
           {analysis.status === 'CONFIRMED' ? (
             <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
               <CardContent className="pt-6">
@@ -417,11 +508,11 @@ export default function BudgetAnalysisPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
+            <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/10">
               <CardContent className="pt-6">
-                <div className="text-sm text-amber-700 dark:text-amber-300">Missing Expenses</div>
-                <div className="text-2xl font-bold text-amber-600">{formatCurrency(totals.variable)}</div>
-                <div className="text-xs text-amber-600 dark:text-amber-400">not tracked</div>
+                <div className="text-sm text-muted-foreground">Total Realistic</div>
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(totals.total)}</div>
+                <div className="text-xs text-muted-foreground">/month</div>
               </CardContent>
             </Card>
           )}
@@ -477,29 +568,80 @@ export default function BudgetAnalysisPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {(['minimum', 'recommended', 'comfortable'] as const).map((scenario) => (
-                <button
-                  key={scenario}
-                  type="button"
-                  onClick={() => setSelectedScenario(scenario)}
-                  className={`p-4 rounded-lg border-2 text-left transition-colors ${
-                    selectedScenario === scenario
-                      ? 'border-primary bg-primary/5'
-                      : 'border-muted hover:border-muted-foreground/50'
-                  }`}
-                >
-                  <div className="font-medium capitalize">{scenario}</div>
-                  <div className="text-2xl font-bold mt-1">
-                    {formatCurrency(analysis.scenarios[scenario].total)}/mo
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    {analysis.scenarios[scenario].description}
-                  </div>
-                  <div className="text-sm font-medium mt-2">
-                    Total: {formatCurrency(analysis.totals.recurringExpenses + analysis.scenarios[scenario].total)}/mo
-                  </div>
-                </button>
-              ))}
+              {/* Minimum Scenario */}
+              <button
+                type="button"
+                onClick={() => setSelectedScenario('minimum')}
+                className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                  selectedScenario === 'minimum'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-muted hover:border-muted-foreground/50'
+                }`}
+              >
+                <div className="font-medium">Minimum</div>
+                <div className="text-2xl font-bold mt-1">
+                  {formatCurrency(analysis.scenarios.minimum.total)}/mo
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {analysis.scenarios.minimum.description || 'Bare essentials, very tight budget'}
+                </div>
+                <div className="text-sm font-medium mt-2">
+                  Total: {formatCurrency(analysis.scenarios.minimum.total)}/mo
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Committed only, no discretionary
+                </div>
+              </button>
+
+              {/* Recommended Scenario */}
+              <button
+                type="button"
+                onClick={() => setSelectedScenario('recommended')}
+                className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                  selectedScenario === 'recommended'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-muted hover:border-muted-foreground/50'
+                }`}
+              >
+                <div className="font-medium">Recommended</div>
+                <div className="text-2xl font-bold mt-1">
+                  {formatCurrency(analysis.scenarios.recommended.total)}/mo
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {analysis.scenarios.recommended.description || 'Realistic for comfortable living'}
+                </div>
+                <div className="text-sm font-medium mt-2">
+                  Total: {formatCurrency(analysis.scenarios.recommended.total)}/mo
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Includes tracked discretionary
+                </div>
+              </button>
+
+              {/* Comfortable Scenario */}
+              <button
+                type="button"
+                onClick={() => setSelectedScenario('comfortable')}
+                className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                  selectedScenario === 'comfortable'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-muted hover:border-muted-foreground/50'
+                }`}
+              >
+                <div className="font-medium">Comfortable</div>
+                <div className="text-2xl font-bold mt-1">
+                  {formatCurrency(analysis.scenarios.comfortable.total)}/mo
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {analysis.scenarios.comfortable.description || 'More flexibility and quality'}
+                </div>
+                <div className="text-sm font-medium mt-2">
+                  Total: {formatCurrency(analysis.scenarios.comfortable.total)}/mo
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Full discretionary + variable
+                </div>
+              </button>
             </div>
           </CardContent>
         </Card>
