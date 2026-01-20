@@ -46,6 +46,8 @@ import {
   ActionableInsights,
   MonthlyBudgetSummary,
 } from '@/components/dashboard/InsightWidgets';
+import { DebtQualityWidget, calculateDebtQuality } from '@/components/dashboard/DebtQualityWidget';
+import { EntityCashflowSummary, calculateEntityCashflow } from '@/components/dashboard/EntityCashflowSummary';
 
 interface DashboardInsights {
   healthScore: {
@@ -119,10 +121,12 @@ interface PortfolioSnapshot {
   loans?: Array<{
     id: string;
     name: string;
+    type: string;
     principal: number;
     interestRate: number;
     minRepayment?: number;
     repaymentFrequency?: string;
+    propertyId?: string | null;
     propertyName?: string | null;
     annualRepayment?: number;
   }>;
@@ -145,6 +149,7 @@ interface PortfolioSnapshot {
     grossAnnual: number;
     netAnnual: number;
     propertyName?: string | null;
+    investmentAccountId?: string | null;
     isTaxable?: boolean;
   }>;
   assets: {
@@ -169,9 +174,25 @@ interface PortfolioSnapshot {
     lvr: number;
     rentalYield: number;
     cashflow: {
+      annualIncome?: number;
+      annualExpenses?: number;
+      annualLoanRepayments?: number;
       monthlyNet: number;
     };
   }>;
+  personalAssets?: {
+    totalValue: number;
+    items: Array<{
+      id: string;
+      name: string;
+      type: string;
+      currentValue: number;
+      expenses?: {
+        annualTotal: number;
+        monthlyTotal: number;
+      };
+    }>;
+  };
   investments: {
     totalValue: number;
     accounts: Array<{
@@ -600,6 +621,40 @@ export default function DashboardPage() {
                 gap={insights.emergencyFund.gap}
               />
             </div>
+          )}
+
+          {/* Phase 1: Debt Quality & Entity Cashflow Section */}
+          {snapshot.loans && snapshot.loans.length > 0 && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Debt Quality Widget - Good vs Bad Debt */}
+              <DebtQualityWidget
+                data={calculateDebtQuality(snapshot.loans)}
+              />
+
+              {/* Entity Cashflow Summary */}
+              <EntityCashflowSummary
+                data={calculateEntityCashflow(
+                  snapshot.properties,
+                  snapshot.investments.accounts,
+                  snapshot.loans,
+                  snapshot.personalAssets?.items || [],
+                  snapshot.income || []
+                )}
+              />
+            </div>
+          )}
+
+          {/* Show Entity Cashflow even without loans (for properties/investments) */}
+          {(!snapshot.loans || snapshot.loans.length === 0) && (snapshot.properties.length > 0 || snapshot.investments.accounts.length > 0) && (
+            <EntityCashflowSummary
+              data={calculateEntityCashflow(
+                snapshot.properties,
+                snapshot.investments.accounts,
+                snapshot.loans || [],
+                snapshot.personalAssets?.items || [],
+                snapshot.income || []
+              )}
+            />
           )}
 
           {/* Actionable Insights & Budget Section */}

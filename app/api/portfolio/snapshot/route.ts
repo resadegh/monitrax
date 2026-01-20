@@ -788,6 +788,7 @@ export async function GET(request: NextRequest) {
         return {
           id: loan.id,
           name: loan.name,
+          type: loan.type, // Loan type for debt quality categorization (HOME, INVESTMENT, CAR, etc.)
           principal: loan.principal,
           interestRate: loan.interestRateAnnual,
           rateType: loan.rateType,
@@ -893,6 +894,7 @@ export async function GET(request: NextRequest) {
           paygWithholding: paygAnnual,
           propertyId: inc.propertyId,
           propertyName: inc.property?.name || null,
+          investmentAccountId: inc.investmentAccountId || null, // For linking dividends/distributions to accounts
           isTaxable: inc.isTaxable || true,
         };
       }).sort((a: any, b: any) => b.netAnnual - a.netAnnual);
