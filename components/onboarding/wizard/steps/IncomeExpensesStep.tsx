@@ -33,6 +33,8 @@ import {
   ExpenseCategory,
   generateId,
 } from '../types';
+import { formatCurrency } from '@/lib/utils/formatters';
+import { toAnnual } from '@/lib/utils/frequencies';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -108,30 +110,9 @@ function createEmptyExpense(category: ExpenseCategory = 'HOUSING'): ExpenseInput
   };
 }
 
-function formatCurrency(amount: number): string {
-  const absAmount = Math.abs(amount);
-  if (absAmount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(2)}M`;
-  }
-  if (absAmount >= 1000) {
-    return `$${(amount / 1000).toFixed(1)}K`;
-  }
-  return `$${amount.toLocaleString()}`;
-}
-
 function annualizeAmount(amount: number, frequency: string): number {
-  switch (frequency) {
-    case 'WEEKLY':
-      return amount * 52;
-    case 'FORTNIGHTLY':
-      return amount * 26;
-    case 'MONTHLY':
-      return amount * 12;
-    case 'ANNUAL':
-      return amount;
-    default:
-      return amount * 12;
-  }
+  // Use centralized utility for frequency conversion
+  return toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
 }
 
 // =============================================================================
@@ -582,13 +563,13 @@ export function IncomeExpensesStep({ data, onUpdate }: IncomeExpensesStepProps) 
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(totalAnnualIncome)}
+                {formatCurrency(totalAnnualIncome, { abbreviate: true })}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Total Income</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {formatCurrency(totalAnnualExpenses)}
+                {formatCurrency(totalAnnualExpenses, { abbreviate: true })}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Total Expenses</div>
             </div>
@@ -600,7 +581,7 @@ export function IncomeExpensesStep({ data, onUpdate }: IncomeExpensesStepProps) 
                     : 'text-red-600 dark:text-red-400'
                 }`}
               >
-                {annualSurplus >= 0 ? '+' : ''}{formatCurrency(annualSurplus)}
+                {annualSurplus >= 0 ? '+' : ''}{formatCurrency(annualSurplus, { abbreviate: true })}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {annualSurplus >= 0 ? 'Surplus' : 'Deficit'}

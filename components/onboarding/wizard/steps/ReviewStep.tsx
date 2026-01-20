@@ -18,22 +18,8 @@ import {
   PiggyBank,
 } from 'lucide-react';
 import { WizardData, calculateSummary } from '../types';
+import { formatCurrency } from '@/lib/utils/formatters';
 import '@/styles/wizard-animations.css';
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
-
-function formatCurrency(amount: number): string {
-  const absAmount = Math.abs(amount);
-  if (absAmount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(2)}M`;
-  }
-  if (absAmount >= 1000) {
-    return `$${(amount / 1000).toFixed(0)}K`;
-  }
-  return `$${Math.round(amount).toLocaleString()}`;
-}
 
 // =============================================================================
 // STAT CARD COMPONENT
@@ -200,7 +186,7 @@ export function ReviewStep({ data }: ReviewStepProps) {
           <span className="text-sm font-medium text-blue-100">Your Net Worth</span>
           <Sparkles className="h-5 w-5 text-yellow-300" />
         </div>
-        <div className="text-5xl font-bold mb-2">{formatCurrency(summary.netWorth)}</div>
+        <div className="text-5xl font-bold mb-2">{formatCurrency(summary.netWorth, { abbreviate: true })}</div>
         <p className="text-sm text-blue-100">
           Based on {data.properties.length} properties, {data.accounts.length} accounts,
           {data.investments.length > 0 && ` ${data.investments.length} investment accounts,`}
@@ -212,28 +198,28 @@ export function ReviewStep({ data }: ReviewStepProps) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           label="Property Value"
-          value={formatCurrency(summary.totalPropertyValue)}
+          value={formatCurrency(summary.totalPropertyValue, { abbreviate: true })}
           icon={<Home className="h-5 w-5 text-blue-600" />}
           color="bg-blue-100 dark:bg-blue-800/40"
           delay={0.1}
         />
         <StatCard
           label="Total Debt"
-          value={formatCurrency(summary.totalLoanBalance)}
+          value={formatCurrency(summary.totalLoanBalance, { abbreviate: true })}
           icon={<Building2 className="h-5 w-5 text-red-600" />}
           color="bg-red-100 dark:bg-red-800/40"
           delay={0.2}
         />
         <StatCard
           label="Cash & Savings"
-          value={formatCurrency(summary.totalAccountBalance)}
+          value={formatCurrency(summary.totalAccountBalance, { abbreviate: true })}
           icon={<PiggyBank className="h-5 w-5 text-green-600" />}
           color="bg-green-100 dark:bg-green-800/40"
           delay={0.3}
         />
         <StatCard
           label="Investments"
-          value={formatCurrency(summary.totalInvestmentValue)}
+          value={formatCurrency(summary.totalInvestmentValue, { abbreviate: true })}
           icon={<TrendingUp className="h-5 w-5 text-purple-600" />}
           color="bg-purple-100 dark:bg-purple-800/40"
           delay={0.4}
@@ -249,7 +235,7 @@ export function ReviewStep({ data }: ReviewStepProps) {
           <div>
             <div className="flex items-center justify-center gap-1 text-green-600 dark:text-green-400">
               <ArrowUpCircle className="h-4 w-4" />
-              <span className="text-xl font-bold">{formatCurrency(summary.annualIncome)}</span>
+              <span className="text-xl font-bold">{formatCurrency(summary.annualIncome, { abbreviate: true })}</span>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">Income</div>
           </div>
@@ -257,7 +243,7 @@ export function ReviewStep({ data }: ReviewStepProps) {
             <div className="flex items-center justify-center gap-1 text-orange-600 dark:text-orange-400">
               <ArrowDownCircle className="h-4 w-4" />
               <span className="text-xl font-bold">
-                {formatCurrency(summary.annualExpenses + summary.annualLoanRepayments)}
+                {formatCurrency(summary.annualExpenses + summary.annualLoanRepayments, { abbreviate: true })}
               </span>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400">Outgoings</div>
