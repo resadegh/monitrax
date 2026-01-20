@@ -2,6 +2,8 @@
  * Dashboard Insights API
  * GET /api/dashboard/insights - Get actionable financial insights
  *
+ * REFACTORED to use FinancialSnapshotService for consistent calculations.
+ *
  * Provides:
  * - Financial Health Score (0-100)
  * - Emergency Fund coverage (months)
@@ -13,39 +15,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { getFinancialSnapshot } from '@/lib/services/financialSnapshot';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
-// Types for Prisma query results
-interface AccountData {
-  currentBalance: number;
-  type: string;
-}
-
-interface ExpenseData {
+// Types for detailed expense data (not in snapshot)
+interface ExpenseDetail {
   id: string;
   name: string;
   category: string | null;
   amount: number;
   frequency: string;
   isEssential: boolean;
-}
-
-interface IncomeData {
-  id: string;
-  name: string;
-  type: string;
-  amount: number;
-  frequency: string;
-  netAmount: number | null;
-}
-
-interface LoanData {
-  id: string;
-  name: string;
-  minRepayment: number | null;
-  repaymentFrequency: string | null;
-  principal: number;
 }
 
 interface CategorySpending {
@@ -113,67 +94,36 @@ export async function GET(request: NextRequest) {
     try {
       const userId = authReq.user!.userId;
 
-      // Fetch all user data in parallel
-      const [accounts, expenses, income, loans] = await Promise.all([
-        prisma.account.findMany({
-          where: { userId },
-          select: { currentBalance: true, type: true },
-        }),
-        prisma.expense.findMany({
-          where: { userId },
-          select: {
-            id: true,
-            name: true,
-            category: true,
-            amount: true,
-            frequency: true,
-            isEssential: true,
-          },
-        }),
-        prisma.income.findMany({
-          where: { userId },
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            amount: true,
-            frequency: true,
-            netAmount: true,
-          },
-        }),
-        prisma.loan.findMany({
-          where: { userId },
-          select: {
-            id: true,
-            name: true,
-            minRepayment: true,
-            repaymentFrequency: true,
-            principal: true,
-          },
-        }),
-      ]);
+      // Get centralized financial snapshot for consistent totals
+      const snapshot = await getFinancialSnapshot(userId);
 
-      // Calculate liquid cash (savings + checking accounts)
-      const liquidCash = (accounts as AccountData[])
-        .filter((a: AccountData) => ['SAVINGS', 'CHECKING', 'OFFSET'].includes(a.type))
-        .reduce((sum: number, a: AccountData) => sum + a.currentBalance, 0);
+      // Fetch expense details for item-level breakdowns
+      // (snapshot has totals, but we need individual items for category/money bleeding views)
+      const expenseDetails = await prisma.expense.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          amount: true,
+          frequency: true,
+          isEssential: true,
+        },
+      }) as ExpenseDetail[];
 
-      // Calculate monthly expenses
+      // Use snapshot values for consistent totals
+      const totalMonthlyExpenses = snapshot.expenses.monthly.all.total;
+      const essentialExpenses = snapshot.expenses.monthly.essential.total;
+      const discretionaryExpenses = snapshot.expenses.monthly.discretionary.total;
+      const totalMonthlyIncome = snapshot.income.monthly.all.netTotal;
+      const monthlyLoanPayments = snapshot.loans.monthlyRepayments;
+      const liquidCash = snapshot.accounts.liquidCash;
+
+      // Build category spending breakdown using expense details
       const expensesByCategory: Record<string, CategorySpending> = {};
-      let totalMonthlyExpenses = 0;
-      let essentialExpenses = 0;
-      let discretionaryExpenses = 0;
-
-      (expenses as ExpenseData[]).forEach((expense: ExpenseData) => {
+      expenseDetails.forEach((expense) => {
         const monthlyAmount = toMonthly(expense.amount, expense.frequency as Frequency);
         const annualAmount = toAnnual(expense.amount, expense.frequency as Frequency);
-        totalMonthlyExpenses += monthlyAmount;
-
-        if (expense.isEssential) {
-          essentialExpenses += monthlyAmount;
-        } else {
-          discretionaryExpenses += monthlyAmount;
-        }
 
         const category = expense.category || 'Uncategorized';
         if (!expensesByCategory[category]) {
@@ -203,77 +153,9 @@ export async function GET(request: NextRequest) {
         }))
         .sort((a, b) => b.monthlyAmount - a.monthlyAmount);
 
-      // Calculate monthly income
-      let totalMonthlyIncome = 0;
-      (income as IncomeData[]).forEach((inc: IncomeData) => {
-        // Use netAmount for GROSS salary types, otherwise use amount
-        const effectiveAmount = inc.type === 'SALARY_GROSS' && inc.netAmount
-          ? inc.netAmount
-          : inc.amount;
-        totalMonthlyIncome += toMonthly(effectiveAmount, inc.frequency as Frequency);
-      });
-
-      // Calculate monthly loan payments
-      let monthlyLoanPayments = 0;
-      (loans as LoanData[]).forEach((loan: LoanData) => {
-        if (loan.minRepayment && loan.repaymentFrequency) {
-          monthlyLoanPayments += toMonthly(loan.minRepayment, loan.repaymentFrequency as Frequency);
-        }
-      });
-
-      // Total debt
-      const totalDebt = (loans as LoanData[]).reduce((sum: number, l: LoanData) => sum + l.principal, 0);
-
-      // Emergency fund calculations
-      const monthsCovered = totalMonthlyExpenses > 0
-        ? liquidCash / totalMonthlyExpenses
-        : 0;
-      const targetMonths = 6;
-      const emergencyFundGap = Math.max(0, (targetMonths * totalMonthlyExpenses) - liquidCash);
-
-      let emergencyFundStatus: 'danger' | 'warning' | 'good' | 'excellent';
-      if (monthsCovered < 1) emergencyFundStatus = 'danger';
-      else if (monthsCovered < 3) emergencyFundStatus = 'warning';
-      else if (monthsCovered < 6) emergencyFundStatus = 'good';
-      else emergencyFundStatus = 'excellent';
-
-      // Calculate Financial Health Score
-      const savingsRate = totalMonthlyIncome > 0
-        ? ((totalMonthlyIncome - totalMonthlyExpenses - monthlyLoanPayments) / totalMonthlyIncome) * 100
-        : 0;
-
-      const debtToIncome = totalMonthlyIncome > 0
-        ? (totalDebt / (totalMonthlyIncome * 12)) * 100
-        : 0;
-
-      // Asset diversification (count of different asset types)
-      const assetTypes = new Set<string>();
-      if (accounts.length > 0) assetTypes.add('cash');
-      // Would need to check properties, investments etc. for full diversification
-      const diversificationScore = Math.min(assetTypes.size * 25, 100);
-
-      // Score calculations (0-100 for each component)
-      const savingsRateScore = Math.min(Math.max(savingsRate * 5, 0), 100); // 20% savings = 100
-      const emergencyFundScore = Math.min((monthsCovered / 6) * 100, 100); // 6 months = 100
-      const debtToIncomeScore = Math.max(100 - debtToIncome, 0); // Lower is better
-
-      const healthScore = Math.round(
-        savingsRateScore * 0.30 +
-        emergencyFundScore * 0.30 +
-        debtToIncomeScore * 0.25 +
-        diversificationScore * 0.15
-      );
-
-      let healthGrade: 'A' | 'B' | 'C' | 'D' | 'F';
-      if (healthScore >= 80) healthGrade = 'A';
-      else if (healthScore >= 65) healthGrade = 'B';
-      else if (healthScore >= 50) healthGrade = 'C';
-      else if (healthScore >= 35) healthGrade = 'D';
-      else healthGrade = 'F';
-
       // Money bleeding - top expenses as percentage of income
-      const moneyBleeding = (expenses as ExpenseData[])
-        .map((expense: ExpenseData) => {
+      const moneyBleeding = expenseDetails
+        .map((expense) => {
           const monthlyAmount = toMonthly(expense.amount, expense.frequency as Frequency);
           const annualAmount = toAnnual(expense.amount, expense.frequency as Frequency);
           const percentageOfIncome = totalMonthlyIncome > 0
@@ -297,8 +179,24 @@ export async function GET(request: NextRequest) {
             suggestion,
           };
         })
-        .sort((a: { monthlyAmount: number }, b: { monthlyAmount: number }) => b.monthlyAmount - a.monthlyAmount)
+        .sort((a, b) => b.monthlyAmount - a.monthlyAmount)
         .slice(0, 10);
+
+      // Use snapshot values for emergency fund and health score
+      const monthsCovered = snapshot.emergencyFund.monthsCovered;
+      const emergencyFundGap = snapshot.emergencyFund.gap;
+      const emergencyFundStatus = snapshot.emergencyFund.status;
+      const savingsRate = snapshot.healthScore.savingsRate;
+      const debtToIncome = snapshot.healthScore.debtToIncome;
+
+      // Score calculations (0-100 for each component)
+      const savingsRateScore = Math.min(Math.max(savingsRate * 5, 0), 100);
+      const emergencyFundScore = Math.min((monthsCovered / 6) * 100, 100);
+      const debtToIncomeScore = Math.max(100 - debtToIncome, 0);
+      const diversificationScore = 25; // Simplified for now
+
+      const healthScore = snapshot.healthScore.score;
+      const healthGrade = snapshot.healthScore.grade;
 
       // Generate actionable insights
       const insights: Insight[] = [];
@@ -380,7 +278,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Monthly budget calculations
-      const monthlyRemaining = totalMonthlyIncome - totalMonthlyExpenses - monthlyLoanPayments;
+      const monthlyRemaining = snapshot.cashflow.monthlyCashflow;
       const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
       const dailyBudget = monthlyRemaining > 0 ? monthlyRemaining / daysInMonth : 0;
 
@@ -392,14 +290,14 @@ export async function GET(request: NextRequest) {
             savingsRate: { score: savingsRateScore, weight: 30, value: savingsRate },
             emergencyFund: { score: emergencyFundScore, weight: 30, value: monthsCovered },
             debtToIncome: { score: debtToIncomeScore, weight: 25, value: debtToIncome },
-            diversification: { score: diversificationScore, weight: 15, value: assetTypes.size },
+            diversification: { score: diversificationScore, weight: 15, value: snapshot.counts.accounts },
           },
         },
         emergencyFund: {
           liquidCash,
           monthlyExpenses: totalMonthlyExpenses,
           monthsCovered,
-          target: targetMonths,
+          target: snapshot.emergencyFund.targetMonths,
           status: emergencyFundStatus,
           gap: emergencyFundGap,
         },
