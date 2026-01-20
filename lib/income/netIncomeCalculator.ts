@@ -4,35 +4,32 @@
  *
  * Logic:
  * - GROSS salary: use stored netAmount (calculated by tax engine when saved)
- * - NET salary / other income: convert entered amount to monthly using simple multipliers
+ * - NET salary / other income: convert entered amount to monthly using centralized utilities
+ *
+ * IMPORTANT: Uses lib/utils/frequencies.ts for all frequency conversions.
+ * This ensures Weekly × 52/12 = 4.33 (not Weekly × 4) for accurate calculations.
+ *
+ * Blueprint §5.1: Never Duplicate Logic - delegates to centralized frequency utilities
  */
 
 import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
-
-// Simple monthly multipliers (not annual average)
-// Weekly × 4 = Monthly, Fortnightly × 2 = Monthly
-const MONTHLY_MULTIPLIERS: Record<string, number> = {
-  WEEKLY: 4,
-  FORTNIGHTLY: 2,
-  MONTHLY: 1,
-  QUARTERLY: 1 / 3,
-  ANNUAL: 1 / 12,
-  ANNUALLY: 1 / 12,
-};
+import { toMonthly as centralizedToMonthly, toAnnual as centralizedToAnnual } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 /**
  * Convert an amount to monthly based on frequency
+ * Wrapper around centralized utility for backward compatibility
  */
 export function toMonthly(amount: number, frequency: string): number {
-  const multiplier = MONTHLY_MULTIPLIERS[frequency] ?? 1;
-  return amount * multiplier;
+  return centralizedToMonthly(amount, frequency as Frequency);
 }
 
 /**
  * Convert an amount to annual based on frequency
+ * Wrapper around centralized utility for backward compatibility
  */
 export function toAnnual(amount: number, frequency: string): number {
-  return toMonthly(amount, frequency) * 12;
+  return centralizedToAnnual(amount, frequency as Frequency);
 }
 
 /**
