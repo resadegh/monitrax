@@ -83,13 +83,15 @@ export async function PUT(
       );
       if (!ownershipResult.success) return ownershipResult.response;
 
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedHolding = ownershipResult.resource;
+
       const { ticker, name, units, averagePrice, frankingPercentage, type, currentPrice } = validation.data;
 
       // Get current holding for calculations
-      const currentHolding = existing;
-      const newUnits = units ?? currentHolding.units;
-      const newAvgPrice = averagePrice ?? currentHolding.averagePrice;
-      const newPrice = currentPrice ?? currentHolding.currentPrice;
+      const newUnits = units ?? verifiedHolding.units;
+      const newAvgPrice = averagePrice ?? verifiedHolding.averagePrice;
+      const newPrice = currentPrice ?? verifiedHolding.currentPrice;
 
       // Recalculate values if units, price, or current price changed
       const totalCostBasis = newUnits * newAvgPrice;
@@ -162,11 +164,14 @@ export async function PATCH(
       );
       if (!ownershipResult.success) return ownershipResult.response;
 
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedHolding = ownershipResult.resource;
+
       const { currentPrice } = validation.data;
 
       // Recalculate values
-      const totalCostBasis = existing.units * existing.averagePrice;
-      const currentValue = existing.units * currentPrice;
+      const totalCostBasis = verifiedHolding.units * verifiedHolding.averagePrice;
+      const currentValue = verifiedHolding.units * currentPrice;
       const unrealizedGain = currentValue - totalCostBasis;
       const unrealizedGainPct = totalCostBasis > 0
         ? (unrealizedGain / totalCostBasis) * 100
@@ -186,10 +191,10 @@ export async function PATCH(
       return NextResponse.json({
         ...holding,
         priceChange: {
-          previousPrice: existing.currentPrice,
+          previousPrice: verifiedHolding.currentPrice,
           newPrice: currentPrice,
-          percentageChange: existing.currentPrice
-            ? ((currentPrice - existing.currentPrice) / existing.currentPrice) * 100
+          percentageChange: verifiedHolding.currentPrice
+            ? ((currentPrice - verifiedHolding.currentPrice) / verifiedHolding.currentPrice) * 100
             : null,
         },
       });

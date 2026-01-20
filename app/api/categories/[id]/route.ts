@@ -38,19 +38,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const ownershipResult = verifyOwnership(category, authReq.user!.userId, 'Category');
       if (!ownershipResult.success) return ownershipResult.response;
 
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedCategory = ownershipResult.resource;
+
       return NextResponse.json({
         success: true,
         data: {
-          id: category.id,
-          code: category.code,
-          name: category.name,
-          type: category.type,
+          id: verifiedCategory.id,
+          code: verifiedCategory.code,
+          name: verifiedCategory.name,
+          type: verifiedCategory.type,
           isSystem: false,
-          isActive: category.isActive,
-          sortOrder: category.sortOrder,
-          color: category.color,
-          icon: category.icon,
-          description: category.description,
+          isActive: verifiedCategory.isActive,
+          sortOrder: verifiedCategory.sortOrder,
+          color: verifiedCategory.color,
+          icon: verifiedCategory.icon,
+          description: verifiedCategory.description,
         },
       });
     } catch (error) {
@@ -180,8 +183,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       const ownershipResult = verifyOwnership(category, authReq.user!.userId, 'Category');
       if (!ownershipResult.success) return ownershipResult.response;
 
-      const hasExpenses = category.expenses.length > 0;
-      const hasIncome = category.income.length > 0;
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedCategory = ownershipResult.resource;
+
+      const hasExpenses = verifiedCategory.expenses.length > 0;
+      const hasIncome = verifiedCategory.income.length > 0;
       const isInUse = hasExpenses || hasIncome;
 
       if (isInUse && force) {
