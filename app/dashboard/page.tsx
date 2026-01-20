@@ -38,6 +38,66 @@ import {
   Car,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import {
+  FinancialHealthScore,
+  EmergencyFundTracker,
+  MoneyBleedingCard,
+  SpendingByCategory,
+  ActionableInsights,
+  MonthlyBudgetSummary,
+} from '@/components/dashboard/InsightWidgets';
+
+interface DashboardInsights {
+  healthScore: {
+    score: number;
+    grade: 'A' | 'B' | 'C' | 'D' | 'F';
+    breakdown: {
+      savingsRate: { score: number; weight: number; value: number };
+      emergencyFund: { score: number; weight: number; value: number };
+      debtToIncome: { score: number; weight: number; value: number };
+      diversification: { score: number; weight: number; value: number };
+    };
+  };
+  emergencyFund: {
+    liquidCash: number;
+    monthlyExpenses: number;
+    monthsCovered: number;
+    target: number;
+    status: 'danger' | 'warning' | 'good' | 'excellent';
+    gap: number;
+  };
+  spendingByCategory: Array<{
+    category: string;
+    monthlyAmount: number;
+    annualAmount: number;
+    percentage: number;
+    items: Array<{ name: string; monthlyAmount: number }>;
+  }>;
+  moneyBleeding: Array<{
+    name: string;
+    category: string;
+    monthlyAmount: number;
+    annualAmount: number;
+    percentageOfIncome: number;
+    suggestion?: string;
+  }>;
+  insights: Array<{
+    type: 'success' | 'warning' | 'danger' | 'info';
+    title: string;
+    message: string;
+    metric?: string;
+    action?: string;
+  }>;
+  monthlyBudget: {
+    income: number;
+    essentialExpenses: number;
+    discretionaryExpenses: number;
+    loanPayments: number;
+    remaining: number;
+    daysInMonth: number;
+    dailyBudget: number;
+  };
+}
 
 interface PortfolioSnapshot {
   generatedAt: string;
@@ -231,26 +291,37 @@ type CashflowPeriod = 'monthly' | 'annual';
 export default function DashboardPage() {
   const { token } = useAuth();
   const [snapshot, setSnapshot] = useState<PortfolioSnapshot | null>(null);
+  const [insights, setInsights] = useState<DashboardInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState<DetailTileType>(null);
   const [cashflowPeriod, setCashflowPeriod] = useState<CashflowPeriod>('monthly');
 
   useEffect(() => {
     if (token) {
-      loadPortfolioSnapshot();
+      loadDashboardData();
     }
   }, [token]);
 
-  const loadPortfolioSnapshot = async () => {
+  const loadDashboardData = async () => {
     try {
-      const response = await fetch('/api/portfolio/snapshot', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        setSnapshot(await response.json());
+      // Load both endpoints in parallel
+      const [snapshotRes, insightsRes] = await Promise.all([
+        fetch('/api/portfolio/snapshot', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch('/api/dashboard/insights', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      if (snapshotRes.ok) {
+        setSnapshot(await snapshotRes.json());
+      }
+      if (insightsRes.ok) {
+        setInsights(await insightsRes.json());
       }
     } catch (error) {
-      console.error('Error loading portfolio snapshot:', error);
+      console.error('Error loading dashboard data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -508,6 +579,62 @@ export default function DashboardPage() {
               />
             </div>
           </div>
+
+          {/* Financial Health & Insights Section */}
+          {insights && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Financial Health Score */}
+              <FinancialHealthScore
+                score={insights.healthScore.score}
+                grade={insights.healthScore.grade}
+                breakdown={insights.healthScore.breakdown}
+              />
+
+              {/* Emergency Fund Tracker */}
+              <EmergencyFundTracker
+                liquidCash={insights.emergencyFund.liquidCash}
+                monthlyExpenses={insights.emergencyFund.monthlyExpenses}
+                monthsCovered={insights.emergencyFund.monthsCovered}
+                target={insights.emergencyFund.target}
+                status={insights.emergencyFund.status}
+                gap={insights.emergencyFund.gap}
+              />
+            </div>
+          )}
+
+          {/* Actionable Insights & Budget Section */}
+          {insights && insights.insights.length > 0 && (
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* What You Should Know - Actionable Insights */}
+              <div className="lg:col-span-2">
+                <ActionableInsights insights={insights.insights} />
+              </div>
+
+              {/* Monthly Budget Summary */}
+              <MonthlyBudgetSummary
+                income={insights.monthlyBudget.income}
+                essentialExpenses={insights.monthlyBudget.essentialExpenses}
+                discretionaryExpenses={insights.monthlyBudget.discretionaryExpenses}
+                loanPayments={insights.monthlyBudget.loanPayments}
+                remaining={insights.monthlyBudget.remaining}
+                dailyBudget={insights.monthlyBudget.dailyBudget}
+              />
+            </div>
+          )}
+
+          {/* Spending Analysis Section */}
+          {insights && insights.moneyBleeding.length > 0 && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Where Your Money Goes */}
+              <MoneyBleedingCard
+                items={insights.moneyBleeding}
+                monthlyIncome={insights.monthlyBudget.income}
+              />
+
+              {/* Spending by Category */}
+              <SpendingByCategory categories={insights.spendingByCategory} />
+            </div>
+          )}
 
           {/* Two Column Layout: Charts & Insights */}
           <div className="grid gap-6 lg:grid-cols-3">
