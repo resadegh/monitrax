@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
 
 const updateAccountSchema = z.object({
@@ -34,11 +35,10 @@ export async function GET(
         },
       });
 
-      if (!account || account.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(account, authReq.user!.userId, 'Investment account');
+      if (!ownershipResult.success) return ownershipResult.response;
 
-      return NextResponse.json(account);
+      return NextResponse.json(ownershipResult.resource);
     } catch (error) {
       console.error('Get investment account error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -68,9 +68,8 @@ export async function PUT(
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Investment account');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const {
         name, type, platform, currency,
@@ -114,9 +113,8 @@ export async function DELETE(
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Investment account');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       await prisma.investmentAccount.delete({
         where: { id },

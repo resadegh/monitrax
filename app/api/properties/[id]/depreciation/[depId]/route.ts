@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyOwnership } from '@/lib/utils/ownership';
+import { notFound } from '@/lib/utils/api-response';
 import { z } from 'zod';
 
 const updateDepreciationSchema = z.object({
@@ -26,16 +28,15 @@ export async function GET(
         where: { id: propertyId },
       });
 
-      if (!property || property.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const propertyResult = verifyOwnership(property, authReq.user!.userId, 'Property');
+      if (!propertyResult.success) return propertyResult.response;
 
       const schedule = await prisma.depreciationSchedule.findUnique({
         where: { id: depId },
       });
 
       if (!schedule || schedule.propertyId !== propertyId) {
-        return NextResponse.json({ error: 'Depreciation schedule not found' }, { status: 404 });
+        return notFound('Depreciation schedule');
       }
 
       return NextResponse.json(schedule);
@@ -68,9 +69,8 @@ export async function PUT(
         where: { id: propertyId },
       });
 
-      if (!property || property.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const propertyResult = verifyOwnership(property, authReq.user!.userId, 'Property');
+      if (!propertyResult.success) return propertyResult.response;
 
       // Verify schedule exists and belongs to property
       const existing = await prisma.depreciationSchedule.findUnique({
@@ -78,7 +78,7 @@ export async function PUT(
       });
 
       if (!existing || existing.propertyId !== propertyId) {
-        return NextResponse.json({ error: 'Depreciation schedule not found' }, { status: 404 });
+        return notFound('Depreciation schedule');
       }
 
       const { category, assetName, cost, startDate, rate, method, notes } = validation.data;
@@ -117,9 +117,8 @@ export async function DELETE(
         where: { id: propertyId },
       });
 
-      if (!property || property.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const propertyResult = verifyOwnership(property, authReq.user!.userId, 'Property');
+      if (!propertyResult.success) return propertyResult.response;
 
       // Verify schedule exists and belongs to property
       const existing = await prisma.depreciationSchedule.findUnique({
@@ -127,7 +126,7 @@ export async function DELETE(
       });
 
       if (!existing || existing.propertyId !== propertyId) {
-        return NextResponse.json({ error: 'Depreciation schedule not found' }, { status: 404 });
+        return notFound('Depreciation schedule');
       }
 
       await prisma.depreciationSchedule.delete({

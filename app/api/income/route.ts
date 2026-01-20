@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
 export async function GET(request: NextRequest) {
@@ -63,19 +64,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
       }
 
-      // Validate ownership of related entities
+      // Validate ownership of related entities using centralized utility
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        if (!property || property.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Property not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        if (!result.success) return result.response;
       }
 
       if (investmentAccountId) {
         const investmentAccount = await prisma.investmentAccount.findUnique({ where: { id: investmentAccountId } });
-        if (!investmentAccount || investmentAccount.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Investment account not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(investmentAccount, authReq.user!.userId, 'Investment account');
+        if (!result.success) return result.response;
       }
 
       // Helper to safely convert to number

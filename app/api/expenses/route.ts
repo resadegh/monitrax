@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractExpenseLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
 export async function GET(request: NextRequest) {
@@ -73,34 +74,30 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Category or custom category is required' }, { status: 400 });
       }
 
-      // Validate ownership of related entities
+      // Validate ownership of related entities using centralized utility
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        if (!property || property.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Property not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        if (!result.success) return result.response;
       }
 
       if (loanId) {
         const loan = await prisma.loan.findUnique({ where: { id: loanId } });
-        if (!loan || loan.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Loan not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(loan, authReq.user!.userId, 'Loan');
+        if (!result.success) return result.response;
       }
 
       if (investmentAccountId) {
         const investmentAccount = await prisma.investmentAccount.findUnique({ where: { id: investmentAccountId } });
-        if (!investmentAccount || investmentAccount.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Investment account not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(investmentAccount, authReq.user!.userId, 'Investment account');
+        if (!result.success) return result.response;
       }
 
-      // Phase 21: Validate asset ownership
+      // Validate asset ownership
       if (assetId) {
         const asset = await prisma.asset.findUnique({ where: { id: assetId } });
-        if (!asset || asset.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Asset not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(asset, authReq.user!.userId, 'Asset');
+        if (!result.success) return result.response;
       }
 
       // Validate custom category ownership

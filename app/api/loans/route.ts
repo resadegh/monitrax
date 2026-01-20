@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractLoanLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
 export async function GET(request: NextRequest) {
@@ -76,35 +77,31 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Validate ownership of related entities
+      // Validate ownership of related entities using centralized utility
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        if (!property || property.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Property not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        if (!result.success) return result.response;
       }
 
       if (offsetAccountId) {
         const account = await prisma.account.findUnique({ where: { id: offsetAccountId } });
-        if (!account || account.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Offset account not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(account, authReq.user!.userId, 'Offset account');
+        if (!result.success) return result.response;
       }
 
       // Validate linked asset (for CAR loans)
       if (linkedAssetId) {
         const asset = await prisma.asset.findUnique({ where: { id: linkedAssetId } });
-        if (!asset || asset.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Asset not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(asset, authReq.user!.userId, 'Asset');
+        if (!result.success) return result.response;
       }
 
       // Validate linked account (for LINE_OF_CREDIT)
       if (linkedAccountId) {
         const account = await prisma.account.findUnique({ where: { id: linkedAccountId } });
-        if (!account || account.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Linked account not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(account, authReq.user!.userId, 'Linked account');
+        if (!result.success) return result.response;
       }
 
       const loan = await prisma.loan.create({

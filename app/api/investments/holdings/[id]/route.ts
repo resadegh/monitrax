@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyIndirectOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
 
 const updateHoldingSchema = z.object({
@@ -35,11 +36,15 @@ export async function GET(
         },
       });
 
-      if (!holding || holding.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Holding not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        holding,
+        holding?.investmentAccount,
+        authReq.user!.userId,
+        'Holding'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
 
-      return NextResponse.json(holding);
+      return NextResponse.json(ownershipResult.resource);
     } catch (error) {
       console.error('Get holding error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -70,9 +75,13 @@ export async function PUT(
         include: { investmentAccount: true },
       });
 
-      if (!existing || existing.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Holding not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        existing,
+        existing?.investmentAccount,
+        authReq.user!.userId,
+        'Holding'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const { ticker, name, units, averagePrice, frankingPercentage, type, currentPrice } = validation.data;
 
@@ -145,9 +154,13 @@ export async function PATCH(
         include: { investmentAccount: true },
       });
 
-      if (!existing || existing.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Holding not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        existing,
+        existing?.investmentAccount,
+        authReq.user!.userId,
+        'Holding'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const { currentPrice } = validation.data;
 
@@ -200,9 +213,13 @@ export async function DELETE(
         include: { investmentAccount: true },
       });
 
-      if (!existing || existing.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Holding not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        existing,
+        existing?.investmentAccount,
+        authReq.user!.userId,
+        'Holding'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
 
       await prisma.investmentHolding.delete({
         where: { id },
