@@ -31,33 +31,36 @@ export async function GET(
       const ownershipResult = verifyOwnership(asset, authReq.user!.userId, 'Asset');
       if (!ownershipResult.success) return ownershipResult.response;
 
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedAsset = ownershipResult.resource;
+
       // Type for expense
-      type AssetExpense = (typeof asset.expenses)[number];
+      type AssetExpense = (typeof verifiedAsset.expenses)[number];
 
       // Calculate computed fields using centralized utility
-      const annualExpenses = asset.expenses.reduce((total: number, expense: AssetExpense) => {
+      const annualExpenses = verifiedAsset.expenses.reduce((total: number, expense: AssetExpense) => {
         return total + toAnnual(expense.amount, expense.frequency as Frequency);
       }, 0);
 
-      const totalExpenses = asset.expenses.reduce((total: number, expense: AssetExpense) => {
+      const totalExpenses = verifiedAsset.expenses.reduce((total: number, expense: AssetExpense) => {
         return total + expense.amount;
       }, 0);
 
-      const depreciation = asset.purchasePrice - asset.currentValue;
+      const depreciation = verifiedAsset.purchasePrice - verifiedAsset.currentValue;
       const depreciationPercent =
-        asset.purchasePrice > 0 ? (depreciation / asset.purchasePrice) * 100 : 0;
+        verifiedAsset.purchasePrice > 0 ? (depreciation / verifiedAsset.purchasePrice) * 100 : 0;
 
       const totalCostOfOwnership =
-        asset.purchasePrice + totalExpenses - (asset.salePrice || 0);
+        verifiedAsset.purchasePrice + totalExpenses - (verifiedAsset.salePrice || 0);
 
       // Vehicle-specific: cost per km if applicable
       let costPerKm = null;
-      if (asset.type === 'VEHICLE' && asset.vehicleOdometer && asset.vehicleOdometer > 0) {
-        costPerKm = totalCostOfOwnership / asset.vehicleOdometer;
+      if (verifiedAsset.type === 'VEHICLE' && verifiedAsset.vehicleOdometer && verifiedAsset.vehicleOdometer > 0) {
+        costPerKm = totalCostOfOwnership / verifiedAsset.vehicleOdometer;
       }
 
       return NextResponse.json({
-        ...asset,
+        ...verifiedAsset,
         _computed: {
           annualExpenses,
           totalExpenses,
@@ -95,6 +98,9 @@ export async function PUT(
       const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Asset');
       if (!ownershipResult.success) return ownershipResult.response;
 
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedExisting = ownershipResult.resource;
+
       const {
         name,
         type,
@@ -127,7 +133,7 @@ export async function PUT(
       } = body;
 
       // Check if value changed - record in history
-      const valueChanged = currentValue && currentValue !== existing.currentValue;
+      const valueChanged = currentValue && currentValue !== verifiedExisting.currentValue;
 
       const asset = await prisma.asset.update({
         where: { id },
