@@ -60,13 +60,13 @@ export function StatCard({ title, value, description, icon: Icon, trend, variant
   const styles = variantStyles[variant];
 
   return (
-    <Card className="relative overflow-hidden bg-card hover:shadow-lg transition-all duration-300 border border-border/50 h-full">
+    <Card className="relative overflow-hidden bg-card hover:shadow-lg transition-all duration-300 border border-border/50 h-[140px]">
       {/* Subtle gradient accent */}
       <div className={`absolute inset-0 bg-gradient-to-br ${styles.accent} pointer-events-none`} />
 
-      <div className="relative p-5 flex flex-col h-full min-h-[140px]">
+      <div className="relative p-5 flex flex-col h-full">
         {/* Header with icon and badge */}
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start justify-between mb-auto">
           <div className="flex items-center gap-2">
             {Icon && (
               <div className={`p-2 rounded-xl ${styles.iconBg}`}>
@@ -95,22 +95,25 @@ export function StatCard({ title, value, description, icon: Icon, trend, variant
           )}
         </div>
 
-        {/* Title */}
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-          {title}
-        </p>
-
-        {/* Value */}
-        <p className="text-2xl font-bold text-foreground tracking-tight">
-          {value}
-        </p>
-
-        {/* Description */}
-        {description && (
-          <p className="text-xs text-muted-foreground mt-auto pt-2">
-            {description}
+        {/* Content area - fixed layout */}
+        <div className="mt-2">
+          {/* Title */}
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+            {title}
           </p>
-        )}
+
+          {/* Value */}
+          <p className="text-2xl font-bold text-foreground tracking-tight leading-none">
+            {value}
+          </p>
+
+          {/* Description */}
+          {description && (
+            <p className="text-xs text-muted-foreground mt-2 truncate">
+              {description}
+            </p>
+          )}
+        </div>
       </div>
     </Card>
   );
