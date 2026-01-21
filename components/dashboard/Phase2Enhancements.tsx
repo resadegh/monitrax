@@ -449,14 +449,16 @@ export function EntityComparisonChart({ items, title = 'Cashflow Contributors' }
 }
 
 // Helper to build entity comparison data
+// Note: Property-linked loans (HOME/INVESTMENT) are excluded because their repayments
+// are already included in the property cashflow calculations
 export function buildEntityComparisonData(
   properties: Array<{ name: string; cashflow: { monthlyNet: number } }>,
   investments: Array<{ name: string; monthlyIncome: number }>,
-  loans: Array<{ name: string; netCashflowImpact: number }>
+  loans: Array<{ name: string; netCashflowImpact: number; type?: string; isPropertyLinked?: boolean }>
 ): EntityComparisonItem[] {
   const items: EntityComparisonItem[] = [];
 
-  // Properties
+  // Properties (their cashflow already includes loan repayments)
   properties.forEach((p) => {
     items.push({
       name: p.name,
@@ -478,15 +480,26 @@ export function buildEntityComparisonData(
     }
   });
 
-  // Loans (negative impact)
-  loans.forEach((loan) => {
-    items.push({
-      name: loan.name,
-      type: 'loan',
-      cashflow: -loan.netCashflowImpact,
-      color: '#f97316', // orange
+  // Standalone loans only - exclude property-linked loans (HOME/INVESTMENT)
+  // to avoid double-counting (property cashflow already includes loan repayments)
+  loans
+    .filter((loan) => {
+      // If isPropertyLinked is explicitly set, use that
+      if (typeof loan.isPropertyLinked === 'boolean') {
+        return !loan.isPropertyLinked;
+      }
+      // Otherwise, check loan type - HOME and INVESTMENT are property-linked
+      const loanType = loan.type?.toUpperCase();
+      return loanType !== 'HOME' && loanType !== 'INVESTMENT';
+    })
+    .forEach((loan) => {
+      items.push({
+        name: loan.name,
+        type: 'loan',
+        cashflow: -loan.netCashflowImpact,
+        color: '#f97316', // orange
+      });
     });
-  });
 
   return items;
 }
