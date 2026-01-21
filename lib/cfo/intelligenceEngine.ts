@@ -8,6 +8,7 @@ import { calculateCFOScore, getCFOScoreHistory, saveCFOScore } from './scoreCalc
 import { scanForRisks } from './riskRadar';
 import { generateActions } from './actionEngine';
 import { calculateCFOTaxInsights } from './decisionSupport/taxIntegration';
+import { calculateCFOLoanInsights } from './decisionSupport/loanDecisionSupport';
 import {
   CFODashboardData,
   CFOScore,
@@ -19,6 +20,7 @@ import {
   CFOAlert,
   CFOPreferences,
   CFOTaxInsights,
+  CFOLoanInsights,
 } from './types';
 import { toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
@@ -79,12 +81,16 @@ interface ExpenseRecord {
 
 export async function getCFODashboardData(userId: string): Promise<CFODashboardData> {
   // Calculate all components in parallel where possible
-  const [score, risks, taxInsights] = await Promise.all([
+  const [score, risks, taxInsights, loanInsights] = await Promise.all([
     calculateCFOScore(userId),
     scanForRisks(userId),
     calculateCFOTaxInsights(userId).catch((err) => {
       console.error('[CFO] Tax insights calculation failed:', err);
       return undefined; // Tax insights are optional - don't fail the whole request
+    }),
+    calculateCFOLoanInsights(userId).catch((err) => {
+      console.error('[CFO] Loan insights calculation failed:', err);
+      return undefined; // Loan insights are optional - don't fail the whole request
     }),
   ]);
 
@@ -111,6 +117,7 @@ export async function getCFODashboardData(userId: string): Promise<CFODashboardD
     quickStats,
     alerts,
     taxInsights, // Phase 17A: Tax Integration
+    loanInsights, // Phase 17B: Loan Decision Support
   };
 }
 

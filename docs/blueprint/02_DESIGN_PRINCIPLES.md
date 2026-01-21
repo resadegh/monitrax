@@ -100,15 +100,40 @@ This means:
 ### **3.4 Consistent Interaction Patterns**
 All dialogs share:
 
-- the same layout  
-- tabs on top  
-- linked data tab  
-- insights tab  
-- consistent CTAs  
-- the same button placement  
-- universal close & back rules  
+- the same layout
+- tabs on top
+- linked data tab
+- insights tab
+- consistent CTAs
+- the same button placement
+- universal close & back rules
 
-The user should never have to “relearn” anything.
+The user should never have to "relearn" anything.
+
+### **3.5 No Duplicate Numbers Across Pages**
+> **Added Jan 2026 - Phase 17B**
+
+Each number should appear in **exactly one primary location** in the app. Summary pages (like CFO Dashboard) should show:
+
+- **Actionable insights**, not raw data duplicates
+- **Links** to detailed pages instead of copying their content
+- **Unique metrics** not shown elsewhere
+
+**Bad Examples:**
+- ❌ CFO page showing "Total Debt: $500k" when Debt page already shows this
+- ❌ Tax Position tile duplicating numbers from Tax Dashboard
+- ❌ Loan insights repeating portfolio totals from Loans page
+
+**Good Examples:**
+- ✅ CFO page showing "3 refinance opportunities - save $2,400/year" with link to Loans
+- ✅ Tax tile showing "EOFY action needed" alert with link to Tax Dashboard
+- ✅ Loan insights showing "Fixed rate expiring in 45 days" alert
+
+**The Rule:**
+If a number already has a "home" page, the summary tile should:
+1. Show the **insight/action** derived from that number
+2. Provide a **link** to the detail page
+3. **NOT** repeat the raw number itself
 
 ---
 
