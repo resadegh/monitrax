@@ -68,7 +68,16 @@ export type RiskType =
   | 'retirement_gap'
   | 'investment_misalignment'
   | 'mortgage_renewal'
-  | 'concentration_risk';
+  | 'concentration_risk'
+  // Tax-related risks (Phase 17A)
+  | 'cgt_exposure_high'
+  | 'super_cap_approaching'
+  | 'div293_threshold'
+  | 'eofy_action_required'
+  | 'depreciation_unclaimed'
+  | 'franking_credits_unused'
+  | 'negative_gearing_review'
+  | 'tax_refund_opportunity';
 
 export interface RiskEntity {
   type: 'property' | 'loan' | 'account' | 'income' | 'expense' | 'investment';
@@ -158,6 +167,43 @@ export interface CFODashboardData {
   monthlyProgress: MonthlyProgress;
   quickStats: CFOQuickStats;
   alerts: CFOAlert[];
+  taxInsights?: CFOTaxInsights; // Phase 17A: Tax Integration
+}
+
+// ============================================================================
+// Tax Insights Types (Phase 17A)
+// ============================================================================
+
+export interface CFOTaxInsights {
+  taxPositionSnapshot: {
+    estimatedRefund: number;
+    confidenceLevel: number;
+    daysUntilEOFY: number;
+    actionRequiredBeforeEOFY: boolean;
+    financialYear: string;
+  };
+  deductionsSummary: {
+    totalDeductions: number;
+    propertyDeductions: number;
+    investmentDeductions: number;
+    workRelatedDeductions: number;
+    depreciationDeductions: number;
+    potentialMissedDeductions: string[];
+  };
+  keyTaxMetrics: {
+    effectiveTaxRate: number;
+    marginalRate: number;
+    negativeGearingBenefit: number;
+    frankingCreditsAvailable: number;
+    unrealisedCGT: number;
+    paygWithheld: number;
+  };
+  metadata: {
+    calculatedAt: Date;
+    incomeCount: number;
+    expenseCount: number;
+    depreciationCount: number;
+  };
 }
 
 export interface MonthlyProgress {

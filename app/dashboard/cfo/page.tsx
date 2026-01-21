@@ -26,6 +26,10 @@ import {
   BarChart3,
   ArrowUpRight,
   ArrowDownRight,
+  Calculator,
+  Calendar,
+  Receipt,
+  Percent,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -80,6 +84,32 @@ interface MonthlyProgress {
   emergingRisks: string[];
 }
 
+interface TaxInsights {
+  taxPositionSnapshot: {
+    estimatedRefund: number;
+    confidenceLevel: number;
+    daysUntilEOFY: number;
+    actionRequiredBeforeEOFY: boolean;
+    financialYear: string;
+  };
+  deductionsSummary: {
+    totalDeductions: number;
+    propertyDeductions: number;
+    investmentDeductions: number;
+    workRelatedDeductions: number;
+    depreciationDeductions: number;
+    potentialMissedDeductions: string[];
+  };
+  keyTaxMetrics: {
+    effectiveTaxRate: number;
+    marginalRate: number;
+    negativeGearingBenefit: number;
+    frankingCreditsAvailable: number;
+    unrealisedCGT: number;
+    paygWithheld: number;
+  };
+}
+
 interface CFODashboardData {
   score: CFOScore;
   risks: { risks: Risk[]; summary: { critical: number; high: number; medium: number; low: number; totalImpact: number } };
@@ -93,6 +123,7 @@ interface CFODashboardData {
     pendingActions: number;
   };
   alerts: { id: string; type: string; title: string; message: string }[];
+  taxInsights?: TaxInsights;
 }
 
 export default function CFODashboardPage() {
@@ -182,7 +213,7 @@ export default function CFODashboardPage() {
     );
   }
 
-  const { score, risks, actions, monthlyProgress, quickStats, alerts } = data;
+  const { score, risks, actions, monthlyProgress, quickStats, alerts, taxInsights } = data;
 
   return (
     <DashboardLayout>
@@ -286,6 +317,160 @@ export default function CFODashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Tax Position Tile (Phase 17A) */}
+      {taxInsights && (
+        <Card className="mb-6 border-blue-200 bg-gradient-to-br from-blue-50/50 to-white">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5 text-blue-600" />
+                Tax Position
+                <Badge variant="outline" className="ml-2 text-xs">
+                  FY {taxInsights.taxPositionSnapshot.financialYear}
+                </Badge>
+              </CardTitle>
+              {taxInsights.taxPositionSnapshot.actionRequiredBeforeEOFY && (
+                <Badge className="bg-orange-500">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  EOFY Action Needed
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Estimated Refund/Owing */}
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Receipt className="h-3 w-3" />
+                  Estimated Position
+                </div>
+                <div className={`text-xl font-bold ${taxInsights.taxPositionSnapshot.estimatedRefund >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {taxInsights.taxPositionSnapshot.estimatedRefund >= 0 ? '+' : ''}
+                  {formatCurrency(taxInsights.taxPositionSnapshot.estimatedRefund)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {taxInsights.taxPositionSnapshot.estimatedRefund >= 0 ? 'Refund' : 'Owing'}
+                  <span className="ml-1 text-blue-600">
+                    ({taxInsights.taxPositionSnapshot.confidenceLevel}% confidence)
+                  </span>
+                </div>
+              </div>
+
+              {/* Days Until EOFY */}
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Days Until EOFY
+                </div>
+                <div className={`text-xl font-bold ${taxInsights.taxPositionSnapshot.daysUntilEOFY <= 30 ? 'text-orange-600' : 'text-gray-900'}`}>
+                  {taxInsights.taxPositionSnapshot.daysUntilEOFY}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {taxInsights.taxPositionSnapshot.daysUntilEOFY <= 30 ? 'Action window closing' : 'Days remaining'}
+                </div>
+              </div>
+
+              {/* Effective Tax Rate */}
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Percent className="h-3 w-3" />
+                  Effective Tax Rate
+                </div>
+                <div className="text-xl font-bold">
+                  {(taxInsights.keyTaxMetrics.effectiveTaxRate * 100).toFixed(1)}%
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Marginal: {(taxInsights.keyTaxMetrics.marginalRate * 100).toFixed(0)}%
+                </div>
+              </div>
+
+              {/* Total Deductions */}
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <DollarSign className="h-3 w-3" />
+                  Total Deductions
+                </div>
+                <div className="text-xl font-bold text-green-600">
+                  {formatCurrency(taxInsights.deductionsSummary.totalDeductions)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Reducing taxable income
+                </div>
+              </div>
+            </div>
+
+            {/* Deductions Breakdown */}
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="text-center p-2 bg-muted/30 rounded">
+                <div className="text-sm font-semibold">{formatCurrency(taxInsights.deductionsSummary.propertyDeductions)}</div>
+                <div className="text-xs text-muted-foreground">Property</div>
+              </div>
+              <div className="text-center p-2 bg-muted/30 rounded">
+                <div className="text-sm font-semibold">{formatCurrency(taxInsights.deductionsSummary.depreciationDeductions)}</div>
+                <div className="text-xs text-muted-foreground">Depreciation</div>
+              </div>
+              <div className="text-center p-2 bg-muted/30 rounded">
+                <div className="text-sm font-semibold">{formatCurrency(taxInsights.deductionsSummary.investmentDeductions)}</div>
+                <div className="text-xs text-muted-foreground">Investment</div>
+              </div>
+              <div className="text-center p-2 bg-muted/30 rounded">
+                <div className="text-sm font-semibold">{formatCurrency(taxInsights.deductionsSummary.workRelatedDeductions)}</div>
+                <div className="text-xs text-muted-foreground">Work-related</div>
+              </div>
+            </div>
+
+            {/* Key Tax Metrics */}
+            <div className="mt-4 flex flex-wrap gap-4 text-xs">
+              {taxInsights.keyTaxMetrics.negativeGearingBenefit > 0 && (
+                <div className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                  <span>Neg. Gearing Benefit: <strong className="text-green-600">{formatCurrency(taxInsights.keyTaxMetrics.negativeGearingBenefit)}</strong></span>
+                </div>
+              )}
+              {taxInsights.keyTaxMetrics.frankingCreditsAvailable > 0 && (
+                <div className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                  <span>Franking Credits: <strong className="text-green-600">{formatCurrency(taxInsights.keyTaxMetrics.frankingCreditsAvailable)}</strong></span>
+                </div>
+              )}
+              {taxInsights.keyTaxMetrics.unrealisedCGT > 0 && (
+                <div className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3 text-orange-500" />
+                  <span>Unrealised CGT: <strong className="text-orange-600">{formatCurrency(taxInsights.keyTaxMetrics.unrealisedCGT)}</strong></span>
+                </div>
+              )}
+            </div>
+
+            {/* Potential Missed Deductions */}
+            {taxInsights.deductionsSummary.potentialMissedDeductions.length > 0 && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="text-xs font-medium text-yellow-800 flex items-center gap-1 mb-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Potential Missed Deductions
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {taxInsights.deductionsSummary.potentialMissedDeductions.map((item, i) => (
+                    <Badge key={i} variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" size="sm" asChild>
+                <a href="/dashboard/tax">
+                  View Full Tax Dashboard
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6 mb-6">
         {/* Monthly Progress */}
