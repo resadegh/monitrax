@@ -265,14 +265,14 @@ async function calculatePerformanceMetrics(
   const totalReturn = metrics.unrealisedGain;
   const totalReturnPercent = metrics.unrealisedGainPercent;
 
-  // Get dividend income from last 12 months
+  // Get investment income (includes dividends) from last 12 months
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
   const dividendIncome = await prisma.income.aggregate({
     where: {
       userId,
-      type: 'DIVIDEND',
+      type: 'INVESTMENT',
       date: { gte: oneYearAgo },
     },
     _sum: {
