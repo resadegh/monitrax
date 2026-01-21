@@ -6,7 +6,7 @@
  */
 
 import { getInvestmentMetrics, InvestmentMetrics } from '@/lib/services/masterFinancialService';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 import {
   CFOInvestmentInsights,
   CFOInvestmentAlert,
