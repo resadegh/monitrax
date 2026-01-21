@@ -608,21 +608,33 @@ export default function DashboardPage() {
             </div>
             <div className="relative">
               <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer">
-                <StatCard
-                  title={cashflowPeriod === 'monthly' ? 'Monthly Cash Flow' : 'Annual Cash Flow'}
-                  value={formatCurrency(
-                    cashflowPeriod === 'monthly'
-                      ? snapshot.cashflow.monthlyNetCashflow
-                      : snapshot.cashflow.annualNetCashflow
-                  )}
-                  description={
-                    cashflowPeriod === 'monthly'
-                      ? `${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`
-                      : `${formatCurrency(snapshot.cashflow.monthlyNetCashflow)}/month`
-                  }
-                  icon={snapshot.cashflow.monthlyNetCashflow >= 0 ? ArrowUpRight : ArrowDownRight}
-                  variant={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'green' : 'orange'}
-                />
+                <CalculationTooltip
+                  title="Cash Flow Calculation"
+                  formula="Income - Expenses - Loan Repayments"
+                  components={[
+                    { label: 'Total Income', value: snapshot.cashflow.totalIncome, color: 'green' },
+                    { label: 'Total Expenses', value: snapshot.cashflow.totalExpenses, color: 'red', operator: '-' },
+                    { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '-' },
+                  ]}
+                  result={cashflowPeriod === 'monthly' ? snapshot.cashflow.monthlyNetCashflow : snapshot.cashflow.annualNetCashflow}
+                  resultLabel={cashflowPeriod === 'monthly' ? 'Monthly Cash Flow' : 'Annual Cash Flow'}
+                >
+                  <StatCard
+                    title={cashflowPeriod === 'monthly' ? 'Monthly Cash Flow' : 'Annual Cash Flow'}
+                    value={formatCurrency(
+                      cashflowPeriod === 'monthly'
+                        ? snapshot.cashflow.monthlyNetCashflow
+                        : snapshot.cashflow.annualNetCashflow
+                    )}
+                    description={
+                      cashflowPeriod === 'monthly'
+                        ? `${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`
+                        : `${formatCurrency(snapshot.cashflow.monthlyNetCashflow)}/month`
+                    }
+                    icon={snapshot.cashflow.monthlyNetCashflow >= 0 ? ArrowUpRight : ArrowDownRight}
+                    variant={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'green' : 'orange'}
+                  />
+                </CalculationTooltip>
               </div>
               {/* Period Toggle */}
               <div className="absolute top-2 right-2 z-10">
