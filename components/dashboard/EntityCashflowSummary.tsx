@@ -20,6 +20,7 @@ import {
   Wallet,
   DollarSign,
   Receipt,
+  Briefcase,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -65,18 +66,30 @@ export interface AssetCashflow {
   monthlyRunningCost: number; // Rego, insurance, fuel, maintenance
 }
 
+// Standalone income (excludes rental/investment income which are tracked in their respective entities)
+export interface IncomeCashflow {
+  id: string;
+  name: string;
+  type: string; // SALARY, BUSINESS, OTHER
+  grossMonthly: number;
+  netMonthly: number; // After tax
+  isRecurring: boolean;
+}
+
 export interface EntityCashflowData {
   properties: PropertyCashflow[];
   investments: InvestmentCashflow[];
   loans: LoanCashflow[];
   assets: AssetCashflow[];
+  income: IncomeCashflow[]; // Standalone income (salary, business, other - NOT rental/dividends)
   summary: {
     propertiesNet: number;        // Already includes property-linked loan repayments
     investmentsNet: number;
     loansNet: number;             // Total of all loans (for display in Loans tab)
     standaloneLoansCost: number;  // Only loans NOT linked to properties (car, personal, etc.)
     assetsNet: number;
-    totalEntityCashflow: number;  // propertiesNet + investmentsNet - standaloneLoansCost + assetsNet
+    incomeNet: number;            // Standalone income (salary, business, other)
+    totalEntityCashflow: number;  // incomeNet + propertiesNet + investmentsNet - standaloneLoansCost + assetsNet
   };
 }
 
@@ -185,13 +198,13 @@ function EntityRow({
 }
 
 export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSummaryProps) {
-  const { properties, investments, loans, assets, summary } = data;
+  const { properties, investments, loans, assets, income, summary } = data;
 
   // Calculate entity counts
   const positiveProperties = properties.filter(p => p.isPositive).length;
   const positiveInvestments = investments.filter(i => i.isPositive).length;
 
-  const hasEntities = properties.length > 0 || investments.length > 0 || loans.length > 0 || assets.length > 0;
+  const hasEntities = properties.length > 0 || investments.length > 0 || loans.length > 0 || assets.length > 0 || (income && income.length > 0);
 
   if (!hasEntities) {
     return (
@@ -228,25 +241,78 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="properties" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 h-auto">
-            <TabsTrigger value="properties" className="text-xs px-2 py-1.5">
+        <Tabs defaultValue="income" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 h-auto">
+            <TabsTrigger value="income" className="text-xs px-1 py-1.5">
+              <Briefcase className="h-3 w-3 mr-1" />
+              Income
+            </TabsTrigger>
+            <TabsTrigger value="properties" className="text-xs px-1 py-1.5">
               <Building2 className="h-3 w-3 mr-1" />
               Properties
             </TabsTrigger>
-            <TabsTrigger value="investments" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="investments" className="text-xs px-1 py-1.5">
               <BarChart3 className="h-3 w-3 mr-1" />
               Investments
             </TabsTrigger>
-            <TabsTrigger value="loans" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="loans" className="text-xs px-1 py-1.5">
               <Landmark className="h-3 w-3 mr-1" />
               Loans
             </TabsTrigger>
-            <TabsTrigger value="assets" className="text-xs px-2 py-1.5">
+            <TabsTrigger value="assets" className="text-xs px-1 py-1.5">
               <Car className="h-3 w-3 mr-1" />
               Assets
             </TabsTrigger>
           </TabsList>
+
+          {/* Income Tab - Standalone income (salary, business, other) */}
+          <TabsContent value="income" className="mt-4 space-y-3">
+            {income && income.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-muted-foreground">
+                    {income.filter(i => i.isRecurring).length} recurring source{income.filter(i => i.isRecurring).length !== 1 ? 's' : ''}
+                  </span>
+                  <span className="font-semibold">
+                    Net: <CashflowValue value={summary.incomeNet || 0} />
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                  Rental income is shown under Properties. Investment income (dividends/distributions) is shown under Investments.
+                </p>
+                {income.map((inc) => (
+                  <EntityRow
+                    key={inc.id}
+                    icon={Briefcase}
+                    name={inc.name}
+                    subtitle={inc.type}
+                    cashflow={inc.netMonthly}
+                    href={`/dashboard/income`}
+                    details={
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Gross Monthly</span>
+                          <span className="text-green-600">+{formatCurrency(inc.grossMonthly)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Net (after tax)</span>
+                          <span className="text-green-600">+{formatCurrency(inc.netMonthly)}</span>
+                        </div>
+                        {inc.isRecurring && (
+                          <Badge variant="outline" className="mt-1 text-xs">Recurring</Badge>
+                        )}
+                      </>
+                    }
+                  />
+                ))}
+              </>
+            ) : (
+              <div className="text-center py-4 text-sm text-muted-foreground">
+                <p>No standalone income sources added yet</p>
+                <p className="text-xs mt-1">Rental and investment income are tracked in their respective tabs</p>
+              </div>
+            )}
+          </TabsContent>
 
           {/* Properties Tab */}
           <TabsContent value="properties" className="mt-4 space-y-3">
@@ -436,6 +502,12 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
         {/* Summary Footer */}
         <div className="mt-4 pt-4 border-t">
           <div className="grid grid-cols-2 gap-2 text-xs">
+            {(summary.incomeNet || 0) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Income (salary, etc.)</span>
+                <CashflowValue value={summary.incomeNet || 0} />
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Properties (incl. loans)</span>
               <CashflowValue value={summary.propertiesNet} />
@@ -503,9 +575,12 @@ export function calculateEntityCashflow(
   }>,
   income: Array<{
     id: string;
+    name: string;
     type: string;
     investmentAccountId?: string | null;
+    grossAnnual: number;
     netAnnual: number;
+    isRecurring?: boolean;
   }>,
   marginalTaxRate: number = 0.37
 ): EntityCashflowData {
@@ -583,6 +658,20 @@ export function calculateEntityCashflow(
       monthlyRunningCost: a.expenses?.monthlyTotal || 0,
     }));
 
+  // Calculate standalone income cashflows
+  // Exclude: RENTAL (already in properties), DIVIDEND/DISTRIBUTION (already in investments)
+  const excludedIncomeTypes = ['RENTAL', 'DIVIDEND', 'DISTRIBUTION'];
+  const incomeCashflows: IncomeCashflow[] = income
+    .filter((i) => !excludedIncomeTypes.includes(i.type))
+    .map((i) => ({
+      id: i.id,
+      name: i.name,
+      type: i.type,
+      grossMonthly: i.grossAnnual / 12,
+      netMonthly: i.netAnnual / 12,
+      isRecurring: i.isRecurring ?? true,
+    }));
+
   // Calculate summary
   const propertiesNet = propertyCashflows.reduce((sum, p) => sum + p.netCashflow, 0);
   const investmentsNet = investmentCashflows.reduce((sum, i) => sum + i.netCashflow, 0);
@@ -598,22 +687,28 @@ export function calculateEntityCashflow(
 
   const assetsNet = -assetCashflows.reduce((sum, a) => sum + a.monthlyRunningCost, 0);
 
+  // Standalone income (salary, business, other - NOT rental/dividends)
+  const incomeNet = incomeCashflows.reduce((sum, i) => sum + i.netMonthly, 0);
+
   // Total: Properties already include their loan repayments, so we only add standalone loans separately
+  // incomeNet = salary + business + other income (not rental/dividends)
   // propertiesNet = rental income - expenses - property loan repayments
   // standaloneLoansCost = car loans, personal loans, etc. (not in property cashflow)
-  const totalEntityCashflow = propertiesNet + investmentsNet - standaloneLoansCost + assetsNet;
+  const totalEntityCashflow = incomeNet + propertiesNet + investmentsNet - standaloneLoansCost + assetsNet;
 
   return {
     properties: propertyCashflows,
     investments: investmentCashflows,
     loans: loanCashflows,
     assets: assetCashflows,
+    income: incomeCashflows,
     summary: {
       propertiesNet,
       investmentsNet,
       loansNet,
       standaloneLoansCost,
       assetsNet,
+      incomeNet,
       totalEntityCashflow,
     },
   };
