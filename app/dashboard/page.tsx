@@ -332,7 +332,7 @@ export default function DashboardPage() {
   const [insights, setInsights] = useState<DashboardInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState<DetailTileType>(null);
-  const [cashflowPeriod, setCashflowPeriod] = useState<CashflowPeriod>('monthly');
+  const [cashflowPeriod, setCashflowPeriod] = useState<CashflowPeriod>('annual');
 
   useEffect(() => {
     if (token) {
