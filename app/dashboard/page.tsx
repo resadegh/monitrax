@@ -332,7 +332,7 @@ export default function DashboardPage() {
   const [insights, setInsights] = useState<DashboardInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState<DetailTileType>(null);
-  const [cashflowPeriod, setCashflowPeriod] = useState<CashflowPeriod>('annual');
+  const [cashflowPeriod, setCashflowPeriod] = useState<CashflowPeriod>('monthly');
 
   useEffect(() => {
     if (token) {
@@ -616,8 +616,8 @@ export default function DashboardPage() {
                     { label: 'Total Expenses', value: snapshot.cashflow.totalExpenses, color: 'red', operator: '-' },
                     { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '-' },
                   ]}
-                  result={cashflowPeriod === 'monthly' ? snapshot.cashflow.monthlyNetCashflow : snapshot.cashflow.annualNetCashflow}
-                  resultLabel={cashflowPeriod === 'monthly' ? 'Monthly Cash Flow' : 'Annual Cash Flow'}
+                  result={snapshot.cashflow.annualNetCashflow}
+                  resultLabel="Annual Cash Flow"
                 >
                   <StatCard
                     title={cashflowPeriod === 'monthly' ? 'Monthly Cash Flow' : 'Annual Cash Flow'}
