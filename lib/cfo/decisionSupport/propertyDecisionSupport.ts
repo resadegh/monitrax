@@ -6,61 +6,11 @@
  */
 
 import { getPropertyMetrics, PropertyMetrics } from '@/lib/services/masterFinancialService';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface CFOPropertyInsights {
-  // Portfolio Summary
-  portfolioSummary: {
-    totalProperties: number;
-    totalValue: number;
-    totalEquity: number;
-    averageLVR: number;
-    totalMonthlyIncome: number;
-    totalMonthlyCashflow: number;
-  };
-
-  // Property Alerts
-  propertyAlerts: PropertyAlert[];
-
-  // Top Performers & Underperformers
-  topPerformer: PropertyPerformance | null;
-  underperformer: PropertyPerformance | null;
-
-  // Metadata
-  metadata: {
-    calculatedAt: Date;
-    propertyCount: number;
-  };
-}
-
-export interface PropertyAlert {
-  type: PropertyAlertType;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  propertyId: string;
-  propertyName: string;
-  title: string;
-  description: string;
-  value: number;
-  action: string;
-}
-
-export type PropertyAlertType =
-  | 'high_lvr'
-  | 'low_yield'
-  | 'negative_cashflow'
-  | 'low_growth'
-  | 'high_vacancy_risk';
-
-export interface PropertyPerformance {
-  propertyId: string;
-  propertyName: string;
-  metric: string;
-  value: number;
-  description: string;
-}
+import {
+  CFOPropertyInsights,
+  CFOPropertyAlert,
+  CFOPropertyPerformance,
+} from '../types';
 
 // ============================================================================
 // Property Insights Calculator
@@ -127,8 +77,8 @@ export async function calculateCFOPropertyInsights(userId: string): Promise<CFOP
 // Alert Generation
 // ============================================================================
 
-function generatePropertyAlerts(properties: PropertyMetrics[]): PropertyAlert[] {
-  const alerts: PropertyAlert[] = [];
+function generatePropertyAlerts(properties: PropertyMetrics[]): CFOPropertyAlert[] {
+  const alerts: CFOPropertyAlert[] = [];
 
   for (const property of properties) {
     // High LVR alert (>80%)
@@ -198,8 +148,8 @@ function generatePropertyAlerts(properties: PropertyMetrics[]): PropertyAlert[] 
 // ============================================================================
 
 function findPerformanceExtremes(properties: PropertyMetrics[]): {
-  topPerformer: PropertyPerformance | null;
-  underperformer: PropertyPerformance | null;
+  topPerformer: CFOPropertyPerformance | null;
+  underperformer: CFOPropertyPerformance | null;
 } {
   if (properties.length === 0) {
     return { topPerformer: null, underperformer: null };
@@ -207,8 +157,8 @@ function findPerformanceExtremes(properties: PropertyMetrics[]): {
 
   // Find best yield
   const propertiesWithYield = properties.filter(p => p.rentalYield > 0);
-  let topPerformer: PropertyPerformance | null = null;
-  let underperformer: PropertyPerformance | null = null;
+  let topPerformer: CFOPropertyPerformance | null = null;
+  let underperformer: CFOPropertyPerformance | null = null;
 
   if (propertiesWithYield.length > 0) {
     const bestYield = propertiesWithYield.reduce((best, p) =>
