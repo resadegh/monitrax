@@ -30,6 +30,8 @@ import {
   Calendar,
   Receipt,
   Percent,
+  Banknote,
+  TrendingDown as TrendDown,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -110,6 +112,47 @@ interface TaxInsights {
   };
 }
 
+interface RefinanceOpportunity {
+  loanId: string;
+  loanName: string;
+  loanType: string;
+  currentRate: number;
+  marketRate: number;
+  monthlySavings: number;
+  annualSavings: number;
+  worthRefinancing: boolean;
+}
+
+interface RateAlert {
+  type: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  loanName: string;
+  title: string;
+  description: string;
+  daysUntil?: number;
+  impact: number;
+  action: string;
+}
+
+interface ExtraRepaymentImpact {
+  extraMonthly: number;
+  interestSaved: number;
+  timeReduced: number;
+  targetLoanName: string;
+}
+
+interface LoanInsights {
+  refinanceOpportunities: RefinanceOpportunity[];
+  totalRefinanceSavings: number;
+  rateAlerts: RateAlert[];
+  extraRepaymentImpact: ExtraRepaymentImpact | null;
+  loanRisks: { type: string; severity: string; title: string; description: string; impact: number }[];
+  metadata: {
+    loanCount: number;
+    hasOffsetAccounts: boolean;
+  };
+}
+
 interface CFODashboardData {
   score: CFOScore;
   risks: { risks: Risk[]; summary: { critical: number; high: number; medium: number; low: number; totalImpact: number } };
@@ -124,6 +167,7 @@ interface CFODashboardData {
   };
   alerts: { id: string; type: string; title: string; message: string }[];
   taxInsights?: TaxInsights;
+  loanInsights?: LoanInsights;
 }
 
 export default function CFODashboardPage() {
@@ -213,7 +257,7 @@ export default function CFODashboardPage() {
     );
   }
 
-  const { score, risks, actions, monthlyProgress, quickStats, alerts, taxInsights } = data;
+  const { score, risks, actions, monthlyProgress, quickStats, alerts, taxInsights, loanInsights } = data;
 
   return (
     <DashboardLayout>
@@ -464,6 +508,168 @@ export default function CFODashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <a href="/dashboard/tax">
                   View Full Tax Dashboard
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Loan Insights Tile (Phase 17B) - Shows actionable insights only, not duplicating Loans page data */}
+      {loanInsights && loanInsights.metadata.loanCount > 0 && (
+        <Card className="mb-6 border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Banknote className="h-5 w-5 text-emerald-600" />
+                Loan Opportunities
+                <Badge variant="outline" className="ml-2 text-xs">
+                  {loanInsights.metadata.loanCount} loan{loanInsights.metadata.loanCount > 1 ? 's' : ''}
+                </Badge>
+              </CardTitle>
+              {loanInsights.rateAlerts.filter(a => a.severity === 'critical' || a.severity === 'high').length > 0 && (
+                <Badge className="bg-orange-500">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Action Required
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Key Actionable Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+              {/* Refinance Opportunities */}
+              {loanInsights.refinanceOpportunities.filter(r => r.worthRefinancing).length > 0 && (
+                <div className="p-3 bg-white rounded-lg border border-green-200">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <TrendDown className="h-3 w-3 text-green-600" />
+                    Refinance Savings
+                  </div>
+                  <div className="text-xl font-bold text-green-600">
+                    {formatCurrency(loanInsights.totalRefinanceSavings)}/yr
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {loanInsights.refinanceOpportunities.filter(r => r.worthRefinancing).length} opportunity(ies) found
+                  </div>
+                </div>
+              )}
+
+              {/* Rate Alerts Count */}
+              {loanInsights.rateAlerts.length > 0 && (
+                <div className="p-3 bg-white rounded-lg border border-orange-200">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-orange-600" />
+                    Rate Alerts
+                  </div>
+                  <div className="text-xl font-bold text-orange-600">
+                    {loanInsights.rateAlerts.length}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {loanInsights.rateAlerts.filter(a => a.daysUntil && a.daysUntil <= 90).length > 0
+                      ? 'Time-sensitive actions'
+                      : 'Review recommended'}
+                  </div>
+                </div>
+              )}
+
+              {/* Extra Repayment Impact */}
+              {loanInsights.extraRepaymentImpact && (
+                <div className="p-3 bg-white rounded-lg border border-blue-200">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <DollarSign className="h-3 w-3 text-blue-600" />
+                    Extra Repayment Benefit
+                  </div>
+                  <div className="text-xl font-bold text-blue-600">
+                    {formatCurrency(loanInsights.extraRepaymentImpact.interestSaved)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Save {Math.round(loanInsights.extraRepaymentImpact.timeReduced / 12)} years with +${loanInsights.extraRepaymentImpact.extraMonthly}/mo
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Rate Alerts List - Only show top 2 most urgent */}
+            {loanInsights.rateAlerts.length > 0 && (
+              <div className="space-y-2 mb-4">
+                <div className="text-xs font-medium text-muted-foreground">Upcoming Rate Events</div>
+                {loanInsights.rateAlerts.slice(0, 2).map((alert, i) => (
+                  <div
+                    key={i}
+                    className={`p-3 rounded-lg border ${
+                      alert.severity === 'critical' ? 'bg-red-50 border-red-200' :
+                      alert.severity === 'high' ? 'bg-orange-50 border-orange-200' :
+                      'bg-yellow-50 border-yellow-200'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm flex items-center gap-2">
+                          {alert.title}
+                          {alert.daysUntil && alert.daysUntil <= 30 && (
+                            <Badge variant="outline" className="text-xs">
+                              {alert.daysUntil} days
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">{alert.loanName}</div>
+                      </div>
+                      <div className="text-xs font-medium text-right">
+                        <div className={alert.severity === 'critical' || alert.severity === 'high' ? 'text-red-600' : 'text-orange-600'}>
+                          {formatCurrency(alert.impact)}/yr impact
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Refinance Opportunities List - Only show if significant */}
+            {loanInsights.refinanceOpportunities.filter(r => r.worthRefinancing).length > 0 && (
+              <div className="space-y-2 mb-4">
+                <div className="text-xs font-medium text-muted-foreground">Refinance Opportunities</div>
+                {loanInsights.refinanceOpportunities
+                  .filter(r => r.worthRefinancing)
+                  .slice(0, 2)
+                  .map((opp, i) => (
+                    <div key={i} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-sm">{opp.loanName}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {(opp.currentRate * 100).toFixed(2)}% → {(opp.marketRate * 100).toFixed(2)}%
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-green-600">
+                            Save {formatCurrency(opp.annualSavings)}/yr
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatCurrency(opp.monthlySavings)}/mo
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {/* Show message if no actionable items */}
+            {loanInsights.refinanceOpportunities.filter(r => r.worthRefinancing).length === 0 &&
+             loanInsights.rateAlerts.length === 0 && (
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200 text-center">
+                <CheckCircle2 className="h-6 w-6 mx-auto text-green-600 mb-2" />
+                <div className="text-sm font-medium text-green-800">Loans looking good!</div>
+                <div className="text-xs text-green-600">No immediate opportunities or alerts</div>
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" size="sm" asChild>
+                <a href="/dashboard/debt">
+                  View All Loans
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </a>
               </Button>
