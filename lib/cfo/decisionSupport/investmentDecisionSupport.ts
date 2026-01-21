@@ -273,7 +273,7 @@ async function calculatePerformanceMetrics(
     where: {
       userId,
       type: 'INVESTMENT',
-      date: { gte: oneYearAgo },
+      createdAt: { gte: oneYearAgo },
     },
     _sum: {
       amount: true,
