@@ -76,12 +76,23 @@ export interface IncomeCashflow {
   isRecurring: boolean;
 }
 
+// Standalone expenses (excludes property/asset-linked expenses which are tracked in their respective entities)
+export interface ExpenseCashflow {
+  id: string;
+  name: string;
+  category: string;
+  monthlyAmount: number;
+  isTaxDeductible: boolean;
+  isEssential: boolean;
+}
+
 export interface EntityCashflowData {
   properties: PropertyCashflow[];
   investments: InvestmentCashflow[];
   loans: LoanCashflow[];
   assets: AssetCashflow[];
   income: IncomeCashflow[]; // Standalone income (salary, business, other - NOT rental/dividends)
+  expenses: ExpenseCashflow[]; // Standalone expenses (NOT property/asset-linked)
   summary: {
     propertiesNet: number;        // Already includes property-linked loan repayments
     investmentsNet: number;
@@ -89,7 +100,8 @@ export interface EntityCashflowData {
     standaloneLoansCost: number;  // Only loans NOT linked to properties (car, personal, etc.)
     assetsNet: number;
     incomeNet: number;            // Standalone income (salary, business, other)
-    totalEntityCashflow: number;  // incomeNet + propertiesNet + investmentsNet - standaloneLoansCost + assetsNet
+    expensesNet: number;          // Standalone expenses (living costs, subscriptions, etc.)
+    totalEntityCashflow: number;  // incomeNet + propertiesNet + investmentsNet - standaloneLoansCost + assetsNet - expensesNet
   };
 }
 
@@ -198,13 +210,14 @@ function EntityRow({
 }
 
 export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSummaryProps) {
-  const { properties, investments, loans, assets, income, summary } = data;
+  const { properties, investments, loans, assets, income, expenses, summary } = data;
 
   // Calculate entity counts
   const positiveProperties = properties.filter(p => p.isPositive).length;
   const positiveInvestments = investments.filter(i => i.isPositive).length;
+  const essentialExpenses = expenses?.filter(e => e.isEssential).length || 0;
 
-  const hasEntities = properties.length > 0 || investments.length > 0 || loans.length > 0 || assets.length > 0 || (income && income.length > 0);
+  const hasEntities = properties.length > 0 || investments.length > 0 || loans.length > 0 || assets.length > 0 || (income && income.length > 0) || (expenses && expenses.length > 0);
 
   if (!hasEntities) {
     return (
@@ -242,26 +255,30 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="income" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 h-auto">
+          <TabsList className="grid w-full grid-cols-6 h-auto">
             <TabsTrigger value="income" className="text-xs px-1 py-1.5">
-              <Briefcase className="h-3 w-3 mr-1" />
-              Income
+              <Briefcase className="h-3 w-3 mr-0.5" />
+              <span className="hidden sm:inline">Income</span>
+            </TabsTrigger>
+            <TabsTrigger value="expenses" className="text-xs px-1 py-1.5">
+              <Receipt className="h-3 w-3 mr-0.5" />
+              <span className="hidden sm:inline">Expenses</span>
             </TabsTrigger>
             <TabsTrigger value="properties" className="text-xs px-1 py-1.5">
-              <Building2 className="h-3 w-3 mr-1" />
-              Properties
+              <Building2 className="h-3 w-3 mr-0.5" />
+              <span className="hidden sm:inline">Properties</span>
             </TabsTrigger>
             <TabsTrigger value="investments" className="text-xs px-1 py-1.5">
-              <BarChart3 className="h-3 w-3 mr-1" />
-              Investments
+              <BarChart3 className="h-3 w-3 mr-0.5" />
+              <span className="hidden sm:inline">Invest</span>
             </TabsTrigger>
             <TabsTrigger value="loans" className="text-xs px-1 py-1.5">
-              <Landmark className="h-3 w-3 mr-1" />
-              Loans
+              <Landmark className="h-3 w-3 mr-0.5" />
+              <span className="hidden sm:inline">Loans</span>
             </TabsTrigger>
             <TabsTrigger value="assets" className="text-xs px-1 py-1.5">
-              <Car className="h-3 w-3 mr-1" />
-              Assets
+              <Car className="h-3 w-3 mr-0.5" />
+              <span className="hidden sm:inline">Assets</span>
             </TabsTrigger>
           </TabsList>
 
@@ -310,6 +327,51 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
               <div className="text-center py-4 text-sm text-muted-foreground">
                 <p>No standalone income sources added yet</p>
                 <p className="text-xs mt-1">Rental and investment income are tracked in their respective tabs</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Expenses Tab - Standalone expenses (living costs, subscriptions, etc.) */}
+          <TabsContent value="expenses" className="mt-4 space-y-3">
+            {expenses && expenses.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-muted-foreground">
+                    {essentialExpenses} essential, {(expenses?.length || 0) - essentialExpenses} discretionary
+                  </span>
+                  <span className="font-semibold">
+                    Total: <CashflowValue value={-(summary.expensesNet || 0)} />
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                  Property expenses are shown under Properties. Asset running costs are shown under Assets.
+                </p>
+                {expenses.map((expense) => (
+                  <EntityRow
+                    key={expense.id}
+                    icon={Receipt}
+                    name={expense.name}
+                    subtitle={`${expense.category}${expense.isEssential ? ' · Essential' : ''}`}
+                    cashflow={-expense.monthlyAmount}
+                    href={`/dashboard/expenses`}
+                    details={
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Monthly Cost</span>
+                          <span className="text-red-600">-{formatCurrency(expense.monthlyAmount)}</span>
+                        </div>
+                        {expense.isTaxDeductible && (
+                          <Badge variant="outline" className="mt-1 text-xs text-green-600">Tax Deductible</Badge>
+                        )}
+                      </>
+                    }
+                  />
+                ))}
+              </>
+            ) : (
+              <div className="text-center py-4 text-sm text-muted-foreground">
+                <p>No standalone expenses added yet</p>
+                <p className="text-xs mt-1">Property and asset expenses are tracked in their respective tabs</p>
               </div>
             )}
           </TabsContent>
@@ -508,6 +570,12 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                 <CashflowValue value={summary.incomeNet || 0} />
               </div>
             )}
+            {(summary.expensesNet || 0) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Expenses (living costs)</span>
+                <CashflowValue value={-(summary.expensesNet || 0)} />
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Properties (incl. loans)</span>
               <CashflowValue value={summary.propertiesNet} />
@@ -528,7 +596,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
             </div>
           </div>
           <div className="mt-3 pt-3 border-t flex justify-between items-center">
-            <span className="font-medium">Total Entity Cashflow</span>
+            <span className="font-medium">Net Cashflow</span>
             <CashflowValue value={summary.totalEntityCashflow} size="large" />
           </div>
         </div>
@@ -581,6 +649,16 @@ export function calculateEntityCashflow(
     grossAnnual: number;
     netAnnual: number;
     isRecurring?: boolean;
+  }>,
+  allExpenses: Array<{
+    id: string;
+    name: string;
+    category: string;
+    annualAmount: number;
+    propertyId?: string | null;
+    assetId?: string | null;
+    isTaxDeductible?: boolean;
+    isEssential?: boolean;
   }>,
   marginalTaxRate: number = 0.37
 ): EntityCashflowData {
@@ -672,6 +750,19 @@ export function calculateEntityCashflow(
       isRecurring: i.isRecurring ?? true,
     }));
 
+  // Calculate standalone expense cashflows
+  // Exclude: expenses linked to properties or assets (already counted in those cashflows)
+  const expenseCashflows: ExpenseCashflow[] = (allExpenses || [])
+    .filter((e) => !e.propertyId && !e.assetId) // Only standalone expenses
+    .map((e) => ({
+      id: e.id,
+      name: e.name,
+      category: e.category,
+      monthlyAmount: e.annualAmount / 12,
+      isTaxDeductible: e.isTaxDeductible ?? false,
+      isEssential: e.isEssential ?? false,
+    }));
+
   // Calculate summary
   const propertiesNet = propertyCashflows.reduce((sum, p) => sum + p.netCashflow, 0);
   const investmentsNet = investmentCashflows.reduce((sum, i) => sum + i.netCashflow, 0);
@@ -690,11 +781,17 @@ export function calculateEntityCashflow(
   // Standalone income (salary, business, other - NOT rental/dividends)
   const incomeNet = incomeCashflows.reduce((sum, i) => sum + i.netMonthly, 0);
 
-  // Total: Properties already include their loan repayments, so we only add standalone loans separately
+  // Standalone expenses (living costs, subscriptions - NOT property/asset expenses)
+  const expensesNet = expenseCashflows.reduce((sum, e) => sum + e.monthlyAmount, 0);
+
+  // Total: Full cashflow picture
   // incomeNet = salary + business + other income (not rental/dividends)
-  // propertiesNet = rental income - expenses - property loan repayments
+  // propertiesNet = rental income - property expenses - property loan repayments
+  // investmentsNet = dividends + distributions
   // standaloneLoansCost = car loans, personal loans, etc. (not in property cashflow)
-  const totalEntityCashflow = incomeNet + propertiesNet + investmentsNet - standaloneLoansCost + assetsNet;
+  // assetsNet = vehicle running costs, etc.
+  // expensesNet = groceries, utilities, subscriptions, etc. (not linked to property/asset)
+  const totalEntityCashflow = incomeNet + propertiesNet + investmentsNet - standaloneLoansCost + assetsNet - expensesNet;
 
   return {
     properties: propertyCashflows,
@@ -702,6 +799,7 @@ export function calculateEntityCashflow(
     loans: loanCashflows,
     assets: assetCashflows,
     income: incomeCashflows,
+    expenses: expenseCashflows,
     summary: {
       propertiesNet,
       investmentsNet,
@@ -709,6 +807,7 @@ export function calculateEntityCashflow(
       standaloneLoansCost,
       assetsNet,
       incomeNet,
+      expensesNet,
       totalEntityCashflow,
     },
   };

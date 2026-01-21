@@ -717,7 +717,8 @@ export default function DashboardPage() {
                   snapshot.investments.accounts,
                   snapshot.loans,
                   snapshot.personalAssets?.items || [],
-                  snapshot.income || []
+                  snapshot.income || [],
+                  snapshot.expenses || []
                 )}
               />
             </div>
@@ -731,7 +732,8 @@ export default function DashboardPage() {
                 snapshot.investments.accounts,
                 snapshot.loans || [],
                 snapshot.personalAssets?.items || [],
-                snapshot.income || []
+                snapshot.income || [],
+                snapshot.expenses || []
               )}
             />
           )}
