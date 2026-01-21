@@ -582,7 +582,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Primary Metrics Row - Clickable for details with calculation tooltips */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <div onClick={() => setSelectedDetail('netWorth')} className="cursor-pointer">
               <CalculationTooltip
                 title="Net Worth Calculation"
@@ -648,6 +648,47 @@ export default function DashboardPage() {
                   {cashflowPeriod === 'monthly' ? '/mo' : '/yr'}
                 </button>
               </div>
+            </div>
+            <div onClick={() => setSelectedDetail('income')} className="cursor-pointer">
+              <CalculationTooltip
+                title="Annual Income"
+                formula="All income sources combined"
+                components={[
+                  { label: 'Salary/Wages', value: snapshot.cashflow.totalIncome * 0.7, color: 'green' },
+                  { label: 'Rental Income', value: snapshot.cashflow.totalIncome * 0.2, color: 'blue', operator: '+' },
+                  { label: 'Other Income', value: snapshot.cashflow.totalIncome * 0.1, color: 'purple', operator: '+' },
+                ]}
+                result={snapshot.cashflow.totalIncome}
+                resultLabel="Total Annual Income"
+              >
+                <StatCard
+                  title="Annual Income"
+                  value={formatCompactCurrency(snapshot.cashflow.totalIncome)}
+                  description={`${formatCurrency(snapshot.cashflow.totalIncome / 12)}/month`}
+                  icon={TrendingUp}
+                  variant="green"
+                />
+              </CalculationTooltip>
+            </div>
+            <div onClick={() => setSelectedDetail('outgoings')} className="cursor-pointer">
+              <CalculationTooltip
+                title="Annual Outgoings"
+                formula="Expenses + Loan Repayments"
+                components={[
+                  { label: 'Expenses', value: snapshot.cashflow.totalExpenses, color: 'red' },
+                  { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '+' },
+                ]}
+                result={snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)}
+                resultLabel="Total Annual Outgoings"
+              >
+                <StatCard
+                  title="Annual Outgoings"
+                  value={formatCompactCurrency(snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0))}
+                  description={`${formatCurrency((snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)) / 12)}/month`}
+                  icon={ArrowDownRight}
+                  variant="orange"
+                />
+              </CalculationTooltip>
             </div>
             <div onClick={() => setSelectedDetail('savingsRate')} className="cursor-pointer">
               <CalculationTooltip
@@ -941,57 +982,6 @@ export default function DashboardPage() {
                     Add more financial data to receive personalized insights.
                   </p>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Cash Flow Overview */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/50">
-                    <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  </div>
-                  Annual Income
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-700 dark:text-green-400">
-                  {formatCurrency(snapshot.cashflow.totalIncome)}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {formatCurrency(snapshot.cashflow.totalIncome / 12)}/month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-orange-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/50">
-                    <ArrowDownRight className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                  </div>
-                  Annual Outgoings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-orange-700 dark:text-orange-400">
-                  {formatCurrency(snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0))}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {formatCurrency((snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)) / 12)}/month
-                </p>
-                <div className="mt-2 pt-2 border-t text-xs text-muted-foreground space-y-1">
-                  <div className="flex justify-between">
-                    <span>Expenses</span>
-                    <span>{formatCurrency(snapshot.cashflow.totalExpenses)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Loan Repayments</span>
-                    <span>{formatCurrency(snapshot.cashflow.totalLoanRepayments || 0)}</span>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
