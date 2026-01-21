@@ -457,10 +457,10 @@ export default function CFODashboardPage() {
                   Effective Tax Rate
                 </div>
                 <div className="text-xl font-bold">
-                  {(taxInsights.keyTaxMetrics.effectiveTaxRate * 100).toFixed(1)}%
+                  {taxInsights.keyTaxMetrics.effectiveTaxRate.toFixed(1)}%
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Marginal: {(taxInsights.keyTaxMetrics.marginalRate * 100).toFixed(0)}%
+                  Marginal: {taxInsights.keyTaxMetrics.marginalRate.toFixed(0)}%
                 </div>
               </div>
 

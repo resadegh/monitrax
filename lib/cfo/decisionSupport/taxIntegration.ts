@@ -313,7 +313,8 @@ function calculateNegativeGearingBenefit(properties: any[], marginalRate: number
 
     if (netPropertyIncome < 0) {
       // Negative gearing = tax deduction at marginal rate
-      totalNegativeGearing += Math.abs(netPropertyIncome) * marginalRate;
+      // marginalRate is stored as percentage (e.g., 37), so divide by 100
+      totalNegativeGearing += Math.abs(netPropertyIncome) * (marginalRate / 100);
     }
   }
 
@@ -340,7 +341,7 @@ function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
       severity: unrealisedCGT > 100000 ? 'high' : 'medium',
       title: 'Significant unrealised capital gains',
       description: `You have approximately $${unrealisedCGT.toLocaleString()} in unrealised capital gains. Consider timing of sales.`,
-      impact: unrealisedCGT * taxPosition.tax.marginalRate,
+      impact: unrealisedCGT * (taxPosition.tax.marginalRate / 100),
       action: 'Review CGT timing strategy',
     });
   }
@@ -354,7 +355,7 @@ function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
       severity: 'medium',
       title: 'Concessional super cap nearly reached',
       description: `You've used ${(superCapUtilisation * 100).toFixed(0)}% of your $${concessionalCap.toLocaleString()} concessional cap.`,
-      impact: (concessionalCap - superTotals.concessional) * taxPosition.tax.marginalRate,
+      impact: (concessionalCap - superTotals.concessional) * (taxPosition.tax.marginalRate / 100),
       action: 'Consider maximising contributions before EOFY',
     });
   } else if (superCapUtilisation >= 1) {
@@ -363,7 +364,7 @@ function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
       severity: 'high',
       title: 'Concessional super cap exceeded',
       description: `You've exceeded your concessional cap by $${(superTotals.concessional - concessionalCap).toLocaleString()}. Excess will be taxed at marginal rate.`,
-      impact: (superTotals.concessional - concessionalCap) * taxPosition.tax.marginalRate,
+      impact: (superTotals.concessional - concessionalCap) * (taxPosition.tax.marginalRate / 100),
       action: 'Consult tax advisor about excess contributions',
     });
   }
@@ -403,7 +404,7 @@ function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
         severity: daysUntilEOFY <= 7 ? 'high' : 'medium',
         title: `${daysUntilEOFY} days until EOFY`,
         description: 'End of financial year approaching. Review opportunities for deductions and super contributions.',
-        impact: (concessionalCap - superTotals.concessional) * taxPosition.tax.marginalRate,
+        impact: (concessionalCap - superTotals.concessional) * (taxPosition.tax.marginalRate / 100),
         action: 'Review EOFY tax planning opportunities',
       });
     }

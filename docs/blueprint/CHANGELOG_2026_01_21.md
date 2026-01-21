@@ -1,6 +1,88 @@
 # Changelog - January 21, 2026
 
-## CFO Page Value Assessment Audit
+## Phase 17A-C Implementation Complete
+
+This changelog documents the implementation of CFO Decision Support modules following the comprehensive audit.
+
+---
+
+## Implementation Summary
+
+### Phase 17A: Tax Integration ✅ IMPLEMENTED
+
+**Files Created:**
+- `lib/cfo/decisionSupport/taxIntegration.ts` (520 lines)
+- `lib/cfo/decisionSupport/index.ts`
+
+**Features:**
+- Tax Position tile in CFO Dashboard (estimated refund, confidence level, days until EOFY)
+- Tax rate display (effective and marginal)
+- Deductions breakdown (property, depreciation, investment, work-related)
+- 8 tax-related risk types (cgt_exposure_high, super_cap_approaching, div293_threshold, etc.)
+- Negative gearing benefit, franking credits, unrealised CGT metrics
+- PAYG withholding tracking
+
+**Bug Fixes Applied:**
+- Fixed marginalRate usage (stored as percentage 37, not decimal 0.37)
+- Fixed effectiveTaxRate display (was multiplying by 100 twice, showing 2738% instead of 27.38%)
+
+### Phase 17B: Loan Decision Support ✅ IMPLEMENTED
+
+**Files Created:**
+- `lib/cfo/decisionSupport/loanDecisionSupport.ts` (400+ lines)
+
+**Features:**
+- Loan Opportunities tile in CFO Dashboard
+- Refinance opportunity detection with monthly/annual savings
+- Rate alerts (fixed rate expiring, interest only ending, rate above market, high LVR)
+- Extra repayment impact calculator (interest saved, time reduced)
+- Loan portfolio risks (high DTI, high DSR, rate shock risk, offset underutilization)
+
+### Phase 17C: Property Decision Support ✅ IMPLEMENTED
+
+**Files Created:**
+- `lib/cfo/decisionSupport/propertyDecisionSupport.ts` (225 lines)
+
+**Features:**
+- Property Portfolio tile in CFO Dashboard
+- Portfolio summary (total equity, value, average LVR, net cashflow)
+- Property alerts (high LVR, low yield, negative cashflow, low growth)
+- Top performer / underperformer detection
+- Uses centralized `masterFinancialService.getPropertyMetrics()` (no duplicate logic)
+
+**Bug Fixes Applied:**
+- Fixed PropertyMetrics property names (`annualRentalIncome` not `monthlyRentalIncome`, `monthlyCashflow` not `netMonthlyCashflow`)
+- Consolidated local types to use shared types from `lib/cfo/types.ts`
+
+---
+
+## Commits in This Session
+
+| Commit | Description |
+|--------|-------------|
+| `a292cfb` | fix: Use shared types from types.ts in propertyDecisionSupport |
+| `a2e7a4f` | fix: Correct tax rate display and PropertyMetrics usage |
+| `7118401` | feat(cfo): Phase 17C - Property Decision Support for CFO Dashboard |
+| `0d6863f` | feat(cfo): Phase 17B - Loan Decision Support for CFO Dashboard |
+| `6f34c49` | fix: Use correct Prisma model name investmentHolding |
+| `8a02de8` | feat(cfo): Implement Phase 17A - Tax Integration for CFO Dashboard |
+| `016a38d` | docs: Update CFO audit with existing Gemini AI integration pattern |
+| `6683bb3` | audit: CFO page value assessment against decision support requirements |
+
+---
+
+## Design Principle Added
+
+**Section 3.5 - No Duplicate Numbers Across Pages** (Added to `02_DESIGN_PRINCIPLES.md`)
+
+Each number should appear in exactly one primary location. CFO summary tiles show:
+- Actionable insights, not raw data duplicates
+- Links to detailed pages instead of copying content
+- Unique metrics not shown elsewhere
+
+---
+
+## Original Audit Documentation
 
 This changelog documents the comprehensive audit of the Personal CFO page (Phase 17) against Decision Support and Tax Awareness requirements.
 
