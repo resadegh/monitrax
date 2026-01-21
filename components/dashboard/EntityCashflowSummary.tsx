@@ -331,40 +331,28 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
             )}
           </TabsContent>
 
-          {/* Expenses Tab - Standalone expenses (living costs, subscriptions, etc.) */}
+          {/* Expenses Tab - Standalone expenses grouped by category */}
           <TabsContent value="expenses" className="mt-4 space-y-3">
             {expenses && expenses.length > 0 ? (
               <>
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-muted-foreground">
-                    {essentialExpenses} essential, {(expenses?.length || 0) - essentialExpenses} discretionary
+                    {expenses.length} categor{expenses.length !== 1 ? 'ies' : 'y'}
                   </span>
                   <span className="font-semibold">
                     Total: <CashflowValue value={-(summary.expensesNet || 0)} />
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                  Property expenses are shown under Properties. Asset running costs are shown under Assets.
+                  Property expenses are under Properties. Asset costs are under Assets.
                 </p>
                 {expenses.map((expense) => (
                   <EntityRow
                     key={expense.id}
                     icon={Receipt}
                     name={expense.name}
-                    subtitle={`${expense.category}${expense.isEssential ? ' · Essential' : ''}`}
                     cashflow={-expense.monthlyAmount}
                     href={`/dashboard/expenses`}
-                    details={
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Monthly Cost</span>
-                          <span className="text-red-600">-{formatCurrency(expense.monthlyAmount)}</span>
-                        </div>
-                        {expense.isTaxDeductible && (
-                          <Badge variant="outline" className="mt-1 text-xs text-green-600">Tax Deductible</Badge>
-                        )}
-                      </>
-                    }
                   />
                 ))}
               </>
@@ -737,8 +725,8 @@ export function calculateEntityCashflow(
     }));
 
   // Calculate standalone income cashflows
-  // Exclude: RENTAL (already in properties), DIVIDEND/DISTRIBUTION (already in investments)
-  const excludedIncomeTypes = ['RENTAL', 'DIVIDEND', 'DISTRIBUTION'];
+  // Exclude: RENTAL/RENT (already in properties), DIVIDEND/DISTRIBUTION (already in investments)
+  const excludedIncomeTypes = ['RENTAL', 'RENT', 'DIVIDEND', 'DISTRIBUTION'];
   const incomeCashflows: IncomeCashflow[] = income
     .filter((i) => !excludedIncomeTypes.includes(i.type))
     .map((i) => ({
@@ -750,17 +738,39 @@ export function calculateEntityCashflow(
       isRecurring: i.isRecurring ?? true,
     }));
 
-  // Calculate standalone expense cashflows
+  // Calculate standalone expense cashflows - GROUP BY CATEGORY
   // Exclude: expenses linked to properties or assets (already counted in those cashflows)
-  const expenseCashflows: ExpenseCashflow[] = (allExpenses || [])
-    .filter((e) => !e.propertyId && !e.assetId) // Only standalone expenses
-    .map((e) => ({
-      id: e.id,
-      name: e.name,
-      category: e.category,
-      monthlyAmount: e.annualAmount / 12,
-      isTaxDeductible: e.isTaxDeductible ?? false,
-      isEssential: e.isEssential ?? false,
+  const standaloneExpenses = (allExpenses || []).filter((e) => !e.propertyId && !e.assetId);
+
+  // Group expenses by category
+  const expensesByCategory = standaloneExpenses.reduce((acc, e) => {
+    const cat = e.category || 'OTHER';
+    if (!acc[cat]) {
+      acc[cat] = {
+        category: cat,
+        totalAnnual: 0,
+        count: 0,
+        hasTaxDeductible: false,
+        hasEssential: false,
+      };
+    }
+    acc[cat].totalAnnual += e.annualAmount;
+    acc[cat].count += 1;
+    if (e.isTaxDeductible) acc[cat].hasTaxDeductible = true;
+    if (e.isEssential) acc[cat].hasEssential = true;
+    return acc;
+  }, {} as Record<string, { category: string; totalAnnual: number; count: number; hasTaxDeductible: boolean; hasEssential: boolean }>);
+
+  // Convert to array sorted by amount
+  const expenseCashflows: ExpenseCashflow[] = Object.values(expensesByCategory)
+    .sort((a, b) => b.totalAnnual - a.totalAnnual)
+    .map((group, idx) => ({
+      id: `cat-${idx}`,
+      name: group.category.replace(/_/g, ' '),
+      category: group.category,
+      monthlyAmount: group.totalAnnual / 12,
+      isTaxDeductible: group.hasTaxDeductible,
+      isEssential: group.hasEssential,
     }));
 
   // Calculate summary
