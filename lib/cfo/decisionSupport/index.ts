@@ -11,3 +11,6 @@ export * from './loanDecisionSupport';
 
 // Phase 17C: Property Decision Support
 export * from './propertyDecisionSupport';
+
+// Phase 17D: Investment Decision Support
+export * from './investmentDecisionSupport';

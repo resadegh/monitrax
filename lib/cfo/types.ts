@@ -184,6 +184,7 @@ export interface CFODashboardData {
   taxInsights?: CFOTaxInsights; // Phase 17A: Tax Integration
   loanInsights?: CFOLoanInsights; // Phase 17B: Loan Decision Support
   propertyInsights?: CFOPropertyInsights; // Phase 17C: Property Decision Support
+  investmentInsights?: CFOInvestmentInsights; // Phase 17D: Investment Decision Support
 }
 
 // ============================================================================
@@ -332,6 +333,86 @@ export interface CFOPropertyAlert {
 export interface CFOPropertyPerformance {
   propertyId: string;
   propertyName: string;
+  metric: string;
+  value: number;
+  description: string;
+}
+
+// ============================================================================
+// Investment Insights Types (Phase 17D)
+// ============================================================================
+
+export interface CFOInvestmentInsights {
+  portfolioSummary: {
+    totalValue: number;
+    totalCostBase: number;
+    unrealisedGain: number;
+    unrealisedGainPercent: number;
+    holdingsCount: number;
+    dividendYieldPercent: number;
+  };
+  allocationAnalysis: CFOAllocationAnalysis;
+  performanceMetrics: CFOPerformanceMetrics;
+  investmentAlerts: CFOInvestmentAlert[];
+  topPerformer: CFOInvestmentPerformance | null;
+  underperformer: CFOInvestmentPerformance | null;
+  metadata: {
+    calculatedAt: Date;
+    holdingsCount: number;
+  };
+}
+
+export interface CFOAllocationAnalysis {
+  currentAllocation: CFOAssetAllocation[];
+  targetAllocation: CFOAssetAllocation[] | null;
+  driftFromTarget: number; // Percentage drift
+  rebalanceActions: CFORebalanceAction[];
+  concentrationRisk: {
+    hasRisk: boolean;
+    topHolding: string | null;
+    topHoldingPercent: number;
+  };
+}
+
+export interface CFOAssetAllocation {
+  assetType: string;
+  value: number;
+  percentage: number;
+  targetPercentage?: number;
+}
+
+export interface CFORebalanceAction {
+  assetType: string;
+  action: 'buy' | 'sell' | 'hold';
+  currentPercent: number;
+  targetPercent: number;
+  amountToAdjust: number;
+  description: string;
+}
+
+export interface CFOPerformanceMetrics {
+  totalReturn: number;
+  totalReturnPercent: number;
+  annualisedReturn: number | null; // CAGR if > 1 year
+  dividendIncome: number;
+  frankingCredits: number;
+  unrealisedCGT: number;
+}
+
+export interface CFOInvestmentAlert {
+  type: 'concentration_high' | 'underperforming' | 'dividend_cut' | 'rebalance_needed' | 'cgt_opportunity';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  holdingId?: string;
+  holdingName?: string;
+  title: string;
+  description: string;
+  value: number;
+  action: string;
+}
+
+export interface CFOInvestmentPerformance {
+  holdingId: string;
+  holdingName: string;
   metric: string;
   value: number;
   description: string;

@@ -33,6 +33,8 @@ import {
   Banknote,
   TrendingDown as TrendDown,
   Home,
+  Briefcase,
+  PieChart,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -186,6 +188,55 @@ interface PropertyInsights {
   metadata: { propertyCount: number };
 }
 
+interface InvestmentAlert {
+  type: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  holdingName?: string;
+  title: string;
+  description: string;
+  value: number;
+  action: string;
+}
+
+interface InvestmentPerformance {
+  holdingName: string;
+  metric: string;
+  value: number;
+  description: string;
+}
+
+interface InvestmentInsights {
+  portfolioSummary: {
+    totalValue: number;
+    totalCostBase: number;
+    unrealisedGain: number;
+    unrealisedGainPercent: number;
+    holdingsCount: number;
+    dividendYieldPercent: number;
+  };
+  allocationAnalysis: {
+    currentAllocation: { assetType: string; value: number; percentage: number }[];
+    driftFromTarget: number;
+    concentrationRisk: {
+      hasRisk: boolean;
+      topHolding: string | null;
+      topHoldingPercent: number;
+    };
+  };
+  performanceMetrics: {
+    totalReturn: number;
+    totalReturnPercent: number;
+    annualisedReturn: number | null;
+    dividendIncome: number;
+    frankingCredits: number;
+    unrealisedCGT: number;
+  };
+  investmentAlerts: InvestmentAlert[];
+  topPerformer: InvestmentPerformance | null;
+  underperformer: InvestmentPerformance | null;
+  metadata: { holdingsCount: number };
+}
+
 interface CFODashboardData {
   score: CFOScore;
   risks: { risks: Risk[]; summary: { critical: number; high: number; medium: number; low: number; totalImpact: number } };
@@ -202,6 +253,7 @@ interface CFODashboardData {
   taxInsights?: TaxInsights;
   loanInsights?: LoanInsights;
   propertyInsights?: PropertyInsights;
+  investmentInsights?: InvestmentInsights;
 }
 
 export default function CFODashboardPage() {
@@ -291,7 +343,7 @@ export default function CFODashboardPage() {
     );
   }
 
-  const { score, risks, actions, monthlyProgress, quickStats, alerts, taxInsights, loanInsights, propertyInsights } = data;
+  const { score, risks, actions, monthlyProgress, quickStats, alerts, taxInsights, loanInsights, propertyInsights, investmentInsights } = data;
 
   return (
     <DashboardLayout>
@@ -807,6 +859,164 @@ export default function CFODashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <a href="/dashboard/properties">
                   View All Properties
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Investment Insights Tile (Phase 17D) */}
+      {investmentInsights && investmentInsights.portfolioSummary.holdingsCount > 0 && (
+        <Card className="mb-6 border-amber-200 bg-gradient-to-br from-amber-50/50 to-white">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5 text-amber-600" />
+                Investment Portfolio
+                <Badge variant="outline" className="ml-2 text-xs">
+                  {investmentInsights.portfolioSummary.holdingsCount} holding{investmentInsights.portfolioSummary.holdingsCount > 1 ? 's' : ''}
+                </Badge>
+              </CardTitle>
+              {investmentInsights.investmentAlerts.filter(a => a.severity === 'high' || a.severity === 'critical').length > 0 && (
+                <Badge className="bg-orange-500">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {investmentInsights.investmentAlerts.filter(a => a.severity === 'high' || a.severity === 'critical').length} Alert{investmentInsights.investmentAlerts.filter(a => a.severity === 'high' || a.severity === 'critical').length > 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Portfolio Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground">Total Value</div>
+                <div className="text-xl font-bold text-amber-600">
+                  {formatCurrency(investmentInsights.portfolioSummary.totalValue)}
+                </div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground">Unrealised Gain</div>
+                <div className={`text-xl font-bold ${investmentInsights.portfolioSummary.unrealisedGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {investmentInsights.portfolioSummary.unrealisedGain >= 0 ? '+' : ''}
+                  {formatCurrency(investmentInsights.portfolioSummary.unrealisedGain)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {investmentInsights.portfolioSummary.unrealisedGainPercent >= 0 ? '+' : ''}
+                  {investmentInsights.portfolioSummary.unrealisedGainPercent.toFixed(1)}%
+                </div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground">Dividend Yield</div>
+                <div className="text-xl font-bold">
+                  {investmentInsights.portfolioSummary.dividendYieldPercent.toFixed(1)}%
+                </div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground">Franking Credits</div>
+                <div className="text-xl font-bold text-green-600">
+                  {formatCurrency(investmentInsights.performanceMetrics.frankingCredits)}
+                </div>
+              </div>
+            </div>
+
+            {/* Allocation & Concentration */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {/* Asset Allocation */}
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-2">
+                  <PieChart className="h-3 w-3" />
+                  Asset Allocation
+                </div>
+                <div className="space-y-2">
+                  {investmentInsights.allocationAnalysis.currentAllocation.slice(0, 4).map((alloc, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{alloc.assetType}</span>
+                      <span className="font-medium">{alloc.percentage.toFixed(0)}%</span>
+                    </div>
+                  ))}
+                </div>
+                {investmentInsights.allocationAnalysis.driftFromTarget > 10 && (
+                  <div className="mt-2 text-xs text-orange-600">
+                    ⚠️ Portfolio drift: {investmentInsights.allocationAnalysis.driftFromTarget.toFixed(0)}% from target
+                  </div>
+                )}
+              </div>
+
+              {/* Performance Summary */}
+              <div className="space-y-2">
+                {investmentInsights.topPerformer && (
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-xs text-green-600 font-medium">Top Performer</div>
+                    <div className="font-medium text-sm">{investmentInsights.topPerformer.holdingName}</div>
+                    <div className="text-xs text-muted-foreground">{investmentInsights.topPerformer.description}</div>
+                  </div>
+                )}
+                {investmentInsights.underperformer && (
+                  <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="text-xs text-yellow-600 font-medium">Needs Attention</div>
+                    <div className="font-medium text-sm">{investmentInsights.underperformer.holdingName}</div>
+                    <div className="text-xs text-muted-foreground">{investmentInsights.underperformer.description}</div>
+                  </div>
+                )}
+                {investmentInsights.allocationAnalysis.concentrationRisk.hasRisk && (
+                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="text-xs text-orange-600 font-medium">Concentration Risk</div>
+                    <div className="text-sm">
+                      {investmentInsights.allocationAnalysis.concentrationRisk.topHolding} is {investmentInsights.allocationAnalysis.concentrationRisk.topHoldingPercent.toFixed(0)}% of portfolio
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Investment Alerts */}
+            {investmentInsights.investmentAlerts.length > 0 && (
+              <div className="space-y-2 mb-4">
+                <div className="text-xs font-medium text-muted-foreground">Alerts</div>
+                {investmentInsights.investmentAlerts.slice(0, 2).map((alert, i) => (
+                  <div
+                    key={i}
+                    className={`p-3 rounded-lg border ${
+                      alert.severity === 'high' ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'
+                    }`}
+                  >
+                    <div className="font-medium text-sm">{alert.title}</div>
+                    <div className="text-xs text-muted-foreground">{alert.description}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Key Metrics Row */}
+            <div className="flex flex-wrap gap-4 text-xs mb-4">
+              {investmentInsights.performanceMetrics.annualisedReturn !== null && (
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-blue-500" />
+                  <span>Annualised Return: <strong className={investmentInsights.performanceMetrics.annualisedReturn >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {investmentInsights.performanceMetrics.annualisedReturn >= 0 ? '+' : ''}{investmentInsights.performanceMetrics.annualisedReturn.toFixed(1)}%
+                  </strong></span>
+                </div>
+              )}
+              {investmentInsights.performanceMetrics.dividendIncome > 0 && (
+                <div className="flex items-center gap-1">
+                  <DollarSign className="h-3 w-3 text-green-500" />
+                  <span>Dividends (12mo): <strong className="text-green-600">{formatCurrency(investmentInsights.performanceMetrics.dividendIncome)}</strong></span>
+                </div>
+              )}
+              {investmentInsights.performanceMetrics.unrealisedCGT > 0 && (
+                <div className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3 text-orange-500" />
+                  <span>Unrealised CGT: <strong className="text-orange-600">{formatCurrency(investmentInsights.performanceMetrics.unrealisedCGT)}</strong></span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" asChild>
+                <a href="/dashboard/investments">
+                  View All Investments
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </a>
               </Button>
