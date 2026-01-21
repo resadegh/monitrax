@@ -95,8 +95,8 @@ export async function calculateCFOPropertyInsights(userId: string): Promise<CFOP
   const totalEquity = properties.reduce((sum, p) => sum + p.equity, 0);
   const totalLoanBalance = totalValue - totalEquity;
   const averageLVR = totalValue > 0 ? (totalLoanBalance / totalValue) * 100 : 0;
-  const totalMonthlyIncome = properties.reduce((sum, p) => sum + p.monthlyRentalIncome, 0);
-  const totalMonthlyCashflow = properties.reduce((sum, p) => sum + p.netMonthlyCashflow, 0);
+  const totalMonthlyIncome = properties.reduce((sum, p) => sum + p.annualRentalIncome / 12, 0);
+  const totalMonthlyCashflow = properties.reduce((sum, p) => sum + p.monthlyCashflow, 0);
 
   // Generate alerts
   const propertyAlerts = generatePropertyAlerts(properties);
@@ -160,15 +160,15 @@ function generatePropertyAlerts(properties: PropertyMetrics[]): PropertyAlert[] 
     }
 
     // Negative cashflow alert
-    if (property.netMonthlyCashflow < -500) {
+    if (property.monthlyCashflow < -500) {
       alerts.push({
         type: 'negative_cashflow',
-        severity: property.netMonthlyCashflow < -1000 ? 'high' : 'medium',
+        severity: property.monthlyCashflow < -1000 ? 'high' : 'medium',
         propertyId: property.id,
         propertyName: property.name,
-        title: `Negative Cashflow: $${Math.abs(property.netMonthlyCashflow).toFixed(0)}/mo`,
-        description: `${property.name} costs you ${Math.abs(property.netMonthlyCashflow).toFixed(0)}/month out of pocket.`,
-        value: property.netMonthlyCashflow,
+        title: `Negative Cashflow: $${Math.abs(property.monthlyCashflow).toFixed(0)}/mo`,
+        description: `${property.name} costs you ${Math.abs(property.monthlyCashflow).toFixed(0)}/month out of pocket.`,
+        value: property.monthlyCashflow,
         action: 'Review expenses or increase rent',
       });
     }
@@ -243,30 +243,30 @@ function findPerformanceExtremes(properties: PropertyMetrics[]): {
   // If no yield-based performance, use cashflow
   if (!topPerformer && !underperformer) {
     const bestCashflow = properties.reduce((best, p) =>
-      p.netMonthlyCashflow > best.netMonthlyCashflow ? p : best
+      p.monthlyCashflow > best.monthlyCashflow ? p : best
     );
 
-    if (bestCashflow.netMonthlyCashflow > 0) {
+    if (bestCashflow.monthlyCashflow > 0) {
       topPerformer = {
         propertyId: bestCashflow.id,
         propertyName: bestCashflow.name,
         metric: 'Monthly Cashflow',
-        value: bestCashflow.netMonthlyCashflow,
-        description: `+$${bestCashflow.netMonthlyCashflow.toFixed(0)}/mo positive cashflow`,
+        value: bestCashflow.monthlyCashflow,
+        description: `+$${bestCashflow.monthlyCashflow.toFixed(0)}/mo positive cashflow`,
       };
     }
 
     const worstCashflow = properties.reduce((worst, p) =>
-      p.netMonthlyCashflow < worst.netMonthlyCashflow ? p : worst
+      p.monthlyCashflow < worst.monthlyCashflow ? p : worst
     );
 
-    if (worstCashflow.netMonthlyCashflow < 0) {
+    if (worstCashflow.monthlyCashflow < 0) {
       underperformer = {
         propertyId: worstCashflow.id,
         propertyName: worstCashflow.name,
         metric: 'Monthly Cashflow',
-        value: worstCashflow.netMonthlyCashflow,
-        description: `-$${Math.abs(worstCashflow.netMonthlyCashflow).toFixed(0)}/mo negative cashflow`,
+        value: worstCashflow.monthlyCashflow,
+        description: `-$${Math.abs(worstCashflow.monthlyCashflow).toFixed(0)}/mo negative cashflow`,
       };
     }
   }
