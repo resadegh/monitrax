@@ -121,7 +121,7 @@ export async function calculateCFOTaxInsights(userId: string): Promise<CFOTaxIns
       },
     }),
     // Get investment holdings for CGT calculation
-    prisma.holding.findMany({
+    prisma.investmentHolding.findMany({
       where: {
         investmentAccount: { userId },
       },
