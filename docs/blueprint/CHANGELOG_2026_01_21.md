@@ -54,12 +54,29 @@ This changelog documents the implementation of CFO Decision Support modules foll
 - Fixed PropertyMetrics property names (`annualRentalIncome` not `monthlyRentalIncome`, `monthlyCashflow` not `netMonthlyCashflow`)
 - Consolidated local types to use shared types from `lib/cfo/types.ts`
 
+### Phase 17D: Investment Decision Support ✅ IMPLEMENTED
+
+**Files Created:**
+- `lib/cfo/decisionSupport/investmentDecisionSupport.ts` (450+ lines)
+
+**Features:**
+- Investment Portfolio tile in CFO Dashboard
+- Portfolio summary (value, cost base, unrealised gain, dividend yield)
+- Asset allocation analysis with drift detection (>10% triggers alert)
+- Concentration risk detection (>30% single holding)
+- Top performer / underperformer identification
+- Investment alerts (concentration_high, rebalance_needed, underperforming, cgt_opportunity)
+- Performance metrics (CAGR, dividends, franking credits, unrealised CGT)
+- Uses centralized `masterFinancialService.getInvestmentMetrics()` (no duplicate logic)
+
 ---
 
 ## Commits in This Session
 
 | Commit | Description |
 |--------|-------------|
+| `6bb93bb` | feat(cfo): Phase 17D - Investment Decision Support for CFO Dashboard |
+| `0723374` | docs: Update Phase 17 documentation with implementation status |
 | `a292cfb` | fix: Use shared types from types.ts in propertyDecisionSupport |
 | `a2e7a4f` | fix: Correct tax rate display and PropertyMetrics usage |
 | `7118401` | feat(cfo): Phase 17C - Property Decision Support for CFO Dashboard |

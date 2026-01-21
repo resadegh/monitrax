@@ -27,3 +27,4 @@ export {
 export { calculateCFOTaxInsights } from './decisionSupport/taxIntegration';
 export { calculateCFOLoanInsights } from './decisionSupport/loanDecisionSupport';
 export { calculateCFOPropertyInsights } from './decisionSupport/propertyDecisionSupport';
+export { calculateCFOInvestmentInsights } from './decisionSupport/investmentDecisionSupport';
