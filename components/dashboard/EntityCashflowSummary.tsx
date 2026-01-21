@@ -16,6 +16,7 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Wallet,
   DollarSign,
   Receipt,
@@ -53,6 +54,7 @@ export interface LoanCashflow {
   taxBenefit: number; // Monthly tax savings if deductible
   netCashflowImpact: number; // repayment - tax benefit
   isDeductible: boolean;
+  isPropertyLinked: boolean; // HOME/INVESTMENT loans are linked to properties
   propertyName?: string | null;
 }
 
@@ -69,11 +71,12 @@ export interface EntityCashflowData {
   loans: LoanCashflow[];
   assets: AssetCashflow[];
   summary: {
-    propertiesNet: number;
+    propertiesNet: number;        // Already includes property-linked loan repayments
     investmentsNet: number;
-    loansNet: number;
+    loansNet: number;             // Total of all loans (for display in Loans tab)
+    standaloneLoansCost: number;  // Only loans NOT linked to properties (car, personal, etc.)
     assetsNet: number;
-    totalEntityCashflow: number;
+    totalEntityCashflow: number;  // propertiesNet + investmentsNet - standaloneLoansCost + assetsNet
   };
 }
 
@@ -116,34 +119,45 @@ function EntityRow({
   const [expanded, setExpanded] = useState(false);
   const isPositive = cashflow >= 0;
 
-  const content = (
+  // Handle expand toggle - separate from navigation
+  const handleExpandClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpanded(!expanded);
+  };
+
+  // Handle navigation - only when clicking on the row (not expand button)
+  const handleRowClick = () => {
+    if (onClick) {
+      onClick();
+    }
+  };
+
+  return (
     <div
       className={`p-3 rounded-lg border transition-colors ${
         isPositive
           ? 'bg-green-50/50 dark:bg-green-950/20 border-green-100 dark:border-green-900'
           : 'bg-red-50/50 dark:bg-red-950/20 border-red-100 dark:border-red-900'
-      } ${onClick || href ? 'cursor-pointer hover:bg-opacity-75' : ''}`}
-      onClick={onClick}
+      }`}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${isPositive ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className={`p-2 rounded-lg flex-shrink-0 ${isPositive ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
             <Icon className={`h-4 w-4 ${isPositive ? 'text-green-600' : 'text-red-600'}`} />
           </div>
-          <div>
-            <p className="font-medium text-sm">{name}</p>
-            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+          <div className="min-w-0">
+            <p className="font-medium text-sm truncate">{name}</p>
+            {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <CashflowValue value={cashflow} />
           {details && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpanded(!expanded);
-              }}
+              onClick={handleExpandClick}
               className="p-1 hover:bg-muted rounded"
+              aria-label={expanded ? 'Collapse details' : 'Expand details'}
             >
               {expanded ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -151,6 +165,13 @@ function EntityRow({
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               )}
             </button>
+          )}
+          {href && (
+            <Link href={href} onClick={(e) => e.stopPropagation()}>
+              <button className="p-1 hover:bg-muted rounded" aria-label="View details">
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </Link>
           )}
         </div>
       </div>
@@ -161,12 +182,6 @@ function EntityRow({
       )}
     </div>
   );
-
-  if (href) {
-    return <Link href={href}>{content}</Link>;
-  }
-
-  return content;
 }
 
 export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSummaryProps) {
@@ -335,16 +350,23 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                   <span className="text-muted-foreground">
                     {loans.filter(l => l.isDeductible).length} tax-deductible
                   </span>
-                  <span className="font-semibold">
-                    Net: <CashflowValue value={summary.loansNet} />
-                  </span>
                 </div>
+                {/* Note about property loans */}
+                {loans.some(l => l.isPropertyLinked) && (
+                  <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                    Note: Property loan repayments are already included in property cashflow above.
+                  </p>
+                )}
                 {loans.map((loan) => (
                   <EntityRow
                     key={loan.id}
                     icon={Landmark}
                     name={loan.name}
-                    subtitle={loan.propertyName ? `${loan.type} · ${loan.propertyName}` : loan.type}
+                    subtitle={
+                      loan.isPropertyLinked
+                        ? `${loan.type} · ${loan.propertyName || 'Property'} (in property cashflow)`
+                        : loan.type
+                    }
                     cashflow={-loan.netCashflowImpact}
                     href={`/dashboard/loans`}
                     details={
@@ -363,6 +385,11 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                           <span>Net Impact</span>
                           <span className="text-red-600">-{formatCurrency(loan.netCashflowImpact)}</span>
                         </div>
+                        {loan.isPropertyLinked && (
+                          <p className="text-xs text-muted-foreground mt-2 italic">
+                            Already counted in property cashflow
+                          </p>
+                        )}
                       </>
                     }
                   />
@@ -410,19 +437,21 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
         <div className="mt-4 pt-4 border-t">
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Properties</span>
+              <span className="text-muted-foreground">Properties (incl. loans)</span>
               <CashflowValue value={summary.propertiesNet} />
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Investments</span>
               <CashflowValue value={summary.investmentsNet} />
             </div>
+            {summary.standaloneLoansCost > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Standalone Loans</span>
+                <CashflowValue value={-summary.standaloneLoansCost} />
+              </div>
+            )}
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Loans</span>
-              <CashflowValue value={summary.loansNet} />
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Assets</span>
+              <span className="text-muted-foreground">Assets (running costs)</span>
               <CashflowValue value={summary.assetsNet} />
             </div>
           </div>
@@ -520,9 +549,11 @@ export function calculateEntityCashflow(
   });
 
   // Calculate loan cashflows
+  // Track which loans are linked to properties (their repayments are already in property cashflow)
   const loanCashflows: LoanCashflow[] = loans.map((loan) => {
     const monthlyRepayment = (loan.annualRepayment || 0) / 12;
     const isDeductible = loan.type === 'INVESTMENT' || loan.type === 'BUSINESS';
+    const isPropertyLinked = loan.type === 'HOME' || loan.type === 'INVESTMENT';
 
     // Estimate tax benefit: interest portion × marginal tax rate
     // Simplified: assume ~60% of repayment is interest for newer loans
@@ -538,6 +569,7 @@ export function calculateEntityCashflow(
       netCashflowImpact: monthlyRepayment - taxBenefit,
       isDeductible,
       propertyName: loan.propertyName,
+      isPropertyLinked, // Track if this loan is already counted in property cashflow
     };
   });
 
@@ -554,8 +586,22 @@ export function calculateEntityCashflow(
   // Calculate summary
   const propertiesNet = propertyCashflows.reduce((sum, p) => sum + p.netCashflow, 0);
   const investmentsNet = investmentCashflows.reduce((sum, i) => sum + i.netCashflow, 0);
+
+  // All loans (for display in Loans tab)
   const loansNet = -loanCashflows.reduce((sum, l) => sum + l.netCashflowImpact, 0);
+
+  // Only standalone loans (NOT property-linked) - these are NOT already counted in property cashflow
+  // Standalone loans: CAR, PERSONAL, LINE_OF_CREDIT, STUDENT, BUSINESS (non-property)
+  const standaloneLoansCost = loanCashflows
+    .filter((l) => !l.isPropertyLinked)
+    .reduce((sum, l) => sum + l.netCashflowImpact, 0);
+
   const assetsNet = -assetCashflows.reduce((sum, a) => sum + a.monthlyRunningCost, 0);
+
+  // Total: Properties already include their loan repayments, so we only add standalone loans separately
+  // propertiesNet = rental income - expenses - property loan repayments
+  // standaloneLoansCost = car loans, personal loans, etc. (not in property cashflow)
+  const totalEntityCashflow = propertiesNet + investmentsNet - standaloneLoansCost + assetsNet;
 
   return {
     properties: propertyCashflows,
@@ -566,8 +612,9 @@ export function calculateEntityCashflow(
       propertiesNet,
       investmentsNet,
       loansNet,
+      standaloneLoansCost,
       assetsNet,
-      totalEntityCashflow: propertiesNet + investmentsNet + loansNet + assetsNet,
+      totalEntityCashflow,
     },
   };
 }
