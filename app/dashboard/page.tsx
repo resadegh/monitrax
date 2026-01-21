@@ -323,7 +323,7 @@ function ProgressBar({
   );
 }
 
-type DetailTileType = 'netWorth' | 'cashflow' | 'savingsRate' | 'lvr' | null;
+type DetailTileType = 'netWorth' | 'cashflow' | 'savingsRate' | 'lvr' | 'income' | 'outgoings' | null;
 type CashflowPeriod = 'monthly' | 'annual';
 
 export default function DashboardPage() {
