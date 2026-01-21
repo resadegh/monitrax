@@ -22,3 +22,6 @@ export {
   getRisks,
   getActions,
 } from './intelligenceEngine';
+
+// Decision Support (Phase 17A-D)
+export { calculateCFOTaxInsights } from './decisionSupport/taxIntegration';
