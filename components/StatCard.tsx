@@ -60,7 +60,7 @@ export function StatCard({ title, value, description, icon: Icon, trend, variant
   const styles = variantStyles[variant];
 
   return (
-    <Card className="relative overflow-hidden bg-card hover:shadow-lg transition-all duration-300 border border-border/50 h-[140px]">
+    <Card className="relative overflow-hidden bg-card hover:shadow-lg transition-all duration-300 border border-border/50 h-[160px]">
       {/* Subtle gradient accent */}
       <div className={`absolute inset-0 bg-gradient-to-br ${styles.accent} pointer-events-none`} />
 
