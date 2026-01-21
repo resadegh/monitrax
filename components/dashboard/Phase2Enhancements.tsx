@@ -138,9 +138,8 @@ export function CalculationTooltip({
     <TooltipProvider>
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
-          <div className="cursor-help inline-flex items-center gap-1">
+          <div className="cursor-help w-full">
             {children}
-            <Info className="h-3 w-3 text-muted-foreground opacity-50 hover:opacity-100 transition-opacity" />
           </div>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="max-w-xs">
