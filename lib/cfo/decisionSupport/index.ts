@@ -8,3 +8,6 @@ export * from './taxIntegration';
 
 // Phase 17B: Loan Decision Support
 export * from './loanDecisionSupport';
+
+// Phase 17C: Property Decision Support
+export * from './propertyDecisionSupport';

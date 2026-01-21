@@ -32,6 +32,7 @@ import {
   Percent,
   Banknote,
   TrendingDown as TrendDown,
+  Home,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -153,6 +154,38 @@ interface LoanInsights {
   };
 }
 
+interface PropertyAlert {
+  type: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  propertyName: string;
+  title: string;
+  description: string;
+  value: number;
+  action: string;
+}
+
+interface PropertyPerformance {
+  propertyName: string;
+  metric: string;
+  value: number;
+  description: string;
+}
+
+interface PropertyInsights {
+  portfolioSummary: {
+    totalProperties: number;
+    totalValue: number;
+    totalEquity: number;
+    averageLVR: number;
+    totalMonthlyIncome: number;
+    totalMonthlyCashflow: number;
+  };
+  propertyAlerts: PropertyAlert[];
+  topPerformer: PropertyPerformance | null;
+  underperformer: PropertyPerformance | null;
+  metadata: { propertyCount: number };
+}
+
 interface CFODashboardData {
   score: CFOScore;
   risks: { risks: Risk[]; summary: { critical: number; high: number; medium: number; low: number; totalImpact: number } };
@@ -168,6 +201,7 @@ interface CFODashboardData {
   alerts: { id: string; type: string; title: string; message: string }[];
   taxInsights?: TaxInsights;
   loanInsights?: LoanInsights;
+  propertyInsights?: PropertyInsights;
 }
 
 export default function CFODashboardPage() {
@@ -257,7 +291,7 @@ export default function CFODashboardPage() {
     );
   }
 
-  const { score, risks, actions, monthlyProgress, quickStats, alerts, taxInsights, loanInsights } = data;
+  const { score, risks, actions, monthlyProgress, quickStats, alerts, taxInsights, loanInsights, propertyInsights } = data;
 
   return (
     <DashboardLayout>
@@ -670,6 +704,109 @@ export default function CFODashboardPage() {
               <Button variant="outline" size="sm" asChild>
                 <a href="/dashboard/debt">
                   View All Loans
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Property Insights Tile (Phase 17C) */}
+      {propertyInsights && propertyInsights.portfolioSummary.totalProperties > 0 && (
+        <Card className="mb-6 border-violet-200 bg-gradient-to-br from-violet-50/50 to-white">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Home className="h-5 w-5 text-violet-600" />
+                Property Portfolio
+                <Badge variant="outline" className="ml-2 text-xs">
+                  {propertyInsights.portfolioSummary.totalProperties} propert{propertyInsights.portfolioSummary.totalProperties > 1 ? 'ies' : 'y'}
+                </Badge>
+              </CardTitle>
+              {propertyInsights.propertyAlerts.filter(a => a.severity === 'high' || a.severity === 'critical').length > 0 && (
+                <Badge className="bg-orange-500">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {propertyInsights.propertyAlerts.filter(a => a.severity === 'high' || a.severity === 'critical').length} Alert{propertyInsights.propertyAlerts.filter(a => a.severity === 'high' || a.severity === 'critical').length > 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Portfolio Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground">Total Equity</div>
+                <div className="text-xl font-bold text-violet-600">
+                  {formatCurrency(propertyInsights.portfolioSummary.totalEquity)}
+                </div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground">Portfolio Value</div>
+                <div className="text-xl font-bold">
+                  {formatCurrency(propertyInsights.portfolioSummary.totalValue)}
+                </div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground">Avg LVR</div>
+                <div className={`text-xl font-bold ${propertyInsights.portfolioSummary.averageLVR > 80 ? 'text-orange-600' : 'text-green-600'}`}>
+                  {propertyInsights.portfolioSummary.averageLVR.toFixed(0)}%
+                </div>
+              </div>
+              <div className="p-3 bg-white rounded-lg border">
+                <div className="text-xs text-muted-foreground">Net Cashflow</div>
+                <div className={`text-xl font-bold ${propertyInsights.portfolioSummary.totalMonthlyCashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {propertyInsights.portfolioSummary.totalMonthlyCashflow >= 0 ? '+' : ''}
+                  {formatCurrency(propertyInsights.portfolioSummary.totalMonthlyCashflow)}/mo
+                </div>
+              </div>
+            </div>
+
+            {/* Top Performers/Alerts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Performance Summary */}
+              {(propertyInsights.topPerformer || propertyInsights.underperformer) && (
+                <div className="space-y-2">
+                  {propertyInsights.topPerformer && (
+                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="text-xs text-green-600 font-medium">Top Performer</div>
+                      <div className="font-medium text-sm">{propertyInsights.topPerformer.propertyName}</div>
+                      <div className="text-xs text-muted-foreground">{propertyInsights.topPerformer.description}</div>
+                    </div>
+                  )}
+                  {propertyInsights.underperformer && (
+                    <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="text-xs text-yellow-600 font-medium">Needs Attention</div>
+                      <div className="font-medium text-sm">{propertyInsights.underperformer.propertyName}</div>
+                      <div className="text-xs text-muted-foreground">{propertyInsights.underperformer.description}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Alerts */}
+              {propertyInsights.propertyAlerts.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-muted-foreground">Alerts</div>
+                  {propertyInsights.propertyAlerts.slice(0, 2).map((alert, i) => (
+                    <div
+                      key={i}
+                      className={`p-3 rounded-lg border ${
+                        alert.severity === 'high' ? 'bg-orange-50 border-orange-200' : 'bg-yellow-50 border-yellow-200'
+                      }`}
+                    >
+                      <div className="font-medium text-sm">{alert.title}</div>
+                      <div className="text-xs text-muted-foreground">{alert.propertyName}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" size="sm" asChild>
+                <a href="/dashboard/properties">
+                  View All Properties
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </a>
               </Button>

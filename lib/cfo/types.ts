@@ -86,7 +86,12 @@ export type RiskType =
   | 'high_lvr'
   | 'rate_shock_risk'
   | 'offset_underutilized'
-  | 'debt_consolidation_opportunity';
+  | 'debt_consolidation_opportunity'
+  // Property-related risks (Phase 17C)
+  | 'property_high_lvr'
+  | 'property_low_yield'
+  | 'property_negative_cashflow'
+  | 'property_low_growth';
 
 export interface RiskEntity {
   type: 'property' | 'loan' | 'account' | 'income' | 'expense' | 'investment';
@@ -178,6 +183,7 @@ export interface CFODashboardData {
   alerts: CFOAlert[];
   taxInsights?: CFOTaxInsights; // Phase 17A: Tax Integration
   loanInsights?: CFOLoanInsights; // Phase 17B: Loan Decision Support
+  propertyInsights?: CFOPropertyInsights; // Phase 17C: Property Decision Support
 }
 
 // ============================================================================
@@ -288,6 +294,47 @@ export interface CFOLoanRisk {
   impact: number;
   action: string;
   loanId?: string;
+}
+
+// ============================================================================
+// Property Insights Types (Phase 17C)
+// ============================================================================
+
+export interface CFOPropertyInsights {
+  portfolioSummary: {
+    totalProperties: number;
+    totalValue: number;
+    totalEquity: number;
+    averageLVR: number;
+    totalMonthlyIncome: number;
+    totalMonthlyCashflow: number;
+  };
+  propertyAlerts: CFOPropertyAlert[];
+  topPerformer: CFOPropertyPerformance | null;
+  underperformer: CFOPropertyPerformance | null;
+  metadata: {
+    calculatedAt: Date;
+    propertyCount: number;
+  };
+}
+
+export interface CFOPropertyAlert {
+  type: 'high_lvr' | 'low_yield' | 'negative_cashflow' | 'low_growth';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  propertyId: string;
+  propertyName: string;
+  title: string;
+  description: string;
+  value: number;
+  action: string;
+}
+
+export interface CFOPropertyPerformance {
+  propertyId: string;
+  propertyName: string;
+  metric: string;
+  value: number;
+  description: string;
 }
 
 export interface MonthlyProgress {
