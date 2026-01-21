@@ -379,3 +379,317 @@ The following features from the original blueprint are planned for future iterat
 4. **Financial Coach Mode** - Conversational AI for advice
 5. **Score History Persistence** - Store historical CFO scores for trend analysis
 6. **Alert Management** - Mark as read, dismiss, snooze functionality
+
+---
+
+# 17.13 DECISION SUPPORT ENHANCEMENT ROADMAP (Added Jan 2026)
+
+**Reference:** `docs/blueprint/AUDIT_CFO_VALUE_ASSESSMENT_2026_01.md`
+
+Based on the CFO Value Assessment Audit (Jan 2026), the following enhancements are planned to transform the CFO page from **monitoring-only** to **decision-support focused**.
+
+## 17.13.1 Core Principle
+
+> "Users don't want data — they want answers."
+
+Current state focuses on monitoring and alerting. Future state must answer user questions directly.
+
+---
+
+## 17.13.2 Phase 17A: Tax Integration (HIGH PRIORITY)
+
+**Status:** 📋 PLANNED
+**Effort:** Medium (2-3 days)
+**Dependencies:** Phase 20A (Tax Engine) ✅ Complete
+
+### Deliverables
+
+1. **Tax Position Summary Tile in CFO Dashboard**
+   - Estimated refund/owing
+   - Confidence level
+   - Days until EOFY
+   - Action required indicator
+
+2. **Tax-Related Risk Detection**
+   - `cgt_exposure_high` - Unrealised gains > $50k
+   - `super_cap_approaching` - Concessional cap utilization > 80%
+   - `div293_threshold` - Income approaching $250k
+   - `eofy_action_required` - Prepayment opportunities
+   - `depreciation_unclaimed` - Properties without schedules
+   - `franking_credits_unused` - Credits exceeding tax liability
+
+3. **After-Tax Toggle**
+   - Show gross vs net income
+   - Property cashflow with tax benefit
+   - Investment returns after CGT & franking
+
+### Files to Create/Modify
+
+```
+lib/cfo/
+├── decisionSupport/
+│   └── taxIntegration.ts         # Tax insights for CFO
+│
+lib/cfo/riskRadar.ts              # Add tax-related risks
+app/api/cfo/route.ts              # Extend response with taxInsights
+app/dashboard/cfo/page.tsx        # Add Tax Position tile
+```
+
+---
+
+## 17.13.3 Phase 17B: Loan Decision Tools (MEDIUM-HIGH PRIORITY)
+
+**Status:** 📋 PLANNED
+**Effort:** Medium (3-4 days)
+**Dependencies:** Debt Planner Engine ✅ Complete
+
+### Decision Questions Addressed
+
+| Question | Solution |
+|----------|----------|
+| "Should I refinance?" | Refinance analysis with breakeven calculation |
+| "Is offset better than extra repayments?" | Personalized comparison calculator |
+| "How much interest will I save over time?" | Interest savings visualization |
+
+### Deliverables
+
+1. **Refinance Analysis Action Type**
+   - Current rate vs estimated market rate
+   - Monthly & total savings potential
+   - Breakeven months (accounting for switching costs)
+   - Clear recommendation
+
+2. **Offset vs Extra Repayments Calculator**
+   - Side-by-side comparison
+   - Interest saved by each strategy
+   - Time saved on loan term
+   - Personalized recommendation
+
+3. **Interest Savings Projection**
+   - Amortization visualization
+   - "What if I pay $X extra" scenarios
+   - Total interest saved display
+
+### Type Definitions
+
+```typescript
+interface LoanDecisionSupport {
+  refinanceAnalysis: {
+    currentRate: number;
+    estimatedMarketRate: number;
+    potentialSavingsMonthly: number;
+    potentialSavingsTotal: number;
+    breakEvenMonths: number;
+    recommendation: 'REFINANCE_NOW' | 'WAIT' | 'NOT_WORTHWHILE';
+    switchingCostEstimate: number;
+  };
+
+  offsetComparison: {
+    offsetBalance: number;
+    interestSavedByOffset: number;
+    extraRepaymentAmount: number;
+    interestSavedByExtraRepayment: number;
+    timeSavedByExtraRepayment: number;
+    recommendation: 'OFFSET' | 'EXTRA_REPAYMENTS' | 'COMBINATION';
+    explanation: string;
+  };
+}
+```
+
+### Files to Create/Modify
+
+```
+lib/cfo/
+├── decisionSupport/
+│   └── loanDecisions.ts          # Refinance & offset analysis
+│
+lib/cfo/actionEngine.ts           # Add refinance, offset actions
+app/dashboard/cfo/page.tsx        # Add loan decision UI
+components/cfo/
+├── RefinanceAnalysisCard.tsx
+└── OffsetComparisonModal.tsx
+```
+
+---
+
+## 17.13.4 Phase 17C: Property Decision Tools (HIGH PRIORITY)
+
+**Status:** 📋 PLANNED
+**Effort:** High (5-7 days)
+**Dependencies:** Property Module ✅, Depreciation Engine ✅
+
+### Decision Questions Addressed
+
+| Question | Solution |
+|----------|----------|
+| "Is this property actually performing?" | Property Performance Scorecard |
+| "What happens if interest rates rise?" | Interest Rate Stress Test |
+| "Can I afford another property?" | Serviceability Calculator |
+| "Should I sell, hold, or renovate?" | Sell/Hold/Renovate Framework |
+
+### Deliverables
+
+1. **Property Performance Scorecard**
+   - Total return (capital growth + yield)
+   - Cash-on-cash return
+   - Comparison to local market median
+   - Year-over-year appreciation
+
+2. **Interest Rate Stress Test Tool**
+   - Model +1%, +2%, +3% rate scenarios
+   - Show cashflow impact per property
+   - Identify properties at risk
+
+3. **Affordability/Serviceability Calculator**
+   - Max borrowing capacity estimate
+   - Current serviceability position
+   - Headroom for additional debt
+   - Recommended deposit for next property
+
+4. **Sell/Hold/Renovate Decision Framework**
+   - 5-year hold projection
+   - Net proceeds if sold now
+   - Renovation ROI estimate
+   - AI-powered recommendation with reasoning
+
+### Type Definitions
+
+```typescript
+interface PropertyDecisionSupport {
+  performanceMetrics: {
+    totalReturn: number;
+    cashOnCashReturn: number;
+    marketComparison: number;
+    appreciationRate: number;
+  };
+
+  stressTest: {
+    rateIncrease1pct: CashflowImpact;
+    rateIncrease2pct: CashflowImpact;
+    vacancyPeriod3mo: CashflowImpact;
+    rentReduction10pct: CashflowImpact;
+  };
+
+  affordabilityCheck: {
+    maxBorrowingCapacity: number;
+    currentServiceability: number;
+    headroom: number;
+    canAffordAnother: boolean;
+    recommendedDepositRequired: number;
+  };
+
+  sellHoldAnalysis: {
+    holdProjection5yr: ProjectedReturn;
+    sellNowNetProceeds: number;
+    renovateROI: number | null;
+    recommendation: 'SELL' | 'HOLD' | 'RENOVATE' | 'NEEDS_MORE_DATA';
+    reasoning: string[];
+  };
+}
+```
+
+### Files to Create/Modify
+
+```
+lib/cfo/
+├── decisionSupport/
+│   └── propertyDecisions.ts      # Property analysis
+│
+lib/cfo/riskRadar.ts              # Add property stress test risks
+app/dashboard/cfo/page.tsx        # Add property decision UI
+components/cfo/
+├── PropertyPerformanceCard.tsx
+├── StressTestModal.tsx
+├── AffordabilityCalculator.tsx
+└── SellHoldAnalysis.tsx
+```
+
+---
+
+## 17.13.5 Phase 17D: Investment Decision Tools (MEDIUM PRIORITY)
+
+**Status:** 📋 PLANNED
+**Effort:** Medium (3-4 days)
+**Dependencies:** Phase 23 (Investment CGT) ⚠️ Partial, Investment Analytics Engine ✅
+
+### Decision Questions Addressed
+
+| Question | Solution |
+|----------|----------|
+| "Am I overexposed to one asset class?" | Allocation vs Target comparison |
+| "What's my real after-tax return?" | After-tax return display |
+| "Is this investment improving my portfolio?" | Portfolio contribution analysis |
+
+### Deliverables
+
+1. **Allocation vs Target Comparison**
+   - Current allocation by asset class
+   - User-defined or suggested target
+   - Drift from target percentage
+   - Rebalancing action suggestions
+
+2. **After-Tax Return Display**
+   - Per-holding after-tax return
+   - Include franking credit benefit
+   - Include CGT if sold
+   - Compare to alternatives (term deposit, index)
+
+3. **Portfolio Contribution Analysis**
+   - Contribution to portfolio return
+   - Contribution to portfolio risk
+   - Risk-adjusted return (Sharpe ratio)
+   - Increase/Hold/Reduce recommendation
+
+### Type Definitions
+
+```typescript
+interface InvestmentDecisionSupport {
+  allocationAnalysis: {
+    currentAllocation: AssetAllocation;
+    targetAllocation: AssetAllocation | null;
+    driftFromTarget: number;
+    rebalanceActions: RebalanceAction[];
+  };
+
+  afterTaxReturns: {
+    holdingId: string;
+    grossReturn: number;
+    frankingCredits: number;
+    cgtIfSoldNow: number;
+    effectiveAfterTaxReturn: number;
+  };
+
+  portfolioContribution: {
+    holdingId: string;
+    contributionToReturn: number;
+    contributionToRisk: number;
+    sharpeRatio: number;
+    recommendation: 'INCREASE' | 'HOLD' | 'REDUCE' | 'SELL';
+  };
+}
+```
+
+---
+
+## 17.13.6 Success Metrics
+
+| Metric | Before (Jan 2026) | Target |
+|--------|-------------------|--------|
+| User can answer "Should I refinance?" | ❌ No | ✅ Yes |
+| User can see after-tax returns | ❌ No | ✅ Yes |
+| User can stress-test rate increases | ❌ No | ✅ Yes |
+| Tax position visible in CFO | ❌ No | ✅ Yes |
+| Property performance vs market | ❌ No | ✅ Yes |
+
+---
+
+## 17.13.7 Implementation Priority
+
+| Phase | Priority | Value | Effort |
+|-------|----------|-------|--------|
+| 17A: Tax Integration | HIGH | High | Medium |
+| 17B: Loan Decisions | MEDIUM-HIGH | High | Medium |
+| 17C: Property Decisions | HIGH | Very High | High |
+| 17D: Investment Decisions | MEDIUM | Medium-High | Medium |
+
+**Recommended Sequence:** 17A → 17C → 17B → 17D
