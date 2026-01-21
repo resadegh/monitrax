@@ -760,6 +760,7 @@ export default function DashboardPage() {
                   snapshot.loans?.map(loan => ({
                     name: loan.name,
                     netCashflowImpact: (loan.annualRepayment || 0) / 12,
+                    type: loan.type, // Include type to filter out property-linked loans
                   })) || []
                 )}
               />
