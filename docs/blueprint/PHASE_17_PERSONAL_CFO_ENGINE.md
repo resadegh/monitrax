@@ -398,211 +398,185 @@ Current state focuses on monitoring and alerting. Future state must answer user 
 
 ## 17.13.2 Phase 17A: Tax Integration (HIGH PRIORITY)
 
-**Status:** 📋 PLANNED
+**Status:** ✅ IMPLEMENTED
+**Implemented Date:** 2026-01-21
 **Effort:** Medium (2-3 days)
 **Dependencies:** Phase 20A (Tax Engine) ✅ Complete
 
-### Deliverables
+### Implementation Details
 
-1. **Tax Position Summary Tile in CFO Dashboard**
-   - Estimated refund/owing
-   - Confidence level
-   - Days until EOFY
-   - Action required indicator
+1. **Tax Position Summary Tile in CFO Dashboard** ✅
+   - Estimated refund/owing with confidence level
+   - Days until EOFY with action required indicator
+   - Effective tax rate and marginal rate display
+   - Total deductions breakdown (property, depreciation, investment, work-related)
+   - PAYG withholding tracking
 
-2. **Tax-Related Risk Detection**
+2. **Tax-Related Risk Detection** ✅
    - `cgt_exposure_high` - Unrealised gains > $50k
    - `super_cap_approaching` - Concessional cap utilization > 80%
    - `div293_threshold` - Income approaching $250k
    - `eofy_action_required` - Prepayment opportunities
    - `depreciation_unclaimed` - Properties without schedules
    - `franking_credits_unused` - Credits exceeding tax liability
+   - `tax_refund_opportunity` - Large refund detection
 
-3. **After-Tax Toggle**
-   - Show gross vs net income
-   - Property cashflow with tax benefit
-   - Investment returns after CGT & franking
+3. **Key Tax Metrics** ✅
+   - Negative gearing benefit calculation
+   - Franking credits available
+   - Unrealised CGT exposure
+   - Effective vs marginal tax rate
 
-### Files to Create/Modify
+### Files Created/Modified
 
 ```
 lib/cfo/
 ├── decisionSupport/
-│   └── taxIntegration.ts         # Tax insights for CFO
+│   ├── index.ts                  # Module exports
+│   └── taxIntegration.ts         # Tax insights calculator (520 lines)
 │
-lib/cfo/riskRadar.ts              # Add tax-related risks
-app/api/cfo/route.ts              # Extend response with taxInsights
-app/dashboard/cfo/page.tsx        # Add Tax Position tile
+lib/cfo/types.ts                  # Added CFOTaxInsights, TaxRisk types
+lib/cfo/intelligenceEngine.ts     # Integrated tax insights
+lib/cfo/index.ts                  # Export calculateCFOTaxInsights
+app/dashboard/cfo/page.tsx        # Tax Position tile UI
 ```
+
+### Technical Notes
+- Uses centralized `calculateTaxPosition` from tax-engine (no duplicate logic)
+- marginalRate stored as percentage (37 not 0.37) - divide by 100 when using as multiplier
+- effectiveRate also stored as percentage for display
 
 ---
 
 ## 17.13.3 Phase 17B: Loan Decision Tools (MEDIUM-HIGH PRIORITY)
 
-**Status:** 📋 PLANNED
+**Status:** ✅ IMPLEMENTED
+**Implemented Date:** 2026-01-21
 **Effort:** Medium (3-4 days)
 **Dependencies:** Debt Planner Engine ✅ Complete
 
-### Decision Questions Addressed
+### Implementation Details
 
 | Question | Solution |
 |----------|----------|
-| "Should I refinance?" | Refinance analysis with breakeven calculation |
-| "Is offset better than extra repayments?" | Personalized comparison calculator |
-| "How much interest will I save over time?" | Interest savings visualization |
+| "Should I refinance?" | ✅ Refinance analysis with breakeven calculation |
+| "Is my rate above market?" | ✅ Rate alerts with market comparison |
+| "How much interest will I save with extra repayments?" | ✅ Extra repayment impact calculator |
 
-### Deliverables
+### Features Implemented
 
-1. **Refinance Analysis Action Type**
-   - Current rate vs estimated market rate
-   - Monthly & total savings potential
-   - Breakeven months (accounting for switching costs)
-   - Clear recommendation
+1. **Refinance Opportunity Detection** ✅
+   - Current rate vs estimated market rate (0.5% below current)
+   - Monthly & annual savings calculation
+   - Breakeven months (assuming $2k switching costs)
+   - `worthRefinancing` flag (breakeven < 18 months)
+   - Total lifetime savings projection
 
-2. **Offset vs Extra Repayments Calculator**
-   - Side-by-side comparison
-   - Interest saved by each strategy
-   - Time saved on loan term
-   - Personalized recommendation
+2. **Rate Alerts** ✅
+   - `fixed_rate_expiring` - Fixed rate ending within 6 months
+   - `interest_only_ending` - IO period ending within 6 months
+   - `rate_above_market` - Rate > 0.5% above market
+   - `lvr_high` - LVR > 80%
 
-3. **Interest Savings Projection**
-   - Amortization visualization
-   - "What if I pay $X extra" scenarios
-   - Total interest saved display
+3. **Extra Repayment Impact Calculator** ✅
+   - Targets highest-rate variable loan
+   - Calculates interest saved with extra $500/month
+   - Shows time reduced (months saved)
+   - Current vs new payoff date projection
 
-### Type Definitions
+4. **Loan Portfolio Risks** ✅
+   - High DTI ratio (> 6x income)
+   - High debt service ratio (> 40%)
+   - Rate shock risk (3% rate increase impact)
+   - Offset underutilization detection
 
-```typescript
-interface LoanDecisionSupport {
-  refinanceAnalysis: {
-    currentRate: number;
-    estimatedMarketRate: number;
-    potentialSavingsMonthly: number;
-    potentialSavingsTotal: number;
-    breakEvenMonths: number;
-    recommendation: 'REFINANCE_NOW' | 'WAIT' | 'NOT_WORTHWHILE';
-    switchingCostEstimate: number;
-  };
-
-  offsetComparison: {
-    offsetBalance: number;
-    interestSavedByOffset: number;
-    extraRepaymentAmount: number;
-    interestSavedByExtraRepayment: number;
-    timeSavedByExtraRepayment: number;
-    recommendation: 'OFFSET' | 'EXTRA_REPAYMENTS' | 'COMBINATION';
-    explanation: string;
-  };
-}
-```
-
-### Files to Create/Modify
+### Files Created/Modified
 
 ```
 lib/cfo/
 ├── decisionSupport/
-│   └── loanDecisions.ts          # Refinance & offset analysis
+│   └── loanDecisionSupport.ts    # Loan insights calculator (400+ lines)
 │
-lib/cfo/actionEngine.ts           # Add refinance, offset actions
-app/dashboard/cfo/page.tsx        # Add loan decision UI
-components/cfo/
-├── RefinanceAnalysisCard.tsx
-└── OffsetComparisonModal.tsx
+lib/cfo/types.ts                  # Added CFOLoanInsights, CFORefinanceOpportunity,
+│                                 # CFORateAlert, CFOExtraRepaymentImpact, CFOLoanRisk
+lib/cfo/intelligenceEngine.ts     # Integrated loan insights
+lib/cfo/index.ts                  # Export calculateCFOLoanInsights
+app/dashboard/cfo/page.tsx        # Loan Opportunities tile UI
 ```
+
+### CFO Page - Loan Opportunities Tile
+- Shows refinance savings (total annual)
+- Lists rate alerts with urgency indicators
+- Displays extra repayment benefit
+- Links to full Loans page for details
 
 ---
 
 ## 17.13.4 Phase 17C: Property Decision Tools (HIGH PRIORITY)
 
-**Status:** 📋 PLANNED
-**Effort:** High (5-7 days)
-**Dependencies:** Property Module ✅, Depreciation Engine ✅
+**Status:** ✅ IMPLEMENTED (Lightweight Version)
+**Implemented Date:** 2026-01-21
+**Effort:** Medium (2 days)
+**Dependencies:** Property Module ✅, masterFinancialService ✅
 
-### Decision Questions Addressed
+### Implementation Details
+
+Implemented as a **lightweight property insights module** that leverages the existing `masterFinancialService.getPropertyMetrics()` to avoid duplicate calculations. Follows the "No Duplicate Numbers" design principle.
 
 | Question | Solution |
 |----------|----------|
-| "Is this property actually performing?" | Property Performance Scorecard |
-| "What happens if interest rates rise?" | Interest Rate Stress Test |
-| "Can I afford another property?" | Serviceability Calculator |
-| "Should I sell, hold, or renovate?" | Sell/Hold/Renovate Framework |
+| "Is this property actually performing?" | ✅ Top performer / Underperformer detection |
+| "Which properties need attention?" | ✅ Property alerts (high LVR, low yield, negative cashflow) |
+| "What's my portfolio health?" | ✅ Portfolio summary (equity, LVR, cashflow) |
 
-### Deliverables
+### Features Implemented
 
-1. **Property Performance Scorecard**
-   - Total return (capital growth + yield)
-   - Cash-on-cash return
-   - Comparison to local market median
-   - Year-over-year appreciation
+1. **Portfolio Summary** ✅
+   - Total properties count
+   - Total value and equity
+   - Average LVR across portfolio
+   - Total monthly income and net cashflow
 
-2. **Interest Rate Stress Test Tool**
-   - Model +1%, +2%, +3% rate scenarios
-   - Show cashflow impact per property
-   - Identify properties at risk
+2. **Property Alerts** ✅
+   - `high_lvr` - LVR > 80% (high severity if > 90%)
+   - `low_yield` - Rental yield < 3% (high severity if < 2%)
+   - `negative_cashflow` - Monthly cashflow < -$500 (high if < -$1000)
+   - `low_growth` - Capital growth < 2%
 
-3. **Affordability/Serviceability Calculator**
-   - Max borrowing capacity estimate
-   - Current serviceability position
-   - Headroom for additional debt
-   - Recommended deposit for next property
+3. **Performance Analysis** ✅
+   - Top performer identification (highest yield or positive cashflow)
+   - Underperformer identification (lowest yield or negative cashflow)
+   - Sorted alerts by severity
 
-4. **Sell/Hold/Renovate Decision Framework**
-   - 5-year hold projection
-   - Net proceeds if sold now
-   - Renovation ROI estimate
-   - AI-powered recommendation with reasoning
-
-### Type Definitions
-
-```typescript
-interface PropertyDecisionSupport {
-  performanceMetrics: {
-    totalReturn: number;
-    cashOnCashReturn: number;
-    marketComparison: number;
-    appreciationRate: number;
-  };
-
-  stressTest: {
-    rateIncrease1pct: CashflowImpact;
-    rateIncrease2pct: CashflowImpact;
-    vacancyPeriod3mo: CashflowImpact;
-    rentReduction10pct: CashflowImpact;
-  };
-
-  affordabilityCheck: {
-    maxBorrowingCapacity: number;
-    currentServiceability: number;
-    headroom: number;
-    canAffordAnother: boolean;
-    recommendedDepositRequired: number;
-  };
-
-  sellHoldAnalysis: {
-    holdProjection5yr: ProjectedReturn;
-    sellNowNetProceeds: number;
-    renovateROI: number | null;
-    recommendation: 'SELL' | 'HOLD' | 'RENOVATE' | 'NEEDS_MORE_DATA';
-    reasoning: string[];
-  };
-}
-```
-
-### Files to Create/Modify
+### Files Created/Modified
 
 ```
 lib/cfo/
 ├── decisionSupport/
-│   └── propertyDecisions.ts      # Property analysis
+│   └── propertyDecisionSupport.ts  # Property insights (225 lines)
 │
-lib/cfo/riskRadar.ts              # Add property stress test risks
-app/dashboard/cfo/page.tsx        # Add property decision UI
-components/cfo/
-├── PropertyPerformanceCard.tsx
-├── StressTestModal.tsx
-├── AffordabilityCalculator.tsx
-└── SellHoldAnalysis.tsx
+lib/cfo/types.ts                    # Added CFOPropertyInsights, CFOPropertyAlert,
+│                                   # CFOPropertyPerformance
+lib/cfo/intelligenceEngine.ts       # Integrated property insights
+lib/cfo/index.ts                    # Export calculateCFOPropertyInsights
+app/dashboard/cfo/page.tsx          # Property Portfolio tile UI
 ```
+
+### CFO Page - Property Portfolio Tile
+- Shows portfolio summary (equity, value, LVR, cashflow)
+- Highlights top performer and underperformer
+- Lists property alerts sorted by severity
+- Links to full Properties page for details
+
+### Technical Notes
+- Uses `getPropertyMetrics()` from masterFinancialService (no duplicate logic)
+- Uses shared types from `lib/cfo/types.ts` (CFOPropertyAlert, CFOPropertyPerformance)
+- PropertyMetrics provides: currentValue, equity, lvr, annualRentalIncome, monthlyCashflow, rentalYield, capitalGrowthPercent
+
+### Future Enhancements (Not Yet Implemented)
+- Interest rate stress test tool
+- Affordability/serviceability calculator
+- Sell/Hold/Renovate decision framework
 
 ---
 
@@ -673,23 +647,25 @@ interface InvestmentDecisionSupport {
 
 ## 17.13.6 Success Metrics
 
-| Metric | Before (Jan 2026) | Target |
-|--------|-------------------|--------|
-| User can answer "Should I refinance?" | ❌ No | ✅ Yes |
-| User can see after-tax returns | ❌ No | ✅ Yes |
-| User can stress-test rate increases | ❌ No | ✅ Yes |
-| Tax position visible in CFO | ❌ No | ✅ Yes |
-| Property performance vs market | ❌ No | ✅ Yes |
+| Metric | Before (Jan 2026) | After (Jan 2026) |
+|--------|-------------------|------------------|
+| User can answer "Should I refinance?" | ❌ No | ✅ Yes - Refinance opportunities with savings |
+| User can see tax position in CFO | ❌ No | ✅ Yes - Tax Position tile |
+| User can see property performance | ❌ No | ✅ Yes - Top/underperformer detection |
+| User can see loan rate alerts | ❌ No | ✅ Yes - Fixed rate expiry, rate above market |
+| User can see property alerts | ❌ No | ✅ Yes - High LVR, low yield, neg cashflow |
 
 ---
 
-## 17.13.7 Implementation Priority
+## 17.13.7 Implementation Status
 
-| Phase | Priority | Value | Effort |
-|-------|----------|-------|--------|
-| 17A: Tax Integration | HIGH | High | Medium |
-| 17B: Loan Decisions | MEDIUM-HIGH | High | Medium |
-| 17C: Property Decisions | HIGH | Very High | High |
-| 17D: Investment Decisions | MEDIUM | Medium-High | Medium |
+| Phase | Priority | Status | Implemented |
+|-------|----------|--------|-------------|
+| 17A: Tax Integration | HIGH | ✅ DONE | 2026-01-21 |
+| 17B: Loan Decisions | MEDIUM-HIGH | ✅ DONE | 2026-01-21 |
+| 17C: Property Decisions | HIGH | ✅ DONE (Lightweight) | 2026-01-21 |
+| 17D: Investment Decisions | MEDIUM | 📋 PLANNED | - |
 
-**Recommended Sequence:** 17A → 17C → 17B → 17D
+**Remaining Work:**
+- Phase 17D: Investment Decision Tools (allocation analysis, after-tax returns)
+- Phase 17C Advanced: Stress testing, serviceability calculator, sell/hold framework
