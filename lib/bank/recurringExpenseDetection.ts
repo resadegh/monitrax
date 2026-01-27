@@ -455,7 +455,6 @@ export async function processExpenseMatches(
           isRecurring: true,
           isEssential: match.pattern.isEssential,
           isTaxDeductible: false,
-          startDate: new Date(),
         },
       });
 
