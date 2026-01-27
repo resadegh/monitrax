@@ -13,7 +13,7 @@ import {
   type CategoryPrediction,
   type UserConfirmation,
 } from '@/lib/bank/aiCategorisation';
-import { ImportStatus, ImportReviewStatus, TransactionSource } from '@prisma/client';
+import { ImportStatus, ImportReviewStatus, TransactionSource, TransactionReviewQueue } from '@prisma/client';
 
 // =============================================================================
 // GET - Get Review Queue
@@ -60,19 +60,19 @@ export async function GET(
 
       // Group by confidence level
       const grouped = {
-        needsReview: reviewItems.filter(r =>
+        needsReview: reviewItems.filter((r: TransactionReviewQueue) =>
           r.status === ImportReviewStatus.PENDING &&
           r.confidenceLevel === 'NEEDS_REVIEW'
         ),
-        manual: reviewItems.filter(r =>
+        manual: reviewItems.filter((r: TransactionReviewQueue) =>
           r.status === ImportReviewStatus.PENDING &&
           r.confidenceLevel === 'MANUAL'
         ),
-        confirmed: reviewItems.filter(r =>
+        confirmed: reviewItems.filter((r: TransactionReviewQueue) =>
           r.status === ImportReviewStatus.USER_CONFIRMED ||
           r.status === ImportReviewStatus.USER_EDITED
         ),
-        skipped: reviewItems.filter(r =>
+        skipped: reviewItems.filter((r: TransactionReviewQueue) =>
           r.status === ImportReviewStatus.SKIPPED
         ),
       };
@@ -101,7 +101,7 @@ export async function GET(
             account: batch.account,
           },
           statistics: stats,
-          items: reviewItems.map(item => ({
+          items: reviewItems.map((item: TransactionReviewQueue) => ({
             id: item.id,
             transaction: item.tempData,
             aiPrediction: {

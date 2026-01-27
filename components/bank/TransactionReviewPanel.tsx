@@ -37,10 +37,20 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
+import { getCategoryLevel1Options, getCategoryLevel2Options } from '@/lib/bank/categorisation';
 
 // =============================================================================
 // TYPES
 // =============================================================================
+
+// Extract the non-null type for userValues to fix type errors
+type UserValuesFields = {
+  categoryLevel1: string;
+  categoryLevel2: string | null;
+  subcategory: string | null;
+  isEssential: boolean;
+  isRecurring: boolean;
+};
 
 interface AICategorizationSettings {
   showConfidenceScores: boolean;
@@ -120,26 +130,9 @@ interface TransactionReviewPanelProps {
 }
 
 // =============================================================================
-// CATEGORY OPTIONS
+// CATEGORY HELPERS - Using existing categorisation service (single source of truth)
+// Categories are sourced from lib/bank/categorisation.ts
 // =============================================================================
-
-const CATEGORY_OPTIONS = [
-  { value: 'Income', subcategories: ['Salary', 'Interest', 'Dividend', 'Rent', 'Government', 'Other'] },
-  { value: 'Transfer', subcategories: ['Internal', 'External'] },
-  { value: 'Property', subcategories: ['Rates', 'Strata', 'Land Tax', 'Water', 'Management'] },
-  { value: 'Utilities', subcategories: ['Electricity', 'Gas', 'Water', 'Phone', 'Internet'] },
-  { value: 'Food & Dining', subcategories: ['Groceries', 'Restaurant', 'Cafe', 'Fast Food', 'Takeaway'] },
-  { value: 'Transport', subcategories: ['Fuel', 'Public Transport', 'Rideshare', 'Parking', 'Tolls'] },
-  { value: 'Entertainment', subcategories: ['Streaming', 'Cinema', 'Events', 'Hobbies'] },
-  { value: 'Shopping', subcategories: ['Online', 'Department Store', 'Hardware', 'Electronics', 'Office'] },
-  { value: 'Insurance', subcategories: ['Health', 'Vehicle', 'Home', 'Life', 'General'] },
-  { value: 'Health', subcategories: ['Pharmacy', 'Medical', 'Dental', 'Fitness'] },
-  { value: 'Education', subcategories: ['School Fees', 'University', 'TAFE', 'Courses'] },
-  { value: 'Finance', subcategories: ['Loan Repayment', 'Mortgage', 'Bank Fees', 'Investment'] },
-  { value: 'Cash', subcategories: ['ATM Withdrawal'] },
-  { value: 'Subscription', subcategories: ['Software', 'Membership', 'Services'] },
-  { value: 'Other', subcategories: [] },
-];
 
 // =============================================================================
 // COMPONENT
@@ -322,7 +315,7 @@ export function TransactionReviewPanel({
     }
   };
 
-  const handleEditValue = (itemId: string, field: keyof ReviewItem['userValues'], value: any) => {
+  const handleEditValue = (itemId: string, field: keyof UserValuesFields, value: string | boolean | null) => {
     setEditedItems(prev => {
       const newMap = new Map(prev);
       const current = newMap.get(itemId) || {};
@@ -412,7 +405,9 @@ export function TransactionReviewPanel({
       isRecurring: edited.isRecurring ?? currentItem.aiPrediction.isRecurring,
     };
 
-    const selectedCategory = CATEGORY_OPTIONS.find(c => c.value === displayValues.categoryLevel1);
+    // Get category options from existing categorisation service (single source of truth)
+    const categoryLevel1Options = getCategoryLevel1Options();
+    const categoryLevel2Options = getCategoryLevel2Options(displayValues.categoryLevel1);
 
     return (
       <Card>
@@ -493,7 +488,7 @@ export function TransactionReviewPanel({
             </Alert>
           )}
 
-          {/* Category Selection */}
+          {/* Category Selection - Using existing categorisation service (single source of truth) */}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label>Category</Label>
@@ -505,9 +500,9 @@ export function TransactionReviewPanel({
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORY_OPTIONS.map(cat => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.value}
+                  {categoryLevel1Options.map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -519,12 +514,13 @@ export function TransactionReviewPanel({
               <Select
                 value={displayValues.categoryLevel2 || ''}
                 onValueChange={(value) => handleEditValue(currentItem.id, 'categoryLevel2', value || null)}
+                disabled={categoryLevel2Options.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select subcategory" />
+                  <SelectValue placeholder={categoryLevel2Options.length === 0 ? 'No subcategories' : 'Select subcategory'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedCategory?.subcategories.map(sub => (
+                  {categoryLevel2Options.map(sub => (
                     <SelectItem key={sub} value={sub}>
                       {sub}
                     </SelectItem>

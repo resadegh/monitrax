@@ -1359,6 +1359,7 @@ model EmailMFACode {
 
 enum TransactionSource {
   BANK        // Bank feed integration
+  BASIQ       // BASIQ Open Banking integration
   CSV         // CSV import
   QIF         // QIF file import (MYOB/Quicken)
   OFX         // OFX/QFX file import
