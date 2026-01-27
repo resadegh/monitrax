@@ -202,7 +202,7 @@ export function calculateAdjustedConfidence(
   }
 
   // Boost: MerchantMapping exists with high usage
-  if (merchantLearning && merchantLearning.lastAIConfidence > 0.8) {
+  if (merchantLearning && merchantLearning.lastAIConfidence !== null && merchantLearning.lastAIConfidence > 0.8) {
     confidence += 0.05;
     boostReasons.push('Previous AI prediction was confident');
   }
@@ -231,7 +231,7 @@ export function calculateAdjustedConfidence(
 
   // Penalty: User previously corrected AI for this merchant
   if (merchantLearning && merchantLearning.userCorrectionCount > 0 &&
-      merchantLearning.lastAIConfidence < 0.5) {
+      merchantLearning.lastAIConfidence !== null && merchantLearning.lastAIConfidence < 0.5) {
     confidence -= 0.20;
     penaltyReasons.push('User has previously corrected AI for this merchant');
   }
