@@ -422,7 +422,7 @@ async function importBasiqTransactionsWithAI(
       where: {
         userId,
         accountId,
-        source: 'BASIQ',
+        source: TransactionSource.BASIQ,
         basiqTransactionId: { not: null },
       },
       select: { basiqTransactionId: true },
@@ -701,7 +701,7 @@ export async function mergeManualImportWithBasiq(
       duplicatesSkipped++;
 
       // If Basiq transaction, we might want to merge enrichment data
-      if (duplicate.source === 'BASIQ' && manualTx.merchantStandardised) {
+      if (duplicate.source === TransactionSource.BASIQ && manualTx.merchantStandardised) {
         // Merge: prefer manual merchant name if Basiq doesn't have it
         if (!duplicate.merchantStandardised) {
           await prisma.unifiedTransaction.update({
