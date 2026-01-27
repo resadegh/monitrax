@@ -62,7 +62,7 @@ export interface MerchantLearning {
   categoryLevel1: string;
   categoryLevel2: string | null;
   userCorrectionCount: number;
-  lastAIConfidence: number;
+  lastAIConfidence: number | null;
 }
 
 export interface CategorizationSettings {
