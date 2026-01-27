@@ -1959,6 +1959,7 @@ enum ImportFileFormat {
 enum ImportStatus {
   PENDING
   PROCESSING
+  AWAITING_REVIEW
   COMPLETED
   FAILED
   PARTIAL
@@ -3784,15 +3785,6 @@ model ImportBatch {
   @@index([dateRangeStart, dateRangeEnd])
   @@index([fileHash])
   @@map("import_batches")
-}
-
-enum ImportStatus {
-  PENDING
-  PROCESSING
-  AWAITING_REVIEW
-  COMPLETED
-  FAILED
-  PARTIAL
 }
 
 model TransactionReviewQueue {
