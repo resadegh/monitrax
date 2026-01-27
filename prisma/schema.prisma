@@ -367,6 +367,11 @@ model User {
   // Custom Categories
   categories              Category[]
 
+  // Phase 29: AI Categorisation & Learning
+  aiCategorizationLearnings AICategorizationLearning[] @relation("AICategorizationLearnings")
+  importBatches             ImportBatch[]              @relation("ImportBatches")
+  transactionReviewQueue    TransactionReviewQueue[]   @relation("TransactionReviewQueue")
+
   @@map("users")
 }
 
@@ -558,6 +563,9 @@ model Account {
 
   // Phase 14: Cashflow Optimisation Engine
   cashflowForecasts   CashflowForecast[]
+
+  // Phase 29: AI Categorisation & Import Batches
+  importBatches       ImportBatch[]        @relation("ImportBatches")
 
   @@index([userId])
   @@index([basiqConnectionId])
@@ -1487,10 +1495,21 @@ model MerchantMapping {
   categoryLevel2        String?
   subcategory           String?
 
+  // Essential/Recurring flags (Phase 29)
+  isEssential           Boolean   @default(false)
+  isRecurring           Boolean   @default(false)
+  suggestedFrequency    String?   // WEEKLY, FORTNIGHTLY, MONTHLY, etc.
+
   // Learning metadata
   confidence            Float     @default(1.0)   // How confident this mapping is
   source                String    @default("RULE") // RULE, USER, AI
   usageCount            Int       @default(0)     // How many times applied
+
+  // AI Learning context (Phase 29)
+  aiConfidence          Float?    // Last AI confidence for this merchant
+  userCorrectionCount   Int       @default(0)     // Times user corrected AI
+  lastAIContext         String?   // Context that led to AI suggestion
+  lastConfirmedAt       DateTime? // When user last confirmed this mapping
 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -1498,6 +1517,7 @@ model MerchantMapping {
   @@unique([userId, merchantRaw])
   @@index([merchantRaw])
   @@index([userId])
+  @@index([confidence])
   @@map("merchant_mappings")
 }
 
@@ -1939,6 +1959,7 @@ enum ImportFileFormat {
 enum ImportStatus {
   PENDING
   PROCESSING
+  AWAITING_REVIEW
   COMPLETED
   FAILED
   PARTIAL
@@ -3596,4 +3617,257 @@ model BillingTransaction {
   @@index([status])
   @@index([createdAt])
   @@map("billing_transactions")
+}
+
+// =============================================================================
+// PHASE 29: AI TRANSACTION CATEGORISATION & LEARNING
+// =============================================================================
+
+enum AILearningSource {
+  AI_PREDICTION        // Original AI prediction
+  USER_CORRECTION      // User corrected the AI prediction
+  USER_CONFIRMED       // User confirmed AI prediction was correct
+  RULE_MATCH           // Matched by categorisation rule
+  BASIQ_ENRICHED       // Enriched by BASIQ data
+}
+
+enum ImportReviewStatus {
+  PENDING              // Awaiting user review
+  AUTO_ACCEPTED        // High confidence, auto-accepted
+  USER_CONFIRMED       // User confirmed categorisation
+  USER_EDITED          // User edited categorisation
+  SKIPPED              // User skipped/dismissed
+}
+
+model AICategorizationLearning {
+  id                    String              @id @default(uuid())
+  userId                String
+  transactionId         String              @unique
+
+  // Original AI prediction
+  aiCategoryLevel1      String?
+  aiCategoryLevel2      String?
+  aiSubcategory         String?
+  aiConfidence          Float               // Original AI confidence (0-1)
+  aiIsEssential         Boolean             @default(false)
+  aiIsRecurring         Boolean             @default(false)
+  aiReasoning           String?             @db.Text
+
+  // Final (user-confirmed or corrected) values
+  finalCategoryLevel1   String?
+  finalCategoryLevel2   String?
+  finalSubcategory      String?
+  finalIsEssential      Boolean             @default(false)
+  finalIsRecurring      Boolean             @default(false)
+
+  // Learning metadata
+  wasEdited             Boolean             @default(false)
+  source                AILearningSource    @default(AI_PREDICTION)
+  appliedToSimilar      Boolean             @default(false)  // Applied to other similar transactions
+  similarTransactionCount Int               @default(0)      // How many similar transactions updated
+
+  // Merchant learning context
+  merchantRaw           String?
+  merchantStandardised  String?
+  amountRange           String?             // e.g., "0-50", "50-100", "100-500"
+
+  // Timestamps
+  predictionAt          DateTime            @default(now())
+  confirmedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  // Relationships
+  user                  User                @relation("AICategorizationLearnings", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([merchantStandardised])
+  @@index([aiCategoryLevel1])
+  @@index([source])
+  @@index([wasEdited])
+  @@map("ai_categorization_learnings")
+}
+
+model AILearningPattern {
+  id                    String    @id @default(uuid())
+  userId                String?   // Null = global pattern, set = user-specific
+
+  // Pattern identification
+  patternType           String    // MERCHANT, AMOUNT_RANGE, DESCRIPTION_KEYWORD, TIME_OF_DAY, DAY_OF_WEEK
+  patternValue          String    // The pattern value (merchant name, keyword, amount range)
+  patternHash           String    // Hash for quick lookup
+
+  // Learned categorisation
+  categoryLevel1        String
+  categoryLevel2        String?
+  subcategory           String?
+  isEssential           Boolean   @default(false)
+  isRecurring           Boolean   @default(false)
+  suggestedFrequency    String?   // WEEKLY, FORTNIGHTLY, MONTHLY, etc.
+
+  // Learning strength (increases with each confirmation)
+  confidence            Float     @default(0.5)   // Confidence in this pattern (0-1)
+  matchCount            Int       @default(1)     // Times this pattern matched
+  confirmCount          Int       @default(0)     // Times user confirmed
+  correctionCount       Int       @default(0)     // Times user corrected
+
+  // Context
+  averageAmount         Float?
+  minAmount             Float?
+  maxAmount             Float?
+
+  // Timestamps
+  lastMatchAt           DateTime  @default(now())
+  lastConfirmedAt       DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([userId, patternType, patternHash])
+  @@index([userId])
+  @@index([patternType])
+  @@index([patternHash])
+  @@index([confidence])
+  @@map("ai_learning_patterns")
+}
+
+model ImportBatch {
+  id                    String              @id @default(uuid())
+  userId                String
+  accountId             String
+
+  // Source information
+  source                TransactionSource   @default(MANUAL)
+  fileName              String?
+  fileHash              String?             // SHA256 hash for deduplication
+  fileSize              Int?
+
+  // Date range of transactions in this batch
+  dateRangeStart        DateTime
+  dateRangeEnd          DateTime
+
+  // Statistics
+  totalTransactions     Int                 @default(0)
+  importedCount         Int                 @default(0)
+  duplicatesSkipped     Int                 @default(0)
+  duplicatesMerged      Int                 @default(0)
+  errorCount            Int                 @default(0)
+
+  // AI categorisation stats
+  aiCategorisedCount    Int                 @default(0)
+  autoAcceptedCount     Int                 @default(0)
+  needsReviewCount      Int                 @default(0)
+  userConfirmedCount    Int                 @default(0)
+  userEditedCount       Int                 @default(0)
+
+  // Processing status
+  status                ImportStatus        @default(PENDING)
+  processingStartedAt   DateTime?
+  processingCompletedAt DateTime?
+  errorMessage          String?             @db.Text
+
+  // Balance information
+  openingBalance        Float?
+  closingBalance        Float?
+  balanceUpdated        Boolean             @default(false)
+
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  // Relationships
+  user                  User                @relation("ImportBatches", fields: [userId], references: [id], onDelete: Cascade)
+  account               Account             @relation("ImportBatches", fields: [accountId], references: [id], onDelete: Cascade)
+  reviewQueue           TransactionReviewQueue[]
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([status])
+  @@index([dateRangeStart, dateRangeEnd])
+  @@index([fileHash])
+  @@map("import_batches")
+}
+
+model TransactionReviewQueue {
+  id                    String              @id @default(uuid())
+  userId                String
+  importBatchId         String?
+  transactionId         String?             // Set after transaction is created
+
+  // Transaction data (before creation)
+  tempData              Json                // Stores transaction data before confirmed
+
+  // AI Prediction
+  aiCategoryLevel1      String?
+  aiCategoryLevel2      String?
+  aiSubcategory         String?
+  aiConfidence          Float               @default(0)
+  aiIsEssential         Boolean             @default(false)
+  aiIsRecurring         Boolean             @default(false)
+  aiReasoning           String?
+
+  // Confidence classification
+  confidenceLevel       String              @default("MANUAL")  // AUTO_ACCEPT, NEEDS_REVIEW, MANUAL
+
+  // Review status
+  status                ImportReviewStatus  @default(PENDING)
+
+  // User edits (if any)
+  userCategoryLevel1    String?
+  userCategoryLevel2    String?
+  userSubcategory       String?
+  userIsEssential       Boolean?
+  userIsRecurring       Boolean?
+
+  // Apply to similar
+  applyToSimilar        Boolean             @default(false)
+  similarMerchantPattern String?            // Pattern to match similar transactions
+
+  // Duplicate detection
+  isDuplicate           Boolean             @default(false)
+  duplicateOf           String?             // ID of duplicate transaction
+  duplicateAction       String?             // SKIP, MERGE, IMPORT_ANYWAY
+
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  reviewedAt            DateTime?
+  updatedAt             DateTime            @updatedAt
+
+  // Relationships
+  user                  User                @relation("TransactionReviewQueue", fields: [userId], references: [id], onDelete: Cascade)
+  importBatch           ImportBatch?        @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([importBatchId])
+  @@index([status])
+  @@index([confidenceLevel])
+  @@map("transaction_review_queue")
+}
+
+// User settings for AI categorisation
+model UserCategorizationSettings {
+  id                      String    @id @default(uuid())
+  userId                  String    @unique
+
+  // Confidence thresholds
+  autoAcceptThreshold     Float     @default(0.90)  // >= 90% auto-accept
+  reviewThreshold         Float     @default(0.70)  // >= 70% show for review
+
+  // AI behaviour
+  enableAI                Boolean   @default(true)
+  learnFromConfirmations  Boolean   @default(true)
+  applyLearningsGlobally  Boolean   @default(false) // Apply learnings to all users (admin only)
+
+  // Review preferences
+  showConfidenceScores    Boolean   @default(true)
+  showAIReasoning         Boolean   @default(true)
+  defaultApplyToSimilar   Boolean   @default(true)
+
+  // Notification preferences
+  notifyOnPendingReview   Boolean   @default(true)
+  pendingReviewThreshold  Int       @default(10)    // Notify when X transactions pending
+
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@map("user_categorization_settings")
 }
