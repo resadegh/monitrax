@@ -4,7 +4,7 @@
  * Stores patterns, corrections, and improves predictions over time
  */
 
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/db';
 import { AILearningSource, ImportReviewStatus } from '@prisma/client';
 import crypto from 'crypto';
 

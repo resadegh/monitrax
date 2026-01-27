@@ -3,7 +3,7 @@
  * Detects recurring transactions and links/creates expense entries
  */
 
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/db';
 import { Frequency } from '@prisma/client';
 
 // =============================================================================

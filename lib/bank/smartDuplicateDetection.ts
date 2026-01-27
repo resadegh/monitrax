@@ -6,7 +6,7 @@
  * - Intelligent merging of duplicate data
  */
 
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/db';
 import { NormalisedTransaction, DuplicateCheckResult } from './types';
 
 // =============================================================================
