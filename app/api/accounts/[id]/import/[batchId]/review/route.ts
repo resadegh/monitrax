@@ -5,12 +5,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/db';
+import { withAuth } from '@/lib/middleware';
 import {
   processUserConfirmation,
-  bulkConfirmAutoAccepted,
   type LearningContext,
   type CategoryPrediction,
   type UserConfirmation,
@@ -25,122 +23,120 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; batchId: string }> }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  return withAuth(request, async (authReq) => {
+    try {
+      const { id: accountId, batchId } = await params;
+      const userId = authReq.user!.userId;
 
-    const { id: accountId, batchId } = await params;
-
-    // Verify ownership
-    const batch = await prisma.importBatch.findFirst({
-      where: {
-        id: batchId,
-        accountId,
-        userId: session.user.id,
-      },
-      include: {
-        account: {
-          select: { name: true, type: true, institution: true },
+      // Verify ownership
+      const batch = await prisma.importBatch.findFirst({
+        where: {
+          id: batchId,
+          accountId,
+          userId,
         },
-      },
-    });
-
-    if (!batch) {
-      return NextResponse.json({ error: 'Import batch not found' }, { status: 404 });
-    }
-
-    // Get review items
-    const reviewItems = await prisma.transactionReviewQueue.findMany({
-      where: {
-        importBatchId: batchId,
-        userId: session.user.id,
-      },
-      orderBy: [
-        { status: 'asc' }, // Pending first
-        { aiConfidence: 'desc' }, // Higher confidence first
-      ],
-    });
-
-    // Group by confidence level
-    const grouped = {
-      needsReview: reviewItems.filter(r =>
-        r.status === ImportReviewStatus.PENDING &&
-        r.confidenceLevel === 'NEEDS_REVIEW'
-      ),
-      manual: reviewItems.filter(r =>
-        r.status === ImportReviewStatus.PENDING &&
-        r.confidenceLevel === 'MANUAL'
-      ),
-      confirmed: reviewItems.filter(r =>
-        r.status === ImportReviewStatus.USER_CONFIRMED ||
-        r.status === ImportReviewStatus.USER_EDITED
-      ),
-      skipped: reviewItems.filter(r =>
-        r.status === ImportReviewStatus.SKIPPED
-      ),
-    };
-
-    // Calculate statistics
-    const stats = {
-      total: reviewItems.length,
-      pending: grouped.needsReview.length + grouped.manual.length,
-      needsReview: grouped.needsReview.length,
-      requiresManual: grouped.manual.length,
-      confirmed: grouped.confirmed.length,
-      skipped: grouped.skipped.length,
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        batch: {
-          id: batch.id,
-          fileName: batch.fileName,
-          dateRange: {
-            start: batch.dateRangeStart,
-            end: batch.dateRangeEnd,
+        include: {
+          account: {
+            select: { name: true, type: true, institution: true },
           },
-          status: batch.status,
-          account: batch.account,
         },
-        statistics: stats,
-        items: reviewItems.map(item => ({
-          id: item.id,
-          transaction: item.tempData,
-          aiPrediction: {
-            categoryLevel1: item.aiCategoryLevel1,
-            categoryLevel2: item.aiCategoryLevel2,
-            subcategory: item.aiSubcategory,
-            isEssential: item.aiIsEssential,
-            isRecurring: item.aiIsRecurring,
-            confidence: item.aiConfidence,
-            reasoning: item.aiReasoning,
+      });
+
+      if (!batch) {
+        return NextResponse.json({ error: 'Import batch not found' }, { status: 404 });
+      }
+
+      // Get review items
+      const reviewItems = await prisma.transactionReviewQueue.findMany({
+        where: {
+          importBatchId: batchId,
+          userId,
+        },
+        orderBy: [
+          { status: 'asc' }, // Pending first
+          { aiConfidence: 'desc' }, // Higher confidence first
+        ],
+      });
+
+      // Group by confidence level
+      const grouped = {
+        needsReview: reviewItems.filter(r =>
+          r.status === ImportReviewStatus.PENDING &&
+          r.confidenceLevel === 'NEEDS_REVIEW'
+        ),
+        manual: reviewItems.filter(r =>
+          r.status === ImportReviewStatus.PENDING &&
+          r.confidenceLevel === 'MANUAL'
+        ),
+        confirmed: reviewItems.filter(r =>
+          r.status === ImportReviewStatus.USER_CONFIRMED ||
+          r.status === ImportReviewStatus.USER_EDITED
+        ),
+        skipped: reviewItems.filter(r =>
+          r.status === ImportReviewStatus.SKIPPED
+        ),
+      };
+
+      // Calculate statistics
+      const stats = {
+        total: reviewItems.length,
+        pending: grouped.needsReview.length + grouped.manual.length,
+        needsReview: grouped.needsReview.length,
+        requiresManual: grouped.manual.length,
+        confirmed: grouped.confirmed.length,
+        skipped: grouped.skipped.length,
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          batch: {
+            id: batch.id,
+            fileName: batch.fileName,
+            dateRange: {
+              start: batch.dateRangeStart,
+              end: batch.dateRangeEnd,
+            },
+            status: batch.status,
+            account: batch.account,
           },
-          userValues: item.userCategoryLevel1 ? {
-            categoryLevel1: item.userCategoryLevel1,
-            categoryLevel2: item.userCategoryLevel2,
-            subcategory: item.userSubcategory,
-            isEssential: item.userIsEssential,
-            isRecurring: item.userIsRecurring,
-          } : null,
-          confidenceLevel: item.confidenceLevel,
-          status: item.status,
-          isDuplicate: item.isDuplicate,
-          duplicateOf: item.duplicateOf,
-          applyToSimilar: item.applyToSimilar,
-          reviewedAt: item.reviewedAt,
-        })),
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching review queue:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch review queue' },
-      { status: 500 }
-    );
-  }
+          statistics: stats,
+          items: reviewItems.map(item => ({
+            id: item.id,
+            transaction: item.tempData,
+            aiPrediction: {
+              categoryLevel1: item.aiCategoryLevel1,
+              categoryLevel2: item.aiCategoryLevel2,
+              subcategory: item.aiSubcategory,
+              isEssential: item.aiIsEssential,
+              isRecurring: item.aiIsRecurring,
+              confidence: item.aiConfidence,
+              reasoning: item.aiReasoning,
+            },
+            userValues: item.userCategoryLevel1 ? {
+              categoryLevel1: item.userCategoryLevel1,
+              categoryLevel2: item.userCategoryLevel2,
+              subcategory: item.userSubcategory,
+              isEssential: item.userIsEssential,
+              isRecurring: item.userIsRecurring,
+            } : null,
+            confidenceLevel: item.confidenceLevel,
+            status: item.status,
+            isDuplicate: item.isDuplicate,
+            duplicateOf: item.duplicateOf,
+            applyToSimilar: item.applyToSimilar,
+            reviewedAt: item.reviewedAt,
+          })),
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching review queue:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch review queue' },
+        { status: 500 }
+      );
+    }
+  });
 }
 
 // =============================================================================
@@ -169,154 +165,152 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; batchId: string }> }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  return withAuth(request, async (authReq) => {
+    try {
+      const { id: accountId, batchId } = await params;
+      const userId = authReq.user!.userId;
 
-    const { id: accountId, batchId } = await params;
+      // Verify ownership
+      const batch = await prisma.importBatch.findFirst({
+        where: {
+          id: batchId,
+          accountId,
+          userId,
+        },
+      });
 
-    // Verify ownership
-    const batch = await prisma.importBatch.findFirst({
-      where: {
-        id: batchId,
-        accountId,
-        userId: session.user.id,
-      },
-    });
+      if (!batch) {
+        return NextResponse.json({ error: 'Import batch not found' }, { status: 404 });
+      }
 
-    if (!batch) {
-      return NextResponse.json({ error: 'Import batch not found' }, { status: 404 });
-    }
+      const body: BulkReviewRequest = await request.json();
+      const { confirmations, confirmAllPending } = body;
 
-    const body: BulkReviewRequest = await request.json();
-    const { confirmations, confirmAllPending } = body;
+      const results = {
+        confirmed: 0,
+        edited: 0,
+        skipped: 0,
+        transactionsCreated: 0,
+        similarUpdated: 0,
+        errors: [] as string[],
+      };
 
-    const results = {
-      confirmed: 0,
-      edited: 0,
-      skipped: 0,
-      transactionsCreated: 0,
-      similarUpdated: 0,
-      errors: [] as string[],
-    };
+      // Handle bulk confirm all pending
+      if (confirmAllPending) {
+        const pendingItems = await prisma.transactionReviewQueue.findMany({
+          where: {
+            importBatchId: batchId,
+            userId,
+            status: ImportReviewStatus.PENDING,
+          },
+        });
 
-    // Handle bulk confirm all pending
-    if (confirmAllPending) {
-      const pendingItems = await prisma.transactionReviewQueue.findMany({
+        for (const item of pendingItems) {
+          try {
+            await confirmReviewItem(
+              userId,
+              accountId,
+              batchId,
+              item,
+              'CONFIRM',
+              null,
+              false
+            );
+            results.confirmed++;
+            results.transactionsCreated++;
+          } catch (err) {
+            results.errors.push(`Failed to confirm item ${item.id}`);
+          }
+        }
+      } else if (confirmations && confirmations.length > 0) {
+        // Process individual confirmations
+        for (const confirmation of confirmations) {
+          const item = await prisma.transactionReviewQueue.findFirst({
+            where: {
+              id: confirmation.itemId,
+              importBatchId: batchId,
+              userId,
+            },
+          });
+
+          if (!item) {
+            results.errors.push(`Item ${confirmation.itemId} not found`);
+            continue;
+          }
+
+          try {
+            const result = await confirmReviewItem(
+              userId,
+              accountId,
+              batchId,
+              item,
+              confirmation.action,
+              confirmation.values || null,
+              confirmation.applyToSimilar || false
+            );
+
+            if (confirmation.action === 'CONFIRM') {
+              results.confirmed++;
+              results.transactionsCreated++;
+            } else if (confirmation.action === 'EDIT') {
+              results.edited++;
+              results.transactionsCreated++;
+            } else if (confirmation.action === 'SKIP') {
+              results.skipped++;
+            }
+
+            results.similarUpdated += result.similarUpdated;
+          } catch (err) {
+            results.errors.push(`Failed to process item ${confirmation.itemId}`);
+          }
+        }
+      }
+
+      // Update batch statistics
+      const remainingPending = await prisma.transactionReviewQueue.count({
         where: {
           importBatchId: batchId,
-          userId: session.user.id,
+          userId,
           status: ImportReviewStatus.PENDING,
         },
       });
 
-      for (const item of pendingItems) {
-        try {
-          await confirmReviewItem(
-            session.user.id,
-            accountId,
-            batchId,
-            item,
-            'CONFIRM',
-            null,
-            false
-          );
-          results.confirmed++;
-          results.transactionsCreated++;
-        } catch (err) {
-          results.errors.push(`Failed to confirm item ${item.id}`);
-        }
-      }
-    } else if (confirmations && confirmations.length > 0) {
-      // Process individual confirmations
-      for (const confirmation of confirmations) {
-        const item = await prisma.transactionReviewQueue.findFirst({
-          where: {
-            id: confirmation.itemId,
-            importBatchId: batchId,
-            userId: session.user.id,
+      const confirmedCount = await prisma.transactionReviewQueue.count({
+        where: {
+          importBatchId: batchId,
+          userId,
+          status: {
+            in: [ImportReviewStatus.USER_CONFIRMED, ImportReviewStatus.USER_EDITED],
           },
-        });
-
-        if (!item) {
-          results.errors.push(`Item ${confirmation.itemId} not found`);
-          continue;
-        }
-
-        try {
-          const result = await confirmReviewItem(
-            session.user.id,
-            accountId,
-            batchId,
-            item,
-            confirmation.action,
-            confirmation.values || null,
-            confirmation.applyToSimilar || false
-          );
-
-          if (confirmation.action === 'CONFIRM') {
-            results.confirmed++;
-            results.transactionsCreated++;
-          } else if (confirmation.action === 'EDIT') {
-            results.edited++;
-            results.transactionsCreated++;
-          } else if (confirmation.action === 'SKIP') {
-            results.skipped++;
-          }
-
-          results.similarUpdated += result.similarUpdated;
-        } catch (err) {
-          results.errors.push(`Failed to process item ${confirmation.itemId}`);
-        }
-      }
-    }
-
-    // Update batch statistics
-    const remainingPending = await prisma.transactionReviewQueue.count({
-      where: {
-        importBatchId: batchId,
-        userId: session.user.id,
-        status: ImportReviewStatus.PENDING,
-      },
-    });
-
-    const confirmedCount = await prisma.transactionReviewQueue.count({
-      where: {
-        importBatchId: batchId,
-        userId: session.user.id,
-        status: {
-          in: [ImportReviewStatus.USER_CONFIRMED, ImportReviewStatus.USER_EDITED],
         },
-      },
-    });
+      });
 
-    await prisma.importBatch.update({
-      where: { id: batchId },
-      data: {
-        userConfirmedCount: confirmedCount,
-        importedCount: { increment: results.transactionsCreated },
-        status: remainingPending === 0 ? ImportStatus.COMPLETED : ImportStatus.AWAITING_REVIEW,
-        ...(remainingPending === 0 ? { processingCompletedAt: new Date() } : {}),
-      },
-    });
+      await prisma.importBatch.update({
+        where: { id: batchId },
+        data: {
+          userConfirmedCount: confirmedCount,
+          importedCount: { increment: results.transactionsCreated },
+          status: remainingPending === 0 ? ImportStatus.COMPLETED : ImportStatus.AWAITING_REVIEW,
+          ...(remainingPending === 0 ? { processingCompletedAt: new Date() } : {}),
+        },
+      });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        results,
-        remainingPending,
-        batchStatus: remainingPending === 0 ? 'COMPLETED' : 'AWAITING_REVIEW',
-      },
-    });
-  } catch (error) {
-    console.error('Error processing reviews:', error);
-    return NextResponse.json(
-      { error: 'Failed to process reviews' },
-      { status: 500 }
-    );
-  }
+      return NextResponse.json({
+        success: true,
+        data: {
+          results,
+          remainingPending,
+          batchStatus: remainingPending === 0 ? 'COMPLETED' : 'AWAITING_REVIEW',
+        },
+      });
+    } catch (error) {
+      console.error('Error processing reviews:', error);
+      return NextResponse.json(
+        { error: 'Failed to process reviews' },
+        { status: 500 }
+      );
+    }
+  });
 }
 
 // =============================================================================
