@@ -116,6 +116,7 @@ function AccountsPageContent() {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showReviewPanel, setShowReviewPanel] = useState(false);
   const [reviewBatchId, setReviewBatchId] = useState<string | null>(null);
+  const [reviewAccountId, setReviewAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -371,6 +372,10 @@ function AccountsPageContent() {
         description={`Manage your bank accounts • Total balance: ${formatCurrency(totalBalance)}`}
         action={
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Import
+            </Button>
             <Button variant="outline" onClick={handleConnectBank} disabled={isConnecting}>
               {isConnecting ? (
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -1077,41 +1082,47 @@ function AccountsPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Phase 29: Import Dialog */}
-      {selectedAccount && (
-        <TransactionImportDialog
-          accountId={selectedAccount.id}
-          accountName={selectedAccount.name}
-          open={showImportDialog}
-          onOpenChange={setShowImportDialog}
-          onImportComplete={(batchId, needsReview) => {
-            setShowImportDialog(false);
-            if (needsReview) {
-              setReviewBatchId(batchId);
-              setShowReviewPanel(true);
-            } else {
-              // Reload account to show new transactions
-              loadAccounts();
-            }
-          }}
-        />
-      )}
+      {/* Phase 29: Import Dialog - supports both account-specific and main page import */}
+      <TransactionImportDialog
+        accountId={selectedAccount?.id}
+        accountName={selectedAccount?.name}
+        accounts={accounts.map(a => ({ id: a.id, name: a.name, type: a.type, institution: a.institution }))}
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onImportComplete={(batchId, accountId, needsReview) => {
+          setShowImportDialog(false);
+          if (needsReview) {
+            setReviewBatchId(batchId);
+            setReviewAccountId(accountId);
+            setShowReviewPanel(true);
+          } else {
+            // Reload accounts to show new data
+            loadAccounts();
+          }
+        }}
+        onAccountCreated={() => {
+          // Reload accounts list when new account created
+          loadAccounts();
+        }}
+      />
 
       {/* Phase 29: Review Panel Dialog */}
-      {selectedAccount && reviewBatchId && (
+      {reviewBatchId && reviewAccountId && (
         <Dialog open={showReviewPanel} onOpenChange={setShowReviewPanel}>
           <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
             <TransactionReviewPanel
-              accountId={selectedAccount.id}
+              accountId={reviewAccountId}
               batchId={reviewBatchId}
               onComplete={() => {
                 setShowReviewPanel(false);
                 setReviewBatchId(null);
+                setReviewAccountId(null);
                 loadAccounts();
               }}
               onCancel={() => {
                 setShowReviewPanel(false);
                 setReviewBatchId(null);
+                setReviewAccountId(null);
               }}
             />
           </DialogContent>
