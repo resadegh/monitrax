@@ -115,7 +115,7 @@ export async function POST(
       const accountInstitution = formData.get('accountInstitution') as string | null;
 
       let accountId = accountIdParam;
-      let account: { id: string; name: string; type: string; institution: string | null } | null = null;
+      let account: { id: string; name: string; type: string; institution: string | null; currentBalance: number } | null = null;
       let accountCreated = false;
 
       // Handle account creation if requested
