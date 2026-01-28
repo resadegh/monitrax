@@ -22,7 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
 import {
   Upload,
   FileText,
@@ -278,15 +278,30 @@ export function TransactionImportDialog({
         {/* Step 1: Select/Create Account (only if no accountId provided) */}
         {step === 'select-account' && (
           <div className="space-y-4 pt-4">
-            <RadioGroup value={accountMode} onValueChange={(v) => setAccountMode(v as AccountMode)}>
+            <div className="space-y-2">
               {/* New Account Option */}
-              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => setAccountMode('new')}>
-                <RadioGroupItem value="new" id="new" className="mt-1" />
+              <div
+                className={cn(
+                  "flex items-start space-x-3 p-3 border rounded-lg cursor-pointer transition-colors",
+                  accountMode === 'new'
+                    ? "border-primary bg-primary/5"
+                    : "hover:bg-muted/50"
+                )}
+                onClick={() => setAccountMode('new')}
+              >
+                <div className={cn(
+                  "mt-1 h-4 w-4 rounded-full border-2 flex items-center justify-center",
+                  accountMode === 'new' ? "border-primary" : "border-muted-foreground"
+                )}>
+                  {accountMode === 'new' && (
+                    <div className="h-2 w-2 rounded-full bg-primary" />
+                  )}
+                </div>
                 <div className="flex-1">
-                  <Label htmlFor="new" className="flex items-center gap-2 cursor-pointer font-medium">
+                  <div className="flex items-center gap-2 font-medium">
                     <Plus className="h-4 w-4" />
                     Create New Account
-                  </Label>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Create a new account from the imported file
                   </p>
@@ -295,20 +310,35 @@ export function TransactionImportDialog({
 
               {/* Existing Account Option */}
               {accounts.length > 0 && (
-                <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => setAccountMode('existing')}>
-                  <RadioGroupItem value="existing" id="existing" className="mt-1" />
+                <div
+                  className={cn(
+                    "flex items-start space-x-3 p-3 border rounded-lg cursor-pointer transition-colors",
+                    accountMode === 'existing'
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted/50"
+                  )}
+                  onClick={() => setAccountMode('existing')}
+                >
+                  <div className={cn(
+                    "mt-1 h-4 w-4 rounded-full border-2 flex items-center justify-center",
+                    accountMode === 'existing' ? "border-primary" : "border-muted-foreground"
+                  )}>
+                    {accountMode === 'existing' && (
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    )}
+                  </div>
                   <div className="flex-1">
-                    <Label htmlFor="existing" className="flex items-center gap-2 cursor-pointer font-medium">
+                    <div className="flex items-center gap-2 font-medium">
                       <Wallet className="h-4 w-4" />
                       Import to Existing Account
-                    </Label>
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       Add transactions to an existing account
                     </p>
                   </div>
                 </div>
               )}
-            </RadioGroup>
+            </div>
 
             {/* New Account Form */}
             {accountMode === 'new' && (
