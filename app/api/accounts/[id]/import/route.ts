@@ -387,15 +387,33 @@ export async function POST(
         },
       });
 
-      // Update account balance if closing balance provided
-      if (parsedFile.closingBalance !== undefined) {
-        await prisma.account.update({
-          where: { id: accountId },
+      // Calculate balance information for verification
+      // Get previous balance from account (before this import)
+      const previousBalance = account?.currentBalance ?? 0;
+
+      // Calculate net change from all processed transactions (including those in review)
+      // We use all transactions that weren't duplicates
+      let netChange = 0;
+      for (const result of [...classified.autoAccept, ...classified.needsReview, ...classified.requiresManual]) {
+        const tx = result.transaction;
+        // Inflows are positive, outflows are negative
+        netChange += tx.direction === 'IN' ? tx.amount : -tx.amount;
+      }
+
+      // Calculate expected new balance
+      const calculatedBalance = previousBalance + netChange;
+
+      // File may have closing balance - store for reference but don't auto-apply
+      // User will verify the actual balance
+      const fileClosingBalance = parsedFile.closingBalance;
+
+      // Don't auto-update account balance - let user verify first
+      // Store the file's closing balance in importBatch for reference
+      if (fileClosingBalance !== undefined) {
+        await prisma.importBatch.update({
+          where: { id: importBatch.id },
           data: {
-            currentBalance: parsedFile.closingBalance,
-            balanceSource: 'IMPORT',
-            balanceLastUpdatedAt: new Date(),
-            lastImportedBalance: parsedFile.closingBalance,
+            closingBalance: fileClosingBalance,
           },
         });
       }
@@ -426,8 +444,14 @@ export async function POST(
             fromAI: categorisationResult.fromAI,
             autoAccepted: classified.autoAccept.length,
           },
-          balanceUpdated: parsedFile.closingBalance !== undefined,
-          newBalance: parsedFile.closingBalance,
+          // Balance verification data
+          balanceInfo: {
+            previousBalance,
+            netChange,
+            calculatedBalance,
+            fileClosingBalance: fileClosingBalance ?? null,
+            needsVerification: true,
+          },
           aiUsage: categorisationResult.usage,
           requiresReview: reviewItems.length > 0,
           reviewUrl: reviewItems.length > 0

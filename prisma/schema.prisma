@@ -49,9 +49,10 @@ enum AccountType {
 }
 
 enum BalanceSource {
-  MANUAL     // User manually entered balance
-  IMPORT     // Balance from CSV/QIF/OFX import
-  BASIQ      // Balance from Open Banking (Basiq)
+  MANUAL          // User manually entered balance
+  IMPORT          // Balance from CSV/QIF/OFX import
+  BASIQ           // Balance from Open Banking (Basiq)
+  USER_VERIFIED   // User verified balance after import
 }
 
 enum IncomeType {
@@ -3770,6 +3771,8 @@ model ImportBatch {
   openingBalance        Float?
   closingBalance        Float?
   balanceUpdated        Boolean             @default(false)
+  userVerifiedBalance   Float?              // Balance verified by user after import
+  balanceVerifiedAt     DateTime?           // When user verified the balance
 
   // Timestamps
   createdAt             DateTime            @default(now())
