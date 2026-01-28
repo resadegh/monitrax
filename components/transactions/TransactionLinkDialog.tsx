@@ -660,7 +660,7 @@ export function TransactionLinkDialog({
                   <div className="flex items-center gap-2">
                     <Checkbox
                       checked={selectedVendorTransactions.has(tx.id)}
-                      onCheckedChange={() => toggleVendorTransaction(tx.id)}
+                      className="pointer-events-none"
                     />
                     <div>
                       <p className="text-sm font-medium truncate max-w-[180px]">

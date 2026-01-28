@@ -55,7 +55,7 @@ interface TransactionImportDialogProps {
   onAccountCreated?: (account: Account) => void;
 }
 
-type ImportStep = 'select-account' | 'upload' | 'processing' | 'complete' | 'error';
+type ImportStep = 'select-account' | 'upload' | 'processing' | 'confirm-balance' | 'complete' | 'error';
 type AccountMode = 'existing' | 'new';
 
 interface ImportResult {
@@ -74,6 +74,13 @@ interface ImportResult {
   duplicateInfo?: {
     count: number;
     message: string;
+  };
+  balanceInfo?: {
+    previousBalance: number;
+    netChange: number;
+    calculatedBalance: number;
+    fileClosingBalance: number | null;
+    needsVerification: boolean;
   };
 }
 
@@ -113,6 +120,10 @@ export function TransactionImportDialog({
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountType, setNewAccountType] = useState('TRANSACTIONAL');
   const [newAccountInstitution, setNewAccountInstitution] = useState('');
+
+  // Balance verification state
+  const [verifiedBalance, setVerifiedBalance] = useState<string>('');
+  const [isVerifyingBalance, setIsVerifyingBalance] = useState(false);
 
   // Reset step when dialog opens/closes or accountId changes
   useEffect(() => {
@@ -201,7 +212,15 @@ export function TransactionImportDialog({
 
       setProgress(100);
       setResult(data.data);
-      setStep('complete');
+
+      // Go to balance confirmation step if balance info is available
+      if (data.data.balanceInfo?.needsVerification) {
+        // Pre-fill with calculated balance
+        setVerifiedBalance(data.data.balanceInfo.calculatedBalance.toFixed(2));
+        setStep('confirm-balance');
+      } else {
+        setStep('complete');
+      }
 
       // Notify parent if account was created
       if (data.data.accountCreated && onAccountCreated) {
@@ -231,6 +250,8 @@ export function TransactionImportDialog({
     setNewAccountName('');
     setNewAccountType('TRANSACTIONAL');
     setNewAccountInstitution('');
+    setVerifiedBalance('');
+    setIsVerifyingBalance(false);
     onOpenChange(false);
   };
 
@@ -246,6 +267,51 @@ export function TransactionImportDialog({
       onImportComplete(result.batchId, result.accountId, false);
     }
     handleClose();
+  };
+
+  const handleVerifyBalance = async () => {
+    if (!result || !token) return;
+
+    const balanceValue = parseFloat(verifiedBalance);
+    if (isNaN(balanceValue)) {
+      setError('Please enter a valid balance amount');
+      return;
+    }
+
+    setIsVerifyingBalance(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/accounts/${result.accountId}/balance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          verifiedBalance: balanceValue,
+          batchId: result.batchId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to verify balance');
+      }
+
+      // Move to complete step
+      setStep('complete');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to verify balance');
+    } finally {
+      setIsVerifyingBalance(false);
+    }
+  };
+
+  const handleSkipVerification = () => {
+    // Skip balance verification and go to complete
+    setStep('complete');
   };
 
   const getDialogDescription = () => {
@@ -510,7 +576,112 @@ export function TransactionImportDialog({
           </div>
         )}
 
-        {/* Step 4: Complete */}
+        {/* Step 4: Confirm Balance */}
+        {step === 'confirm-balance' && result && result.balanceInfo && (
+          <div className="space-y-4 pt-4">
+            <div className="text-center space-y-2">
+              <Wallet className="h-12 w-12 mx-auto text-primary" />
+              <p className="font-medium">Verify Account Balance</p>
+              <p className="text-sm text-muted-foreground">
+                Please confirm your current bank balance
+              </p>
+            </div>
+
+            {/* Balance Calculation Summary */}
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Previous Balance</span>
+                <span className="font-medium">
+                  ${result.balanceInfo.previousBalance.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Net Change ({result.statistics.imported - result.statistics.duplicatesSkipped} transactions)
+                </span>
+                <span className={cn(
+                  "font-medium",
+                  result.balanceInfo.netChange >= 0 ? "text-green-600" : "text-red-600"
+                )}>
+                  {result.balanceInfo.netChange >= 0 ? '+' : ''}
+                  ${result.balanceInfo.netChange.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="border-t pt-2 flex justify-between">
+                <span className="font-medium">Calculated Balance</span>
+                <span className="font-bold">
+                  ${result.balanceInfo.calculatedBalance.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              {result.balanceInfo.fileClosingBalance !== null && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Balance from file</span>
+                  <span>
+                    ${result.balanceInfo.fileClosingBalance.toLocaleString('en-AU', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Actual Balance Input */}
+            <div className="space-y-2">
+              <Label htmlFor="verifiedBalance">
+                Actual Bank Balance
+                <span className="text-muted-foreground font-normal ml-1">(as shown in your bank)</span>
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="verifiedBalance"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  className="pl-7"
+                  value={verifiedBalance}
+                  onChange={(e) => setVerifiedBalance(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter the current balance shown in your bank app or statement
+              </p>
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={handleSkipVerification}
+                disabled={isVerifyingBalance}
+              >
+                Skip
+              </Button>
+              <Button
+                onClick={handleVerifyBalance}
+                disabled={isVerifyingBalance || !verifiedBalance}
+              >
+                {isVerifyingBalance ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Confirm Balance
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Complete */}
         {step === 'complete' && result && (
           <div className="space-y-4 pt-4">
             <div className="text-center space-y-2">
@@ -567,7 +738,7 @@ export function TransactionImportDialog({
           </div>
         )}
 
-        {/* Step 5: Error */}
+        {/* Step 6: Error */}
         {step === 'error' && (
           <div className="space-y-4 pt-4">
             <div className="text-center space-y-2">
