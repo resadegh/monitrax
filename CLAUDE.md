@@ -1,33 +1,252 @@
-# Monitrax - Claude Code Instructions
+# Monitrax - Claude Code Change Management Protocol
 
-## CRITICAL: Read Before Any Change
-
-Before making ANY code changes, you MUST:
-
-1. **Read the relevant blueprint document(s)** from `docs/blueprint/`
-2. **Verify alignment** with the architecture principles below
-3. **Check the Phase document** if working on a specific feature
-
-## Authoritative Documentation
-
-The `docs/blueprint/` folder is the **single source of truth**. Key documents:
-
-| Document | Purpose |
-|----------|---------|
-| `MASTER_BLUEPRINT.md` | Complete system overview and status |
-| `00_OVERVIEW.md` | System overview and guiding principles |
-| `01_ARCHITECTURE_OVERVIEW.md` | Technical architecture (7 layers) |
-| `02_DESIGN_PRINCIPLES.md` | Design philosophy and rules |
-| `03_DATA_MODEL.md` | Entity specifications and relationships |
-| `04_GRDCS_SPECIFICATION.md` | Global data consistency rules |
-| `06_UI_UX_FOUNDATION.md` | UI/UX standards |
-| `07_API_STANDARDS.md` | API contracts and patterns |
+> **This document defines the MANDATORY change management process for ALL Claude Code sessions.**
+> **Every instruction in this file MUST be followed WITHOUT user prompting.**
 
 ---
 
-## Mandatory Architecture Rules
+## PART 1: SESSION STARTUP PROTOCOL (MANDATORY)
 
-### 1. Master Financial Service (CRITICAL)
+At the START of every new session, BEFORE making ANY changes, you MUST complete these steps:
+
+### Step 1: Read ALL Core Blueprint Documents
+
+Read these documents IN ORDER to understand the current system state:
+
+```
+docs/blueprint/00_OVERVIEW.md
+docs/blueprint/01_ARCHITECTURE_OVERVIEW.md
+docs/blueprint/02_DESIGN_PRINCIPLES.md
+docs/blueprint/03_DATA_MODEL.md
+docs/blueprint/04_GRDCS_SPECIFICATION.md
+docs/blueprint/06_UI_UX_FOUNDATION.md
+docs/blueprint/07_API_STANDARDS.md
+docs/blueprint/MASTER_BLUEPRINT.md
+```
+
+### Step 2: Read Relevant Phase Documents
+
+If the requested change relates to a specific feature, read the corresponding Phase document:
+
+```
+docs/blueprint/PHASE_*.md  (relevant to the change)
+```
+
+### Step 3: Review Current Codebase State
+
+Before making changes, explore and understand:
+
+1. **Schema**: Read `prisma/schema.prisma` to understand data models
+2. **Affected Files**: Identify and read all files that will be modified
+3. **Related Components**: Review connected components/APIs
+4. **Recent Changes**: Check `docs/blueprint/CHANGELOG_*.md` for recent updates
+
+### Step 4: Create Session Todo List
+
+Use TodoWrite to create a task list including:
+- [ ] Blueprint documents read
+- [ ] Codebase reviewed
+- [ ] Implementation tasks (specific to request)
+- [ ] Documentation updates
+- [ ] PR creation
+
+---
+
+## PART 2: CHANGE MANAGEMENT PROCESS
+
+### 2.1 Branch Strategy
+
+**ALWAYS create a feature branch for changes:**
+
+```bash
+git checkout -b claude/{feature-name}-{session-id-suffix}
+```
+
+**NEVER commit directly to main/master.**
+
+### 2.2 Implementation Standards
+
+Follow these rules for ALL code changes:
+
+| Rule | Description |
+|------|-------------|
+| **Small Commits** | Each commit should be atomic and reversible |
+| **Descriptive Messages** | Commit messages must explain WHY, not just WHAT |
+| **No Breaking Changes** | Maintain backward compatibility |
+| **Test Before Commit** | Run `npm run build` and `npm run lint` before committing |
+
+### 2.3 Commit Message Format
+
+```
+type(scope): description
+
+- Detail 1
+- Detail 2
+
+Refs: docs/blueprint/PHASE_XX.md
+https://claude.ai/code/{session-url}
+```
+
+Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+
+---
+
+## PART 3: DOCUMENTATION REQUIREMENTS (MANDATORY)
+
+### 3.1 What MUST Be Documented
+
+After EVERY change, update the relevant documentation:
+
+| Change Type | Documentation Required |
+|-------------|----------------------|
+| **New Feature** | Update Phase doc, MASTER_BLUEPRINT.md, create CHANGELOG entry |
+| **Bug Fix** | Update CHANGELOG, add to ERROR_LOG.md if applicable |
+| **Schema Change** | Update 03_DATA_MODEL.md, Phase doc, MASTER_BLUEPRINT.md |
+| **API Change** | Update 07_API_STANDARDS.md, Phase doc |
+| **UI Change** | Update 06_UI_UX_FOUNDATION.md if pattern changes |
+| **New Engine** | Update 01_ARCHITECTURE_OVERVIEW.md, create/update Phase doc |
+
+### 3.2 Changelog Entry Format
+
+Create or update `docs/blueprint/CHANGELOG_YYYY_MM_DD.md`:
+
+```markdown
+# Changelog - YYYY-MM-DD
+
+## Session: {session-id}
+
+### Changes Made
+- **Type**: Feature/Fix/Enhancement
+- **Scope**: {module/component affected}
+- **Description**: {what was changed and why}
+
+### Files Modified
+- `path/to/file1.ts` - {description of change}
+- `path/to/file2.ts` - {description of change}
+
+### Documentation Updated
+- `docs/blueprint/PHASE_XX.md` - {what was updated}
+- `docs/blueprint/MASTER_BLUEPRINT.md` - {what was updated}
+
+### Testing
+- [ ] Build passes
+- [ ] Lint passes
+- [ ] Manual testing completed
+
+### PR
+- PR URL: {url}
+- Status: {Open/Merged}
+```
+
+### 3.3 Phase Document Updates
+
+When implementing Phase features, update the Phase document:
+
+1. Mark completed items as ✅
+2. Update implementation notes
+3. Add any new requirements discovered
+4. Document any deviations from original spec
+
+### 3.4 Master Blueprint Updates
+
+Update `docs/blueprint/MASTER_BLUEPRINT.md` when:
+
+- Phase status changes (In Progress → Complete)
+- New capabilities are added
+- Architecture changes occur
+
+---
+
+## PART 4: DEPLOYMENT PROCESS (PR REQUIRED)
+
+### 4.1 Every Deployment = Pull Request
+
+**NO direct deployments. ALL changes go through PR.**
+
+### 4.2 PR Creation Checklist
+
+Before creating PR, verify:
+
+- [ ] All code changes committed
+- [ ] All documentation updated
+- [ ] Build passes (`npm run build`)
+- [ ] Lint passes (`npm run lint`)
+- [ ] Changelog entry created
+- [ ] Relevant Phase docs updated
+
+### 4.3 PR Template
+
+When creating PR, use this format:
+
+```markdown
+## Summary
+{Brief description of changes}
+
+## Changes Made
+- {Change 1}
+- {Change 2}
+
+## Documentation Updated
+- [ ] Changelog entry created
+- [ ] Phase document updated
+- [ ] Master Blueprint updated (if applicable)
+
+## Testing
+- [ ] Build passes
+- [ ] Lint passes
+- [ ] Manual testing completed
+
+## Blueprint Alignment
+- Follows: docs/blueprint/PHASE_XX.md
+- Architecture: docs/blueprint/01_ARCHITECTURE_OVERVIEW.md
+
+https://claude.ai/code/{session-url}
+```
+
+### 4.4 PR Delivery
+
+After creating PR:
+1. Provide the PR URL to the user
+2. Summarize what was changed
+3. List any follow-up actions needed
+
+---
+
+## PART 5: VERSION CONTROL STANDARDS
+
+### 5.1 File Change Tracking
+
+For every session, maintain awareness of:
+
+```
+Files Created:    {list}
+Files Modified:   {list}
+Files Deleted:    {list}
+Docs Updated:     {list}
+```
+
+### 5.2 Rollback Readiness
+
+Every change must be reversible:
+
+- Commits are atomic
+- No destructive database operations without backup plan
+- Document rollback steps for complex changes
+
+### 5.3 Conflict Resolution
+
+If conflicts arise:
+
+1. Fetch latest from remote
+2. Review conflicts carefully
+3. Preserve existing functionality
+4. Document resolution in commit message
+
+---
+
+## PART 6: ARCHITECTURE ENFORCEMENT
+
+### 6.1 Master Financial Service (CRITICAL)
 
 **ALL financial calculations MUST use:**
 - `lib/services/masterFinancialService.ts` → `getMasterFinancialSnapshot()`
@@ -38,11 +257,8 @@ The `docs/blueprint/` folder is the **single source of truth**. Key documents:
 - Create new calculation logic outside the Master Financial Service
 - Aggregate financial data manually in components
 
-### 2. No Duplicate Logic
+### 6.2 Canonical Utility Locations
 
-If logic appears twice, it MUST become a utility, engine, or shared component.
-
-**Canonical Utility Locations:**
 | Logic Type | Location |
 |------------|----------|
 | ALL FINANCIAL DATA | `lib/services/masterFinancialService.ts` |
@@ -55,13 +271,13 @@ If logic appears twice, it MUST become a utility, engine, or shared component.
 | Income aggregation | `lib/calculations/incomeAggregator.ts` |
 | Loan aggregation | `lib/calculations/loanAggregator.ts` |
 
-### 3. Module Boundaries (Strict)
+### 6.3 Module Boundaries (Strict)
 
 - Properties cannot fetch Loans directly
 - Loans cannot fetch Accounts directly
 - All modules request from: Snapshot Engine, Insights Engine, or their own API
 
-### 4. Financial Engines Must Be Pure
+### 6.4 Financial Engines Must Be Pure
 
 Engines must:
 - Accept raw data
@@ -69,7 +285,7 @@ Engines must:
 - **NEVER** mutate global state
 - **NEVER** fetch from external sources
 
-### 5. GRDCS Entity Contract
+### 6.5 GRDCS Entity Contract
 
 Every entity MUST have:
 ```typescript
@@ -83,7 +299,7 @@ Every entity MUST have:
 }
 ```
 
-### 6. API Response Format (Universal)
+### 6.6 API Response Format (Universal)
 
 ```json
 {
@@ -94,7 +310,7 @@ Every entity MUST have:
 }
 ```
 
-### 7. UI/UX Standards
+### 6.7 UI/UX Standards
 
 - **Entity dialogs** must have: Overview, Linked Data, Insights, Actions tabs
 - **No dead-ends** - every screen leads somewhere
@@ -103,32 +319,31 @@ Every entity MUST have:
 
 ---
 
-## Pre-Change Checklist
+## PART 7: SESSION END PROTOCOL
 
-Before making changes, verify:
+Before ending a session, ensure:
 
-- [ ] Read the relevant Phase document (e.g., `PHASE_21_ASSET_MANAGEMENT.md`)
-- [ ] Using Master Financial Service for financial data?
-- [ ] Maintaining module boundaries?
-- [ ] API response follows standard shape?
-- [ ] Entities are navigable with canonical hrefs?
-- [ ] UI follows dialog/tab standards?
-- [ ] Not duplicating logic that should be shared?
-- [ ] Engine is pure (no side effects, no fetching)?
+### 7.1 Completion Checklist
+
+- [ ] All code changes committed and pushed
+- [ ] All documentation updated
+- [ ] Changelog entry created for today
+- [ ] PR created and URL provided to user
+- [ ] Summary of changes provided
+- [ ] Any pending items documented for next session
+
+### 7.2 Handoff Documentation
+
+If work is incomplete, document:
+
+1. What was completed
+2. What remains to be done
+3. Any blockers or issues
+4. Recommended next steps
 
 ---
 
-## Development Rules
-
-1. **Blueprint is authoritative** - all changes must align with phase specifications
-2. **No schema changes** without explicit instruction
-3. **Small, atomic commits** - reversible patches
-4. **Security first** - never compromise auth or data access
-5. **Test before deploy** - TypeScript check must pass
-
----
-
-## Key File Locations
+## PART 8: KEY FILE LOCATIONS
 
 | Purpose | Path |
 |---------|------|
@@ -138,12 +353,49 @@ Before making changes, verify:
 | Shared Components | `components/` |
 | Business Logic | `lib/` |
 | Blueprint Docs | `docs/blueprint/` |
+| Changelogs | `docs/blueprint/CHANGELOG_*.md` |
+| Phase Docs | `docs/blueprint/PHASE_*.md` |
+| Master Blueprint | `docs/blueprint/MASTER_BLUEPRINT.md` |
 
 ---
 
-## When In Doubt
+## PART 9: QUICK REFERENCE
 
-1. Read `docs/blueprint/02_DESIGN_PRINCIPLES.md`
-2. Check if there's a Phase document for the feature
-3. Ask the user to clarify requirements
-4. Never assume - verify with existing code patterns
+### Pre-Change Checklist
+- [ ] Read ALL core blueprint documents
+- [ ] Read relevant Phase documents
+- [ ] Review affected codebase areas
+- [ ] Create session todo list
+- [ ] Create feature branch
+
+### Post-Change Checklist
+- [ ] All changes committed with proper messages
+- [ ] Documentation updated (Changelog, Phase docs, Master Blueprint)
+- [ ] Build passes
+- [ ] Lint passes
+- [ ] PR created
+- [ ] PR URL provided to user
+- [ ] Summary provided to user
+
+---
+
+## ENFORCEMENT
+
+**This protocol is MANDATORY for every Claude Code session working on Monitrax.**
+
+**Failure to follow this protocol results in:**
+- Inconsistent codebase
+- Missing documentation
+- Untraceable changes
+- Technical debt
+
+**When in doubt:**
+1. Read the blueprint documents
+2. Ask the user for clarification
+3. Document your decisions
+4. Create smaller, reversible changes
+
+---
+
+*Last Updated: 2026-01-28*
+*Protocol Version: 1.0*
