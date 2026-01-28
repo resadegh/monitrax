@@ -38,6 +38,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
 import { getCategoryLevel1Options, getCategoryLevel2Options } from '@/lib/bank/categorisation';
+import { useAuth } from '@/lib/context/AuthContext';
 
 // =============================================================================
 // TYPES
@@ -144,6 +145,8 @@ export function TransactionReviewPanel({
   onComplete,
   onCancel,
 }: TransactionReviewPanelProps) {
+  const { token } = useAuth();
+
   // State
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -172,9 +175,15 @@ export function TransactionReviewPanel({
   // =============================================================================
 
   const fetchReviewData = useCallback(async () => {
+    if (!token) return;
+
     try {
       setLoading(true);
-      const response = await fetch(`/api/accounts/${accountId}/import/${batchId}/review`);
+      const response = await fetch(`/api/accounts/${accountId}/import/${batchId}/review`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
 
       if (!data.success) {
@@ -197,7 +206,7 @@ export function TransactionReviewPanel({
     } finally {
       setLoading(false);
     }
-  }, [accountId, batchId, settings.defaultApplyToSimilar]);
+  }, [accountId, batchId, token, settings.defaultApplyToSimilar]);
 
   useEffect(() => {
     fetchReviewData();
@@ -216,7 +225,10 @@ export function TransactionReviewPanel({
 
       const response = await fetch(`/api/accounts/${accountId}/import/${batchId}/review`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           confirmations: [{
             itemId,
@@ -291,7 +303,10 @@ export function TransactionReviewPanel({
 
       const response = await fetch(`/api/accounts/${accountId}/import/${batchId}/review`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ confirmAllPending: true }),
       });
 
