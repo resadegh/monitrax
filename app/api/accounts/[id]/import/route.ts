@@ -103,21 +103,53 @@ export async function POST(
 ) {
   return withAuth(request, async (authReq) => {
     try {
-      const { id: accountId } = await params;
+      const { id: accountIdParam } = await params;
       const userId = authReq.user!.userId;
-
-      // Verify account ownership
-      const account = await prisma.account.findFirst({
-        where: { id: accountId, userId },
-      });
-
-      if (!account) {
-        return NextResponse.json({ error: 'Account not found' }, { status: 404 });
-      }
 
       // Parse form data
       const formData = await request.formData();
       const file = formData.get('file') as File | null;
+      const createAccount = formData.get('createAccount') === 'true';
+      const accountName = formData.get('accountName') as string | null;
+      const accountType = formData.get('accountType') as string | null;
+      const accountInstitution = formData.get('accountInstitution') as string | null;
+
+      let accountId = accountIdParam;
+      let account: { id: string; name: string; type: string; institution: string | null } | null = null;
+      let accountCreated = false;
+
+      // Handle account creation if requested
+      if (accountIdParam === 'new' && createAccount) {
+        if (!accountName?.trim()) {
+          return NextResponse.json({ error: 'Account name is required' }, { status: 400 });
+        }
+
+        // Create new account
+        const newAccount = await prisma.account.create({
+          data: {
+            userId,
+            name: accountName.trim(),
+            type: (accountType as 'TRANSACTIONAL' | 'SAVINGS' | 'CREDIT_CARD' | 'OFFSET') || 'TRANSACTIONAL',
+            institution: accountInstitution?.trim() || null,
+            currentBalance: 0,
+          },
+        });
+
+        accountId = newAccount.id;
+        account = newAccount;
+        accountCreated = true;
+      } else {
+        // Verify existing account ownership
+        account = await prisma.account.findFirst({
+          where: { id: accountId, userId },
+        });
+
+        if (!account) {
+          return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+        }
+      }
+
+      // Continue with file processing...
       const previewOnly = formData.get('preview') === 'true';
 
       if (!file) {
@@ -371,18 +403,23 @@ export async function POST(
       return NextResponse.json({
         success: true,
         data: {
-          importBatchId: importBatch.id,
+          batchId: importBatch.id,
+          accountId: accountId,
+          accountName: account?.name,
+          accountCreated,
           fileName: file.name,
           dateRange,
           statistics: {
             total: parsedFile.transactions.length,
             imported: createdTransactions.length,
             duplicatesSkipped: duplicateResult.statistics.exactDuplicates + duplicateResult.statistics.fuzzyDuplicates,
-            pendingReview: reviewItems.length,
+            autoAccepted: classified.autoAccept.length,
+            needsReview: classified.needsReview.length,
+            requiresManual: classified.requiresManual.length,
           },
-          duplicates: {
-            summary: getDuplicateSummaryMessage(duplicateResult),
-            skipped: duplicateResult.skippedInfo,
+          duplicateInfo: {
+            count: duplicateResult.statistics.exactDuplicates + duplicateResult.statistics.fuzzyDuplicates,
+            message: getDuplicateSummaryMessage(duplicateResult),
           },
           categorisation: {
             fromLearning: categorisationResult.fromLearning,

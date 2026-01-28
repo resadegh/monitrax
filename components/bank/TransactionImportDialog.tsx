@@ -3,9 +3,12 @@
 /**
  * Phase 29: Transaction Import Dialog
  * Upload QIF/CSV files with AI-powered categorisation
+ * Supports both:
+ * - Importing to existing account (accountId provided)
+ * - Creating new account from import (no accountId)
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +19,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Upload,
   FileText,
@@ -25,21 +31,38 @@ import {
   AlertCircle,
   Sparkles,
   ArrowRight,
+  Plus,
+  Wallet,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 
-interface TransactionImportDialogProps {
-  accountId: string;
-  accountName: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onImportComplete?: (batchId: string, needsReview: boolean) => void;
+interface Account {
+  id: string;
+  name: string;
+  type: string;
+  institution?: string;
 }
 
-type ImportStep = 'upload' | 'processing' | 'complete' | 'error';
+interface TransactionImportDialogProps {
+  // If provided, import to this account directly
+  accountId?: string;
+  accountName?: string;
+  // List of existing accounts for selection (when accountId not provided)
+  accounts?: Account[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onImportComplete?: (batchId: string, accountId: string, needsReview: boolean) => void;
+  onAccountCreated?: (account: Account) => void;
+}
+
+type ImportStep = 'select-account' | 'upload' | 'processing' | 'complete' | 'error';
+type AccountMode = 'existing' | 'new';
 
 interface ImportResult {
   batchId: string;
+  accountId: string;
+  accountName?: string;
+  accountCreated?: boolean;
   statistics: {
     total: number;
     imported: number;
@@ -54,21 +77,53 @@ interface ImportResult {
   };
 }
 
+const ACCOUNT_TYPES = [
+  { value: 'TRANSACTIONAL', label: 'Transaction Account' },
+  { value: 'SAVINGS', label: 'Savings Account' },
+  { value: 'CREDIT_CARD', label: 'Credit Card' },
+  { value: 'OFFSET', label: 'Offset Account' },
+];
+
 export function TransactionImportDialog({
-  accountId,
-  accountName,
+  accountId: initialAccountId,
+  accountName: initialAccountName,
+  accounts = [],
   open,
   onOpenChange,
   onImportComplete,
+  onAccountCreated,
 }: TransactionImportDialogProps) {
   const { token } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [step, setStep] = useState<ImportStep>('upload');
+  // Determine initial step based on whether accountId is provided
+  const getInitialStep = (): ImportStep => {
+    return initialAccountId ? 'upload' : 'select-account';
+  };
+
+  const [step, setStep] = useState<ImportStep>(getInitialStep());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+
+  // Account selection state
+  const [accountMode, setAccountMode] = useState<AccountMode>('new');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(initialAccountId || '');
+  const [newAccountName, setNewAccountName] = useState('');
+  const [newAccountType, setNewAccountType] = useState('TRANSACTIONAL');
+  const [newAccountInstitution, setNewAccountInstitution] = useState('');
+
+  // Reset step when dialog opens/closes or accountId changes
+  useEffect(() => {
+    if (open) {
+      setStep(getInitialStep());
+      setSelectedAccountId(initialAccountId || '');
+      if (initialAccountId) {
+        setAccountMode('existing');
+      }
+    }
+  }, [open, initialAccountId]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,7 +136,26 @@ export function TransactionImportDialog({
       }
       setSelectedFile(file);
       setError(null);
+
+      // Auto-populate account name from file name if creating new account
+      if (accountMode === 'new' && !newAccountName) {
+        const nameFromFile = file.name.replace(/\.(qif|csv)$/i, '').replace(/[_-]/g, ' ');
+        setNewAccountName(nameFromFile);
+      }
     }
+  };
+
+  const handleContinueToUpload = () => {
+    if (accountMode === 'existing' && !selectedAccountId) {
+      setError('Please select an account');
+      return;
+    }
+    if (accountMode === 'new' && !newAccountName.trim()) {
+      setError('Please enter an account name');
+      return;
+    }
+    setError(null);
+    setStep('upload');
   };
 
   const handleUpload = async () => {
@@ -95,9 +169,21 @@ export function TransactionImportDialog({
       const formData = new FormData();
       formData.append('file', selectedFile);
 
+      // If creating new account, add account details
+      if (accountMode === 'new') {
+        formData.append('createAccount', 'true');
+        formData.append('accountName', newAccountName.trim());
+        formData.append('accountType', newAccountType);
+        if (newAccountInstitution.trim()) {
+          formData.append('accountInstitution', newAccountInstitution.trim());
+        }
+      }
+
       setProgress(30);
 
-      const response = await fetch(`/api/accounts/${accountId}/import`, {
+      // Use selected account ID or 'new' for account creation
+      const targetAccountId = accountMode === 'existing' ? selectedAccountId : 'new';
+      const response = await fetch(`/api/accounts/${targetAccountId}/import`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -117,6 +203,16 @@ export function TransactionImportDialog({
       setResult(data.data);
       setStep('complete');
 
+      // Notify parent if account was created
+      if (data.data.accountCreated && onAccountCreated) {
+        onAccountCreated({
+          id: data.data.accountId,
+          name: data.data.accountName || newAccountName,
+          type: newAccountType,
+          institution: newAccountInstitution || undefined,
+        });
+      }
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed');
       setStep('error');
@@ -125,19 +221,45 @@ export function TransactionImportDialog({
 
   const handleClose = () => {
     // Reset state
-    setStep('upload');
+    setStep(getInitialStep());
     setSelectedFile(null);
     setProgress(0);
     setError(null);
     setResult(null);
+    setAccountMode(initialAccountId ? 'existing' : 'new');
+    setSelectedAccountId(initialAccountId || '');
+    setNewAccountName('');
+    setNewAccountType('TRANSACTIONAL');
+    setNewAccountInstitution('');
     onOpenChange(false);
   };
 
   const handleReviewTransactions = () => {
     if (result && onImportComplete) {
-      onImportComplete(result.batchId, result.statistics.needsReview > 0);
+      onImportComplete(result.batchId, result.accountId, result.statistics.needsReview > 0);
     }
     handleClose();
+  };
+
+  const handleDone = () => {
+    if (result && onImportComplete) {
+      onImportComplete(result.batchId, result.accountId, false);
+    }
+    handleClose();
+  };
+
+  const getDialogDescription = () => {
+    if (initialAccountId && initialAccountName) {
+      return `Import transactions to ${initialAccountName} from a QIF or CSV file`;
+    }
+    return 'Import transactions from a QIF or CSV file';
+  };
+
+  const getSelectedAccountName = () => {
+    if (initialAccountName) return initialAccountName;
+    if (accountMode === 'new') return newAccountName || 'New Account';
+    const account = accounts.find(a => a.id === selectedAccountId);
+    return account?.name || 'Selected Account';
   };
 
   return (
@@ -149,12 +271,144 @@ export function TransactionImportDialog({
             Import Transactions
           </DialogTitle>
           <DialogDescription>
-            Import transactions to {accountName} from a QIF or CSV file
+            {getDialogDescription()}
           </DialogDescription>
         </DialogHeader>
 
+        {/* Step 1: Select/Create Account (only if no accountId provided) */}
+        {step === 'select-account' && (
+          <div className="space-y-4 pt-4">
+            <RadioGroup value={accountMode} onValueChange={(v) => setAccountMode(v as AccountMode)}>
+              {/* New Account Option */}
+              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => setAccountMode('new')}>
+                <RadioGroupItem value="new" id="new" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="new" className="flex items-center gap-2 cursor-pointer font-medium">
+                    <Plus className="h-4 w-4" />
+                    Create New Account
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Create a new account from the imported file
+                  </p>
+                </div>
+              </div>
+
+              {/* Existing Account Option */}
+              {accounts.length > 0 && (
+                <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => setAccountMode('existing')}>
+                  <RadioGroupItem value="existing" id="existing" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="existing" className="flex items-center gap-2 cursor-pointer font-medium">
+                      <Wallet className="h-4 w-4" />
+                      Import to Existing Account
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Add transactions to an existing account
+                    </p>
+                  </div>
+                </div>
+              )}
+            </RadioGroup>
+
+            {/* New Account Form */}
+            {accountMode === 'new' && (
+              <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+                <div>
+                  <Label htmlFor="accountName">Account Name *</Label>
+                  <Input
+                    id="accountName"
+                    placeholder="e.g., ANZ Everyday"
+                    value={newAccountName}
+                    onChange={(e) => setNewAccountName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="accountType">Account Type</Label>
+                  <Select value={newAccountType} onValueChange={setNewAccountType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ACCOUNT_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="institution">Institution (optional)</Label>
+                  <Input
+                    id="institution"
+                    placeholder="e.g., ANZ, CBA, Westpac"
+                    value={newAccountInstitution}
+                    onChange={(e) => setNewAccountInstitution(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Existing Account Selection */}
+            {accountMode === 'existing' && accounts.length > 0 && (
+              <div className="pl-6 border-l-2 border-primary/20">
+                <Label>Select Account</Label>
+                <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.name} {account.institution && `(${account.institution})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button onClick={handleContinueToUpload}>
+                Continue
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Upload File */}
         {step === 'upload' && (
           <div className="space-y-4 pt-4">
+            {/* Show selected account */}
+            {!initialAccountId && (
+              <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg text-sm">
+                <Wallet className="h-4 w-4" />
+                <span>
+                  {accountMode === 'new' ? 'Creating:' : 'Importing to:'}{' '}
+                  <strong>{getSelectedAccountName()}</strong>
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto h-6 text-xs"
+                  onClick={() => setStep('select-account')}
+                >
+                  Change
+                </Button>
+              </div>
+            )}
+
             <div
               className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
               onClick={() => fileInputRef.current?.click()}
@@ -210,6 +464,7 @@ export function TransactionImportDialog({
           </div>
         )}
 
+        {/* Step 3: Processing */}
         {step === 'processing' && (
           <div className="space-y-4 pt-4">
             <div className="text-center space-y-4">
@@ -225,11 +480,17 @@ export function TransactionImportDialog({
           </div>
         )}
 
+        {/* Step 4: Complete */}
         {step === 'complete' && result && (
           <div className="space-y-4 pt-4">
             <div className="text-center space-y-2">
               <CheckCircle2 className="h-12 w-12 mx-auto text-green-500" />
               <p className="font-medium">Import Complete!</p>
+              {result.accountCreated && (
+                <p className="text-sm text-muted-foreground">
+                  Account "{result.accountName}" created
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -263,7 +524,7 @@ export function TransactionImportDialog({
             )}
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleClose}>
+              <Button variant="outline" onClick={handleDone}>
                 Done
               </Button>
               {result.statistics.needsReview > 0 && (
@@ -276,6 +537,7 @@ export function TransactionImportDialog({
           </div>
         )}
 
+        {/* Step 5: Error */}
         {step === 'error' && (
           <div className="space-y-4 pt-4">
             <div className="text-center space-y-2">
