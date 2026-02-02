@@ -23,7 +23,7 @@ const cashflowRequestSchema = z.object({
       z.object({
         name: z.string(),
         amount: z.number(),
-        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ANNUAL']),
+        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL']),
         isTaxable: z.boolean().default(true),
         type: z.string().optional(),
         salaryType: z.string().optional().nullable(),
@@ -37,7 +37,7 @@ const cashflowRequestSchema = z.object({
       z.object({
         name: z.string(),
         amount: z.number(),
-        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ANNUAL']),
+        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL']),
         isEssential: z.boolean().default(false),
         isTaxDeductible: z.boolean().default(false),
         category: z.string().optional(),
@@ -51,7 +51,7 @@ const cashflowRequestSchema = z.object({
         principal: z.number(),
         interestRate: z.number(),
         minRepayment: z.number(),
-        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ANNUAL']),
+        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL']),
         offsetBalance: z.number().default(0),
       })
     )
