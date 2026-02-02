@@ -18,6 +18,21 @@ export type Frequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'AN
 
 export type RepaymentFrequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY';
 
+export type AccountType = 'SAVINGS' | 'TRANSACTIONAL' | 'OFFSET' | 'CREDIT_CARD';
+
+/**
+ * Account types considered as liquid/accessible cash for emergency fund calculations
+ * - SAVINGS: Traditional savings accounts
+ * - TRANSACTIONAL: Everyday transaction accounts
+ * - OFFSET: Mortgage offset accounts (fully liquid, can be withdrawn anytime)
+ *
+ * SINGLE SOURCE OF TRUTH - used by:
+ * - lib/services/financialSnapshot.ts
+ * - lib/services/masterFinancialService.ts
+ * - lib/cfo/scoreCalculator.ts
+ */
+export const LIQUID_ACCOUNT_TYPES: AccountType[] = ['SAVINGS', 'TRANSACTIONAL', 'OFFSET'];
+
 export type LoanType = 'HOME' | 'INVESTMENT' | 'CAR' | 'PERSONAL' | 'LINE_OF_CREDIT' | 'STUDENT' | 'BUSINESS';
 
 export type RateType = 'VARIABLE' | 'FIXED';

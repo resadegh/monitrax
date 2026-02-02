@@ -17,7 +17,7 @@
  */
 
 import prisma from '@/lib/db';
-import { Frequency } from '@/lib/types/prisma-enums';
+import { Frequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
 import {
   aggregateExpenses,
@@ -350,8 +350,7 @@ function calculateIncomeBreakdown(
 }
 
 function calculateAccountSummary(accounts: RawUserData['accounts']): AccountSummary {
-  // Exclude OFFSET accounts - they are tied to mortgages and can have negative balances
-  const liquidTypes = ['SAVINGS', 'CHECKING'];
+  // Use centralized LIQUID_ACCOUNT_TYPES from prisma-enums (single source of truth)
 
   let total = 0;
   let liquidCash = 0;
@@ -360,7 +359,7 @@ function calculateAccountSummary(accounts: RawUserData['accounts']): AccountSumm
   for (const account of accounts) {
     total += account.currentBalance;
 
-    if (liquidTypes.includes(account.type)) {
+    if (LIQUID_ACCOUNT_TYPES.includes(account.type as any)) {
       liquidCash += account.currentBalance;
     }
 
