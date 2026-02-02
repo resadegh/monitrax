@@ -344,6 +344,8 @@ model User {
   // Phase 18: Bank Transaction Import
   bankImportFiles         BankImportFile[]
   budgetTargets           BudgetTarget[]
+  importBatches           ImportBatch[]
+  transactionReviewQueue  TransactionReviewQueue[]
 
   // Phase 19: Document Management
   documents               Document[]
@@ -1351,6 +1353,7 @@ model EmailMFACode {
 
 enum TransactionSource {
   BANK        // Bank feed integration
+  BASIQ       // Basiq open banking integration
   CSV         // CSV import
   QIF         // QIF file import (MYOB/Quicken)
   OFX         // OFX/QFX file import
@@ -1491,6 +1494,11 @@ model MerchantMapping {
   confidence            Float     @default(1.0)   // How confident this mapping is
   source                String    @default("RULE") // RULE, USER, AI
   usageCount            Int       @default(0)     // How many times applied
+  userCorrectionCount   Int       @default(0)     // Number of user corrections
+
+  // Classification flags
+  isEssential           Boolean   @default(false) // Is this an essential expense?
+  isRecurring           Boolean   @default(false) // Is this typically recurring?
 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -1939,6 +1947,7 @@ enum ImportFileFormat {
 enum ImportStatus {
   PENDING
   PROCESSING
+  AWAITING_REVIEW  // Import needs user review
   COMPLETED
   FAILED
   PARTIAL
@@ -2030,6 +2039,87 @@ model BankTransactionRaw {
   @@index([isProcessed])
   @@index([isDuplicate])
   @@map("bank_transactions_raw")
+}
+
+// =============================================================================
+// IMPORT BATCH TRACKING
+// =============================================================================
+
+model ImportBatch {
+  id                String       @id @default(uuid())
+  userId            String
+
+  // Batch info
+  source            TransactionSource
+  status            ImportStatus @default(PENDING)
+  errorMessage      String?
+
+  // Statistics
+  totalCount        Int          @default(0)
+  importedCount     Int          @default(0)
+  duplicateCount    Int          @default(0)
+  errorCount        Int          @default(0)
+
+  // Settings
+  accountId         String?
+
+  // Timestamps
+  startedAt         DateTime     @default(now())
+  completedAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Relationships
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewQueue       TransactionReviewQueue[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("import_batches")
+}
+
+// =============================================================================
+// TRANSACTION REVIEW QUEUE
+// =============================================================================
+
+model TransactionReviewQueue {
+  id                    String       @id @default(uuid())
+  importBatchId         String
+  userId                String
+
+  // Transaction data for review
+  date                  DateTime
+  amount                Float
+  description           String
+  merchantRaw           String?
+  accountId             String?
+
+  // Review metadata
+  suggestedCategory     String?
+  suggestedMerchant     String?
+  confidenceScore       Float?
+  reviewReason          String?      // Why this needs review
+
+  // Review status
+  isReviewed            Boolean      @default(false)
+  isApproved            Boolean      @default(false)
+  userCategory          String?      // Category chosen by user
+  userMerchant          String?      // Merchant name chosen by user
+
+  // Link to created transaction
+  unifiedTransactionId  String?
+
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  // Relationships
+  importBatch           ImportBatch  @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId])
+  @@index([userId])
+  @@index([isReviewed])
+  @@map("transaction_review_queue")
 }
 
 model CategoryRule {

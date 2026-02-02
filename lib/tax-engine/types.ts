@@ -89,10 +89,16 @@ export interface MedicareSurchargeThreshold {
   rate: number;
 }
 
+export interface LITOWithdrawalTier {
+  threshold: number; // Income threshold for this tier
+  withdrawalRate: number; // Rate per dollar (e.g., 0.05 = 5 cents)
+}
+
 export interface LITOConfig {
   maxOffset: number;
   fullThreshold: number;
-  withdrawalRate: number;
+  tier1: LITOWithdrawalTier; // First withdrawal tier (5c/$)
+  tier2: LITOWithdrawalTier; // Second withdrawal tier (1.5c/$)
   cutoffThreshold: number;
 }
 
