@@ -1508,13 +1508,8 @@ model MerchantMapping {
   usageCount            Int       @default(0)     // How many times applied
   userCorrectionCount   Int       @default(0)     // Number of user corrections
 
-  // Classification flags
-  isEssential           Boolean   @default(false) // Is this an essential expense?
-  isRecurring           Boolean   @default(false) // Is this typically recurring?
-
   // AI Learning context (Phase 29)
   aiConfidence          Float?    // Last AI confidence for this merchant
-  userCorrectionCount   Int       @default(0)     // Times user corrected AI
   lastAIContext         String?   // Context that led to AI suggestion
   lastConfirmedAt       DateTime? // When user last confirmed this mapping
 
