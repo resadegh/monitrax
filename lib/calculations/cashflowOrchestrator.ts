@@ -15,6 +15,7 @@
 
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 
 // =============================================================================
 // TYPES
@@ -26,17 +27,27 @@ export interface IncomeItem {
   type?: string;
   salaryType?: string | null;
   netAmount?: number | null;
+  grossAmount?: number | null;
+  isTaxable?: boolean;
+  name?: string;
 }
 
 export interface ExpenseItem {
   amount: number;
   frequency: string;
   isEssential?: boolean;
+  isTaxDeductible?: boolean;
+  category?: string;
+  name?: string;
 }
 
 export interface LoanItem {
   minRepayment: number;
   repaymentFrequency: string;
+  name?: string;
+  principal?: number;
+  interestRate?: number;
+  offsetBalance?: number;
 }
 
 export interface CashflowInput {
@@ -46,17 +57,25 @@ export interface CashflowInput {
 }
 
 export interface CashflowResult {
-  // Monthly figures
-  monthlyIncome: number;
+  // Monthly figures (gross/net separation)
+  monthlyGrossIncome: number;
+  monthlyNetIncome: number;
+  monthlyIncome: number; // Alias for monthlyNetIncome
+  monthlyPaygWithholding: number;
   monthlyExpenses: number;
   monthlyLoanRepayments: number;
   monthlyCashflow: number;
+  monthlySurplus: number; // Alias for monthlyCashflow
 
   // Annual figures
-  annualIncome: number;
+  annualGrossIncome: number;
+  annualNetIncome: number;
+  annualIncome: number; // Alias for annualNetIncome
+  annualPaygWithholding: number;
   annualExpenses: number;
   annualLoanRepayments: number;
   annualCashflow: number;
+  annualSurplus: number; // Alias for annualCashflow
 
   // Metrics
   savingsRate: number; // Percentage of income saved
@@ -66,6 +85,29 @@ export interface CashflowResult {
   // Breakdown
   essentialExpenses: number;
   discretionaryExpenses: number;
+  incomeByType: Record<string, number>;
+  expensesByCategory: Record<string, number>;
+
+  // Tax-related
+  taxableIncome: number;
+  taxDeductibleExpenses: number;
+}
+
+// Simple result for basic use cases
+export interface SimpleCashflowResult {
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  monthlyLoanRepayments: number;
+  monthlyCashflow: number;
+  annualIncome: number;
+  annualExpenses: number;
+  annualLoanRepayments: number;
+  annualCashflow: number;
+  savingsRate: number;
+  expenseRatio: number;
+  debtServiceRatio: number;
+  essentialExpenses: number;
+  discretionaryExpenses: number;
 }
 
 // =============================================================================
@@ -73,22 +115,55 @@ export interface CashflowResult {
 // =============================================================================
 
 /**
- * Get net income amount for an income item
- * For GROSS salary with stored netAmount, uses that
- * Otherwise normalizes the amount to monthly
+ * Calculate gross and net amounts for an income item
+ * Handles SALARY income with GROSS/NET types appropriately
  */
-function getNetMonthlyAmount(item: IncomeItem): number {
-  // If salary with pre-calculated net amount, use it
-  if (
-    item.type === 'SALARY' &&
-    item.salaryType === 'GROSS' &&
-    item.netAmount != null
-  ) {
-    return item.netAmount / 12;
+function calculateIncomeAmounts(item: IncomeItem): {
+  monthlyGross: number;
+  monthlyNet: number;
+  monthlyPayg: number;
+} {
+  const monthlyAmount = toMonthly(item.amount, item.frequency as Frequency);
+
+  // Default: amount is both gross and net (no PAYG)
+  let monthlyGross = monthlyAmount;
+  let monthlyNet = monthlyAmount;
+  let monthlyPayg = 0;
+
+  if (item.type === 'SALARY') {
+    if (item.salaryType === 'NET') {
+      // User entered NET income - don't re-calculate PAYG
+      if (item.grossAmount != null) {
+        monthlyGross = toMonthly(item.grossAmount, item.frequency as Frequency);
+        monthlyNet = monthlyAmount; // The entered amount is already net
+        monthlyPayg = monthlyGross - monthlyNet;
+      } else {
+        // No grossAmount stored, the entered amount IS the net income
+        monthlyGross = monthlyAmount;
+        monthlyNet = monthlyAmount;
+        monthlyPayg = 0;
+      }
+    } else {
+      // User entered GROSS income - calculate take-home pay
+      const takeHome = calculateTakeHomePay(
+        item.amount,
+        item.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
+      );
+      monthlyGross = monthlyAmount;
+      monthlyNet = toMonthly(takeHome.netAmount, item.frequency as Frequency);
+      monthlyPayg = toMonthly(takeHome.paygWithholding + takeHome.medicareLevy, item.frequency as Frequency);
+    }
   }
 
-  // Otherwise, convert to monthly
-  return toMonthly(item.amount, item.frequency as Frequency);
+  return { monthlyGross, monthlyNet, monthlyPayg };
+}
+
+/**
+ * Get net income amount for an income item (simple version)
+ * For backward compatibility with existing code
+ */
+export function getNetMonthlyAmount(item: IncomeItem): number {
+  return calculateIncomeAmounts(item).monthlyNet;
 }
 
 // =============================================================================
@@ -96,7 +171,8 @@ function getNetMonthlyAmount(item: IncomeItem): number {
 // =============================================================================
 
 /**
- * Calculate monthly cashflow components
+ * Calculate monthly cashflow components (simple version)
+ * For backward compatibility
  */
 export function calculateMonthlyCashflow(input: CashflowInput): {
   income: number;
@@ -145,7 +221,8 @@ export function calculateMonthlyCashflow(input: CashflowInput): {
 }
 
 /**
- * Calculate annual cashflow components
+ * Calculate annual cashflow components (simple version)
+ * For backward compatibility
  */
 export function calculateAnnualCashflow(input: CashflowInput): {
   income: number;
@@ -164,15 +241,12 @@ export function calculateAnnualCashflow(input: CashflowInput): {
 }
 
 /**
- * Calculate complete cashflow analysis
- *
- * This is the canonical cashflow calculation used throughout the app.
+ * Calculate simple cashflow result (for backward compatibility)
  */
-export function calculateCashflow(input: CashflowInput): CashflowResult {
+export function calculateSimpleCashflow(input: CashflowInput): SimpleCashflowResult {
   const monthly = calculateMonthlyCashflow(input);
   const annual = calculateAnnualCashflow(input);
 
-  // Calculate ratios (avoid division by zero)
   const savingsRate =
     monthly.income > 0
       ? ((monthly.income - monthly.expenses - monthly.loanRepayments) /
@@ -187,25 +261,132 @@ export function calculateCashflow(input: CashflowInput): CashflowResult {
     monthly.income > 0 ? (monthly.loanRepayments / monthly.income) * 100 : 0;
 
   return {
-    // Monthly
     monthlyIncome: monthly.income,
     monthlyExpenses: monthly.expenses,
     monthlyLoanRepayments: monthly.loanRepayments,
     monthlyCashflow: monthly.cashflow,
-
-    // Annual
     annualIncome: annual.income,
     annualExpenses: annual.expenses,
     annualLoanRepayments: annual.loanRepayments,
     annualCashflow: annual.cashflow,
-
-    // Metrics
     savingsRate,
     expenseRatio,
     debtServiceRatio,
-
-    // Breakdown
     essentialExpenses: monthly.essentialExpenses,
     discretionaryExpenses: monthly.discretionaryExpenses,
+  };
+}
+
+/**
+ * Calculate complete cashflow analysis with all breakdowns
+ *
+ * This is the canonical cashflow calculation used throughout the app.
+ */
+export function calculateCashflow(input: CashflowInput): CashflowResult {
+  // Calculate income with gross/net separation
+  let monthlyGrossIncome = 0;
+  let monthlyNetIncome = 0;
+  let monthlyPaygWithholding = 0;
+  let taxableIncome = 0;
+  const incomeByType: Record<string, number> = {};
+
+  for (const item of input.income) {
+    const { monthlyGross, monthlyNet, monthlyPayg } = calculateIncomeAmounts(item);
+
+    monthlyGrossIncome += monthlyGross;
+    monthlyNetIncome += monthlyNet;
+    monthlyPaygWithholding += monthlyPayg;
+
+    if (item.isTaxable !== false) {
+      taxableIncome += monthlyGross * 12;
+    }
+
+    const type = item.type || 'OTHER';
+    incomeByType[type] = (incomeByType[type] || 0) + monthlyNet;
+  }
+
+  // Calculate expenses with breakdowns
+  let monthlyExpenses = 0;
+  let essentialExpenses = 0;
+  let discretionaryExpenses = 0;
+  let taxDeductibleExpenses = 0;
+  const expensesByCategory: Record<string, number> = {};
+
+  for (const expense of input.expenses) {
+    const monthly = toMonthly(expense.amount, expense.frequency as Frequency);
+    monthlyExpenses += monthly;
+
+    if (expense.isEssential) {
+      essentialExpenses += monthly;
+    } else {
+      discretionaryExpenses += monthly;
+    }
+
+    if (expense.isTaxDeductible) {
+      taxDeductibleExpenses += monthly * 12;
+    }
+
+    const category = expense.category || 'OTHER';
+    expensesByCategory[category] = (expensesByCategory[category] || 0) + monthly;
+  }
+
+  // Calculate loan repayments
+  let monthlyLoanRepayments = 0;
+  for (const loan of input.loans) {
+    const monthly = toMonthly(loan.minRepayment, loan.repaymentFrequency as Frequency);
+    monthlyLoanRepayments += monthly;
+  }
+
+  // Calculate cashflow (using NET income)
+  const monthlyCashflow = monthlyNetIncome - monthlyExpenses - monthlyLoanRepayments;
+
+  // Calculate ratios (avoid division by zero)
+  const savingsRate =
+    monthlyNetIncome > 0 ? (monthlyCashflow / monthlyNetIncome) * 100 : 0;
+
+  const expenseRatio =
+    monthlyNetIncome > 0 ? (monthlyExpenses / monthlyNetIncome) * 100 : 0;
+
+  const debtServiceRatio =
+    monthlyNetIncome > 0 ? (monthlyLoanRepayments / monthlyNetIncome) * 100 : 0;
+
+  // Round all values to 2 decimal places
+  const round = (n: number) => Math.round(n * 100) / 100;
+
+  return {
+    // Monthly (gross/net separation)
+    monthlyGrossIncome: round(monthlyGrossIncome),
+    monthlyNetIncome: round(monthlyNetIncome),
+    monthlyIncome: round(monthlyNetIncome), // Alias
+    monthlyPaygWithholding: round(monthlyPaygWithholding),
+    monthlyExpenses: round(monthlyExpenses),
+    monthlyLoanRepayments: round(monthlyLoanRepayments),
+    monthlyCashflow: round(monthlyCashflow),
+    monthlySurplus: round(monthlyCashflow), // Alias
+
+    // Annual
+    annualGrossIncome: round(monthlyGrossIncome * 12),
+    annualNetIncome: round(monthlyNetIncome * 12),
+    annualIncome: round(monthlyNetIncome * 12), // Alias
+    annualPaygWithholding: round(monthlyPaygWithholding * 12),
+    annualExpenses: round(monthlyExpenses * 12),
+    annualLoanRepayments: round(monthlyLoanRepayments * 12),
+    annualCashflow: round(monthlyCashflow * 12),
+    annualSurplus: round(monthlyCashflow * 12), // Alias
+
+    // Metrics
+    savingsRate: round(savingsRate),
+    expenseRatio: round(expenseRatio),
+    debtServiceRatio: round(debtServiceRatio),
+
+    // Breakdown
+    essentialExpenses: round(essentialExpenses),
+    discretionaryExpenses: round(discretionaryExpenses),
+    incomeByType,
+    expensesByCategory,
+
+    // Tax-related
+    taxableIncome: round(taxableIncome),
+    taxDeductibleExpenses: round(taxDeductibleExpenses),
   };
 }
