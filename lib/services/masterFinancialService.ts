@@ -928,8 +928,8 @@ export async function getMasterFinancialSnapshot(
   // Build tax summary
   const taxSummary = buildTaxSummary(data.income, data.expenses);
 
-  // Calculate liquid cash
-  const liquidTypes = ['SAVINGS', 'CHECKING', 'OFFSET'];
+  // Calculate liquid cash (exclude OFFSET accounts - they are tied to mortgages)
+  const liquidTypes = ['SAVINGS', 'CHECKING'];
   const liquidCash = data.accounts
     .filter(a => liquidTypes.includes(a.type))
     .reduce((sum, a) => sum + a.currentBalance, 0);

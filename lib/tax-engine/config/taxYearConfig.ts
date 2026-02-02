@@ -46,11 +46,21 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
     { min: 144001, max: null, rate: 0.015 },
   ],
 
-  // Low Income Tax Offset (LITO)
+  // Low Income Tax Offset (LITO) - ATO two-tier phase out
+  // Full $700 for income up to $37,500
+  // Reduces by 5c/$ from $37,500 to $45,000 (5% = $375 reduction, leaving $325)
+  // Reduces by 1.5c/$ from $45,000 to $66,667 (1.5% = $325 reduction, leaving $0)
   lito: {
     maxOffset: 700,
     fullThreshold: 37500,
-    withdrawalRate: 0.05, // 5 cents per dollar over threshold
+    tier1: {
+      threshold: 45000,
+      withdrawalRate: 0.05, // 5 cents per dollar
+    },
+    tier2: {
+      threshold: 66667,
+      withdrawalRate: 0.015, // 1.5 cents per dollar
+    },
     cutoffThreshold: 66667, // LITO reduces to 0 at this income
   },
 
@@ -102,10 +112,18 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
     { min: 140001, max: null, rate: 0.015 },
   ],
 
+  // Low Income Tax Offset (LITO) - ATO two-tier phase out
   lito: {
     maxOffset: 700,
     fullThreshold: 37500,
-    withdrawalRate: 0.05,
+    tier1: {
+      threshold: 45000,
+      withdrawalRate: 0.05, // 5 cents per dollar
+    },
+    tier2: {
+      threshold: 66667,
+      withdrawalRate: 0.015, // 1.5 cents per dollar
+    },
     cutoffThreshold: 66667,
   },
 

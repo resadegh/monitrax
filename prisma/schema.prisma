@@ -1360,7 +1360,7 @@ model EmailMFACode {
 
 enum TransactionSource {
   BANK        // Bank feed integration
-  BASIQ       // BASIQ Open Banking integration
+  BASIQ       // Basiq open banking integration
   CSV         // CSV import
   QIF         // QIF file import (MYOB/Quicken)
   OFX         // OFX/QFX file import
@@ -1506,6 +1506,11 @@ model MerchantMapping {
   confidence            Float     @default(1.0)   // How confident this mapping is
   source                String    @default("RULE") // RULE, USER, AI
   usageCount            Int       @default(0)     // How many times applied
+  userCorrectionCount   Int       @default(0)     // Number of user corrections
+
+  // Classification flags
+  isEssential           Boolean   @default(false) // Is this an essential expense?
+  isRecurring           Boolean   @default(false) // Is this typically recurring?
 
   // AI Learning context (Phase 29)
   aiConfidence          Float?    // Last AI confidence for this merchant
@@ -1961,7 +1966,7 @@ enum ImportFileFormat {
 enum ImportStatus {
   PENDING
   PROCESSING
-  AWAITING_REVIEW
+  AWAITING_REVIEW  // Import needs user review
   COMPLETED
   FAILED
   PARTIAL

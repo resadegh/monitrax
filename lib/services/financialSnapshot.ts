@@ -350,7 +350,8 @@ function calculateIncomeBreakdown(
 }
 
 function calculateAccountSummary(accounts: RawUserData['accounts']): AccountSummary {
-  const liquidTypes = ['SAVINGS', 'CHECKING', 'OFFSET'];
+  // Exclude OFFSET accounts - they are tied to mortgages and can have negative balances
+  const liquidTypes = ['SAVINGS', 'CHECKING'];
 
   let total = 0;
   let liquidCash = 0;
