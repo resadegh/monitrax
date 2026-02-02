@@ -130,9 +130,10 @@ export async function POST(request: NextRequest) {
       }
 
       const input = parseResult.data;
-      let incomeData = input.income;
-      let expenseData = input.expenses;
-      let loanData = input.loans;
+      // Use any[] for intermediate data since transform functions handle both input and DB shapes
+      let incomeData: any[] | undefined = input.income;
+      let expenseData: any[] | undefined = input.expenses;
+      let loanData: any[] | undefined = input.loans;
 
       // Fetch from database if not provided
       if (input.fetchFromDatabase && !incomeData) {
