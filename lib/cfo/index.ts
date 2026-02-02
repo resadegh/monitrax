@@ -22,3 +22,9 @@ export {
   getRisks,
   getActions,
 } from './intelligenceEngine';
+
+// Decision Support (Phase 17A-D)
+export { calculateCFOTaxInsights } from './decisionSupport/taxIntegration';
+export { calculateCFOLoanInsights } from './decisionSupport/loanDecisionSupport';
+export { calculateCFOPropertyInsights } from './decisionSupport/propertyDecisionSupport';
+export { calculateCFOInvestmentInsights } from './decisionSupport/investmentDecisionSupport';

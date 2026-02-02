@@ -68,7 +68,30 @@ export type RiskType =
   | 'retirement_gap'
   | 'investment_misalignment'
   | 'mortgage_renewal'
-  | 'concentration_risk';
+  | 'concentration_risk'
+  // Tax-related risks (Phase 17A)
+  | 'cgt_exposure_high'
+  | 'super_cap_approaching'
+  | 'div293_threshold'
+  | 'eofy_action_required'
+  | 'depreciation_unclaimed'
+  | 'franking_credits_unused'
+  | 'negative_gearing_review'
+  | 'tax_refund_opportunity'
+  // Loan-related risks (Phase 17B)
+  | 'refinance_opportunity'
+  | 'fixed_rate_expiry'
+  | 'interest_only_expiry'
+  | 'high_dti_ratio'
+  | 'high_lvr'
+  | 'rate_shock_risk'
+  | 'offset_underutilized'
+  | 'debt_consolidation_opportunity'
+  // Property-related risks (Phase 17C)
+  | 'property_high_lvr'
+  | 'property_low_yield'
+  | 'property_negative_cashflow'
+  | 'property_low_growth';
 
 export interface RiskEntity {
   type: 'property' | 'loan' | 'account' | 'income' | 'expense' | 'investment';
@@ -158,6 +181,241 @@ export interface CFODashboardData {
   monthlyProgress: MonthlyProgress;
   quickStats: CFOQuickStats;
   alerts: CFOAlert[];
+  taxInsights?: CFOTaxInsights; // Phase 17A: Tax Integration
+  loanInsights?: CFOLoanInsights; // Phase 17B: Loan Decision Support
+  propertyInsights?: CFOPropertyInsights; // Phase 17C: Property Decision Support
+  investmentInsights?: CFOInvestmentInsights; // Phase 17D: Investment Decision Support
+}
+
+// ============================================================================
+// Tax Insights Types (Phase 17A)
+// ============================================================================
+
+export interface CFOTaxInsights {
+  taxPositionSnapshot: {
+    estimatedRefund: number;
+    confidenceLevel: number;
+    daysUntilEOFY: number;
+    actionRequiredBeforeEOFY: boolean;
+    financialYear: string;
+  };
+  deductionsSummary: {
+    totalDeductions: number;
+    propertyDeductions: number;
+    investmentDeductions: number;
+    workRelatedDeductions: number;
+    depreciationDeductions: number;
+    potentialMissedDeductions: string[];
+  };
+  keyTaxMetrics: {
+    effectiveTaxRate: number;
+    marginalRate: number;
+    negativeGearingBenefit: number;
+    frankingCreditsAvailable: number;
+    unrealisedCGT: number;
+    paygWithheld: number;
+  };
+  metadata: {
+    calculatedAt: Date;
+    incomeCount: number;
+    expenseCount: number;
+    depreciationCount: number;
+  };
+}
+
+// ============================================================================
+// Loan Insights Types (Phase 17B)
+// ============================================================================
+
+export interface CFOLoanInsights {
+  loanPortfolio: {
+    totalDebt: number;
+    totalMonthlyRepayments: number;
+    weightedAverageRate: number;
+    loanCount: number;
+    debtToIncomeRatio: number;
+    debtServiceRatio: number;
+  };
+  refinanceOpportunities: CFORefinanceOpportunity[];
+  totalRefinanceSavings: number;
+  rateAlerts: CFORateAlert[];
+  extraRepaymentImpact: CFOExtraRepaymentImpact | null;
+  loanRisks: CFOLoanRisk[];
+  metadata: {
+    calculatedAt: Date;
+    loanCount: number;
+    hasOffsetAccounts: boolean;
+  };
+}
+
+export interface CFORefinanceOpportunity {
+  loanId: string;
+  loanName: string;
+  loanType: string;
+  currentBalance: number;
+  currentRate: number;
+  marketRate: number;
+  rateDifference: number;
+  monthlySavings: number;
+  annualSavings: number;
+  breakEvenMonths: number;
+  totalLifetimeSavings: number;
+  remainingMonths: number;
+  worthRefinancing: boolean;
+}
+
+export interface CFORateAlert {
+  type: 'fixed_rate_expiring' | 'interest_only_ending' | 'rate_above_market' | 'lvr_high';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  loanId: string;
+  loanName: string;
+  title: string;
+  description: string;
+  daysUntil?: number;
+  currentRate: number;
+  impact: number;
+  action: string;
+}
+
+export interface CFOExtraRepaymentImpact {
+  extraMonthly: number;
+  interestSaved: number;
+  timeReduced: number;
+  targetLoanId: string;
+  targetLoanName: string;
+  currentPayoffDate: Date;
+  newPayoffDate: Date;
+}
+
+export interface CFOLoanRisk {
+  type: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  impact: number;
+  action: string;
+  loanId?: string;
+}
+
+// ============================================================================
+// Property Insights Types (Phase 17C)
+// ============================================================================
+
+export interface CFOPropertyInsights {
+  portfolioSummary: {
+    totalProperties: number;
+    totalValue: number;
+    totalEquity: number;
+    averageLVR: number;
+    totalMonthlyIncome: number;
+    totalMonthlyCashflow: number;
+  };
+  propertyAlerts: CFOPropertyAlert[];
+  topPerformer: CFOPropertyPerformance | null;
+  underperformer: CFOPropertyPerformance | null;
+  metadata: {
+    calculatedAt: Date;
+    propertyCount: number;
+  };
+}
+
+export interface CFOPropertyAlert {
+  type: 'high_lvr' | 'low_yield' | 'negative_cashflow' | 'low_growth';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  propertyId: string;
+  propertyName: string;
+  title: string;
+  description: string;
+  value: number;
+  action: string;
+}
+
+export interface CFOPropertyPerformance {
+  propertyId: string;
+  propertyName: string;
+  metric: string;
+  value: number;
+  description: string;
+}
+
+// ============================================================================
+// Investment Insights Types (Phase 17D)
+// ============================================================================
+
+export interface CFOInvestmentInsights {
+  portfolioSummary: {
+    totalValue: number;
+    totalCostBase: number;
+    unrealisedGain: number;
+    unrealisedGainPercent: number;
+    holdingsCount: number;
+    dividendYieldPercent: number;
+  };
+  allocationAnalysis: CFOAllocationAnalysis;
+  performanceMetrics: CFOPerformanceMetrics;
+  investmentAlerts: CFOInvestmentAlert[];
+  topPerformer: CFOInvestmentPerformance | null;
+  underperformer: CFOInvestmentPerformance | null;
+  metadata: {
+    calculatedAt: Date;
+    holdingsCount: number;
+  };
+}
+
+export interface CFOAllocationAnalysis {
+  currentAllocation: CFOAssetAllocation[];
+  targetAllocation: CFOAssetAllocation[] | null;
+  driftFromTarget: number; // Percentage drift
+  rebalanceActions: CFORebalanceAction[];
+  concentrationRisk: {
+    hasRisk: boolean;
+    topHolding: string | null;
+    topHoldingPercent: number;
+  };
+}
+
+export interface CFOAssetAllocation {
+  assetType: string;
+  value: number;
+  percentage: number;
+  targetPercentage?: number;
+}
+
+export interface CFORebalanceAction {
+  assetType: string;
+  action: 'buy' | 'sell' | 'hold';
+  currentPercent: number;
+  targetPercent: number;
+  amountToAdjust: number;
+  description: string;
+}
+
+export interface CFOPerformanceMetrics {
+  totalReturn: number;
+  totalReturnPercent: number;
+  annualisedReturn: number | null; // CAGR if > 1 year
+  dividendIncome: number;
+  frankingCredits: number;
+  unrealisedCGT: number;
+}
+
+export interface CFOInvestmentAlert {
+  type: 'concentration_high' | 'underperforming' | 'dividend_cut' | 'rebalance_needed' | 'cgt_opportunity';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  holdingId?: string;
+  holdingName?: string;
+  title: string;
+  description: string;
+  value: number;
+  action: string;
+}
+
+export interface CFOInvestmentPerformance {
+  holdingId: string;
+  holdingName: string;
+  metric: string;
+  value: number;
+  description: string;
 }
 
 export interface MonthlyProgress {

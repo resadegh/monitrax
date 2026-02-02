@@ -7,6 +7,10 @@ import { prisma } from '@/lib/db';
 import { calculateCFOScore, getCFOScoreHistory, saveCFOScore } from './scoreCalculator';
 import { scanForRisks } from './riskRadar';
 import { generateActions } from './actionEngine';
+import { calculateCFOTaxInsights } from './decisionSupport/taxIntegration';
+import { calculateCFOLoanInsights } from './decisionSupport/loanDecisionSupport';
+import { calculateCFOPropertyInsights } from './decisionSupport/propertyDecisionSupport';
+import { calculateCFOInvestmentInsights } from './decisionSupport/investmentDecisionSupport';
 import {
   CFODashboardData,
   CFOScore,
@@ -17,6 +21,10 @@ import {
   CFOQuickStats,
   CFOAlert,
   CFOPreferences,
+  CFOTaxInsights,
+  CFOLoanInsights,
+  CFOPropertyInsights,
+  CFOInvestmentInsights,
 } from './types';
 import { toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
@@ -77,9 +85,25 @@ interface ExpenseRecord {
 
 export async function getCFODashboardData(userId: string): Promise<CFODashboardData> {
   // Calculate all components in parallel where possible
-  const [score, risks] = await Promise.all([
+  const [score, risks, taxInsights, loanInsights, propertyInsights, investmentInsights] = await Promise.all([
     calculateCFOScore(userId),
     scanForRisks(userId),
+    calculateCFOTaxInsights(userId).catch((err) => {
+      console.error('[CFO] Tax insights calculation failed:', err);
+      return undefined;
+    }),
+    calculateCFOLoanInsights(userId).catch((err) => {
+      console.error('[CFO] Loan insights calculation failed:', err);
+      return undefined;
+    }),
+    calculateCFOPropertyInsights(userId).catch((err) => {
+      console.error('[CFO] Property insights calculation failed:', err);
+      return undefined;
+    }),
+    calculateCFOInvestmentInsights(userId).catch((err) => {
+      console.error('[CFO] Investment insights calculation failed:', err);
+      return undefined;
+    }),
   ]);
 
   // Actions depend on risks and score
@@ -104,6 +128,10 @@ export async function getCFODashboardData(userId: string): Promise<CFODashboardD
     monthlyProgress,
     quickStats,
     alerts,
+    taxInsights, // Phase 17A: Tax Integration
+    loanInsights, // Phase 17B: Loan Decision Support
+    propertyInsights, // Phase 17C: Property Decision Support
+    investmentInsights, // Phase 17D: Investment Decision Support
   };
 }
 

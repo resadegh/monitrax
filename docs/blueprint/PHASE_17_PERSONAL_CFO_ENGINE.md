@@ -379,3 +379,306 @@ The following features from the original blueprint are planned for future iterat
 4. **Financial Coach Mode** - Conversational AI for advice
 5. **Score History Persistence** - Store historical CFO scores for trend analysis
 6. **Alert Management** - Mark as read, dismiss, snooze functionality
+
+---
+
+# 17.13 DECISION SUPPORT ENHANCEMENT ROADMAP (Added Jan 2026)
+
+**Reference:** `docs/blueprint/AUDIT_CFO_VALUE_ASSESSMENT_2026_01.md`
+
+Based on the CFO Value Assessment Audit (Jan 2026), the following enhancements are planned to transform the CFO page from **monitoring-only** to **decision-support focused**.
+
+## 17.13.1 Core Principle
+
+> "Users don't want data — they want answers."
+
+Current state focuses on monitoring and alerting. Future state must answer user questions directly.
+
+---
+
+## 17.13.2 Phase 17A: Tax Integration (HIGH PRIORITY)
+
+**Status:** ✅ IMPLEMENTED
+**Implemented Date:** 2026-01-21
+**Effort:** Medium (2-3 days)
+**Dependencies:** Phase 20A (Tax Engine) ✅ Complete
+
+### Implementation Details
+
+1. **Tax Position Summary Tile in CFO Dashboard** ✅
+   - Estimated refund/owing with confidence level
+   - Days until EOFY with action required indicator
+   - Effective tax rate and marginal rate display
+   - Total deductions breakdown (property, depreciation, investment, work-related)
+   - PAYG withholding tracking
+
+2. **Tax-Related Risk Detection** ✅
+   - `cgt_exposure_high` - Unrealised gains > $50k
+   - `super_cap_approaching` - Concessional cap utilization > 80%
+   - `div293_threshold` - Income approaching $250k
+   - `eofy_action_required` - Prepayment opportunities
+   - `depreciation_unclaimed` - Properties without schedules
+   - `franking_credits_unused` - Credits exceeding tax liability
+   - `tax_refund_opportunity` - Large refund detection
+
+3. **Key Tax Metrics** ✅
+   - Negative gearing benefit calculation
+   - Franking credits available
+   - Unrealised CGT exposure
+   - Effective vs marginal tax rate
+
+### Files Created/Modified
+
+```
+lib/cfo/
+├── decisionSupport/
+│   ├── index.ts                  # Module exports
+│   └── taxIntegration.ts         # Tax insights calculator (520 lines)
+│
+lib/cfo/types.ts                  # Added CFOTaxInsights, TaxRisk types
+lib/cfo/intelligenceEngine.ts     # Integrated tax insights
+lib/cfo/index.ts                  # Export calculateCFOTaxInsights
+app/dashboard/cfo/page.tsx        # Tax Position tile UI
+```
+
+### Technical Notes
+- Uses centralized `calculateTaxPosition` from tax-engine (no duplicate logic)
+- marginalRate stored as percentage (37 not 0.37) - divide by 100 when using as multiplier
+- effectiveRate also stored as percentage for display
+
+---
+
+## 17.13.3 Phase 17B: Loan Decision Tools (MEDIUM-HIGH PRIORITY)
+
+**Status:** ✅ IMPLEMENTED
+**Implemented Date:** 2026-01-21
+**Effort:** Medium (3-4 days)
+**Dependencies:** Debt Planner Engine ✅ Complete
+
+### Implementation Details
+
+| Question | Solution |
+|----------|----------|
+| "Should I refinance?" | ✅ Refinance analysis with breakeven calculation |
+| "Is my rate above market?" | ✅ Rate alerts with market comparison |
+| "How much interest will I save with extra repayments?" | ✅ Extra repayment impact calculator |
+
+### Features Implemented
+
+1. **Refinance Opportunity Detection** ✅
+   - Current rate vs estimated market rate (0.5% below current)
+   - Monthly & annual savings calculation
+   - Breakeven months (assuming $2k switching costs)
+   - `worthRefinancing` flag (breakeven < 18 months)
+   - Total lifetime savings projection
+
+2. **Rate Alerts** ✅
+   - `fixed_rate_expiring` - Fixed rate ending within 6 months
+   - `interest_only_ending` - IO period ending within 6 months
+   - `rate_above_market` - Rate > 0.5% above market
+   - `lvr_high` - LVR > 80%
+
+3. **Extra Repayment Impact Calculator** ✅
+   - Targets highest-rate variable loan
+   - Calculates interest saved with extra $500/month
+   - Shows time reduced (months saved)
+   - Current vs new payoff date projection
+
+4. **Loan Portfolio Risks** ✅
+   - High DTI ratio (> 6x income)
+   - High debt service ratio (> 40%)
+   - Rate shock risk (3% rate increase impact)
+   - Offset underutilization detection
+
+### Files Created/Modified
+
+```
+lib/cfo/
+├── decisionSupport/
+│   └── loanDecisionSupport.ts    # Loan insights calculator (400+ lines)
+│
+lib/cfo/types.ts                  # Added CFOLoanInsights, CFORefinanceOpportunity,
+│                                 # CFORateAlert, CFOExtraRepaymentImpact, CFOLoanRisk
+lib/cfo/intelligenceEngine.ts     # Integrated loan insights
+lib/cfo/index.ts                  # Export calculateCFOLoanInsights
+app/dashboard/cfo/page.tsx        # Loan Opportunities tile UI
+```
+
+### CFO Page - Loan Opportunities Tile
+- Shows refinance savings (total annual)
+- Lists rate alerts with urgency indicators
+- Displays extra repayment benefit
+- Links to full Loans page for details
+
+---
+
+## 17.13.4 Phase 17C: Property Decision Tools (HIGH PRIORITY)
+
+**Status:** ✅ IMPLEMENTED (Lightweight Version)
+**Implemented Date:** 2026-01-21
+**Effort:** Medium (2 days)
+**Dependencies:** Property Module ✅, masterFinancialService ✅
+
+### Implementation Details
+
+Implemented as a **lightweight property insights module** that leverages the existing `masterFinancialService.getPropertyMetrics()` to avoid duplicate calculations. Follows the "No Duplicate Numbers" design principle.
+
+| Question | Solution |
+|----------|----------|
+| "Is this property actually performing?" | ✅ Top performer / Underperformer detection |
+| "Which properties need attention?" | ✅ Property alerts (high LVR, low yield, negative cashflow) |
+| "What's my portfolio health?" | ✅ Portfolio summary (equity, LVR, cashflow) |
+
+### Features Implemented
+
+1. **Portfolio Summary** ✅
+   - Total properties count
+   - Total value and equity
+   - Average LVR across portfolio
+   - Total monthly income and net cashflow
+
+2. **Property Alerts** ✅
+   - `high_lvr` - LVR > 80% (high severity if > 90%)
+   - `low_yield` - Rental yield < 3% (high severity if < 2%)
+   - `negative_cashflow` - Monthly cashflow < -$500 (high if < -$1000)
+   - `low_growth` - Capital growth < 2%
+
+3. **Performance Analysis** ✅
+   - Top performer identification (highest yield or positive cashflow)
+   - Underperformer identification (lowest yield or negative cashflow)
+   - Sorted alerts by severity
+
+### Files Created/Modified
+
+```
+lib/cfo/
+├── decisionSupport/
+│   └── propertyDecisionSupport.ts  # Property insights (225 lines)
+│
+lib/cfo/types.ts                    # Added CFOPropertyInsights, CFOPropertyAlert,
+│                                   # CFOPropertyPerformance
+lib/cfo/intelligenceEngine.ts       # Integrated property insights
+lib/cfo/index.ts                    # Export calculateCFOPropertyInsights
+app/dashboard/cfo/page.tsx          # Property Portfolio tile UI
+```
+
+### CFO Page - Property Portfolio Tile
+- Shows portfolio summary (equity, value, LVR, cashflow)
+- Highlights top performer and underperformer
+- Lists property alerts sorted by severity
+- Links to full Properties page for details
+
+### Technical Notes
+- Uses `getPropertyMetrics()` from masterFinancialService (no duplicate logic)
+- Uses shared types from `lib/cfo/types.ts` (CFOPropertyAlert, CFOPropertyPerformance)
+- PropertyMetrics provides: currentValue, equity, lvr, annualRentalIncome, monthlyCashflow, rentalYield, capitalGrowthPercent
+
+### Future Enhancements (Not Yet Implemented)
+- Interest rate stress test tool
+- Affordability/serviceability calculator
+- Sell/Hold/Renovate decision framework
+
+---
+
+## 17.13.5 Phase 17D: Investment Decision Tools (MEDIUM PRIORITY)
+
+**Status:** ✅ IMPLEMENTED
+**Implemented Date:** 2026-01-21
+**Effort:** Medium (3-4 days)
+**Dependencies:** Phase 23 (Investment CGT) ⚠️ Partial, Investment Analytics Engine ✅
+
+### Implementation Details
+
+| Question | Solution |
+|----------|----------|
+| "Am I overexposed to one asset class?" | ✅ Concentration risk detection (>30% single holding) |
+| "Is my portfolio drifting from target?" | ✅ Allocation drift detection (>10% triggers alert) |
+| "What's my real after-tax return?" | ✅ Franking credits, unrealised CGT, dividend income |
+| "Which holdings need attention?" | ✅ Top performer and underperformer identification |
+
+### Features Implemented
+
+1. **Portfolio Summary** ✅
+   - Total value and cost base
+   - Unrealised gain ($ and %)
+   - Holdings count and dividend yield estimate
+
+2. **Asset Allocation Analysis** ✅
+   - Current allocation by asset type (SHARE, ETF, MANAGED_FUND, CRYPTO)
+   - Default target allocation for "Moderate" risk profile
+   - Drift from target percentage calculation
+   - Rebalancing action recommendations
+
+3. **Concentration Risk Detection** ✅
+   - Alerts when any single holding exceeds 30% of portfolio
+   - High severity if concentration > 50%
+
+4. **Performance Analysis** ✅
+   - Top performer identification (highest % gain)
+   - Underperformer identification (worst % loss)
+   - Annualised return (CAGR) if holdings > 1 year old
+
+5. **Investment Alerts** ✅
+   - `concentration_high` - Single holding > 30%
+   - `rebalance_needed` - Portfolio drift > 10%
+   - `underperforming` - Holding down > 20%
+   - `cgt_opportunity` - Long-term gains > $20k (tax planning)
+
+6. **Tax Metrics** ✅
+   - Franking credits estimation
+   - Unrealised CGT calculation (with 50% discount for >12 months)
+   - Dividend income (trailing 12 months)
+
+### Files Created/Modified
+
+```
+lib/cfo/
+├── decisionSupport/
+│   └── investmentDecisionSupport.ts  # Investment insights (450+ lines)
+│
+lib/cfo/types.ts                      # Added CFOInvestmentInsights, CFOAllocationAnalysis,
+│                                     # CFOPerformanceMetrics, CFOInvestmentAlert, etc.
+lib/cfo/intelligenceEngine.ts         # Integrated investment insights
+lib/cfo/index.ts                      # Export calculateCFOInvestmentInsights
+app/dashboard/cfo/page.tsx            # Investment Portfolio tile UI
+```
+
+### CFO Page - Investment Portfolio Tile
+- Shows portfolio value, unrealised gain, dividend yield
+- Asset allocation breakdown with drift indicator
+- Top performer and underperformer highlights
+- Concentration risk warning if applicable
+- Key metrics row (annualised return, dividends, CGT)
+- Links to full Investments page
+
+---
+
+## 17.13.6 Success Metrics
+
+| Metric | Before (Jan 2026) | After (Jan 2026) |
+|--------|-------------------|------------------|
+| User can answer "Should I refinance?" | ❌ No | ✅ Yes - Refinance opportunities with savings |
+| User can see tax position in CFO | ❌ No | ✅ Yes - Tax Position tile |
+| User can see property performance | ❌ No | ✅ Yes - Top/underperformer detection |
+| User can see loan rate alerts | ❌ No | ✅ Yes - Fixed rate expiry, rate above market |
+| User can see property alerts | ❌ No | ✅ Yes - High LVR, low yield, neg cashflow |
+| User can see investment concentration risk | ❌ No | ✅ Yes - Concentration alerts |
+| User can see portfolio drift | ❌ No | ✅ Yes - Allocation drift detection |
+| User can see investment returns with CGT | ❌ No | ✅ Yes - Unrealised CGT, franking credits |
+
+---
+
+## 17.13.7 Implementation Status
+
+| Phase | Priority | Status | Implemented |
+|-------|----------|--------|-------------|
+| 17A: Tax Integration | HIGH | ✅ DONE | 2026-01-21 |
+| 17B: Loan Decisions | MEDIUM-HIGH | ✅ DONE | 2026-01-21 |
+| 17C: Property Decisions | HIGH | ✅ DONE (Lightweight) | 2026-01-21 |
+| 17D: Investment Decisions | MEDIUM | ✅ DONE | 2026-01-21 |
+
+**All Phase 17 Decision Support modules are now complete!**
+
+**Future Enhancements (Optional):**
+- Phase 17C Advanced: Interest rate stress testing, serviceability calculator, sell/hold framework
+- Phase 17D Advanced: Per-holding after-tax return comparison, risk-adjusted returns (Sharpe ratio)
