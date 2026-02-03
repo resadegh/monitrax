@@ -26,22 +26,10 @@ import {
   TrendDirection,
 } from '@/lib/cashflow';
 import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
+import { toMonthly } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
-// Helper to normalize amount to monthly
-function normalizeToMonthly(amount: number, frequency: string): number {
-  switch (frequency) {
-    case 'WEEKLY':
-      return (amount * 52) / 12;
-    case 'FORTNIGHTLY':
-      return (amount * 26) / 12;
-    case 'MONTHLY':
-      return amount;
-    case 'ANNUAL':
-      return amount / 12;
-    default:
-      return amount;
-  }
-}
+// Uses centralized toMonthly from lib/utils/frequencies (Blueprint §5.1)
 
 /**
  * Build CFE input from database
@@ -124,7 +112,7 @@ async function buildCFEInput(
       id: i.id,
       name: i.name,
       type: i.type,
-      monthlyAmount: normalizeToMonthly(Number(i.amount), i.frequency),
+      monthlyAmount: toMonthly(Number(i.amount), i.frequency as Frequency),
       frequency: i.frequency,
       volatility: 0.1, // Default low volatility for regular income
       // Pass salary-specific fields for proper tax handling
@@ -318,8 +306,8 @@ export async function GET(request: NextRequest) {
         ]);
 
         const totalBalance = accounts.reduce((sum: number, a: any) => sum + Number(a.currentBalance), 0);
-        const monthlyIncome = income.reduce((sum: number, i: any) => sum + normalizeToMonthly(Number(i.amount), i.frequency), 0);
-        const monthlyExpenses = expenses.reduce((sum: number, e: any) => sum + normalizeToMonthly(Number(e.amount), e.frequency), 0);
+        const monthlyIncome = income.reduce((sum: number, i: any) => sum + toMonthly(Number(i.amount), i.frequency as Frequency), 0);
+        const monthlyExpenses = expenses.reduce((sum: number, e: any) => sum + toMonthly(Number(e.amount), e.frequency as Frequency), 0);
         const dailyNet = (monthlyIncome - monthlyExpenses) / 30;
 
         // Generate simple 90-day forecast

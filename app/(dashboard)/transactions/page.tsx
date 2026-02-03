@@ -184,7 +184,7 @@ function TransactionRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium truncate">
-            {transaction.merchantStandardised || transaction.description}
+            {transaction.description || transaction.merchantRaw}
           </span>
           {isLinked && (
             <span title="Linked to Income/Expense" className="text-blue-500">

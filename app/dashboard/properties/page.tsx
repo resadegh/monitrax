@@ -17,8 +17,10 @@ import {
   Home, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   Landmark, DollarSign, Receipt, Calendar, Building2,
   ChevronRight, Percent, PiggyBank, FileText, Eye, Link2, Lightbulb,
-  LayoutGrid, List
+  LayoutGrid, List, KeyRound,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
+import { toAnnual } from '@/lib/utils/frequencies';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -68,7 +70,7 @@ interface DepreciationSchedule {
 interface Property {
   id: string;
   name: string;
-  type: 'HOME' | 'INVESTMENT';
+  type: 'HOME' | 'INVESTMENT' | 'RENTAL';
   address: string;
   purchasePrice: number;
   purchaseDate: string;
@@ -98,7 +100,7 @@ interface Property {
 
 type PropertyFormData = {
   name: string;
-  type: 'HOME' | 'INVESTMENT';
+  type: 'HOME' | 'INVESTMENT' | 'RENTAL';
   address: string;
   purchasePrice: number;
   purchaseDate: string;
@@ -111,6 +113,9 @@ type PropertyFormData = {
   suburb?: string;
   state?: string;
   postcode?: string;
+  // Rental property fields
+  rentAmount?: number;
+  rentFrequency?: string;
 };
 
 type ViewMode = 'tiles' | 'list';
@@ -243,6 +248,8 @@ function PropertiesPageContent() {
       suburb: undefined,
       state: undefined,
       postcode: undefined,
+      rentAmount: undefined,
+      rentFrequency: 'WEEKLY',
     });
   };
 
@@ -304,25 +311,9 @@ function PropertiesPageContent() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const convertToAnnual = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52;
-      case 'FORTNIGHTLY': return amount * 26;
-      case 'MONTHLY': return amount * 12;
-      case 'QUARTERLY': return amount * 4;
-      case 'ANNUAL': return amount;
-      default: return amount * 12;
-    }
-  };
+  // Use centralized utilities - formatCurrency from lib/utils/formatters, toAnnual from lib/utils/frequencies
+  const convertToAnnual = (amount: number, frequency: string) =>
+    toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
 
   const calculateGain = (property: Property) => {
     const gain = property.currentValue - property.purchasePrice;
@@ -375,8 +366,10 @@ function PropertiesPageContent() {
       sum + (loan.principal * loan.interestRateAnnual), 0) || 0;
   };
 
-  const totalValue = properties.reduce((sum, p) => sum + p.currentValue, 0);
-  const totalEquity = properties.reduce((sum, p) => sum + calculateEquity(p), 0);
+  // Exclude RENTAL properties from value/equity calculations (they're not owned)
+  const ownedProperties = properties.filter(p => p.type !== 'RENTAL');
+  const totalValue = ownedProperties.reduce((sum, p) => sum + p.currentValue, 0);
+  const totalEquity = ownedProperties.reduce((sum, p) => sum + calculateEquity(p), 0);
 
   return (
     <DashboardLayout>
@@ -486,8 +479,8 @@ function PropertiesPageContent() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant={property.type === 'HOME' ? 'default' : 'secondary'}>
-                            {property.type === 'HOME' ? 'Home' : 'Investment'}
+                          <Badge variant={property.type === 'HOME' ? 'default' : property.type === 'RENTAL' ? 'outline' : 'secondary'}>
+                            {property.type === 'HOME' ? 'Home' : property.type === 'RENTAL' ? 'Rental' : 'Investment'}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-right font-medium">{formatCurrency(property.currentValue)}</td>
@@ -554,11 +547,15 @@ function PropertiesPageContent() {
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <CardTitle className="flex items-center gap-2">
-                        <Home className="h-5 w-5 text-muted-foreground" />
+                        {property.type === 'RENTAL' ? (
+                          <KeyRound className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <Home className="h-5 w-5 text-muted-foreground" />
+                        )}
                         {property.name}
                       </CardTitle>
-                      <Badge variant={property.type === 'HOME' ? 'default' : 'secondary'}>
-                        {property.type === 'HOME' ? 'Primary Residence' : 'Investment'}
+                      <Badge variant={property.type === 'HOME' ? 'default' : property.type === 'RENTAL' ? 'outline' : 'secondary'}>
+                        {property.type === 'HOME' ? 'Primary Residence' : property.type === 'RENTAL' ? 'Rental' : 'Investment'}
                       </Badge>
                     </div>
                     <div className="flex gap-1">
@@ -593,66 +590,94 @@ function PropertiesPageContent() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Value Section */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Current Value</p>
-                      <p className="text-xl font-bold">{formatCurrency(property.currentValue)}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Purchased: {formatCurrency(property.purchasePrice)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Equity</p>
-                      <p className="text-xl font-bold text-green-600">{formatCurrency(equity)}</p>
-                    </div>
-                  </div>
-
-                  {/* Metrics Grid */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {/* LVR */}
-                    <div className="p-2 bg-muted/50 rounded-lg text-center">
-                      <Percent className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-                      <p className="text-xs text-muted-foreground">LVR</p>
-                      <p className={`text-sm font-semibold ${lvr > 80 ? 'text-red-600' : lvr > 60 ? 'text-yellow-600' : 'text-green-600'}`}>
-                        {lvr.toFixed(1)}%
-                      </p>
-                    </div>
-
-                    {/* Capital Gain */}
-                    <div className="p-2 bg-muted/50 rounded-lg text-center">
-                      {isPositiveGain ? (
-                        <TrendingUp className="h-4 w-4 mx-auto text-green-600 mb-1" />
-                      ) : (
-                        <TrendingDown className="h-4 w-4 mx-auto text-red-600 mb-1" />
-                      )}
-                      <p className="text-xs text-muted-foreground">Gain</p>
-                      <p className={`text-sm font-semibold ${isPositiveGain ? 'text-green-600' : 'text-red-600'}`}>
-                        {percentage >= 0 ? '+' : ''}{percentage.toFixed(1)}%
-                      </p>
-                    </div>
-
-                    {/* Rental Yield (for investment) */}
-                    {property.type === 'INVESTMENT' && (
-                      <div className="p-2 bg-muted/50 rounded-lg text-center">
-                        <PiggyBank className="h-4 w-4 mx-auto text-purple-500 mb-1" />
-                        <p className="text-xs text-muted-foreground">Yield</p>
-                        <p className="text-sm font-semibold text-purple-600">
-                          {rentalYield.toFixed(2)}%
-                        </p>
+                  {/* Rental Property Content */}
+                  {property.type === 'RENTAL' ? (
+                    <>
+                      {/* Rent Expense Summary */}
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <KeyRound className="h-4 w-4 text-blue-600" />
+                          <span className="font-medium text-blue-900">Rental Property</span>
+                        </div>
+                        {expenseCount > 0 ? (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Rent & Expenses</p>
+                            <p className="text-xl font-bold text-red-600">
+                              {formatCurrency(property.expenses?.reduce((sum, exp) =>
+                                sum + convertToAnnual(exp.amount, exp.frequency), 0) || 0)}/yr
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-blue-700">
+                            Add rent expense from the expenses section
+                          </p>
+                        )}
                       </div>
-                    )}
-
-                    {/* Cashflow (for investment) */}
-                    {property.type === 'INVESTMENT' && (
-                      <div className="p-2 bg-muted/50 rounded-lg text-center col-span-3">
-                        <p className="text-xs text-muted-foreground">Annual Cashflow</p>
-                        <p className={`text-sm font-semibold ${cashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatCurrency(cashflow)}/yr
-                        </p>
+                    </>
+                  ) : (
+                    <>
+                      {/* Value Section - for owned properties */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Current Value</p>
+                          <p className="text-xl font-bold">{formatCurrency(property.currentValue)}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Purchased: {formatCurrency(property.purchasePrice)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Equity</p>
+                          <p className="text-xl font-bold text-green-600">{formatCurrency(equity)}</p>
+                        </div>
                       </div>
-                    )}
-                  </div>
+
+                      {/* Metrics Grid */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* LVR */}
+                        <div className="p-2 bg-muted/50 rounded-lg text-center">
+                          <Percent className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+                          <p className="text-xs text-muted-foreground">LVR</p>
+                          <p className={`text-sm font-semibold ${lvr > 80 ? 'text-red-600' : lvr > 60 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {lvr.toFixed(1)}%
+                          </p>
+                        </div>
+
+                        {/* Capital Gain */}
+                        <div className="p-2 bg-muted/50 rounded-lg text-center">
+                          {isPositiveGain ? (
+                            <TrendingUp className="h-4 w-4 mx-auto text-green-600 mb-1" />
+                          ) : (
+                            <TrendingDown className="h-4 w-4 mx-auto text-red-600 mb-1" />
+                          )}
+                          <p className="text-xs text-muted-foreground">Gain</p>
+                          <p className={`text-sm font-semibold ${isPositiveGain ? 'text-green-600' : 'text-red-600'}`}>
+                            {percentage >= 0 ? '+' : ''}{percentage.toFixed(1)}%
+                          </p>
+                        </div>
+
+                        {/* Rental Yield (for investment) */}
+                        {property.type === 'INVESTMENT' && (
+                          <div className="p-2 bg-muted/50 rounded-lg text-center">
+                            <PiggyBank className="h-4 w-4 mx-auto text-purple-500 mb-1" />
+                            <p className="text-xs text-muted-foreground">Yield</p>
+                            <p className="text-sm font-semibold text-purple-600">
+                              {rentalYield.toFixed(2)}%
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Cashflow (for investment) */}
+                        {property.type === 'INVESTMENT' && (
+                          <div className="p-2 bg-muted/50 rounded-lg text-center col-span-3">
+                            <p className="text-xs text-muted-foreground">Annual Cashflow</p>
+                            <p className={`text-sm font-semibold ${cashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatCurrency(cashflow)}/yr
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   {/* Linked Data Summary */}
                   <div className="pt-3 border-t">
@@ -726,7 +751,16 @@ function PropertiesPageContent() {
                 <Label htmlFor="type">Type</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value as 'HOME' | 'INVESTMENT' })}
+                  onValueChange={(value) => {
+                    const newType = value as 'HOME' | 'INVESTMENT' | 'RENTAL';
+                    setFormData({
+                      ...formData,
+                      type: newType,
+                      // Reset purchase fields for rental
+                      purchasePrice: newType === 'RENTAL' ? 0 : formData.purchasePrice,
+                      currentValue: newType === 'RENTAL' ? 0 : formData.currentValue,
+                    });
+                  }}
                 >
                   <SelectTrigger id="type">
                     <SelectValue />
@@ -734,8 +768,14 @@ function PropertiesPageContent() {
                   <SelectContent>
                     <SelectItem value="HOME">Primary Residence</SelectItem>
                     <SelectItem value="INVESTMENT">Investment Property</SelectItem>
+                    <SelectItem value="RENTAL">Rental (I&apos;m Renting)</SelectItem>
                   </SelectContent>
                 </Select>
+                {formData.type === 'RENTAL' && (
+                  <p className="text-xs text-muted-foreground">
+                    Track your rental property and rent expenses
+                  </p>
+                )}
               </div>
             </div>
 
@@ -755,57 +795,105 @@ function PropertiesPageContent() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="purchasePrice">Purchase Price</Label>
-                <Input
-                  id="purchasePrice"
-                  type="number"
-                  value={formData.purchasePrice}
-                  onChange={(e) => setFormData({ ...formData, purchasePrice: Number(e.target.value) })}
-                  placeholder="500000"
-                  min="0"
-                  required
-                />
+            {/* Rental property fields */}
+            {formData.type === 'RENTAL' && (
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rentAmount">Rent Amount</Label>
+                    <Input
+                      id="rentAmount"
+                      type="number"
+                      value={formData.rentAmount || ''}
+                      onChange={(e) => setFormData({ ...formData, rentAmount: Number(e.target.value) })}
+                      placeholder="500"
+                      min="0"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rentFrequency">Payment Frequency</Label>
+                    <Select
+                      value={formData.rentFrequency || 'WEEKLY'}
+                      onValueChange={(value) => setFormData({ ...formData, rentFrequency: value })}
+                    >
+                      <SelectTrigger id="rentFrequency">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="WEEKLY">Weekly</SelectItem>
+                        <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
+                        <SelectItem value="MONTHLY">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {formData.rentAmount && formData.rentAmount > 0 && (
+                  <p className="text-sm text-blue-700">
+                    Annual rent: ${((formData.rentAmount || 0) *
+                      (formData.rentFrequency === 'WEEKLY' ? 52 : formData.rentFrequency === 'FORTNIGHTLY' ? 26 : 12)
+                    ).toLocaleString()}/year (will be added as a recurring expense)
+                  </p>
+                )}
               </div>
+            )}
 
-              <div className="space-y-2">
-                <Label htmlFor="purchaseDate">Purchase Date</Label>
-                <Input
-                  id="purchaseDate"
-                  type="date"
-                  value={formData.purchaseDate}
-                  onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
+            {/* Owned property fields - only for HOME and INVESTMENT */}
+            {formData.type !== 'RENTAL' && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="purchasePrice">Purchase Price</Label>
+                    <Input
+                      id="purchasePrice"
+                      type="number"
+                      value={formData.purchasePrice}
+                      onChange={(e) => setFormData({ ...formData, purchasePrice: Number(e.target.value) })}
+                      placeholder="500000"
+                      min="0"
+                      required
+                    />
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentValue">Current Value</Label>
-                <Input
-                  id="currentValue"
-                  type="number"
-                  value={formData.currentValue}
-                  onChange={(e) => setFormData({ ...formData, currentValue: Number(e.target.value) })}
-                  placeholder="600000"
-                  min="0"
-                  required
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="purchaseDate">Purchase Date</Label>
+                    <Input
+                      id="purchaseDate"
+                      type="date"
+                      value={formData.purchaseDate}
+                      onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="valuationDate">Valuation Date</Label>
-                <Input
-                  id="valuationDate"
-                  type="date"
-                  value={formData.valuationDate}
-                  onChange={(e) => setFormData({ ...formData, valuationDate: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentValue">Current Value</Label>
+                    <Input
+                      id="currentValue"
+                      type="number"
+                      value={formData.currentValue}
+                      onChange={(e) => setFormData({ ...formData, currentValue: Number(e.target.value) })}
+                      placeholder="600000"
+                      min="0"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="valuationDate">Valuation Date</Label>
+                    <Input
+                      id="valuationDate"
+                      type="date"
+                      value={formData.valuationDate}
+                      onChange={(e) => setFormData({ ...formData, valuationDate: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>

@@ -27,34 +27,21 @@ import {
   InsightData,
 } from '@/lib/health';
 import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
-
-// Helper to normalize amount to monthly
-function normalizeToMonthly(amount: number, frequency: string): number {
-  switch (frequency) {
-    case 'WEEKLY':
-      return (amount * 52) / 12;
-    case 'FORTNIGHTLY':
-      return (amount * 26) / 12;
-    case 'MONTHLY':
-      return amount;
-    case 'ANNUAL':
-      return amount / 12;
-    default:
-      return amount;
-  }
-}
+import { toMonthly } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 // Helper to get net income amount (after PAYG for salary types)
+// Uses centralized toMonthly from lib/utils/frequencies (Blueprint §5.1)
 function getNetMonthlyIncome(incomeItem: { amount: number; frequency: string; type: string }): number {
   if (incomeItem.type === 'SALARY') {
     const takeHome = calculateTakeHomePay(
       incomeItem.amount,
       incomeItem.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
     );
-    return normalizeToMonthly(takeHome.netAmount, incomeItem.frequency);
+    return toMonthly(takeHome.netAmount, incomeItem.frequency as Frequency);
   }
   // For non-salary income, use gross amount (tax calculated at year end)
-  return normalizeToMonthly(incomeItem.amount, incomeItem.frequency);
+  return toMonthly(incomeItem.amount, incomeItem.frequency as Frequency);
 }
 
 /**
@@ -132,11 +119,11 @@ async function buildHealthInput(userId: string): Promise<FinancialHealthInput> {
     const propertyIncome = income.filter((i: any) => i.propertyId === p.id);
     const propertyExpenses = expenses.filter((e: any) => e.propertyId === p.id);
     const monthlyIncome = propertyIncome.reduce(
-      (sum: number, i: any) => sum + normalizeToMonthly(Number(i.amount), i.frequency),
+      (sum: number, i: any) => sum + toMonthly(Number(i.amount), i.frequency as Frequency),
       0
     );
     const monthlyExpenses = propertyExpenses.reduce(
-      (sum: number, e: any) => sum + normalizeToMonthly(Number(e.amount), e.frequency),
+      (sum: number, e: any) => sum + toMonthly(Number(e.amount), e.frequency as Frequency),
       0
     );
 
@@ -204,7 +191,7 @@ async function buildHealthInput(userId: string): Promise<FinancialHealthInput> {
     id: e.id,
     name: e.name,
     category: e.category,
-    monthlyAmount: normalizeToMonthly(Number(e.amount), e.frequency),
+    monthlyAmount: toMonthly(Number(e.amount), e.frequency as Frequency),
     isEssential: e.isEssential,
   }));
 

@@ -7,6 +7,10 @@ import { prisma } from '@/lib/db';
 import { calculateCFOScore, getCFOScoreHistory, saveCFOScore } from './scoreCalculator';
 import { scanForRisks } from './riskRadar';
 import { generateActions } from './actionEngine';
+import { calculateCFOTaxInsights } from './decisionSupport/taxIntegration';
+import { calculateCFOLoanInsights } from './decisionSupport/loanDecisionSupport';
+import { calculateCFOPropertyInsights } from './decisionSupport/propertyDecisionSupport';
+import { calculateCFOInvestmentInsights } from './decisionSupport/investmentDecisionSupport';
 import {
   CFODashboardData,
   CFOScore,
@@ -17,7 +21,13 @@ import {
   CFOQuickStats,
   CFOAlert,
   CFOPreferences,
+  CFOTaxInsights,
+  CFOLoanInsights,
+  CFOPropertyInsights,
+  CFOInvestmentInsights,
 } from './types';
+import { toMonthly } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 // Type definitions for Prisma models (to avoid Prisma client generation dependency)
 interface AccountRecord {
@@ -75,9 +85,25 @@ interface ExpenseRecord {
 
 export async function getCFODashboardData(userId: string): Promise<CFODashboardData> {
   // Calculate all components in parallel where possible
-  const [score, risks] = await Promise.all([
+  const [score, risks, taxInsights, loanInsights, propertyInsights, investmentInsights] = await Promise.all([
     calculateCFOScore(userId),
     scanForRisks(userId),
+    calculateCFOTaxInsights(userId).catch((err) => {
+      console.error('[CFO] Tax insights calculation failed:', err);
+      return undefined;
+    }),
+    calculateCFOLoanInsights(userId).catch((err) => {
+      console.error('[CFO] Loan insights calculation failed:', err);
+      return undefined;
+    }),
+    calculateCFOPropertyInsights(userId).catch((err) => {
+      console.error('[CFO] Property insights calculation failed:', err);
+      return undefined;
+    }),
+    calculateCFOInvestmentInsights(userId).catch((err) => {
+      console.error('[CFO] Investment insights calculation failed:', err);
+      return undefined;
+    }),
   ]);
 
   // Actions depend on risks and score
@@ -102,6 +128,10 @@ export async function getCFODashboardData(userId: string): Promise<CFODashboardD
     monthlyProgress,
     quickStats,
     alerts,
+    taxInsights, // Phase 17A: Tax Integration
+    loanInsights, // Phase 17B: Loan Decision Support
+    propertyInsights, // Phase 17C: Property Decision Support
+    investmentInsights, // Phase 17D: Investment Decision Support
   };
 }
 
@@ -149,10 +179,10 @@ async function calculateMonthlyProgress(userId: string): Promise<MonthlyProgress
     : 0;
 
   // Calculate savings rate (including loan repayments)
-  const monthlyIncome = incomes.reduce((sum: number, i: IncomeRecord) => sum + monthlyize(i.amount, i.frequency), 0);
-  const monthlyExpenses = expenses.reduce((sum: number, e: ExpenseRecord) => sum + monthlyize(e.amount, e.frequency), 0);
+  const monthlyIncome = incomes.reduce((sum: number, i: IncomeRecord) => sum + toMonthly(i.amount, i.frequency as Frequency), 0);
+  const monthlyExpenses = expenses.reduce((sum: number, e: ExpenseRecord) => sum + toMonthly(e.amount, e.frequency as Frequency), 0);
   const monthlyLoanRepayments = loans.reduce(
-    (sum: number, l: LoanRecord) => sum + monthlyize(l.minRepayment, l.repaymentFrequency),
+    (sum: number, l: LoanRecord) => sum + toMonthly(l.minRepayment, l.repaymentFrequency as Frequency),
     0
   );
   const savingsRate = monthlyIncome > 0
@@ -219,7 +249,7 @@ async function calculateQuickStats(userId: string): Promise<CFOQuickStats> {
 
   const now = new Date();
   const daysRemaining = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
-  const dailyBurn = expenses.reduce((sum: number, e: ExpenseRecord) => sum + monthlyize(e.amount, e.frequency), 0) / 30;
+  const dailyBurn = expenses.reduce((sum: number, e: ExpenseRecord) => sum + toMonthly(e.amount, e.frequency as Frequency), 0) / 30;
 
   const projectedMonthEndBalance = totalLiquid - (dailyBurn * daysRemaining);
 
@@ -227,7 +257,7 @@ async function calculateQuickStats(userId: string): Promise<CFOQuickStats> {
   const subscriptions = expenses.filter((e: ExpenseRecord) =>
     !e.isEssential &&
     ['MONTHLY', 'ANNUAL'].includes(e.frequency.toUpperCase()) &&
-    monthlyize(e.amount, e.frequency) < 100
+    toMonthly(e.amount, e.frequency as Frequency) < 100
   );
 
   return {
@@ -303,16 +333,5 @@ export async function getActions(userId: string): Promise<ActionPrioritisationOu
 }
 
 // ============================================================================
-// Helpers
+// Helpers - Use centralized frequency utilities from lib/utils/frequencies.ts
 // ============================================================================
-
-function monthlyize(amount: number, frequency: string): number {
-  switch (frequency.toUpperCase()) {
-    case 'WEEKLY': return amount * 52 / 12;
-    case 'FORTNIGHTLY': return amount * 26 / 12;
-    case 'MONTHLY': return amount;
-    case 'QUARTERLY': return amount / 3;
-    case 'ANNUAL': return amount / 12;
-    default: return amount;
-  }
-}

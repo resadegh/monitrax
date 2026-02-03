@@ -7,25 +7,19 @@ import { TaxYearConfig, SalaryInput, SalaryBreakdown, CalculationStep } from '..
 import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
 import { calculatePAYG, calculateGrossFromNet } from '../core/paygCalculator';
 import { calculateMedicareLevy } from '../core/medicareLevyCalculator';
+import { toAnnual, periodsPerYear } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 // =============================================================================
-// Frequency Conversion Helpers
+// Frequency Conversion Helpers - Use centralized utilities from lib/utils/frequencies.ts
 // =============================================================================
-
-const PERIODS_PER_YEAR: Record<string, number> = {
-  WEEKLY: 52,
-  FORTNIGHTLY: 26,
-  MONTHLY: 12,
-  QUARTERLY: 4,
-  ANNUALLY: 1,
-};
 
 function annualize(amount: number, frequency: string): number {
-  return amount * (PERIODS_PER_YEAR[frequency] || 1);
+  return toAnnual(amount, frequency as Frequency);
 }
 
 function deannualize(annualAmount: number, frequency: string): number {
-  return annualAmount / (PERIODS_PER_YEAR[frequency] || 1);
+  return annualAmount / periodsPerYear(frequency as Frequency);
 }
 
 function getFrequencyLabel(frequency: string): string {
@@ -79,7 +73,7 @@ export function processSalary(
     calculations.push({
       label: 'Annual Gross Salary',
       value: annualGross,
-      explanation: `$${amount.toLocaleString()} × ${PERIODS_PER_YEAR[payFrequency]} periods`,
+      explanation: `$${amount.toLocaleString()} × ${periodsPerYear(payFrequency as Frequency)} periods`,
     });
   } else {
     // Net provided - reverse calculate gross, but PRESERVE the user's net input

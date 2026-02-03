@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyOwnership, verifyRelatedOwnership } from '@/lib/utils/ownership';
 
 export async function GET(
   request: NextRequest,
@@ -20,11 +21,10 @@ export async function GET(
         },
       });
 
-      if (!loan || loan.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Loan not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(loan, authReq.user!.userId, 'Loan');
+      if (!ownershipResult.success) return ownershipResult.response;
 
-      return NextResponse.json(loan);
+      return NextResponse.json(ownershipResult.resource);
     } catch (error) {
       console.error('Get loan error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -63,39 +63,34 @@ export async function PUT(
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Loan not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Loan');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       // Validate ownership of related entities
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        if (!property || property.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Property not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        if (!result.success) return result.response;
       }
 
       if (offsetAccountId) {
         const account = await prisma.account.findUnique({ where: { id: offsetAccountId } });
-        if (!account || account.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Offset account not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(account, authReq.user!.userId, 'Offset account');
+        if (!result.success) return result.response;
       }
 
       // Validate linked asset (for CAR loans)
       if (linkedAssetId) {
         const asset = await prisma.asset.findUnique({ where: { id: linkedAssetId } });
-        if (!asset || asset.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Asset not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(asset, authReq.user!.userId, 'Asset');
+        if (!result.success) return result.response;
       }
 
       // Validate linked account (for LINE_OF_CREDIT)
       if (linkedAccountId) {
         const account = await prisma.account.findUnique({ where: { id: linkedAccountId } });
-        if (!account || account.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Linked account not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(account, authReq.user!.userId, 'Linked account');
+        if (!result.success) return result.response;
       }
 
       const loan = await prisma.loan.update({
@@ -145,9 +140,8 @@ export async function DELETE(
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Loan not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Loan');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       await prisma.loan.delete({
         where: { id },

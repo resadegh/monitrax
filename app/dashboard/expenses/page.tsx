@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreditCard, Plus, Edit2, Trash2, TrendingDown, Calendar, AlertCircle, Home, Briefcase, Building2, Landmark, DollarSign, Receipt, Store, Eye, Link2, Upload, Paperclip, FileText, X, ChevronDown, ChevronUp, Grid3X3, FolderOpen, LayoutGrid, Zap, List, Radio } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
+import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -100,7 +102,7 @@ interface Expense {
   id: string;
   name: string;
   vendorName: string | null;
-  category: 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
+  category: 'HOUSING' | 'RENT' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
   sourceType: 'GENERAL' | 'PROPERTY' | 'LOAN' | 'INVESTMENT' | 'ASSET';
   amount: number;
   frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
@@ -516,34 +518,14 @@ function ExpensesPageContent() {
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-
-  const convertToMonthly = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52 / 12;
-      case 'FORTNIGHTLY': return amount * 26 / 12;
-      case 'MONTHLY': return amount;
-      case 'QUARTERLY': return amount * 4 / 12;
-      case 'ANNUAL': return amount / 12;
-      default: return amount;
-    }
-  };
+  // formatCurrency imported from lib/utils/formatters
+  // Frequency conversions use centralized utilities from lib/utils/frequencies
+  const convertToMonthly = (amount: number, frequency: string) =>
+    toMonthly(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
 
   // Convert loan repayment to monthly
-  const convertLoanRepaymentToMonthly = (amount: number, frequency: Loan['repaymentFrequency']): number => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52 / 12;
-      case 'FORTNIGHTLY': return amount * 26 / 12;
-      case 'MONTHLY': return amount;
-      default: return amount;
-    }
-  };
+  const convertLoanRepaymentToMonthly = (amount: number, frequency: Loan['repaymentFrequency']): number =>
+    toMonthly(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY');
 
   const totalMonthly = filteredExpenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
   const allTotalMonthly = expenses.reduce((sum, e) => sum + convertToMonthly(e.amount, e.frequency), 0);
@@ -597,7 +579,7 @@ function ExpensesPageContent() {
   // Category info with icons and colors - includes all possible categories for compatibility
   const categoryInfo: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
     HOUSING: { label: 'Housing', icon: <Home className="h-5 w-5" />, color: 'text-blue-500' },
-    RENT: { label: 'Rent', icon: <Home className="h-5 w-5" />, color: 'text-blue-400' },
+    RENT: { label: 'Rent', icon: <Home className="h-5 w-5" />, color: 'text-blue-600' },
     RATES: { label: 'Rates', icon: <Building2 className="h-5 w-5" />, color: 'text-amber-500' },
     INSURANCE: { label: 'Insurance', icon: <Receipt className="h-5 w-5" />, color: 'text-green-500' },
     MAINTENANCE: { label: 'Maintenance', icon: <TrendingDown className="h-5 w-5" />, color: 'text-orange-500' },
@@ -691,6 +673,7 @@ function ExpensesPageContent() {
   const getCategoryBadge = (category: Expense['category']) => {
     const variants: Record<Expense['category'], { variant: 'default' | 'secondary' | 'outline' | 'destructive'; label: string }> = {
       HOUSING: { variant: 'default', label: 'Housing' },
+      RENT: { variant: 'default', label: 'Rent' },
       RATES: { variant: 'secondary', label: 'Rates' },
       INSURANCE: { variant: 'default', label: 'Insurance' },
       MAINTENANCE: { variant: 'secondary', label: 'Maintenance' },

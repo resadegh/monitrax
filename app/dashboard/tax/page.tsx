@@ -31,6 +31,17 @@ import {
   CheckCircle2,
   Info,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
+
+interface TaxRecommendation {
+  id: string;
+  type: 'SAVINGS' | 'OPTIMIZATION' | 'WARNING' | 'INFO';
+  title: string;
+  description: string;
+  potentialSavings?: number;
+  action?: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+}
 
 interface TaxPositionResponse {
   success: boolean;
@@ -89,7 +100,7 @@ interface TaxPositionResponse {
     nonConcessional: number;
   };
   warnings: string[];
-  recommendations: string[];
+  recommendations: TaxRecommendation[];
   metadata: {
     incomeCount: number;
     expenseCount: number;
@@ -133,14 +144,7 @@ export default function TaxPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // formatCurrency imported from lib/utils/formatters
 
   const formatPercent = (rate: number) => {
     return `${rate.toFixed(1)}%`;
@@ -388,11 +392,22 @@ export default function TaxPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ul className="space-y-2">
-                        {taxPosition.recommendations.map((rec, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-sm text-sky-700 dark:text-sky-400">
-                            <Lightbulb className="h-4 w-4 mt-0.5 shrink-0" />
-                            {rec}
+                      <ul className="space-y-3">
+                        {taxPosition.recommendations.map((rec) => (
+                          <li key={rec.id} className="flex items-start gap-2 text-sm">
+                            <Lightbulb className="h-4 w-4 mt-0.5 shrink-0 text-sky-600 dark:text-sky-400" />
+                            <div>
+                              <p className="font-medium text-sky-700 dark:text-sky-400">{rec.title}</p>
+                              <p className="text-sky-600/80 dark:text-sky-400/80">{rec.description}</p>
+                              {rec.potentialSavings && rec.potentialSavings > 0 && (
+                                <p className="text-emerald-600 dark:text-emerald-400 font-medium mt-1">
+                                  Potential savings: {formatCurrency(rec.potentialSavings)}
+                                </p>
+                              )}
+                              {rec.action && (
+                                <p className="text-muted-foreground mt-1 text-xs">{rec.action}</p>
+                              )}
+                            </div>
                           </li>
                         ))}
                       </ul>

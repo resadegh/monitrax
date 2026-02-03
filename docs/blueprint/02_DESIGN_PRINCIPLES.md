@@ -42,14 +42,16 @@ The system is built around **how financial entities relate to each other**, not 
 ### **2.3 Canonical Everything**
 There must always be exactly **one canonical representation** of truth for:
 
-- entities  
-- relations  
-- paths  
-- IDs  
-- navigation  
-- financial metrics  
+- entities
+- relations
+- paths
+- IDs
+- navigation
+- financial metrics
+- **documentation** (`docs/blueprint/` is the single source)
 
 Duplicated logic is an architectural failure.
+Duplicated documentation is a maintenance nightmare.
 
 ### **2.4 Predictable By Design**
 No hidden mutations, no inconsistent behaviours, no “magic.”
@@ -98,15 +100,40 @@ This means:
 ### **3.4 Consistent Interaction Patterns**
 All dialogs share:
 
-- the same layout  
-- tabs on top  
-- linked data tab  
-- insights tab  
-- consistent CTAs  
-- the same button placement  
-- universal close & back rules  
+- the same layout
+- tabs on top
+- linked data tab
+- insights tab
+- consistent CTAs
+- the same button placement
+- universal close & back rules
 
-The user should never have to “relearn” anything.
+The user should never have to "relearn" anything.
+
+### **3.5 No Duplicate Numbers Across Pages**
+> **Added Jan 2026 - Phase 17B**
+
+Each number should appear in **exactly one primary location** in the app. Summary pages (like CFO Dashboard) should show:
+
+- **Actionable insights**, not raw data duplicates
+- **Links** to detailed pages instead of copying their content
+- **Unique metrics** not shown elsewhere
+
+**Bad Examples:**
+- ❌ CFO page showing "Total Debt: $500k" when Debt page already shows this
+- ❌ Tax Position tile duplicating numbers from Tax Dashboard
+- ❌ Loan insights repeating portfolio totals from Loans page
+
+**Good Examples:**
+- ✅ CFO page showing "3 refinance opportunities - save $2,400/year" with link to Loans
+- ✅ Tax tile showing "EOFY action needed" alert with link to Tax Dashboard
+- ✅ Loan insights showing "Fixed rate expiring in 45 days" alert
+
+**The Rule:**
+If a number already has a "home" page, the summary tile should:
+1. Show the **insight/action** derived from that number
+2. Provide a **link** to the detail page
+3. **NOT** repeat the raw number itself
 
 ---
 
@@ -160,9 +187,28 @@ Rules:
 ### **5.1 Never Duplicate Logic**
 If logic appears twice, it must become:
 
-- a utility  
-- an engine  
-- or a shared component  
+- a utility
+- an engine
+- or a shared component
+
+**Canonical Utility Locations:**
+
+| Logic Type | Location | Functions |
+|------------|----------|-----------|
+| **ALL FINANCIAL DATA** | `lib/services/masterFinancialService.ts` | `getMasterFinancialSnapshot()` |
+| Currency formatting | `lib/utils/formatters.ts` | `formatCurrency()` |
+| Frequency conversion | `lib/utils/frequencies.ts` | `toAnnual()`, `toMonthly()`, `periodsPerYear()` |
+| Ownership validation | `lib/utils/ownership.ts` | `verifyOwnership()`, `verifyRelatedOwnership()` |
+| Net worth calculation | `lib/calculations/netWorthCalculator.ts` | `calculateNetWorth()`, `calculateTotalAssets()` |
+| Cashflow calculation | `lib/calculations/cashflowOrchestrator.ts` | `calculateCashflow()`, `calculateMonthlyCashflow()` |
+| Expense aggregation | `lib/calculations/expenseAggregator.ts` | `aggregateExpenses()`, `aggregateExpensesByCategory()` |
+| Income aggregation | `lib/calculations/incomeAggregator.ts` | `aggregateIncome()` |
+| Loan aggregation | `lib/calculations/loanAggregator.ts` | `aggregateLoanRepayments()`, `calculateLVR()` |
+
+**CRITICAL: Before adding ANY calculation logic to a file:**
+1. Check if it exists in the Master Financial Service (`lib/services/masterFinancialService.ts`)
+2. If not, check if it exists in the calculation utilities above
+3. If adding new calculations, add them to the Master Financial Service, NOT to individual API routes  
 
 ### **5.2 API Responses Must Be Canonicalised**
 Every API route must:
@@ -216,10 +262,41 @@ All engines depend on:
 - consistent shapes  
 - predictable relations  
 
-### **6.2 Snapshot Engine is the Single Source of Financial Truth**
-Everything requiring financial numbers must come from:
+### **6.2 Master Financial Service is the Single Source of Financial Truth**
 
-- /api/portfolio/snapshot  
+> **CRITICAL DESIGN PRINCIPLE (Updated Jan 2026)**
+
+Everything requiring financial numbers **MUST** come from:
+
+- **API Endpoint:** `/api/master-snapshot`
+- **Service Function:** `getMasterFinancialSnapshot()` from `lib/services/masterFinancialService.ts`
+
+**DO NOT:**
+- Calculate expenses/income/cashflow directly in API routes
+- Query database and aggregate financial data manually
+- Create new calculation logic outside the Master Financial Service
+
+**DO:**
+- Use `getMasterFinancialSnapshot(userId)` for ALL financial data needs
+- Use convenience getters: `getNetWorth()`, `getMonthlyCashflow()`, `getQuickMetrics()`, etc.
+- Extend the Master Financial Service if new calculations are needed
+
+**What the Master Financial Service provides:**
+| Category | Data |
+|----------|------|
+| Net Worth | Assets, liabilities, breakdown by type |
+| Expenses | All, recurring, non-recurring, essential, discretionary, tax-deductible, by category |
+| Income | All, primary, secondary, passive (monthly & annual) |
+| Cashflow | Income, expenses, loan repayments, net cashflow, savings rate |
+| Debt | Total principal, monthly repayments, debt-to-income, debt service ratio |
+| Properties | Per-property metrics: LVR, equity, rental yield, cashflow |
+| Investments | Total value, cost base, unrealised gains, allocation |
+| Tax | Estimated taxable income, tax payable, deductions, PAYG |
+| Emergency Fund | Liquid cash, months covered, gap, status |
+| Health Score | 0-100 score, grade, component breakdown |
+
+**Migration:**
+Legacy `/api/portfolio/snapshot` still works for GRDCS linkage health but should delegate to the Master Financial Service for all financial calculations  
 
 ### **6.3 LinkageHealth is the Single Source of Relational Truth**
 Missing or invalid relationships must always be detected there.
@@ -277,7 +354,67 @@ This principle applies to:
 
 ---
 
-## **7. Security Principles**
+## **7. Documentation Principles**
 
-### **7.1 Defense in Depth**
-Security enforced
+### **7.1 Single Source of Truth**
+The `docs/blueprint/` folder is the **canonical source** for all system documentation.
+
+- All architectural decisions, specifications, and design patterns MUST be documented in `docs/blueprint/`
+- External references MUST point to the blueprint folder, never duplicate content
+- Blueprint documents are versioned and authoritative
+
+### **7.2 Documentation Hierarchy**
+
+| Location | Purpose | Examples |
+|----------|---------|----------|
+| `docs/blueprint/` | **Canonical specifications** | Architecture, API standards, design principles |
+| `docs/` (root) | **Operational documents** | Audit reports, setup guides, changelogs |
+| `README.md` | **Entry point** | Links to blueprint, quick start |
+| Code comments | **Implementation notes** | Why, not what |
+
+### **7.3 Never Duplicate Blueprint Content**
+If documentation exists in `docs/blueprint/`, it MUST NOT be duplicated elsewhere.
+
+- ❌ Don't create `docs/MASTER_BLUEPRINT.md` (duplicate)
+- ✅ Reference `docs/blueprint/MASTER_BLUEPRINT.md` instead
+- ❌ Don't copy API specs into README
+- ✅ Link to `docs/blueprint/07_API_STANDARDS.md`
+
+### **7.4 Document Types**
+
+| Type | Location | Update Frequency |
+|------|----------|------------------|
+| **Specifications** | `docs/blueprint/*.md` | On design changes |
+| **Phase Docs** | `docs/blueprint/PHASE_*.md` | On feature completion |
+| **Changelogs** | `docs/blueprint/CHANGELOG_*.md` | Per release |
+| **Audit Reports** | `docs/AUDIT_*.md` | Per audit cycle |
+| **Setup Guides** | `docs/*-SETUP.md` | On dependency changes |
+
+### **7.5 AI/LLM Context Rule**
+When providing context to AI assistants (Claude, Copilot, etc.):
+
+- Always reference `docs/blueprint/` as the authoritative source
+- Include the blueprint folder URL for full context
+- Never summarize blueprint content into separate documents
+
+---
+
+## **8. Security Principles**
+
+### **8.1 Defense in Depth**
+Security enforced at every layer:
+
+- Authentication (JWT tokens)
+- Authorization (ownership validation)
+- Input validation (Zod schemas)
+- Output sanitization
+- Rate limiting
+- Audit logging
+
+### **8.2 Principle of Least Privilege**
+Every component has minimum required access:
+
+- API routes validate ownership
+- Database queries scoped to user
+- Feature flags control access
+- Admin roles are granular

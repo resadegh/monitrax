@@ -36,6 +36,7 @@ import {
   INCOME_TYPE_LABELS,
 } from '@/lib/categories/unified';
 import { CategorySelect } from '@/components/categories/CategorySelect';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface Transaction {
   id: string;
@@ -571,9 +572,6 @@ export function TransactionLinkDialog({
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
-
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('en-AU', {
       day: 'numeric',
@@ -662,7 +660,7 @@ export function TransactionLinkDialog({
                   <div className="flex items-center gap-2">
                     <Checkbox
                       checked={selectedVendorTransactions.has(tx.id)}
-                      onCheckedChange={() => toggleVendorTransaction(tx.id)}
+                      className="pointer-events-none"
                     />
                     <div>
                       <p className="text-sm font-medium truncate max-w-[180px]">

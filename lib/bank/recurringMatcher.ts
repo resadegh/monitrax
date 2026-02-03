@@ -3,6 +3,9 @@
  * Matches imported transactions against existing Income and Expense entries
  */
 
+import { toMonthly } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
+
 export interface RecurringMatch {
   type: 'income' | 'expense';
   id: string;
@@ -90,20 +93,7 @@ function calculateSimilarity(str1: string, str2: string): number {
   return (matchCount / maxWords) * 0.8;
 }
 
-/**
- * Convert frequency to monthly multiplier for amount comparison
- */
-function frequencyToMonthly(frequency: string): number {
-  const multipliers: Record<string, number> = {
-    'WEEKLY': 52 / 12,
-    'FORTNIGHTLY': 26 / 12,
-    'MONTHLY': 1,
-    'QUARTERLY': 1 / 3,
-    'ANNUAL': 1 / 12,
-    'ANNUALLY': 1 / 12,
-  };
-  return multipliers[frequency.toUpperCase()] || 1;
-}
+// Use centralized frequency utilities from lib/utils/frequencies.ts
 
 /**
  * Compare amounts considering frequency differences
@@ -115,7 +105,7 @@ function compareAmounts(
 ): { match: boolean; difference: number } {
   // Convert recurring amount to equivalent of single transaction
   // Assuming transaction is a single occurrence
-  const monthlyRecurring = recurringAmount * frequencyToMonthly(recurringFrequency);
+  const monthlyRecurring = toMonthly(recurringAmount, recurringFrequency as Frequency);
 
   // For weekly/fortnightly, the transaction might be the single occurrence
   const singleOccurrence = recurringAmount;

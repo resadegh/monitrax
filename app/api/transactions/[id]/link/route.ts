@@ -308,7 +308,7 @@ export async function POST(
             });
           } else {
             // Create new Expense entry with source type and entity linking
-            type ExpenseCategoryType = 'HOUSING' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'GROCERIES' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'HEALTH' | 'EDUCATION' | 'OTHER';
+            type ExpenseCategoryType = 'HOUSING' | 'RENT' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'GROCERIES' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'HEALTH' | 'EDUCATION' | 'OTHER';
 
             const expenseData: {
               userId: string;

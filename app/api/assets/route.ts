@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { toAnnual } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 // GET /api/assets - List all assets for the user
 export async function GET(request: NextRequest) {
@@ -35,18 +37,9 @@ export async function GET(request: NextRequest) {
 
       // Calculate totals for each asset
       const assetsWithTotals = assets.map((asset: (typeof assets)[number]) => {
-        // Calculate annual expenses (normalize to annual)
-        const frequencyMultipliers: Record<string, number> = {
-          WEEKLY: 52,
-          FORTNIGHTLY: 26,
-          MONTHLY: 12,
-          QUARTERLY: 4,
-          ANNUAL: 1,
-        };
-
+        // Calculate annual expenses using centralized utility
         const annualExpenses = asset.expenses.reduce((total: number, expense: AssetExpense) => {
-          const multiplier = frequencyMultipliers[expense.frequency] || 1;
-          return total + expense.amount * multiplier;
+          return total + toAnnual(expense.amount, expense.frequency as Frequency);
         }, 0);
 
         const totalExpenses = asset.expenses.reduce((total: number, expense: AssetExpense) => {

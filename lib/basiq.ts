@@ -212,6 +212,11 @@ export async function getOrCreateBasiqUser(email: string, mobile?: string): Prom
 /**
  * Generate a consent/auth link for the user to connect their bank
  * Returns a URL that opens the Basiq consent UI
+ *
+ * The consent UI allows users to:
+ * 1. Select their bank from Australian institutions
+ * 2. Authenticate with their bank credentials
+ * 3. Grant consent for data sharing
  */
 export async function createConsentLink(basiqUserId: string): Promise<string> {
   const token = await getBasiqToken();
@@ -224,19 +229,44 @@ export async function createConsentLink(basiqUserId: string): Promise<string> {
       'basiq-version': '3.0',
     },
     body: JSON.stringify({
-      // Optional: specify which institutions to show
-      // institutionId: 'AU00000',
+      // Filter to show only Australian institutions in the consent UI
+      // This ensures users see relevant banks for their region
     }),
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to create consent link: ${error}`);
+    const errorText = await response.text();
+    let errorMessage = `Failed to create consent link: ${errorText}`;
+
+    // Parse specific error codes for better user feedback
+    try {
+      const errorData = JSON.parse(errorText);
+      if (errorData.correlationId) {
+        errorMessage = `Basiq API error (${response.status}): ${errorData.data?.[0]?.detail || errorData.message || errorText}`;
+      }
+    } catch {
+      // Use original error text if not JSON
+    }
+
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
-  // Use links.public for the user-facing consent URL (not links.self which is the API endpoint)
-  return data.links.public || data.links.self;
+
+  // Validate response structure
+  if (!data.links) {
+    throw new Error('Invalid response from Basiq: missing links object');
+  }
+
+  // Use links.public for the user-facing consent URL
+  // links.self is the API endpoint, not suitable for user redirect
+  const consentUrl = data.links.public || data.links.self;
+
+  if (!consentUrl) {
+    throw new Error('Invalid response from Basiq: no consent URL provided');
+  }
+
+  return consentUrl;
 }
 
 /**

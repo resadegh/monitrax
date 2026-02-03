@@ -3,15 +3,14 @@
  * POST /api/calculate/cashflow
  *
  * Calculate cashflow analysis from income and expense data.
+ * Uses centralized cashflowOrchestrator for all calculations.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/lib/middleware';
 import prisma from '@/lib/db';
-import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
-import { Frequency } from '@/lib/types/prisma-enums';
-import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
+import { calculateCashflow, CashflowInput } from '@/lib/calculations/cashflowOrchestrator';
 
 // =============================================================================
 // REQUEST SCHEMA
@@ -24,9 +23,12 @@ const cashflowRequestSchema = z.object({
       z.object({
         name: z.string(),
         amount: z.number(),
-        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ANNUAL']),
+        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL']),
         isTaxable: z.boolean().default(true),
         type: z.string().optional(),
+        salaryType: z.string().optional().nullable(),
+        netAmount: z.number().optional().nullable(),
+        grossAmount: z.number().optional().nullable(),
       })
     )
     .optional(),
@@ -35,7 +37,7 @@ const cashflowRequestSchema = z.object({
       z.object({
         name: z.string(),
         amount: z.number(),
-        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ANNUAL']),
+        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL']),
         isEssential: z.boolean().default(false),
         isTaxDeductible: z.boolean().default(false),
         category: z.string().optional(),
@@ -49,7 +51,7 @@ const cashflowRequestSchema = z.object({
         principal: z.number(),
         interestRate: z.number(),
         minRepayment: z.number(),
-        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ANNUAL']),
+        frequency: z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL']),
         offsetBalance: z.number().default(0),
       })
     )
@@ -59,183 +61,51 @@ const cashflowRequestSchema = z.object({
 });
 
 // =============================================================================
-// CALCULATION FUNCTIONS
+// HELPER FUNCTIONS
 // =============================================================================
 
-interface CashflowResult {
-  monthlyGrossIncome: number;
-  monthlyNetIncome: number; // After PAYG withholding
-  monthlyIncome: number; // Alias for monthlyNetIncome (for cashflow purposes)
-  monthlyPaygWithholding: number;
-  monthlyExpenses: number;
-  monthlyLoanRepayments: number;
-  monthlySurplus: number;
-  annualGrossIncome: number;
-  annualNetIncome: number;
-  annualIncome: number; // Alias for annualNetIncome
-  annualPaygWithholding: number;
-  annualExpenses: number;
-  annualLoanRepayments: number;
-  annualSurplus: number;
-  savingsRate: number;
-  incomeByType: Record<string, number>;
-  expensesByCategory: Record<string, number>;
-  essentialExpenses: number;
-  discretionaryExpenses: number;
-  taxableIncome: number;
-  taxDeductibleExpenses: number;
+/**
+ * Transform income from database or input format to orchestrator format
+ */
+function transformIncomeData(income: any[]): CashflowInput['income'] {
+  return income.map((i) => ({
+    name: i.name,
+    amount: i.amount,
+    frequency: i.frequency,
+    type: i.type,
+    salaryType: i.salaryType,
+    netAmount: i.netAmount,
+    grossAmount: i.grossAmount,
+    isTaxable: i.isTaxable ?? true,
+  }));
 }
 
-function calculateCashflow(
-  income: Array<{
-    name: string;
-    amount: number;
-    frequency: string;
-    isTaxable: boolean;
-    type?: string;
-    salaryType?: string | null;
-    netAmount?: number | null;
-    grossAmount?: number | null;
-  }>,
-  expenses: Array<{
-    name: string;
-    amount: number;
-    frequency: string;
-    isEssential: boolean;
-    isTaxDeductible: boolean;
-    category?: string;
-  }>,
-  loans: Array<{
-    name: string;
-    principal: number;
-    interestRate: number;
-    minRepayment: number;
-    frequency: string;
-    offsetBalance: number;
-  }>
-): CashflowResult {
-  // Calculate monthly income with tax adjustments for salaries
-  let monthlyGrossIncome = 0;
-  let monthlyNetIncome = 0;
-  let monthlyPaygWithholding = 0;
-  let taxableIncome = 0;
-  const incomeByType: Record<string, number> = {};
+/**
+ * Transform expenses from database or input format to orchestrator format
+ */
+function transformExpenseData(expenses: any[]): CashflowInput['expenses'] {
+  return expenses.map((e) => ({
+    name: e.name,
+    amount: e.amount,
+    frequency: e.frequency,
+    isEssential: e.isEssential ?? false,
+    isTaxDeductible: e.isTaxDeductible ?? false,
+    category: e.category,
+  }));
+}
 
-  for (const inc of income) {
-    const monthlyAmount = toMonthly(inc.amount, inc.frequency as Frequency);
-
-    // For SALARY income, handle differently based on salaryType
-    let monthlyGross = monthlyAmount;
-    let monthlyNet = monthlyAmount;
-    let monthlyPayg = 0;
-
-    if (inc.type === 'SALARY') {
-      if (inc.salaryType === 'NET') {
-        // User entered NET income - don't re-calculate PAYG
-        // Use stored grossAmount if available, otherwise assume amount is the net
-        if (inc.grossAmount != null) {
-          monthlyGross = toMonthly(inc.grossAmount, inc.frequency as Frequency);
-          monthlyNet = monthlyAmount; // The entered amount is already net
-          monthlyPayg = monthlyGross - monthlyNet;
-        } else {
-          // No grossAmount stored, the entered amount IS the net income
-          monthlyGross = monthlyAmount; // Approximate (we don't know the gross)
-          monthlyNet = monthlyAmount;
-          monthlyPayg = 0;
-        }
-      } else {
-        // User entered GROSS income - calculate take-home pay
-        const takeHome = calculateTakeHomePay(
-          inc.amount,
-          inc.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL'
-        );
-        monthlyGross = monthlyAmount;
-        monthlyNet = toMonthly(takeHome.netAmount, inc.frequency as Frequency);
-        monthlyPayg = toMonthly(takeHome.paygWithholding + takeHome.medicareLevy, inc.frequency as Frequency);
-      }
-    } else {
-      // Non-salary income (rental, investment, etc.) - use as-is
-      monthlyGross = monthlyAmount;
-      monthlyNet = monthlyAmount;
-    }
-
-    monthlyGrossIncome += monthlyGross;
-    monthlyNetIncome += monthlyNet;
-    monthlyPaygWithholding += monthlyPayg;
-
-    if (inc.isTaxable) {
-      taxableIncome += monthlyGross * 12;
-    }
-
-    const type = inc.type || 'OTHER';
-    // Store NET amounts in breakdown for cashflow purposes
-    incomeByType[type] = (incomeByType[type] || 0) + monthlyNet;
-  }
-
-  // Calculate monthly expenses
-  let monthlyExpenses = 0;
-  let essentialExpenses = 0;
-  let discretionaryExpenses = 0;
-  let taxDeductibleExpenses = 0;
-  const expensesByCategory: Record<string, number> = {};
-
-  for (const exp of expenses) {
-    const monthly = toMonthly(exp.amount, exp.frequency as Frequency);
-    monthlyExpenses += monthly;
-
-    if (exp.isEssential) {
-      essentialExpenses += monthly;
-    } else {
-      discretionaryExpenses += monthly;
-    }
-
-    if (exp.isTaxDeductible) {
-      taxDeductibleExpenses += monthly * 12;
-    }
-
-    const category = exp.category || 'OTHER';
-    expensesByCategory[category] = (expensesByCategory[category] || 0) + monthly;
-  }
-
-  // Calculate monthly loan repayments
-  let monthlyLoanRepayments = 0;
-  for (const loan of loans) {
-    const monthly = toMonthly(loan.minRepayment, loan.frequency as Frequency);
-    monthlyLoanRepayments += monthly;
-  }
-
-  // Calculate totals using NET income (what's actually available for spending)
-  const totalMonthlyOutflows = monthlyExpenses + monthlyLoanRepayments;
-  const monthlySurplus = monthlyNetIncome - totalMonthlyOutflows;
-  const savingsRate = monthlyNetIncome > 0 ? (monthlySurplus / monthlyNetIncome) * 100 : 0;
-
-  return {
-    // Gross and net income separation
-    monthlyGrossIncome: Math.round(monthlyGrossIncome * 100) / 100,
-    monthlyNetIncome: Math.round(monthlyNetIncome * 100) / 100,
-    monthlyIncome: Math.round(monthlyNetIncome * 100) / 100, // Alias - use net for cashflow
-    monthlyPaygWithholding: Math.round(monthlyPaygWithholding * 100) / 100,
-    // Expenses and loans
-    monthlyExpenses: Math.round(monthlyExpenses * 100) / 100,
-    monthlyLoanRepayments: Math.round(monthlyLoanRepayments * 100) / 100,
-    monthlySurplus: Math.round(monthlySurplus * 100) / 100,
-    // Annual figures
-    annualGrossIncome: Math.round(monthlyGrossIncome * 12 * 100) / 100,
-    annualNetIncome: Math.round(monthlyNetIncome * 12 * 100) / 100,
-    annualIncome: Math.round(monthlyNetIncome * 12 * 100) / 100, // Alias - use net for cashflow
-    annualPaygWithholding: Math.round(monthlyPaygWithholding * 12 * 100) / 100,
-    annualExpenses: Math.round(monthlyExpenses * 12 * 100) / 100,
-    annualLoanRepayments: Math.round(monthlyLoanRepayments * 12 * 100) / 100,
-    annualSurplus: Math.round(monthlySurplus * 12 * 100) / 100,
-    // Rates and breakdowns
-    savingsRate: Math.round(savingsRate * 100) / 100,
-    incomeByType,
-    expensesByCategory,
-    essentialExpenses: Math.round(essentialExpenses * 100) / 100,
-    discretionaryExpenses: Math.round(discretionaryExpenses * 100) / 100,
-    taxableIncome: Math.round(taxableIncome * 100) / 100,
-    taxDeductibleExpenses: Math.round(taxDeductibleExpenses * 100) / 100,
-  };
+/**
+ * Transform loans from database or input format to orchestrator format
+ */
+function transformLoanData(loans: any[]): CashflowInput['loans'] {
+  return loans.map((l) => ({
+    name: l.name,
+    minRepayment: l.minRepayment ?? l.minRepayment ?? 0,
+    repaymentFrequency: l.frequency ?? l.repaymentFrequency ?? 'MONTHLY',
+    principal: l.principal,
+    interestRate: l.interestRate ?? l.interestRateAnnual,
+    offsetBalance: l.offsetBalance ?? l.offsetAccount?.currentBalance ?? 0,
+  }));
 }
 
 // =============================================================================
@@ -260,39 +130,24 @@ export async function POST(request: NextRequest) {
       }
 
       const input = parseResult.data;
-      let incomeData = input.income;
-      let expenseData = input.expenses;
-      let loanData = input.loans;
+      // Use any[] for intermediate data since transform functions handle both input and DB shapes
+      let incomeData: any[] | undefined = input.income;
+      let expenseData: any[] | undefined = input.expenses;
+      let loanData: any[] | undefined = input.loans;
 
       // Fetch from database if not provided
       if (input.fetchFromDatabase && !incomeData) {
         const dbIncome = await prisma.income.findMany({
           where: { userId: authReq.user!.userId },
         });
-        incomeData = dbIncome.map((i: any) => ({
-          name: i.name,
-          amount: i.amount,
-          frequency: i.frequency,
-          isTaxable: i.isTaxable,
-          type: i.type,
-          salaryType: i.salaryType,
-          netAmount: i.netAmount,
-          grossAmount: i.grossAmount,
-        }));
+        incomeData = dbIncome;
       }
 
       if (input.fetchFromDatabase && !expenseData) {
         const dbExpenses = await prisma.expense.findMany({
           where: { userId: authReq.user!.userId },
         });
-        expenseData = dbExpenses.map((e: any) => ({
-          name: e.name,
-          amount: e.amount,
-          frequency: e.frequency,
-          isEssential: e.isEssential,
-          isTaxDeductible: e.isTaxDeductible,
-          category: e.category,
-        }));
+        expenseData = dbExpenses;
       }
 
       if (input.fetchFromDatabase && !loanData) {
@@ -300,22 +155,18 @@ export async function POST(request: NextRequest) {
           where: { userId: authReq.user!.userId },
           include: { offsetAccount: true },
         });
-        loanData = dbLoans.map((l: any) => ({
-          name: l.name,
-          principal: l.principal,
-          interestRate: l.interestRateAnnual,
-          minRepayment: l.minRepayment,
-          frequency: l.repaymentFrequency,
-          offsetBalance: l.offsetAccount?.currentBalance || 0,
-        }));
+        loanData = dbLoans;
       }
 
-      // Calculate cashflow
-      const result = calculateCashflow(
-        incomeData || [],
-        expenseData || [],
-        loanData || []
-      );
+      // Transform data to orchestrator format and calculate
+      const cashflowInput: CashflowInput = {
+        income: transformIncomeData(incomeData || []),
+        expenses: transformExpenseData(expenseData || []),
+        loans: transformLoanData(loanData || []),
+      };
+
+      // Use centralized orchestrator for calculation
+      const result = calculateCashflow(cashflowInput);
 
       // Diagnostics
       const diagnostics: { warnings: string[]; assumptions: string[] } = {
@@ -338,7 +189,7 @@ export async function POST(request: NextRequest) {
       }
 
       diagnostics.assumptions.push('All amounts normalized to monthly');
-      diagnostics.assumptions.push('Loan interest calculated separately');
+      diagnostics.assumptions.push('Uses centralized cashflowOrchestrator');
 
       const response = {
         input: {
@@ -373,42 +224,21 @@ export async function GET(request: NextRequest) {
         }),
       ]);
 
-      const incomeData = income.map((i: any) => ({
-        name: i.name,
-        amount: i.amount,
-        frequency: i.frequency,
-        isTaxable: i.isTaxable,
-        type: i.type,
-        salaryType: i.salaryType,
-        netAmount: i.netAmount,
-        grossAmount: i.grossAmount,
-      }));
+      // Transform data to orchestrator format and calculate
+      const cashflowInput: CashflowInput = {
+        income: transformIncomeData(income),
+        expenses: transformExpenseData(expenses),
+        loans: transformLoanData(loans),
+      };
 
-      const expenseData = expenses.map((e: any) => ({
-        name: e.name,
-        amount: e.amount,
-        frequency: e.frequency,
-        isEssential: e.isEssential,
-        isTaxDeductible: e.isTaxDeductible,
-        category: e.category,
-      }));
-
-      const loanData = loans.map((l: any) => ({
-        name: l.name,
-        principal: l.principal,
-        interestRate: l.interestRateAnnual,
-        minRepayment: l.minRepayment,
-        frequency: l.repaymentFrequency,
-        offsetBalance: l.offsetAccount?.currentBalance || 0,
-      }));
-
-      const result = calculateCashflow(incomeData, expenseData, loanData);
+      // Use centralized orchestrator for calculation
+      const result = calculateCashflow(cashflowInput);
 
       return NextResponse.json({
         output: result,
         diagnostics: {
           warnings: result.savingsRate < 10 ? ['Low savings rate'] : [],
-          assumptions: ['All amounts normalized to monthly'],
+          assumptions: ['All amounts normalized to monthly', 'Uses centralized cashflowOrchestrator'],
         },
       });
     } catch (error) {

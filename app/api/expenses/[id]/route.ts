@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyOwnership, verifyRelatedOwnership } from '@/lib/utils/ownership';
 
 export async function GET(
   request: NextRequest,
@@ -19,11 +20,11 @@ export async function GET(
         },
       });
 
-      if (!expense || expense.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
-      }
+      // Verify ownership using centralized utility
+      const result = verifyOwnership(expense, authReq.user!.userId, 'Expense');
+      if (!result.success) return result.response;
 
-      return NextResponse.json(expense);
+      return NextResponse.json(result.resource);
     } catch (error) {
       console.error('Get expense error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -41,43 +42,34 @@ export async function PUT(
       const body = await request.json();
       const { name, category, amount, frequency, isEssential, isTaxDeductible, isRecurring, propertyId, loanId, investmentAccountId, assetId, vendorName, sourceType } = body;
 
-      // Verify ownership
-      const existing = await prisma.expense.findUnique({
-        where: { id },
-      });
-
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
-      }
+      // Verify ownership of expense
+      const existing = await prisma.expense.findUnique({ where: { id } });
+      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Expense');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       // Validate ownership of related entities
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        if (!property || property.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Property not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        if (!result.success) return result.response;
       }
 
       if (loanId) {
         const loan = await prisma.loan.findUnique({ where: { id: loanId } });
-        if (!loan || loan.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Loan not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(loan, authReq.user!.userId, 'Loan');
+        if (!result.success) return result.response;
       }
 
       if (investmentAccountId) {
         const investmentAccount = await prisma.investmentAccount.findUnique({ where: { id: investmentAccountId } });
-        if (!investmentAccount || investmentAccount.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Investment account not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(investmentAccount, authReq.user!.userId, 'Investment account');
+        if (!result.success) return result.response;
       }
 
-      // Phase 21: Validate asset ownership
       if (assetId) {
         const asset = await prisma.asset.findUnique({ where: { id: assetId } });
-        if (!asset || asset.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Asset not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(asset, authReq.user!.userId, 'Asset');
+        if (!result.success) return result.response;
       }
 
       const expense = await prisma.expense.update({
@@ -120,18 +112,13 @@ export async function DELETE(
   return withAuth(request, async (authReq) => {
     try {
       const { id } = await params;
-      // Verify ownership
-      const existing = await prisma.expense.findUnique({
-        where: { id },
-      });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
-      }
+      // Verify ownership using centralized utility
+      const existing = await prisma.expense.findUnique({ where: { id } });
+      const result = verifyOwnership(existing, authReq.user!.userId, 'Expense');
+      if (!result.success) return result.response;
 
-      await prisma.expense.delete({
-        where: { id },
-      });
+      await prisma.expense.delete({ where: { id } });
 
       return NextResponse.json({ message: 'Expense deleted successfully' });
     } catch (error) {

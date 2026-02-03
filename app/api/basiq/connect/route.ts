@@ -83,9 +83,29 @@ export async function POST(request: NextRequest) {
           data: { basiqUserId },
         });
       } else {
-        // Update existing Basiq user with mobile if they don't have one
-        const { updateBasiqUser } = await import('@/lib/basiq');
-        await updateBasiqUser(basiqUserId, { mobile: formattedMobile });
+        // Try to update existing Basiq user with mobile
+        // If user doesn't exist (e.g., API key changed), create a new one
+        try {
+          const { updateBasiqUser } = await import('@/lib/basiq');
+          await updateBasiqUser(basiqUserId, { mobile: formattedMobile });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : '';
+          // If Basiq user not found (API key changed or user deleted), create new one
+          if (errorMessage.includes('resource-not-found') || errorMessage.includes('not found')) {
+            console.log('Basiq user not found, creating new user for:', user.email);
+            const basiqUser = await getOrCreateBasiqUser(user.email, formattedMobile);
+            basiqUserId = basiqUser.id;
+
+            // Update database with new Basiq user ID
+            await prisma.user.update({
+              where: { id: userId },
+              data: { basiqUserId },
+            });
+          } else {
+            // Re-throw other errors
+            throw error;
+          }
+        }
       }
 
       // Generate consent link for bank connection

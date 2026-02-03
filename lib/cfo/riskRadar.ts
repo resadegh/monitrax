@@ -13,6 +13,8 @@ import {
   RiskSummary,
   RiskEntity,
 } from './types';
+import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
+import { Frequency, RepaymentFrequency } from '@/lib/types/prisma-enums';
 
 // ============================================================================
 // Risk Thresholds
@@ -132,7 +134,7 @@ function detectLowBalanceRisks(
 ): FinancialRisk[] {
   const risks: FinancialRisk[] = [];
 
-  const monthlyExpenses = expenses.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
+  const monthlyExpenses = expenses.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency as Frequency), 0);
   const weeklyExpenses = monthlyExpenses / 4;
 
   for (const account of accounts) {
@@ -186,9 +188,9 @@ function detectCashflowShortfallRisks(
 ): FinancialRisk[] {
   const risks: FinancialRisk[] = [];
 
-  const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
-  const monthlyExpenses = expenses.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
-  const monthlyLoanPayments = loans.reduce((sum, l) => sum + monthlyize(l.minRepayment, l.repaymentFrequency), 0);
+  const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency as Frequency), 0);
+  const monthlyExpenses = expenses.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency as Frequency), 0);
+  const monthlyLoanPayments = loans.reduce((sum, l) => sum + toMonthly(l.minRepayment, l.repaymentFrequency as Frequency), 0);
   const totalLiquid = accounts
     .filter(a => ['SAVINGS', 'TRANSACTIONAL', 'OFFSET'].includes(a.type))
     .reduce((sum, a) => sum + a.currentBalance, 0);
@@ -224,10 +226,10 @@ function detectExpenseSpikeRisks(expenses: ExpenseWithDetails[]): FinancialRisk[
   // For now, flag any single expense that's > 30% of total
   const risks: FinancialRisk[] = [];
 
-  const totalMonthly = expenses.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
+  const totalMonthly = expenses.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency as Frequency), 0);
 
   for (const expense of expenses) {
-    const monthlyAmount = monthlyize(expense.amount, expense.frequency);
+    const monthlyAmount = toMonthly(expense.amount, expense.frequency as Frequency);
     const percentage = (monthlyAmount / totalMonthly) * 100;
 
     if (percentage > 30 && !expense.isEssential) {
@@ -257,10 +259,10 @@ function detectLoanStressRisks(
   incomes: IncomeBasic[]
 ): FinancialRisk[] {
   const risks: FinancialRisk[] = [];
-  const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
+  const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency as Frequency), 0);
 
   for (const loan of loans) {
-    const monthlyPayment = monthlyize(loan.minRepayment, loan.repaymentFrequency);
+    const monthlyPayment = toMonthly(loan.minRepayment, loan.repaymentFrequency as Frequency);
     const paymentRatio = monthlyPayment / monthlyIncome;
 
     // Single loan consuming > 30% of income
@@ -295,8 +297,8 @@ function detectDebtRatioDeteriorationRisks(
   incomes: IncomeBasic[]
 ): FinancialRisk[] {
   const risks: FinancialRisk[] = [];
-  const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
-  const totalMonthlyPayments = loans.reduce((sum, l) => sum + monthlyize(l.minRepayment, l.repaymentFrequency), 0);
+  const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency as Frequency), 0);
+  const totalMonthlyPayments = loans.reduce((sum, l) => sum + toMonthly(l.minRepayment, l.repaymentFrequency as Frequency), 0);
 
   const dsr = totalMonthlyPayments / monthlyIncome;
 
@@ -341,8 +343,8 @@ function detectSavingsTrajectoryRisks(
   expenses: ExpenseWithDetails[]
 ): FinancialRisk[] {
   const risks: FinancialRisk[] = [];
-  const monthlyIncome = incomes.reduce((sum, i) => sum + monthlyize(i.amount, i.frequency), 0);
-  const monthlyExpenses = expenses.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
+  const monthlyIncome = incomes.reduce((sum, i) => sum + toMonthly(i.amount, i.frequency as Frequency), 0);
+  const monthlyExpenses = expenses.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency as Frequency), 0);
 
   const savingsRate = (monthlyIncome - monthlyExpenses) / monthlyIncome;
 
@@ -389,8 +391,8 @@ function detectPropertyUnderperformanceRisks(
   for (const property of properties) {
     if (property.type !== 'INVESTMENT') continue;
 
-    const annualIncome = property.income.reduce((sum, i) => sum + annualize(i.amount, i.frequency), 0);
-    const annualExpenses = property.expenses.reduce((sum, e) => sum + annualize(e.amount, e.frequency), 0);
+    const annualIncome = property.income.reduce((sum, i) => sum + toAnnual(i.amount, i.frequency as Frequency), 0);
+    const annualExpenses = property.expenses.reduce((sum, e) => sum + toAnnual(e.amount, e.frequency as Frequency), 0);
     const grossYield = annualIncome / property.currentValue;
     const netYield = (annualIncome - annualExpenses) / property.currentValue;
 
@@ -423,10 +425,10 @@ function detectSubscriptionCreepRisks(expenses: ExpenseWithDetails[]): Financial
   const subscriptionLike = expenses.filter(e =>
     !e.isEssential &&
     ['MONTHLY', 'ANNUAL'].includes(e.frequency.toUpperCase()) &&
-    monthlyize(e.amount, e.frequency) < 100
+    toMonthly(e.amount, e.frequency as Frequency) < 100
   );
 
-  const totalSubscriptions = subscriptionLike.reduce((sum, e) => sum + monthlyize(e.amount, e.frequency), 0);
+  const totalSubscriptions = subscriptionLike.reduce((sum, e) => sum + toMonthly(e.amount, e.frequency as Frequency), 0);
 
   if (subscriptionLike.length >= 5 && totalSubscriptions > 100) {
     risks.push(createRisk({
@@ -565,20 +567,7 @@ function detectMortgageRenewalRisks(loans: LoanWithProperty[]): FinancialRisk[] 
 // Helpers
 // ============================================================================
 
-function monthlyize(amount: number, frequency: string): number {
-  switch (frequency.toUpperCase()) {
-    case 'WEEKLY': return amount * 52 / 12;
-    case 'FORTNIGHTLY': return amount * 26 / 12;
-    case 'MONTHLY': return amount;
-    case 'QUARTERLY': return amount / 3;
-    case 'ANNUAL': return amount / 12;
-    default: return amount;
-  }
-}
-
-function annualize(amount: number, frequency: string): number {
-  return monthlyize(amount, frequency) * 12;
-}
+// Use centralized frequency utilities from lib/utils/frequencies.ts
 
 interface CreateRiskParams {
   type: RiskType;

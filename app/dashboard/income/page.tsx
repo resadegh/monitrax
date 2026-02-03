@@ -36,6 +36,8 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
+import { toAnnual } from '@/lib/utils/frequencies';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { getNetAnnualIncome, getNetMonthlyIncome } from '@/lib/income/netIncomeCalculator';
@@ -458,35 +460,13 @@ function IncomePageContent() {
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  // formatCurrency imported from lib/utils/formatters
+  // Frequency conversions use centralized toAnnual from lib/utils/frequencies
+  const convertToMonthly = (amount: number, frequency: string) =>
+    toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL') / 12;
 
-  const convertToMonthly = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52 / 12;
-      case 'FORTNIGHTLY': return amount * 26 / 12;
-      case 'MONTHLY': return amount;
-      case 'QUARTERLY': return amount * 4 / 12;
-      case 'ANNUAL': return amount / 12;
-      default: return amount;
-    }
-  };
-
-  const convertToAnnual = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52;
-      case 'FORTNIGHTLY': return amount * 26;
-      case 'MONTHLY': return amount * 12;
-      case 'QUARTERLY': return amount * 4;
-      case 'ANNUAL': return amount;
-      default: return amount;
-    }
-  };
+  const convertToAnnual = (amount: number, frequency: string) =>
+    toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
 
   // Get effective (after-tax) amounts using shared calculator
   // This ensures income page and dashboard always show identical values

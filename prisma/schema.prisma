@@ -17,6 +17,7 @@ datasource db {
 enum PropertyType {
   HOME
   INVESTMENT
+  RENTAL      // User is renting this property (not owned)
 }
 
 enum LoanType {
@@ -48,9 +49,10 @@ enum AccountType {
 }
 
 enum BalanceSource {
-  MANUAL     // User manually entered balance
-  IMPORT     // Balance from CSV/QIF/OFX import
-  BASIQ      // Balance from Open Banking (Basiq)
+  MANUAL          // User manually entered balance
+  IMPORT          // Balance from CSV/QIF/OFX import
+  BASIQ           // Balance from Open Banking (Basiq)
+  USER_VERIFIED   // User verified balance after import
 }
 
 enum IncomeType {
@@ -63,6 +65,7 @@ enum IncomeType {
 
 enum ExpenseCategory {
   HOUSING
+  RENT        // Rental payments for rented property
   RATES
   INSURANCE
   MAINTENANCE
@@ -365,6 +368,11 @@ model User {
   // Custom Categories
   categories              Category[]
 
+  // Phase 29: AI Categorisation & Learning
+  aiCategorizationLearnings AICategorizationLearning[] @relation("AICategorizationLearnings")
+  importBatches             ImportBatch[]              @relation("ImportBatches")
+  transactionReviewQueue    TransactionReviewQueue[]   @relation("TransactionReviewQueue")
+
   @@map("users")
 }
 
@@ -556,6 +564,9 @@ model Account {
 
   // Phase 14: Cashflow Optimisation Engine
   cashflowForecasts   CashflowForecast[]
+
+  // Phase 29: AI Categorisation & Import Batches
+  importBatches       ImportBatch[]        @relation("ImportBatches")
 
   @@index([userId])
   @@index([basiqConnectionId])
@@ -1349,6 +1360,7 @@ model EmailMFACode {
 
 enum TransactionSource {
   BANK        // Bank feed integration
+  BASIQ       // Basiq open banking integration
   CSV         // CSV import
   QIF         // QIF file import (MYOB/Quicken)
   OFX         // OFX/QFX file import
@@ -1486,10 +1498,21 @@ model MerchantMapping {
   subcategory           String?
   customCategoryId      String?   // Reference to user's custom Category if used
 
+  // Essential/Recurring flags (Phase 29)
+  isEssential           Boolean   @default(false)
+  isRecurring           Boolean   @default(false)
+  suggestedFrequency    String?   // WEEKLY, FORTNIGHTLY, MONTHLY, etc.
+
   // Learning metadata
   confidence            Float     @default(1.0)   // How confident this mapping is
   source                String    @default("RULE") // RULE, USER, AI
   usageCount            Int       @default(0)     // How many times applied
+  userCorrectionCount   Int       @default(0)     // Number of user corrections
+
+  // AI Learning context (Phase 29)
+  aiConfidence          Float?    // Last AI confidence for this merchant
+  lastAIContext         String?   // Context that led to AI suggestion
+  lastConfirmedAt       DateTime? // When user last confirmed this mapping
 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -1497,6 +1520,7 @@ model MerchantMapping {
   @@unique([userId, merchantRaw])
   @@index([merchantRaw])
   @@index([userId])
+  @@index([confidence])
   @@map("merchant_mappings")
 }
 
@@ -1938,6 +1962,7 @@ enum ImportFileFormat {
 enum ImportStatus {
   PENDING
   PROCESSING
+  AWAITING_REVIEW  // Import needs user review
   COMPLETED
   FAILED
   PARTIAL
@@ -2795,4 +2820,1059 @@ model CashflowSummary {
   @@index([userId])
   @@index([generatedAt])
   @@map("cashflow_summaries")
+}
+
+// =============================================================================
+// PHASE 32: ENTERPRISE PORTAL - ENUMS
+// =============================================================================
+
+enum OrganizationType {
+  ACCOUNTING_FIRM
+  FINANCIAL_ADVISOR
+  MORTGAGE_BROKER
+  TAX_AGENT
+  BOOKKEEPER
+  OTHER
+}
+
+enum OrganizationPlan {
+  STARTER           // Up to 10 clients
+  PROFESSIONAL      // Up to 50 clients
+  BUSINESS          // Up to 200 clients
+  ENTERPRISE        // Unlimited clients
+}
+
+enum PortalUserRole {
+  PORTAL_OWNER      // Full organization control
+  PORTAL_ADMIN      // Manage staff and clients
+  PORTAL_ADVISOR    // Access assigned clients
+  PORTAL_VIEWER     // Read-only access
+}
+
+enum ClientStatus {
+  INVITED           // Invitation sent, not accepted
+  PENDING           // Accepted, awaiting consent
+  ACTIVE            // Full access granted
+  SUSPENDED         // Temporarily disabled
+  ARCHIVED          // Soft deleted
+}
+
+enum DataAccessScope {
+  FULL              // All data
+  FINANCIAL         // Accounts, transactions
+  INVESTMENTS       // Investment accounts, holdings
+  TAX               // Tax-related data
+  DOCUMENTS         // Document access
+  TRANSACTIONS      // Transaction history
+  PROPERTIES        // Property data
+  LOANS             // Loan data
+}
+
+enum ConsentStatus {
+  PENDING           // Waiting for client response
+  GRANTED           // Client approved access
+  REVOKED           // Client withdrew consent
+  EXPIRED           // Consent period ended
+}
+
+enum InvitationType {
+  STAFF             // Inviting staff member
+  CLIENT            // Inviting client
+}
+
+enum InvitationStatus {
+  PENDING           // Awaiting response
+  ACCEPTED          // Invitation accepted
+  DECLINED          // Invitation declined
+  EXPIRED           // Invitation expired
+  CANCELLED         // Cancelled by org
+}
+
+enum ClientTaskStatus {
+  TODO              // Not started
+  IN_PROGRESS       // Work in progress
+  WAITING           // Waiting on client/external
+  COMPLETED         // Done
+  CANCELLED         // Cancelled
+}
+
+enum ClientTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ApiKeyScope {
+  READ_CLIENTS      // List and view clients
+  READ_FINANCIAL    // Read financial data
+  READ_DOCUMENTS    // Access documents
+  SYNC_ACCOUNTING   // Sync with accounting software
+  FULL_ACCESS       // All permissions
+}
+
+enum AccountingProvider {
+  XERO              // Primary integration
+  MYOB              // Future
+  QUICKBOOKS        // Future
+  SAGE              // Future
+  FRESHBOOKS        // Future
+  WAVE              // Future
+  OTHER             // Generic
+}
+
+enum IntegrationSyncDirection {
+  OUTBOUND          // Monitrax → External (default)
+  INBOUND           // External → Monitrax (reference only)
+  BIDIRECTIONAL     // Both ways (future)
+}
+
+enum IntegrationSyncStatus {
+  PENDING           // Queued for sync
+  IN_PROGRESS       // Currently syncing
+  COMPLETED         // Sync successful
+  FAILED            // Sync failed
+  PARTIAL           // Some items failed
+}
+
+// =============================================================================
+// PHASE 32: ORGANIZATION PORTAL SETTINGS (extends Organization)
+// =============================================================================
+
+model OrganizationPortalSettings {
+  id                    String           @id @default(uuid())
+  organizationId        String           @unique
+
+  // Organization Type & Plan
+  organizationType      OrganizationType @default(ACCOUNTING_FIRM)
+  plan                  OrganizationPlan @default(STARTER)
+
+  // Portal Features
+  portalEnabled         Boolean          @default(false)
+  maxClients            Int              @default(10)
+  maxStaff              Int              @default(3)
+
+  // White-labeling
+  brandName             String?
+  brandLogoUrl          String?
+  brandPrimaryColor     String?          // Hex color
+  brandSecondaryColor   String?
+  customDomain          String?          // Future: custom domain support
+
+  // Contact Info
+  businessEmail         String?
+  businessPhone         String?
+  businessAddress       String?
+  abn                   String?          // Australian Business Number
+  acn                   String?          // Australian Company Number
+
+  // Compliance
+  afslNumber            String?          // AFSL license number
+  taxAgentNumber        String?          // Tax agent registration
+
+  // SSO/SAML (Phase 32.12)
+  ssoEnabled            Boolean          @default(false)
+  samlEntityId          String?
+  samlSsoUrl            String?
+  samlCertificate       String?          @db.Text
+
+  // Billing
+  billingEmail          String?
+  stripeCustomerId      String?
+  subscriptionStatus    String?          @default("trialing")
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@map("organization_portal_settings")
+}
+
+// =============================================================================
+// PHASE 32: ORGANIZATION CLIENT (Link between Org and User)
+// =============================================================================
+
+model OrganizationClient {
+  id                    String           @id @default(uuid())
+  organizationId        String
+  userId                String           // The client's user account
+
+  // Status
+  status                ClientStatus     @default(INVITED)
+
+  // Consent Management
+  consentStatus         ConsentStatus    @default(PENDING)
+  accessScopes          DataAccessScope[]@default([])
+  consentGrantedAt      DateTime?
+  consentExpiresAt      DateTime?        // Optional expiry
+  consentRevokedAt      DateTime?
+
+  // Assignment (which staff member manages this client)
+  assignedToMemberId    String?          // OrganizationMember ID
+
+  // Client Reference (org's internal reference)
+  clientReference       String?          // e.g., "CLI-001"
+  externalId            String?          // ID in external system (Xero, etc.)
+
+  // Metadata
+  tags                  String[]         @default([])
+  onboardedAt           DateTime?
+  lastAccessedAt        DateTime?
+  archivedAt            DateTime?
+  archivedReason        String?
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  // Relationships
+  notes                 ClientNote[]
+  tasks                 ClientTask[]
+  accessLogs            ClientAccessLog[]
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+  @@index([assignedToMemberId])
+  @@map("organization_clients")
+}
+
+// =============================================================================
+// PHASE 32: ORGANIZATION INVITATION
+// =============================================================================
+
+model OrganizationInvitation {
+  id                    String           @id @default(uuid())
+  organizationId        String
+
+  // Invitation Details
+  type                  InvitationType
+  email                 String
+  role                  PortalUserRole   @default(PORTAL_VIEWER)
+  status                InvitationStatus @default(PENDING)
+
+  // For client invitations: requested scopes
+  requestedScopes       DataAccessScope[]@default([])
+
+  // Token for verification
+  token                 String           @unique
+  tokenExpiresAt        DateTime
+
+  // Tracking
+  invitedByMemberId     String           // Who sent the invite
+  personalMessage       String?          // Optional message
+
+  // Response tracking
+  respondedAt           DateTime?
+  acceptedUserId        String?          // User ID if accepted
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("organization_invitations")
+}
+
+// =============================================================================
+// PHASE 32: ORGANIZATION API KEY (External API Access)
+// =============================================================================
+
+model OrganizationApiKey {
+  id                    String           @id @default(uuid())
+  organizationId        String
+
+  // Key Details
+  name                  String           // Friendly name
+  keyHash               String           @unique  // SHA-256 hash of the key
+  keyPrefix             String           // First 8 chars for identification (e.g., "mtrx_pk_")
+  scopes                ApiKeyScope[]    @default([READ_CLIENTS])
+
+  // Rate Limiting
+  rateLimit             Int              @default(1000)  // Requests per hour
+  rateLimitWindow       Int              @default(3600)  // Window in seconds
+
+  // Tracking
+  lastUsedAt            DateTime?
+  usageCount            Int              @default(0)
+  createdByMemberId     String           // Who created this key
+
+  // Status
+  isActive              Boolean          @default(true)
+  expiresAt             DateTime?
+  revokedAt             DateTime?
+  revokedByMemberId     String?
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@index([isActive])
+  @@map("organization_api_keys")
+}
+
+// =============================================================================
+// PHASE 32: CLIENT NOTE (Advisor Notes on Clients)
+// =============================================================================
+
+model ClientNote {
+  id                    String           @id @default(uuid())
+  organizationClientId  String
+
+  // Note Content
+  title                 String?
+  content               String           @db.Text
+  isPinned              Boolean          @default(false)
+  isPrivate             Boolean          @default(true)  // Only visible to creator
+
+  // Author
+  createdByMemberId     String           // OrganizationMember who wrote it
+
+  // Timestamps
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  // Relationships
+  organizationClient    OrganizationClient @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationClientId])
+  @@index([createdByMemberId])
+  @@index([isPinned])
+  @@map("client_notes")
+}
+
+// =============================================================================
+// PHASE 32: CLIENT TASK (Tasks/Reminders for Clients)
+// =============================================================================
+
+model ClientTask {
+  id                    String             @id @default(uuid())
+  organizationClientId  String
+
+  // Task Details
+  title                 String
+  description           String?            @db.Text
+  status                ClientTaskStatus   @default(TODO)
+  priority              ClientTaskPriority @default(MEDIUM)
+
+  // Dates
+  dueDate               DateTime?
+  completedAt           DateTime?
+
+  // Assignment
+  assignedToMemberId    String?            // Staff member responsible
+  createdByMemberId     String             // Who created this task
+
+  // Timestamps
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  // Relationships
+  organizationClient    OrganizationClient @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationClientId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([assignedToMemberId])
+  @@map("client_tasks")
+}
+
+// =============================================================================
+// PHASE 32: CLIENT ACCESS LOG (Audit Trail)
+// =============================================================================
+
+model ClientAccessLog {
+  id                    String           @id @default(uuid())
+  organizationClientId  String
+
+  // Access Details
+  accessedByMemberId    String           // Who accessed
+  action                String           // VIEW_PROFILE, VIEW_TRANSACTIONS, EXPORT_DATA, etc.
+  resourceType          String?          // What type of data: "transactions", "documents", etc.
+  resourceId            String?          // Specific resource ID if applicable
+
+  // Context
+  ipAddress             String?
+  userAgent             String?
+
+  // Timestamp
+  accessedAt            DateTime         @default(now())
+
+  // Relationships
+  organizationClient    OrganizationClient @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationClientId])
+  @@index([accessedByMemberId])
+  @@index([accessedAt])
+  @@index([action])
+  @@map("client_access_logs")
+}
+
+// =============================================================================
+// PHASE 32: ACCOUNTING INTEGRATION (Multi-Provider Support)
+// =============================================================================
+
+model AccountingIntegration {
+  id                    String                   @id @default(uuid())
+  organizationId        String
+
+  // Provider Details
+  provider              AccountingProvider       @default(XERO)
+  providerTenantId      String?                  // Xero: tenant ID, MYOB: company file
+  providerOrganization  String?                  // Name in external system
+
+  // OAuth Credentials (encrypted)
+  accessToken           String?                  @db.Text
+  refreshToken          String?                  @db.Text
+  tokenExpiresAt        DateTime?
+  tokenScope            String?
+
+  // Connection Status
+  isConnected           Boolean                  @default(false)
+  lastConnectedAt       DateTime?
+  connectionError       String?
+
+  // Sync Configuration
+  syncDirection         IntegrationSyncDirection @default(OUTBOUND)
+  syncEnabled           Boolean                  @default(true)
+  autoSyncEnabled       Boolean                  @default(false)
+  syncIntervalHours     Int                      @default(24)
+
+  // What to sync
+  syncContacts          Boolean                  @default(true)
+  syncInvoices          Boolean                  @default(true)
+  syncBankTransactions  Boolean                  @default(false)
+  syncBankAccounts      Boolean                  @default(false)
+
+  // Sync Tracking
+  lastSyncAt            DateTime?
+  lastSyncStatus        IntegrationSyncStatus?
+  lastSyncError         String?
+
+  // Timestamps
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  // Relationships
+  syncLogs              IntegrationSyncLog[]
+  entityMappings        IntegrationEntityMapping[]
+
+  @@unique([organizationId, provider])
+  @@index([organizationId])
+  @@index([provider])
+  @@index([isConnected])
+  @@map("accounting_integrations")
+}
+
+// =============================================================================
+// PHASE 32: INTEGRATION SYNC LOG
+// =============================================================================
+
+model IntegrationSyncLog {
+  id                    String                @id @default(uuid())
+  integrationId         String
+
+  // Sync Details
+  direction             IntegrationSyncDirection
+  status                IntegrationSyncStatus @default(PENDING)
+  entityType            String                // "contact", "invoice", "transaction", etc.
+
+  // Statistics
+  totalRecords          Int                   @default(0)
+  successCount          Int                   @default(0)
+  errorCount            Int                   @default(0)
+  skippedCount          Int                   @default(0)
+
+  // Timing
+  startedAt             DateTime              @default(now())
+  completedAt           DateTime?
+  durationMs            Int?
+
+  // Error Details
+  errorMessage          String?               @db.Text
+  errorDetails          Json?                 // Detailed error info
+
+  // Triggered By
+  triggeredBy           String?               // "auto", "manual", "webhook", member ID
+
+  // Timestamps
+  createdAt             DateTime              @default(now())
+
+  // Relationships
+  integration           AccountingIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("integration_sync_logs")
+}
+
+// =============================================================================
+// PHASE 32: INTEGRATION ENTITY MAPPING (ID Linking)
+// =============================================================================
+
+model IntegrationEntityMapping {
+  id                    String                @id @default(uuid())
+  integrationId         String
+
+  // Monitrax Side
+  monitraxEntityType    String                // "user", "account", "transaction", etc.
+  monitraxEntityId      String
+
+  // External Side
+  externalEntityType    String                // "contact", "invoice", etc.
+  externalEntityId      String
+
+  // Change Detection
+  lastSyncedHash        String?               // Hash of data at last sync
+  lastSyncedAt          DateTime?
+
+  // Conflict Tracking
+  hasConflict           Boolean               @default(false)
+  conflictDetails       Json?                 // What differs
+
+  // Timestamps
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  // Relationships
+  integration           AccountingIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, monitraxEntityType, monitraxEntityId])
+  @@unique([integrationId, externalEntityType, externalEntityId])
+  @@index([integrationId])
+  @@index([monitraxEntityType, monitraxEntityId])
+  @@index([externalEntityType, externalEntityId])
+  @@map("integration_entity_mappings")
+}
+
+// =============================================================================
+// PHASE 33: ADMIN PORTAL - ENUMS
+// =============================================================================
+
+// Admin user roles for Monitrax staff
+enum AdminRole {
+  SUPER_ADMIN      // Full access to everything
+  BILLING_ADMIN    // Billing & subscriptions only
+  SUPPORT_ADMIN    // User lookup, impersonation, logs
+  VIEWER           // Read-only analytics
+}
+
+// User subscription tiers for personal users
+enum UserTier {
+  FREE
+  BASIC
+  PRO
+  PREMIUM
+}
+
+// =============================================================================
+// PHASE 33: ADMIN USER (Separate from regular users)
+// =============================================================================
+
+model AdminUser {
+  id                String       @id @default(uuid())
+  email             String       @unique
+  passwordHash      String
+  name              String
+  role              AdminRole    @default(VIEWER)
+  isActive          Boolean      @default(true)
+  mfaEnabled        Boolean      @default(false)
+  mfaSecret         String?
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  failedLoginCount  Int          @default(0)
+  lockedUntil       DateTime?
+  ipWhitelist       String[]     @default([])
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdBy         String?      // AdminUser ID who created this admin
+
+  // Relations
+  sessions          AdminSession[]
+  auditLogs         AdminAuditLog[]
+  impersonations    ImpersonationSession[]
+
+  @@index([email])
+  @@index([role])
+  @@map("admin_users")
+}
+
+// =============================================================================
+// PHASE 33: ADMIN SESSION
+// =============================================================================
+
+model AdminSession {
+  id                String       @id @default(uuid())
+  adminUserId       String
+  token             String       @unique
+  tokenHash         String       @unique
+  ipAddress         String
+  userAgent         String?
+  expiresAt         DateTime
+  createdAt         DateTime     @default(now())
+  lastActivityAt    DateTime     @default(now())
+  isRevoked         Boolean      @default(false)
+  revokedAt         DateTime?
+  revokedReason     String?
+
+  // Relations
+  adminUser         AdminUser    @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@map("admin_sessions")
+}
+
+// =============================================================================
+// PHASE 33: ADMIN AUDIT LOG
+// =============================================================================
+
+model AdminAuditLog {
+  id                String       @id @default(uuid())
+  adminUserId       String
+  action            String       // e.g., "USER_SUSPENDED", "LICENSE_UPDATED"
+  category          String       // e.g., "USER_MANAGEMENT", "BILLING", "FEATURE_FLAGS"
+  targetType        String?      // e.g., "User", "Organization"
+  targetId          String?      // ID of the affected entity
+  description       String       // Human-readable description
+  metadata          Json?        // Additional context (before/after values)
+  ipAddress         String
+  userAgent         String?
+  requestId         String?      // For correlating with application logs
+  timestamp         DateTime     @default(now())
+
+  // Relations
+  adminUser         AdminUser    @relation(fields: [adminUserId], references: [id])
+
+  @@index([adminUserId])
+  @@index([action])
+  @@index([category])
+  @@index([targetType, targetId])
+  @@index([timestamp])
+  @@map("admin_audit_logs")
+}
+
+// =============================================================================
+// PHASE 33: IMPERSONATION SESSION
+// =============================================================================
+
+model ImpersonationSession {
+  id                String       @id @default(uuid())
+  adminUserId       String
+  targetUserId      String       // User being impersonated
+  targetType        String       // "USER" or "ORGANIZATION_MEMBER"
+  reason            String       // Required justification
+  token             String       @unique
+  tokenHash         String       @unique
+  startedAt         DateTime     @default(now())
+  expiresAt         DateTime
+  endedAt           DateTime?
+  ipAddress         String
+  userAgent         String?
+  actionsPerformed  Json?        // Log of actions taken during impersonation
+
+  // Relations
+  adminUser         AdminUser    @relation(fields: [adminUserId], references: [id])
+
+  @@index([adminUserId])
+  @@index([targetUserId])
+  @@index([tokenHash])
+  @@map("impersonation_sessions")
+}
+
+// =============================================================================
+// PHASE 33: GLOBAL FEATURE FLAG
+// =============================================================================
+
+model GlobalFeatureFlag {
+  id                String       @id @default(uuid())
+  key               String       @unique // e.g., "DARK_MODE", "AI_INSIGHTS"
+  name              String       // Human-readable name
+  description       String?
+  enabled           Boolean      @default(false)
+  enabledForPercent Int          @default(0)  // Percentage rollout (0-100)
+  enabledForTiers   String[]     @default([]) // User tiers that have access
+  enabledForPlans   String[]     @default([]) // Organization plans that have access
+  metadata          Json?        // Additional configuration
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdBy         String?      // AdminUser ID
+  updatedBy         String?      // AdminUser ID
+
+  // Relations
+  overrides         FeatureFlagOverride[]
+
+  @@index([key])
+  @@index([enabled])
+  @@map("global_feature_flags")
+}
+
+// =============================================================================
+// PHASE 33: FEATURE FLAG OVERRIDE (Per-user or per-organization)
+// =============================================================================
+
+model FeatureFlagOverride {
+  id                String       @id @default(uuid())
+  flagId            String
+  targetType        String       // "USER" or "ORGANIZATION"
+  targetId          String       // User ID or Organization ID
+  enabled           Boolean
+  reason            String?      // Why this override exists
+  expiresAt         DateTime?    // Optional expiration for temporary overrides
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  createdBy         String?      // AdminUser ID
+
+  // Relations
+  flag              GlobalFeatureFlag @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  @@unique([flagId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@map("feature_flag_overrides")
+}
+
+// =============================================================================
+// PHASE 33: USER SUBSCRIPTION (extends User model)
+// =============================================================================
+
+model UserSubscription {
+  id                   String       @id @default(uuid())
+  userId               String       @unique
+  tier                 UserTier     @default(FREE)
+  status               String       @default("active") // active, suspended, cancelled
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean      @default(false)
+  suspendedAt          DateTime?
+  suspendedReason      String?
+  suspendedBy          String?      // AdminUser ID
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([tier])
+  @@index([status])
+  @@map("user_subscriptions")
+}
+
+// =============================================================================
+// PHASE 33: ORGANIZATION LICENSE (extends Organization model)
+// =============================================================================
+
+model OrganizationLicense {
+  id                   String           @id @default(uuid())
+  organizationId       String           @unique
+  tier                 OrganizationPlan @default(STARTER)
+  status               String           @default("active") // active, suspended, cancelled
+  clientLimit          Int              @default(10)
+  staffLimit           Int              @default(3)
+  customClientLimit    Int?             // Override for custom deals
+  customStaffLimit     Int?             // Override for custom deals
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean          @default(false)
+  suspendedAt          DateTime?
+  suspendedReason      String?
+  suspendedBy          String?          // AdminUser ID
+  notes                String?          // Internal notes about this license
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([organizationId])
+  @@index([tier])
+  @@index([status])
+  @@map("organization_licenses")
+}
+
+// =============================================================================
+// PHASE 33: BILLING TRANSACTION (Revenue Tracking)
+// =============================================================================
+
+model BillingTransaction {
+  id                String       @id @default(uuid())
+  type              String       // "subscription", "one_time", "refund"
+  entityType        String       // "USER" or "ORGANIZATION"
+  entityId          String       // User ID or Organization ID
+  amount            Decimal      @db.Decimal(10, 2)
+  currency          String       @default("AUD")
+  status            String       // "succeeded", "pending", "failed", "refunded"
+  stripePaymentId   String?
+  stripeInvoiceId   String?
+  description       String?
+  metadata          Json?
+  failureReason     String?
+  createdAt         DateTime     @default(now())
+
+  @@index([entityType, entityId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+  @@map("billing_transactions")
+}
+
+// =============================================================================
+// PHASE 29: AI TRANSACTION CATEGORISATION & LEARNING
+// =============================================================================
+
+enum AILearningSource {
+  AI_PREDICTION        // Original AI prediction
+  USER_CORRECTION      // User corrected the AI prediction
+  USER_CONFIRMED       // User confirmed AI prediction was correct
+  RULE_MATCH           // Matched by categorisation rule
+  BASIQ_ENRICHED       // Enriched by BASIQ data
+}
+
+enum ImportReviewStatus {
+  PENDING              // Awaiting user review
+  AUTO_ACCEPTED        // High confidence, auto-accepted
+  USER_CONFIRMED       // User confirmed categorisation
+  USER_EDITED          // User edited categorisation
+  SKIPPED              // User skipped/dismissed
+}
+
+model AICategorizationLearning {
+  id                    String              @id @default(uuid())
+  userId                String
+  transactionId         String              @unique
+
+  // Original AI prediction
+  aiCategoryLevel1      String?
+  aiCategoryLevel2      String?
+  aiSubcategory         String?
+  aiConfidence          Float               // Original AI confidence (0-1)
+  aiIsEssential         Boolean             @default(false)
+  aiIsRecurring         Boolean             @default(false)
+  aiReasoning           String?             @db.Text
+
+  // Final (user-confirmed or corrected) values
+  finalCategoryLevel1   String?
+  finalCategoryLevel2   String?
+  finalSubcategory      String?
+  finalIsEssential      Boolean             @default(false)
+  finalIsRecurring      Boolean             @default(false)
+
+  // Learning metadata
+  wasEdited             Boolean             @default(false)
+  source                AILearningSource    @default(AI_PREDICTION)
+  appliedToSimilar      Boolean             @default(false)  // Applied to other similar transactions
+  similarTransactionCount Int               @default(0)      // How many similar transactions updated
+
+  // Merchant learning context
+  merchantRaw           String?
+  merchantStandardised  String?
+  amountRange           String?             // e.g., "0-50", "50-100", "100-500"
+
+  // Timestamps
+  predictionAt          DateTime            @default(now())
+  confirmedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  // Relationships
+  user                  User                @relation("AICategorizationLearnings", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([merchantStandardised])
+  @@index([aiCategoryLevel1])
+  @@index([source])
+  @@index([wasEdited])
+  @@map("ai_categorization_learnings")
+}
+
+model AILearningPattern {
+  id                    String    @id @default(uuid())
+  userId                String?   // Null = global pattern, set = user-specific
+
+  // Pattern identification
+  patternType           String    // MERCHANT, AMOUNT_RANGE, DESCRIPTION_KEYWORD, TIME_OF_DAY, DAY_OF_WEEK
+  patternValue          String    // The pattern value (merchant name, keyword, amount range)
+  patternHash           String    // Hash for quick lookup
+
+  // Learned categorisation
+  categoryLevel1        String
+  categoryLevel2        String?
+  subcategory           String?
+  isEssential           Boolean   @default(false)
+  isRecurring           Boolean   @default(false)
+  suggestedFrequency    String?   // WEEKLY, FORTNIGHTLY, MONTHLY, etc.
+
+  // Learning strength (increases with each confirmation)
+  confidence            Float     @default(0.5)   // Confidence in this pattern (0-1)
+  matchCount            Int       @default(1)     // Times this pattern matched
+  confirmCount          Int       @default(0)     // Times user confirmed
+  correctionCount       Int       @default(0)     // Times user corrected
+
+  // Context
+  averageAmount         Float?
+  minAmount             Float?
+  maxAmount             Float?
+
+  // Timestamps
+  lastMatchAt           DateTime  @default(now())
+  lastConfirmedAt       DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([userId, patternType, patternHash])
+  @@index([userId])
+  @@index([patternType])
+  @@index([patternHash])
+  @@index([confidence])
+  @@map("ai_learning_patterns")
+}
+
+model ImportBatch {
+  id                    String              @id @default(uuid())
+  userId                String
+  accountId             String
+
+  // Source information
+  source                TransactionSource   @default(MANUAL)
+  fileName              String?
+  fileHash              String?             // SHA256 hash for deduplication
+  fileSize              Int?
+
+  // Date range of transactions in this batch
+  dateRangeStart        DateTime
+  dateRangeEnd          DateTime
+
+  // Statistics
+  totalTransactions     Int                 @default(0)
+  importedCount         Int                 @default(0)
+  duplicatesSkipped     Int                 @default(0)
+  duplicatesMerged      Int                 @default(0)
+  errorCount            Int                 @default(0)
+
+  // AI categorisation stats
+  aiCategorisedCount    Int                 @default(0)
+  autoAcceptedCount     Int                 @default(0)
+  needsReviewCount      Int                 @default(0)
+  userConfirmedCount    Int                 @default(0)
+  userEditedCount       Int                 @default(0)
+
+  // Processing status
+  status                ImportStatus        @default(PENDING)
+  processingStartedAt   DateTime?
+  processingCompletedAt DateTime?
+  errorMessage          String?             @db.Text
+
+  // Balance information
+  openingBalance        Float?
+  closingBalance        Float?
+  balanceUpdated        Boolean             @default(false)
+  userVerifiedBalance   Float?              // Balance verified by user after import
+  balanceVerifiedAt     DateTime?           // When user verified the balance
+
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  // Relationships
+  user                  User                @relation("ImportBatches", fields: [userId], references: [id], onDelete: Cascade)
+  account               Account             @relation("ImportBatches", fields: [accountId], references: [id], onDelete: Cascade)
+  reviewQueue           TransactionReviewQueue[]
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([status])
+  @@index([dateRangeStart, dateRangeEnd])
+  @@index([fileHash])
+  @@map("import_batches")
+}
+
+model TransactionReviewQueue {
+  id                    String              @id @default(uuid())
+  userId                String
+  importBatchId         String?
+  transactionId         String?             // Set after transaction is created
+
+  // Transaction data (before creation)
+  tempData              Json                // Stores transaction data before confirmed
+
+  // AI Prediction
+  aiCategoryLevel1      String?
+  aiCategoryLevel2      String?
+  aiSubcategory         String?
+  aiConfidence          Float               @default(0)
+  aiIsEssential         Boolean             @default(false)
+  aiIsRecurring         Boolean             @default(false)
+  aiReasoning           String?
+
+  // Confidence classification
+  confidenceLevel       String              @default("MANUAL")  // AUTO_ACCEPT, NEEDS_REVIEW, MANUAL
+
+  // Review status
+  status                ImportReviewStatus  @default(PENDING)
+
+  // User edits (if any)
+  userCategoryLevel1    String?
+  userCategoryLevel2    String?
+  userSubcategory       String?
+  userIsEssential       Boolean?
+  userIsRecurring       Boolean?
+
+  // Apply to similar
+  applyToSimilar        Boolean             @default(false)
+  similarMerchantPattern String?            // Pattern to match similar transactions
+
+  // Duplicate detection
+  isDuplicate           Boolean             @default(false)
+  duplicateOf           String?             // ID of duplicate transaction
+  duplicateAction       String?             // SKIP, MERGE, IMPORT_ANYWAY
+
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  reviewedAt            DateTime?
+  updatedAt             DateTime            @updatedAt
+
+  // Relationships
+  user                  User                @relation("TransactionReviewQueue", fields: [userId], references: [id], onDelete: Cascade)
+  importBatch           ImportBatch?        @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([importBatchId])
+  @@index([status])
+  @@index([confidenceLevel])
+  @@map("transaction_review_queue")
+}
+
+// User settings for AI categorisation
+model UserCategorizationSettings {
+  id                      String    @id @default(uuid())
+  userId                  String    @unique
+
+  // Confidence thresholds
+  autoAcceptThreshold     Float     @default(0.90)  // >= 90% auto-accept
+  reviewThreshold         Float     @default(0.70)  // >= 70% show for review
+
+  // AI behaviour
+  enableAI                Boolean   @default(true)
+  learnFromConfirmations  Boolean   @default(true)
+  applyLearningsGlobally  Boolean   @default(false) // Apply learnings to all users (admin only)
+
+  // Review preferences
+  showConfidenceScores    Boolean   @default(true)
+  showAIReasoning         Boolean   @default(true)
+  defaultApplyToSimilar   Boolean   @default(true)
+
+  // Notification preferences
+  notifyOnPendingReview   Boolean   @default(true)
+  pendingReviewThreshold  Int       @default(10)    // Notify when X transactions pending
+
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@map("user_categorization_settings")
 }

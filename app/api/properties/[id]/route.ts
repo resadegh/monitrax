@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyOwnership } from '@/lib/utils/ownership';
 
 export async function GET(
   request: NextRequest,
@@ -18,11 +19,10 @@ export async function GET(
         },
       });
 
-      if (!property || property.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(property, authReq.user!.userId, 'Property');
+      if (!ownershipResult.success) return ownershipResult.response;
 
-      return NextResponse.json(property);
+      return NextResponse.json(ownershipResult.resource);
     } catch (error) {
       console.error('Get property error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -60,9 +60,8 @@ export async function PUT(
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Property');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const property = await prisma.property.update({
         where: { id },
@@ -104,9 +103,8 @@ export async function DELETE(
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Property');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       await prisma.property.delete({
         where: { id },

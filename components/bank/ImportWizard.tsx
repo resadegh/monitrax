@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface RecurringMatch {
   type: 'income' | 'expense';
@@ -319,14 +320,6 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
     } finally {
       setImporting(false);
     }
-  };
-
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-    }).format(amount);
   };
 
   // Format date

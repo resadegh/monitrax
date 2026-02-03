@@ -19,6 +19,8 @@ import {
   Gem, LayoutGrid, List, Eye, Receipt, History, Settings,
   Fuel, Shield, FileText, Zap
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
+import { toAnnual } from '@/lib/utils/frequencies';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListFilter, assetFilterConfigs } from '@/components/ListFilter';
 
@@ -423,14 +425,7 @@ function AssetsPageContent() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  // formatCurrency imported from lib/utils/formatters
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-AU', {

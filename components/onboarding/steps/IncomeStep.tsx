@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Briefcase, Building2, TrendingUp, DollarSign, Calendar } from 'lucide-react';
+import { toAnnual } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 interface IncomeData {
   name: string;
@@ -46,17 +48,8 @@ export function IncomeStep({ value, onChange }: IncomeStepProps) {
     }
   }, [name, type, amount, frequency, onChange]);
 
-  // Calculate annual equivalent
-  const annualAmount = (() => {
-    const base = parseFloat(amount) || 0;
-    switch (frequency) {
-      case 'WEEKLY': return base * 52;
-      case 'FORTNIGHTLY': return base * 26;
-      case 'MONTHLY': return base * 12;
-      case 'ANNUAL': return base;
-      default: return base;
-    }
-  })();
+  // Calculate annual equivalent using centralized utility
+  const annualAmount = toAnnual(parseFloat(amount) || 0, frequency as Frequency);
 
   return (
     <div className="space-y-6">

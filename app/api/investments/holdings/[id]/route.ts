@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyIndirectOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
 
 const updateHoldingSchema = z.object({
@@ -35,11 +36,15 @@ export async function GET(
         },
       });
 
-      if (!holding || holding.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Holding not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        holding,
+        holding?.investmentAccount,
+        authReq.user!.userId,
+        'Holding'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
 
-      return NextResponse.json(holding);
+      return NextResponse.json(ownershipResult.resource);
     } catch (error) {
       console.error('Get holding error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -70,17 +75,23 @@ export async function PUT(
         include: { investmentAccount: true },
       });
 
-      if (!existing || existing.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Holding not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        existing,
+        existing?.investmentAccount,
+        authReq.user!.userId,
+        'Holding'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
+
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedHolding = ownershipResult.resource;
 
       const { ticker, name, units, averagePrice, frankingPercentage, type, currentPrice } = validation.data;
 
       // Get current holding for calculations
-      const currentHolding = existing;
-      const newUnits = units ?? currentHolding.units;
-      const newAvgPrice = averagePrice ?? currentHolding.averagePrice;
-      const newPrice = currentPrice ?? currentHolding.currentPrice;
+      const newUnits = units ?? verifiedHolding.units;
+      const newAvgPrice = averagePrice ?? verifiedHolding.averagePrice;
+      const newPrice = currentPrice ?? verifiedHolding.currentPrice;
 
       // Recalculate values if units, price, or current price changed
       const totalCostBasis = newUnits * newAvgPrice;
@@ -145,15 +156,22 @@ export async function PATCH(
         include: { investmentAccount: true },
       });
 
-      if (!existing || existing.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Holding not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        existing,
+        existing?.investmentAccount,
+        authReq.user!.userId,
+        'Holding'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
+
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedHolding = ownershipResult.resource;
 
       const { currentPrice } = validation.data;
 
       // Recalculate values
-      const totalCostBasis = existing.units * existing.averagePrice;
-      const currentValue = existing.units * currentPrice;
+      const totalCostBasis = verifiedHolding.units * verifiedHolding.averagePrice;
+      const currentValue = verifiedHolding.units * currentPrice;
       const unrealizedGain = currentValue - totalCostBasis;
       const unrealizedGainPct = totalCostBasis > 0
         ? (unrealizedGain / totalCostBasis) * 100
@@ -173,10 +191,10 @@ export async function PATCH(
       return NextResponse.json({
         ...holding,
         priceChange: {
-          previousPrice: existing.currentPrice,
+          previousPrice: verifiedHolding.currentPrice,
           newPrice: currentPrice,
-          percentageChange: existing.currentPrice
-            ? ((currentPrice - existing.currentPrice) / existing.currentPrice) * 100
+          percentageChange: verifiedHolding.currentPrice
+            ? ((currentPrice - verifiedHolding.currentPrice) / verifiedHolding.currentPrice) * 100
             : null,
         },
       });
@@ -200,9 +218,13 @@ export async function DELETE(
         include: { investmentAccount: true },
       });
 
-      if (!existing || existing.investmentAccount.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Holding not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyIndirectOwnership(
+        existing,
+        existing?.investmentAccount,
+        authReq.user!.userId,
+        'Holding'
+      );
+      if (!ownershipResult.success) return ownershipResult.response;
 
       await prisma.investmentHolding.delete({
         where: { id },

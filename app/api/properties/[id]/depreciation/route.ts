@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withAuth } from '@/lib/middleware';
+import { verifyOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
 
 const createDepreciationSchema = z.object({
@@ -26,9 +27,8 @@ export async function GET(
         where: { id: propertyId },
       });
 
-      if (!property || property.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(property, authReq.user!.userId, 'Property');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const schedules = await prisma.depreciationSchedule.findMany({
         where: { propertyId },
@@ -65,9 +65,8 @@ export async function POST(
         where: { id: propertyId },
       });
 
-      if (!property || property.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(property, authReq.user!.userId, 'Property');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const { category, assetName, cost, startDate, rate, method, notes } = validation.data;
 

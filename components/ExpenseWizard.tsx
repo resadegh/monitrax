@@ -9,13 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Zap, Plus, Trash2, Home, Car, Utensils, Wifi, Shield, Dumbbell, Tv, Building2,
-  Droplets, Flame, Phone, CreditCard, Receipt, Sparkles, ChevronDown, ChevronUp
+  Droplets, Flame, Phone, CreditCard, Receipt, Sparkles, ChevronDown, ChevronUp, KeyRound
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface Property {
   id: string;
   name: string;
-  type: string;
+  type: 'HOME' | 'INVESTMENT' | 'RENTAL' | string;
 }
 
 interface ExpenseTemplateRow {
@@ -40,6 +41,7 @@ interface ExpenseGroup {
 
 const CATEGORIES = [
   { value: 'HOUSING', label: 'Housing' },
+  { value: 'RENT', label: 'Rent' },
   { value: 'RATES', label: 'Rates' },
   { value: 'INSURANCE', label: 'Insurance' },
   { value: 'MAINTENANCE', label: 'Maintenance' },
@@ -92,15 +94,38 @@ const getDefaultTemplates = (properties: Property[]): ExpenseTemplateRow[] => {
   ];
 
   // Add property-specific templates for each property
-  properties.forEach((property, index) => {
-    templates.push(
-      { id: `council-rates-${property.id}`, name: 'Council Rates', category: 'RATES', amount: '', frequency: 'QUARTERLY', propertyId: property.id, isTaxDeductible: true, isEssential: true, groupId: `property-${property.id}` },
-      { id: `water-rates-${property.id}`, name: 'Water Rates', category: 'RATES', amount: '', frequency: 'QUARTERLY', propertyId: property.id, isTaxDeductible: true, isEssential: true, groupId: `property-${property.id}` },
-      { id: `strata-${property.id}`, name: 'Strata/Body Corp', category: 'STRATA', amount: '', frequency: 'QUARTERLY', propertyId: property.id, isTaxDeductible: true, isEssential: true, groupId: `property-${property.id}` },
-      { id: `landlord-insurance-${property.id}`, name: 'Landlord Insurance', category: 'INSURANCE', amount: '', frequency: 'ANNUAL', propertyId: property.id, isTaxDeductible: true, isEssential: true, groupId: `property-${property.id}` },
-      { id: `property-mgmt-${property.id}`, name: 'Property Management', category: 'MAINTENANCE', amount: '', frequency: 'MONTHLY', propertyId: property.id, isTaxDeductible: true, isEssential: true, groupId: `property-${property.id}` },
-      { id: `land-tax-${property.id}`, name: 'Land Tax', category: 'LAND_TAX', amount: '', frequency: 'ANNUAL', propertyId: property.id, isTaxDeductible: true, isEssential: true, groupId: `property-${property.id}` },
-    );
+  properties.forEach((property) => {
+    const propertyId = property.id;
+    const groupId = `property-${property.id}`;
+
+    if (property.type === 'RENTAL') {
+      // Rental property templates - include rent payment
+      templates.push(
+        { id: `rent-${propertyId}`, name: 'Rent Payment', category: 'RENT', amount: '', frequency: 'WEEKLY', propertyId, isTaxDeductible: false, isEssential: true, groupId },
+        { id: `renters-insurance-${propertyId}`, name: 'Renters Insurance', category: 'INSURANCE', amount: '', frequency: 'ANNUAL', propertyId, isTaxDeductible: false, isEssential: true, groupId },
+      );
+    } else {
+      // Owned property templates (HOME or INVESTMENT)
+      templates.push(
+        { id: `council-rates-${propertyId}`, name: 'Council Rates', category: 'RATES', amount: '', frequency: 'QUARTERLY', propertyId, isTaxDeductible: property.type === 'INVESTMENT', isEssential: true, groupId },
+        { id: `water-rates-${propertyId}`, name: 'Water Rates', category: 'RATES', amount: '', frequency: 'QUARTERLY', propertyId, isTaxDeductible: property.type === 'INVESTMENT', isEssential: true, groupId },
+        { id: `strata-${propertyId}`, name: 'Strata/Body Corp', category: 'STRATA', amount: '', frequency: 'QUARTERLY', propertyId, isTaxDeductible: property.type === 'INVESTMENT', isEssential: true, groupId },
+      );
+
+      // Only add investment-specific expenses for INVESTMENT type
+      if (property.type === 'INVESTMENT') {
+        templates.push(
+          { id: `landlord-insurance-${propertyId}`, name: 'Landlord Insurance', category: 'INSURANCE', amount: '', frequency: 'ANNUAL', propertyId, isTaxDeductible: true, isEssential: true, groupId },
+          { id: `property-mgmt-${propertyId}`, name: 'Property Management', category: 'MAINTENANCE', amount: '', frequency: 'MONTHLY', propertyId, isTaxDeductible: true, isEssential: true, groupId },
+          { id: `land-tax-${propertyId}`, name: 'Land Tax', category: 'LAND_TAX', amount: '', frequency: 'ANNUAL', propertyId, isTaxDeductible: true, isEssential: true, groupId },
+        );
+      } else {
+        // HOME property - add home insurance
+        templates.push(
+          { id: `home-insurance-${propertyId}`, name: 'Home Insurance', category: 'INSURANCE', amount: '', frequency: 'ANNUAL', propertyId, isTaxDeductible: false, isEssential: true, groupId },
+        );
+      }
+    }
   });
 
   return templates;
@@ -118,8 +143,8 @@ const getGroups = (properties: Property[]): ExpenseGroup[] => {
   properties.forEach(property => {
     groups.push({
       id: `property-${property.id}`,
-      name: property.name,
-      icon: <Building2 className="h-4 w-4" />,
+      name: property.type === 'RENTAL' ? `${property.name} (Rental)` : property.name,
+      icon: property.type === 'RENTAL' ? <KeyRound className="h-4 w-4" /> : <Building2 className="h-4 w-4" />,
       expanded: true,
     });
   });
@@ -247,14 +272,6 @@ export function ExpenseWizard({ open, onOpenChange, properties, token, onSuccess
       setSaving(false);
     }
   };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

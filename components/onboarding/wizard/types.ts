@@ -6,6 +6,8 @@
  */
 
 import { OnboardingProfileType } from '@/hooks/useOnboardingState';
+import { toAnnual } from '@/lib/utils/frequencies';
+import { Frequency as FrequencyType } from '@/lib/types/prisma-enums';
 
 // =============================================================================
 // WIZARD STEP DEFINITIONS
@@ -396,15 +398,9 @@ export function calculateSummary(data: WizardData): {
   annualLoanRepayments: number;
   monthlyCashflow: number;
 } {
+  // Use centralized frequency utility
   const frequencyToAnnual = (amount: number, freq: string): number => {
-    switch (freq) {
-      case 'WEEKLY': return amount * 52;
-      case 'FORTNIGHTLY': return amount * 26;
-      case 'MONTHLY': return amount * 12;
-      case 'QUARTERLY': return amount * 4;
-      case 'ANNUAL': return amount;
-      default: return amount * 12;
-    }
+    return toAnnual(amount, freq as Frequency);
   };
 
   const totalPropertyValue = data.properties.reduce((sum, p) => sum + p.currentValue, 0);

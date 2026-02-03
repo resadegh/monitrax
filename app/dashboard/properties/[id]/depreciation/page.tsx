@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calculator, Plus, Edit2, Trash2, ArrowLeft, Home, TrendingDown, Clock, DollarSign } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 import { StatCard } from '@/components/StatCard';
 
 interface Property {
@@ -159,13 +160,6 @@ export default function DepreciationPage() {
       console.error('Error deleting depreciation schedule:', error);
     }
   };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-    }).format(amount);
 
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('en-AU', {

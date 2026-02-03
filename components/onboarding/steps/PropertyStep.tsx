@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Home, Building2, DollarSign, Percent, ChevronDown, ChevronUp } from 'lucide-react';
+import { Home, Building2, DollarSign, Percent, ChevronDown, ChevronUp, KeyRound } from 'lucide-react';
+import { toAnnual } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
 interface PropertyData {
   name: string;
@@ -15,6 +17,9 @@ interface PropertyData {
     isFixed: boolean;
     isInterestOnly: boolean;
   };
+  // Rental property fields
+  rentAmount?: number;
+  rentFrequency?: string;
 }
 
 interface PropertyStepProps {
@@ -37,13 +42,31 @@ export function PropertyStep({ value, onChange }: PropertyStepProps) {
   const [isFixed, setIsFixed] = useState(value?.loanDetails?.isFixed ?? false);
   const [isInterestOnly, setIsInterestOnly] = useState(value?.loanDetails?.isInterestOnly ?? false);
 
+  // Rental property fields
+  const [rentAmount, setRentAmount] = useState(value?.rentAmount?.toString() || '');
+  const [rentFrequency, setRentFrequency] = useState(value?.rentFrequency || 'WEEKLY');
+
   useEffect(() => {
     if (skipProperty) {
       onChange(null);
       return;
     }
 
-    if (name && propertyValue) {
+    // For rental properties, we need name and rent amount
+    if (type === 'RENTAL') {
+      if (name && rentAmount) {
+        const data: PropertyData = {
+          name,
+          type,
+          value: 0, // Rental properties have no owned value
+          hasLoan: false, // Renters don't have loans on rental properties
+          rentAmount: parseFloat(rentAmount) || 0,
+          rentFrequency,
+        };
+        onChange(data);
+      }
+    } else if (name && propertyValue) {
+      // For owned properties (HOME/INVESTMENT)
       const data: PropertyData = {
         name,
         type,
@@ -61,7 +84,7 @@ export function PropertyStep({ value, onChange }: PropertyStepProps) {
       };
       onChange(data);
     }
-  }, [skipProperty, name, type, propertyValue, hasLoan, lender, principal, rate, isFixed, isInterestOnly, onChange]);
+  }, [skipProperty, name, type, propertyValue, hasLoan, lender, principal, rate, isFixed, isInterestOnly, rentAmount, rentFrequency, onChange]);
 
   // Calculate equity preview
   const equity = propertyValue && principal
@@ -131,7 +154,7 @@ export function PropertyStep({ value, onChange }: PropertyStepProps) {
         <label className="text-sm font-medium text-gray-700 mb-2 block">
           Property type
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => setType('HOME')}
             className={`flex items-center gap-3 p-4 rounded-lg border-2 ${
@@ -154,56 +177,128 @@ export function PropertyStep({ value, onChange }: PropertyStepProps) {
             <Building2 className={`w-5 h-5 ${type === 'INVESTMENT' ? 'text-blue-600' : 'text-gray-400'}`} />
             <span className="font-medium">Investment</span>
           </button>
-        </div>
-      </div>
-
-      {/* Property value */}
-      <div>
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-          <DollarSign className="w-4 h-4" />
-          Current market value
-        </label>
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-          <input
-            type="number"
-            value={propertyValue}
-            onChange={(e) => setPropertyValue(e.target.value)}
-            placeholder="0"
-            className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-      </div>
-
-      {/* Has loan toggle */}
-      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-        <span className="font-medium text-gray-900">Do you have a loan on this property?</span>
-        <div className="flex gap-2">
           <button
-            onClick={() => { setHasLoan(true); setShowLoanDetails(true); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium ${
-              hasLoan
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border border-gray-300 text-gray-700'
+            onClick={() => { setType('RENTAL'); setHasLoan(false); }}
+            className={`flex items-center gap-3 p-4 rounded-lg border-2 ${
+              type === 'RENTAL'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-200 hover:border-gray-300'
             }`}
           >
-            Yes
-          </button>
-          <button
-            onClick={() => { setHasLoan(false); setShowLoanDetails(false); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium ${
-              !hasLoan
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border border-gray-300 text-gray-700'
-            }`}
-          >
-            No
+            <KeyRound className={`w-5 h-5 ${type === 'RENTAL' ? 'text-blue-600' : 'text-gray-400'}`} />
+            <span className="font-medium">Rental</span>
           </button>
         </div>
+        {type === 'RENTAL' && (
+          <p className="mt-2 text-sm text-gray-500">
+            Track your rental property and rent expenses
+          </p>
+        )}
       </div>
 
-      {/* Loan details (collapsible) */}
-      {hasLoan && (
+      {/* Property value - only for owned properties */}
+      {type !== 'RENTAL' && (
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+            <DollarSign className="w-4 h-4" />
+            Current market value
+          </label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+            <input
+              type="number"
+              value={propertyValue}
+              onChange={(e) => setPropertyValue(e.target.value)}
+              placeholder="0"
+              className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Rent details - only for rental properties */}
+      {type === 'RENTAL' && (
+        <div className="space-y-4 p-4 bg-blue-50 border border-blue-100 rounded-lg">
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+              <DollarSign className="w-4 h-4" />
+              Rent amount
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <input
+                type="number"
+                value={rentAmount}
+                onChange={(e) => setRentAmount(e.target.value)}
+                placeholder="0"
+                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Payment frequency
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {['WEEKLY', 'FORTNIGHTLY', 'MONTHLY'].map((freq) => (
+                <button
+                  key={freq}
+                  onClick={() => setRentFrequency(freq)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                    rentFrequency === freq
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:border-gray-400'
+                  }`}
+                >
+                  {freq.charAt(0) + freq.slice(1).toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          {rentAmount && (
+            <div className="pt-2 border-t border-blue-200">
+              <p className="text-sm text-blue-800">
+                <strong>Annual rent:</strong> ${toAnnual(parseFloat(rentAmount), rentFrequency as Frequency).toLocaleString()}/year
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                This will be added as a recurring expense
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Has loan toggle - only for owned properties */}
+      {type !== 'RENTAL' && (
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <span className="font-medium text-gray-900">Do you have a loan on this property?</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setHasLoan(true); setShowLoanDetails(true); }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium ${
+                hasLoan
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700'
+              }`}
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => { setHasLoan(false); setShowLoanDetails(false); }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium ${
+                !hasLoan
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700'
+              }`}
+            >
+              No
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loan details (collapsible) - only for owned properties */}
+      {type !== 'RENTAL' && hasLoan && (
         <div className="border border-gray-200 rounded-lg overflow-hidden">
           <button
             onClick={() => setShowLoanDetails(!showLoanDetails)}
@@ -295,8 +390,8 @@ export function PropertyStep({ value, onChange }: PropertyStepProps) {
         </div>
       )}
 
-      {/* Equity preview */}
-      {equity !== null && hasLoan && (
+      {/* Equity preview - only for owned properties */}
+      {type !== 'RENTAL' && equity !== null && hasLoan && (
         <div className="bg-green-50 border border-green-100 rounded-lg p-4">
           <div className="text-sm text-green-800">
             <strong>Equity:</strong> ${equity.toLocaleString()}

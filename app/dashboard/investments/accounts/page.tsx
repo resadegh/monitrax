@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, Plus, Edit2, Trash2, Eye, BarChart3, ArrowUpRight, ArrowDownRight, DollarSign, Receipt, Wallet, Link2, LayoutGrid, List } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
@@ -226,14 +227,9 @@ function InvestmentAccountsPageContent() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string = 'AUD') => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
+  // Use imported formatCurrency with showCents for investment amounts
+  const formatInvestmentCurrency = (amount: number, currency: string = 'AUD') =>
+    formatCurrency(amount, { currency, showCents: true });
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -331,7 +327,7 @@ function InvestmentAccountsPageContent() {
     <DashboardLayout>
       <PageHeader
         title="Investment Accounts"
-        description={`Manage your investment accounts • ${accounts.length} account(s) • Total: ${formatCurrency(totalPortfolioValue)}`}
+        description={`Manage your investment accounts • ${accounts.length} account(s) • Total: ${formatInvestmentCurrency(totalPortfolioValue)}`}
         action={
           <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
             <Plus className="mr-2 h-4 w-4" />
@@ -419,7 +415,7 @@ function InvestmentAccountsPageContent() {
                         </td>
                         <td className="px-4 py-3">{getAccountTypeBadge(account.type)}</td>
                         <td className="px-4 py-3 text-muted-foreground">{account.platform || '-'}</td>
-                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(totalValue, account.currency)}</td>
+                        <td className="px-4 py-3 text-right font-medium">{formatInvestmentCurrency(totalValue, account.currency)}</td>
                         <td className="px-4 py-3 text-right">{account.holdings?.length || 0}</td>
                         <td className="px-4 py-3 text-right">{account.transactions?.length || 0}</td>
                         <td className="px-4 py-3">{account.currency}</td>
@@ -491,7 +487,7 @@ function InvestmentAccountsPageContent() {
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Total Value</p>
-                    <p className="text-2xl font-bold">{formatCurrency(totalValue, account.currency)}</p>
+                    <p className="text-2xl font-bold">{formatInvestmentCurrency(totalValue, account.currency)}</p>
                   </div>
 
                   {account.platform && (
@@ -741,7 +737,7 @@ function InvestmentAccountsPageContent() {
                       <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-2xl font-bold">{formatCurrency(calculateTotalValue(selectedAccount), selectedAccount.currency)}</p>
+                      <p className="text-2xl font-bold">{formatInvestmentCurrency(calculateTotalValue(selectedAccount), selectedAccount.currency)}</p>
                     </CardContent>
                   </Card>
 
@@ -761,7 +757,7 @@ function InvestmentAccountsPageContent() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold text-green-600">
-                        {formatCurrency(calculateLinkedIncome(selectedAccount), selectedAccount.currency)}
+                        {formatInvestmentCurrency(calculateLinkedIncome(selectedAccount), selectedAccount.currency)}
                       </p>
                     </CardContent>
                   </Card>
@@ -772,7 +768,7 @@ function InvestmentAccountsPageContent() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold text-red-600">
-                        {formatCurrency(calculateLinkedExpenses(selectedAccount), selectedAccount.currency)}
+                        {formatInvestmentCurrency(calculateLinkedExpenses(selectedAccount), selectedAccount.currency)}
                       </p>
                     </CardContent>
                   </Card>
@@ -826,9 +822,9 @@ function InvestmentAccountsPageContent() {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="font-bold text-lg">{formatCurrency(value, selectedAccount.currency)}</p>
+                                <p className="font-bold text-lg">{formatInvestmentCurrency(value, selectedAccount.currency)}</p>
                                 <p className="text-sm text-muted-foreground">
-                                  {holding.units.toLocaleString()} @ {formatCurrency(holding.averagePrice, selectedAccount.currency)}
+                                  {holding.units.toLocaleString()} @ {formatInvestmentCurrency(holding.averagePrice, selectedAccount.currency)}
                                 </p>
                               </div>
                             </div>
@@ -865,14 +861,14 @@ function InvestmentAccountsPageContent() {
                             </div>
                             <div className="text-right">
                               <p className={`font-semibold ${tx.type === 'BUY' || tx.type === 'TRANSFER_IN' ? 'text-green-600' : tx.type === 'SELL' || tx.type === 'TRANSFER_OUT' ? 'text-red-600' : ''}`}>
-                                {formatCurrency(tx.price * tx.units, selectedAccount.currency)}
+                                {formatInvestmentCurrency(tx.price * tx.units, selectedAccount.currency)}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {tx.units.toLocaleString()} @ {formatCurrency(tx.price, selectedAccount.currency)}
+                                {tx.units.toLocaleString()} @ {formatInvestmentCurrency(tx.price, selectedAccount.currency)}
                               </p>
                               {tx.fees && (
                                 <p className="text-xs text-muted-foreground">
-                                  Fees: {formatCurrency(tx.fees, selectedAccount.currency)}
+                                  Fees: {formatInvestmentCurrency(tx.fees || 0, selectedAccount.currency)}
                                 </p>
                               )}
                             </div>
@@ -909,7 +905,7 @@ function InvestmentAccountsPageContent() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold text-green-600">
-                        {formatCurrency(calculateLinkedIncome(selectedAccount), selectedAccount.currency)}/yr
+                        {formatInvestmentCurrency(calculateLinkedIncome(selectedAccount), selectedAccount.currency)}/yr
                       </p>
                       <p className="text-sm text-muted-foreground">{selectedAccount.incomes?.length || 0} income source(s)</p>
                     </CardContent>
@@ -924,7 +920,7 @@ function InvestmentAccountsPageContent() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold text-red-600">
-                        {formatCurrency(calculateLinkedExpenses(selectedAccount), selectedAccount.currency)}/yr
+                        {formatInvestmentCurrency(calculateLinkedExpenses(selectedAccount), selectedAccount.currency)}/yr
                       </p>
                       <p className="text-sm text-muted-foreground">{selectedAccount.expenses?.length || 0} expense(s)</p>
                     </CardContent>
@@ -944,7 +940,7 @@ function InvestmentAccountsPageContent() {
                             <Badge variant="outline">{income.type}</Badge>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold text-green-600">{formatCurrency(income.amount, selectedAccount.currency)}</p>
+                            <p className="font-semibold text-green-600">{formatInvestmentCurrency(income.amount, selectedAccount.currency)}</p>
                             <p className="text-xs text-muted-foreground">{income.frequency.toLowerCase()}</p>
                           </div>
                         </div>
@@ -971,7 +967,7 @@ function InvestmentAccountsPageContent() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold text-red-600">{formatCurrency(expense.amount, selectedAccount.currency)}</p>
+                            <p className="font-semibold text-red-600">{formatInvestmentCurrency(expense.amount, selectedAccount.currency)}</p>
                             <p className="text-xs text-muted-foreground">{expense.frequency.toLowerCase()}</p>
                           </div>
                         </div>
