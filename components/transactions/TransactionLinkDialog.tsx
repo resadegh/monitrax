@@ -750,11 +750,7 @@ export function TransactionLinkDialog({
                 suggestedMatches.map((match) => (
                   <div
                     key={match.id}
-                    className={`p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 ${
-                      match.reconciliationRecommendation === 'update_amount'
-                        ? 'border-amber-300 dark:border-amber-700'
-                        : ''
-                    }`}
+                    className="p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
