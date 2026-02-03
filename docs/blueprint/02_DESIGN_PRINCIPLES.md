@@ -231,28 +231,49 @@ Other modules must *not* compute their own heuristics.
 
 **CRITICAL RULE: Never delete data or database tables without explicit user verification.**
 
+> ⚠️ **INCIDENT (Feb 2026)**: Automated `prisma db push` in build scripts nearly deleted legacy tables with user data. Build scripts were modified to remove automatic schema sync.
+
 This principle applies to:
 - Schema migrations that drop tables or columns
 - Database cleanup operations
 - Deployment scripts that may affect existing data
 - Any operation using `--accept-data-loss` or similar flags
+- Adding placeholder models for tables you haven't verified
 
 **Requirements:**
-1. Before any schema change that would drop tables or columns, explicitly verify with the user
-2. Always back up data before destructive operations
-3. Prefer soft deletes over hard deletes for user data
-4. Use `prisma db push` without `--accept-data-loss` in production
+1. **NEVER include `prisma db push` in automated build scripts** — Schema changes must be manual
+2. Before any schema change that would drop tables or columns, explicitly verify with the user
+3. Always back up data before destructive operations
+4. Prefer soft deletes over hard deletes for user data
 5. If data loss is unavoidable, document what will be lost and get explicit approval
 6. Maintain audit trails for all data deletion operations
+7. **Verify table structures before adding models** — Don't assume column definitions
 
-**Build Script Safety:**
+**Build Script Configuration (MANDATORY):**
 ```json
-// SAFE - will fail if data loss would occur
-"build": "prisma generate && prisma db push --skip-generate && next build"
+// CORRECT - Database is NEVER touched during build
+"build": "prisma generate && next build"
 
-// DANGEROUS - never use in production without explicit approval
+// WRONG - Can accidentally delete tables not in schema
+"build": "prisma generate && prisma db push && next build"
+
+// EXTREMELY DANGEROUS - Will delete any table/column not in schema
 "build": "prisma generate && prisma db push --accept-data-loss && next build"
 ```
+
+**Schema Sync Procedure (Manual Only):**
+1. Create database backup via Render Dashboard
+2. Review what `prisma db push` will do: `npx prisma db push --preview-feature`
+3. If it shows DROP statements, STOP and verify with user
+4. Only proceed if changes are additive (CREATE, ALTER ADD)
+5. Run via Render Shell: `npx prisma db push`
+6. Verify application works correctly
+
+**Legacy Tables Policy:**
+- Tables in database but not in schema are PRESERVED
+- Do not add placeholder models without verifying actual column structure
+- Schedule periodic audits to clean up truly unused tables
+- Document all legacy tables in `09_INFRASTRUCTURE_AND_DEPLOYMENT.md`
 
 ---
 

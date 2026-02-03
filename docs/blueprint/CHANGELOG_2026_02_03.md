@@ -189,42 +189,121 @@ if (body.learnMerchant && transaction.merchantStandardised && categoryToLearn) {
 
 ---
 
+## ⚠️ INCIDENT REPORT: Near Data Loss from Automated Schema Sync
+
+### Incident Summary
+
+> **Severity: HIGH** | **Status: RESOLVED** | **Data Lost: NONE**
+
+On February 3, 2026, automated `prisma db push` in build scripts nearly deleted several database tables containing user data. The deployment failed before data was lost because Prisma detected destructive changes and blocked them.
+
+### What Happened
+
+1. Database contained legacy tables not defined in `prisma/schema.prisma`:
+   - `admin_users` (1 row)
+   - `admin_sessions` (1 row)
+   - `import_batches` (1 row)
+   - `organization_invitations` (1 row)
+   - `organization_portal_settings` (1 row)
+   - `transaction_review_queue` (65 rows)
+
+2. `prisma db push` in the build script detected these tables weren't in the schema and attempted to DROP them
+
+3. Initial attempts to add placeholder models to the schema failed because column definitions didn't match the actual database structure
+
+4. Vercel deployments were failing with warnings about data loss
+
+### Root Cause
+
+- Automated `prisma db push` in build scripts
+- Legacy tables existed in database but weren't documented
+- No verification process for schema changes affecting existing data
+- Assumption that schema was the complete source of truth
+
+### Resolution
+
+1. **Removed `prisma db push` from ALL build scripts**
+   - Vercel: `prisma generate && next build`
+   - Render: `npm install && npx prisma generate && npm run build`
+
+2. **Schema changes are now MANUAL ONLY**
+   - Must be run via Render Shell after backup
+   - Requires explicit verification of changes
+
+3. **Legacy tables documented in infrastructure documentation**
+   - Tables preserved for future audit
+   - Will be added to schema or dropped after verification
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `package.json` | Removed `prisma db push` from build script |
+| `render.yaml` | Removed `prisma db push` from buildCommand |
+| `docs/blueprint/02_DESIGN_PRINCIPLES.md` | Added comprehensive data protection rules |
+| `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` | Updated for manual schema sync |
+| `docs/blueprint/MASTER_BLUEPRINT.md` | Updated build commands and added warnings |
+
+### Prevention Measures
+
+1. **NEVER add `prisma db push` to automated build scripts**
+2. **Always verify schema changes won't drop tables with data**
+3. **Document all legacy tables in infrastructure docs**
+4. **Create database backup before any schema change**
+5. **Review Prisma output before applying changes**
+
+### Lessons Learned
+
+- Database may contain tables not in schema (development artifacts, future features)
+- Assuming tables are "legacy" without verification is dangerous
+- Automated schema sync should be opt-in, not default
+- Always ask user before any operation that could delete data
+
+---
+
 ## Deployment Pipeline Fix
 
 ### Build Script Update
 
 > **Status: FIXED** (February 2026)
 
-**Issue:** Previous deployments using `prisma db push --accept-data-loss` caused data loss when schema changes involved dropping columns or tables.
+**Issue:** `prisma db push` in build scripts could delete tables not in schema.
 
-**Root Cause:** The `--accept-data-loss` flag bypasses safety checks and allows destructive schema changes without warning.
-
-**File Updated:**
+**Files Updated:**
 - `package.json`
+- `render.yaml`
 
-**Before (Dangerous):**
+**Before (DANGEROUS):**
 ```json
-"build": "prisma generate && prisma db push --accept-data-loss --skip-generate && next build"
+// package.json
+"build": "prisma generate && prisma db push --skip-generate && next build"
+
+// render.yaml
+buildCommand: npm install && npx prisma generate && npx prisma db push && npm run build
 ```
 
-**After (Safe):**
+**After (SAFE):**
 ```json
-"build": "prisma generate && prisma db push --skip-generate && next build"
+// package.json
+"build": "prisma generate && next build"
+
+// render.yaml
+buildCommand: npm install && npx prisma generate && npm run build
 ```
 
 **Impact:**
-- Schema changes that would cause data loss will now fail the build
-- Developers must explicitly handle potentially destructive changes
-- Protects production data from accidental loss
+- Database is NEVER modified during automated builds
+- Schema changes require explicit manual action
+- Legacy tables are preserved
 
-**Recovery Process (if data loss occurs):**
+**Manual Schema Sync Procedure:**
 
-1. Use Render's Point-in-Time Recovery (PITR)
-2. Go to Render Dashboard → Database → Point-in-Time Recovery
-3. Select recovery point before data loss
-4. Create new database from recovery point
-5. Update DATABASE_URL environment variable with new database URL (use Internal URL)
-6. Redeploy application
+1. Create database backup via Render Dashboard
+2. Connect to Render Shell
+3. Preview changes: `npx prisma db push --preview-feature`
+4. If DROP statements appear, STOP and verify
+5. Apply changes: `npx prisma db push`
+6. Verify application works correctly
 
 ---
 
@@ -271,15 +350,23 @@ This update adds the `customCategoryId` field to support custom category learnin
 | `app/api/transactions/[id]/link/route.ts` | Batch categorization fix, merchant mapping fix |
 | `components/transactions/TransactionLinkDialog.tsx` | Transfer label update, skip button |
 | `prisma/schema.prisma` | customCategoryId field in MerchantMapping |
-| `package.json` | Build script update (removed --accept-data-loss) |
+| `package.json` | Build script update (removed prisma db push) |
+| `render.yaml` | Removed prisma db push from buildCommand |
 | `app/dashboard/expenses/page.tsx` | Added all expense categories for schema compatibility |
+| `docs/blueprint/02_DESIGN_PRINCIPLES.md` | Data preservation rules (section 6.5) |
+| `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` | Manual schema sync documentation |
+| `docs/blueprint/MASTER_BLUEPRINT.md` | Updated build commands with safety warnings |
 
 ---
 
-## Commit Reference
+## Commit References
 
 ```
+86b9210 docs: Update infrastructure doc for manual schema management
+32c7c56 fix: Remove prisma db push from Render build to protect legacy tables
+e95d041 fix: Revert schema changes and remove db push from build
 cffc9f8 fix: Improve transaction categorization and add skip option
+aef7e66 docs: Add changelog and update documentation for Feb 2026 fixes
 ```
 
 ---
