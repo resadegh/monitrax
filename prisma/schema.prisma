@@ -648,6 +648,10 @@ model Income {
   // Legacy field - kept for backward compatibility, will be deprecated
   isTaxable             Boolean           @default(true)
 
+  // Phase 30: Budget vs Actual Reconciliation
+  budgetedAmount        Float?            // Original budgeted/estimated amount (preserved when actual updates)
+  lastReconciled        DateTime?         // When amount was last updated from real transactions
+
   startDate             DateTime?
   endDate               DateTime?
   createdAt             DateTime          @default(now())
@@ -689,6 +693,11 @@ model Expense {
   isEssential           Boolean            @default(true)
   isTaxDeductible       Boolean            @default(false)
   isRecurring           Boolean            @default(true)  // Is this a recurring expense or one-off/discretionary?
+
+  // Phase 30: Budget vs Actual Reconciliation
+  budgetedAmount        Float?            // Original budgeted/estimated amount (preserved when actual updates)
+  lastReconciled        DateTime?         // When amount was last updated from real transactions
+
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

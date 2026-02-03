@@ -1827,3 +1827,229 @@ if (body.learnMerchant && transaction.merchantStandardised && categoryToLearn) {
 - User wants to batch similar transactions later
 - Transaction details are unclear and need bank statement review
 
+---
+
+## 13.21 Transaction Reconciliation (Budget vs Actual)
+
+> **Status: IMPLEMENTED** (February 2026)
+
+### 13.21.1 Overview
+
+Transaction reconciliation solves the problem of "duplicate" income/expense entries when both manually-entered recurring entries and bank transaction categorization exist for the same item.
+
+**Problem Example:**
+- User creates a "Water Rate" expense entry with $50/month budget
+- User imports bank transactions and categorizes a $47.32 water bill
+- System now has two water expenses, creating double-counting
+
+**Solution:**
+When categorizing a transaction to an existing entry, the system:
+1. Detects matching entries based on category, name, or amount
+2. Recommends whether to link only or update the amount
+3. Preserves the original amount as "budgetedAmount" for variance tracking
+4. Updates the entry's actual amount from the transaction
+
+### 13.21.2 Schema Changes
+
+**Expense and Income models (prisma/schema.prisma):**
+
+```prisma
+model Expense {
+  // ... existing fields ...
+
+  // Phase 30: Budget vs Actual Reconciliation
+  budgetedAmount        Float?            // Original budgeted/estimated amount
+  lastReconciled        DateTime?         // When amount was last updated from transactions
+}
+
+model Income {
+  // ... existing fields ...
+
+  // Phase 30: Budget vs Actual Reconciliation
+  budgetedAmount        Float?            // Original budgeted/estimated amount
+  lastReconciled        DateTime?         // When amount was last updated from transactions
+}
+```
+
+### 13.21.3 Reconciliation Utility Functions
+
+**File:** `lib/utils/reconciliation.ts`
+
+Pure utility functions for reconciliation logic (no database calls):
+
+```typescript
+// Detect frequency from transaction dates
+export function detectFrequency(dates: Date[]): FrequencyResult;
+
+// Analyze transaction pattern from same-vendor transactions
+export function analyzeTransactionPattern(transactions: TransactionForPattern[]): TransactionPattern;
+
+// Find best matching entry for a transaction
+export function findBestMatch(
+  transaction: TransactionForMatch,
+  entries: EntryForMatch[],
+  options?: MatchOptions
+): MatchResult | null;
+
+// Calculate budget variance for an entry
+export function calculateBudgetVariance(
+  actual: number,
+  budgeted: number
+): BudgetVarianceResult;
+
+// Calculate total budget variance across entries
+export function calculateTotalBudgetVariance(
+  entries: BudgetEntry[]
+): TotalBudgetVariance;
+```
+
+### 13.21.4 Master Financial Service Updates
+
+**File:** `lib/services/masterFinancialService.ts`
+
+Added budget variance calculations to the master snapshot:
+
+```typescript
+export interface BudgetVariance {
+  budgeted: number;
+  actual: number;
+  variance: number;
+  variancePercent: number;
+  status: 'under' | 'over' | 'on_track';
+  entriesWithBudget: number;
+  entriesReconciled: number;
+}
+
+// Added to MasterExpenseBreakdown
+interface MasterExpenseBreakdown {
+  // ... existing fields ...
+  budgetVariance: BudgetVariance;
+}
+
+// Added to MasterIncomeBreakdown
+interface MasterIncomeBreakdown {
+  // ... existing fields ...
+  budgetVariance: BudgetVariance;
+}
+```
+
+### 13.21.5 API Enhancements
+
+**GET `/api/transactions/[id]/link`:**
+
+Returns additional fields for reconciliation:
+
+```typescript
+interface MatchResult {
+  // ... existing fields ...
+  propertyId?: string | null;
+  budgetedAmount?: number | null;
+  lastReconciled?: Date | null;
+  reconciliationRecommendation?: 'update_amount' | 'link_only' | 'create_new';
+  categoryMatch?: boolean;
+}
+
+// Response also includes transaction pattern analysis
+{
+  transaction: { ... },
+  suggestedMatches: MatchResult[],
+  transactionPattern: {
+    count: number,
+    detectedFrequency: string,    // WEEKLY, FORTNIGHTLY, MONTHLY, etc.
+    averageAmount: number,
+    averageIntervalDays: number,
+    dateRange: { first: Date, last: Date }
+  },
+  // ... other fields
+}
+```
+
+**POST `/api/transactions/[id]/link` (action: link or update):**
+
+When `updateAmount: true`, the API now:
+1. Saves the current amount as `budgetedAmount` (if not already set)
+2. Updates the entry's amount to the transaction amount
+3. Sets `lastReconciled` to current timestamp
+
+```typescript
+// Budget tracking on update
+if (body.updateAmount) {
+  const budgetedAmount = expense.budgetedAmount ?? expense.amount;
+  await prisma.expense.update({
+    where: { id: body.targetId },
+    data: {
+      amount: transaction.amount,
+      budgetedAmount: budgetedAmount,
+      lastReconciled: new Date(),
+    },
+  });
+}
+```
+
+### 13.21.6 UI Changes
+
+**TransactionLinkDialog Updates:**
+
+1. **Pattern Detection Alert:**
+   When transaction pattern is detected (3+ transactions from same vendor), displays:
+   ```
+   Pattern Detected
+   5 transactions from this vendor over the last 12 months.
+   Average: $47.50 / monthly
+   ```
+
+2. **Reconciliation Recommendation:**
+   Match cards show recommendations based on amount variance:
+   - **Link Only**: Amount matches within 5%
+   - **Update Amount**: Amount differs by 5-50% (highlighted, recommended)
+   - **Create New**: Amount differs by >50%
+
+3. **Budget Display:**
+   If an entry has a budgeted amount different from actual, it's shown:
+   ```
+   $47.32
+   Diff: $2.68 (5%)
+   Budget: $50.00
+   ```
+
+4. **Category Match Badge:**
+   Entries matching the transaction's predicted category show a "Category match" badge.
+
+### 13.21.7 Reconciliation Flow
+
+1. User opens Transaction Link dialog for a bank transaction
+2. System analyzes same-vendor transactions to detect pattern
+3. System matches against existing income/expense entries
+4. For matches with amount differences, system recommends "Link & Update"
+5. User clicks "Link & Update":
+   - Entry's current amount saved as budgetedAmount
+   - Entry's amount updated to transaction amount
+   - lastReconciled timestamp set
+6. Budget variance is now trackable in Master Financial Service
+
+### 13.21.8 Budget Variance Tracking
+
+The system now tracks:
+- **entriesWithBudget**: Count of entries with budgeted amounts set
+- **entriesReconciled**: Count of entries reconciled from transactions
+- **variance**: Difference between actual and budgeted
+- **variancePercent**: Percentage over/under budget
+- **status**: 'under', 'over', or 'on_track' (within 5%)
+
+This data feeds into:
+- Budget Analysis page comparisons
+- Financial Health calculations
+- CFO Dashboard insights
+
+### 13.21.9 Design Principles Alignment
+
+This feature follows Monitrax design principles:
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Single Source of Truth** | Budget calculations in Master Financial Service |
+| **Pure Engines** | Reconciliation utilities are pure functions (no DB calls) |
+| **Canonical Utility Locations** | `lib/utils/reconciliation.ts` added to design docs |
+| **No Duplicate Logic** | Variance calculations centralized |
+| **Per-Property Scope** | Matching considers propertyId for property-related entries |
+
