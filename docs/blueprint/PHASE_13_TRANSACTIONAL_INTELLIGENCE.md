@@ -1690,3 +1690,140 @@ This migration:
 1. Adds `isInvestmentContribution` boolean field to `unified_transactions`
 2. Adds `investmentTransactionId` nullable unique field to `unified_transactions`
 
+---
+
+## 13.20 Transaction Categorization Bug Fixes
+
+> **Status: FIXED** (February 2026)
+
+### 13.20.1 Batch Categorization Fix
+
+**Issue:** When categorizing transactions with batch mode (same vendor transactions), only the main transaction was being categorized while additional selected transactions remained uncategorized.
+
+**Root Cause:** The batch categorization query was finding transactions that already had categories set or were marked as investment contributions.
+
+**Fix Applied (app/api/transactions/[id]/link/route.ts):**
+
+```typescript
+const sameVendorTransactions = await prisma.unifiedTransaction.findMany({
+  where: {
+    userId,
+    id: { not: transactionId },
+    OR: merchantName
+      ? [
+          { merchantStandardised: merchantName },
+          { description: { contains: merchantName, mode: 'insensitive' as const } },
+        ]
+      : [{ merchantStandardised: merchantName }],
+    // Only uncategorized transactions (no links, not transfer, not investment)
+    incomeId: null,
+    expenseId: null,
+    loanId: null,
+    isTransfer: false,
+    isInvestmentContribution: false,  // Exclude investment contributions
+    categoryLevel1: null,              // Exclude transactions with category already set
+  },
+  orderBy: { date: 'desc' },
+  take: 20,
+});
+```
+
+### 13.20.2 Merchant Learning Fix
+
+**Issue:** The "Remember category for future transactions" checkbox was not working with custom categories.
+
+**Root Cause:** The merchant mapping was storing the system category code (e.g., 'OTHER') instead of the actual custom category name.
+
+**Schema Update (prisma/schema.prisma):**
+
+```prisma
+model MerchantMapping {
+  // ... existing fields ...
+  customCategoryId      String?   // Reference to user's custom Category if used
+}
+```
+
+**Fix Applied (app/api/transactions/[id]/link/route.ts):**
+
+```typescript
+// Learn merchant mapping for future suggestions
+// Use the actual category (or custom category name if custom)
+const categoryToLearn = body.customCategoryId
+  ? (await prisma.category.findUnique({
+      where: { id: body.customCategoryId },
+      select: { name: true }
+    }))?.name || body.category
+  : body.category;
+
+if (body.learnMerchant && transaction.merchantStandardised && categoryToLearn) {
+  await prisma.merchantMapping.upsert({
+    where: {
+      userId_merchantRaw: {
+        userId,
+        merchantRaw: transaction.merchantStandardised,
+      },
+    },
+    update: {
+      categoryLevel1: categoryToLearn,
+      customCategoryId: body.customCategoryId || null,
+      usageCount: { increment: 1 },
+      updatedAt: new Date(),
+    },
+    create: {
+      userId,
+      merchantRaw: transaction.merchantStandardised,
+      merchantStandardised: transaction.merchantStandardised,
+      categoryLevel1: categoryToLearn,
+      customCategoryId: body.customCategoryId || null,
+      source: 'USER',
+      confidence: 1.0,
+      usageCount: 1,
+    },
+  });
+}
+```
+
+### 13.20.3 Transfer Label Update
+
+**Change:** Updated the transfer checkbox label to include credit card repayments.
+
+**UI Update (components/transactions/TransactionLinkDialog.tsx):**
+
+```tsx
+<Label htmlFor="isTransfer">
+  Transfer / Credit Card Repayment
+</Label>
+<p className="text-xs text-muted-foreground">
+  Internal transfers and credit card payments are excluded from income/expense calculations
+</p>
+```
+
+### 13.20.4 Skip Transaction Button
+
+**Feature:** Added a "Skip for now" button that allows users to skip the current transaction and move to the next one without categorizing it.
+
+**Implementation (components/transactions/TransactionLinkDialog.tsx):**
+
+```tsx
+{/* Skip button - allows skipping to next transaction */}
+{hasMoreTransactions && onNavigateNext && (
+  <div className="flex justify-end border-t pt-3">
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => {
+        onNavigateNext();
+      }}
+      className="text-muted-foreground"
+    >
+      Skip for now →
+    </Button>
+  </div>
+)}
+```
+
+**Use Cases:**
+- Transaction needs investigation before categorization
+- User wants to batch similar transactions later
+- Transaction details are unclear and need bank statement review
+
