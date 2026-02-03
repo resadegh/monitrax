@@ -613,6 +613,39 @@ export async function POST(
             }
           }
 
+          // Phase 30: Revert income/expense amount to budgetedAmount if set
+          if (existingTx?.incomeId) {
+            const income = await prisma.income.findFirst({
+              where: { id: existingTx.incomeId, userId },
+            });
+            if (income?.budgetedAmount !== null && income?.budgetedAmount !== undefined) {
+              // Revert to budgeted amount and clear reconciliation
+              await prisma.income.update({
+                where: { id: existingTx.incomeId },
+                data: {
+                  amount: income.budgetedAmount,
+                  lastReconciled: null,
+                },
+              });
+            }
+          }
+
+          if (existingTx?.expenseId) {
+            const expense = await prisma.expense.findFirst({
+              where: { id: existingTx.expenseId, userId },
+            });
+            if (expense?.budgetedAmount !== null && expense?.budgetedAmount !== undefined) {
+              // Revert to budgeted amount and clear reconciliation
+              await prisma.expense.update({
+                where: { id: existingTx.expenseId },
+                data: {
+                  amount: expense.budgetedAmount,
+                  lastReconciled: null,
+                },
+              });
+            }
+          }
+
           await prisma.unifiedTransaction.update({
             where: { id: transactionId },
             data: {
