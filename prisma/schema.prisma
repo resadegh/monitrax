@@ -395,14 +395,22 @@ model Category {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
+  // Phase 29: Link categories to household members/pets for personalized tracking
+  householdMemberId String?           // Links to a household member (e.g., "Reza's Salary")
+  householdPetId    String?           // Links to a household pet (e.g., "Fandogh Pet Insurance")
+
   // Relationships
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expenses    Expense[]    @relation("ExpenseCustomCategory")
-  income      Income[]     @relation("IncomeCustomCategory")
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses          Expense[]         @relation("ExpenseCustomCategory")
+  income            Income[]          @relation("IncomeCustomCategory")
+  householdMember   HouseholdMember?  @relation("MemberLinkedCategories", fields: [householdMemberId], references: [id], onDelete: SetNull)
+  householdPet      HouseholdPet?     @relation("PetLinkedCategories", fields: [householdPetId], references: [id], onDelete: SetNull)
 
   @@unique([userId, code])           // Each user can have unique category codes
   @@index([userId])
   @@index([userId, type])
+  @@index([householdMemberId])
+  @@index([householdPetId])
   @@map("categories")
 }
 
@@ -2314,6 +2322,30 @@ enum DiningFrequency {
   OFTEN             // Multiple times per week
 }
 
+// =============================================================================
+// PHASE 29: HOUSEHOLD MEMBER MANAGEMENT
+// =============================================================================
+
+enum HouseholdRelationship {
+  SELF              // The primary user
+  SPOUSE            // Married partner
+  PARTNER           // Unmarried partner
+  CHILD             // Dependent child
+  PARENT            // Parent living in household
+  SIBLING           // Brother/sister
+  OTHER             // Other household member
+}
+
+enum HouseholdPetType {
+  DOG
+  CAT
+  BIRD
+  FISH
+  RABBIT
+  REPTILE
+  OTHER
+}
+
 enum BudgetAnalysisStatus {
   PENDING           // Profile incomplete or AI not called
   ANALYZING         // AI analysis in progress
@@ -2681,12 +2713,12 @@ model HouseholdProfile {
   id                    String   @id @default(uuid())
   userId                String   @unique
 
-  // Household Composition
-  adultsCount           Int      @default(1)      // 1-4 adults
-  childrenCount         Int      @default(0)      // 0-6 children
-  childrenAges          Int[]    @default([])     // Array of ages
-  petsCount             Int      @default(0)      // 0-5 pets
-  petTypes              String[] @default([])     // ["dog", "cat", "bird", etc.]
+  // Household Composition (legacy counts - kept for backward compatibility & budget AI)
+  adultsCount           Int      @default(1)      // 1-4 adults (computed from members)
+  childrenCount         Int      @default(0)      // 0-6 children (computed from members)
+  childrenAges          Int[]    @default([])     // Array of ages (kept for budget AI)
+  petsCount             Int      @default(0)      // 0-5 pets (computed from pets)
+  petTypes              String[] @default([])     // ["dog", "cat", "bird", etc.] (kept for budget AI)
   carsCount             Int      @default(0)      // 0-4 vehicles
 
   // Lifestyle Preferences
@@ -2696,15 +2728,73 @@ model HouseholdProfile {
 
   // Metadata
   isComplete            Boolean  @default(false)
+  needsMigration        Boolean  @default(false)  // True if existing user needs to add member details
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
   // Relationships
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   budgetAnalyses        BudgetAnalysis[]
+  members               HouseholdMember[]         // Phase 29: Individual household members
+  pets                  HouseholdPet[]            // Phase 29: Individual pets with names
 
   @@index([userId])
   @@map("household_profiles")
+}
+
+// =============================================================================
+// PHASE 29: HOUSEHOLD MEMBERS - Named individuals in the household
+// =============================================================================
+
+model HouseholdMember {
+  id                    String   @id @default(uuid())
+  householdProfileId    String
+
+  // Member Identity
+  name                  String                    // e.g., "Reza", "Newsha"
+  relationship          HouseholdRelationship     // SELF, SPOUSE, CHILD, etc.
+  dateOfBirth           DateTime?                 // Optional, for age-based budgeting
+
+  // Financial Role
+  isIncomeEarner        Boolean  @default(false)  // Does this member earn income?
+
+  // Metadata
+  sortOrder             Int      @default(0)      // For UI ordering
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relationships
+  householdProfile      HouseholdProfile @relation(fields: [householdProfileId], references: [id], onDelete: Cascade)
+  linkedCategories      Category[]       @relation("MemberLinkedCategories")
+
+  @@index([householdProfileId])
+  @@map("household_members")
+}
+
+// =============================================================================
+// PHASE 29: HOUSEHOLD PETS - Named pets for expense categorization
+// =============================================================================
+
+model HouseholdPet {
+  id                    String   @id @default(uuid())
+  householdProfileId    String
+
+  // Pet Identity
+  name                  String                    // e.g., "Fandogh", "Max"
+  type                  HouseholdPetType          // DOG, CAT, etc.
+  breed                 String?                   // Optional breed info
+
+  // Metadata
+  sortOrder             Int      @default(0)      // For UI ordering
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relationships
+  householdProfile      HouseholdProfile @relation(fields: [householdProfileId], references: [id], onDelete: Cascade)
+  linkedCategories      Category[]       @relation("PetLinkedCategories")
+
+  @@index([householdProfileId])
+  @@map("household_pets")
 }
 
 // =============================================================================

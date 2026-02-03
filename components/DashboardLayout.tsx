@@ -70,6 +70,7 @@ interface NavGroup {
 // Standalone navigation items (always visible)
 const standaloneItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, tourId: 'nav-dashboard' },
+  { name: 'Household', href: '/dashboard/household-profile', icon: Users, tourId: 'nav-household' },
   { name: 'Personal CFO', href: '/dashboard/cfo', icon: Brain, tourId: 'nav-cfo' },
 ];
 
@@ -103,7 +104,6 @@ const navGroups: NavGroup[] = [
     icon: Lightbulb,
     tourId: 'nav-planning',
     items: [
-      { name: 'Household Profile', href: '/dashboard/household-profile', icon: Users, tourId: 'nav-household' },
       { name: 'Budget Analysis', href: '/dashboard/budget-analysis', icon: Target, tourId: 'nav-budget-analysis' },
       { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator, tourId: 'nav-debt' },
       { name: 'Cashflow', href: '/cashflow', icon: LineChart, tourId: 'nav-cashflow' },
