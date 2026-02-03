@@ -371,6 +371,18 @@ interface RawAsset {
   currentValue: number;
 }
 
+/**
+ * Linked transaction for actual calculation
+ */
+interface RawLinkedTransaction {
+  id: string;
+  date: Date;
+  amount: number;
+  direction: string;
+  incomeId: string | null;
+  expenseId: string | null;
+}
+
 interface RawUserData {
   expenses: RawExpense[];
   income: RawIncome[];
@@ -380,6 +392,7 @@ interface RawUserData {
   investmentHoldings: RawInvestmentHolding[];
   superannuation: RawSuperannuation[];
   assets: RawAsset[];
+  linkedTransactions: RawLinkedTransaction[];
 }
 
 // =============================================================================
@@ -400,6 +413,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
     investmentHoldings,
     superannuation,
     assets,
+    linkedTransactions,
   ] = await Promise.all([
     prisma.expense.findMany({
       where: { userId },
@@ -498,6 +512,28 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         currentValue: true,
       },
     }),
+    // Phase 30: Fetch linked transactions for actual calculation
+    // Get transactions from last 12 months that are linked to income/expense entries
+    prisma.unifiedTransaction.findMany({
+      where: {
+        userId,
+        date: {
+          gte: new Date(new Date().setMonth(new Date().getMonth() - 12)),
+        },
+        OR: [
+          { incomeId: { not: null } },
+          { expenseId: { not: null } },
+        ],
+      },
+      select: {
+        id: true,
+        date: true,
+        amount: true,
+        direction: true,
+        incomeId: true,
+        expenseId: true,
+      },
+    }),
   ]);
 
   return {
@@ -509,6 +545,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
     investmentHoldings,
     superannuation,
     assets,
+    linkedTransactions,
   };
 }
 
@@ -516,9 +553,72 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
 // CALCULATION HELPERS
 // =============================================================================
 
+/**
+ * Calculate actual amount from linked transactions for a specific month
+ * Groups transactions by entry and month, returns monthly sum
+ * @param entryId - Income or Expense entry ID
+ * @param entryType - 'income' or 'expense'
+ * @param transactions - All linked transactions
+ * @param targetMonth - Month to calculate (0-11), defaults to current month
+ * @param targetYear - Year to calculate, defaults to current year
+ * @returns Monthly actual amount from transactions, or null if no transactions
+ */
+function calculateActualFromTransactions(
+  entryId: string,
+  entryType: 'income' | 'expense',
+  transactions: RawLinkedTransaction[],
+  targetMonth: number = new Date().getMonth(),
+  targetYear: number = new Date().getFullYear()
+): number | null {
+  // Filter transactions for this entry and month
+  const entryTransactions = transactions.filter(t => {
+    const txDate = new Date(t.date);
+    const isCorrectEntry = entryType === 'income'
+      ? t.incomeId === entryId
+      : t.expenseId === entryId;
+    const isCorrectMonth = txDate.getMonth() === targetMonth && txDate.getFullYear() === targetYear;
+    return isCorrectEntry && isCorrectMonth;
+  });
+
+  if (entryTransactions.length === 0) {
+    return null; // No transactions for this month
+  }
+
+  // Sum transactions (use absolute amount, direction is already in the amount sign)
+  return entryTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+}
+
+/**
+ * Get monthly actuals for all entries (income or expense)
+ * Returns a map of entryId -> monthly actual amount
+ */
+function getMonthlyActualsMap(
+  entries: { id: string }[],
+  entryType: 'income' | 'expense',
+  transactions: RawLinkedTransaction[],
+  targetMonth: number = new Date().getMonth(),
+  targetYear: number = new Date().getFullYear()
+): Map<string, number | null> {
+  const actualsMap = new Map<string, number | null>();
+
+  for (const entry of entries) {
+    const actual = calculateActualFromTransactions(
+      entry.id,
+      entryType,
+      transactions,
+      targetMonth,
+      targetYear
+    );
+    actualsMap.set(entry.id, actual);
+  }
+
+  return actualsMap;
+}
+
 function buildExpenseBreakdown(
   expenses: RawExpense[],
-  targetFrequency: 'monthly' | 'annual'
+  targetFrequency: 'monthly' | 'annual',
+  linkedTransactions: RawLinkedTransaction[] = []
 ): MasterExpenseBreakdown {
   const mapExpense = (e: RawExpense) => ({
     amount: e.amount,
@@ -563,8 +663,8 @@ function buildExpenseBreakdown(
     targetFrequency
   );
 
-  // Phase 30: Calculate budget variance
-  const budgetVariance = calculateExpenseBudgetVariance(expenses, targetFrequency);
+  // Phase 30: Calculate budget variance with transaction-based actuals
+  const budgetVariance = calculateExpenseBudgetVariance(expenses, targetFrequency, linkedTransactions);
 
   return {
     all,
@@ -580,38 +680,46 @@ function buildExpenseBreakdown(
 
 /**
  * Calculate budget variance for expenses
- * Uses actual amounts vs budgeted amounts, converted to target frequency
+ * Budget = entry.amount (what user expects)
+ * Actual = sum of linked transactions for current month (if available), otherwise entry.amount
  */
 function calculateExpenseBudgetVariance(
   expenses: RawExpense[],
-  targetFrequency: 'monthly' | 'annual'
+  targetFrequency: 'monthly' | 'annual',
+  linkedTransactions: RawLinkedTransaction[] = []
 ): BudgetVariance {
   let totalActual = 0;
   let totalBudgeted = 0;
   let entriesWithBudget = 0;
   let entriesReconciled = 0;
 
+  // Get current month actuals from transactions
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const actualsMap = getMonthlyActualsMap(expenses, 'expense', linkedTransactions, currentMonth, currentYear);
+
   for (const expense of expenses) {
     const freq = expense.frequency as Frequency;
-    const actualConverted = targetFrequency === 'monthly'
+
+    // Budget = entry.amount (what user entered/expects)
+    const budgetConverted = targetFrequency === 'monthly'
       ? toMonthly(expense.amount, freq)
       : toAnnual(expense.amount, freq);
+    totalBudgeted += budgetConverted;
+    entriesWithBudget++; // All entries have budget (their amount)
 
-    totalActual += actualConverted;
-
-    if (expense.budgetedAmount !== null && expense.budgetedAmount !== undefined) {
-      const budgetedConverted = targetFrequency === 'monthly'
-        ? toMonthly(expense.budgetedAmount, freq)
-        : toAnnual(expense.budgetedAmount, freq);
-      totalBudgeted += budgetedConverted;
-      entriesWithBudget++;
-    } else {
-      // No budget set, use actual as budget (no variance)
-      totalBudgeted += actualConverted;
-    }
-
-    if (expense.lastReconciled !== null) {
+    // Actual = from transactions if available, otherwise use budget
+    const transactionActual = actualsMap.get(expense.id);
+    if (transactionActual !== null && transactionActual !== undefined) {
+      // Has transactions - use transaction sum as actual
+      const actualAmount = targetFrequency === 'monthly'
+        ? transactionActual
+        : transactionActual * 12; // Annualize current month
+      totalActual += actualAmount;
       entriesReconciled++;
+    } else {
+      // No transactions - use budget as actual (no variance for this entry)
+      totalActual += budgetConverted;
     }
   }
 
@@ -640,7 +748,8 @@ function calculateExpenseBudgetVariance(
 
 function buildIncomeBreakdown(
   income: RawIncome[],
-  targetFrequency: 'monthly' | 'annual'
+  targetFrequency: 'monthly' | 'annual',
+  linkedTransactions: RawLinkedTransaction[] = []
 ): MasterIncomeBreakdown {
   const mapIncome = (i: RawIncome) => ({
     amount: i.amount,
@@ -672,46 +781,54 @@ function buildIncomeBreakdown(
     targetFrequency
   );
 
-  // Phase 30: Calculate budget variance
-  const budgetVariance = calculateIncomeBudgetVariance(income, targetFrequency);
+  // Phase 30: Calculate budget variance with transaction-based actuals
+  const budgetVariance = calculateIncomeBudgetVariance(income, targetFrequency, linkedTransactions);
 
   return { all, primary, secondary, passive, budgetVariance };
 }
 
 /**
  * Calculate budget variance for income
- * Uses actual amounts vs budgeted amounts, converted to target frequency
+ * Budget = entry.amount (what user expects)
+ * Actual = sum of linked transactions for current month (if available), otherwise entry.amount
  */
 function calculateIncomeBudgetVariance(
   income: RawIncome[],
-  targetFrequency: 'monthly' | 'annual'
+  targetFrequency: 'monthly' | 'annual',
+  linkedTransactions: RawLinkedTransaction[] = []
 ): BudgetVariance {
   let totalActual = 0;
   let totalBudgeted = 0;
   let entriesWithBudget = 0;
   let entriesReconciled = 0;
 
+  // Get current month actuals from transactions
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const actualsMap = getMonthlyActualsMap(income, 'income', linkedTransactions, currentMonth, currentYear);
+
   for (const inc of income) {
     const freq = inc.frequency as Frequency;
-    const actualConverted = targetFrequency === 'monthly'
+
+    // Budget = entry.amount (what user entered/expects)
+    const budgetConverted = targetFrequency === 'monthly'
       ? toMonthly(inc.amount, freq)
       : toAnnual(inc.amount, freq);
+    totalBudgeted += budgetConverted;
+    entriesWithBudget++; // All entries have budget (their amount)
 
-    totalActual += actualConverted;
-
-    if (inc.budgetedAmount !== null && inc.budgetedAmount !== undefined) {
-      const budgetedConverted = targetFrequency === 'monthly'
-        ? toMonthly(inc.budgetedAmount, freq)
-        : toAnnual(inc.budgetedAmount, freq);
-      totalBudgeted += budgetedConverted;
-      entriesWithBudget++;
-    } else {
-      // No budget set, use actual as budget (no variance)
-      totalBudgeted += actualConverted;
-    }
-
-    if (inc.lastReconciled !== null) {
+    // Actual = from transactions if available, otherwise use budget
+    const transactionActual = actualsMap.get(inc.id);
+    if (transactionActual !== null && transactionActual !== undefined) {
+      // Has transactions - use transaction sum as actual
+      const actualAmount = targetFrequency === 'monthly'
+        ? transactionActual
+        : transactionActual * 12; // Annualize current month
+      totalActual += actualAmount;
       entriesReconciled++;
+    } else {
+      // No transactions - use budget as actual (no variance for this entry)
+      totalActual += budgetConverted;
     }
   }
 
@@ -1012,13 +1129,13 @@ export async function getMasterFinancialSnapshot(
   // Fetch all raw data
   const data = await fetchAllUserData(userId);
 
-  // Build expense breakdowns
-  const monthlyExpenses = buildExpenseBreakdown(data.expenses, 'monthly');
-  const annualExpenses = buildExpenseBreakdown(data.expenses, 'annual');
+  // Build expense breakdowns (with transaction-based actuals)
+  const monthlyExpenses = buildExpenseBreakdown(data.expenses, 'monthly', data.linkedTransactions);
+  const annualExpenses = buildExpenseBreakdown(data.expenses, 'annual', data.linkedTransactions);
 
-  // Build income breakdowns
-  const monthlyIncome = buildIncomeBreakdown(data.income, 'monthly');
-  const annualIncome = buildIncomeBreakdown(data.income, 'annual');
+  // Build income breakdowns (with transaction-based actuals)
+  const monthlyIncome = buildIncomeBreakdown(data.income, 'monthly', data.linkedTransactions);
+  const annualIncome = buildIncomeBreakdown(data.income, 'annual', data.linkedTransactions);
 
   // Calculate net worth using existing calculator
   const netWorth = calculateNetWorth(

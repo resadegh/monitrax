@@ -371,4 +371,124 @@ aef7e66 docs: Add changelog and update documentation for Feb 2026 fixes
 
 ---
 
+## Phase 30: Budget vs Actual Tracking
+
+### Feature: Transaction-Based Actual Calculation
+
+> **Status: IMPLEMENTED** (February 2026)
+
+**Overview:** Fundamentally changed how income and expenses are tracked by separating budget from actual:
+
+- **Budget** = Manual entries in Income/Expense (what user expects/plans)
+- **Actual** = Calculated from linked transactions (real-time from categorized transactions)
+
+**Key Design Decision:** Actual calculation is date-based monthly aggregation:
+- 4 weekly rent payments in January = January's actual
+- 5th week's payment goes to February's actual
+
+**Why This Matters:**
+- Avoids double-counting (budget and actual are separate)
+- Transaction categorization becomes "tagging" not "updating amounts"
+- Users can see how their actuals compare to their budget
+
+### Files Modified
+
+**lib/services/masterFinancialService.ts**
+- Added `RawLinkedTransaction` interface for transaction data
+- Added transaction fetching to `fetchAllUserData()`
+- Created `calculateActualFromTransactions()` function (date-based monthly calculation)
+- Created `getMonthlyActualsMap()` helper function
+- Updated `calculateExpenseBudgetVariance()` to use transaction-based actuals
+- Updated `calculateIncomeBudgetVariance()` to use transaction-based actuals
+
+**app/api/income/route.ts**
+- Added parallel fetching of linked transactions for current month
+- Added `actualsByIncomeId` map calculation
+- Response now includes: `budgetAmount`, `actualFromTransactions`, `transactionCount`, `hasTransactions`
+
+**app/api/expenses/route.ts**
+- Added parallel fetching of linked transactions for current month
+- Added `actualsByExpenseId` map calculation
+- Response now includes: `budgetAmount`, `actualFromTransactions`, `transactionCount`, `hasTransactions`
+
+**app/dashboard/income/page.tsx**
+- Updated interface to include new budget/actual fields
+- Updated list view table with Budget and Actual columns
+- Updated grouped view tables with Budget and Actual columns
+- Added "No transactions" indicator when no actuals exist
+
+**components/transactions/TransactionLinkDialog.tsx**
+- **Removed** all "Link & Update Amount" buttons
+- **Removed** `handleUpdateAmount` function
+- **Removed** `updateAmountOnLink` state
+- **Removed** `reconciliationRecommendation` from interface
+- **Simplified** `handleLink` to remove `shouldUpdateAmount` parameter
+- **Updated** buttons to just say "Link" instead of "Link Only"
+- Linking now only tags transactions (no amount updates)
+
+### API Response Changes
+
+**GET /api/income**
+```json
+{
+  "data": [{
+    "id": "...",
+    "name": "Rental Income",
+    "amount": 1000,
+    "budgetAmount": 1000,
+    "actualFromTransactions": 4125.50,
+    "transactionCount": 4,
+    "hasTransactions": true
+  }]
+}
+```
+
+**GET /api/expenses**
+```json
+{
+  "data": [{
+    "id": "...",
+    "name": "Electricity",
+    "amount": 200,
+    "budgetAmount": 200,
+    "actualFromTransactions": 187.32,
+    "transactionCount": 1,
+    "hasTransactions": true
+  }]
+}
+```
+
+### UI Changes
+
+**Income Page:**
+| Name | Category | Frequency | Budget | Actual |
+|------|----------|-----------|--------|--------|
+| Salary | Salary | Monthly | $5,000 | $5,125.50 (+2.5%) |
+| Rental | Rental | Monthly | $1,000 | $4,125.50 (+312.6%) |
+
+- Green text with percentage when actual exceeds budget (good for income)
+- Red text with percentage when actual is below budget (warning for income)
+- "No transactions" displayed when no linked transactions exist
+
+### Design Principles Applied
+
+1. **Master Financial Service as Single Source** - All actual calculations use the centralized service
+2. **Pure Calculation Functions** - `calculateActualFromTransactions()` is pure, accepts data, returns result
+3. **No Amount Updates on Link** - Transaction linking = tagging only, entry amounts remain as budget
+4. **Date-Based Aggregation** - Actuals grouped by transaction date into calendar months
+
+### Impact on Financial Calculations
+
+The Master Financial Service now:
+1. Uses actual from transactions when available
+2. Falls back to budget (entry amount) when no transactions linked
+3. Budget variance = (actual - budget) / budget * 100
+
+This ensures:
+- Dashboard metrics reflect real transaction data
+- Budget entries serve as planning/baseline
+- No duplicate counting between manual entries and transactions
+
+---
+
 **END OF CHANGELOG — 2026-02-03**
