@@ -1,0 +1,374 @@
+# Changelog — 2026-02-03
+
+## Transaction Categorization Improvements
+
+### 13.14.6 Batch Categorization Bug Fix
+
+> **Status: FIXED** (February 2026)
+
+**Issue:** When categorizing transactions with batch mode (same vendor transactions), only the main transaction was being categorized while additional selected transactions remained uncategorized.
+
+**Root Cause:** The batch categorization query was finding transactions that already had categories set or were marked as investment contributions, but then failing to update them because they didn't meet the criteria for "uncategorized".
+
+**Files Fixed:**
+- `app/api/transactions/[id]/link/route.ts`
+
+**Fix Applied:**
+
+The query for finding same-vendor transactions now properly filters to only include truly uncategorized transactions:
+
+```typescript
+const sameVendorTransactions = await prisma.unifiedTransaction.findMany({
+  where: {
+    userId,
+    id: { not: transactionId },
+    OR: merchantName
+      ? [
+          { merchantStandardised: merchantName },
+          { description: { contains: merchantName, mode: 'insensitive' as const } },
+        ]
+      : [{ merchantStandardised: merchantName }],
+    // Only uncategorized transactions (no links, not transfer, not investment)
+    incomeId: null,
+    expenseId: null,
+    loanId: null,
+    isTransfer: false,
+    isInvestmentContribution: false,  // NEW: Exclude investment contributions
+    categoryLevel1: null,              // NEW: Exclude transactions with category already set
+  },
+  orderBy: { date: 'desc' },
+  take: 20,
+});
+```
+
+**Impact:**
+- Batch categorization now correctly updates all selected same-vendor transactions
+- Investment contributions are no longer included in batch selections
+- Transactions with existing categories are excluded from batch operations
+
+---
+
+### 13.15.8 Merchant Learning Bug Fix
+
+> **Status: FIXED** (February 2026)
+
+**Issue:** The "Remember category for future transactions" checkbox was not working. When categorizing transactions with a custom category and checking the learn merchant option, future transactions from the same merchant were not being suggested with the learned category.
+
+**Root Cause:** The merchant mapping was storing the system category code (e.g., 'OTHER') instead of the actual custom category name. When the category was a custom category, the code `OTHER` was being saved, which didn't match any meaningful category for future lookups.
+
+**Files Fixed:**
+- `app/api/transactions/[id]/link/route.ts`
+- `prisma/schema.prisma`
+
+**Schema Update:**
+
+Added `customCategoryId` field to MerchantMapping model:
+
+```prisma
+model MerchantMapping {
+  // ... existing fields ...
+  customCategoryId      String?   // Reference to user's custom Category if used
+}
+```
+
+**Fix Applied:**
+
+```typescript
+// Learn merchant mapping for future suggestions
+// Use the actual category (or custom category name if custom)
+const categoryToLearn = body.customCategoryId
+  ? (await prisma.category.findUnique({
+      where: { id: body.customCategoryId },
+      select: { name: true }
+    }))?.name || body.category
+  : body.category;
+
+if (body.learnMerchant && transaction.merchantStandardised && categoryToLearn) {
+  await prisma.merchantMapping.upsert({
+    where: {
+      userId_merchantRaw: {
+        userId,
+        merchantRaw: transaction.merchantStandardised,
+      },
+    },
+    update: {
+      categoryLevel1: categoryToLearn,
+      customCategoryId: body.customCategoryId || null,  // NEW: Store custom category reference
+      usageCount: { increment: 1 },
+      updatedAt: new Date(),
+    },
+    create: {
+      userId,
+      merchantRaw: transaction.merchantStandardised,
+      merchantStandardised: transaction.merchantStandardised,
+      categoryLevel1: categoryToLearn,
+      customCategoryId: body.customCategoryId || null,  // NEW: Store custom category reference
+      source: 'USER',
+      confidence: 1.0,
+      usageCount: 1,
+    },
+  });
+}
+```
+
+**Impact:**
+- Custom categories are now properly saved in merchant mappings
+- Future transactions from the same merchant will correctly suggest the learned category
+- Both system and custom categories work with the merchant learning feature
+
+---
+
+### 13.13.9 Transfer Label Update
+
+> **Status: UPDATED** (February 2026)
+
+**Change:** Updated the transfer checkbox label to clarify that credit card repayments should also be marked as transfers.
+
+**File Updated:**
+- `components/transactions/TransactionLinkDialog.tsx`
+
+**UI Change:**
+
+```tsx
+<Label htmlFor="isTransfer" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+  <ArrowRightLeft className="h-4 w-4 text-amber-600" />
+  Transfer / Credit Card Repayment
+</Label>
+// ...
+<p className="text-xs text-muted-foreground mt-1 ml-6">
+  Internal transfers and credit card payments are excluded from income/expense calculations
+</p>
+```
+
+**Rationale:**
+- Credit card repayments are essentially internal transfers (paying off debt from another account)
+- They should not be counted as expenses (the expense was recorded when the original purchase was made)
+- This clarification helps users understand the correct categorization
+
+---
+
+### 13.17.7 Skip Transaction Button
+
+> **Status: IMPLEMENTED** (February 2026)
+
+**Feature:** Added a "Skip for now" button that allows users to skip the current transaction and move to the next one without categorizing it.
+
+**File Updated:**
+- `components/transactions/TransactionLinkDialog.tsx`
+
+**Use Cases:**
+- Transaction needs investigation before categorization
+- User wants to batch similar transactions later
+- Transaction details are unclear and need bank statement review
+
+**Implementation:**
+
+```tsx
+{/* Skip button - allows skipping to next transaction */}
+{hasMoreTransactions && onNavigateNext && (
+  <div className="flex justify-end border-t pt-3">
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => {
+        onNavigateNext();
+      }}
+      className="text-muted-foreground"
+    >
+      Skip for now →
+    </Button>
+  </div>
+)}
+```
+
+**Behavior:**
+- Button only appears when there are more transactions in the queue
+- Clicking navigates to the next uncategorized transaction
+- Does not save any changes to the current transaction
+- Allows users to return to skipped transactions later
+
+---
+
+## ⚠️ INCIDENT REPORT: Near Data Loss from Automated Schema Sync
+
+### Incident Summary
+
+> **Severity: HIGH** | **Status: RESOLVED** | **Data Lost: NONE**
+
+On February 3, 2026, automated `prisma db push` in build scripts nearly deleted several database tables containing user data. The deployment failed before data was lost because Prisma detected destructive changes and blocked them.
+
+### What Happened
+
+1. Database contained legacy tables not defined in `prisma/schema.prisma`:
+   - `admin_users` (1 row)
+   - `admin_sessions` (1 row)
+   - `import_batches` (1 row)
+   - `organization_invitations` (1 row)
+   - `organization_portal_settings` (1 row)
+   - `transaction_review_queue` (65 rows)
+
+2. `prisma db push` in the build script detected these tables weren't in the schema and attempted to DROP them
+
+3. Initial attempts to add placeholder models to the schema failed because column definitions didn't match the actual database structure
+
+4. Vercel deployments were failing with warnings about data loss
+
+### Root Cause
+
+- Automated `prisma db push` in build scripts
+- Legacy tables existed in database but weren't documented
+- No verification process for schema changes affecting existing data
+- Assumption that schema was the complete source of truth
+
+### Resolution
+
+1. **Removed `prisma db push` from ALL build scripts**
+   - Vercel: `prisma generate && next build`
+   - Render: `npm install && npx prisma generate && npm run build`
+
+2. **Schema changes are now MANUAL ONLY**
+   - Must be run via Render Shell after backup
+   - Requires explicit verification of changes
+
+3. **Legacy tables documented in infrastructure documentation**
+   - Tables preserved for future audit
+   - Will be added to schema or dropped after verification
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `package.json` | Removed `prisma db push` from build script |
+| `render.yaml` | Removed `prisma db push` from buildCommand |
+| `docs/blueprint/02_DESIGN_PRINCIPLES.md` | Added comprehensive data protection rules |
+| `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` | Updated for manual schema sync |
+| `docs/blueprint/MASTER_BLUEPRINT.md` | Updated build commands and added warnings |
+
+### Prevention Measures
+
+1. **NEVER add `prisma db push` to automated build scripts**
+2. **Always verify schema changes won't drop tables with data**
+3. **Document all legacy tables in infrastructure docs**
+4. **Create database backup before any schema change**
+5. **Review Prisma output before applying changes**
+
+### Lessons Learned
+
+- Database may contain tables not in schema (development artifacts, future features)
+- Assuming tables are "legacy" without verification is dangerous
+- Automated schema sync should be opt-in, not default
+- Always ask user before any operation that could delete data
+
+---
+
+## Deployment Pipeline Fix
+
+### Build Script Update
+
+> **Status: FIXED** (February 2026)
+
+**Issue:** `prisma db push` in build scripts could delete tables not in schema.
+
+**Files Updated:**
+- `package.json`
+- `render.yaml`
+
+**Before (DANGEROUS):**
+```json
+// package.json
+"build": "prisma generate && prisma db push --skip-generate && next build"
+
+// render.yaml
+buildCommand: npm install && npx prisma generate && npx prisma db push && npm run build
+```
+
+**After (SAFE):**
+```json
+// package.json
+"build": "prisma generate && next build"
+
+// render.yaml
+buildCommand: npm install && npx prisma generate && npm run build
+```
+
+**Impact:**
+- Database is NEVER modified during automated builds
+- Schema changes require explicit manual action
+- Legacy tables are preserved
+
+**Manual Schema Sync Procedure:**
+
+1. Create database backup via Render Dashboard
+2. Connect to Render Shell
+3. Preview changes: `npx prisma db push --preview-feature`
+4. If DROP statements appear, STOP and verify
+5. Apply changes: `npx prisma db push`
+6. Verify application works correctly
+
+---
+
+## Schema Changes Summary
+
+### MerchantMapping Model Update
+
+```prisma
+model MerchantMapping {
+  id                    String    @id @default(uuid())
+  userId                String?
+  merchantRaw           String
+  merchantStandardised  String
+  merchantCategoryCode  String?
+  categoryLevel1        String
+  categoryLevel2        String?
+  subcategory           String?
+  customCategoryId      String?   // NEW: Reference to user's custom Category if used
+  confidence            Float     @default(1.0)
+  source                String    @default("RULE")
+  usageCount            Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([userId, merchantRaw])
+  @@index([merchantRaw])
+}
+```
+
+### Migration Required
+
+```bash
+npx prisma db push
+```
+
+This update adds the `customCategoryId` field to support custom category learning in merchant mappings.
+
+---
+
+## Files Changed
+
+| File | Changes |
+|------|---------|
+| `app/api/transactions/[id]/link/route.ts` | Batch categorization fix, merchant mapping fix |
+| `components/transactions/TransactionLinkDialog.tsx` | Transfer label update, skip button |
+| `prisma/schema.prisma` | customCategoryId field in MerchantMapping |
+| `package.json` | Build script update (removed prisma db push) |
+| `render.yaml` | Removed prisma db push from buildCommand |
+| `app/dashboard/expenses/page.tsx` | Added all expense categories for schema compatibility |
+| `docs/blueprint/02_DESIGN_PRINCIPLES.md` | Data preservation rules (section 6.5) |
+| `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` | Manual schema sync documentation |
+| `docs/blueprint/MASTER_BLUEPRINT.md` | Updated build commands with safety warnings |
+
+---
+
+## Commit References
+
+```
+86b9210 docs: Update infrastructure doc for manual schema management
+32c7c56 fix: Remove prisma db push from Render build to protect legacy tables
+e95d041 fix: Revert schema changes and remove db push from build
+cffc9f8 fix: Improve transaction categorization and add skip option
+aef7e66 docs: Add changelog and update documentation for Feb 2026 fixes
+```
+
+---
+
+**END OF CHANGELOG — 2026-02-03**

@@ -1496,6 +1496,7 @@ model MerchantMapping {
   categoryLevel1        String
   categoryLevel2        String?
   subcategory           String?
+  customCategoryId      String?   // Reference to user's custom Category if used
 
   // Essential/Recurring flags (Phase 29)
   isEssential           Boolean   @default(false)

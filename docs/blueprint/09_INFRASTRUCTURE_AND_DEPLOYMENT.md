@@ -3,7 +3,7 @@
 
 ---
 
-**Last Updated:** 2025-12-04
+**Last Updated:** 2026-02-03
 **Status:** Active
 
 ---
@@ -105,11 +105,11 @@ services:
   - type: web
     name: monitrax
     runtime: node
-    buildCommand: npm install && npx prisma generate && npx prisma db push && npm run build
+    buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npm start
 ```
 
-**IMPORTANT:** The build command includes `npx prisma db push` which automatically syncs the Prisma schema to the database on every deployment.
+**NOTE:** The build command does NOT include `prisma db push`. Schema changes must be applied manually to protect legacy database tables. See Section 4.5 for manual schema sync procedures.
 
 ---
 
@@ -117,20 +117,38 @@ services:
 
 ### 4.1 Schema Management Strategy
 
-Monitrax uses **`prisma db push`** for schema synchronization:
+Monitrax uses **manual schema synchronization** to protect legacy database tables:
 
 | Command | Environment | Purpose |
 |---------|-------------|---------|
-| `prisma db push` | Production | Auto-sync schema to database (used in Render build) |
+| `prisma db push` | Manual only | Sync schema to database (run via Render Shell) |
 | `prisma migrate dev` | Development | Create migration files (local only) |
-| `prisma migrate deploy` | Production | Apply migration files (alternative to db push) |
+| `prisma generate` | Build time | Generate Prisma client (safe, doesn't modify DB) |
 
-### 4.2 Why `prisma db push`?
+### 4.2 Why Manual Schema Sync?
 
-1. **Automatic Sync** — Schema changes deploy automatically with code
-2. **No Migration Files** — Simpler workflow for rapid development
-3. **Idempotent** — Safe to run multiple times
-4. **Zero Manual Steps** — No need to run migrations after merge
+1. **Data Protection** — Prevents accidental deletion of legacy tables not in schema
+2. **Controlled Changes** — Schema modifications are explicit and intentional
+3. **Audit Trail** — Changes are reviewed before application
+4. **Legacy Table Preservation** — Database contains tables for future features
+
+### 4.3 Legacy Tables (Pending Audit)
+
+The following tables exist in the database but are not in the Prisma schema:
+
+| Table | Status | Notes |
+|-------|--------|-------|
+| `admin_users` | Preserved | May be needed for admin features |
+| `admin_sessions` | Preserved | Admin authentication sessions |
+| `import_batches` | Preserved | Transaction import tracking |
+| `organization_invitations` | Preserved | Multi-tenant invitations |
+| `organization_portal_settings` | Preserved | Portal configuration |
+| `transaction_review_queue` | Preserved | Transaction review workflow |
+
+These tables will be audited in a future cleanup phase to determine if they should be:
+- Added to the schema (if actively used)
+- Dropped (if confirmed unused)
+- Migrated to new structures
 
 ### 4.3 Schema Change Workflow
 

@@ -97,17 +97,25 @@
 
 ### Build & Deployment
 
+> ⚠️ **CRITICAL SAFETY UPDATE (Feb 2026)**: Build scripts NO LONGER include `prisma db push`. Schema changes are now MANUAL ONLY to prevent accidental data loss.
+
 | Aspect | Configuration |
 |--------|---------------|
-| **Build Command (Vercel)** | `prisma generate && prisma db push --accept-data-loss && next build` |
-| **Build Command (Render)** | `npm install && npx prisma generate && npx prisma db push && npm run build` |
-| **Schema Sync** | `prisma db push` (automatic on deploy) |
-| **Migration Strategy** | Schema auto-syncs to database on every deployment |
+| **Build Command (Vercel)** | `prisma generate && next build` |
+| **Build Command (Render)** | `npm install && npx prisma generate && npm run build` |
+| **Schema Sync** | **MANUAL ONLY** — via Render Shell |
+| **Migration Strategy** | Manual review required before any schema change |
 | **Health Check** | `/api/health` |
 
-**IMPORTANT:** Database schema changes are applied automatically via `prisma db push` during the build process. No manual migration commands are required after merging code.
+**⛔ NEVER ADD `prisma db push` TO BUILD SCRIPTS**
 
-**Note on `--accept-data-loss`:** This flag is used in the Vercel build because new unique constraints on nullable fields trigger warnings even though no actual data loss occurs (multiple NULL values are allowed in unique constraints).
+Schema changes must be applied manually:
+1. Create database backup via Render Dashboard
+2. Review changes: `npx prisma db push --preview-feature`
+3. If DROP statements appear, STOP and verify
+4. Run via Render Shell: `npx prisma db push`
+
+**Why This Changed:** The database contains legacy tables not in the Prisma schema. Automatic `prisma db push` would delete these tables and their data. See incident documentation in `CHANGELOG_2026_02_03.md`.
 
 See: `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` for full deployment documentation.
 

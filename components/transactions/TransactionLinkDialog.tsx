@@ -959,11 +959,11 @@ export function TransactionLinkDialog({
                   />
                   <Label htmlFor="isTransfer" className="text-sm font-medium cursor-pointer flex items-center gap-2">
                     <ArrowRightLeft className="h-4 w-4 text-amber-600" />
-                    This is a transfer between accounts
+                    Transfer / Credit Card Repayment
                   </Label>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 ml-6">
-                  Transfers are excluded from income/expense calculations
+                  Internal transfers and credit card payments are excluded from income/expense calculations
                 </p>
               </div>
 
@@ -1467,6 +1467,22 @@ export function TransactionLinkDialog({
           <div className="p-2 bg-green-50 dark:bg-green-950/50 text-green-600 rounded text-sm flex items-center gap-2">
             <Check className="h-4 w-4" />
             {success}
+          </div>
+        )}
+
+        {/* Skip button - allows skipping to next transaction */}
+        {hasMoreTransactions && onNavigateNext && (
+          <div className="flex justify-end border-t pt-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onNavigateNext();
+              }}
+              className="text-muted-foreground"
+            >
+              Skip for now →
+            </Button>
           </div>
         )}
       </DialogContent>
