@@ -175,6 +175,7 @@ Every API response follows a standardised format:
 | **25** | Document Management Engine | ✅ Complete | Rule-based upload orchestration, auto-categorization, cascade linking |
 | **26** | Document Intelligence Engine | ✅ Complete | OCR extraction, Gemini AI analysis, form auto-fill |
 | **27** | Gemini AI Migration | ✅ Complete | All AI features migrated from OpenAI to Google Gemini |
+| **29** | Household Profile Redesign | ✅ Complete | Named members/pets, auto-category generation, onboarding integration |
 
 ### In Progress
 
@@ -438,6 +439,41 @@ See: `docs/blueprint/PHASE_20_AUSTRALIAN_TAX_INTELLIGENCE_ENGINE.md`
 See: `docs/blueprint/PHASE_19_DOCUMENT_MANAGEMENT.md`
 See: `docs/blueprint/PHASE_25_DOCUMENT_MANAGEMENT_ENGINE.md`
 
+### 5.10 Household Module (Phase 29)
+
+**Status:** ✅ Complete (February 2026)
+
+**Purpose:** Captures detailed household composition for personalized financial tracking and category generation.
+
+**Capabilities:**
+- Named household members with relationships
+- Pet tracking with types and breeds
+- Auto-category generation based on household
+- Migration prompt for existing users
+- Integration with onboarding wizard
+
+**Household Members:**
+- Relationships: Self, Spouse, Partner, Child, Parent, Sibling, Other
+- Income earner flag for salary/super category generation
+- Date of birth for age-based planning
+
+**Household Pets:**
+- Types: Dog, Cat, Bird, Fish, Rabbit, Reptile, Other
+- Breed tracking
+- Auto-generates pet expense categories
+
+**Auto-Generated Categories:**
+- Income earners: Salary, Super Contributions, Work Expenses, Health Insurance
+- Non-earner adults: Personal Spending, Health Expenses
+- Children: School Fees, Childcare, Kids Activities
+- Pets: Food & Supplies, Vet Visits, Insurance, Grooming
+
+**Category Orphaning:**
+- When members/pets are deleted, categories are unlinked (not deleted)
+- Preserves expense history and allows reassignment
+
+See: `docs/blueprint/CHANGELOG_2026_02_03.md` for implementation details.
+
 ---
 
 ## 6. Data Model Overview
@@ -446,6 +482,11 @@ See: `docs/blueprint/PHASE_25_DOCUMENT_MANAGEMENT_ENGINE.md`
 
 ```
 User
+├── HouseholdProfile (Phase 29)
+│   ├── HouseholdMembers
+│   │   └── Categories (linked)
+│   └── HouseholdPets
+│       └── Categories (linked)
 ├── Properties
 │   ├── Loans
 │   ├── Income (rental)
@@ -466,6 +507,8 @@ User
 │   └── Documents
 ├── Income (general)
 ├── Expenses (general)
+├── Categories
+│   └── HouseholdMember/Pet (optional link)
 ├── DebtPlans
 │   └── DebtPlanLoans
 ├── Documents
@@ -477,6 +520,10 @@ User
 
 | Entity | Links To |
 |--------|----------|
+| HouseholdProfile | HouseholdMembers, HouseholdPets |
+| HouseholdMember | Categories (auto-generated) |
+| HouseholdPet | Categories (auto-generated) |
+| Category | HouseholdMember (optional), HouseholdPet (optional) |
 | Property | Loans, Income, Expenses, Depreciation, Documents |
 | Loan | Property, Offset Account, Expenses |
 | Account | Linked Loan |

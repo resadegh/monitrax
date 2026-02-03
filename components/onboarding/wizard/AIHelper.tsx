@@ -24,6 +24,15 @@ const STEP_CONTEXT: Record<WizardStepId, {
       'Can I change my profile type later?',
     ],
   },
+  household: {
+    title: 'Household Setup',
+    description: 'I can help you set up your household members and pets for personalized tracking.',
+    suggestions: [
+      'Why should I add household members?',
+      'What categories are created for income earners?',
+      'Do I need to add my pets?',
+    ],
+  },
   properties: {
     title: 'Properties & Loans',
     description: 'I can help you understand property values, loan terms, and what to include.',
