@@ -10,7 +10,7 @@ import {
   CFOScoreHistory,
 } from './types';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
-import { Frequency, RepaymentFrequency } from '@/lib/types/prisma-enums';
+import { Frequency, RepaymentFrequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
 
 // ============================================================================
 // Score Weights
@@ -217,8 +217,9 @@ function calculateEmergencyBuffer(
   accounts: AccountData[],
   expenses: ExpenseData[]
 ): number {
+  // Use centralized LIQUID_ACCOUNT_TYPES (single source of truth)
   const liquidBalances = accounts
-    .filter(a => ['SAVINGS', 'TRANSACTIONAL', 'OFFSET'].includes(a.type))
+    .filter(a => LIQUID_ACCOUNT_TYPES.includes(a.type as any))
     .reduce((sum, a) => sum + a.currentBalance, 0);
 
   const monthlyEssentialExpenses = expenses

@@ -33,7 +33,7 @@
  */
 
 import prisma from '@/lib/db';
-import { Frequency } from '@/lib/types/prisma-enums';
+import { Frequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
 
 // Import existing calculation engines
@@ -928,10 +928,9 @@ export async function getMasterFinancialSnapshot(
   // Build tax summary
   const taxSummary = buildTaxSummary(data.income, data.expenses);
 
-  // Calculate liquid cash (exclude OFFSET accounts - they are tied to mortgages)
-  const liquidTypes = ['SAVINGS', 'CHECKING'];
+  // Calculate liquid cash using centralized LIQUID_ACCOUNT_TYPES (single source of truth)
   const liquidCash = data.accounts
-    .filter(a => liquidTypes.includes(a.type))
+    .filter(a => LIQUID_ACCOUNT_TYPES.includes(a.type as any))
     .reduce((sum, a) => sum + a.currentBalance, 0);
 
   // Build emergency fund metrics
