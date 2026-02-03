@@ -419,7 +419,12 @@ export async function POST(
             }
 
             // Learn merchant mapping for future suggestions
-            if (body.learnMerchant && transaction.merchantStandardised && body.category) {
+            // Use the actual category (or custom category name if custom)
+            const categoryToLearn = body.customCategoryId
+              ? (await prisma.category.findUnique({ where: { id: body.customCategoryId }, select: { name: true } }))?.name || body.category
+              : body.category;
+
+            if (body.learnMerchant && transaction.merchantStandardised && categoryToLearn) {
               await prisma.merchantMapping.upsert({
                 where: {
                   userId_merchantRaw: {
@@ -428,7 +433,8 @@ export async function POST(
                   },
                 },
                 update: {
-                  categoryLevel1: body.category,
+                  categoryLevel1: categoryToLearn,
+                  customCategoryId: body.customCategoryId || null,
                   usageCount: { increment: 1 },
                   updatedAt: new Date(),
                 },
@@ -436,7 +442,8 @@ export async function POST(
                   userId,
                   merchantRaw: transaction.merchantStandardised,
                   merchantStandardised: transaction.merchantStandardised,
-                  categoryLevel1: body.category,
+                  categoryLevel1: categoryToLearn,
+                  customCategoryId: body.customCategoryId || null,
                   source: 'USER',
                   confidence: 1.0,
                   usageCount: 1,
@@ -862,11 +869,13 @@ export async function GET(
                 { description: { contains: merchantName, mode: 'insensitive' as const } },
               ]
             : [{ merchantStandardised: merchantName }],
-          // Only uncategorized transactions
+          // Only uncategorized transactions (no links, not transfer, not investment)
           incomeId: null,
           expenseId: null,
           loanId: null,
           isTransfer: false,
+          isInvestmentContribution: false,
+          categoryLevel1: null, // Also exclude transactions with category already set
         },
         select: {
           id: true,
