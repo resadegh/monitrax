@@ -2807,7 +2807,7 @@ model CashflowSummary {
 model AdminUser {
   id            String         @id @default(uuid())
   email         String         @unique
-  password      String
+  password      String?        // Nullable to match existing DB structure
   name          String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -2858,7 +2858,7 @@ model OrganizationInvitation {
   invitedBy       String?
   token           String    @unique
   status          String    @default("PENDING")
-  expiresAt       DateTime
+  expiresAt       DateTime? // Nullable to match existing DB structure
   acceptedAt      DateTime?
   createdAt       DateTime  @default(now())
 
