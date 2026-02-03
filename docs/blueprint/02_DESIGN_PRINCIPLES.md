@@ -227,6 +227,33 @@ Missing or invalid relationships must always be detected there.
 ### **6.4 Insights Engine is the Single Source of Meaning**
 Other modules must *not* compute their own heuristics.
 
+### **6.5 Data Preservation is Mandatory**
+
+**CRITICAL RULE: Never delete data or database tables without explicit user verification.**
+
+This principle applies to:
+- Schema migrations that drop tables or columns
+- Database cleanup operations
+- Deployment scripts that may affect existing data
+- Any operation using `--accept-data-loss` or similar flags
+
+**Requirements:**
+1. Before any schema change that would drop tables or columns, explicitly verify with the user
+2. Always back up data before destructive operations
+3. Prefer soft deletes over hard deletes for user data
+4. Use `prisma db push` without `--accept-data-loss` in production
+5. If data loss is unavoidable, document what will be lost and get explicit approval
+6. Maintain audit trails for all data deletion operations
+
+**Build Script Safety:**
+```json
+// SAFE - will fail if data loss would occur
+"build": "prisma generate && prisma db push --skip-generate && next build"
+
+// DANGEROUS - never use in production without explicit approval
+"build": "prisma generate && prisma db push --accept-data-loss && next build"
+```
+
 ---
 
 ## **7. Security Principles**
