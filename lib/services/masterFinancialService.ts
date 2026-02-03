@@ -81,6 +81,27 @@ import {
 // =============================================================================
 
 /**
+ * Budget vs Actual variance metrics
+ * @see lib/utils/reconciliation.ts for calculation utilities
+ */
+export interface BudgetVariance {
+  /** Total budgeted amount (monthly) */
+  budgeted: number;
+  /** Total actual amount (monthly) */
+  actual: number;
+  /** Variance (budgeted - actual, positive = under budget) */
+  variance: number;
+  /** Variance as percentage */
+  variancePercent: number;
+  /** Status indicator */
+  status: 'under' | 'over' | 'on_track';
+  /** Count of entries with budgets set */
+  entriesWithBudget: number;
+  /** Count of entries reconciled from transactions */
+  entriesReconciled: number;
+}
+
+/**
  * Complete expense breakdown with all filtering options
  */
 export interface MasterExpenseBreakdown {
@@ -98,6 +119,8 @@ export interface MasterExpenseBreakdown {
   taxDeductible: ExpenseAggregation;
   /** By category breakdown */
   byCategory: CategoryBreakdown[];
+  /** Budget vs Actual variance (Phase 30) */
+  budgetVariance: BudgetVariance;
 }
 
 /**
@@ -112,6 +135,8 @@ export interface MasterIncomeBreakdown {
   secondary: IncomeAggregation;
   /** Passive income only */
   passive: IncomeAggregation;
+  /** Budget vs Actual variance (Phase 30) */
+  budgetVariance: BudgetVariance;
 }
 
 /**
@@ -275,6 +300,9 @@ interface RawExpense {
   propertyId: string | null;
   loanId: string | null;
   assetId: string | null;
+  // Phase 30: Budget tracking
+  budgetedAmount: number | null;
+  lastReconciled: Date | null;
 }
 
 interface RawIncome {
@@ -290,6 +318,9 @@ interface RawIncome {
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
+  // Phase 30: Budget tracking
+  budgetedAmount: number | null;
+  lastReconciled: Date | null;
 }
 
 interface RawAccount {
@@ -384,6 +415,8 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         propertyId: true,
         loanId: true,
         assetId: true,
+        budgetedAmount: true,
+        lastReconciled: true,
       },
     }),
     prisma.income.findMany({
@@ -401,6 +434,8 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         isTaxable: true,
         propertyId: true,
         investmentAccountId: true,
+        budgetedAmount: true,
+        lastReconciled: true,
       },
     }),
     prisma.account.findMany({
@@ -528,6 +563,9 @@ function buildExpenseBreakdown(
     targetFrequency
   );
 
+  // Phase 30: Calculate budget variance
+  const budgetVariance = calculateExpenseBudgetVariance(expenses, targetFrequency);
+
   return {
     all,
     recurring,
@@ -536,6 +574,67 @@ function buildExpenseBreakdown(
     discretionary,
     taxDeductible,
     byCategory,
+    budgetVariance,
+  };
+}
+
+/**
+ * Calculate budget variance for expenses
+ * Uses actual amounts vs budgeted amounts, converted to target frequency
+ */
+function calculateExpenseBudgetVariance(
+  expenses: RawExpense[],
+  targetFrequency: 'monthly' | 'annual'
+): BudgetVariance {
+  let totalActual = 0;
+  let totalBudgeted = 0;
+  let entriesWithBudget = 0;
+  let entriesReconciled = 0;
+
+  for (const expense of expenses) {
+    const freq = expense.frequency as Frequency;
+    const actualConverted = targetFrequency === 'monthly'
+      ? toMonthly(expense.amount, freq)
+      : toAnnual(expense.amount, freq);
+
+    totalActual += actualConverted;
+
+    if (expense.budgetedAmount !== null && expense.budgetedAmount !== undefined) {
+      const budgetedConverted = targetFrequency === 'monthly'
+        ? toMonthly(expense.budgetedAmount, freq)
+        : toAnnual(expense.budgetedAmount, freq);
+      totalBudgeted += budgetedConverted;
+      entriesWithBudget++;
+    } else {
+      // No budget set, use actual as budget (no variance)
+      totalBudgeted += actualConverted;
+    }
+
+    if (expense.lastReconciled !== null) {
+      entriesReconciled++;
+    }
+  }
+
+  const variance = totalBudgeted - totalActual;
+  const variancePercent = totalBudgeted > 0 ? (variance / totalBudgeted) * 100 : 0;
+
+  let status: 'under' | 'over' | 'on_track';
+  if (variancePercent > 5) {
+    status = 'under'; // Under budget (good for expenses)
+  } else if (variancePercent < -5) {
+    status = 'over'; // Over budget (bad for expenses)
+  } else {
+    status = 'on_track';
+  }
+
+  return {
+    budgeted: totalBudgeted,
+    actual: totalActual,
+    variance,
+    variancePercent,
+    status,
+    entriesWithBudget,
+    entriesReconciled,
   };
 }
 
@@ -573,7 +672,70 @@ function buildIncomeBreakdown(
     targetFrequency
   );
 
-  return { all, primary, secondary, passive };
+  // Phase 30: Calculate budget variance
+  const budgetVariance = calculateIncomeBudgetVariance(income, targetFrequency);
+
+  return { all, primary, secondary, passive, budgetVariance };
+}
+
+/**
+ * Calculate budget variance for income
+ * Uses actual amounts vs budgeted amounts, converted to target frequency
+ */
+function calculateIncomeBudgetVariance(
+  income: RawIncome[],
+  targetFrequency: 'monthly' | 'annual'
+): BudgetVariance {
+  let totalActual = 0;
+  let totalBudgeted = 0;
+  let entriesWithBudget = 0;
+  let entriesReconciled = 0;
+
+  for (const inc of income) {
+    const freq = inc.frequency as Frequency;
+    const actualConverted = targetFrequency === 'monthly'
+      ? toMonthly(inc.amount, freq)
+      : toAnnual(inc.amount, freq);
+
+    totalActual += actualConverted;
+
+    if (inc.budgetedAmount !== null && inc.budgetedAmount !== undefined) {
+      const budgetedConverted = targetFrequency === 'monthly'
+        ? toMonthly(inc.budgetedAmount, freq)
+        : toAnnual(inc.budgetedAmount, freq);
+      totalBudgeted += budgetedConverted;
+      entriesWithBudget++;
+    } else {
+      // No budget set, use actual as budget (no variance)
+      totalBudgeted += actualConverted;
+    }
+
+    if (inc.lastReconciled !== null) {
+      entriesReconciled++;
+    }
+  }
+
+  const variance = totalActual - totalBudgeted; // For income, positive = above expectation (good)
+  const variancePercent = totalBudgeted > 0 ? (variance / totalBudgeted) * 100 : 0;
+
+  let status: 'under' | 'over' | 'on_track';
+  if (variancePercent > 5) {
+    status = 'over'; // Above budget (good for income)
+  } else if (variancePercent < -5) {
+    status = 'under'; // Below budget (bad for income)
+  } else {
+    status = 'on_track';
+  }
+
+  return {
+    budgeted: totalBudgeted,
+    actual: totalActual,
+    variance,
+    variancePercent,
+    status,
+    entriesWithBudget,
+    entriesReconciled,
+  };
 }
 
 function buildPropertyMetrics(

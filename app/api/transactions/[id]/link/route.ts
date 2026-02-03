@@ -96,11 +96,17 @@ export async function POST(
             targetName = income.name;
             targetCategory = income.type; // SALARY, RENT, RENTAL, INVESTMENT, OTHER
 
-            // Optionally update the income amount
+            // Optionally update the income amount (Phase 30: with budget tracking)
             if (body.updateAmount) {
+              // Save current amount as budgetedAmount if not already set
+              const budgetedAmount = income.budgetedAmount ?? income.amount;
               await prisma.income.update({
                 where: { id: body.targetId },
-                data: { amount: transaction.amount },
+                data: {
+                  amount: transaction.amount,
+                  budgetedAmount: budgetedAmount,
+                  lastReconciled: new Date(),
+                },
               });
             }
           } else if (body.type === 'expense') {
@@ -116,11 +122,17 @@ export async function POST(
             targetName = expense.name;
             targetCategory = expense.category; // HOUSING, UTILITIES, etc.
 
-            // Optionally update the expense amount
+            // Optionally update the expense amount (Phase 30: with budget tracking)
             if (body.updateAmount) {
+              // Save current amount as budgetedAmount if not already set
+              const budgetedAmount = expense.budgetedAmount ?? expense.amount;
               await prisma.expense.update({
                 where: { id: body.targetId },
-                data: { amount: transaction.amount },
+                data: {
+                  amount: transaction.amount,
+                  budgetedAmount: budgetedAmount,
+                  lastReconciled: new Date(),
+                },
               });
             }
           } else if (body.type === 'loan') {
@@ -465,7 +477,7 @@ export async function POST(
         }
 
         case 'update': {
-          // Update existing Income/Expense amount with transaction amount
+          // Update existing Income/Expense amount with transaction amount (Phase 30: with budget tracking)
           if (!body.type || !body.targetId) {
             return NextResponse.json(
               { error: 'type and targetId required for update action' },
@@ -474,9 +486,26 @@ export async function POST(
           }
 
           if (body.type === 'income') {
+            // First get current income to preserve budgetedAmount
+            const currentIncome = await prisma.income.findFirst({
+              where: { id: body.targetId, userId },
+            });
+            if (!currentIncome) {
+              return NextResponse.json(
+                { error: 'Income not found' },
+                { status: 404 }
+              );
+            }
+
+            // Save current amount as budgetedAmount if not already set
+            const budgetedAmount = currentIncome.budgetedAmount ?? currentIncome.amount;
             const income = await prisma.income.update({
               where: { id: body.targetId },
-              data: { amount: transaction.amount },
+              data: {
+                amount: transaction.amount,
+                budgetedAmount: budgetedAmount,
+                lastReconciled: new Date(),
+              },
             });
 
             // Also link the transaction with category
@@ -491,13 +520,30 @@ export async function POST(
 
             return NextResponse.json({
               success: true,
-              updated: { type: 'income', id: income.id, newAmount: income.amount },
-              message: `Income amount updated to $${transaction.amount}`,
+              updated: { type: 'income', id: income.id, newAmount: income.amount, budgetedAmount },
+              message: `Income amount updated to $${transaction.amount}${budgetedAmount !== transaction.amount ? ` (budget: $${budgetedAmount})` : ''}`,
             });
           } else if (body.type === 'expense') {
+            // First get current expense to preserve budgetedAmount
+            const currentExpense = await prisma.expense.findFirst({
+              where: { id: body.targetId, userId },
+            });
+            if (!currentExpense) {
+              return NextResponse.json(
+                { error: 'Expense not found' },
+                { status: 404 }
+              );
+            }
+
+            // Save current amount as budgetedAmount if not already set
+            const budgetedAmount = currentExpense.budgetedAmount ?? currentExpense.amount;
             const expense = await prisma.expense.update({
               where: { id: body.targetId },
-              data: { amount: transaction.amount },
+              data: {
+                amount: transaction.amount,
+                budgetedAmount: budgetedAmount,
+                lastReconciled: new Date(),
+              },
             });
 
             // Also link the transaction with category
@@ -512,8 +558,8 @@ export async function POST(
 
             return NextResponse.json({
               success: true,
-              updated: { type: 'expense', id: expense.id, newAmount: expense.amount },
-              message: `Expense amount updated to $${transaction.amount}`,
+              updated: { type: 'expense', id: expense.id, newAmount: expense.amount, budgetedAmount },
+              message: `Expense amount updated to $${transaction.amount}${budgetedAmount !== transaction.amount ? ` (budget: $${budgetedAmount})` : ''}`,
             });
           } else if (body.type === 'loan') {
             const loan = await prisma.loan.update({
@@ -781,7 +827,7 @@ export async function GET(
         );
       }
 
-      // Get all income entries
+      // Get all income entries (including budget/reconciliation fields)
       const incomeEntries = await prisma.income.findMany({
         where: { userId },
         select: {
@@ -791,11 +837,15 @@ export async function GET(
           amount: true,
           frequency: true,
           netAmount: true,
+          propertyId: true,
+          investmentAccountId: true,
+          budgetedAmount: true,
+          lastReconciled: true,
         },
         orderBy: { name: 'asc' },
       });
 
-      // Get all expense entries
+      // Get all expense entries (including budget/reconciliation fields)
       const expenseEntries = await prisma.expense.findMany({
         where: { userId },
         select: {
@@ -805,6 +855,10 @@ export async function GET(
           category: true,
           amount: true,
           frequency: true,
+          propertyId: true,
+          investmentAccountId: true,
+          budgetedAmount: true,
+          lastReconciled: true,
         },
         orderBy: { name: 'asc' },
       });
@@ -952,9 +1006,66 @@ export async function GET(
         amountMatch: boolean;
         amountDiff: number;
         categoryMatch?: boolean;
+        // Phase 30: Reconciliation fields
+        propertyId?: string | null;
+        budgetedAmount?: number | null;
+        lastReconciled?: Date | null;
+        reconciliationRecommendation?: 'update_amount' | 'link_only' | 'create_new';
       }
 
       const matches: MatchResult[] = [];
+
+      // Phase 30: Analyze same-vendor transaction pattern
+      let transactionPattern = null;
+      if (sameVendorTransactions.length > 0) {
+        // Include current transaction in pattern analysis
+        const allVendorTxs = [
+          { date: transaction.date, amount: transaction.amount },
+          ...sameVendorTransactions.map(t => ({ date: t.date, amount: t.amount })),
+        ];
+
+        // Filter to last 12 months
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+        const recentTxs = allVendorTxs.filter(t => new Date(t.date) >= twelveMonthsAgo);
+
+        if (recentTxs.length >= 2) {
+          // Sort by date to detect frequency
+          const sortedDates = recentTxs.map(t => new Date(t.date)).sort((a, b) => a.getTime() - b.getTime());
+
+          // Calculate intervals between transactions
+          const intervals: number[] = [];
+          for (let i = 1; i < sortedDates.length; i++) {
+            const days = Math.round((sortedDates[i].getTime() - sortedDates[i - 1].getTime()) / (1000 * 60 * 60 * 24));
+            if (days > 0) intervals.push(days);
+          }
+
+          if (intervals.length > 0) {
+            const avgInterval = intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
+            const amounts = recentTxs.map(t => Math.abs(t.amount));
+            const avgAmount = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
+
+            // Detect frequency from interval
+            let detectedFrequency = 'MONTHLY';
+            if (avgInterval <= 10) detectedFrequency = 'WEEKLY';
+            else if (avgInterval <= 20) detectedFrequency = 'FORTNIGHTLY';
+            else if (avgInterval <= 45) detectedFrequency = 'MONTHLY';
+            else if (avgInterval <= 120) detectedFrequency = 'QUARTERLY';
+            else detectedFrequency = 'ANNUAL';
+
+            transactionPattern = {
+              count: recentTxs.length,
+              detectedFrequency,
+              averageAmount: avgAmount,
+              averageIntervalDays: avgInterval,
+              dateRange: {
+                first: sortedDates[0],
+                last: sortedDates[sortedDates.length - 1],
+              },
+            };
+          }
+        }
+      }
 
       // Check income entries (only for IN transactions)
       if (transaction.direction === 'IN') {
@@ -963,9 +1074,18 @@ export async function GET(
           const similarity = calculateSimilarity(searchText, nameText);
           const effectiveAmount = income.netAmount || income.amount;
           const amountDiff = Math.abs(txAmount - effectiveAmount);
-          const amountMatch = amountDiff < 1 || amountDiff / effectiveAmount < 0.05;
+          const amountDiffPercent = effectiveAmount > 0 ? amountDiff / effectiveAmount : 1;
+          const amountMatch = amountDiff < 1 || amountDiffPercent < 0.05;
 
           if (similarity > 0.3 || amountMatch) {
+            // Phase 30: Determine reconciliation recommendation
+            let reconciliationRecommendation: 'update_amount' | 'link_only' | 'create_new' = 'link_only';
+            if (amountDiffPercent > 0.05 && amountDiffPercent <= 0.50) {
+              reconciliationRecommendation = 'update_amount';
+            } else if (amountDiffPercent > 0.50) {
+              reconciliationRecommendation = 'create_new';
+            }
+
             matches.push({
               id: income.id,
               name: income.name,
@@ -976,6 +1096,10 @@ export async function GET(
               confidence: similarity * (amountMatch ? 1.5 : 1),
               amountMatch,
               amountDiff,
+              propertyId: income.propertyId,
+              budgetedAmount: income.budgetedAmount,
+              lastReconciled: income.lastReconciled,
+              reconciliationRecommendation,
             });
           }
         }
@@ -987,7 +1111,8 @@ export async function GET(
           const nameText = `${expense.name} ${expense.vendorName || ''}`.toLowerCase();
           const similarity = calculateSimilarity(searchText, nameText);
           const amountDiff = Math.abs(txAmount - expense.amount);
-          const amountMatch = amountDiff < 1 || amountDiff / expense.amount < 0.05;
+          const amountDiffPercent = expense.amount > 0 ? amountDiff / expense.amount : 1;
+          const amountMatch = amountDiff < 1 || amountDiffPercent < 0.05;
 
           // Check if the expense category matches the predicted category
           const categoryMatch = Boolean(mappedCategory && expense.category === mappedCategory);
@@ -998,6 +1123,14 @@ export async function GET(
             let confidence = similarity * (amountMatch ? 1.5 : 1);
             if (categoryMatch) {
               confidence += 0.5; // Boost for matching predicted category
+            }
+
+            // Phase 30: Determine reconciliation recommendation
+            let reconciliationRecommendation: 'update_amount' | 'link_only' | 'create_new' = 'link_only';
+            if (amountDiffPercent > 0.05 && amountDiffPercent <= 0.50) {
+              reconciliationRecommendation = 'update_amount';
+            } else if (amountDiffPercent > 0.50) {
+              reconciliationRecommendation = 'create_new';
             }
 
             matches.push({
@@ -1011,6 +1144,10 @@ export async function GET(
               amountMatch,
               amountDiff,
               categoryMatch,
+              propertyId: expense.propertyId,
+              budgetedAmount: expense.budgetedAmount,
+              lastReconciled: expense.lastReconciled,
+              reconciliationRecommendation,
             });
           }
         }
@@ -1091,6 +1228,8 @@ export async function GET(
         learnedCategory,
         // Same-vendor uncategorized transactions for batch categorization
         sameVendorTransactions,
+        // Phase 30: Transaction pattern analysis for reconciliation
+        transactionPattern,
         availableEntries: {
           income: incomeEntries,
           expenses: expenseEntries,

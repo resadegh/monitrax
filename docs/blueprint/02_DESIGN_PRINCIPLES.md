@@ -199,6 +199,7 @@ If logic appears twice, it must become:
 | Currency formatting | `lib/utils/formatters.ts` | `formatCurrency()` |
 | Frequency conversion | `lib/utils/frequencies.ts` | `toAnnual()`, `toMonthly()`, `periodsPerYear()` |
 | Ownership validation | `lib/utils/ownership.ts` | `verifyOwnership()`, `verifyRelatedOwnership()` |
+| Transaction reconciliation | `lib/utils/reconciliation.ts` | `detectFrequency()`, `analyzeTransactionPattern()`, `findBestMatch()`, `calculateBudgetVariance()` |
 | Net worth calculation | `lib/calculations/netWorthCalculator.ts` | `calculateNetWorth()`, `calculateTotalAssets()` |
 | Cashflow calculation | `lib/calculations/cashflowOrchestrator.ts` | `calculateCashflow()`, `calculateMonthlyCashflow()` |
 | Expense aggregation | `lib/calculations/expenseAggregator.ts` | `aggregateExpenses()`, `aggregateExpensesByCategory()` |

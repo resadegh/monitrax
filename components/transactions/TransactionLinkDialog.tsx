@@ -59,6 +59,23 @@ interface MatchResult {
   confidence: number;
   amountMatch: boolean;
   amountDiff: number;
+  // Phase 30: Reconciliation fields
+  propertyId?: string | null;
+  budgetedAmount?: number | null;
+  lastReconciled?: Date | null;
+  reconciliationRecommendation?: 'update_amount' | 'link_only' | 'create_new';
+  categoryMatch?: boolean;
+}
+
+interface TransactionPattern {
+  count: number;
+  detectedFrequency: string;
+  averageAmount: number;
+  averageIntervalDays: number;
+  dateRange: {
+    first: string;
+    last: string;
+  };
 }
 
 interface SameVendorTransaction {
@@ -162,6 +179,9 @@ export function TransactionLinkDialog({
   const [learnedCategory, setLearnedCategory] = useState<string | null>(null);
   const [learnMerchant, setLearnMerchant] = useState(true); // Default to learning
 
+  // Phase 30: Transaction pattern for reconciliation
+  const [transactionPattern, setTransactionPattern] = useState<TransactionPattern | null>(null);
+
   // Create new form state
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('');
@@ -217,6 +237,7 @@ export function TransactionLinkDialog({
       setSelectedVendorTransactions(new Set());
       setLearnedCategory(null);
       setLearnMerchant(true);
+      setTransactionPattern(null);
       setSuccess(null);
       setError(null);
     }
@@ -273,6 +294,8 @@ export function TransactionLinkDialog({
       }
       // Store learned category for display
       setLearnedCategory(data.learnedCategory || null);
+      // Phase 30: Store transaction pattern for reconciliation
+      setTransactionPattern(data.transactionPattern || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load matches');
     } finally {
@@ -738,6 +761,18 @@ export function TransactionLinkDialog({
 
             {/* Suggested Matches */}
             <TabsContent value="match" className="space-y-2 max-h-64 overflow-auto">
+              {/* Transaction Pattern Alert */}
+              {transactionPattern && transactionPattern.count >= 3 && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 mb-2">
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    Pattern Detected
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    {transactionPattern.count} transactions from this vendor over the last 12 months.
+                    Average: {formatCurrency(transactionPattern.averageAmount)} / {transactionPattern.detectedFrequency.toLowerCase()}
+                  </p>
+                </div>
+              )}
               {suggestedMatches.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No matching entries found
@@ -746,7 +781,11 @@ export function TransactionLinkDialog({
                 suggestedMatches.map((match) => (
                   <div
                     key={match.id}
-                    className="p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className={`p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                      match.reconciliationRecommendation === 'update_amount'
+                        ? 'border-amber-300 dark:border-amber-700'
+                        : ''
+                    }`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -754,17 +793,36 @@ export function TransactionLinkDialog({
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Badge variant="outline">{match.category}</Badge>
                           <span>{match.frequency}</span>
+                          {match.categoryMatch && (
+                            <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                              Category match
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold">{formatCurrency(match.amount)}</p>
                         {!match.amountMatch && (
                           <p className="text-xs text-amber-600">
-                            Diff: {formatCurrency(match.amountDiff)}
+                            Diff: {formatCurrency(match.amountDiff)} ({match.amount > 0 ? Math.round((match.amountDiff / match.amount) * 100) : 0}%)
+                          </p>
+                        )}
+                        {match.budgetedAmount && match.budgetedAmount !== match.amount && (
+                          <p className="text-xs text-slate-500">
+                            Budget: {formatCurrency(match.budgetedAmount)}
                           </p>
                         )}
                       </div>
                     </div>
+
+                    {/* Reconciliation recommendation */}
+                    {match.reconciliationRecommendation === 'update_amount' && !match.amountMatch && (
+                      <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded text-xs text-amber-700 dark:text-amber-300 mb-2">
+                        <strong>Recommended:</strong> Update amount to match transaction.
+                        {match.budgetedAmount ? ' Current budget will be preserved.' : ` ${formatCurrency(match.amount)} will be saved as budget.`}
+                      </div>
+                    )}
+
                     <div className="flex gap-2 flex-wrap">
                       <Button
                         size="sm"
@@ -773,17 +831,19 @@ export function TransactionLinkDialog({
                         disabled={saving}
                       >
                         <Link2 className="h-3 w-3 mr-1" />
-                        Link{selectedVendorTransactions.size > 0 && ` (${selectedVendorTransactions.size + 1})`}
+                        Link Only{selectedVendorTransactions.size > 0 && ` (${selectedVendorTransactions.size + 1})`}
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleLink(match.id, match.type, true)}
-                        disabled={saving}
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        Link & Update
-                      </Button>
+                      {!match.amountMatch && (
+                        <Button
+                          size="sm"
+                          variant={match.reconciliationRecommendation === 'update_amount' ? 'default' : 'outline'}
+                          onClick={() => handleLink(match.id, match.type, true)}
+                          disabled={saving}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Link & Update Amount
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))
