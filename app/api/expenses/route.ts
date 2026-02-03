@@ -7,41 +7,86 @@ import { extractExpenseLinks, wrapWithGRDCS } from '@/lib/grdcs';
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq) => {
     try {
-      const expenses = await prisma.expense.findMany({
-        where: { userId: authReq.user!.userId },
-        include: {
-          property: true,
-          loan: true,
-          investmentAccount: true,
-          asset: true,
-          // Include custom category if set
-          customCategory: {
-            select: {
-              id: true,
-              name: true,
-              code: true,
-              color: true,
-              icon: true,
-            },
-          },
-          // Phase 29: Include linked recurring payments
-          linkedRecurringPayments: {
-            select: {
-              id: true,
-              merchantStandardised: true,
-              pattern: true,
-              expectedAmount: true,
-              matchStatus: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+      const userId = authReq.user!.userId;
 
-      // Apply GRDCS wrapper to each expense
+      // Fetch expenses and linked transactions in parallel
+      const [expenses, linkedTransactions] = await Promise.all([
+        prisma.expense.findMany({
+          where: { userId },
+          include: {
+            property: true,
+            loan: true,
+            investmentAccount: true,
+            asset: true,
+            // Include custom category if set
+            customCategory: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                color: true,
+                icon: true,
+              },
+            },
+            // Phase 29: Include linked recurring payments
+            linkedRecurringPayments: {
+              select: {
+                id: true,
+                merchantStandardised: true,
+                pattern: true,
+                expectedAmount: true,
+                matchStatus: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        // Phase 30: Fetch transactions linked to expenses for current month
+        prisma.unifiedTransaction.findMany({
+          where: {
+            userId,
+            expenseId: { not: null },
+            date: {
+              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First of current month
+            },
+          },
+          select: {
+            id: true,
+            date: true,
+            amount: true,
+            direction: true,
+            expenseId: true,
+          },
+        }),
+      ]);
+
+      // Group transactions by expenseId and calculate monthly actuals
+      const actualsByExpenseId = new Map<string, { amount: number; count: number }>();
+      for (const tx of linkedTransactions) {
+        if (tx.expenseId) {
+          const existing = actualsByExpenseId.get(tx.expenseId) || { amount: 0, count: 0 };
+          existing.amount += Math.abs(tx.amount);
+          existing.count += 1;
+          actualsByExpenseId.set(tx.expenseId, existing);
+        }
+      }
+
+      // Apply GRDCS wrapper to each expense and add actuals
       const expensesWithLinks = expenses.map((expense: typeof expenses[number]) => {
         const links = extractExpenseLinks(expense);
-        return wrapWithGRDCS(expense as Record<string, unknown>, 'expense', links);
+        const wrapped = wrapWithGRDCS(expense as Record<string, unknown>, 'expense', links);
+
+        // Phase 30: Add actual from transactions
+        const actuals = actualsByExpenseId.get(expense.id);
+        return {
+          ...wrapped,
+          // Budget = entry.amount (what user entered)
+          budgetAmount: expense.amount,
+          // Actual = from transactions if available, null otherwise
+          actualFromTransactions: actuals ? actuals.amount : null,
+          transactionCount: actuals ? actuals.count : 0,
+          hasTransactions: actuals !== undefined,
+        };
       });
 
       return NextResponse.json({
@@ -49,6 +94,7 @@ export async function GET(request: NextRequest) {
         _meta: {
           count: expensesWithLinks.length,
           totalLinkedEntities: expensesWithLinks.reduce((sum: number, e: { _meta: { linkedCount: number } }) => sum + e._meta.linkedCount, 0),
+          currentMonth: new Date().toISOString().slice(0, 7), // YYYY-MM format
         },
       });
     } catch (error) {

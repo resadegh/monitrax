@@ -103,6 +103,11 @@ interface Income {
   taxCategory?: string | null;
   taxableAmount?: number | null;
   taxNotes?: string | null;
+  // Phase 30: Budget vs Actual
+  budgetAmount?: number;              // Budget = entry.amount
+  actualFromTransactions?: number | null;  // Actual from linked transactions this month
+  transactionCount?: number;          // Number of transactions this month
+  hasTransactions?: boolean;          // Whether any transactions are linked
   // GRDCS fields
   _links?: {
     self: string;
@@ -781,10 +786,10 @@ function IncomePageContent() {
                     <th className="px-4 py-3">Name</th>
                     <th className="px-4 py-3">Type</th>
                     <th className="px-4 py-3">Source</th>
-                    <th className="px-4 py-3 text-right">Amount</th>
+                    <th className="px-4 py-3 text-right">Budget</th>
+                    <th className="px-4 py-3 text-right">Actual</th>
                     <th className="px-4 py-3">Frequency</th>
                     <th className="px-4 py-3 text-right">Net Monthly</th>
-                    <th className="px-4 py-3 text-right">Net Annual</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -792,8 +797,13 @@ function IncomePageContent() {
                   {filteredIncome.map((item) => {
                     // Use effective (after-tax for salary) amounts
                     const effectiveMonthly = getEffectiveMonthlyAmount(item);
-                    const effectiveAnnual = getEffectiveAnnualAmount(item);
                     const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;
+                    // Phase 30: Budget vs Actual
+                    const hasActual = item.actualFromTransactions !== null && item.actualFromTransactions !== undefined;
+                    const variance = hasActual ? item.actualFromTransactions! - convertToMonthly(item.amount, item.frequency) : 0;
+                    const variancePercent = hasActual && convertToMonthly(item.amount, item.frequency) > 0
+                      ? (variance / convertToMonthly(item.amount, item.frequency)) * 100
+                      : 0;
                     return (
                       <tr
                         key={item.id}
@@ -816,13 +826,28 @@ function IncomePageContent() {
                             <span className="text-sm">{getSourceLabel(item)}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right font-medium text-green-600">
-                          {formatCurrency(item.amount)}
+                        <td className="px-4 py-3 text-right">
+                          <span className="font-medium">{formatCurrency(item.amount)}</span>
                           {isSalaryWithTax && <span className="text-xs text-muted-foreground block">gross</span>}
+                          <span className="text-xs text-muted-foreground block capitalize">{item.frequency.toLowerCase()}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {hasActual ? (
+                            <div>
+                              <span className="font-medium text-green-600">{formatCurrency(item.actualFromTransactions!)}</span>
+                              <span className="text-xs text-muted-foreground block">{item.transactionCount} txns</span>
+                              {Math.abs(variancePercent) > 5 && (
+                                <span className={`text-xs block ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {variance >= 0 ? '+' : ''}{variancePercent.toFixed(0)}%
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No transactions</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm capitalize">{item.frequency.toLowerCase()}</td>
                         <td className="px-4 py-3 text-right font-medium">{formatCurrency(effectiveMonthly)}</td>
-                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(effectiveAnnual)}</td>
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetails(item)}>
@@ -842,9 +867,8 @@ function IncomePageContent() {
                 </tbody>
                 <tfoot className="bg-muted/30 border-t">
                   <tr className="font-medium">
-                    <td colSpan={5} className="px-4 py-3 text-right">Net Total:</td>
+                    <td colSpan={6} className="px-4 py-3 text-right">Net Total:</td>
                     <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalNetMonthly)}</td>
-                    <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalNetMonthly * 12)}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -1019,11 +1043,12 @@ function IncomePageContent() {
                     <div className="space-y-2">
                       {/* Table header */}
                       <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
-                        <div className="col-span-4">Name</div>
-                        <div className="col-span-2">Amount</div>
+                        <div className="col-span-3">Name</div>
+                        <div className="col-span-2">Budget</div>
+                        <div className="col-span-2">Actual</div>
                         <div className="col-span-2">Frequency</div>
                         <div className="col-span-2">Net Monthly</div>
-                        <div className="col-span-2 text-right">Actions</div>
+                        <div className="col-span-1 text-right">Actions</div>
                       </div>
 
                       {/* Income rows */}
@@ -1031,12 +1056,14 @@ function IncomePageContent() {
                         // Use effective (after-tax for salary) amount
                         const effectiveMonthly = getEffectiveMonthlyAmount(item);
                         const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;
+                        // Phase 30: Budget vs Actual
+                        const hasActual = item.actualFromTransactions !== null && item.actualFromTransactions !== undefined;
                         return (
                           <div
                             key={item.id}
                             className="grid grid-cols-12 gap-2 px-3 py-3 rounded-lg hover:bg-muted/50 transition-colors items-center"
                           >
-                            <div className="col-span-4">
+                            <div className="col-span-3">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium truncate">{item.name}</span>
                                 {item.frankingPercentage && item.frankingPercentage > 0 && (
@@ -1056,8 +1083,15 @@ function IncomePageContent() {
                               )}
                             </div>
                             <div className="col-span-2">
-                              <span className="font-medium text-green-600">{formatCurrency(item.amount)}</span>
+                              <span className="font-medium">{formatCurrency(item.amount)}</span>
                               {isSalaryWithTax && <span className="text-xs text-muted-foreground block">gross</span>}
+                            </div>
+                            <div className="col-span-2">
+                              {hasActual ? (
+                                <span className="font-medium text-green-600">{formatCurrency(item.actualFromTransactions!)}</span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">No txns</span>
+                              )}
                             </div>
                             <div className="col-span-2">
                               <span className="text-sm capitalize">{item.frequency.toLowerCase()}</span>
@@ -1065,7 +1099,7 @@ function IncomePageContent() {
                             <div className="col-span-2">
                               <span className="text-sm">{formatCurrency(effectiveMonthly)}</span>
                             </div>
-                            <div className="col-span-2 flex justify-end gap-1">
+                            <div className="col-span-1 flex justify-end gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"

@@ -7,16 +7,61 @@ import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq) => {
     try {
-      const income = await prisma.income.findMany({
-        where: { userId: authReq.user!.userId },
-        include: { property: true, investmentAccount: true },
-        orderBy: { createdAt: 'desc' },
-      });
+      const userId = authReq.user!.userId;
 
-      // Apply GRDCS wrapper to each income
+      // Fetch income entries and linked transactions in parallel
+      const [income, linkedTransactions] = await Promise.all([
+        prisma.income.findMany({
+          where: { userId },
+          include: { property: true, investmentAccount: true },
+          orderBy: { createdAt: 'desc' },
+        }),
+        // Phase 30: Fetch transactions linked to income for current month
+        prisma.unifiedTransaction.findMany({
+          where: {
+            userId,
+            incomeId: { not: null },
+            date: {
+              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First of current month
+            },
+          },
+          select: {
+            id: true,
+            date: true,
+            amount: true,
+            direction: true,
+            incomeId: true,
+          },
+        }),
+      ]);
+
+      // Group transactions by incomeId and calculate monthly actuals
+      const actualsByIncomeId = new Map<string, { amount: number; count: number }>();
+      for (const tx of linkedTransactions) {
+        if (tx.incomeId) {
+          const existing = actualsByIncomeId.get(tx.incomeId) || { amount: 0, count: 0 };
+          existing.amount += Math.abs(tx.amount);
+          existing.count += 1;
+          actualsByIncomeId.set(tx.incomeId, existing);
+        }
+      }
+
+      // Apply GRDCS wrapper to each income and add actuals
       const incomeWithLinks = income.map((inc: typeof income[number]) => {
         const links = extractIncomeLinks(inc);
-        return wrapWithGRDCS(inc as Record<string, unknown>, 'income', links);
+        const wrapped = wrapWithGRDCS(inc as Record<string, unknown>, 'income', links);
+
+        // Phase 30: Add actual from transactions
+        const actuals = actualsByIncomeId.get(inc.id);
+        return {
+          ...wrapped,
+          // Budget = entry.amount (what user entered)
+          budgetAmount: inc.amount,
+          // Actual = from transactions if available, null otherwise
+          actualFromTransactions: actuals ? actuals.amount : null,
+          transactionCount: actuals ? actuals.count : 0,
+          hasTransactions: actuals !== undefined,
+        };
       });
 
       return NextResponse.json({
@@ -24,6 +69,7 @@ export async function GET(request: NextRequest) {
         _meta: {
           count: incomeWithLinks.length,
           totalLinkedEntities: incomeWithLinks.reduce((sum: number, i: { _meta: { linkedCount: number } }) => sum + i._meta.linkedCount, 0),
+          currentMonth: new Date().toISOString().slice(0, 7), // YYYY-MM format
         },
       });
     } catch (error) {

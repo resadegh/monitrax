@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link2, Plus, RefreshCw, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package, ArrowRightLeft, TrendingUp } from 'lucide-react';
+import { Link2, Plus, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package, ArrowRightLeft, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
   Dialog,
@@ -59,11 +59,9 @@ interface MatchResult {
   confidence: number;
   amountMatch: boolean;
   amountDiff: number;
-  // Phase 30: Reconciliation fields
+  // Budget vs Actual: Entry amount is budget, transactions provide actual
   propertyId?: string | null;
   budgetedAmount?: number | null;
-  lastReconciled?: Date | null;
-  reconciliationRecommendation?: 'update_amount' | 'link_only' | 'create_new';
   categoryMatch?: boolean;
 }
 
@@ -206,8 +204,7 @@ export function TransactionLinkDialog({
   const [isRecurringInvestment, setIsRecurringInvestment] = useState(false);
   const [investmentFrequency, setInvestmentFrequency] = useState('MONTHLY');
 
-  // Link options
-  const [updateAmountOnLink, setUpdateAmountOnLink] = useState(false);
+  // Link options removed - linking now only tags transactions (budget vs actual model)
 
   // Load matches when dialog opens
   useEffect(() => {
@@ -232,7 +229,6 @@ export function TransactionLinkDialog({
       setInvestmentContributionAccountId(null);
       setIsRecurringInvestment(false);
       setInvestmentFrequency('MONTHLY');
-      setUpdateAmountOnLink(false);
       setSameVendorTransactions([]);
       setSelectedVendorTransactions(new Set());
       setLearnedCategory(null);
@@ -303,7 +299,7 @@ export function TransactionLinkDialog({
     }
   };
 
-  const handleLink = async (targetId: string, type: 'income' | 'expense' | 'loan', shouldUpdateAmount: boolean = false) => {
+  const handleLink = async (targetId: string, type: 'income' | 'expense' | 'loan') => {
     if (!transaction) return;
     setSaving(true);
     setError(null);
@@ -319,7 +315,7 @@ export function TransactionLinkDialog({
           action: 'link',
           type,
           targetId,
-          updateAmount: shouldUpdateAmount,
+          // updateAmount removed - linking only tags transactions (budget vs actual model)
           additionalTransactionIds: Array.from(selectedVendorTransactions),
           learnMerchant,
         }),
@@ -349,33 +345,6 @@ export function TransactionLinkDialog({
     }
   };
 
-  const handleUpdateAmount = async (targetId: string, type: 'income' | 'expense' | 'loan') => {
-    if (!transaction) return;
-    setSaving(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/transactions/${transaction.id}/link`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ action: 'update', type, targetId }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-
-      setSuccess(data.message);
-      onLinked?.();
-      loadMatches(); // Refresh to show updated amounts
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleCreate = async () => {
     if (!transaction || !newName || (!newCategory && !isTransfer && !isInvestmentContribution)) return;
@@ -781,11 +750,7 @@ export function TransactionLinkDialog({
                 suggestedMatches.map((match) => (
                   <div
                     key={match.id}
-                    className={`p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 ${
-                      match.reconciliationRecommendation === 'update_amount'
-                        ? 'border-amber-300 dark:border-amber-700'
-                        : ''
-                    }`}
+                    className="p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -815,35 +780,16 @@ export function TransactionLinkDialog({
                       </div>
                     </div>
 
-                    {/* Reconciliation recommendation */}
-                    {match.reconciliationRecommendation === 'update_amount' && !match.amountMatch && (
-                      <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded text-xs text-amber-700 dark:text-amber-300 mb-2">
-                        <strong>Recommended:</strong> Update amount to match transaction.
-                        {match.budgetedAmount ? ' Current budget will be preserved.' : ` ${formatCurrency(match.amount)} will be saved as budget.`}
-                      </div>
-                    )}
-
                     <div className="flex gap-2 flex-wrap">
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleLink(match.id, match.type, false)}
+                        variant="default"
+                        onClick={() => handleLink(match.id, match.type)}
                         disabled={saving}
                       >
                         <Link2 className="h-3 w-3 mr-1" />
-                        Link Only{selectedVendorTransactions.size > 0 && ` (${selectedVendorTransactions.size + 1})`}
+                        Link{selectedVendorTransactions.size > 0 && ` (${selectedVendorTransactions.size + 1})`}
                       </Button>
-                      {!match.amountMatch && (
-                        <Button
-                          size="sm"
-                          variant={match.reconciliationRecommendation === 'update_amount' ? 'default' : 'outline'}
-                          onClick={() => handleLink(match.id, match.type, true)}
-                          disabled={saving}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Link & Update Amount
-                        </Button>
-                      )}
                     </div>
                   </div>
                 ))
@@ -878,20 +824,11 @@ export function TransactionLinkDialog({
                       <div className="flex gap-2">
                         <Button
                           size="sm"
-                          variant="outline"
-                          onClick={() => handleLink(income.id, 'income', false)}
+                          onClick={() => handleLink(income.id, 'income')}
                           disabled={saving}
                         >
                           <Link2 className="h-3 w-3 mr-1" />
-                          Link Only
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleLink(income.id, 'income', true)}
-                          disabled={saving}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Link & Update
+                          Link
                         </Button>
                       </div>
                     </div>
@@ -928,20 +865,11 @@ export function TransactionLinkDialog({
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleLink(expense.id, 'expense', false)}
+                            onClick={() => handleLink(expense.id, 'expense')}
                             disabled={saving}
                           >
                             <Link2 className="h-3 w-3 mr-1" />
-                            Link Only
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleLink(expense.id, 'expense', true)}
-                            disabled={saving}
-                          >
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            Link & Update
+                            Link
                           </Button>
                         </div>
                       </div>
@@ -977,20 +905,11 @@ export function TransactionLinkDialog({
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleLink(loan.id, 'loan', false)}
+                            onClick={() => handleLink(loan.id, 'loan')}
                             disabled={saving}
                           >
                             <Link2 className="h-3 w-3 mr-1" />
-                            Link Only
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleLink(loan.id, 'loan', true)}
-                            disabled={saving}
-                          >
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            Link & Update
+                            Link
                           </Button>
                         </div>
                       </div>
