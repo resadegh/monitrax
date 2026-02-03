@@ -1490,7 +1490,6 @@ model MerchantMapping {
   confidence            Float     @default(1.0)   // How confident this mapping is
   source                String    @default("RULE") // RULE, USER, AI
   usageCount            Int       @default(0)     // How many times applied
-  userCorrectionCount   Int       @default(0)     // How many times user corrected this mapping
 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -2796,108 +2795,4 @@ model CashflowSummary {
   @@index([userId])
   @@index([generatedAt])
   @@map("cashflow_summaries")
-}
-
-// =============================================================================
-// LEGACY TABLES - Preserved to prevent data loss during migrations
-// These tables exist in the database and contain user data
-// =============================================================================
-
-// Admin authentication (1 row exists)
-model AdminUser {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  password      String?        // Nullable to match existing DB structure
-  name          String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-
-  sessions      AdminSession[]
-
-  @@map("admin_users")
-}
-
-// Admin sessions (1 row exists)
-model AdminSession {
-  id            String    @id @default(uuid())
-  adminUserId   String
-  token         String    @unique
-  expiresAt     DateTime
-  createdAt     DateTime  @default(now())
-
-  adminUser     AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
-
-  @@index([adminUserId])
-  @@index([token])
-  @@map("admin_sessions")
-}
-
-// Import batch tracking (1 row exists)
-model ImportBatch {
-  id            String    @id @default(uuid())
-  userId        String
-  filename      String?
-  status        String    @default("PENDING")
-  totalRows     Int       @default(0)
-  importedRows  Int       @default(0)
-  errorRows     Int       @default(0)
-  errorMessage  String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([userId])
-  @@map("import_batches")
-}
-
-// Organization invitations (1 row exists)
-model OrganizationInvitation {
-  id              String    @id @default(uuid())
-  organizationId  String
-  email           String
-  role            UserRole  @default(VIEWER)
-  invitedBy       String?
-  token           String    @unique
-  status          String    @default("PENDING")
-  expiresAt       DateTime? // Nullable to match existing DB structure
-  acceptedAt      DateTime?
-  createdAt       DateTime  @default(now())
-
-  @@index([organizationId])
-  @@index([email])
-  @@index([token])
-  @@map("organization_invitations")
-}
-
-// Organization portal settings (1 row exists)
-model OrganizationPortalSettings {
-  id              String    @id @default(uuid())
-  organizationId  String    @unique
-  settings        Json?
-  branding        Json?
-  features        Json?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  @@map("organization_portal_settings")
-}
-
-// Transaction review queue (65 rows exist)
-model TransactionReviewQueue {
-  id              String    @id @default(uuid())
-  userId          String
-  transactionId   String?
-  status          String    @default("PENDING")
-  reviewType      String?
-  reviewNotes     String?
-  assignedTo      String?
-  priority        Int       @default(0)
-  metadata        Json?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  reviewedAt      DateTime?
-
-  @@index([userId])
-  @@index([transactionId])
-  @@index([status])
-  @@map("transaction_review_queue")
 }
