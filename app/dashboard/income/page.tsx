@@ -35,7 +35,11 @@ import {
   List,
   ChevronDown,
   ChevronUp,
-  ArrowDownToLine
+  Receipt,
+  BarChart3,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
@@ -905,8 +909,6 @@ function IncomePageContent() {
                 <thead className="bg-muted/50">
                   <tr className="text-left text-xs font-medium text-muted-foreground">
                     <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Frequency</th>
-                    <th className="px-4 py-3 text-right">Budget</th>
                     <th className="px-4 py-3 text-right">Net Monthly</th>
                     <th className="px-4 py-3 text-right">Actual Monthly</th>
                     <th className="px-4 py-3 text-right">Variance</th>
@@ -939,12 +941,8 @@ function IncomePageContent() {
                             {item.property && (
                               <span className="text-blue-500">{item.property.name}</span>
                             )}
+                            <span className="capitalize">{item.frequency.toLowerCase()}</span>
                           </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm capitalize">{item.frequency.toLowerCase()}</td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="font-medium">{formatCurrency(item.amount)}</span>
-                          {isSalaryWithTax && <span className="text-xs text-muted-foreground block">gross</span>}
                         </td>
                         <td className="px-4 py-3 text-right font-medium">{formatCurrency(effectiveMonthly)}</td>
                         <td className="px-4 py-3 text-right">
@@ -965,23 +963,30 @@ function IncomePageContent() {
                           {hasActual ? (
                             <div className="flex items-center justify-end gap-2">
                               <div className={variance >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                <span className="font-medium">
-                                  {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
-                                </span>
-                                <span className="text-xs block">
-                                  {variance >= 0 ? '+' : ''}{variancePercent.toFixed(0)}%
+                                <div className="flex items-center gap-1">
+                                  {variance >= 0 ? (
+                                    <ArrowUpRight className="h-3 w-3" />
+                                  ) : (
+                                    <ArrowDownRight className="h-3 w-3" />
+                                  )}
+                                  <span className="font-medium">
+                                    {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
+                                  </span>
+                                </div>
+                                <span className="text-xs">
+                                  ({variance >= 0 ? '+' : ''}{variancePercent.toFixed(0)}%)
                                 </span>
                               </div>
-                              {/* Show "Assign to Expense" button for negative variance on property income */}
+                              {/* Show "Create Expense" button for negative variance on property income */}
                               {variance < 0 && item.propertyId && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7"
-                                  title="Assign variance to property expense"
+                                  title="Create expense from variance - Track this shortfall as a property expense (tax deductible)"
                                   onClick={() => handleOpenVarianceExpense(item, variance)}
                                 >
-                                  <ArrowDownToLine className="h-4 w-4 text-orange-500" />
+                                  <Receipt className="h-4 w-4 text-orange-500" />
                                 </Button>
                               )}
                             </div>
@@ -991,13 +996,13 @@ function IncomePageContent() {
                         </td>
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetails(item)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="View details" onClick={() => handleViewDetails(item)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(item)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit income" onClick={() => handleEdit(item)}>
                               <Edit2 className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(item.id)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Delete income" onClick={() => handleDelete(item.id)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -1008,7 +1013,7 @@ function IncomePageContent() {
                 </tbody>
                 <tfoot className="bg-muted/30 border-t">
                   <tr className="font-medium">
-                    <td colSpan={3} className="px-4 py-3 text-right">Total:</td>
+                    <td className="px-4 py-3 text-right">Total:</td>
                     <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalNetMonthly)}</td>
                     <td colSpan={3}></td>
                   </tr>
@@ -1048,6 +1053,7 @@ function IncomePageContent() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        title="View details"
                         onClick={() => handleViewDetails(item)}
                       >
                         <Eye className="h-4 w-4" />
@@ -1055,6 +1061,7 @@ function IncomePageContent() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        title="Edit income"
                         onClick={() => handleEdit(item)}
                       >
                         <Edit2 className="h-4 w-4" />
@@ -1062,6 +1069,7 @@ function IncomePageContent() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        title="Delete income"
                         onClick={() => handleDelete(item.id)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -1184,13 +1192,11 @@ function IncomePageContent() {
                     <div className="space-y-2">
                       {/* Table header */}
                       <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
-                        <div className="col-span-3">Name</div>
-                        <div className="col-span-1">Frequency</div>
-                        <div className="col-span-2 text-right">Budget</div>
+                        <div className="col-span-4">Name</div>
                         <div className="col-span-2 text-right">Net Monthly</div>
                         <div className="col-span-2 text-right">Actual Monthly</div>
-                        <div className="col-span-1 text-right">Variance</div>
-                        <div className="col-span-1 text-right">Actions</div>
+                        <div className="col-span-2 text-right">Variance</div>
+                        <div className="col-span-2 text-right">Actions</div>
                       </div>
 
                       {/* Income rows */}
@@ -1211,7 +1217,7 @@ function IncomePageContent() {
                             key={item.id}
                             className="grid grid-cols-12 gap-2 px-3 py-3 rounded-lg hover:bg-muted/50 transition-colors items-center"
                           >
-                            <div className="col-span-3">
+                            <div className="col-span-4">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium truncate">{item.name}</span>
                                 {item.frankingPercentage && item.frankingPercentage > 0 && (
@@ -1220,19 +1226,15 @@ function IncomePageContent() {
                                   </span>
                                 )}
                               </div>
-                              {viewMode === 'type' && item.property && (
-                                <p className="text-xs text-blue-500 truncate">{item.property.name}</p>
-                              )}
-                              {viewMode === 'type' && item.investmentAccount && (
-                                <p className="text-xs text-purple-500 truncate">{item.investmentAccount.name}</p>
-                              )}
-                            </div>
-                            <div className="col-span-1">
-                              <span className="text-sm capitalize">{item.frequency.toLowerCase()}</span>
-                            </div>
-                            <div className="col-span-2 text-right">
-                              <span className="font-medium">{formatCurrency(item.amount)}</span>
-                              {isSalaryWithTax && <span className="text-xs text-muted-foreground block">gross</span>}
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="capitalize">{item.frequency.toLowerCase()}</span>
+                                {viewMode === 'type' && item.property && (
+                                  <span className="text-blue-500">{item.property.name}</span>
+                                )}
+                                {viewMode === 'type' && item.investmentAccount && (
+                                  <span className="text-purple-500">{item.investmentAccount.name}</span>
+                                )}
+                              </div>
                             </div>
                             <div className="col-span-2 text-right">
                               <span className="text-sm font-medium">{formatCurrency(effectiveMonthly)}</span>
@@ -1251,22 +1253,34 @@ function IncomePageContent() {
                                 <span className="text-xs text-muted-foreground">No txns</span>
                               )}
                             </div>
-                            <div className="col-span-1 text-right flex items-center justify-end gap-1">
+                            <div className="col-span-2 text-right flex items-center justify-end gap-1">
                               {hasActual ? (
                                 <>
-                                  <span className={`text-sm font-medium ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {variance >= 0 ? '+' : ''}{variancePercent.toFixed(0)}%
-                                  </span>
-                                  {/* Show "Assign to Expense" button for negative variance on property income */}
+                                  <div className={variance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                    <div className="flex items-center gap-1 justify-end">
+                                      {variance >= 0 ? (
+                                        <ArrowUpRight className="h-3 w-3" />
+                                      ) : (
+                                        <ArrowDownRight className="h-3 w-3" />
+                                      )}
+                                      <span className="text-sm font-medium">
+                                        {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs">
+                                      ({variance >= 0 ? '+' : ''}{variancePercent.toFixed(0)}%)
+                                    </span>
+                                  </div>
+                                  {/* Show "Create Expense" button for negative variance on property income */}
                                   {variance < 0 && item.propertyId && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
                                       className="h-6 w-6"
-                                      title="Assign variance to property expense"
+                                      title="Create expense from variance - Track this shortfall as a property expense (tax deductible)"
                                       onClick={(e) => { e.stopPropagation(); handleOpenVarianceExpense(item, variance); }}
                                     >
-                                      <ArrowDownToLine className="h-3 w-3 text-orange-500" />
+                                      <Receipt className="h-3 w-3 text-orange-500" />
                                     </Button>
                                   )}
                                 </>
@@ -1274,11 +1288,12 @@ function IncomePageContent() {
                                 <span className="text-xs text-muted-foreground">—</span>
                               )}
                             </div>
-                            <div className="col-span-1 flex justify-end gap-1">
+                            <div className="col-span-2 flex justify-end gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
+                                title="View details"
                                 onClick={(e) => { e.stopPropagation(); handleViewDetails(item); }}
                               >
                                 <Eye className="h-4 w-4" />
@@ -1287,6 +1302,7 @@ function IncomePageContent() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
+                                title="Edit income"
                                 onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
                               >
                                 <Edit2 className="h-4 w-4" />
@@ -1295,6 +1311,7 @@ function IncomePageContent() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
+                                title="Delete income"
                                 onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -1721,30 +1738,100 @@ function IncomePageContent() {
               </TabsList>
 
               <TabsContent value="details" className="space-y-4 pt-4">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">
-                        {selectedIncome.type === 'SALARY' && selectedIncome.salaryType === 'NET' ? 'Net Amount' : 'Amount'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedIncome.amount)}</p>
-                      <p className="text-sm text-muted-foreground capitalize">{selectedIncome.frequency.toLowerCase()}</p>
-                    </CardContent>
-                  </Card>
+                {/* Budget vs Actual Performance */}
+                {(() => {
+                  const hasActual = selectedIncome.hasTransactions && selectedIncome.transactionCount && selectedIncome.transactionCount > 0;
+                  const effectiveMonthly = getEffectiveMonthlyAmount(selectedIncome);
+                  const actualMonthly = selectedIncome.monthlyAverageActual || 0;
+                  const variance = hasActual ? actualMonthly - effectiveMonthly : 0;
+                  const variancePercent = hasActual && effectiveMonthly > 0 ? (variance / effectiveMonthly) * 100 : 0;
+                  const isPositive = variance >= 0;
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">Annual Total</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">{formatCurrency(convertToAnnual(selectedIncome.amount, selectedIncome.frequency))}</p>
-                      <p className="text-sm text-muted-foreground">per year</p>
-                    </CardContent>
-                  </Card>
-                </div>
+                  return (
+                    <>
+                      {/* Performance Overview */}
+                      <Card className={hasActual ? (isPositive ? 'border-green-200 bg-green-50/30 dark:bg-green-950/20' : 'border-red-200 bg-red-50/30 dark:bg-red-950/20') : ''}>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4" />
+                            Budget vs Actual Performance
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Expected (Net Monthly)</p>
+                              <p className="text-lg font-bold">{formatCurrency(effectiveMonthly)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Actual (Avg Monthly)</p>
+                              <p className={`text-lg font-bold ${hasActual ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                {hasActual ? formatCurrency(actualMonthly) : '—'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Variance</p>
+                              {hasActual ? (
+                                <div className={isPositive ? 'text-green-600' : 'text-red-600'}>
+                                  <div className="flex items-center gap-1">
+                                    {isPositive ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+                                    <span className="text-lg font-bold">{isPositive ? '+' : ''}{formatCurrency(variance)}</span>
+                                  </div>
+                                  <span className="text-xs">({isPositive ? '+' : ''}{variancePercent.toFixed(1)}%)</span>
+                                </div>
+                              ) : (
+                                <p className="text-lg font-bold text-muted-foreground">—</p>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Transaction Statistics */}
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            Payment Statistics
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {hasActual ? (
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Total Received (All Time)</p>
+                                <p className="text-lg font-semibold text-green-600">{formatCurrency(selectedIncome.actualFromTransactions || 0)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Number of Payments</p>
+                                <p className="text-lg font-semibold">{selectedIncome.transactionCount} transactions</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Average per Payment</p>
+                                <p className="text-lg font-semibold">
+                                  {formatCurrency((selectedIncome.actualFromTransactions || 0) / (selectedIncome.transactionCount || 1))}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">This Month</p>
+                                <p className="text-lg font-semibold">
+                                  {selectedIncome.currentMonthActual ? formatCurrency(selectedIncome.currentMonthActual) : 'No payments yet'}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <p className="text-muted-foreground text-sm">No transactions linked yet</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Link transactions from the Transactions page to track actual income
+                              </p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </>
+                  );
+                })()}
 
                 {/* Salary-specific details */}
                 {selectedIncome.type === 'SALARY' && (
@@ -1821,40 +1908,49 @@ function IncomePageContent() {
                   </Card>
                 )}
 
-                {/* General details */}
+                {/* Income Configuration */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-sm">Income Details</CardTitle>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Info className="h-4 w-4" />
+                      Income Configuration
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Type</span>
-                      <span className="font-medium">{getIncomeTypeBadge(selectedIncome.type)}</span>
-                    </div>
-                    {selectedIncome.type === 'SALARY' && selectedIncome.salaryType && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Salary Type</span>
-                        <Badge variant="outline">{selectedIncome.salaryType}</Badge>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Type</p>
+                        <div className="mt-1">{getIncomeTypeBadge(selectedIncome.type)}</div>
                       </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Source</span>
-                      <div className="flex items-center gap-2">
-                        {getSourceTypeIcon(selectedIncome.sourceType || 'GENERAL')}
-                        <span className="font-medium">{getSourceLabel(selectedIncome)}</span>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Payment Frequency</p>
+                        <p className="font-medium capitalize">{selectedIncome.frequency.toLowerCase()}</p>
                       </div>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Frequency</span>
-                      <span className="font-medium capitalize">{selectedIncome.frequency.toLowerCase()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tax Status</span>
-                      {selectedIncome.isTaxable ? (
-                        <Badge variant="secondary">Taxable</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-green-600">Tax-free</Badge>
-                      )}
+                      <div>
+                        <p className="text-xs text-muted-foreground">Budget Amount ({selectedIncome.frequency.toLowerCase()})</p>
+                        <p className="font-medium">{formatCurrency(selectedIncome.amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Annual Total</p>
+                        <p className="font-medium">{formatCurrency(convertToAnnual(selectedIncome.amount, selectedIncome.frequency))}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Source</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {getSourceTypeIcon(selectedIncome.sourceType || 'GENERAL')}
+                          <span className="font-medium">{getSourceLabel(selectedIncome)}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Tax Status</p>
+                        <div className="mt-1">
+                          {selectedIncome.isTaxable ? (
+                            <Badge variant="secondary">Taxable</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-green-600">Tax-free</Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1922,8 +2018,8 @@ function IncomePageContent() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ArrowDownToLine className="h-5 w-5 text-orange-500" />
-              Assign Variance to Property Expense
+              <Receipt className="h-5 w-5 text-orange-500" />
+              Create Expense from Variance
             </DialogTitle>
             <DialogDescription>
               Create a tax-deductible expense from the income variance for {varianceExpenseIncome?.property?.name || 'this property'}.
