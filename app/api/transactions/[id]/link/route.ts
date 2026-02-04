@@ -1090,16 +1090,37 @@ export async function GET(
             else if (avgInterval <= 120) detectedFrequency = 'QUARTERLY';
             else detectedFrequency = 'ANNUAL';
 
-            // Calculate TRUE monthly average for advance payments (like rent)
-            // Exclude the last payment as it covers a future period
+            // Calculate TRUE monthly average based on payment timing
+            // ADVANCE payments (rent): exclude last payment (covers future period)
+            // ARREARS payments (salary, utilities): include all payments (all completed)
             const firstDate = sortedDates[0];
             const lastDate = sortedDates[sortedDates.length - 1];
             const daysCovered = Math.round((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
             const monthsCovered = daysCovered / 30.44; // Average days per month
 
-            // Sum all amounts EXCEPT the last one (advance payment logic)
-            const sumExcludingLast = sortedTxs.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
-            const trueMonthlyAverage = monthsCovered > 0 ? sumExcludingLast / monthsCovered : avgAmount;
+            // Determine payment timing based on category
+            // RENTAL is typically paid in ADVANCE, everything else is ARREARS
+            const isRentalCategory =
+              transaction.categoryLevel1?.toUpperCase() === 'RENTAL' ||
+              transaction.categoryLevel1?.toUpperCase() === 'RENT' ||
+              learnedCategory?.toUpperCase() === 'RENTAL' ||
+              learnedCategory?.toUpperCase() === 'RENT' ||
+              merchantName?.toLowerCase().includes('rent') ||
+              merchantName?.toLowerCase().includes('trust'); // Property trust accounts
+
+            const paymentTiming = isRentalCategory ? 'ADVANCE' : 'ARREARS';
+
+            // Calculate sum based on payment timing
+            let sumForAverage: number;
+            if (paymentTiming === 'ADVANCE') {
+              // Exclude last payment (covers future period)
+              sumForAverage = sortedTxs.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
+            } else {
+              // Include all payments (all cover completed periods)
+              sumForAverage = amounts.reduce((sum, a) => sum + a, 0);
+            }
+
+            const trueMonthlyAverage = monthsCovered > 0 ? sumForAverage / monthsCovered : avgAmount;
 
             transactionPattern = {
               count: recentTxs.length,
@@ -1109,8 +1130,9 @@ export async function GET(
               // New fields for accurate monthly calculation
               trueMonthlyAverage: Math.round(trueMonthlyAverage * 100) / 100,
               totalAmount: amounts.reduce((sum, a) => sum + a, 0),
-              sumExcludingLast: Math.round(sumExcludingLast * 100) / 100,
+              sumForAverage: Math.round(sumForAverage * 100) / 100,
               monthsCovered: Math.round(monthsCovered * 100) / 100,
+              paymentTiming, // 'ADVANCE' or 'ARREARS'
               dateRange: {
                 first: sortedDates[0],
                 last: sortedDates[sortedDates.length - 1],

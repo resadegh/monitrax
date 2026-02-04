@@ -70,11 +70,12 @@ interface TransactionPattern {
   detectedFrequency: string;
   averageAmount: number;
   averageIntervalDays: number;
-  // New fields for accurate monthly calculation (advance payment logic)
+  // New fields for accurate monthly calculation
   trueMonthlyAverage?: number;
   totalAmount?: number;
-  sumExcludingLast?: number;
+  sumForAverage?: number;
   monthsCovered?: number;
+  paymentTiming?: 'ADVANCE' | 'ARREARS'; // ADVANCE = rent (exclude last), ARREARS = salary (include all)
   dateRange: {
     first: string;
     last: string;
@@ -743,14 +744,20 @@ export function TransactionLinkDialog({
                   </p>
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                     {transactionPattern.count} transactions over {transactionPattern.monthsCovered?.toFixed(1) || '?'} months
+                    {transactionPattern.paymentTiming === 'ADVANCE' && ' (paid in advance)'}
                   </p>
                   <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mt-1">
                     Monthly Average: {formatCurrency(transactionPattern.trueMonthlyAverage || transactionPattern.averageAmount)}
                   </p>
+                  {transactionPattern.paymentTiming === 'ADVANCE' && (
+                    <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                      (Last payment excluded - covers future period)
+                    </p>
+                  )}
                   {transactionPattern.trueMonthlyAverage && transactionPattern.averageAmount &&
                    Math.abs(transactionPattern.trueMonthlyAverage - transactionPattern.averageAmount) > 100 && (
                     <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
-                      (Amounts vary: property costs may be deducted)
+                      (Amounts vary: fees or costs may be deducted)
                     </p>
                   )}
                 </div>
