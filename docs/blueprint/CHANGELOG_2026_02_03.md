@@ -491,4 +491,80 @@ This ensures:
 
 ---
 
+### Fix: Payment Timing Awareness for Monthly Average
+
+> **Status: FIXED** (February 4, 2026)
+
+**Problem:** The initial implementation always excluded the last payment (ADVANCE logic), which was incorrect for items paid in arrears like salary and utilities.
+
+**Solution:** Payment timing is now category-aware:
+
+| Payment Type | Categories | Calculation |
+|--------------|------------|-------------|
+| **ADVANCE** | Rent, Property Trust | Exclude last payment (covers future period) |
+| **ARREARS** | Salary, Utilities, Insurance | Include all payments (all completed) |
+
+**Detection Logic:**
+```typescript
+const isRentalCategory =
+  transaction.categoryLevel1?.toUpperCase() === 'RENTAL' ||
+  transaction.categoryLevel1?.toUpperCase() === 'RENT' ||
+  learnedCategory?.toUpperCase() === 'RENTAL' ||
+  merchantName?.toLowerCase().includes('rent') ||
+  merchantName?.toLowerCase().includes('trust');
+
+const paymentTiming = isRentalCategory ? 'ADVANCE' : 'ARREARS';
+```
+
+**Files Modified:**
+
+**app/api/transactions/[id]/link/route.ts**
+- Added `isRentalCategory` detection based on category and merchant name
+- Added `paymentTiming` field to pattern detection ('ADVANCE' or 'ARREARS')
+- ADVANCE: `sumForAverage = sortedTxs.slice(0, -1).reduce(...)`
+- ARREARS: `sumForAverage = amounts.reduce(...)`
+
+**components/transactions/TransactionLinkDialog.tsx**
+- Updated `TransactionPattern` interface with `paymentTiming` field
+- UI shows "(paid in advance)" for ADVANCE payments
+- UI shows "(Last payment excluded - covers future period)" for ADVANCE
+
+**UI Display Examples:**
+
+For Rental (ADVANCE):
+```
+Pattern Detected
+6 transactions over 2.3 months (paid in advance)
+Monthly Average: $5,610
+(Last payment excluded - covers future period)
+```
+
+For Salary (ARREARS):
+```
+Pattern Detected
+3 transactions over 3.0 months
+Monthly Average: $5,000
+```
+
+**Impact:**
+- Salary averages now correctly include all payments
+- Utility bills correctly include all payments
+- Only rental/property income excludes the last payment
+- More accurate monthly averages for budgeting
+
+---
+
+## Commits Summary (February 3-4, 2026)
+
+```
+2b94f6b fix: Use correct payment timing for monthly average calculation
+d69faf2 docs: Update documentation for Budget vs Actual feature
+c532903 fix: Remove prisma db push from build to prevent data loss
+88d157e fix: Calculate true monthly average for advance payments
+e4b7a86 fix: Remove remaining reconciliationRecommendation reference
+23ae8a2 feat: Implement budget vs actual tracking from transactions
+```
+
+---
+
 **END OF CHANGELOG — 2026-02-03**
