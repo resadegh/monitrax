@@ -196,6 +196,7 @@ If logic appears twice, it must become:
 | Logic Type | Location | Functions |
 |------------|----------|-----------|
 | **ALL FINANCIAL DATA** | `lib/services/masterFinancialService.ts` | `getMasterFinancialSnapshot()` |
+| **Budget vs Actual** | `lib/services/masterFinancialService.ts` | `calculateActualFromTransactions()`, `getMonthlyActualsMap()` |
 | Currency formatting | `lib/utils/formatters.ts` | `formatCurrency()` |
 | Frequency conversion | `lib/utils/frequencies.ts` | `toAnnual()`, `toMonthly()`, `periodsPerYear()` |
 | Ownership validation | `lib/utils/ownership.ts` | `verifyOwnership()`, `verifyRelatedOwnership()` |

@@ -167,7 +167,7 @@ Every API response follows a standardised format:
 | **10** | Auth & Security | ✅ Complete | MFA, passkeys, session management, audit logging |
 | **11** | AI Strategy Engine | ✅ Complete | Recommendations, forecasting, conflict resolution |
 | **12** | Financial Health Engine | ✅ Complete | Health scores, category scoring, risk modelling |
-| **13** | Transactional Intelligence | ✅ Complete | Transaction records, category inference |
+| **13** | Transactional Intelligence | ✅ Complete | Transaction records, category inference, Budget vs Actual tracking (Feb 2026) |
 | **14** | Cashflow Optimisation | ✅ Complete | Forecasting, stress testing, optimisation |
 | **16** | Reporting & Integrations | ✅ Complete | Report generators, CSV/Excel/JSON exporters |
 | **17** | Personal CFO Engine | ✅ Complete | CFO Score, Risk Radar, Action Engine |
@@ -270,6 +270,12 @@ Every API response follows a standardised format:
 - Investment account linking
 - Frequency normalisation
 
+**Budget vs Actual Tracking (Feb 2026):**
+- Entry amount = Budget (user's planned amount)
+- Actual = Calculated from linked transactions in real-time
+- UI shows both Budget and Actual columns with variance %
+- True monthly average calculation for advance payments (e.g., rent)
+
 **Phase 20 Enhancements (Planned):**
 - Gross/Net salary with automatic PAYG calculation
 - Superannuation tracking (SG, salary sacrifice)
@@ -285,6 +291,12 @@ Every API response follows a standardised format:
 - Property/loan/investment linking
 - Essential vs discretionary
 - Receipt attachments (Phase 19.1)
+
+**Budget vs Actual Tracking (Feb 2026):**
+- Entry amount = Budget (user's planned amount)
+- Actual = Calculated from linked transactions in real-time
+- UI shows both Budget and Actual columns with variance %
+- Transaction linking = tagging only (no amount auto-update)
 
 **UI Features (2025-12-01):**
 - Grouped view by category or property
