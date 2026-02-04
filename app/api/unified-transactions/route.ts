@@ -73,12 +73,14 @@ export async function GET(request: NextRequest) {
       if (excludeTransfers === 'true') where.isTransfer = { not: true };
       if (direction) where.direction = direction;
 
-      // Uncategorized filter: no income/expense/loan link and not a transfer
+      // Uncategorized filter: transactions available for categorization
+      // Must have no links (income/expense/loan), not be a transfer, not be investment contribution
       if (uncategorized === 'true') {
         where.incomeId = null;
         where.expenseId = null;
         where.loanId = null;
-        where.isTransfer = false;
+        where.isTransfer = { not: true }; // false or null
+        where.isInvestmentContribution = { not: true }; // false or null
       }
 
       if (startDate || endDate) {
