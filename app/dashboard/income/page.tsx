@@ -34,7 +34,8 @@ import {
   LayoutGrid,
   List,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ArrowDownToLine
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
@@ -184,6 +185,23 @@ function IncomePageContent() {
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
 
+  // Variance to Expense state
+  const [showVarianceExpenseDialog, setShowVarianceExpenseDialog] = useState(false);
+  const [varianceExpenseIncome, setVarianceExpenseIncome] = useState<Income | null>(null);
+  const [varianceExpenseAmount, setVarianceExpenseAmount] = useState(0);
+  const [expenseCategories, setExpenseCategories] = useState<Array<{
+    id: string;
+    code: string;
+    name: string;
+    isSystem: boolean;
+  }>>([]);
+  const [varianceExpenseForm, setVarianceExpenseForm] = useState({
+    name: '',
+    category: 'MAINTENANCE',
+    customCategoryName: '',
+    isCreatingCustom: false,
+  });
+
   // Handle auto-fill from document analysis
   const handleFieldsExtracted = (mappings: Record<string, FieldMapping>) => {
     const filledFields: string[] = [];
@@ -225,6 +243,7 @@ function IncomePageContent() {
       loadIncome();
       loadProperties();
       loadInvestmentAccounts();
+      loadExpenseCategories();
     }
   }, [token]);
 
@@ -322,6 +341,105 @@ function IncomePageContent() {
       }
     } catch (error) {
       console.error('Error loading investment accounts:', error);
+    }
+  };
+
+  const loadExpenseCategories = async () => {
+    try {
+      const response = await fetch('/api/categories?type=EXPENSE', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setExpenseCategories(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading expense categories:', error);
+    }
+  };
+
+  // Open variance expense dialog
+  const handleOpenVarianceExpense = (item: Income, variance: number) => {
+    const propertyName = item.property?.name || 'Property';
+    const currentMonth = new Date().toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+    setVarianceExpenseIncome(item);
+    setVarianceExpenseAmount(Math.abs(variance));
+    setVarianceExpenseForm({
+      name: `Management Fee - ${propertyName} - ${currentMonth}`,
+      category: 'MAINTENANCE',
+      customCategoryName: '',
+      isCreatingCustom: false,
+    });
+    setShowVarianceExpenseDialog(true);
+  };
+
+  // Create expense from variance
+  const handleCreateVarianceExpense = async () => {
+    if (!varianceExpenseIncome || !token) return;
+
+    try {
+      let categoryToUse = varianceExpenseForm.category;
+      let customCategoryId: string | null = null;
+
+      // If creating a custom category, create it first
+      if (varianceExpenseForm.isCreatingCustom && varianceExpenseForm.customCategoryName) {
+        const categoryResponse = await fetch('/api/categories', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: varianceExpenseForm.customCategoryName,
+            type: 'EXPENSE',
+          }),
+        });
+
+        if (categoryResponse.ok) {
+          const categoryResult = await categoryResponse.json();
+          customCategoryId = categoryResult.data?.id;
+          categoryToUse = 'OTHER'; // Use OTHER as the system category when custom is selected
+          // Reload categories for future use
+          loadExpenseCategories();
+        } else {
+          console.error('Failed to create custom category');
+          return;
+        }
+      }
+
+      // Create the expense
+      const expenseData = {
+        name: varianceExpenseForm.name,
+        category: categoryToUse,
+        customCategoryId,
+        amount: varianceExpenseAmount,
+        frequency: 'MONTHLY',
+        sourceType: 'PROPERTY',
+        propertyId: varianceExpenseIncome.propertyId,
+        isTaxDeductible: true,
+        isEssential: false,
+        isRecurring: false, // One-time expense for this variance
+      };
+
+      const response = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(expenseData),
+      });
+
+      if (response.ok) {
+        setShowVarianceExpenseDialog(false);
+        setVarianceExpenseIncome(null);
+        // Show success or navigate to expenses
+        alert(`Expense "${varianceExpenseForm.name}" created successfully for ${formatCurrency(varianceExpenseAmount)}`);
+      } else {
+        console.error('Failed to create expense');
+      }
+    } catch (error) {
+      console.error('Error creating variance expense:', error);
     }
   };
 
@@ -787,12 +905,11 @@ function IncomePageContent() {
                 <thead className="bg-muted/50">
                   <tr className="text-left text-xs font-medium text-muted-foreground">
                     <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Source</th>
-                    <th className="px-4 py-3 text-right">Budget</th>
-                    <th className="px-4 py-3 text-right">Actual</th>
                     <th className="px-4 py-3">Frequency</th>
+                    <th className="px-4 py-3 text-right">Budget</th>
                     <th className="px-4 py-3 text-right">Net Monthly</th>
+                    <th className="px-4 py-3 text-right">Actual Monthly</th>
+                    <th className="px-4 py-3 text-right">Variance</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -803,11 +920,11 @@ function IncomePageContent() {
                     const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;
                     // Phase 30: Budget vs Actual - use monthly average for comparison
                     const hasActual = item.hasTransactions && item.transactionCount && item.transactionCount > 0;
-                    const actualMonthly = item.monthlyAverageActual || item.actualFromTransactions || 0;
-                    const budgetMonthly = convertToMonthly(item.amount, item.frequency);
-                    const variance = hasActual ? actualMonthly - budgetMonthly : 0;
-                    const variancePercent = hasActual && budgetMonthly > 0
-                      ? (variance / budgetMonthly) * 100
+                    const actualMonthly = item.monthlyAverageActual || 0;
+                    // Variance = Actual - Net Monthly (positive = above budget, negative = below)
+                    const variance = hasActual ? actualMonthly - effectiveMonthly : 0;
+                    const variancePercent = hasActual && effectiveMonthly > 0
+                      ? (variance / effectiveMonthly) * 100
                       : 0;
                     return (
                       <tr
@@ -817,46 +934,61 @@ function IncomePageContent() {
                       >
                         <td className="px-4 py-3">
                           <div className="font-medium">{item.name}</div>
-                          {item.frankingPercentage && item.frankingPercentage > 0 && (
-                            <div className="text-xs text-emerald-600">{item.frankingPercentage}% Franked</div>
-                          )}
-                          {isSalaryWithTax && (
-                            <div className="text-xs text-muted-foreground">After tax</div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">{getIncomeTypeBadge(item.type)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {getSourceTypeIcon(item.sourceType || 'GENERAL')}
-                            <span className="text-sm">{getSourceLabel(item)}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {getIncomeTypeBadge(item.type)}
+                            {item.property && (
+                              <span className="text-blue-500">{item.property.name}</span>
+                            )}
                           </div>
                         </td>
+                        <td className="px-4 py-3 text-sm capitalize">{item.frequency.toLowerCase()}</td>
                         <td className="px-4 py-3 text-right">
                           <span className="font-medium">{formatCurrency(item.amount)}</span>
                           {isSalaryWithTax && <span className="text-xs text-muted-foreground block">gross</span>}
-                          <span className="text-xs text-muted-foreground block capitalize">{item.frequency.toLowerCase()}</span>
                         </td>
+                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(effectiveMonthly)}</td>
                         <td className="px-4 py-3 text-right">
                           {hasActual ? (
                             <div>
                               <span className="font-medium text-green-600">
-                                {formatCurrency(item.monthlyAverageActual || item.actualFromTransactions!)}
+                                {formatCurrency(actualMonthly)}
                               </span>
                               <span className="text-xs text-muted-foreground block">
-                                {item.transactionCount} txns{item.monthlyAverageActual ? ' (avg/mo)' : ''}
+                                {item.transactionCount} txns
                               </span>
-                              {Math.abs(variancePercent) > 5 && (
-                                <span className={`text-xs block ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No txns</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          {hasActual ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <div className={variance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                <span className="font-medium">
+                                  {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
+                                </span>
+                                <span className="text-xs block">
                                   {variance >= 0 ? '+' : ''}{variancePercent.toFixed(0)}%
                                 </span>
+                              </div>
+                              {/* Show "Assign to Expense" button for negative variance on property income */}
+                              {variance < 0 && item.propertyId && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  title="Assign variance to property expense"
+                                  onClick={() => handleOpenVarianceExpense(item, variance)}
+                                >
+                                  <ArrowDownToLine className="h-4 w-4 text-orange-500" />
+                                </Button>
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-muted-foreground">No transactions</span>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm capitalize">{item.frequency.toLowerCase()}</td>
-                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(effectiveMonthly)}</td>
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleViewDetails(item)}>
@@ -876,9 +1008,9 @@ function IncomePageContent() {
                 </tbody>
                 <tfoot className="bg-muted/30 border-t">
                   <tr className="font-medium">
-                    <td colSpan={6} className="px-4 py-3 text-right">Net Total:</td>
+                    <td colSpan={3} className="px-4 py-3 text-right">Total:</td>
                     <td className="px-4 py-3 text-right text-green-600">{formatCurrency(totalNetMonthly)}</td>
-                    <td></td>
+                    <td colSpan={3}></td>
                   </tr>
                 </tfoot>
               </table>
@@ -1053,10 +1185,11 @@ function IncomePageContent() {
                       {/* Table header */}
                       <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
                         <div className="col-span-3">Name</div>
-                        <div className="col-span-2">Budget</div>
-                        <div className="col-span-2">Actual</div>
-                        <div className="col-span-2">Frequency</div>
-                        <div className="col-span-2">Net Monthly</div>
+                        <div className="col-span-1">Frequency</div>
+                        <div className="col-span-2 text-right">Budget</div>
+                        <div className="col-span-2 text-right">Net Monthly</div>
+                        <div className="col-span-2 text-right">Actual Monthly</div>
+                        <div className="col-span-1 text-right">Variance</div>
                         <div className="col-span-1 text-right">Actions</div>
                       </div>
 
@@ -1067,6 +1200,12 @@ function IncomePageContent() {
                         const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;
                         // Phase 30: Budget vs Actual - use monthly average
                         const hasActual = item.hasTransactions && item.transactionCount && item.transactionCount > 0;
+                        const actualMonthly = item.monthlyAverageActual || 0;
+                        // Variance = Actual - Net Monthly
+                        const variance = hasActual ? actualMonthly - effectiveMonthly : 0;
+                        const variancePercent = hasActual && effectiveMonthly > 0
+                          ? (variance / effectiveMonthly) * 100
+                          : 0;
                         return (
                           <div
                             key={item.id}
@@ -1080,9 +1219,6 @@ function IncomePageContent() {
                                     <Percent className="h-3 w-3 text-emerald-500 flex-shrink-0" />
                                   </span>
                                 )}
-                                {isSalaryWithTax && (
-                                  <span className="text-xs text-muted-foreground">(after tax)</span>
-                                )}
                               </div>
                               {viewMode === 'type' && item.property && (
                                 <p className="text-xs text-blue-500 truncate">{item.property.name}</p>
@@ -1091,15 +1227,21 @@ function IncomePageContent() {
                                 <p className="text-xs text-purple-500 truncate">{item.investmentAccount.name}</p>
                               )}
                             </div>
-                            <div className="col-span-2">
+                            <div className="col-span-1">
+                              <span className="text-sm capitalize">{item.frequency.toLowerCase()}</span>
+                            </div>
+                            <div className="col-span-2 text-right">
                               <span className="font-medium">{formatCurrency(item.amount)}</span>
                               {isSalaryWithTax && <span className="text-xs text-muted-foreground block">gross</span>}
                             </div>
-                            <div className="col-span-2">
+                            <div className="col-span-2 text-right">
+                              <span className="text-sm font-medium">{formatCurrency(effectiveMonthly)}</span>
+                            </div>
+                            <div className="col-span-2 text-right">
                               {hasActual ? (
                                 <div>
                                   <span className="font-medium text-green-600">
-                                    {formatCurrency(item.monthlyAverageActual || item.actualFromTransactions!)}
+                                    {formatCurrency(actualMonthly)}
                                   </span>
                                   <span className="text-xs text-muted-foreground block">
                                     {item.transactionCount} txns
@@ -1109,11 +1251,28 @@ function IncomePageContent() {
                                 <span className="text-xs text-muted-foreground">No txns</span>
                               )}
                             </div>
-                            <div className="col-span-2">
-                              <span className="text-sm capitalize">{item.frequency.toLowerCase()}</span>
-                            </div>
-                            <div className="col-span-2">
-                              <span className="text-sm">{formatCurrency(effectiveMonthly)}</span>
+                            <div className="col-span-1 text-right flex items-center justify-end gap-1">
+                              {hasActual ? (
+                                <>
+                                  <span className={`text-sm font-medium ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {variance >= 0 ? '+' : ''}{variancePercent.toFixed(0)}%
+                                  </span>
+                                  {/* Show "Assign to Expense" button for negative variance on property income */}
+                                  {variance < 0 && item.propertyId && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      title="Assign variance to property expense"
+                                      onClick={(e) => { e.stopPropagation(); handleOpenVarianceExpense(item, variance); }}
+                                    >
+                                      <ArrowDownToLine className="h-3 w-3 text-orange-500" />
+                                    </Button>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
                             </div>
                             <div className="col-span-1 flex justify-end gap-1">
                               <Button
@@ -1753,6 +1912,136 @@ function IncomePageContent() {
             <Button onClick={() => { setShowDetailDialog(false); if (selectedIncome) handleEdit(selectedIncome); }}>
               <Edit2 className="h-4 w-4 mr-2" />
               Edit Income
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Variance to Expense Dialog */}
+      <Dialog open={showVarianceExpenseDialog} onOpenChange={setShowVarianceExpenseDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowDownToLine className="h-5 w-5 text-orange-500" />
+              Assign Variance to Property Expense
+            </DialogTitle>
+            <DialogDescription>
+              Create a tax-deductible expense from the income variance for {varianceExpenseIncome?.property?.name || 'this property'}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Summary */}
+            <Card className="bg-muted/50">
+              <CardContent className="pt-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Property</p>
+                    <p className="font-medium">{varianceExpenseIncome?.property?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Variance Amount</p>
+                    <p className="font-medium text-red-600">{formatCurrency(varianceExpenseAmount)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Expense Name */}
+            <div className="space-y-2">
+              <Label htmlFor="varianceExpenseName">Expense Name</Label>
+              <Input
+                id="varianceExpenseName"
+                value={varianceExpenseForm.name}
+                onChange={(e) => setVarianceExpenseForm({ ...varianceExpenseForm, name: e.target.value })}
+                placeholder="e.g., Management Fee - Property Name"
+              />
+            </div>
+
+            {/* Category Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="varianceExpenseCategory">Category</Label>
+              {!varianceExpenseForm.isCreatingCustom ? (
+                <div className="space-y-2">
+                  <Select
+                    value={varianceExpenseForm.category}
+                    onValueChange={(value) => {
+                      if (value === 'CREATE_CUSTOM') {
+                        setVarianceExpenseForm({ ...varianceExpenseForm, isCreatingCustom: true });
+                      } else {
+                        setVarianceExpenseForm({ ...varianceExpenseForm, category: value });
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="varianceExpenseCategory">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Common property expense categories */}
+                      <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                      <SelectItem value="INSURANCE">Insurance</SelectItem>
+                      <SelectItem value="RATES">Rates & Taxes</SelectItem>
+                      <SelectItem value="STRATA">Strata / Body Corporate</SelectItem>
+                      <SelectItem value="LAND_TAX">Land Tax</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                      <Separator className="my-1" />
+                      {/* Custom categories */}
+                      {expenseCategories
+                        .filter(cat => !cat.isSystem)
+                        .map(cat => (
+                          <SelectItem key={cat.id} value={cat.code}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      <Separator className="my-1" />
+                      <SelectItem value="CREATE_CUSTOM">
+                        <span className="flex items-center gap-2 text-blue-600">
+                          <Plus className="h-3 w-3" />
+                          Create Custom Category
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    value={varianceExpenseForm.customCategoryName}
+                    onChange={(e) => setVarianceExpenseForm({ ...varianceExpenseForm, customCategoryName: e.target.value })}
+                    placeholder="Enter custom category name"
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setVarianceExpenseForm({ ...varianceExpenseForm, isCreatingCustom: false, customCategoryName: '' })}
+                  >
+                    Cancel - use existing category
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Tax Deductible Notice */}
+            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+              <Info className="h-4 w-4 text-green-600" />
+              <p className="text-sm text-green-700 dark:text-green-400">
+                This expense will be automatically marked as <strong>tax deductible</strong> and linked to the property.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowVarianceExpenseDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateVarianceExpense}
+              disabled={!varianceExpenseForm.name || (varianceExpenseForm.isCreatingCustom && !varianceExpenseForm.customCategoryName)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Expense
             </Button>
           </div>
         </DialogContent>
