@@ -1152,13 +1152,22 @@ export async function GET(
           const amountDiffPercent = effectiveAmount > 0 ? amountDiff / effectiveAmount : 1;
           const amountMatch = amountDiff < 1 || amountDiffPercent < 0.05;
 
-          if (similarity > 0.3 || amountMatch) {
-            // Phase 30: Determine reconciliation recommendation
-            let reconciliationRecommendation: 'update_amount' | 'link_only' | 'create_new' = 'link_only';
-            if (amountDiffPercent > 0.05 && amountDiffPercent <= 0.50) {
-              reconciliationRecommendation = 'update_amount';
-            } else if (amountDiffPercent > 0.50) {
-              reconciliationRecommendation = 'create_new';
+          // Check if the income type matches the predicted/learned category
+          // This helps match "Cienna Pm Trust Rent Payment" to "Thornlands Rent" (both RENTAL)
+          const mappedIncomeCategory = learnedCategory || transaction.categoryLevel1;
+          const categoryMatch = Boolean(
+            mappedIncomeCategory &&
+            (income.type?.toUpperCase() === mappedIncomeCategory.toUpperCase() ||
+             (mappedIncomeCategory.toUpperCase() === 'RENTAL' && income.type?.toUpperCase() === 'RENTAL') ||
+             (mappedIncomeCategory.toUpperCase() === 'RENT' && income.type?.toUpperCase() === 'RENTAL'))
+          );
+
+          // Include if name matches, amount matches, OR category matches (same as expenses)
+          if (similarity > 0.3 || amountMatch || categoryMatch) {
+            // Boost confidence for category matches
+            let confidence = similarity * (amountMatch ? 1.5 : 1);
+            if (categoryMatch) {
+              confidence += 0.5; // Boost for matching predicted category
             }
 
             matches.push({
@@ -1168,13 +1177,13 @@ export async function GET(
               category: income.type,
               amount: effectiveAmount,
               frequency: income.frequency,
-              confidence: similarity * (amountMatch ? 1.5 : 1),
+              confidence,
               amountMatch,
               amountDiff,
               propertyId: income.propertyId,
               budgetedAmount: income.budgetedAmount,
               lastReconciled: income.lastReconciled,
-              reconciliationRecommendation,
+              categoryMatch,
             });
           }
         }
