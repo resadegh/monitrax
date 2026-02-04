@@ -61,6 +61,7 @@ interface MatchResult {
   amountDiff: number;
   // Budget vs Actual: Entry amount is budget, transactions provide actual
   propertyId?: string | null;
+  propertyName?: string | null;
   budgetedAmount?: number | null;
   categoryMatch?: boolean;
 }
@@ -770,11 +771,21 @@ export function TransactionLinkDialog({
                 suggestedMatches.map((match) => (
                   <div
                     key={match.id}
-                    className="p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className={`p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                      match.propertyName ? 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20' : ''
+                    }`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="font-medium">{match.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{match.name}</p>
+                          {match.propertyName && (
+                            <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-blue-300">
+                              <Home className="h-3 w-3 mr-1" />
+                              {match.propertyName}
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Badge variant="outline">{match.category}</Badge>
                           <span>{match.frequency}</span>
