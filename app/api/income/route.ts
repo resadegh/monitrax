@@ -80,16 +80,39 @@ export async function GET(request: NextRequest) {
         // Phase 30: Add actual from transactions
         const actuals = actualsByIncomeId.get(inc.id);
 
-        // Calculate monthly average from all transactions
+        // Calculate monthly average from transactions
+        // Payment timing matters:
+        // - ADVANCE (rent): Last payment covers future period, exclude from average
+        // - ARREARS (salary, etc.): All payments cover completed periods, include all
         let monthlyAverage = null;
         if (actuals && actuals.transactions.length >= 2) {
           const sortedTx = actuals.transactions.sort((a, b) => a.date.getTime() - b.date.getTime());
-          const firstDate = sortedTx[0].date;
-          const lastDate = sortedTx[sortedTx.length - 1].date;
-          const daysCovered = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
-          const monthsCovered = daysCovered / 30.44;
-          if (monthsCovered > 0) {
-            monthlyAverage = actuals.totalAmount / monthsCovered;
+
+          // Determine payment timing based on income type
+          // RENTAL income is typically paid in ADVANCE
+          const isRentalIncome = inc.type === 'RENTAL' || inc.type === 'RENT' || inc.propertyId;
+          const paymentTiming = isRentalIncome ? 'ADVANCE' : 'ARREARS';
+
+          if (paymentTiming === 'ADVANCE') {
+            // For ADVANCE payments (rent): exclude last payment (covers future)
+            // Each payment covers the period AFTER it was received
+            // So we count completed months = number of payments minus the most recent one
+            const completedPayments = sortedTx.slice(0, -1); // Exclude last payment
+            if (completedPayments.length > 0) {
+              const sumForAverage = completedPayments.reduce((sum, tx) => sum + tx.amount, 0);
+              // Each payment represents one month (assuming monthly rent)
+              monthlyAverage = sumForAverage / completedPayments.length;
+            }
+          } else {
+            // For ARREARS payments (salary, etc.): include all payments
+            // Calculate based on actual date range covered
+            const firstDate = sortedTx[0].date;
+            const lastDate = sortedTx[sortedTx.length - 1].date;
+            const daysCovered = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+            const monthsCovered = daysCovered / 30.44;
+            if (monthsCovered > 0) {
+              monthlyAverage = actuals.totalAmount / monthsCovered;
+            }
           }
         }
 
