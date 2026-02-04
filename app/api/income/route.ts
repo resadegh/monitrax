@@ -80,7 +80,10 @@ export async function GET(request: NextRequest) {
         // Phase 30: Add actual from transactions
         const actuals = actualsByIncomeId.get(inc.id);
 
-        // Calculate monthly average from transactions
+        // Calculate monthly average from transactions using DAYS-BASED approach
+        // This provides accurate averages regardless of how payments fall across calendar months
+        // Formula: (sum / totalDaysCovered) * 30.44 = monthly average
+        //
         // Payment timing matters:
         // - ADVANCE (rent): Last payment covers future period, exclude from average
         // - ARREARS (salary, etc.): All payments cover completed periods, include all
@@ -94,24 +97,29 @@ export async function GET(request: NextRequest) {
           const paymentTiming = isRentalIncome ? 'ADVANCE' : 'ARREARS';
 
           if (paymentTiming === 'ADVANCE') {
-            // For ADVANCE payments (rent): exclude last payment (covers future)
-            // Calculate monthly average by counting CALENDAR MONTHS with payments
-            // This handles weekly/fortnightly rent correctly (multiple payments per month)
+            // For ADVANCE payments (rent): exclude last payment (covers future period)
+            // Calculate days-based average for accurate monthly figure
             const completedPayments = sortedTx.slice(0, -1); // Exclude last payment
-            if (completedPayments.length > 0) {
+            if (completedPayments.length >= 1) {
               const sumForAverage = completedPayments.reduce((sum, tx) => sum + tx.amount, 0);
+              const firstDate = completedPayments[0].date;
+              const lastCompletedDate = completedPayments[completedPayments.length - 1].date;
 
-              // Count distinct calendar months (YYYY-MM format)
-              const distinctMonths = new Set(
-                completedPayments.map(tx => {
-                  const d = new Date(tx.date);
-                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                })
-              );
-              const monthCount = distinctMonths.size;
+              if (completedPayments.length === 1) {
+                // Single completed payment - assume it represents one month
+                monthlyAverage = sumForAverage;
+              } else {
+                // Multiple payments: calculate based on actual days
+                const daysSpan = Math.max(1, (lastCompletedDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
 
-              if (monthCount > 0) {
-                monthlyAverage = sumForAverage / monthCount;
+                // Calculate average payment interval to account for period covered by last completed payment
+                const avgPaymentInterval = daysSpan / (completedPayments.length - 1);
+
+                // Total days covered = span + one interval (for period the last completed payment covers)
+                const totalDaysCovered = daysSpan + avgPaymentInterval;
+
+                // Monthly average = (sum / days) * 30.44 (average days per month)
+                monthlyAverage = (sumForAverage / totalDaysCovered) * 30.44;
               }
             }
           } else {
@@ -120,9 +128,10 @@ export async function GET(request: NextRequest) {
             const firstDate = sortedTx[0].date;
             const lastDate = sortedTx[sortedTx.length - 1].date;
             const daysCovered = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
-            const monthsCovered = daysCovered / 30.44;
-            if (monthsCovered > 0) {
-              monthlyAverage = actuals.totalAmount / monthsCovered;
+
+            // Monthly average = (sum / days) * 30.44
+            if (daysCovered > 0) {
+              monthlyAverage = (actuals.totalAmount / daysCovered) * 30.44;
             }
           }
         }
