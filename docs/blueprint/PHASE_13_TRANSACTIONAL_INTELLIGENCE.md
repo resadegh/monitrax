@@ -1873,30 +1873,40 @@ model Income {
 }
 ```
 
-### 13.21.3 True Monthly Average Calculation
+### 13.21.3 True Monthly Average Calculation (Payment Timing Aware)
 
-For advance payments (like rent), the system calculates accurate monthly averages:
+The system calculates accurate monthly averages based on **payment timing**:
+
+| Payment Type | Categories | Calculation |
+|--------------|------------|-------------|
+| **ADVANCE** | Rent, Property Trust | Exclude last payment (covers future) |
+| **ARREARS** | Salary, Utilities, Insurance | Include all payments (all completed) |
 
 ```typescript
-// Pattern detection for advance payments
-// Excludes last payment (covers future period)
+// Determine payment timing based on category
+const isRentalCategory =
+  transaction.categoryLevel1?.toUpperCase() === 'RENTAL' ||
+  transaction.categoryLevel1?.toUpperCase() === 'RENT' ||
+  learnedCategory?.toUpperCase() === 'RENTAL' ||
+  merchantName?.toLowerCase().includes('rent') ||
+  merchantName?.toLowerCase().includes('trust');
 
-const sortedTxs = transactions.sort((a, b) => a.date - b.date);
-const firstDate = sortedTxs[0].date;
-const lastDate = sortedTxs[sortedTxs.length - 1].date;
+const paymentTiming = isRentalCategory ? 'ADVANCE' : 'ARREARS';
 
-// Sum all amounts EXCEPT the last (advance payment logic)
-const sumExcludingLast = sortedTxs.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
+// Calculate sum based on payment timing
+let sumForAverage: number;
+if (paymentTiming === 'ADVANCE') {
+  // Exclude last payment (covers future period)
+  sumForAverage = sortedTxs.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
+} else {
+  // Include all payments (all cover completed periods)
+  sumForAverage = amounts.reduce((sum, a) => sum + a, 0);
+}
 
-// Calculate months covered
-const daysCovered = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
-const monthsCovered = daysCovered / 30.44; // Average days per month
-
-// True monthly average
-const trueMonthlyAverage = sumExcludingLast / monthsCovered;
+const trueMonthlyAverage = monthsCovered > 0 ? sumForAverage / monthsCovered : avgAmount;
 ```
 
-**Example - Rental Income (Thornlands):**
+**Example 1 - Rental Income (ADVANCE):**
 ```
 Transactions:
 - Nov 8, 2025:  $3,362 (covers period starting Nov 8)
@@ -1906,13 +1916,23 @@ Transactions:
 - Jan 2, 2026:  $2,205
 - Jan 16, 2026: $1,651  ← EXCLUDE (covers future period)
 
+Payment Timing: ADVANCE (detected as rental)
 Sum (excluding last): $12,736
-Period: Nov 8 → Jan 16 = 69 days = 2.27 months
-True Monthly Average: $5,610/month (NET after property management deductions)
+Period: 69 days = 2.27 months
+True Monthly Average: $5,610/month
+```
 
-Compare to expected:
-- Expected GROSS: $1,200/week × 52 / 12 = $5,200/month
-- Actual NET: $5,610/month
+**Example 2 - Salary (ARREARS):**
+```
+Transactions:
+- Dec 31, 2025: $5,000 (for December work - completed)
+- Jan 31, 2026: $5,000 (for January work - completed)
+- Feb 28, 2026: $5,000 (for February work - completed)
+
+Payment Timing: ARREARS (default for non-rental)
+Sum (all payments): $15,000
+Period: 59 days = 1.94 months
+True Monthly Average: $7,732/month (or $5,000 if normalized)
 ```
 
 ### 13.21.4 Master Financial Service Updates
@@ -2033,7 +2053,8 @@ For expenses: Negative variance = good (spending less than expected)
 | **Pure Engines** | `calculateActualFromTransactions()` is pure (no DB calls) |
 | **No Amount Updates** | Linking = tagging only, entry amounts remain as budget |
 | **Date-Based Aggregation** | Actuals grouped by transaction date into calendar months |
-| **Advance Payment Logic** | Last payment excluded (covers future period) |
+| **Payment Timing Awareness** | ADVANCE (rent) excludes last, ARREARS (salary) includes all |
+| **Category-Based Detection** | Rental detected by category/merchant name for timing logic |
 
 
   // ... existing fields ...
