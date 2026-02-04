@@ -10,6 +10,7 @@ import {
   getStepsForProfile,
 } from './types';
 import { WelcomeStep } from './steps/WelcomeStep';
+import { HouseholdStep } from './steps/HouseholdStep';
 import { PropertiesStep } from './steps/PropertiesStep';
 import { AccountsStep } from './steps/AccountsStep';
 import { InvestmentsStep } from './steps/InvestmentsStep';
@@ -130,6 +131,8 @@ export function WizardContainer({
     switch (currentStep?.id) {
       case 'welcome':
         return <WelcomeStep data={data} onUpdate={handleUpdate} />;
+      case 'household':
+        return <HouseholdStep data={data} onUpdate={handleUpdate} />;
       case 'properties':
         return <PropertiesStep data={data} onUpdate={handleUpdate} />;
       case 'accounts':

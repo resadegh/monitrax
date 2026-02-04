@@ -557,6 +557,7 @@ Monthly Average: $5,000
 ## Commits Summary (February 3-4, 2026)
 
 ```
+5a3f7fe docs: Document payment timing awareness for monthly average
 2b94f6b fix: Use correct payment timing for monthly average calculation
 d69faf2 docs: Update documentation for Budget vs Actual feature
 c532903 fix: Remove prisma db push from build to prevent data loss
@@ -564,6 +565,168 @@ c532903 fix: Remove prisma db push from build to prevent data loss
 e4b7a86 fix: Remove remaining reconciliationRecommendation reference
 23ae8a2 feat: Implement budget vs actual tracking from transactions
 ```
+
+---
+
+## Phase 29: Household Profile Redesign
+
+### Session: redesign-onboarding-household-Si95G
+
+> **Status: IMPLEMENTED** (February 2026)
+
+### Overview
+
+Complete redesign of the onboarding wizard and household profile system to capture detailed household member and pet information, with automatic category generation based on household composition.
+
+### Key Changes
+
+#### 1. Database Schema Updates
+
+Added new models and enums to `prisma/schema.prisma`:
+
+```prisma
+enum HouseholdRelationship {
+  SELF
+  SPOUSE
+  PARTNER
+  CHILD
+  PARENT
+  SIBLING
+  OTHER
+}
+
+enum HouseholdPetType {
+  DOG
+  CAT
+  BIRD
+  FISH
+  RABBIT
+  REPTILE
+  OTHER
+}
+
+model HouseholdMember {
+  id                    String   @id @default(uuid())
+  householdProfileId    String
+  name                  String
+  relationship          HouseholdRelationship
+  dateOfBirth           DateTime?
+  isIncomeEarner        Boolean  @default(false)
+  sortOrder             Int      @default(0)
+  // Relations and indexes...
+  linkedCategories      Category[] @relation("MemberLinkedCategories")
+}
+
+model HouseholdPet {
+  id                    String   @id @default(uuid())
+  householdProfileId    String
+  name                  String
+  type                  HouseholdPetType
+  breed                 String?
+  sortOrder             Int      @default(0)
+  // Relations and indexes...
+  linkedCategories      Category[] @relation("PetLinkedCategories")
+}
+```
+
+Updated `HouseholdProfile` model:
+- Added `needsMigration` field for existing users
+- Added relations to `HouseholdMember[]` and `HouseholdPet[]`
+
+Updated `Category` model:
+- Added `householdMemberId` optional field
+- Added `householdPetId` optional field
+- Added relations for member/pet category linking
+
+#### 2. Automatic Category Generation Service
+
+Created `lib/services/householdCategoryService.ts`:
+
+- **Member Categories** (auto-created when adding household members):
+  - Income earners: Salary, Super Contributions, Work Expenses, Health Insurance
+  - Non-earner adults: Personal Spending, Health Expenses, Entertainment
+  - Children: School Fees, Childcare, Kids Activities, Medical
+
+- **Pet Categories** (auto-created when adding pets):
+  - Food & Supplies, Vet Visits, Insurance, Grooming
+
+- **Category Orphaning**: When members/pets are deleted, categories are preserved but unlinked (orphaned) to maintain expense history
+
+#### 3. API Endpoints
+
+| Endpoint | Methods | Description |
+|----------|---------|-------------|
+| `/api/household-members` | GET, POST | List/create household members |
+| `/api/household-members/[id]` | GET, PUT, DELETE | Member CRUD operations |
+| `/api/household-pets` | GET, POST | List/create household pets |
+| `/api/household-pets/[id]` | GET, PUT, DELETE | Pet CRUD operations |
+
+#### 4. Onboarding Wizard Integration
+
+- Added 'household' step as the FIRST step after welcome
+- Step collects:
+  - Household members with names, relationships, DOB
+  - Pets with names, types, breeds
+  - Vehicle count for lifestyle context
+
+Updated files:
+- `components/onboarding/wizard/types.ts` - Types and step definition
+- `components/onboarding/wizard/steps/HouseholdStep.tsx` - New step component
+- `components/onboarding/wizard/WizardContainer.tsx` - Step registration
+- `components/onboarding/wizard/AIHelper.tsx` - AI helper context
+
+#### 5. Household Profile Page Redesign
+
+Complete UI overhaul of `app/dashboard/household-profile/page.tsx`:
+- Card-based display for members and pets
+- Add/Edit/Delete dialogs with form validation
+- Shows auto-created categories per member/pet
+- Migration prompt for existing users without named members
+- Lifestyle preferences section preserved
+
+#### 6. Navigation Updates
+
+Updated `components/DashboardLayout.tsx`:
+- Moved "Household" to top of sidebar (after Dashboard)
+- Removed from Planning group
+- Now a standalone navigation item
+
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/services/householdCategoryService.ts` | Auto-category generation |
+| `app/api/household-members/route.ts` | Members list/create API |
+| `app/api/household-members/[id]/route.ts` | Member detail API |
+| `app/api/household-pets/route.ts` | Pets list/create API |
+| `app/api/household-pets/[id]/route.ts` | Pet detail API |
+| `components/onboarding/wizard/steps/HouseholdStep.tsx` | Wizard step |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `prisma/schema.prisma` | New enums, models, relations |
+| `app/api/household-profile/route.ts` | Include members/pets in response |
+| `app/dashboard/household-profile/page.tsx` | Complete redesign |
+| `components/DashboardLayout.tsx` | Navigation reorder |
+| `components/onboarding/wizard/types.ts` | Household types and step |
+| `components/onboarding/wizard/WizardContainer.tsx` | Register household step |
+| `components/onboarding/wizard/AIHelper.tsx` | Add household context |
+
+### Design Decisions
+
+1. **Categories are auto-created immediately** - Usable app-wide as soon as members/pets are added
+2. **Category orphaning on delete** - Preserves expense history, allows reassignment
+3. **Migration path for existing users** - `needsMigration` flag triggers prompt
+4. **Pre-population from Clerk** - Primary user info pulled from authentication
+5. **No data overwrite** - Additive schema changes only
+
+### Testing
+
+- [x] Build passes (`npm run build`)
+- [x] Prisma generates successfully
+- [x] No breaking changes to existing data
 
 ---
 

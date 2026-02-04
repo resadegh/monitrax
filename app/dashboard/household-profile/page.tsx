@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -10,13 +10,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Users,
+  UserPlus,
   Baby,
   Car,
   Dog,
@@ -27,13 +46,53 @@ import {
   CheckCircle,
   AlertCircle,
   RefreshCw,
+  Plus,
+  Pencil,
+  Trash2,
+  Tag,
+  Heart,
+  Briefcase,
+  AlertTriangle,
 } from 'lucide-react';
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 type LifestylePreference = 'FRUGAL' | 'MODERATE' | 'COMFORTABLE';
 type DiningFrequency = 'NEVER' | 'RARELY' | 'SOMETIMES' | 'OFTEN';
+type HouseholdRelationship = 'SELF' | 'SPOUSE' | 'PARTNER' | 'CHILD' | 'PARENT' | 'SIBLING' | 'OTHER';
+type HouseholdPetType = 'DOG' | 'CAT' | 'BIRD' | 'FISH' | 'RABBIT' | 'REPTILE' | 'OTHER';
+
+interface LinkedCategory {
+  id: string;
+  name: string;
+  type: 'EXPENSE' | 'INCOME';
+  color: string | null;
+  icon: string | null;
+}
+
+interface HouseholdMember {
+  id: string;
+  name: string;
+  relationship: HouseholdRelationship;
+  dateOfBirth: string | null;
+  isIncomeEarner: boolean;
+  sortOrder: number;
+  linkedCategories: LinkedCategory[];
+}
+
+interface HouseholdPet {
+  id: string;
+  name: string;
+  type: HouseholdPetType;
+  breed: string | null;
+  sortOrder: number;
+  linkedCategories: LinkedCategory[];
+}
 
 interface HouseholdProfile {
-  id?: string;
+  id: string;
   adultsCount: number;
   childrenCount: number;
   childrenAges: number[];
@@ -44,123 +103,293 @@ interface HouseholdProfile {
   diningOutFrequency: DiningFrequency;
   hobbiesWithCosts: string;
   isComplete: boolean;
+  needsMigration?: boolean;
+  members: HouseholdMember[];
+  pets: HouseholdPet[];
 }
 
-const VALID_PET_TYPES = ['dog', 'cat', 'bird', 'fish', 'other'];
+const RELATIONSHIP_LABELS: Record<HouseholdRelationship, string> = {
+  SELF: 'You',
+  SPOUSE: 'Spouse',
+  PARTNER: 'Partner',
+  CHILD: 'Child',
+  PARENT: 'Parent',
+  SIBLING: 'Sibling',
+  OTHER: 'Other',
+};
+
+const PET_TYPE_LABELS: Record<HouseholdPetType, string> = {
+  DOG: 'Dog',
+  CAT: 'Cat',
+  BIRD: 'Bird',
+  FISH: 'Fish',
+  RABBIT: 'Rabbit',
+  REPTILE: 'Reptile',
+  OTHER: 'Other',
+};
+
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
 
 export default function HouseholdProfilePage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
+
+  // State
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [profile, setProfile] = useState<HouseholdProfile | null>(null);
+  const [needsMigration, setNeedsMigration] = useState(false);
 
-  const [profile, setProfile] = useState<HouseholdProfile>({
-    adultsCount: 1,
-    childrenCount: 0,
-    childrenAges: [],
-    petsCount: 0,
-    petTypes: [],
-    carsCount: 0,
-    lifestylePreference: 'MODERATE',
-    diningOutFrequency: 'SOMETIMES',
-    hobbiesWithCosts: '',
-    isComplete: false,
+  // Member dialog state
+  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<HouseholdMember | null>(null);
+  const [memberForm, setMemberForm] = useState({
+    name: '',
+    relationship: 'SELF' as HouseholdRelationship,
+    dateOfBirth: '',
+    isIncomeEarner: false,
   });
+  const [savingMember, setSavingMember] = useState(false);
 
-  // Calculate completion progress
-  const calculateProgress = () => {
-    let completed = 0;
-    const total = 6;
+  // Pet dialog state
+  const [petDialogOpen, setPetDialogOpen] = useState(false);
+  const [editingPet, setEditingPet] = useState<HouseholdPet | null>(null);
+  const [petForm, setPetForm] = useState({
+    name: '',
+    type: 'DOG' as HouseholdPetType,
+    breed: '',
+  });
+  const [savingPet, setSavingPet] = useState(false);
 
-    if (profile.adultsCount >= 1) completed++;
-    if (profile.childrenCount === 0 || profile.childrenAges.length === profile.childrenCount) completed++;
-    if (profile.petsCount === 0 || profile.petTypes.length === profile.petsCount) completed++;
-    if (profile.carsCount >= 0) completed++;
-    if (profile.lifestylePreference) completed++;
-    if (profile.diningOutFrequency) completed++;
+  // Delete confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<{ type: 'member' | 'pet'; id: string; name: string } | null>(null);
 
-    return Math.round((completed / total) * 100);
-  };
+  // Lifestyle preferences
+  const [lifestylePreference, setLifestylePreference] = useState<LifestylePreference>('MODERATE');
+  const [diningOutFrequency, setDiningOutFrequency] = useState<DiningFrequency>('SOMETIMES');
+  const [carsCount, setCarsCount] = useState(0);
+  const [hobbiesWithCosts, setHobbiesWithCosts] = useState('');
 
-  // Fetch existing profile
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await fetch('/api/household-profile', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+  // =============================================================================
+  // FETCH PROFILE
+  // =============================================================================
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            setProfile({
-              ...result.data,
-              hobbiesWithCosts: result.data.hobbiesWithCosts || '',
-            });
-          }
+  const fetchProfile = useCallback(async () => {
+    try {
+      const response = await fetch('/api/household-profile', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setProfile(result.data);
+          setLifestylePreference(result.data.lifestylePreference);
+          setDiningOutFrequency(result.data.diningOutFrequency);
+          setCarsCount(result.data.carsCount);
+          setHobbiesWithCosts(result.data.hobbiesWithCosts || '');
+          setNeedsMigration(result._meta?.needsMigration || false);
         }
-      } catch (err) {
-        console.error('Failed to fetch profile:', err);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    if (token) {
-      fetchProfile();
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+    } finally {
+      setLoading(false);
     }
   }, [token]);
 
-  // Handle children count change
-  const handleChildrenCountChange = (count: number) => {
-    const newAges = [...profile.childrenAges];
-    if (count > newAges.length) {
-      // Add default ages
-      while (newAges.length < count) {
-        newAges.push(5);
-      }
-    } else {
-      // Remove excess ages
-      newAges.splice(count);
+  useEffect(() => {
+    if (token) {
+      fetchProfile();
     }
-    setProfile({ ...profile, childrenCount: count, childrenAges: newAges });
+  }, [token, fetchProfile]);
+
+  // =============================================================================
+  // MEMBER OPERATIONS
+  // =============================================================================
+
+  const openAddMemberDialog = () => {
+    setEditingMember(null);
+    // Pre-populate with user's name if adding SELF and no SELF exists
+    const hasSelf = profile?.members.some(m => m.relationship === 'SELF');
+    setMemberForm({
+      name: !hasSelf && user?.name ? user.name : '',
+      relationship: hasSelf ? 'SPOUSE' : 'SELF',
+      dateOfBirth: '',
+      isIncomeEarner: true,
+    });
+    setMemberDialogOpen(true);
   };
 
-  // Handle child age change
-  const handleChildAgeChange = (index: number, age: number) => {
-    const newAges = [...profile.childrenAges];
-    newAges[index] = Math.max(0, Math.min(18, age));
-    setProfile({ ...profile, childrenAges: newAges });
+  const openEditMemberDialog = (member: HouseholdMember) => {
+    setEditingMember(member);
+    setMemberForm({
+      name: member.name,
+      relationship: member.relationship,
+      dateOfBirth: member.dateOfBirth ? member.dateOfBirth.split('T')[0] : '',
+      isIncomeEarner: member.isIncomeEarner,
+    });
+    setMemberDialogOpen(true);
   };
 
-  // Handle pets count change
-  const handlePetsCountChange = (count: number) => {
-    const newTypes = [...profile.petTypes];
-    if (count > newTypes.length) {
-      // Add default types
-      while (newTypes.length < count) {
-        newTypes.push('dog');
-      }
-    } else {
-      // Remove excess types
-      newTypes.splice(count);
+  const saveMember = async () => {
+    if (!memberForm.name.trim()) {
+      setError('Please enter a name');
+      return;
     }
-    setProfile({ ...profile, petsCount: count, petTypes: newTypes });
+
+    setSavingMember(true);
+    setError('');
+
+    try {
+      const url = editingMember
+        ? `/api/household-members/${editingMember.id}`
+        : '/api/household-members';
+
+      const response = await fetch(url, {
+        method: editingMember ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: memberForm.name.trim(),
+          relationship: memberForm.relationship,
+          dateOfBirth: memberForm.dateOfBirth || null,
+          isIncomeEarner: memberForm.isIncomeEarner,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to save member');
+      }
+
+      setMemberDialogOpen(false);
+      setSuccess(editingMember ? 'Member updated successfully' : 'Member added successfully');
+      fetchProfile();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save member');
+    } finally {
+      setSavingMember(false);
+    }
   };
 
-  // Handle pet type change
-  const handlePetTypeChange = (index: number, type: string) => {
-    const newTypes = [...profile.petTypes];
-    newTypes[index] = type;
-    setProfile({ ...profile, petTypes: newTypes });
+  // =============================================================================
+  // PET OPERATIONS
+  // =============================================================================
+
+  const openAddPetDialog = () => {
+    setEditingPet(null);
+    setPetForm({
+      name: '',
+      type: 'DOG',
+      breed: '',
+    });
+    setPetDialogOpen(true);
   };
 
-  // Save profile
-  const handleSave = async (redirect: boolean = false) => {
+  const openEditPetDialog = (pet: HouseholdPet) => {
+    setEditingPet(pet);
+    setPetForm({
+      name: pet.name,
+      type: pet.type,
+      breed: pet.breed || '',
+    });
+    setPetDialogOpen(true);
+  };
+
+  const savePet = async () => {
+    if (!petForm.name.trim()) {
+      setError('Please enter a name');
+      return;
+    }
+
+    setSavingPet(true);
+    setError('');
+
+    try {
+      const url = editingPet
+        ? `/api/household-pets/${editingPet.id}`
+        : '/api/household-pets';
+
+      const response = await fetch(url, {
+        method: editingPet ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: petForm.name.trim(),
+          type: petForm.type,
+          breed: petForm.breed.trim() || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to save pet');
+      }
+
+      setPetDialogOpen(false);
+      setSuccess(editingPet ? 'Pet updated successfully' : 'Pet added successfully');
+      fetchProfile();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save pet');
+    } finally {
+      setSavingPet(false);
+    }
+  };
+
+  // =============================================================================
+  // DELETE OPERATIONS
+  // =============================================================================
+
+  const confirmDelete = (type: 'member' | 'pet', id: string, name: string) => {
+    setDeletingItem({ type, id, name });
+    setDeleteDialogOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!deletingItem) return;
+
+    try {
+      const url = deletingItem.type === 'member'
+        ? `/api/household-members/${deletingItem.id}`
+        : `/api/household-pets/${deletingItem.id}`;
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to delete');
+      }
+
+      setSuccess(`${deletingItem.name} removed successfully`);
+      fetchProfile();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete');
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeletingItem(null);
+    }
+  };
+
+  // =============================================================================
+  // SAVE LIFESTYLE PREFERENCES
+  // =============================================================================
+
+  const savePreferences = async () => {
     setSaving(true);
     setError('');
     setSuccess('');
@@ -172,31 +401,60 @@ export default function HouseholdProfilePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(profile),
+        body: JSON.stringify({
+          adultsCount: profile?.members.filter(m => m.relationship !== 'CHILD').length || 1,
+          childrenCount: profile?.members.filter(m => m.relationship === 'CHILD').length || 0,
+          childrenAges: profile?.childrenAges || [],
+          petsCount: profile?.pets.length || 0,
+          petTypes: profile?.pets.map(p => p.type.toLowerCase()) || [],
+          carsCount,
+          lifestylePreference,
+          diningOutFrequency,
+          hobbiesWithCosts: hobbiesWithCosts || null,
+        }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to save profile');
+        throw new Error(result.error || 'Failed to save preferences');
       }
 
-      setSuccess('Profile saved successfully!');
-      setProfile({ ...profile, isComplete: result.data.isComplete });
-
-      if (redirect && result.data.isComplete) {
-        setTimeout(() => {
-          router.push('/dashboard/budget-analysis');
-        }, 1000);
-      }
+      setSuccess('Preferences saved successfully!');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save profile');
+      setError(err instanceof Error ? err.message : 'Failed to save preferences');
     } finally {
       setSaving(false);
     }
   };
 
+  // =============================================================================
+  // CALCULATE PROGRESS
+  // =============================================================================
+
+  const calculateProgress = () => {
+    if (!profile) return 0;
+
+    let completed = 0;
+    const total = 4;
+
+    // Has at least one member
+    if (profile.members.length >= 1) completed++;
+    // Has lifestyle preference set
+    if (lifestylePreference) completed++;
+    // Has dining frequency set
+    if (diningOutFrequency) completed++;
+    // Either has pets OR explicitly has 0 pets configured
+    if (profile.pets.length > 0 || profile.petsCount === 0) completed++;
+
+    return Math.round((completed / total) * 100);
+  };
+
   const progress = calculateProgress();
+
+  // =============================================================================
+  // RENDER
+  // =============================================================================
 
   if (loading) {
     return (
@@ -212,10 +470,10 @@ export default function HouseholdProfilePage() {
     <DashboardLayout>
       <PageHeader
         title="Household Profile"
-        description="Tell us about your household to get accurate budget estimates"
+        description="Tell us about your household to get accurate budget estimates and personalized tracking"
       />
 
-      <div className="space-y-6 max-w-4xl">
+      <div className="space-y-6 max-w-5xl">
         {/* Progress indicator */}
         <Card>
           <CardContent className="pt-6">
@@ -224,7 +482,7 @@ export default function HouseholdProfilePage() {
               <span className="text-sm text-muted-foreground">{progress}%</span>
             </div>
             <Progress value={progress} className="h-2" />
-            {profile.isComplete && (
+            {progress === 100 && (
               <div className="flex items-center gap-2 mt-2 text-sm text-green-600 dark:text-green-400">
                 <CheckCircle className="h-4 w-4" />
                 Profile complete
@@ -233,11 +491,34 @@ export default function HouseholdProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Migration prompt for existing users */}
+        {needsMigration && (
+          <Card className="border-amber-500 bg-amber-50 dark:bg-amber-900/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div>
+                  <h3 className="font-medium text-amber-800 dark:text-amber-200">
+                    Upgrade Your Household Profile
+                  </h3>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    Add names to your household members and pets to unlock personalized expense categories.
+                    This will help you track spending for each person and pet individually.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Error/Success messages */}
         {error && (
           <div className="flex items-center gap-2 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg text-red-700 dark:text-red-300 text-sm">
             <AlertCircle className="h-4 w-4" />
             {error}
+            <button onClick={() => setError('')} className="ml-auto hover:opacity-70">
+              &times;
+            </button>
           </div>
         )}
 
@@ -245,169 +526,123 @@ export default function HouseholdProfilePage() {
           <div className="flex items-center gap-2 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-700 dark:text-green-300 text-sm">
             <CheckCircle className="h-4 w-4" />
             {success}
+            <button onClick={() => setSuccess('')} className="ml-auto hover:opacity-70">
+              &times;
+            </button>
           </div>
         )}
 
         {/* Household Members */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Household Members
-            </CardTitle>
-            <CardDescription>
-              How many people live in your household?
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="adults">Number of Adults</Label>
-                <Select
-                  value={String(profile.adultsCount)}
-                  onValueChange={(v) => setProfile({ ...profile, adultsCount: parseInt(v) })}
-                >
-                  <SelectTrigger id="adults">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4].map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n} {n === 1 ? 'adult' : 'adults'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Household Members
+                </CardTitle>
+                <CardDescription>
+                  Add people living in your household to create personalized categories
+                </CardDescription>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="children">Number of Children</Label>
-                <Select
-                  value={String(profile.childrenCount)}
-                  onValueChange={(v) => handleChildrenCountChange(parseInt(v))}
-                >
-                  <SelectTrigger id="children">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[0, 1, 2, 3, 4, 5, 6].map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n} {n === 0 ? 'children' : n === 1 ? 'child' : 'children'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Button onClick={openAddMemberDialog} size="sm">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add Member
+              </Button>
             </div>
-
-            {/* Children ages */}
-            {profile.childrenCount > 0 && (
-              <div className="space-y-2">
-                <Label>Children&apos;s Ages</Label>
-                <div className="flex flex-wrap gap-2">
-                  {profile.childrenAges.map((age, index) => (
-                    <div key={index} className="flex items-center gap-1">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={18}
-                        value={age}
-                        onChange={(e) => handleChildAgeChange(index, parseInt(e.target.value) || 0)}
-                        className="w-20"
-                      />
-                      <span className="text-sm text-muted-foreground">yrs</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Ages help estimate expenses (teens cost more than toddlers)
-                </p>
+          </CardHeader>
+          <CardContent>
+            {profile?.members.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No household members yet</p>
+                <p className="text-sm">Start by adding yourself</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {profile?.members.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    onEdit={() => openEditMemberDialog(member)}
+                    onDelete={() => confirmDelete('member', member.id, member.name)}
+                  />
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Vehicles & Pets */}
+        {/* Household Pets */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="h-5 w-5" />
+                  Pets
+                </CardTitle>
+                <CardDescription>
+                  Add your pets to track their expenses separately
+                </CardDescription>
+              </div>
+              <Button onClick={openAddPetDialog} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Pet
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {profile?.pets.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Dog className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No pets added yet</p>
+                <p className="text-sm">Add a pet to track vet bills, food, and insurance</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {profile?.pets.map((pet) => (
+                  <PetCard
+                    key={pet.id}
+                    pet={pet}
+                    onEdit={() => openEditPetDialog(pet)}
+                    onDelete={() => confirmDelete('pet', pet.id, pet.name)}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Vehicles */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Car className="h-5 w-5" />
-              Vehicles & Pets
+              Vehicles
             </CardTitle>
             <CardDescription>
-              These affect fuel, food, and care costs
+              How many vehicles does your household have?
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="cars">Number of Vehicles</Label>
-                <Select
-                  value={String(profile.carsCount)}
-                  onValueChange={(v) => setProfile({ ...profile, carsCount: parseInt(v) })}
-                >
-                  <SelectTrigger id="cars">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[0, 1, 2, 3, 4].map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n} {n === 1 ? 'vehicle' : 'vehicles'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pets">Number of Pets</Label>
-                <Select
-                  value={String(profile.petsCount)}
-                  onValueChange={(v) => handlePetsCountChange(parseInt(v))}
-                >
-                  <SelectTrigger id="pets">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[0, 1, 2, 3, 4, 5].map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n} {n === 1 ? 'pet' : 'pets'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Pet types */}
-            {profile.petsCount > 0 && (
-              <div className="space-y-2">
-                <Label>Pet Types</Label>
-                <div className="flex flex-wrap gap-2">
-                  {profile.petTypes.map((type, index) => (
-                    <Select
-                      key={index}
-                      value={type}
-                      onValueChange={(v) => handlePetTypeChange(index, v)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {VALID_PET_TYPES.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {t.charAt(0).toUpperCase() + t.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+          <CardContent>
+            <div className="max-w-xs">
+              <Select
+                value={String(carsCount)}
+                onValueChange={(v) => setCarsCount(parseInt(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[0, 1, 2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n} {n === 1 ? 'vehicle' : 'vehicles'}
+                    </SelectItem>
                   ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Dogs typically cost more than cats or fish
-                </p>
-              </div>
-            )}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
@@ -424,31 +659,31 @@ export default function HouseholdProfilePage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-4">
-              <Label>How would you describe your household&apos;s spending style?</Label>
+              <Label>Spending Style</Label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                   {
                     value: 'FRUGAL' as LifestylePreference,
                     label: 'Frugal',
-                    description: 'Budget-conscious, prioritize savings, minimal discretionary spending',
+                    description: 'Budget-conscious, prioritize savings',
                   },
                   {
                     value: 'MODERATE' as LifestylePreference,
                     label: 'Moderate',
-                    description: 'Balanced approach, reasonable discretionary spending',
+                    description: 'Balanced approach, reasonable spending',
                   },
                   {
                     value: 'COMFORTABLE' as LifestylePreference,
                     label: 'Comfortable',
-                    description: 'Higher quality choices, more convenience spending',
+                    description: 'Higher quality choices, more convenience',
                   },
                 ].map((option) => (
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setProfile({ ...profile, lifestylePreference: option.value })}
+                    onClick={() => setLifestylePreference(option.value)}
                     className={`p-4 rounded-lg border-2 text-left transition-colors ${
-                      profile.lifestylePreference === option.value
+                      lifestylePreference === option.value
                         ? 'border-primary bg-primary/5'
                         : 'border-muted hover:border-muted-foreground/50'
                     }`}
@@ -465,7 +700,7 @@ export default function HouseholdProfilePage() {
             <Separator />
 
             <div className="space-y-4">
-              <Label>How often does your household dine out or order takeaway?</Label>
+              <Label>Dining Out Frequency</Label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { value: 'NEVER' as DiningFrequency, label: 'Never', description: 'Always cook at home' },
@@ -476,9 +711,9 @@ export default function HouseholdProfilePage() {
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setProfile({ ...profile, diningOutFrequency: option.value })}
+                    onClick={() => setDiningOutFrequency(option.value)}
                     className={`p-3 rounded-lg border-2 text-center transition-colors ${
-                      profile.diningOutFrequency === option.value
+                      diningOutFrequency === option.value
                         ? 'border-primary bg-primary/5'
                         : 'border-muted hover:border-muted-foreground/50'
                     }`}
@@ -506,20 +741,17 @@ export default function HouseholdProfilePage() {
           <CardContent>
             <Textarea
               placeholder="e.g., Golf membership ($200/mo), gym ($60/mo), kids soccer ($50/mo)"
-              value={profile.hobbiesWithCosts}
-              onChange={(e) => setProfile({ ...profile, hobbiesWithCosts: e.target.value })}
+              value={hobbiesWithCosts}
+              onChange={(e) => setHobbiesWithCosts(e.target.value)}
               className="min-h-[100px]"
             />
-            <p className="text-xs text-muted-foreground mt-2">
-              This helps refine your expense estimates
-            </p>
           </CardContent>
         </Card>
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4">
           <Button
-            onClick={() => handleSave(false)}
+            onClick={savePreferences}
             disabled={saving}
             variant="outline"
             className="flex-1"
@@ -529,22 +761,320 @@ export default function HouseholdProfilePage() {
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            Save Profile
+            Save Preferences
           </Button>
           <Button
-            onClick={() => handleSave(true)}
-            disabled={saving || progress < 100}
+            onClick={() => router.push('/dashboard/budget-analysis')}
+            disabled={progress < 50}
             className="flex-1"
           >
-            {saving ? (
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <ArrowRight className="h-4 w-4 mr-2" />
-            )}
-            Save & Continue to Budget Analysis
+            <ArrowRight className="h-4 w-4 mr-2" />
+            Continue to Budget Analysis
           </Button>
         </div>
       </div>
+
+      {/* Member Dialog */}
+      <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingMember ? 'Edit Household Member' : 'Add Household Member'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingMember
+                ? 'Update the details for this household member'
+                : 'Add a new person to your household. Categories will be created automatically.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="member-name">Name</Label>
+              <Input
+                id="member-name"
+                value={memberForm.name}
+                onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })}
+                placeholder="Enter name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="member-relationship">Relationship</Label>
+              <Select
+                value={memberForm.relationship}
+                onValueChange={(v) => setMemberForm({ ...memberForm, relationship: v as HouseholdRelationship })}
+              >
+                <SelectTrigger id="member-relationship">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(RELATIONSHIP_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {memberForm.relationship === 'CHILD' && (
+              <div className="grid gap-2">
+                <Label htmlFor="member-dob">Date of Birth (optional)</Label>
+                <Input
+                  id="member-dob"
+                  type="date"
+                  value={memberForm.dateOfBirth}
+                  onChange={(e) => setMemberForm({ ...memberForm, dateOfBirth: e.target.value })}
+                />
+              </div>
+            )}
+            {memberForm.relationship !== 'CHILD' && (
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="member-earner"
+                  checked={memberForm.isIncomeEarner}
+                  onCheckedChange={(checked) => setMemberForm({ ...memberForm, isIncomeEarner: checked })}
+                />
+                <Label htmlFor="member-earner" className="cursor-pointer">
+                  Income earner
+                  <span className="block text-xs text-muted-foreground font-normal">
+                    Creates salary and work expense categories
+                  </span>
+                </Label>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMemberDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveMember} disabled={savingMember}>
+              {savingMember ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              {editingMember ? 'Save Changes' : 'Add Member'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pet Dialog */}
+      <Dialog open={petDialogOpen} onOpenChange={setPetDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingPet ? 'Edit Pet' : 'Add Pet'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingPet
+                ? 'Update the details for this pet'
+                : 'Add a pet to your household. Expense categories will be created automatically.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="pet-name">Name</Label>
+              <Input
+                id="pet-name"
+                value={petForm.name}
+                onChange={(e) => setPetForm({ ...petForm, name: e.target.value })}
+                placeholder="Enter pet's name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pet-type">Type</Label>
+              <Select
+                value={petForm.type}
+                onValueChange={(v) => setPetForm({ ...petForm, type: v as HouseholdPetType })}
+              >
+                <SelectTrigger id="pet-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PET_TYPE_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pet-breed">Breed (optional)</Label>
+              <Input
+                id="pet-breed"
+                value={petForm.breed}
+                onChange={(e) => setPetForm({ ...petForm, breed: e.target.value })}
+                placeholder="e.g., Golden Retriever"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPetDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={savePet} disabled={savingPet}>
+              {savingPet ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              {editingPet ? 'Save Changes' : 'Add Pet'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {deletingItem?.name} from your household.
+              Any categories created for {deletingItem?.name} will be preserved
+              and can still be used for tracking expenses.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDelete} className="bg-red-600 hover:bg-red-700">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
+  );
+}
+
+// =============================================================================
+// MEMBER CARD COMPONENT
+// =============================================================================
+
+function MemberCard({
+  member,
+  onEdit,
+  onDelete,
+}: {
+  member: HouseholdMember;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const isChild = member.relationship === 'CHILD';
+
+  return (
+    <div className="p-4 border rounded-lg bg-card">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-full ${isChild ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-primary/10'}`}>
+            {isChild ? (
+              <Baby className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            ) : (
+              <Users className="h-5 w-5 text-primary" />
+            )}
+          </div>
+          <div>
+            <div className="font-medium">{member.name}</div>
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              {RELATIONSHIP_LABELS[member.relationship]}
+              {member.isIncomeEarner && (
+                <Badge variant="secondary" className="text-xs">
+                  <Briefcase className="h-3 w-3 mr-1" />
+                  Earner
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" onClick={onEdit}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onDelete}>
+            <Trash2 className="h-4 w-4 text-red-500" />
+          </Button>
+        </div>
+      </div>
+
+      {member.linkedCategories.length > 0 && (
+        <div className="mt-3 pt-3 border-t">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+            <Tag className="h-3 w-3" />
+            Auto-created categories
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {member.linkedCategories.map((cat) => (
+              <Badge
+                key={cat.id}
+                variant="outline"
+                className="text-xs"
+                style={{ borderColor: cat.color || undefined }}
+              >
+                {cat.name}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// PET CARD COMPONENT
+// =============================================================================
+
+function PetCard({
+  pet,
+  onEdit,
+  onDelete,
+}: {
+  pet: HouseholdPet;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="p-4 border rounded-lg bg-card">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-full bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400">
+            <Dog className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="font-medium">{pet.name}</div>
+            <div className="text-sm text-muted-foreground">
+              {PET_TYPE_LABELS[pet.type]}
+              {pet.breed && ` - ${pet.breed}`}
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" onClick={onEdit}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onDelete}>
+            <Trash2 className="h-4 w-4 text-red-500" />
+          </Button>
+        </div>
+      </div>
+
+      {pet.linkedCategories.length > 0 && (
+        <div className="mt-3 pt-3 border-t">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+            <Tag className="h-3 w-3" />
+            Auto-created categories
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {pet.linkedCategories.map((cat) => (
+              <Badge
+                key={cat.id}
+                variant="outline"
+                className="text-xs"
+                style={{ borderColor: cat.color || undefined }}
+              >
+                {cat.name}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
