@@ -95,13 +95,24 @@ export async function GET(request: NextRequest) {
 
           if (paymentTiming === 'ADVANCE') {
             // For ADVANCE payments (rent): exclude last payment (covers future)
-            // Each payment covers the period AFTER it was received
-            // So we count completed months = number of payments minus the most recent one
+            // Calculate monthly average by counting CALENDAR MONTHS with payments
+            // This handles weekly/fortnightly rent correctly (multiple payments per month)
             const completedPayments = sortedTx.slice(0, -1); // Exclude last payment
             if (completedPayments.length > 0) {
               const sumForAverage = completedPayments.reduce((sum, tx) => sum + tx.amount, 0);
-              // Each payment represents one month (assuming monthly rent)
-              monthlyAverage = sumForAverage / completedPayments.length;
+
+              // Count distinct calendar months (YYYY-MM format)
+              const distinctMonths = new Set(
+                completedPayments.map(tx => {
+                  const d = new Date(tx.date);
+                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                })
+              );
+              const monthCount = distinctMonths.size;
+
+              if (monthCount > 0) {
+                monthlyAverage = sumForAverage / monthCount;
+              }
             }
           } else {
             // For ARREARS payments (salary, etc.): include all payments
