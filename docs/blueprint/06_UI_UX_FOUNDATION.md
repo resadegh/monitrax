@@ -323,16 +323,99 @@ All components must:
 
 ---
 
-# **14. Acceptance Criteria**
+# **14. Onboarding Wizard (Phase 29)**
+
+### **14.1 Wizard Architecture**
+
+The onboarding wizard guides new users through initial setup with a multi-step flow:
+
+```
+Steps:
+1. Welcome (intro)
+2. Household (members, pets, vehicles) ← NEW: First data collection step
+3. Income
+4. Expenses
+5. Properties (if applicable)
+6. Loans
+7. Accounts
+8. Review & Complete
+```
+
+### **14.2 Wizard Layout**
+
+```
+┌─────────────────────────────────────────────┐
+│  [Progress Bar - Steps Indicator]           │
+├─────────────────────────────────────────────┤
+│                                             │
+│  [AI Helper Panel]      [Step Content]      │
+│  - Context tips         - Form/Cards        │
+│  - Suggestions          - Actions           │
+│                                             │
+├─────────────────────────────────────────────┤
+│  [Back]              [Skip]        [Next]   │
+└─────────────────────────────────────────────┘
+```
+
+### **14.3 Household Step (Phase 29)**
+
+The household step captures:
+
+**Household Members:**
+- Card-based entry UI
+- Add/Edit/Delete dialogs
+- Fields: Name, Relationship, Date of Birth, Income Earner flag
+- Auto-generates personalized categories on add
+
+**Household Pets:**
+- Card-based entry UI
+- Add/Edit/Delete dialogs
+- Fields: Name, Pet Type, Breed (optional)
+- Auto-generates pet expense categories on add
+
+**Vehicles:**
+- Simple count selector
+- Used for lifestyle expense estimation
+
+### **14.4 Wizard UX Rules**
+
+- **AI Helper**: Contextual panel with step-specific guidance
+- **Skip**: All steps (except household) can be skipped
+- **Persistence**: Wizard data persists between sessions
+- **Migration**: Existing users see prompt to complete household setup
+
+### **14.5 Navigation Hierarchy**
+
+After Phase 29, the sidebar navigation follows this hierarchy:
+
+```
+Standalone (Top Level):
+├── Dashboard
+├── Household ← Moved to top
+└── Personal CFO
+
+Grouped Sections:
+├── Portfolio (Properties, Investments, Assets)
+├── Cashflow (Income, Expenses, Accounts, Loans)
+├── Transactions
+├── Planning (Budgets, Goals, Debt Plans)
+└── Settings
+```
+
+---
+
+# **15. Acceptance Criteria**
 
 Monitrax UI/UX foundation is correct when:
 
-- All modules look cohesive and uniform  
-- All interactions feel predictable  
-- Navigation is seamless and contextual  
-- Dialogs are the dominant interaction pattern  
-- Health + insights panels behave identically everywhere  
-- No module has “its own style”  
+- All modules look cohesive and uniform
+- All interactions feel predictable
+- Navigation is seamless and contextual
+- Dialogs are the dominant interaction pattern
+- Health + insights panels behave identically everywhere
+- No module has "its own style"
+- Onboarding wizard collects household info first
+- Categories are personalized to household members/pets
 
 Consistency is the north star.
 

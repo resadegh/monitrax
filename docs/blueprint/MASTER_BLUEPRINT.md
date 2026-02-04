@@ -472,6 +472,7 @@ See: `docs/blueprint/PHASE_25_DOCUMENT_MANAGEMENT_ENGINE.md`
 - When members/pets are deleted, categories are unlinked (not deleted)
 - Preserves expense history and allows reassignment
 
+See: `docs/blueprint/PHASE_29_HOUSEHOLD_PROFILE_REDESIGN.md` for full specification.
 See: `docs/blueprint/CHANGELOG_2026_02_03.md` for implementation details.
 
 ---

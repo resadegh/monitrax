@@ -74,14 +74,18 @@ Prisma acts as the ORM with:
 
 ### **Key Models**
 
-- Property  
-- Loan  
-- Account  
-- Transaction  
-- Income  
-- Expense  
-- InvestmentAccount  
-- Holding  
+- Property
+- Loan
+- Account
+- Transaction
+- Income
+- Expense
+- InvestmentAccount
+- Holding
+- Category
+- HouseholdProfile
+- HouseholdMember (Phase 29)
+- HouseholdPet (Phase 29)  
 
 ---
 
@@ -116,12 +120,13 @@ These are **pure functions**, deterministic and testable.
 
 ### Includes:
 
-- Loan repayment engine  
-- Investment engine  
-- Depreciation engine  
-- Debt planner  
-- Cashflow projections  
-- Aggregation & summaries  
+- Loan repayment engine
+- Investment engine
+- Depreciation engine
+- Debt planner
+- Cashflow projections
+- Aggregation & summaries
+- Household Category Service (Phase 29) - Auto-generates personalized categories  
 
 Engines must:
 

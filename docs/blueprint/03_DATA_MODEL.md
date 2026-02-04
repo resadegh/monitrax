@@ -308,6 +308,8 @@ icon?: string                // Icon name for UI
 isSystem: boolean            // True for system defaults (false for user-created)
 isActive: boolean            // Soft delete flag (default: true)
 sortOrder: number            // Custom ordering
+householdMemberId?: string   // Link to household member (auto-generated categories)
+householdPetId?: string      // Link to household pet (auto-generated categories)
 createdAt: string
 updatedAt: string
 ```
@@ -318,6 +320,8 @@ updatedAt: string
 category → user
 category → expense[]         // Expenses using this category
 category → income[]          // Income entries using this category
+category → householdMember?  // Member this category was created for
+category → householdPet?     // Pet this category was created for
 ```
 
 ### **Category Types**
@@ -333,6 +337,130 @@ category → income[]          // Income entries using this category
 - Custom categories are user-specific and appear in "My Categories" section
 - When `customCategoryId` is set on an Expense/Income, it takes precedence over the system `category` field
 - Categories can be soft-deleted (isActive: false) if in use, or permanently deleted if unused
+- Categories linked to household members/pets are auto-generated and named with the member/pet name
+- When a member/pet is deleted, linked categories are orphaned (unlinked) but not deleted
+
+---
+
+# **3.6.1 Household Profile (Phase 29)**
+
+### **Entity: HouseholdProfile**
+
+Captures household composition for personalized financial tracking and budgeting.
+
+```
+id: string
+type: "household-profile"
+userId: string
+adultsCount: number          // Total adults in household
+childrenCount: number        // Total children
+petsCount: number            // Total pets
+carsCount: number            // Total vehicles
+lifestylePreferences?: {
+  diningOut: "RARELY" | "OCCASIONALLY" | "FREQUENTLY"
+  entertainment: "MINIMAL" | "MODERATE" | "PREMIUM"
+  travel: "DOMESTIC" | "INTERNATIONAL" | "LUXURY"
+}
+needsMigration: boolean      // True if existing user needs to add member details
+createdAt: string
+updatedAt: string
+```
+
+### **Relationships**
+
+```
+householdProfile → user
+householdProfile → householdMember[]
+householdProfile → householdPet[]
+```
+
+---
+
+# **3.6.2 Household Members (Phase 29)**
+
+### **Entity: HouseholdMember**
+
+Individual household member with detailed information for personalized category generation.
+
+```
+id: string
+type: "household-member"
+householdProfileId: string
+name: string                 // Member's name (e.g., "Reza", "Sarah")
+relationship: HouseholdRelationship
+dateOfBirth?: string         // For age-based planning
+isIncomeEarner: boolean      // Generates salary/super categories if true
+sortOrder: number
+createdAt: string
+updatedAt: string
+```
+
+### **HouseholdRelationship Enum**
+
+```
+"SELF" | "SPOUSE" | "PARTNER" | "CHILD" | "PARENT" | "SIBLING" | "OTHER"
+```
+
+### **Relationships**
+
+```
+householdMember → householdProfile
+householdMember → category[]   // Auto-generated categories for this member
+```
+
+### **Auto-Generated Categories by Member Type**
+
+| Member Type | Categories Created |
+|-------------|-------------------|
+| Income Earner (Adult) | {Name}'s Salary, {Name}'s Super Contributions, {Name}'s Work Expenses, {Name}'s Health Insurance |
+| Non-Earner (Adult) | {Name}'s Personal Spending, {Name}'s Health Expenses, {Name}'s Entertainment |
+| Child | {Name}'s School Fees, {Name}'s Childcare, {Name}'s Kids Activities, {Name}'s Medical |
+
+---
+
+# **3.6.3 Household Pets (Phase 29)**
+
+### **Entity: HouseholdPet**
+
+Pet tracking for personalized pet expense categories.
+
+```
+id: string
+type: "household-pet"
+householdProfileId: string
+name: string                 // Pet's name (e.g., "Fandogh", "Max")
+petType: HouseholdPetType
+breed?: string
+sortOrder: number
+createdAt: string
+updatedAt: string
+```
+
+### **HouseholdPetType Enum**
+
+```
+"DOG" | "CAT" | "BIRD" | "FISH" | "RABBIT" | "REPTILE" | "OTHER"
+```
+
+### **Relationships**
+
+```
+householdPet → householdProfile
+householdPet → category[]    // Auto-generated categories for this pet
+```
+
+### **Auto-Generated Categories for Pets**
+
+| Pet | Categories Created |
+|-----|-------------------|
+| Any Pet | {Name} Food & Supplies, {Name} Vet Visits, {Name} Pet Insurance, {Name} Grooming |
+
+### **Category Orphaning on Delete**
+
+When a household member or pet is deleted:
+1. Linked categories are **unlinked** (householdMemberId/householdPetId set to null)
+2. Categories are **NOT deleted** to preserve expense history
+3. Orphaned categories remain usable and can be reassigned
 
 ---
 
@@ -441,6 +569,17 @@ asset → serviceRecord
 
 category → expense[]
 category → income[]
+category → householdMember?
+category → householdPet?
+
+householdProfile → householdMember[]
+householdProfile → householdPet[]
+
+householdMember → householdProfile
+householdMember → category[]
+
+householdPet → householdProfile
+householdPet → category[]
 
 investmentAccount → holding
 investmentAccount → transaction
@@ -459,8 +598,11 @@ type GRDCSEntityType =
   | 'income'
   | 'expense'
   | 'account'
-  | 'asset'           // Phase 21: Asset Management
-  | 'category'        // Custom user-defined categories
+  | 'asset'               // Phase 21: Asset Management
+  | 'category'            // Custom user-defined categories
+  | 'householdProfile'    // Phase 29: Household Profile
+  | 'householdMember'     // Phase 29: Household Members
+  | 'householdPet'        // Phase 29: Household Pets
   | 'investmentAccount'
   | 'investmentHolding'
   | 'investmentTransaction'
