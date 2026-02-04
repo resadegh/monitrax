@@ -1012,13 +1012,13 @@ export async function GET(
                 { description: { contains: merchantName, mode: 'insensitive' as const } },
               ]
             : [{ merchantStandardised: merchantName }],
-          // Only uncategorized transactions (no links, not transfer, not investment)
+          // Only unlinked transactions (no links to income/expense/loan, not transfer, not investment)
+          // Note: categoryLevel1 may be auto-populated but still unlinked - don't filter by it
           incomeId: null,
           expenseId: null,
           loanId: null,
-          isTransfer: false,
-          isInvestmentContribution: false,
-          categoryLevel1: null, // Also exclude transactions with category already set
+          isTransfer: { not: true }, // matches false OR null
+          isInvestmentContribution: { not: true }, // matches false OR null
         },
         select: {
           id: true,
