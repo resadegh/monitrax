@@ -1832,24 +1832,26 @@ if (body.learnMerchant && transaction.merchantStandardised && categoryToLearn) {
 ## 13.21 Transaction Reconciliation (Budget vs Actual)
 
 > **Status: IMPLEMENTED** (February 2026)
+> **Updated: February 4, 2026** - Simplified to Budget = Manual Entries, Actual = Transactions
 
 ### 13.21.1 Overview
 
-Transaction reconciliation solves the problem of "duplicate" income/expense entries when both manually-entered recurring entries and bank transaction categorization exist for the same item.
+Transaction reconciliation separates **Budget** (what users plan/expect) from **Actual** (what transactions show in real-time).
 
-**Problem Example:**
-- User creates a "Water Rate" expense entry with $50/month budget
-- User imports bank transactions and categorizes a $47.32 water bill
-- System now has two water expenses, creating double-counting
+**Core Design:**
+- **Budget** = Manual income/expense entries (user's planned amounts)
+- **Actual** = Calculated from linked transactions (real-time from bank feeds)
 
-**Solution:**
-When categorizing a transaction to an existing entry, the system:
-1. Detects matching entries based on category, name, or amount
-2. Recommends whether to link only or update the amount
-3. Preserves the original amount as "budgetedAmount" for variance tracking
-4. Updates the entry's actual amount from the transaction
+**Problem Solved:**
+When users both create manual entries AND categorize bank transactions, the old approach of "updating amounts" caused confusion about what was budget vs actual.
 
-### 13.21.2 Schema Changes
+**New Solution:**
+- Manual entries remain as BUDGET (never auto-modified)
+- Linking transactions = TAGGING only (no amount updates)
+- Actual is calculated in real-time from linked transactions
+- Users see both Budget and Actual side-by-side
+
+### 13.21.2 Schema (Unchanged)
 
 **Expense and Income models (prisma/schema.prisma):**
 
@@ -1857,71 +1859,183 @@ When categorizing a transaction to an existing entry, the system:
 model Expense {
   // ... existing fields ...
 
-  // Phase 30: Budget vs Actual Reconciliation
+  // Budget vs Actual Reconciliation
   budgetedAmount        Float?            // Original budgeted/estimated amount
-  lastReconciled        DateTime?         // When amount was last updated from transactions
+  lastReconciled        DateTime?         // When last reconciled (for audit)
 }
 
 model Income {
   // ... existing fields ...
 
-  // Phase 30: Budget vs Actual Reconciliation
+  // Budget vs Actual Reconciliation
   budgetedAmount        Float?            // Original budgeted/estimated amount
-  lastReconciled        DateTime?         // When amount was last updated from transactions
+  lastReconciled        DateTime?         // When last reconciled (for audit)
 }
 ```
 
-### 13.21.3 Reconciliation Utility Functions
+### 13.21.3 True Monthly Average Calculation
 
-**File:** `lib/utils/reconciliation.ts`
-
-Pure utility functions for reconciliation logic (no database calls):
+For advance payments (like rent), the system calculates accurate monthly averages:
 
 ```typescript
-// Detect frequency from transaction dates
-export function detectFrequency(dates: Date[]): FrequencyResult;
+// Pattern detection for advance payments
+// Excludes last payment (covers future period)
 
-// Analyze transaction pattern from same-vendor transactions
-export function analyzeTransactionPattern(transactions: TransactionForPattern[]): TransactionPattern;
+const sortedTxs = transactions.sort((a, b) => a.date - b.date);
+const firstDate = sortedTxs[0].date;
+const lastDate = sortedTxs[sortedTxs.length - 1].date;
 
-// Find best matching entry for a transaction
-export function findBestMatch(
-  transaction: TransactionForMatch,
-  entries: EntryForMatch[],
-  options?: MatchOptions
-): MatchResult | null;
+// Sum all amounts EXCEPT the last (advance payment logic)
+const sumExcludingLast = sortedTxs.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
 
-// Calculate budget variance for an entry
-export function calculateBudgetVariance(
-  actual: number,
-  budgeted: number
-): BudgetVarianceResult;
+// Calculate months covered
+const daysCovered = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
+const monthsCovered = daysCovered / 30.44; // Average days per month
 
-// Calculate total budget variance across entries
-export function calculateTotalBudgetVariance(
-  entries: BudgetEntry[]
-): TotalBudgetVariance;
+// True monthly average
+const trueMonthlyAverage = sumExcludingLast / monthsCovered;
+```
+
+**Example - Rental Income (Thornlands):**
+```
+Transactions:
+- Nov 8, 2025:  $3,362 (covers period starting Nov 8)
+- Nov 17, 2025: $1,651
+- Dec 1, 2025:  $3,313
+- Dec 16, 2025: $2,205
+- Jan 2, 2026:  $2,205
+- Jan 16, 2026: $1,651  ← EXCLUDE (covers future period)
+
+Sum (excluding last): $12,736
+Period: Nov 8 → Jan 16 = 69 days = 2.27 months
+True Monthly Average: $5,610/month (NET after property management deductions)
+
+Compare to expected:
+- Expected GROSS: $1,200/week × 52 / 12 = $5,200/month
+- Actual NET: $5,610/month
 ```
 
 ### 13.21.4 Master Financial Service Updates
 
 **File:** `lib/services/masterFinancialService.ts`
 
-Added budget variance calculations to the master snapshot:
+Added transaction-based actual calculation:
 
 ```typescript
-export interface BudgetVariance {
-  budgeted: number;
-  actual: number;
-  variance: number;
-  variancePercent: number;
-  status: 'under' | 'over' | 'on_track';
-  entriesWithBudget: number;
-  entriesReconciled: number;
+interface RawLinkedTransaction {
+  id: string;
+  date: Date;
+  amount: number;
+  direction: string;
+  incomeId: string | null;
+  expenseId: string | null;
 }
 
-// Added to MasterExpenseBreakdown
-interface MasterExpenseBreakdown {
+// Calculate actual from transactions for a specific month
+function calculateActualFromTransactions(
+  entryId: string,
+  entryType: 'income' | 'expense',
+  transactions: RawLinkedTransaction[],
+  targetMonth: number,
+  targetYear: number
+): number | null {
+  const entryTransactions = transactions.filter(t => {
+    const txDate = new Date(t.date);
+    const isCorrectEntry = entryType === 'income'
+      ? t.incomeId === entryId
+      : t.expenseId === entryId;
+    const isCorrectMonth = txDate.getMonth() === targetMonth
+      && txDate.getFullYear() === targetYear;
+    return isCorrectEntry && isCorrectMonth;
+  });
+
+  if (entryTransactions.length === 0) return null;
+  return entryTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+}
+```
+
+### 13.21.5 API Response Changes
+
+**GET /api/income and GET /api/expenses now return:**
+
+```json
+{
+  "data": [{
+    "id": "...",
+    "name": "Rental Income",
+    "amount": 5200,
+    "budgetAmount": 5200,
+    "actualFromTransactions": 5610.50,
+    "transactionCount": 5,
+    "hasTransactions": true
+  }]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `amount` | Entry amount (= Budget) |
+| `budgetAmount` | Same as amount (for clarity) |
+| `actualFromTransactions` | Sum of linked transactions for current month |
+| `transactionCount` | Number of linked transactions |
+| `hasTransactions` | Whether any transactions are linked |
+
+### 13.21.6 UI Changes
+
+**TransactionLinkDialog Updates:**
+
+1. **Pattern Detection Alert (Updated):**
+   ```
+   Pattern Detected
+   6 transactions over 2.3 months
+   Monthly Average: $5,610
+   (Amounts vary: property costs may be deducted)
+   ```
+
+2. **Linking Simplified:**
+   - **REMOVED** "Link & Update Amount" button
+   - **REMOVED** reconciliation recommendations
+   - Only "Link" button remains (tags transaction to entry)
+
+3. **Income/Expense Page (Updated):**
+   | Name | Category | Frequency | Budget | Actual |
+   |------|----------|-----------|--------|--------|
+   | Thornlands Rent | Rental | Monthly | $5,200 | $5,610 (+7.9%) |
+
+   - Green text when actual > budget (good for income)
+   - "No transactions" when no linked transactions exist
+
+### 13.21.7 Reconciliation Flow (Updated)
+
+1. User creates manual income/expense entry with BUDGET amount
+2. User imports/categorizes bank transactions
+3. User links transaction to entry (tagging only, no amount change)
+4. System calculates ACTUAL from linked transactions in real-time
+5. UI displays both Budget and Actual with variance
+
+**Key Change:** Linking = Tagging only. Entry amounts NEVER auto-update.
+
+### 13.21.8 Budget Variance Display
+
+The system now shows:
+- **Budget**: Entry amount (user's planned value)
+- **Actual**: Sum of linked transactions for current month
+- **Variance %**: (Actual - Budget) / Budget × 100
+
+For income: Positive variance = good (earning more than expected)
+For expenses: Negative variance = good (spending less than expected)
+
+### 13.21.9 Design Principles Alignment
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Single Source of Truth** | Actuals calculated in Master Financial Service |
+| **Pure Engines** | `calculateActualFromTransactions()` is pure (no DB calls) |
+| **No Amount Updates** | Linking = tagging only, entry amounts remain as budget |
+| **Date-Based Aggregation** | Actuals grouped by transaction date into calendar months |
+| **Advance Payment Logic** | Last payment excluded (covers future period) |
+
+
   // ... existing fields ...
   budgetVariance: BudgetVariance;
 }
