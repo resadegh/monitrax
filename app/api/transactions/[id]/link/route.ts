@@ -1097,6 +1097,7 @@ export async function GET(
         categoryMatch?: boolean;
         // Phase 30: Reconciliation fields
         propertyId?: string | null;
+        propertyName?: string | null;
         budgetedAmount?: number | null;
         lastReconciled?: Date | null;
         reconciliationRecommendation?: 'update_amount' | 'link_only' | 'create_new';
@@ -1200,6 +1201,17 @@ export async function GET(
 
       // Check income entries (only for IN transactions)
       if (transaction.direction === 'IN') {
+        // Determine if this is a rental/property-related transaction
+        const isRentalTransaction = Boolean(
+          learnedCategory?.toUpperCase() === 'RENTAL' ||
+          learnedCategory?.toUpperCase() === 'RENT' ||
+          transaction.categoryLevel1?.toUpperCase() === 'RENTAL' ||
+          transaction.categoryLevel1?.toUpperCase() === 'RENT' ||
+          merchantName?.toLowerCase().includes('rent') ||
+          merchantName?.toLowerCase().includes('trust') ||
+          merchantName?.toLowerCase().includes('property')
+        );
+
         for (const income of incomeEntries) {
           const nameText = income.name.toLowerCase();
           const similarity = calculateSimilarity(searchText, nameText);
@@ -1209,7 +1221,6 @@ export async function GET(
           const amountMatch = amountDiff < 1 || amountDiffPercent < 0.05;
 
           // Check if the income type matches the predicted/learned category
-          // This helps match "Cienna Pm Trust Rent Payment" to "Thornlands Rent" (both RENTAL)
           const mappedIncomeCategory = learnedCategory || transaction.categoryLevel1;
           const categoryMatch = Boolean(
             mappedIncomeCategory &&
@@ -1218,12 +1229,31 @@ export async function GET(
              (mappedIncomeCategory.toUpperCase() === 'RENT' && income.type?.toUpperCase() === 'RENTAL'))
           );
 
-          // Include if name matches, amount matches, OR category matches (same as expenses)
-          if (similarity > 0.3 || amountMatch || categoryMatch) {
-            // Boost confidence for category matches
+          // Check if this income entry is property-linked (rental income from a property)
+          const isPropertyLinkedRental = Boolean(
+            income.propertyId && income.type?.toUpperCase() === 'RENTAL'
+          );
+
+          // Get the property name if linked
+          const linkedProperty = income.propertyId
+            ? properties.find((p: { id: string; name: string }) => p.id === income.propertyId)
+            : null;
+
+          // Include if name matches, amount matches, category matches, OR property-linked rental for rental transactions
+          const shouldInclude = similarity > 0.3 || amountMatch || categoryMatch ||
+            (isRentalTransaction && isPropertyLinkedRental);
+
+          if (shouldInclude) {
+            // Calculate confidence with strong boosts for property-linked entries
             let confidence = similarity * (amountMatch ? 1.5 : 1);
+
             if (categoryMatch) {
-              confidence += 0.5; // Boost for matching predicted category
+              confidence += 1.0; // Strong boost for matching category
+            }
+
+            // Property-linked rental income gets highest priority for rental transactions
+            if (isRentalTransaction && isPropertyLinkedRental) {
+              confidence += 2.0; // Very strong boost - property-linked rentals should be top suggestions
             }
 
             matches.push({
@@ -1237,6 +1267,7 @@ export async function GET(
               amountMatch,
               amountDiff,
               propertyId: income.propertyId,
+              propertyName: linkedProperty?.name || null,
               budgetedAmount: income.budgetedAmount,
               lastReconciled: income.lastReconciled,
               categoryMatch,
