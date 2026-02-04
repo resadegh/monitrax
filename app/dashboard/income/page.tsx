@@ -105,8 +105,11 @@ interface Income {
   taxNotes?: string | null;
   // Phase 30: Budget vs Actual
   budgetAmount?: number;              // Budget = entry.amount
-  actualFromTransactions?: number | null;  // Actual from linked transactions this month
-  transactionCount?: number;          // Number of transactions this month
+  actualFromTransactions?: number | null;  // Total actual from ALL linked transactions
+  currentMonthActual?: number | null; // Actual from current month only
+  monthlyAverageActual?: number | null; // Monthly average calculated from transaction history
+  transactionCount?: number;          // Total number of linked transactions
+  currentMonthTransactionCount?: number; // Transactions this month only
   hasTransactions?: boolean;          // Whether any transactions are linked
   // GRDCS fields
   _links?: {
@@ -798,11 +801,13 @@ function IncomePageContent() {
                     // Use effective (after-tax for salary) amounts
                     const effectiveMonthly = getEffectiveMonthlyAmount(item);
                     const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;
-                    // Phase 30: Budget vs Actual
-                    const hasActual = item.actualFromTransactions !== null && item.actualFromTransactions !== undefined;
-                    const variance = hasActual ? item.actualFromTransactions! - convertToMonthly(item.amount, item.frequency) : 0;
-                    const variancePercent = hasActual && convertToMonthly(item.amount, item.frequency) > 0
-                      ? (variance / convertToMonthly(item.amount, item.frequency)) * 100
+                    // Phase 30: Budget vs Actual - use monthly average for comparison
+                    const hasActual = item.hasTransactions && item.transactionCount && item.transactionCount > 0;
+                    const actualMonthly = item.monthlyAverageActual || item.actualFromTransactions || 0;
+                    const budgetMonthly = convertToMonthly(item.amount, item.frequency);
+                    const variance = hasActual ? actualMonthly - budgetMonthly : 0;
+                    const variancePercent = hasActual && budgetMonthly > 0
+                      ? (variance / budgetMonthly) * 100
                       : 0;
                     return (
                       <tr
@@ -834,8 +839,12 @@ function IncomePageContent() {
                         <td className="px-4 py-3 text-right">
                           {hasActual ? (
                             <div>
-                              <span className="font-medium text-green-600">{formatCurrency(item.actualFromTransactions!)}</span>
-                              <span className="text-xs text-muted-foreground block">{item.transactionCount} txns</span>
+                              <span className="font-medium text-green-600">
+                                {formatCurrency(item.monthlyAverageActual || item.actualFromTransactions!)}
+                              </span>
+                              <span className="text-xs text-muted-foreground block">
+                                {item.transactionCount} txns{item.monthlyAverageActual ? ' (avg/mo)' : ''}
+                              </span>
                               {Math.abs(variancePercent) > 5 && (
                                 <span className={`text-xs block ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                   {variance >= 0 ? '+' : ''}{variancePercent.toFixed(0)}%
@@ -1056,8 +1065,8 @@ function IncomePageContent() {
                         // Use effective (after-tax for salary) amount
                         const effectiveMonthly = getEffectiveMonthlyAmount(item);
                         const isSalaryWithTax = item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount;
-                        // Phase 30: Budget vs Actual
-                        const hasActual = item.actualFromTransactions !== null && item.actualFromTransactions !== undefined;
+                        // Phase 30: Budget vs Actual - use monthly average
+                        const hasActual = item.hasTransactions && item.transactionCount && item.transactionCount > 0;
                         return (
                           <div
                             key={item.id}
@@ -1088,7 +1097,14 @@ function IncomePageContent() {
                             </div>
                             <div className="col-span-2">
                               {hasActual ? (
-                                <span className="font-medium text-green-600">{formatCurrency(item.actualFromTransactions!)}</span>
+                                <div>
+                                  <span className="font-medium text-green-600">
+                                    {formatCurrency(item.monthlyAverageActual || item.actualFromTransactions!)}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground block">
+                                    {item.transactionCount} txns
+                                  </span>
+                                </div>
                               ) : (
                                 <span className="text-xs text-muted-foreground">No txns</span>
                               )}

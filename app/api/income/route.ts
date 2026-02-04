@@ -16,14 +16,11 @@ export async function GET(request: NextRequest) {
           include: { property: true, investmentAccount: true },
           orderBy: { createdAt: 'desc' },
         }),
-        // Phase 30: Fetch transactions linked to income for current month
+        // Phase 30: Fetch ALL linked transactions (not just current month) to show actuals
         prisma.unifiedTransaction.findMany({
           where: {
             userId,
             incomeId: { not: null },
-            date: {
-              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First of current month
-            },
           },
           select: {
             id: true,
@@ -32,16 +29,45 @@ export async function GET(request: NextRequest) {
             direction: true,
             incomeId: true,
           },
+          orderBy: { date: 'desc' },
         }),
       ]);
 
-      // Group transactions by incomeId and calculate monthly actuals
-      const actualsByIncomeId = new Map<string, { amount: number; count: number }>();
+      // Group transactions by incomeId and calculate totals
+      // Also track current month vs all-time for display
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const actualsByIncomeId = new Map<string, {
+        totalAmount: number;
+        totalCount: number;
+        currentMonthAmount: number;
+        currentMonthCount: number;
+        transactions: Array<{ date: Date; amount: number }>;
+      }>();
+
       for (const tx of linkedTransactions) {
         if (tx.incomeId) {
-          const existing = actualsByIncomeId.get(tx.incomeId) || { amount: 0, count: 0 };
-          existing.amount += Math.abs(tx.amount);
-          existing.count += 1;
+          const existing = actualsByIncomeId.get(tx.incomeId) || {
+            totalAmount: 0,
+            totalCount: 0,
+            currentMonthAmount: 0,
+            currentMonthCount: 0,
+            transactions: [],
+          };
+          const txAmount = Math.abs(tx.amount);
+          const txDate = new Date(tx.date);
+
+          existing.totalAmount += txAmount;
+          existing.totalCount += 1;
+          existing.transactions.push({ date: txDate, amount: txAmount });
+
+          // Track current month separately
+          if (txDate >= currentMonthStart) {
+            existing.currentMonthAmount += txAmount;
+            existing.currentMonthCount += 1;
+          }
+
           actualsByIncomeId.set(tx.incomeId, existing);
         }
       }
@@ -53,14 +79,33 @@ export async function GET(request: NextRequest) {
 
         // Phase 30: Add actual from transactions
         const actuals = actualsByIncomeId.get(inc.id);
+
+        // Calculate monthly average from all transactions
+        let monthlyAverage = null;
+        if (actuals && actuals.transactions.length >= 2) {
+          const sortedTx = actuals.transactions.sort((a, b) => a.date.getTime() - b.date.getTime());
+          const firstDate = sortedTx[0].date;
+          const lastDate = sortedTx[sortedTx.length - 1].date;
+          const daysCovered = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+          const monthsCovered = daysCovered / 30.44;
+          if (monthsCovered > 0) {
+            monthlyAverage = actuals.totalAmount / monthsCovered;
+          }
+        }
+
         return {
           ...wrapped,
           // Budget = entry.amount (what user entered)
           budgetAmount: inc.amount,
-          // Actual = from transactions if available, null otherwise
-          actualFromTransactions: actuals ? actuals.amount : null,
-          transactionCount: actuals ? actuals.count : 0,
-          hasTransactions: actuals !== undefined,
+          // Actual = total from ALL linked transactions
+          actualFromTransactions: actuals ? actuals.totalAmount : null,
+          // Current month actual
+          currentMonthActual: actuals ? actuals.currentMonthAmount : null,
+          // Monthly average calculated from transaction history
+          monthlyAverageActual: monthlyAverage ? Math.round(monthlyAverage * 100) / 100 : null,
+          transactionCount: actuals ? actuals.totalCount : 0,
+          currentMonthTransactionCount: actuals ? actuals.currentMonthCount : 0,
+          hasTransactions: actuals !== undefined && actuals.totalCount > 0,
         };
       });
 
