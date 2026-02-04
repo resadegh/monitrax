@@ -491,6 +491,82 @@ This ensures:
 
 ---
 
+### Fix: Income Batch Categorization Missing
+
+> **Status: FIXED** (February 4, 2026)
+
+**Problem:** When creating a new income entry with multiple same-vendor transactions selected (batch categorization), only the main transaction was being linked. The additional selected transactions remained uncategorized.
+
+**Root Cause:** The batch linking code was implemented for expense creation (lines 405-431 of `route.ts`) but was MISSING for income creation (lines 306-320).
+
+**Fix Applied:**
+
+Added batch linking code to income creation case in `app/api/transactions/[id]/link/route.ts`:
+
+```typescript
+// Link transaction to new income
+await prisma.unifiedTransaction.update({
+  where: { id: transactionId },
+  data: {
+    incomeId: income.id,
+    isRecurring: true,
+    categoryLevel1: body.category || 'Income',
+  },
+});
+
+// NEW: Batch link additional transactions if provided
+let batchCount = 0;
+if (body.additionalTransactionIds && body.additionalTransactionIds.length > 0) {
+  const validIds = await prisma.unifiedTransaction.findMany({
+    where: {
+      id: { in: body.additionalTransactionIds },
+      userId,
+    },
+    select: { id: true },
+  });
+
+  if (validIds.length > 0) {
+    await prisma.unifiedTransaction.updateMany({
+      where: {
+        id: { in: validIds.map((t: { id: string }) => t.id) },
+      },
+      data: {
+        incomeId: income.id,
+        isRecurring: true,
+        categoryLevel1: body.category || 'Income',
+      },
+    });
+    batchCount = validIds.length;
+  }
+}
+
+// NEW: Learn merchant mapping for future suggestions
+if (body.learnMerchant && transaction.merchantStandardised && body.category) {
+  await prisma.merchantMapping.upsert({
+    // ... merchant mapping code
+  });
+}
+
+return NextResponse.json({
+  success: true,
+  created: { type: 'income', id: income.id, name: income.name },
+  batchCount,  // NEW: Return batch count
+  message: batchCount > 0
+    ? `Categorized ${batchCount + 1} transactions as ${income.name}`
+    : 'New income created and linked',
+});
+```
+
+**Impact:**
+- Batch categorization now works for BOTH income and expense entries
+- Multiple rent payments can be categorized together
+- Merchant learning works for income entries too
+
+**Files Modified:**
+- `app/api/transactions/[id]/link/route.ts` - Added batch linking and merchant learning for income creation
+
+---
+
 ### Fix: Payment Timing Awareness for Monthly Average
 
 > **Status: FIXED** (February 4, 2026)
@@ -557,6 +633,9 @@ Monthly Average: $5,000
 ## Commits Summary (February 3-4, 2026)
 
 ```
+[pending] fix: Add batch categorization for income entries
+b91c104 fix: Add category matching for income entries
+d9a5eed merge: Resolve conflict in changelog, keep both sections
 5a3f7fe docs: Document payment timing awareness for monthly average
 2b94f6b fix: Use correct payment timing for monthly average calculation
 d69faf2 docs: Update documentation for Budget vs Actual feature
