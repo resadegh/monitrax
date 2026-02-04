@@ -1239,9 +1239,18 @@ export async function GET(
             ? properties.find((p: { id: string; name: string }) => p.id === income.propertyId)
             : null;
 
-          // Include if name matches, amount matches, category matches, OR property-linked rental for rental transactions
+          // Check if this is any kind of rental income (type RENTAL or property-linked)
+          const isRentalIncome = Boolean(
+            income.type?.toUpperCase() === 'RENTAL' || income.propertyId
+          );
+
+          // Include if:
+          // 1. Name matches (similarity > 0.3)
+          // 2. Amount matches
+          // 3. Category matches
+          // 4. For rental transactions: include ALL rental income entries so user can pick the right property
           const shouldInclude = similarity > 0.3 || amountMatch || categoryMatch ||
-            (isRentalTransaction && isPropertyLinkedRental);
+            (isRentalTransaction && isRentalIncome);
 
           if (shouldInclude) {
             // Calculate confidence with strong boosts for property-linked entries
@@ -1254,6 +1263,11 @@ export async function GET(
             // Property-linked rental income gets highest priority for rental transactions
             if (isRentalTransaction && isPropertyLinkedRental) {
               confidence += 2.0; // Very strong boost - property-linked rentals should be top suggestions
+            }
+
+            // All rental income entries get a boost for rental transactions
+            if (isRentalTransaction && isRentalIncome) {
+              confidence += 0.5; // Ensure all rental options appear
             }
 
             matches.push({
@@ -1392,7 +1406,7 @@ export async function GET(
           investmentAccountId: transaction.investmentAccountId,
         },
         currentLink,
-        suggestedMatches: matches.slice(0, 5),
+        suggestedMatches: matches.slice(0, 10), // Increased to show all rental property options
         // Suggested category for creating new expenses based on transaction prediction or learned mapping
         suggestedCategory: learnedCategory || mappedCategory,
         // Learned category from previous user categorizations
