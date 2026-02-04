@@ -313,10 +313,66 @@ export async function POST(
               },
             });
 
+            // Batch link additional transactions if provided
+            let batchCount = 0;
+            if (body.additionalTransactionIds && body.additionalTransactionIds.length > 0) {
+              // Verify all transactions belong to user
+              const validIds = await prisma.unifiedTransaction.findMany({
+                where: {
+                  id: { in: body.additionalTransactionIds },
+                  userId,
+                },
+                select: { id: true },
+              });
+
+              if (validIds.length > 0) {
+                await prisma.unifiedTransaction.updateMany({
+                  where: {
+                    id: { in: validIds.map((t: { id: string }) => t.id) },
+                  },
+                  data: {
+                    incomeId: income.id,
+                    isRecurring: true,
+                    categoryLevel1: body.category || 'Income',
+                  },
+                });
+                batchCount = validIds.length;
+              }
+            }
+
+            // Learn merchant mapping for future suggestions
+            if (body.learnMerchant && transaction.merchantStandardised && body.category) {
+              await prisma.merchantMapping.upsert({
+                where: {
+                  userId_merchantRaw: {
+                    userId,
+                    merchantRaw: transaction.merchantStandardised,
+                  },
+                },
+                update: {
+                  categoryLevel1: body.category,
+                  usageCount: { increment: 1 },
+                  updatedAt: new Date(),
+                },
+                create: {
+                  userId,
+                  merchantRaw: transaction.merchantStandardised,
+                  merchantStandardised: transaction.merchantStandardised,
+                  categoryLevel1: body.category,
+                  source: 'USER',
+                  confidence: 1.0,
+                  usageCount: 1,
+                },
+              });
+            }
+
             return NextResponse.json({
               success: true,
               created: { type: 'income', id: income.id, name: income.name },
-              message: 'New income created and linked',
+              batchCount,
+              message: batchCount > 0
+                ? `Categorized ${batchCount + 1} transactions as ${income.name}`
+                : 'New income created and linked',
             });
           } else {
             // Create new Expense entry with source type and entity linking
@@ -1152,13 +1208,22 @@ export async function GET(
           const amountDiffPercent = effectiveAmount > 0 ? amountDiff / effectiveAmount : 1;
           const amountMatch = amountDiff < 1 || amountDiffPercent < 0.05;
 
-          if (similarity > 0.3 || amountMatch) {
-            // Phase 30: Determine reconciliation recommendation
-            let reconciliationRecommendation: 'update_amount' | 'link_only' | 'create_new' = 'link_only';
-            if (amountDiffPercent > 0.05 && amountDiffPercent <= 0.50) {
-              reconciliationRecommendation = 'update_amount';
-            } else if (amountDiffPercent > 0.50) {
-              reconciliationRecommendation = 'create_new';
+          // Check if the income type matches the predicted/learned category
+          // This helps match "Cienna Pm Trust Rent Payment" to "Thornlands Rent" (both RENTAL)
+          const mappedIncomeCategory = learnedCategory || transaction.categoryLevel1;
+          const categoryMatch = Boolean(
+            mappedIncomeCategory &&
+            (income.type?.toUpperCase() === mappedIncomeCategory.toUpperCase() ||
+             (mappedIncomeCategory.toUpperCase() === 'RENTAL' && income.type?.toUpperCase() === 'RENTAL') ||
+             (mappedIncomeCategory.toUpperCase() === 'RENT' && income.type?.toUpperCase() === 'RENTAL'))
+          );
+
+          // Include if name matches, amount matches, OR category matches (same as expenses)
+          if (similarity > 0.3 || amountMatch || categoryMatch) {
+            // Boost confidence for category matches
+            let confidence = similarity * (amountMatch ? 1.5 : 1);
+            if (categoryMatch) {
+              confidence += 0.5; // Boost for matching predicted category
             }
 
             matches.push({
@@ -1168,13 +1233,13 @@ export async function GET(
               category: income.type,
               amount: effectiveAmount,
               frequency: income.frequency,
-              confidence: similarity * (amountMatch ? 1.5 : 1),
+              confidence,
               amountMatch,
               amountDiff,
               propertyId: income.propertyId,
               budgetedAmount: income.budgetedAmount,
               lastReconciled: income.lastReconciled,
-              reconciliationRecommendation,
+              categoryMatch,
             });
           }
         }
