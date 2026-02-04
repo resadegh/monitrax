@@ -1064,7 +1064,11 @@ export async function GET(
 
         if (recentTxs.length >= 2) {
           // Sort by date to detect frequency
-          const sortedDates = recentTxs.map(t => new Date(t.date)).sort((a, b) => a.getTime() - b.getTime());
+          const sortedTxs = recentTxs
+            .map(t => ({ date: new Date(t.date), amount: Math.abs(t.amount) }))
+            .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+          const sortedDates = sortedTxs.map(t => t.date);
 
           // Calculate intervals between transactions
           const intervals: number[] = [];
@@ -1075,7 +1079,7 @@ export async function GET(
 
           if (intervals.length > 0) {
             const avgInterval = intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
-            const amounts = recentTxs.map(t => Math.abs(t.amount));
+            const amounts = sortedTxs.map(t => t.amount);
             const avgAmount = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
 
             // Detect frequency from interval
@@ -1086,11 +1090,27 @@ export async function GET(
             else if (avgInterval <= 120) detectedFrequency = 'QUARTERLY';
             else detectedFrequency = 'ANNUAL';
 
+            // Calculate TRUE monthly average for advance payments (like rent)
+            // Exclude the last payment as it covers a future period
+            const firstDate = sortedDates[0];
+            const lastDate = sortedDates[sortedDates.length - 1];
+            const daysCovered = Math.round((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+            const monthsCovered = daysCovered / 30.44; // Average days per month
+
+            // Sum all amounts EXCEPT the last one (advance payment logic)
+            const sumExcludingLast = sortedTxs.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
+            const trueMonthlyAverage = monthsCovered > 0 ? sumExcludingLast / monthsCovered : avgAmount;
+
             transactionPattern = {
               count: recentTxs.length,
               detectedFrequency,
               averageAmount: avgAmount,
               averageIntervalDays: avgInterval,
+              // New fields for accurate monthly calculation
+              trueMonthlyAverage: Math.round(trueMonthlyAverage * 100) / 100,
+              totalAmount: amounts.reduce((sum, a) => sum + a, 0),
+              sumExcludingLast: Math.round(sumExcludingLast * 100) / 100,
+              monthsCovered: Math.round(monthsCovered * 100) / 100,
               dateRange: {
                 first: sortedDates[0],
                 last: sortedDates[sortedDates.length - 1],

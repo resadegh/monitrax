@@ -70,6 +70,11 @@ interface TransactionPattern {
   detectedFrequency: string;
   averageAmount: number;
   averageIntervalDays: number;
+  // New fields for accurate monthly calculation (advance payment logic)
+  trueMonthlyAverage?: number;
+  totalAmount?: number;
+  sumExcludingLast?: number;
+  monthsCovered?: number;
   dateRange: {
     first: string;
     last: string;
@@ -737,9 +742,17 @@ export function TransactionLinkDialog({
                     Pattern Detected
                   </p>
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    {transactionPattern.count} transactions from this vendor over the last 12 months.
-                    Average: {formatCurrency(transactionPattern.averageAmount)} / {transactionPattern.detectedFrequency.toLowerCase()}
+                    {transactionPattern.count} transactions over {transactionPattern.monthsCovered?.toFixed(1) || '?'} months
                   </p>
+                  <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mt-1">
+                    Monthly Average: {formatCurrency(transactionPattern.trueMonthlyAverage || transactionPattern.averageAmount)}
+                  </p>
+                  {transactionPattern.trueMonthlyAverage && transactionPattern.averageAmount &&
+                   Math.abs(transactionPattern.trueMonthlyAverage - transactionPattern.averageAmount) > 100 && (
+                    <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                      (Amounts vary: property costs may be deducted)
+                    </p>
+                  )}
                 </div>
               )}
               {suggestedMatches.length === 0 ? (
