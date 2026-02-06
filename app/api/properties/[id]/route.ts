@@ -12,51 +12,61 @@ export async function GET(
       const { id } = await params;
       const userId = authReq.user!.userId;
 
-      // Fetch property with related data and transactions in parallel
-      const [property, incomeTransactions, expenseTransactions, loanTransactions] = await Promise.all([
-        prisma.property.findUnique({
-          where: { id },
-          include: {
-            loans: true,
-            income: true,
-            expenses: true,
-            depreciationSchedules: true,
-          },
-        }),
-        // Fetch transactions linked to property's income
-        prisma.unifiedTransaction.findMany({
-          where: {
-            userId,
-            incomeId: { not: null },
-            income: { propertyId: id },
-          },
-          select: { id: true, date: true, amount: true, incomeId: true },
-          orderBy: { date: 'asc' },
-        }),
-        // Fetch transactions linked to property's expenses
-        prisma.unifiedTransaction.findMany({
-          where: {
-            userId,
-            expenseId: { not: null },
-            expense: { propertyId: id },
-          },
-          select: { id: true, date: true, amount: true, expenseId: true },
-          orderBy: { date: 'asc' },
-        }),
-        // Fetch transactions linked to property's loans
-        prisma.unifiedTransaction.findMany({
-          where: {
-            userId,
-            loanId: { not: null },
-            loan: { propertyId: id },
-          },
-          select: { id: true, date: true, amount: true, loanId: true },
-          orderBy: { date: 'asc' },
-        }),
-      ]);
+      // First fetch the property with related data to get IDs
+      const property = await prisma.property.findUnique({
+        where: { id },
+        include: {
+          loans: true,
+          income: true,
+          expenses: true,
+          depreciationSchedules: true,
+        },
+      });
 
       const ownershipResult = verifyOwnership(property, authReq.user!.userId, 'Property');
       if (!ownershipResult.success) return ownershipResult.response;
+
+      // Extract IDs for transaction queries
+      const incomeIds = property!.income.map((inc) => inc.id);
+      const expenseIds = property!.expenses.map((exp) => exp.id);
+      const loanIds = property!.loans.map((loan) => loan.id);
+
+      // Fetch transactions linked to property's income/expenses/loans in parallel
+      const [incomeTransactions, expenseTransactions, loanTransactions] = await Promise.all([
+        // Fetch transactions linked to property's income
+        incomeIds.length > 0
+          ? prisma.unifiedTransaction.findMany({
+              where: {
+                userId,
+                incomeId: { in: incomeIds },
+              },
+              select: { id: true, date: true, amount: true, incomeId: true },
+              orderBy: { date: 'asc' },
+            })
+          : Promise.resolve([]),
+        // Fetch transactions linked to property's expenses
+        expenseIds.length > 0
+          ? prisma.unifiedTransaction.findMany({
+              where: {
+                userId,
+                expenseId: { in: expenseIds },
+              },
+              select: { id: true, date: true, amount: true, expenseId: true },
+              orderBy: { date: 'asc' },
+            })
+          : Promise.resolve([]),
+        // Fetch transactions linked to property's loans
+        loanIds.length > 0
+          ? prisma.unifiedTransaction.findMany({
+              where: {
+                userId,
+                loanId: { in: loanIds },
+              },
+              select: { id: true, date: true, amount: true, loanId: true },
+              orderBy: { date: 'asc' },
+            })
+          : Promise.resolve([]),
+      ]);
 
       // Helper function to calculate days-based monthly average
       const calculateMonthlyAverage = (transactions: Array<{ date: Date; amount: number }>, isAdvance = false): number | null => {
