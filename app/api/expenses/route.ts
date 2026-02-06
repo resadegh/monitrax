@@ -41,14 +41,11 @@ export async function GET(request: NextRequest) {
           },
           orderBy: { createdAt: 'desc' },
         }),
-        // Phase 30: Fetch transactions linked to expenses for current month
+        // Phase 30: Fetch ALL linked transactions (not just current month) to calculate accurate averages
         prisma.unifiedTransaction.findMany({
           where: {
             userId,
             expenseId: { not: null },
-            date: {
-              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First of current month
-            },
           },
           select: {
             id: true,
@@ -57,16 +54,45 @@ export async function GET(request: NextRequest) {
             direction: true,
             expenseId: true,
           },
+          orderBy: { date: 'desc' },
         }),
       ]);
 
-      // Group transactions by expenseId and calculate monthly actuals
-      const actualsByExpenseId = new Map<string, { amount: number; count: number }>();
+      // Group transactions by expenseId and calculate totals
+      // Track current month vs all-time for display
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const actualsByExpenseId = new Map<string, {
+        totalAmount: number;
+        totalCount: number;
+        currentMonthAmount: number;
+        currentMonthCount: number;
+        transactions: Array<{ date: Date; amount: number }>;
+      }>();
+
       for (const tx of linkedTransactions) {
         if (tx.expenseId) {
-          const existing = actualsByExpenseId.get(tx.expenseId) || { amount: 0, count: 0 };
-          existing.amount += Math.abs(tx.amount);
-          existing.count += 1;
+          const existing = actualsByExpenseId.get(tx.expenseId) || {
+            totalAmount: 0,
+            totalCount: 0,
+            currentMonthAmount: 0,
+            currentMonthCount: 0,
+            transactions: [],
+          };
+          const txAmount = Math.abs(tx.amount);
+          const txDate = new Date(tx.date);
+
+          existing.totalAmount += txAmount;
+          existing.totalCount += 1;
+          existing.transactions.push({ date: txDate, amount: txAmount });
+
+          // Track current month separately
+          if (txDate >= currentMonthStart) {
+            existing.currentMonthAmount += txAmount;
+            existing.currentMonthCount += 1;
+          }
+
           actualsByExpenseId.set(tx.expenseId, existing);
         }
       }
@@ -76,16 +102,45 @@ export async function GET(request: NextRequest) {
         const links = extractExpenseLinks(expense);
         const wrapped = wrapWithGRDCS(expense as Record<string, unknown>, 'expense', links);
 
-        // Phase 30: Add actual from transactions
+        // Phase 30: Add actual from transactions with days-based monthly average
         const actuals = actualsByExpenseId.get(expense.id);
+
+        // Calculate monthly average from transactions using DAYS-BASED approach
+        // This provides accurate averages regardless of how payments fall across calendar months
+        // Formula: (sum / totalDaysCovered) * 30.44 = monthly average
+        // Expenses are typically paid in ARREARS (covering a completed period)
+        let monthlyAverage = null;
+        if (actuals && actuals.transactions.length >= 2) {
+          const sortedTx = actuals.transactions.sort((a, b) => a.date.getTime() - b.date.getTime());
+          const firstDate = sortedTx[0].date;
+          const lastDate = sortedTx[sortedTx.length - 1].date;
+          const daysCovered = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          // For accurate monthly average, add one payment interval to days covered
+          // This accounts for the period the last payment covers
+          const avgPaymentInterval = daysCovered / (sortedTx.length - 1);
+          const totalDaysCovered = daysCovered + avgPaymentInterval;
+
+          // Monthly average = (sum / days) * 30.44 (average days per month)
+          monthlyAverage = (actuals.totalAmount / totalDaysCovered) * 30.44;
+        } else if (actuals && actuals.transactions.length === 1) {
+          // Single transaction - assume it represents one period based on expense frequency
+          monthlyAverage = actuals.totalAmount; // Will be normalized by frequency in UI
+        }
+
         return {
           ...wrapped,
           // Budget = entry.amount (what user entered)
           budgetAmount: expense.amount,
-          // Actual = from transactions if available, null otherwise
-          actualFromTransactions: actuals ? actuals.amount : null,
-          transactionCount: actuals ? actuals.count : 0,
-          hasTransactions: actuals !== undefined,
+          // Actual = total from ALL linked transactions
+          actualFromTransactions: actuals ? actuals.totalAmount : null,
+          // Current month actual
+          currentMonthActual: actuals ? actuals.currentMonthAmount : null,
+          // Monthly average calculated from transaction history
+          monthlyAverageActual: monthlyAverage ? Math.round(monthlyAverage * 100) / 100 : null,
+          transactionCount: actuals ? actuals.totalCount : 0,
+          currentMonthTransactionCount: actuals ? actuals.currentMonthCount : 0,
+          hasTransactions: actuals !== undefined && actuals.totalCount > 0,
         };
       });
 
