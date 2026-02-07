@@ -1024,22 +1024,58 @@ function PropertiesPageContent() {
                     </div>
                   </div>
 
-                  {selectedProperty.type === 'INVESTMENT' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">Rental Yield</p>
-                        <p className="text-xl font-bold text-purple-600">
-                          {calculateRentalYield(selectedProperty).toFixed(2)}%
-                        </p>
+                  {selectedProperty.type === 'INVESTMENT' && (() => {
+                    // Calculate actual cashflow for Details tab
+                    const annualIncomeBudget = selectedProperty.income?.reduce((sum, inc) =>
+                      sum + convertToAnnual(inc.amount, inc.frequency), 0) || 0;
+                    const annualIncomeActual = selectedProperty.income?.reduce((sum, inc) =>
+                      sum + ((inc.monthlyAverageActual || 0) * 12), 0) || 0;
+                    const hasIncomeActuals = selectedProperty.income?.some(inc => inc.hasTransactions);
+
+                    const annualExpenseBudget = selectedProperty.expenses?.reduce((sum, exp) =>
+                      sum + convertToAnnual(exp.amount, exp.frequency), 0) || 0;
+                    const annualExpenseActual = selectedProperty.expenses?.reduce((sum, exp) =>
+                      sum + ((exp.monthlyAverageActual || 0) * 12), 0) || 0;
+                    const hasExpenseActuals = selectedProperty.expenses?.some(exp => exp.hasTransactions);
+
+                    const annualLoanBudget = calculateAnnualLoanRepayments(selectedProperty);
+                    const annualLoanActual = selectedProperty.loans?.reduce((sum, loan) =>
+                      sum + ((loan.monthlyAverageActual || 0) * 12), 0) || 0;
+                    const hasLoanActuals = selectedProperty.loans?.some(loan => loan.hasTransactions);
+
+                    const cashflowBudget = annualIncomeBudget - annualExpenseBudget - annualLoanBudget;
+                    const cashflowActual = hasIncomeActuals || hasExpenseActuals || hasLoanActuals
+                      ? annualIncomeActual - annualExpenseActual - annualLoanActual
+                      : null;
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <p className="text-sm text-muted-foreground">Rental Yield</p>
+                          <p className="text-xl font-bold text-purple-600">
+                            {calculateRentalYield(selectedProperty).toFixed(2)}%
+                          </p>
+                        </div>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <p className="text-sm text-muted-foreground">Annual Cashflow</p>
+                          <div className="flex justify-between items-baseline">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Budget</p>
+                              <p className={`text-xl font-bold ${cashflowBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {formatCurrency(cashflowBudget)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Actual</p>
+                              <p className={`text-xl font-bold ${cashflowActual !== null ? (cashflowActual >= 0 ? 'text-green-600' : 'text-red-600') : 'text-muted-foreground'}`}>
+                                {cashflowActual !== null ? formatCurrency(cashflowActual) : '—'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">Annual Cashflow</p>
-                        <p className={`text-xl font-bold ${calculateCashflow(selectedProperty) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatCurrency(calculateCashflow(selectedProperty))}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Property Location Map */}
                   {(selectedProperty.latitude && selectedProperty.longitude) || selectedProperty.address ? (
@@ -1147,21 +1183,19 @@ function PropertiesPageContent() {
                         ? incomeActual - expenseActual - loanActual
                         : null;
 
-                      const periodLabel = financialViewMode === 'annual' ? '/yr' : '/mo';
-
                       return (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {/* Income */}
                           <div className="p-3 bg-green-50 rounded-lg">
-                            <p className="text-xs text-muted-foreground">Income {periodLabel}</p>
+                            <p className="text-xs text-muted-foreground">Income</p>
                             <div className="flex justify-between items-baseline">
                               <div>
                                 <p className="text-xs text-muted-foreground">Budget</p>
-                                <p className="text-lg font-bold text-green-600">{formatCurrency(incomeBudget)}</p>
+                                <p className={`text-lg font-bold ${incomeBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(incomeBudget)}</p>
                               </div>
                               <div className="text-right">
                                 <p className="text-xs text-muted-foreground">Actual</p>
-                                <p className={`text-lg font-bold ${hasIncomeActuals ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                <p className={`text-lg font-bold ${hasIncomeActuals ? (incomeActual >= 0 ? 'text-green-600' : 'text-red-600') : 'text-muted-foreground'}`}>
                                   {hasIncomeActuals ? formatCurrency(incomeActual) : '—'}
                                 </p>
                               </div>
@@ -1176,7 +1210,7 @@ function PropertiesPageContent() {
 
                           {/* Expenses */}
                           <div className="p-3 bg-red-50 rounded-lg">
-                            <p className="text-xs text-muted-foreground">Expenses {periodLabel}</p>
+                            <p className="text-xs text-muted-foreground">Expenses</p>
                             <div className="flex justify-between items-baseline">
                               <div>
                                 <p className="text-xs text-muted-foreground">Budget</p>
@@ -1199,15 +1233,15 @@ function PropertiesPageContent() {
 
                           {/* Loan Repayments */}
                           <div className="p-3 bg-orange-50 rounded-lg">
-                            <p className="text-xs text-muted-foreground">Loan Repayments {periodLabel}</p>
+                            <p className="text-xs text-muted-foreground">Loan Repayments</p>
                             <div className="flex justify-between items-baseline">
                               <div>
                                 <p className="text-xs text-muted-foreground">Budget</p>
-                                <p className="text-lg font-bold text-orange-600">{formatCurrency(loanBudget)}</p>
+                                <p className="text-lg font-bold text-red-600">{formatCurrency(loanBudget)}</p>
                               </div>
                               <div className="text-right">
                                 <p className="text-xs text-muted-foreground">Actual</p>
-                                <p className={`text-lg font-bold ${hasLoanActuals ? 'text-orange-600' : 'text-muted-foreground'}`}>
+                                <p className={`text-lg font-bold ${hasLoanActuals ? 'text-red-600' : 'text-muted-foreground'}`}>
                                   {hasLoanActuals ? formatCurrency(loanActual) : '—'}
                                 </p>
                               </div>
@@ -1222,7 +1256,7 @@ function PropertiesPageContent() {
 
                           {/* Net Cashflow */}
                           <div className={`p-3 rounded-lg ${cashflowBudget >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                            <p className="text-xs text-muted-foreground">Net Cashflow {periodLabel}</p>
+                            <p className="text-xs text-muted-foreground">Net Cashflow</p>
                             <div className="flex justify-between items-baseline">
                               <div>
                                 <p className="text-xs text-muted-foreground">Budget</p>
