@@ -52,3 +52,54 @@
 ### PR
 - PR URL: (pending)
 - Status: Open
+
+---
+
+## Session: gcp-identity-migration-phase-V6Y66 (Phase 2)
+
+### Changes Made
+- **Type**: Feature (Phase 2 of GCP Identity Platform Migration)
+- **Scope**: Authentication - Client-side Firebase SDK integration
+- **Description**: Integrated the Firebase client SDK into the frontend to enable GCP Identity Platform authentication. Login, signin, and register pages now use Firebase Auth for Google sign-in (popup) and email/password authentication when GCP is configured. The existing legacy OAuth flow is preserved as a fallback when GCP env vars are not set.
+
+### Architecture Decisions
+- **Additive + backward-compatible**: When `NEXT_PUBLIC_FIREBASE_API_KEY` and `NEXT_PUBLIC_GCP_PROJECT_ID` are set, Firebase Auth handles login. When not set, the legacy custom OAuth flow continues to work unchanged.
+- **Token bridge preserved**: Firebase Auth → GCP ID Token → `POST /api/auth/gcp/sync` → Monitrax JWT. All existing API routes continue to use Monitrax JWTs.
+- **Firebase Auth popup for Google**: Uses `signInWithPopup()` instead of server-side redirect, keeping the user on the page.
+- **Firebase Auth email/password**: Uses `signInWithEmailAndPassword()` and `createUserWithEmailAndPassword()` for email login/register.
+- **CSP updated**: Middleware CSP now allows Firebase/Google domains for `connect-src`, `frame-src`, and `script-src`.
+
+### Files Created
+- `lib/firebase/config.ts` - Firebase client SDK initialization (singleton pattern)
+- `docs/blueprint/GCP_IDENTITY_MIGRATION_PHASE2.md` - Phase 2 blueprint document
+
+### Files Modified
+- `lib/context/AuthContext.tsx` - Added `loginWithGoogle()`, GCP-aware `login()` and `register()`, Firebase sign-out on `logout()`
+- `app/login/page.tsx` - Google button uses Firebase Auth popup when GCP enabled; Firebase error mapping
+- `app/signin/page.tsx` - Same updates as login page
+- `app/register/page.tsx` - Google sign-up button uses Firebase Auth popup when GCP enabled
+- `middleware.ts` - CSP updated to allow Firebase/GCP domains
+- `.env.example` - Added `NEXT_PUBLIC_GCP_PROJECT_ID` and `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `package.json` - Added `firebase` dependency
+
+### Environment Variables Added
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_GCP_PROJECT_ID` | Yes (for GCP auth) | GCP project ID for Firebase client config |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Yes (for GCP auth) | Firebase Web API key |
+
+### Testing
+- [x] Build passes (`npm run build`)
+- [ ] Manual testing: Google sign-in popup with GCP Identity Platform
+- [ ] Manual testing: Email/password login via Firebase Auth
+- [ ] Manual testing: Legacy OAuth fallback when GCP not configured
+
+### Migration Phase Status
+- **Phase 1**: Server-side token verification + user sync ✅
+- **Phase 2** (this session): Client-side Firebase SDK integration ✅
+- **Phase 3** (future): Dual-mode middleware
+- **Phase 4** (future): Full cutover + legacy cleanup
+
+### PR
+- PR URL: (pending)
+- Status: Open
