@@ -8,17 +8,16 @@
  * 2. Client sends the GCP ID token to this endpoint
  * 3. Server verifies the token against Google's public keys
  * 4. Server creates or links the local user account
- * 5. Server returns a Monitrax JWT for subsequent API calls
+ * 5. Returns the sync result (userId, gcpUid, isNewUser, etc.)
  *
- * This enables a gradual migration: the client can start using
- * GCP Identity Platform for login while the backend continues
- * to use Monitrax JWTs for all API authorization.
+ * GCP Identity Platform is the sole identity provider.
+ * No Monitrax JWTs are issued — clients use Firebase ID tokens directly.
  *
  * Request:
  *   Authorization: Bearer <gcp-id-token>
  *
  * Response:
- *   { success: true, data: { userId, gcpUid, token, isNewUser, email, name } }
+ *   { success: true, data: { userId, gcpUid, isNewUser, email, name } }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -112,7 +111,6 @@ export async function POST(request: NextRequest) {
         data: {
           userId: result.userId,
           gcpUid: result.gcpUid,
-          token: result.token,
           isNewUser: result.isNewUser,
           email: result.email,
           name: result.name,
