@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,7 @@ interface Investment {
 
 export default function InvestmentStrategyPage() {
   const params = useParams();
+  const { token } = useAuth();
   const investmentId = params.id as string;
 
   const [investment, setInvestment] = useState<Investment | null>(null);
@@ -56,15 +58,17 @@ export default function InvestmentStrategyPage() {
   const [showAiPanel, setShowAiPanel] = useState(false);
 
   useEffect(() => {
-    if (investmentId) {
+    if (investmentId && token) {
       fetchInvestment();
     }
-  }, [investmentId]);
+  }, [investmentId, token]);
 
   async function fetchInvestment() {
     try {
       setLoading(true);
-      const response = await fetch(`/api/investments/holdings/${investmentId}`);
+      const response = await fetch(`/api/investments/holdings/${investmentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setInvestment(data.data || data);

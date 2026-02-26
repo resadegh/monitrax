@@ -109,17 +109,18 @@ Insights appear at:
 - entity level  
 - global health indicator  
 
-## 3.7. Security & Compliance  
+## 3.7. Security & Compliance
 Authentication and access control follow:
-- industry-standard providers (Clerk, Supabase, Auth0)  
-- MFA  
-- magic links  
-- RBAC  
-- audit logging  
-- rate limiting  
-- security hardening  
+- **GCP Identity Platform (Firebase Auth)** — sole identity provider (Feb 2026 cutover)
+- MFA (Firebase TOTP + SMS)
+- magic links
+- RBAC (4 roles, 50+ permissions)
+- audit logging (40+ event types, immutable)
+- rate limiting
+- security hardening
+- 30-minute inactivity auto-logout with warning dialog
 
-(More in Phase 10.)
+(More in Phase 10 and GCP Migration docs.)
 
 ---
 

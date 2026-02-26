@@ -341,7 +341,18 @@ No Monitrax JWTs are issued or verified for API authentication.
 - **Audit logging**: Immutable audit trail (40+ event types)
 - **Brute-force protection**: Account lockout after 5 failed attempts
 - **CSP headers**: Firebase/GCP domains whitelisted in middleware
-- **Rate limiting**: Per-user, per-IP, per-endpoint  
+- **Rate limiting**: Per-user, per-IP, per-endpoint
+- **Inactivity timeout**: 30-minute idle auto-logout with 2-minute warning dialog (`components/auth/IdleTimeoutGuard.tsx`)
+- **Custom sign-in branding**: `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` env var controls Google popup domain display
+- **Concurrent request safety**: `syncGCPUser()` uses upsert + retry-on-conflict for race condition resilience
+
+## **6.4 Client-Side Auth Pattern**
+
+All client components that make API calls MUST:
+1. Import `useAuth` from `@/lib/context/AuthContext`
+2. Destructure `{ token }` from `useAuth()`
+3. Guard fetch calls with `if (!token) return` or `if (token)` in useEffect
+4. Include `Authorization: Bearer ${token}` header in every fetch call
 
 ---
 
