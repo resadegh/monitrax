@@ -1,13 +1,22 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+/**
+ * Authentication Context — GCP Identity Platform
+ *
+ * Uses Firebase Auth SDK as the sole authentication provider.
+ * Firebase ID tokens are sent directly to API routes (no Monitrax JWT).
+ * Token refresh is handled automatically by the Firebase SDK.
+ */
+
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  updateProfile,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
-  onAuthStateChanged,
+  onIdTokenChanged,
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase/config';
@@ -18,7 +27,6 @@ import {
   resolveWithPhone,
   sendPhoneMFACode,
   type MFAChallengeState,
-  type MFAFactorInfo,
 } from '@/lib/firebase/mfa';
 
 interface User {
@@ -54,89 +62,93 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /**
- * Sync a Firebase user to the Monitrax backend.
- * Sends the GCP ID token to /api/auth/gcp/sync, which verifies it
- * and returns a Monitrax JWT + user data.
+ * Fetch user profile from the Monitrax API using the Firebase ID token.
+ * The server verifies the GCP token directly and auto-syncs the user.
  */
-async function syncFirebaseUser(firebaseUser: FirebaseUser): Promise<{ token: string; user: User }> {
-  const idToken = await firebaseUser.getIdToken();
-
-  const response = await fetch('/api/auth/gcp/sync', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
+async function fetchUserProfile(idToken: string): Promise<User> {
+  const response = await fetch('/api/auth/me', {
+    headers: { Authorization: `Bearer ${idToken}` },
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error?.message || 'Failed to sync with server');
+    throw new Error('Failed to fetch user profile');
   }
 
   const data = await response.json();
-
   return {
-    token: data.data.token,
-    user: {
-      id: data.data.userId,
-      email: data.data.email,
-      name: data.data.name || data.data.email.split('@')[0],
-      role: 'OWNER', // Default role for new users; server sets actual role
-    },
+    id: data.user?.id || data.data?.userId || '',
+    email: data.user?.email || data.data?.email || '',
+    name: data.user?.name || data.data?.name || '',
+    role: data.user?.role || data.data?.role || 'OWNER',
   };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [mfaChallenge, setMFAChallenge] = useState<MFAChallengeState | null>(null);
   const gcpEnabled = isFirebaseConfigured();
+  const profileFetchedRef = useRef(false);
 
+  // Listen for Firebase auth state and token refresh.
+  // This is the single source of truth for authentication.
   useEffect(() => {
-    // Check for stored token on mount
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+    if (!gcpEnabled) {
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
-  }, []);
 
-  // Track Firebase auth state so firebaseUser stays current (needed for MFA enrollment)
-  useEffect(() => {
-    if (!gcpEnabled) return;
     const auth = getFirebaseAuth();
-    if (!auth) return;
+    if (!auth) {
+      setIsLoading(false);
+      return;
+    }
 
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-      setFirebaseUser(fbUser);
+    const unsubscribe = onIdTokenChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        // User is signed in — get the ID token
+        const idToken = await fbUser.getIdToken();
+        setFirebaseUser(fbUser);
+        setToken(idToken);
+
+        // Fetch user profile on initial sign-in (not on every token refresh)
+        if (!profileFetchedRef.current) {
+          try {
+            const profile = await fetchUserProfile(idToken);
+            setUser(profile);
+            profileFetchedRef.current = true;
+          } catch (err) {
+            console.error('Failed to fetch user profile:', err);
+          }
+        }
+      } else {
+        // User is signed out
+        setFirebaseUser(null);
+        setToken(null);
+        setUser(null);
+        profileFetchedRef.current = false;
+      }
+      setIsLoading(false);
     });
+
     return unsubscribe;
   }, [gcpEnabled]);
 
   /**
-   * Helper to persist auth state after successful login/register
+   * Handle a successful Firebase sign-in.
+   * Gets the ID token and fetches the user profile from the server.
    */
-  const persistAuth = (authToken: string, authUser: User) => {
-    setToken(authToken);
-    setUser(authUser);
-    localStorage.setItem('token', authToken);
-    localStorage.setItem('user', JSON.stringify(authUser));
-  };
-
-  /**
-   * Handle a successful Firebase credential (post sign-in or post MFA resolution).
-   * Syncs with the Monitrax backend and persists the session.
-   */
-  const handleFirebaseCredential = async (credential: import('firebase/auth').UserCredential) => {
-    const result = await syncFirebaseUser(credential.user);
-    persistAuth(result.token, result.user);
+  const handleSignIn = async (fbUser: FirebaseUser) => {
+    const idToken = await fbUser.getIdToken();
+    setFirebaseUser(fbUser);
+    setToken(idToken);
     setMFAChallenge(null);
+
+    const profile = await fetchUserProfile(idToken);
+    setUser(profile);
+    profileFetchedRef.current = true;
   };
 
   /**
@@ -147,58 +159,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isMFAError(error)) {
       const challenge = getMFAChallengeFromError(error);
       setMFAChallenge(challenge);
-      // Don't throw — the caller should check mfaChallenge state
       return;
     }
     throw error;
   };
 
   /**
-   * Login with email/password.
-   * Uses Firebase Auth if GCP Identity Platform is configured,
-   * otherwise falls back to the legacy Monitrax API.
-   *
-   * If the user has MFA enrolled, this will set mfaChallenge instead of completing login.
+   * Login with email/password via Firebase Auth.
+   * If the user has MFA enrolled, this sets mfaChallenge instead of completing login.
    */
   const login = async (email: string, password: string) => {
-    if (gcpEnabled) {
-      const auth = getFirebaseAuth();
-      if (!auth) throw new Error('Firebase Auth not initialized');
+    const auth = getFirebaseAuth();
+    if (!auth) throw new Error('Authentication not configured');
 
-      try {
-        const credential = await signInWithEmailAndPassword(auth, email, password);
-        await handleFirebaseCredential(credential);
-      } catch (error) {
-        handleFirebaseAuthError(error);
-      }
-      return;
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      await handleSignIn(credential.user);
+    } catch (error) {
+      handleFirebaseAuthError(error);
     }
-
-    // Legacy fallback: direct API login
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      let errorMessage = errorData.error || 'Login failed';
-      if (errorData.remainingAttempts !== undefined) {
-        errorMessage += ` (${errorData.remainingAttempts} attempts remaining)`;
-      }
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
-    persistAuth(data.token, data.user);
   };
 
   /**
    * Login with Google via Firebase Auth popup.
-   * Only available when GCP Identity Platform is configured.
-   *
-   * If the user has MFA enrolled, this will set mfaChallenge instead of completing login.
+   * If the user has MFA enrolled, this sets mfaChallenge instead of completing login.
    */
   const loginWithGoogle = async () => {
     const auth = getFirebaseAuth();
@@ -210,63 +194,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const credential = await signInWithPopup(auth, provider);
-      await handleFirebaseCredential(credential);
+      await handleSignIn(credential.user);
     } catch (error) {
       handleFirebaseAuthError(error);
     }
   };
 
   /**
-   * Register a new account with email/password.
-   * Uses Firebase Auth if GCP Identity Platform is configured,
-   * otherwise falls back to the legacy Monitrax API.
+   * Register a new account with email/password via Firebase Auth.
+   * Sets the display name on the Firebase profile so the server picks it up.
    */
   const register = async (email: string, password: string, name: string) => {
-    if (gcpEnabled) {
-      const auth = getFirebaseAuth();
-      if (!auth) throw new Error('Firebase Auth not initialized');
+    const auth = getFirebaseAuth();
+    if (!auth) throw new Error('Authentication not configured');
 
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
-      const result = await syncFirebaseUser(credential.user);
-      // The sync endpoint creates the user with the display name from the token,
-      // but we can update the name to what the user provided
-      result.user.name = name;
-      persistAuth(result.token, result.user);
-      return;
-    }
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
 
-    // Legacy fallback: direct API register
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name }),
-    });
+    // Set the display name on the Firebase user profile
+    // so the server-side sync picks up the correct name
+    await updateProfile(credential.user, { displayName: name });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Registration failed');
-    }
+    // Force token refresh to include the updated profile
+    await credential.user.getIdToken(true);
 
-    const data = await response.json();
-    persistAuth(data.token, data.user);
+    await handleSignIn(credential.user);
   };
 
   // ==========================================================================
   // MFA Challenge Resolution
   // ==========================================================================
 
-  /**
-   * Complete MFA with a TOTP code from authenticator app.
-   */
   const resolveMFAWithTOTP = useCallback(async (hintUid: string, code: string) => {
     if (!mfaChallenge) throw new Error('No MFA challenge in progress');
     const credential = await resolveWithTOTP(mfaChallenge.resolver, hintUid, code);
-    await handleFirebaseCredential(credential);
+    await handleSignIn(credential.user);
   }, [mfaChallenge]);
 
-  /**
-   * Send a phone verification SMS for MFA challenge.
-   */
   const sendMFAPhoneCode = useCallback(async (
     hintIndex: number,
     recaptchaVerifier: import('firebase/auth').ApplicationVerifier
@@ -284,9 +247,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [mfaChallenge]);
 
-  /**
-   * Complete MFA with a phone SMS code.
-   */
   const resolveMFAWithPhone = useCallback(async (code: string) => {
     if (!mfaChallenge?.phoneVerificationId) throw new Error('No phone verification in progress');
     const credential = await resolveWithPhone(
@@ -294,35 +254,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mfaChallenge.phoneVerificationId,
       code
     );
-    await handleFirebaseCredential(credential);
+    await handleSignIn(credential.user);
   }, [mfaChallenge]);
 
-  /**
-   * Cancel the current MFA challenge (go back to login form).
-   */
   const cancelMFAChallenge = useCallback(() => {
     setMFAChallenge(null);
   }, []);
 
   /**
-   * Logout — clears both Firebase and local state
+   * Logout — clears Firebase session
    */
   const logout = () => {
-    // Sign out from Firebase if configured
-    if (gcpEnabled) {
-      const auth = getFirebaseAuth();
-      if (auth) {
-        firebaseSignOut(auth).catch(() => {
-          // Silent fail — local state is cleared regardless
-        });
-      }
+    const auth = getFirebaseAuth();
+    if (auth) {
+      firebaseSignOut(auth).catch(() => {
+        // Silent fail — state is cleared by onIdTokenChanged listener
+      });
     }
 
     setToken(null);
     setUser(null);
+    setFirebaseUser(null);
     setMFAChallenge(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    profileFetchedRef.current = false;
   };
 
   return (

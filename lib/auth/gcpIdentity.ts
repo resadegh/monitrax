@@ -12,7 +12,6 @@
  */
 
 import { prisma } from '@/lib/db';
-import { generateToken } from '@/lib/auth';
 import { log } from '@/lib/utils/logger';
 
 // =============================================================================
@@ -69,8 +68,6 @@ export interface GCPUserSyncResult {
   userId: string;
   /** The GCP Identity Platform UID */
   gcpUid: string;
-  /** A Monitrax JWT token for the synced user */
-  token: string;
   /** Whether a new local user was created */
   isNewUser: boolean;
   /** The user's email */
@@ -133,13 +130,7 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
   });
 
   if (existingOAuth) {
-    // User already linked - issue a Monitrax JWT
-    const token = generateToken({
-      userId: existingOAuth.userId,
-      email: existingOAuth.user.email,
-    });
-
-    // Update last login
+    // User already linked — update last login
     await prisma.user.update({
       where: { id: existingOAuth.userId },
       data: {
@@ -156,7 +147,6 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
     return {
       userId: existingOAuth.userId,
       gcpUid: uid,
-      token,
       isNewUser: false,
       email: existingOAuth.user.email,
       name: existingOAuth.user.name,
@@ -200,11 +190,6 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
       });
     }
 
-    const token = generateToken({
-      userId: existingUser.id,
-      email: existingUser.email,
-    });
-
     log.info('GCP Identity user sync completed (linked existing user)', {
       userId: existingUser.id,
       gcpUid: uid,
@@ -213,7 +198,6 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
     return {
       userId: existingUser.id,
       gcpUid: uid,
-      token,
       isNewUser: false,
       email: existingUser.email,
       name: existingUser.name,
@@ -243,11 +227,6 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
     },
   });
 
-  const token = generateToken({
-    userId: newUser.id,
-    email: newUser.email,
-  });
-
   log.info('GCP Identity user sync completed (new user created)', {
     userId: newUser.id,
     gcpUid: uid,
@@ -257,7 +236,6 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
   return {
     userId: newUser.id,
     gcpUid: uid,
-    token,
     isNewUser: true,
     email: newUser.email,
     name: newUser.name,
