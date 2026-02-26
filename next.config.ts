@@ -8,13 +8,17 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['@prisma/client', 'prisma'],
 
   // Proxy Firebase Auth handler through our domain so Google sign-in popup
-  // shows "monitrax.com.au" instead of "monitrax-479700.firebaseapp.com".
-  // Requires NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=monitrax.com.au in env.
+  // shows "www.monitrax.com.au" instead of "monitrax-479700.firebaseapp.com".
+  // Requires NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.monitrax.com.au in env.
   async rewrites() {
     return [
       {
         source: '/__/auth/:path*',
         destination: 'https://monitrax-479700.firebaseapp.com/__/auth/:path*',
+      },
+      {
+        source: '/__/firebase/:path*',
+        destination: 'https://monitrax-479700.firebaseapp.com/__/firebase/:path*',
       },
     ];
   },
