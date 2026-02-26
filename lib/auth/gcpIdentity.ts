@@ -159,9 +159,18 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
   });
 
   if (existingUser) {
-    // Create OAuth account link for the existing user
-    await prisma.oAuthAccount.create({
-      data: {
+    // Create OAuth account link for the existing user.
+    // Use upsert to handle concurrent sync attempts gracefully —
+    // multiple parallel API calls may all try to create this link at once.
+    await prisma.oAuthAccount.upsert({
+      where: {
+        provider_providerUserId: {
+          provider,
+          providerUserId: uid,
+        },
+      },
+      update: { email },
+      create: {
         userId: existingUser.id,
         provider,
         providerUserId: uid,
@@ -204,42 +213,89 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
     };
   }
 
-  // Create a new local user with OAuth link
+  // Create a new local user with OAuth link.
+  // Wrap in try/catch to handle race conditions — another concurrent request
+  // may have already created this user + OAuthAccount between our checks.
   isNewUser = true;
   const name = displayName || email.split('@')[0];
 
-  const newUser = await prisma.user.create({
-    data: {
-      email,
-      name,
-      password: null, // Passwordless - authenticated via GCP Identity
-      emailVerified: emailVerified,
-      emailVerifiedAt: emailVerified ? new Date() : null,
-      lastLoginAt: new Date(),
-      lastLoginIp: ipAddress || null,
-      oauthAccounts: {
-        create: {
-          provider,
-          providerUserId: uid,
-          email,
+  try {
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        name,
+        password: null, // Passwordless - authenticated via GCP Identity
+        emailVerified: emailVerified,
+        emailVerifiedAt: emailVerified ? new Date() : null,
+        lastLoginAt: new Date(),
+        lastLoginIp: ipAddress || null,
+        oauthAccounts: {
+          create: {
+            provider,
+            providerUserId: uid,
+            email,
+          },
         },
       },
-    },
-  });
+    });
 
-  log.info('GCP Identity user sync completed (new user created)', {
-    userId: newUser.id,
-    gcpUid: uid,
-    isNewUser: true,
-  });
+    log.info('GCP Identity user sync completed (new user created)', {
+      userId: newUser.id,
+      gcpUid: uid,
+      isNewUser: true,
+    });
 
-  return {
-    userId: newUser.id,
-    gcpUid: uid,
-    isNewUser: true,
-    email: newUser.email,
-    name: newUser.name,
-  };
+    return {
+      userId: newUser.id,
+      gcpUid: uid,
+      isNewUser: true,
+      email: newUser.email,
+      name: newUser.name,
+    };
+  } catch (createError: unknown) {
+    // Race condition: another request already created this user/OAuthAccount.
+    // Retry the lookup — the record should now exist.
+    const retryOAuth = await prisma.oAuthAccount.findFirst({
+      where: { provider, providerUserId: uid },
+      include: { user: true },
+    });
+
+    if (retryOAuth) {
+      log.info('GCP Identity user sync completed (concurrent create resolved)', {
+        userId: retryOAuth.userId,
+        gcpUid: uid,
+      });
+
+      return {
+        userId: retryOAuth.userId,
+        gcpUid: uid,
+        isNewUser: false,
+        email: retryOAuth.user.email,
+        name: retryOAuth.user.name,
+      };
+    }
+
+    // Also check by email — user may exist but OAuthAccount wasn't linked yet
+    const retryUser = await prisma.user.findUnique({ where: { email } });
+    if (retryUser) {
+      await prisma.oAuthAccount.upsert({
+        where: { provider_providerUserId: { provider, providerUserId: uid } },
+        update: { email },
+        create: { userId: retryUser.id, provider, providerUserId: uid, email },
+      });
+
+      return {
+        userId: retryUser.id,
+        gcpUid: uid,
+        isNewUser: false,
+        email: retryUser.email,
+        name: retryUser.name,
+      };
+    }
+
+    // If we still can't resolve, rethrow
+    throw createError;
+  }
 }
 
 // =============================================================================

@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -149,6 +150,7 @@ export default function StrategyDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { token } = useAuth();
   const id = params.id as string;
 
   const [recommendation, setRecommendation] = useState<StrategyRecommendation | null>(null);
@@ -157,19 +159,20 @@ export default function StrategyDetailPage() {
   const [showAiPanel, setShowAiPanel] = useState(searchParams.get('ai') === 'true');
 
   useEffect(() => {
-    if (id) {
+    if (id && token) {
       fetchRecommendation();
     }
-  }, [id]);
+  }, [id, token]);
 
   async function fetchRecommendation() {
     try {
       setLoading(true);
 
       // Fetch recommendation and alternatives in parallel
+      const authHeaders = { Authorization: `Bearer ${token}` };
       const [recResponse, altResponse] = await Promise.all([
-        fetch(`/api/strategy/${id}`),
-        fetch(`/api/strategy/${id}/alternatives`),
+        fetch(`/api/strategy/${id}`, { headers: authHeaders }),
+        fetch(`/api/strategy/${id}/alternatives`, { headers: authHeaders }),
       ]);
 
       if (recResponse.ok) {
@@ -192,7 +195,7 @@ export default function StrategyDetailPage() {
     try {
       const response = await fetch(`/api/strategy/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'ACCEPTED' }),
       });
 
@@ -211,7 +214,7 @@ export default function StrategyDetailPage() {
     try {
       const response = await fetch(`/api/strategy/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'DISMISSED', notes: reason }),
       });
 

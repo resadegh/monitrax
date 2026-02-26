@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,25 +53,22 @@ interface SettingsStatus {
 }
 
 export default function GeneralSettingsPage() {
+  const { token } = useAuth();
   const [status, setStatus] = useState<SettingsStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!token) return;
+
     const fetchStatus = async () => {
       try {
-        // Try to get token from localStorage for auth
-        const token = localStorage.getItem('token');
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const response = await fetch('/api/settings/status', { headers });
+        const response = await fetch('/api/settings/status', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (response.ok) {
           const data = await response.json();
           setStatus(data);
         } else {
-          // Use defaults on error
           setDefaults();
         }
       } catch (error) {
@@ -114,7 +112,7 @@ export default function GeneralSettingsPage() {
     };
 
     fetchStatus();
-  }, []);
+  }, [token]);
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';

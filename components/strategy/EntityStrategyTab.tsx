@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/context/AuthContext';
 import { Lightbulb, TrendingUp, AlertTriangle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 // =============================================================================
@@ -50,6 +51,7 @@ export default function EntityStrategyTab({
   entityId,
   entityName,
 }: EntityStrategyTabProps) {
+  const { token } = useAuth();
   const [recommendations, setRecommendations] = useState<StrategyRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +71,8 @@ export default function EntityStrategyTab({
   };
 
   useEffect(() => {
-    fetchEntityRecommendations();
-  }, [entityId, entityType]);
+    if (token) fetchEntityRecommendations();
+  }, [entityId, entityType, token]);
 
   async function fetchEntityRecommendations() {
     try {
@@ -79,7 +81,9 @@ export default function EntityStrategyTab({
 
       // Fetch recommendations filtered by category
       const category = getCategoryFilter();
-      const response = await fetch(`/api/strategy?category=${category}&status=PENDING`);
+      const response = await fetch(`/api/strategy?category=${category}&status=PENDING`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch recommendations');
@@ -112,7 +116,7 @@ export default function EntityStrategyTab({
     try {
       const response = await fetch(`/api/strategy/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'ACCEPTED' }),
       });
 
@@ -129,7 +133,7 @@ export default function EntityStrategyTab({
     try {
       const response = await fetch(`/api/strategy/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'DISMISSED', notes: 'Dismissed from entity view' }),
       });
 

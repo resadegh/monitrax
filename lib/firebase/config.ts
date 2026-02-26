@@ -17,7 +17,9 @@ import { getAuth, type Auth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
-  authDomain: `${process.env.NEXT_PUBLIC_GCP_PROJECT_ID || ''}.firebaseapp.com`,
+  authDomain:
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
+    `${process.env.NEXT_PUBLIC_GCP_PROJECT_ID || ''}.firebaseapp.com`,
   projectId: process.env.NEXT_PUBLIC_GCP_PROJECT_ID || '',
 };
 
