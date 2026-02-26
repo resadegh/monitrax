@@ -69,9 +69,13 @@ import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: `${process.env.NEXT_PUBLIC_GCP_PROJECT_ID}.firebaseapp.com`,
+  authDomain:
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
+    `${process.env.NEXT_PUBLIC_GCP_PROJECT_ID}.firebaseapp.com`,
   projectId: process.env.NEXT_PUBLIC_GCP_PROJECT_ID,
 };
+// NOTE: Set NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=monitrax.com.au so Google sign-in
+// popup shows "Sign in to Monitrax" instead of "monitrax-479700.firebaseapp.com"
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
@@ -116,6 +120,7 @@ Add Firebase domains to Content-Security-Policy:
 | `GCP_PROJECT_ID` | Server | Already exists — for token verification |
 | `NEXT_PUBLIC_GCP_PROJECT_ID` | Client | GCP project ID for Firebase client config |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | Client | Firebase Web API key (from GCP console) |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Client | Custom domain for Google sign-in branding (e.g., `monitrax.com.au`). Falls back to `{projectId}.firebaseapp.com` if not set. |
 
 ---
 

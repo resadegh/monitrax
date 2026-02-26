@@ -4,8 +4,8 @@
 
 ---
 
-**Version:** 2.3
-**Last Updated:** 2025-12-14
+**Version:** 2.4
+**Last Updated:** 2026-02-26
 **Status:** Active Development
 **Owners:** ReNew (Newsha & Reza)
 **Architect:** ChatGPT | **Engineer:** Claude
@@ -48,12 +48,13 @@
 | **Portfolio Strategy** | Investment tracking, performance analytics |
 | **Wealth Forecasting** | Multi-year projections, risk analysis |
 
-### Current State (December 2025)
+### Current State (February 2026)
 
 - **26 Phases** defined in the blueprint
 - **14 Phases** fully implemented (including Phase 25 Document Management Engine)
+- **GCP Identity Platform** — sole identity provider (Firebase Auth, MFA, OAuth)
 - **Active Development:** Phase 19 (Document Management UI), Phase 21 (Asset Management)
-- **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel
+- **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel, GCP Identity Platform
 
 ---
 
@@ -574,7 +575,11 @@ return withAuth(request, handler);
 | `getAuthContext()` | `lib/auth/context.ts` | `{ userId, email, role, name, tenantId }` |
 | `withAuth()` | `lib/middleware.ts` | Middleware wrapper |
 
-**Client-side**: Firebase SDK (`onIdTokenChanged`) manages token lifecycle. Tokens auto-refresh every hour.
+**Client-side**: Firebase SDK (`onIdTokenChanged`) manages token lifecycle. Tokens auto-refresh every hour. All fetch calls MUST include `Authorization: Bearer ${token}` using `useAuth()` hook.
+
+**Inactivity timeout**: 30-minute idle auto-logout with 2-minute warning dialog (`IdleTimeoutGuard` component, mounted globally in `app/layout.tsx`). Tracks mouse, keyboard, touch, scroll, and click events.
+
+**Custom domain branding**: Set `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` env var to your domain (e.g., `monitrax.com.au`) so Google sign-in popup shows your brand instead of `{projectId}.firebaseapp.com`.
 
 ### Response Format (GRDCS)
 
@@ -690,12 +695,17 @@ When implementing new features:
 ### Common Imports
 
 ```typescript
-// Authentication — GCP/Firebase token verification (async)
+// Authentication — server-side GCP/Firebase token verification (async)
 import { verifyToken } from '@/lib/auth';
 // Or use the full auth context (includes role, tenantId):
 import { getAuthContext } from '@/lib/auth/context';
 // Or use the middleware wrapper:
 import { withAuth } from '@/lib/middleware';
+
+// Authentication — client-side (React hook for Firebase ID token)
+// In components: const { token, user, logout } = useAuth();
+// All fetch calls MUST include: headers: { Authorization: `Bearer ${token}` }
+import { useAuth } from '@/lib/context/AuthContext';
 
 // Database
 import { prisma } from '@/lib/db';

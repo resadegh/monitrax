@@ -295,10 +295,20 @@ Must include:
 
 ## 10.2 Sensitive UI Behaviour
 
-- Auto-logout on token expiry  
-- Refresh token rotation  
-- Block UI until auth resolved  
-- Logout on org removal  
+- ✅ Auto-logout on inactivity (30-minute idle timeout with 2-minute warning dialog)
+- ✅ Auto-logout on token expiry (Firebase SDK handles token lifecycle)
+- Block UI until auth resolved
+- Logout on org removal
+
+### 10.3 Inactivity Timeout (Implemented Feb 2026)
+
+- **Component**: `components/auth/IdleTimeoutGuard.tsx`
+- **Mounted**: Globally in `app/layout.tsx` inside `AuthProvider`
+- **Timeout**: 30 minutes of inactivity → auto-logout
+- **Warning**: 2-minute warning dialog appears at 28 minutes
+- **Activity events tracked**: mousedown, mousemove, keydown, touchstart, scroll, click
+- **User can**: Click "Stay Logged In" to reset timer, or "Log Out Now"
+- **Only active** when user is authenticated (has a valid Firebase ID token)  
 
 ---
 
@@ -703,23 +713,23 @@ Phase 10 is complete when:
 # Database
 DATABASE_URL=postgresql://...
 
-# OAuth Providers (optional - dynamic detection)
+# GCP Identity Platform / Firebase Auth (PRIMARY — Required)
+GCP_PROJECT_ID=monitrax-479700
+NEXT_PUBLIC_GCP_PROJECT_ID=monitrax-479700
+NEXT_PUBLIC_FIREBASE_API_KEY=AIza...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=monitrax.com.au  # Custom domain for Google sign-in branding
+
+# Legacy OAuth Providers (optional — preserved for non-GCP mode)
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI=https://www.monitrax.com.au/api/auth/callback/google
-FACEBOOK_CLIENT_ID=...
-FACEBOOK_CLIENT_SECRET=...
-APPLE_CLIENT_ID=...
-APPLE_CLIENT_SECRET=...
-MICROSOFT_CLIENT_ID=...
-MICROSOFT_CLIENT_SECRET=...
 
 # Email Service (Resend)
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 FROM_EMAIL=Monitrax <noreply@monitrax.com.au>
 NEXT_PUBLIC_APP_URL=https://www.monitrax.com.au
 
-# Security
+# Security (Legacy — JWT_SECRET still used by magic links/session tracking)
 JWT_SECRET=...
 SESSION_SECRET=...
 ENCRYPTION_KEY=... (32 bytes for AES-256)
@@ -750,14 +760,16 @@ ENCRYPTION_KEY=... (32 bytes for AES-256)
    GOOGLE_REDIRECT_URI=https://www.monitrax.com.au/api/auth/callback/google
    ```
 
-4. **OAuth Flow:**
+4. **OAuth Flow (Current — GCP/Firebase):**
    - User clicks "Continue with Google" on login page
-   - Redirected to Google for authentication
-   - Google redirects to `/api/auth/callback/google`
-   - Callback creates/updates user, generates JWT
-   - Redirects to `/oauth-callback` page (Suspense-wrapped)
-   - Client stores token in localStorage
-   - Redirects to dashboard
+   - Firebase SDK opens Google sign-in popup (or redirect)
+   - Firebase returns GCP ID token via `onIdTokenChanged`
+   - Token sent as `Authorization: Bearer <token>` to all API calls
+   - Server verifies via `verifyGCPIdToken()` + auto-syncs user if needed
+   - No Monitrax JWT issued; Firebase manages token lifecycle
+
+   **Legacy OAuth Flow (preserved but unused):**
+   - `/api/auth/oauth/google` → `/api/auth/callback/google` → custom JWT
 
 ### Resend Email Integration
 
@@ -789,14 +801,14 @@ ENCRYPTION_KEY=... (32 bytes for AES-256)
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://...` |
-| `JWT_SECRET` | Secret for JWT signing | `your-secure-secret` |
-| `NEXTAUTH_URL` | Production URL | `https://www.monitrax.com.au` |
+| `GCP_PROJECT_ID` | GCP project (server-side token verification) | `monitrax-479700` |
+| `NEXT_PUBLIC_GCP_PROJECT_ID` | GCP project (client-side Firebase config) | `monitrax-479700` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Web API key | `AIza...` |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Custom domain for Google sign-in branding | `monitrax.com.au` |
 | `NEXT_PUBLIC_APP_URL` | Public app URL | `https://www.monitrax.com.au` |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | `xxx.apps.googleusercontent.com` |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | `GOCSPX-xxx` |
-| `GOOGLE_REDIRECT_URI` | OAuth callback URL | `https://www.monitrax.com.au/api/auth/callback/google` |
+| `JWT_SECRET` | Legacy — used by magic links/session tracking | `your-secure-secret` |
 | `RESEND_API_KEY` | Resend email API key | `re_xxx` |
-| `FROM_EMAIL` | Email sender address | `Monitrax <onboarding@resend.dev>` |
+| `FROM_EMAIL` | Email sender address | `Monitrax <noreply@monitrax.com.au>` |
 
 ---
 
