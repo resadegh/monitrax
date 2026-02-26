@@ -20,6 +20,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { useAuth } from '@/lib/context/AuthContext';
 
 // =============================================================================
 // TYPES
@@ -68,6 +69,7 @@ export default function ForecastChart({
   metric = 'netWorth',
   showScenarios = true,
 }: ForecastChartProps) {
+  const { token } = useAuth();
   const [forecasts, setForecasts] = useState<{
     conservative: ForecastResult | null;
     default: ForecastResult | null;
@@ -85,18 +87,19 @@ export default function ForecastChart({
   });
 
   useEffect(() => {
-    fetchForecasts();
-  }, []);
+    if (token) fetchForecasts();
+  }, [token]);
 
   async function fetchForecasts() {
     try {
       setLoading(true);
 
+      const headers = { Authorization: `Bearer ${token}` };
       // Fetch all three scenarios in parallel
       const [conservativeRes, defaultRes, aggressiveRes] = await Promise.all([
-        fetch('/api/strategy/forecast?scenario=CONSERVATIVE'),
-        fetch('/api/strategy/forecast?scenario=DEFAULT'),
-        fetch('/api/strategy/forecast?scenario=AGGRESSIVE'),
+        fetch('/api/strategy/forecast?scenario=CONSERVATIVE', { headers }),
+        fetch('/api/strategy/forecast?scenario=DEFAULT', { headers }),
+        fetch('/api/strategy/forecast?scenario=AGGRESSIVE', { headers }),
       ]);
 
       const [conservative, defaultForecast, aggressive] = await Promise.all([

@@ -22,7 +22,8 @@ ENROLLMENT (Settings → Security MFA):
 SIGN-IN WITH MFA:
   Login → signInWithEmailAndPassword() → Firebase throws auth/multi-factor-auth-required
   → MFAChallengeDialog appears → User enters TOTP code
-  → resolveWithTOTP() → UserCredential → syncFirebaseUser() → Monitrax JWT
+  → resolveWithTOTP() → UserCredential → Firebase ID token used directly for API calls
+  (No sync endpoint hop — GCP-only cutover complete as of Feb 26, 2026)
 ```
 
 ---
@@ -76,8 +77,8 @@ SIGN-IN WITH MFA:
 5. `MFAChallengeDialog` renders globally (mounted in `app/layout.tsx`)
 6. User enters TOTP code from authenticator app
 7. `resolveWithTOTP()` calls `resolver.resolveSignIn(assertion)`
-8. Resolved `UserCredential` is synced to Monitrax backend via `/api/auth/gcp/sync`
-9. Monitrax JWT stored, user redirected to dashboard
+8. Firebase SDK fires `onIdTokenChanged` with the resolved user
+9. Firebase ID token used directly for API calls (no sync endpoint needed — GCP-only cutover)
 
 ### 5.3 Factor Management
 
@@ -116,8 +117,8 @@ Without this, `TotpMultiFactorGenerator.generateSecret()` will fail.
 | **Phase 1** | Server-side token verification + user sync | ✅ Complete |
 | **Phase 2** | Client-side Firebase SDK integration | ✅ Complete |
 | **Phase 3** | Firebase MFA integration (this doc) | ✅ Complete |
-| **Phase 4** | Dual-mode middleware (accept both JWT types) | ⏳ Future |
-| **Phase 5** | Full cutover + legacy auth cleanup | ⏳ Future |
+| **Phase 4** | GCP-only cutover (all API routes verify GCP tokens directly) | ✅ Complete (Feb 26, 2026) |
+| **Phase 5** | Legacy auth cleanup (remove unused JWT code, old login routes) | ⏳ Future |
 
 ---
 

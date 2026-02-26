@@ -65,5 +65,63 @@ All ~95 API routes that use `withAuth()` or `verifyToken()` are now automaticall
 - [ ] Manual testing (requires GCP Identity Platform configured)
 
 ### PR
-- PR URL: (pending)
+- PR URL: #425
 - Status: Open
+
+---
+
+## Session: gcp-identity-migration-phase-V6Y66 (documentation update)
+
+### Changes Made — Blueprint Documentation Alignment
+- **Type**: Documentation
+- **Scope**: All blueprint documents referencing authentication
+- **Description**: Updated all blueprint and phase documents to reflect the GCP Identity Platform cutover. Removed all references to Clerk.dev/Auth0/Supabase as identity providers. Documented the current GCP-only architecture including all auth entry points, token verification flow, and legacy code status.
+
+### Documents Updated
+- `docs/blueprint/MASTER_BLUEPRINT.md` — Changed auth tech stack from Clerk.dev to GCP Identity Platform. Updated auth section with all entry points. Updated Common Imports section. Added GCP cutover note to Phase 10 status.
+- `docs/blueprint/01_ARCHITECTURE_OVERVIEW.md` — Rewrote Section 6 (Security Architecture) with GCP Identity Platform details, auth entry points table, and security features list. Fixed outdated build command in Section 8.2 (removed `prisma db push`).
+- `docs/blueprint/07_API_STANDARDS.md` — Rewrote Section 7 (Authentication & Security) from Clerk/Supabase/Auth0 JWT to GCP Identity Platform token verification. Added code examples for all three auth entry points.
+- `docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md` — Rewrote Section 3 (Identity Provider Integration) to document GCP as chosen provider. Updated status from "PAUSED at 45%" to include GCP cutover completion note. Updated design decisions. Documented what GCP manages vs what Monitrax manages locally.
+- `docs/blueprint/GCP_IDENTITY_MIGRATION_PHASE2.md` — Marked as Complete. Updated architecture diagram to show Phase 4 (GCP-only) flow. Updated files-not-modified table with Phase 4 status. Updated migration roadmap (Phase 4 complete). Fixed risk assessment (token mismatch eliminated).
+- `docs/blueprint/GCP_IDENTITY_MIGRATION_PHASE3_MFA.md` — Updated sign-in flow to remove `/api/auth/gcp/sync` endpoint reference. Updated step 8-9 of MFA sign-in flow. Marked Phase 4 as complete in migration roadmap.
+
+### Legacy Code Tracking
+The following legacy code is retained but no longer used for API authentication:
+- `generateToken()` in `lib/auth.ts` — still used by login/register routes during migration
+- `/api/auth/login` — legacy login route (not used by GCP flow)
+- `/api/auth/register` — legacy register route (not used by GCP flow)
+- `/api/auth/gcp/sync` — sync endpoint (bypassed in GCP-only flow, retained for compatibility)
+- `lib/security/mfa.ts` — custom Monitrax TOTP/SMS backend (superseded by Firebase MFA)
+- `lib/auth/magicLink.ts` — uses `generateToken()` for magic link tokens
+- `lib/session/sessionTracking.ts` — uses `generateToken()` for session tokens
+
+These will be cleaned up in a future Phase 5 (Legacy Auth Cleanup).
+
+### Testing
+- [x] Build passes (`npm run build`)
+
+### PR
+- PR URL: #425 (updated)
+- Status: Open
+
+---
+
+## Session: gcp-identity-migration-phase-V6Y66 (auth header fix)
+
+### Changes Made — Fix Missing Authorization Headers
+- **Type**: Bug Fix
+- **Scope**: Client-side fetch calls across hooks, components, and pages
+- **Description**: After the GCP-only auth cutover, all API calls must include the Firebase ID token as a Bearer token in the Authorization header. Several components and hooks were making fetch calls without this header, causing 401 errors on authenticated endpoints (most visibly `/api/onboarding/state` — the "state" 401 the user reported).
+
+### Root Cause
+These components were written before the GCP migration when auth was cookie-based (implicit). GCP Identity Platform uses explicit Bearer tokens that must be passed in every request.
+
+### Files Modified
+- `hooks/useOnboardingState.ts` — Added `token` from `useAuth()` to all 3 fetch calls. Added token to `useCallback`/`useEffect` dependencies. Added guard to skip fetch when token not yet available.
+- `components/strategy/ForecastChart.tsx` — Added `useAuth()` and auth headers to 3 forecast API calls
+- `components/strategy/ConflictResolver.tsx` — Added `useAuth()` and auth headers to conflicts fetch + resolution PATCH calls
+- `app/(dashboard)/strategy/preferences/page.tsx` — Added `useAuth()` and auth headers to preferences GET/PUT
+- `app/admin/dashboard/page.tsx` — Added `useAuth()` and auth header to admin dashboard fetch
+
+### Testing
+- [x] Build passes (`npm run build`)

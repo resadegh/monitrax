@@ -1,7 +1,7 @@
 # GCP Identity Platform Migration - Phase 2: Client-Side Firebase SDK Integration
 
-> **Status**: In Progress
-> **Date**: 2026-02-25
+> **Status**: ✅ Complete
+> **Date**: 2026-02-25 (completed 2026-02-26)
 > **Session**: gcp-identity-migration-phase-V6Y66
 > **Branch**: claude/gcp-identity-migration-phase-V6Y66
 > **Depends On**: Phase 1 (Server-Side Token Verification) - COMPLETE
@@ -10,18 +10,27 @@
 
 ## 1. Overview
 
-Phase 2 integrates the Firebase client SDK into the Monitrax frontend, enabling users to authenticate via GCP Identity Platform (Firebase Auth) for both Google sign-in and email/password login. The existing custom JWT system continues to function — this is an additive, non-breaking change.
+Phase 2 integrates the Firebase client SDK into the Monitrax frontend, enabling users to authenticate via GCP Identity Platform (Firebase Auth) for both Google sign-in and email/password login.
+
+> **UPDATE (Feb 26, 2026):** Phase 4 (GCP-only cutover) is now complete. The architecture
+> below has been further simplified — no sync endpoint hop, no Monitrax JWT intermediary.
 
 ### Migration Architecture
 
 ```
-BEFORE (Current):
+BEFORE (Legacy):
   Login Page → POST /api/auth/login → Custom JWT → localStorage
   Login Page → GET /api/auth/oauth/google → Server-side OAuth → redirect → Custom JWT
 
-AFTER (Phase 2):
+AFTER Phase 2 (Intermediate):
   Login Page → Firebase Auth SDK (client-side) → GCP ID Token
   → POST /api/auth/gcp/sync → Verify token + sync user → Monitrax JWT → localStorage
+
+AFTER Phase 4 (Current — GCP-Only):
+  Login Page → Firebase Auth SDK (client-side) → GCP ID Token
+  → onIdTokenChanged → Token sent directly to API routes as Bearer token
+  → Server verifies via verifyGCPIdToken() → auto-syncs user if needed
+  (No sync endpoint, no Monitrax JWT, Firebase SDK manages token lifecycle)
 ```
 
 ---
@@ -126,16 +135,16 @@ Add Firebase domains to Content-Security-Policy:
 | `.env.example` | Add `NEXT_PUBLIC_*` Firebase env vars |
 | `package.json` | Add `firebase` dependency |
 
-## 6. Files NOT Modified (Preserved)
+## 6. Files NOT Modified in Phase 2 (Later Updated in Phase 4 Cutover)
 
-| File | Reason |
-|------|--------|
-| `lib/auth.ts` | Core JWT system — unchanged |
-| `lib/auth/context.ts` | Server-side auth context — unchanged |
-| `lib/auth/guards.ts` | API guards — unchanged |
-| `app/api/auth/login/route.ts` | Legacy login API — preserved for backward compatibility |
-| `app/api/auth/oauth/google/route.ts` | Legacy OAuth — preserved for backward compatibility |
-| All existing API routes | Continue using Monitrax JWT from `Authorization` header |
+| File | Phase 2 Status | Phase 4 (Cutover) Status |
+|------|---------------|-------------------------|
+| `lib/auth.ts` | Unchanged | ✅ `verifyToken()` rewritten to verify GCP tokens |
+| `lib/auth/context.ts` | Unchanged | ✅ `getAuthContext()` rewritten for GCP-only |
+| `lib/middleware.ts` | Unchanged | ✅ `withAuth()` rewritten for GCP-only |
+| `lib/auth/guards.ts` | Unchanged | Unchanged (uses `getAuthContext()`) |
+| `app/api/auth/login/route.ts` | Preserved | Preserved (legacy, not used by GCP flow) |
+| All existing API routes | Using Monitrax JWT | ✅ Now using GCP/Firebase ID tokens |
 
 ---
 
@@ -144,8 +153,8 @@ Add Firebase domains to Content-Security-Policy:
 | Risk | Mitigation |
 |------|------------|
 | Firebase SDK increases bundle size | Tree-shaking — only import `firebase/auth` |
-| Existing users can't log in | Sync endpoint handles both new and existing users by email |
-| Token mismatch | GCP token → sync → Monitrax JWT bridge pattern (Phase 1) |
+| Existing users can't log in | Auto-sync handles both new and existing users by email |
+| ~~Token mismatch~~ | ~~GCP token → sync → Monitrax JWT bridge~~ (eliminated in Phase 4 — GCP tokens used directly) |
 | CSP blocks Firebase | Update middleware CSP headers |
 | Missing env vars in production | `isGCPIdentityConfigured()` check — falls back gracefully |
 
@@ -170,10 +179,11 @@ Add Firebase domains to Content-Security-Policy:
 | Phase | Description | Status |
 |-------|-------------|--------|
 | **Phase 1** | Server-side token verification + user sync | ✅ Complete |
-| **Phase 2** | Client-side Firebase SDK integration (this doc) | 🔄 In Progress |
-| **Phase 3** | Dual-mode middleware (accept both JWT types) | ⏳ Future |
-| **Phase 4** | Full cutover + legacy auth cleanup | ⏳ Future |
+| **Phase 2** | Client-side Firebase SDK integration (this doc) | ✅ Complete |
+| **Phase 3** | Firebase MFA integration | ✅ Complete |
+| **Phase 4** | GCP-only cutover (all API routes verify GCP tokens) | ✅ Complete (Feb 26, 2026) |
+| **Phase 5** | Legacy auth cleanup (remove unused JWT code) | ⏳ Future |
 
 ---
 
-*Last Updated: 2026-02-25*
+*Last Updated: 2026-02-26*
