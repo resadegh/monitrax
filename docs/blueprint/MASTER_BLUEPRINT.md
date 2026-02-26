@@ -91,7 +91,7 @@
 | **Frontend** | Next.js 15, React Server Components, TailwindCSS, Shadcn/UI |
 | **Backend** | Next.js API Routes, Prisma ORM |
 | **Database** | PostgreSQL (Render) |
-| **Authentication** | Clerk.dev (MFA, OAuth, Session Management) |
+| **Authentication** | GCP Identity Platform / Firebase Auth (MFA, OAuth, Token Verification) |
 | **Deployment** | Vercel (Frontend), Render (Backend + Database) |
 | **File Storage** | Google Cloud Storage (primary), Database (fallback), Local Drive (optional) |
 
@@ -164,7 +164,7 @@ Every API response follows a standardised format:
 | **7** | Dashboard Rebuild | ✅ Complete | Portfolio Snapshot API, SVG charts, insights panel |
 | **8** | Global Data Consistency | ✅ Complete | GRDCS, LinkedDataPanel, cross-module navigation |
 | **9** | Global Nav & Health Insights | ✅ Complete | Navigation framework, health indicators |
-| **10** | Auth & Security | ✅ Complete | MFA, passkeys, session management, audit logging |
+| **10** | Auth & Security | ✅ Complete | MFA, passkeys, session management, audit logging. **Identity provider: GCP Identity Platform (Feb 2026 cutover — sole provider, no Monitrax JWTs for API auth)** |
 | **11** | AI Strategy Engine | ✅ Complete | Recommendations, forecasting, conflict resolution |
 | **12** | Financial Health Engine | ✅ Complete | Health scores, category scoring, risk modelling |
 | **13** | Transactional Intelligence | ✅ Complete | Transaction records, category inference, Budget vs Actual tracking (Feb 2026) |
@@ -548,13 +548,33 @@ User
 
 ## 7. API Standards & Patterns
 
-### Authentication
+### Authentication (GCP Identity Platform)
 
-All API routes require Bearer token authentication:
+All API routes require Bearer token authentication using **GCP/Firebase ID tokens**.
+GCP Identity Platform is the sole identity provider — no Monitrax JWTs are issued for API authentication.
+
 ```typescript
+// API routes use one of three entry points:
+// 1. verifyToken() — verifies GCP token, returns { userId, email }
 const token = request.headers.get('Authorization')?.replace('Bearer ', '');
 const user = await verifyToken(token);
+
+// 2. getAuthContext() — verifies GCP token, returns full AuthContext with role
+const context = await getAuthContext(request);
+
+// 3. withAuth() — middleware wrapper, verifies GCP token + auto-syncs user
+return withAuth(request, handler);
 ```
+
+**Auth entry points** (all verify GCP/Firebase ID tokens):
+| Function | Location | Returns |
+|----------|----------|---------|
+| `verifyToken()` | `lib/auth.ts` | `{ userId, email }` |
+| `getCurrentUser()` | `lib/auth.ts` | `{ id, email }` |
+| `getAuthContext()` | `lib/auth/context.ts` | `{ userId, email, role, name, tenantId }` |
+| `withAuth()` | `lib/middleware.ts` | Middleware wrapper |
+
+**Client-side**: Firebase SDK (`onIdTokenChanged`) manages token lifecycle. Tokens auto-refresh every hour.
 
 ### Response Format (GRDCS)
 
@@ -670,8 +690,12 @@ When implementing new features:
 ### Common Imports
 
 ```typescript
-// Authentication
+// Authentication — GCP/Firebase token verification (async)
 import { verifyToken } from '@/lib/auth';
+// Or use the full auth context (includes role, tenantId):
+import { getAuthContext } from '@/lib/auth/context';
+// Or use the middleware wrapper:
+import { withAuth } from '@/lib/middleware';
 
 // Database
 import { prisma } from '@/lib/db';
