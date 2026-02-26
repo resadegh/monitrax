@@ -103,3 +103,25 @@ These will be cleaned up in a future Phase 5 (Legacy Auth Cleanup).
 ### PR
 - PR URL: #425 (updated)
 - Status: Open
+
+---
+
+## Session: gcp-identity-migration-phase-V6Y66 (auth header fix)
+
+### Changes Made — Fix Missing Authorization Headers
+- **Type**: Bug Fix
+- **Scope**: Client-side fetch calls across hooks, components, and pages
+- **Description**: After the GCP-only auth cutover, all API calls must include the Firebase ID token as a Bearer token in the Authorization header. Several components and hooks were making fetch calls without this header, causing 401 errors on authenticated endpoints (most visibly `/api/onboarding/state` — the "state" 401 the user reported).
+
+### Root Cause
+These components were written before the GCP migration when auth was cookie-based (implicit). GCP Identity Platform uses explicit Bearer tokens that must be passed in every request.
+
+### Files Modified
+- `hooks/useOnboardingState.ts` — Added `token` from `useAuth()` to all 3 fetch calls. Added token to `useCallback`/`useEffect` dependencies. Added guard to skip fetch when token not yet available.
+- `components/strategy/ForecastChart.tsx` — Added `useAuth()` and auth headers to 3 forecast API calls
+- `components/strategy/ConflictResolver.tsx` — Added `useAuth()` and auth headers to conflicts fetch + resolution PATCH calls
+- `app/(dashboard)/strategy/preferences/page.tsx` — Added `useAuth()` and auth headers to preferences GET/PUT
+- `app/admin/dashboard/page.tsx` — Added `useAuth()` and auth header to admin dashboard fetch
+
+### Testing
+- [x] Build passes (`npm run build`)
