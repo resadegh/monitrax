@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/context/AuthContext';
 import {
   AlertTriangle,
   Scale,
@@ -76,6 +77,7 @@ export default function ConflictResolver({
   showTitle = true,
   maxConflicts = 5,
 }: ConflictResolverProps) {
+  const { token } = useAuth();
   const [conflicts, setConflicts] = useState<ConflictGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,15 +85,17 @@ export default function ConflictResolver({
   const [resolving, setResolving] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchConflicts();
-  }, []);
+    if (token) fetchConflicts();
+  }, [token]);
 
   async function fetchConflicts() {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/strategy/conflicts');
+      const response = await fetch('/api/strategy/conflicts', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch conflicts');
@@ -115,7 +119,7 @@ export default function ConflictResolver({
       // Accept the selected recommendation
       await fetch(`/api/strategy/${selectedId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'ACCEPTED' }),
       });
 
@@ -124,7 +128,7 @@ export default function ConflictResolver({
         if (rec.id !== selectedId) {
           await fetch(`/api/strategy/${rec.id}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
               status: 'DISMISSED',
               notes: `Dismissed due to conflict resolution - chose ${conflict.recommendations.find(r => r.id === selectedId)?.title}`,

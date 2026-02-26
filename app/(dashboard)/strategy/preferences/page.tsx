@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/lib/context/AuthContext';
 
 // =============================================================================
 // TYPES
@@ -30,6 +31,7 @@ interface UserPreferences {
 
 export default function PreferencesPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const [preferences, setPreferences] = useState<UserPreferences>({
     riskAppetite: 'MODERATE',
     debtComfort: 'MODERATE',
@@ -45,13 +47,15 @@ export default function PreferencesPage() {
   );
 
   useEffect(() => {
-    fetchPreferences();
-  }, []);
+    if (token) fetchPreferences();
+  }, [token]);
 
   async function fetchPreferences() {
     try {
       setLoading(true);
-      const response = await fetch('/api/strategy/preferences');
+      const response = await fetch('/api/strategy/preferences', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -75,7 +79,7 @@ export default function PreferencesPage() {
 
       const response = await fetch('/api/strategy/preferences', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(preferences),
       });
 
