@@ -11,8 +11,15 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showEmailLogin, setShowEmailLogin] = useState(false);
-  const { login, loginWithGoogle, isGCPEnabled } = useAuth();
+  const { login, loginWithGoogle, isGCPEnabled, mfaChallenge, token } = useAuth();
   const router = useRouter();
+
+  // Navigate to dashboard when auth completes (including after MFA resolution)
+  useEffect(() => {
+    if (token && !mfaChallenge) {
+      router.push('/dashboard');
+    }
+  }, [token, mfaChallenge, router]);
 
   // Check which OAuth providers are configured (legacy mode only)
   const [availableProviders, setAvailableProviders] = useState<{
@@ -42,7 +49,8 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push('/dashboard');
+      // If MFA challenge was triggered, don't navigate — the MFA dialog will appear
+      // Navigation happens after MFA is resolved (see useEffect below)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed';
       // Map Firebase error codes to user-friendly messages
@@ -69,7 +77,7 @@ export default function LoginPage() {
     try {
       if (isGCPEnabled) {
         await loginWithGoogle();
-        router.push('/dashboard');
+        // Navigation happens via useEffect when token is set (after MFA if needed)
       } else {
         // Legacy: redirect to server-side OAuth
         window.location.href = '/api/auth/oauth/google';

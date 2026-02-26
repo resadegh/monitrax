@@ -4,10 +4,12 @@
  * MFA Security Settings Page
  * Phase 10: Multi-factor authentication management
  *
- * Supports:
- * - TOTP (Google Authenticator, Authy)
- * - SMS (via Twilio)
- * - Backup codes
+ * When GCP Identity Platform is configured:
+ *   - Uses Firebase MFA (TOTP enrollment via TotpMultiFactorGenerator)
+ *   - MFA is enforced by Firebase during sign-in
+ *
+ * When GCP is NOT configured (legacy):
+ *   - Uses the custom Monitrax TOTP/SMS backend APIs
  */
 
 import { useState, useEffect } from 'react';
@@ -28,12 +30,22 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Shield, Smartphone, Key, Download, CheckCircle2, AlertCircle, MessageSquare, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import QRCode from 'qrcode';
+import {
+  startTOTPEnrollment,
+  finalizeTOTPEnrollment,
+  getEnrolledFactors,
+  unenrollFactor,
+  type TOTPEnrollmentResult,
+  type MFAFactorInfo,
+} from '@/lib/firebase/mfa';
+import type { TotpSecret } from 'firebase/auth';
 
 // ============================================
-// TYPES
+// TYPES (Legacy Monitrax MFA)
 // ============================================
 
-interface MFAMethod {
+interface LegacyMFAMethod {
   id: string;
   type: 'TOTP' | 'SMS' | 'WEBAUTHN';
   isEnabled: boolean;
@@ -43,16 +55,16 @@ interface MFAMethod {
   createdAt: string;
 }
 
-interface MFASetupResult {
+interface LegacyMFASetupResult {
   id: string;
   type: string;
   secret?: string;
   qrCodeUrl?: string;
-  qrCodeDataUrl?: string; // Base64 encoded QR code image
+  qrCodeDataUrl?: string;
   backupCodes: string[];
 }
 
-interface SMSSetupResult {
+interface LegacySMSSetupResult {
   id: string;
   type: string;
   phoneNumber: string;
@@ -64,21 +76,436 @@ interface SMSSetupResult {
 // ============================================
 
 export default function SecurityMFAPage() {
-  const { token } = useAuth();
-  const [mfaMethods, setMFAMethods] = useState<MFAMethod[]>([]);
+  const { token, isGCPEnabled, firebaseUser } = useAuth();
+
+  // Render the appropriate MFA management based on auth mode
+  if (isGCPEnabled) {
+    return <FirebaseMFASettings firebaseUser={firebaseUser} />;
+  }
+
+  return <LegacyMFASettings token={token} />;
+}
+
+// ============================================
+// FIREBASE MFA SETTINGS (GCP Identity Platform)
+// ============================================
+
+function FirebaseMFASettings({ firebaseUser }: { firebaseUser: import('firebase/auth').User | null }) {
+  const [enrolledFactors, setEnrolledFactors] = useState<MFAFactorInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // TOTP Enrollment State
+  const [showTOTPSetupDialog, setShowTOTPSetupDialog] = useState(false);
+  const [totpEnrollment, setTotpEnrollment] = useState<TOTPEnrollmentResult | null>(null);
+  const [totpQrDataUrl, setTotpQrDataUrl] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState('');
+  const [totpVerifying, setTotpVerifying] = useState(false);
+
+  const loadFactors = () => {
+    if (!firebaseUser) {
+      setLoading(false);
+      return;
+    }
+    const factors = getEnrolledFactors(firebaseUser);
+    setEnrolledFactors(factors);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadFactors();
+  }, [firebaseUser]);
+
+  const handleStartTOTPEnrollment = async () => {
+    if (!firebaseUser) return;
+    setError(null);
+
+    try {
+      const result = await startTOTPEnrollment(firebaseUser);
+      setTotpEnrollment(result);
+
+      // Generate QR code data URL from the otpauth URI
+      try {
+        const dataUrl = await QRCode.toDataURL(result.totpUri, {
+          width: 200,
+          margin: 2,
+          color: { dark: '#000000', light: '#ffffff' },
+        });
+        setTotpQrDataUrl(dataUrl);
+      } catch {
+        // QR generation failed — user can still use manual key
+      }
+
+      setShowTOTPSetupDialog(true);
+    } catch (err) {
+      console.error('TOTP enrollment error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to start TOTP setup';
+      if (message.includes('auth/requires-recent-login')) {
+        setError('Please sign out and sign back in to set up MFA (recent login required).');
+      } else {
+        setError(message);
+      }
+    }
+  };
+
+  const handleFinalizeTOTPEnrollment = async () => {
+    if (!firebaseUser || !totpEnrollment || totpCode.length !== 6) return;
+    setTotpVerifying(true);
+    setError(null);
+
+    try {
+      await finalizeTOTPEnrollment(
+        firebaseUser,
+        totpEnrollment.secret as TotpSecret,
+        totpCode,
+        'Authenticator App'
+      );
+      setShowTOTPSetupDialog(false);
+      setTotpEnrollment(null);
+      setTotpQrDataUrl(null);
+      setTotpCode('');
+      loadFactors();
+    } catch (err) {
+      console.error('TOTP verification error:', err);
+      const message = err instanceof Error ? err.message : 'Verification failed';
+      if (message.includes('auth/invalid-verification-code')) {
+        setError('Invalid code. Please try again.');
+      } else {
+        setError(message);
+      }
+    } finally {
+      setTotpVerifying(false);
+    }
+  };
+
+  const handleUnenrollFactor = async (factorUid: string, displayName: string | null) => {
+    if (!firebaseUser) return;
+    if (!confirm(`Are you sure you want to remove "${displayName || 'this MFA method'}"?`)) {
+      return;
+    }
+
+    try {
+      await unenrollFactor(firebaseUser, factorUid);
+      loadFactors();
+    } catch (err) {
+      console.error('Unenroll error:', err);
+      const message = err instanceof Error ? err.message : 'Failed to remove MFA method';
+      if (message.includes('auth/requires-recent-login')) {
+        setError('Please sign out and sign back in to remove MFA (recent login required).');
+      } else {
+        setError(message);
+      }
+    }
+  };
+
+  const hasMFA = enrolledFactors.length > 0;
+  const totpFactor = enrolledFactors.find((f) => f.factorId === 'totp');
+  const phoneFactor = enrolledFactors.find((f) => f.factorId === 'phone');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!firebaseUser) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-muted-foreground">Please sign in to manage MFA settings.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <Shield className="h-8 w-8" />
+          Multi-Factor Authentication
+        </h1>
+        <p className="text-muted-foreground">
+          Add an extra layer of security to your account
+        </p>
+        <Badge variant="outline" className="mt-2">
+          Powered by GCP Identity Platform
+        </Badge>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
+          {error}
+          <button
+            onClick={() => setError(null)}
+            className="float-right text-red-500 hover:text-red-700"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Status Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle>MFA Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2">
+            {hasMFA ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <span className="font-medium text-green-600">MFA Enabled</span>
+                <Badge variant="secondary">{enrolledFactors.length} method(s) active</Badge>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-5 w-5 text-orange-600" />
+                <span className="font-medium text-orange-600">MFA Not Enabled</span>
+                <span className="text-sm text-muted-foreground ml-2">
+                  We recommend enabling at least one MFA method
+                </span>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* TOTP (Authenticator App) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5" />
+            Authenticator App (TOTP)
+          </CardTitle>
+          <CardDescription>
+            Use an authenticator app like Google Authenticator, Authy, or Microsoft Authenticator
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {totpFactor ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">TOTP Enabled</div>
+                  <div className="text-sm text-muted-foreground">
+                    {totpFactor.displayName || 'Authenticator App'}
+                  </div>
+                  {totpFactor.enrollmentTime && (
+                    <div className="text-sm text-muted-foreground">
+                      Enrolled: {new Date(totpFactor.enrollmentTime).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+                <Badge className="bg-green-500">Active</Badge>
+              </div>
+              <Button
+                onClick={() => handleUnenrollFactor(totpFactor.uid, totpFactor.displayName)}
+                variant="destructive"
+              >
+                Disable TOTP
+              </Button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Setup two-factor authentication using your smartphone's authenticator app.
+                This is the most secure MFA option.
+              </p>
+              <Button onClick={handleStartTOTPEnrollment}>
+                <Smartphone className="mr-2 h-4 w-4" />
+                Setup Authenticator App
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Phone (SMS) — show status only (enrollment requires reCAPTCHA setup) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            SMS Authentication
+          </CardTitle>
+          <CardDescription>
+            Receive verification codes via SMS to your mobile phone
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {phoneFactor ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">SMS Enabled</div>
+                  <div className="text-sm text-muted-foreground">
+                    {phoneFactor.displayName || 'Phone'}
+                  </div>
+                </div>
+                <Badge className="bg-green-500">Active</Badge>
+              </div>
+              <Button
+                onClick={() => handleUnenrollFactor(phoneFactor.uid, phoneFactor.displayName)}
+                variant="destructive"
+              >
+                Disable SMS
+              </Button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">
+                SMS-based MFA can be configured via the GCP Identity Platform console.
+                Once enrolled, you'll receive a verification code via SMS during sign-in.
+              </p>
+              <Button disabled variant="outline">
+                <MessageSquare className="mr-2 h-4 w-4" />
+                Setup via GCP Console
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Passkeys (FIDO2) — Coming Soon */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Key className="h-5 w-5" />
+            Passkeys (FIDO2)
+          </CardTitle>
+          <CardDescription>
+            Use biometric authentication or hardware security keys
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Passkey support coming soon. Use fingerprint, Face ID, or hardware security keys for passwordless authentication.
+          </p>
+          <Button disabled variant="outline">
+            <Key className="mr-2 h-4 w-4" />
+            Setup Passkey (Coming Soon)
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* TOTP Setup Dialog */}
+      <AlertDialog open={showTOTPSetupDialog} onOpenChange={setShowTOTPSetupDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Setup Authenticator App</AlertDialogTitle>
+            <AlertDialogDescription>
+              Scan the QR code with your authenticator app, then enter the 6-digit code to verify.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {totpEnrollment && (
+            <div className="space-y-4">
+              {/* QR Code */}
+              <div className="flex justify-center">
+                {totpQrDataUrl ? (
+                  <div className="bg-white p-4 rounded-lg">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={totpQrDataUrl}
+                      alt="QR Code for authenticator app"
+                      width={200}
+                      height={200}
+                      className="w-[200px] h-[200px]"
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 p-8 rounded text-center text-sm text-muted-foreground">
+                    QR Code loading...
+                  </div>
+                )}
+              </div>
+
+              {/* Manual Entry */}
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground mb-1">
+                  Can't scan? Enter this code manually:
+                </p>
+                <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">
+                  {totpEnrollment.secretKey}
+                </code>
+              </div>
+
+              {/* Verification Input */}
+              <div className="space-y-2">
+                <Label htmlFor="totpCode">Verification Code</Label>
+                <Input
+                  id="totpCode"
+                  placeholder="Enter 6-digit code"
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  maxLength={6}
+                  className="text-center text-2xl tracking-widest"
+                  autoComplete="one-time-code"
+                />
+              </div>
+
+              {/* Error inside dialog */}
+              {error && (
+                <div className="text-sm text-red-600 dark:text-red-400">{error}</div>
+              )}
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowTOTPSetupDialog(false);
+              setTotpEnrollment(null);
+              setTotpQrDataUrl(null);
+              setTotpCode('');
+              setError(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleFinalizeTOTPEnrollment}
+              disabled={totpVerifying || totpCode.length !== 6}
+            >
+              {totpVerifying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                'Verify & Enable'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// ============================================
+// LEGACY MFA SETTINGS (Custom Monitrax Backend)
+// ============================================
+
+function LegacyMFASettings({ token }: { token: string | null }) {
+  const [mfaMethods, setMFAMethods] = useState<LegacyMFAMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // TOTP Setup State
   const [showTOTPSetupDialog, setShowTOTPSetupDialog] = useState(false);
-  const [totpSetupResult, setTOTPSetupResult] = useState<MFASetupResult | null>(null);
+  const [totpSetupResult, setTOTPSetupResult] = useState<LegacyMFASetupResult | null>(null);
   const [totpVerificationCode, setTOTPVerificationCode] = useState('');
   const [totpVerifying, setTOTPVerifying] = useState(false);
 
   // SMS Setup State
   const [showSMSSetupDialog, setShowSMSSetupDialog] = useState(false);
   const [smsPhoneNumber, setSMSPhoneNumber] = useState('');
-  const [smsSetupResult, setSMSSetupResult] = useState<SMSSetupResult | null>(null);
+  const [smsSetupResult, setSMSSetupResult] = useState<LegacySMSSetupResult | null>(null);
   const [smsVerificationCode, setSMSVerificationCode] = useState('');
   const [smsVerifying, setSMSVerifying] = useState(false);
   const [smsSending, setSMSSending] = useState(false);
@@ -131,7 +558,7 @@ export default function SecurityMFAPage() {
         throw new Error(error.error || 'Failed to setup TOTP');
       }
 
-      const data: MFASetupResult = await response.json();
+      const data: LegacyMFASetupResult = await response.json();
       setTOTPSetupResult(data);
       setShowTOTPSetupDialog(true);
     } catch (err) {
@@ -234,7 +661,7 @@ export default function SecurityMFAPage() {
         throw new Error(error.error || 'Failed to setup SMS MFA');
       }
 
-      const data: SMSSetupResult = await response.json();
+      const data: LegacySMSSetupResult = await response.json();
       setSMSSetupResult(data);
       setSMSCodeSent(true);
     } catch (err) {

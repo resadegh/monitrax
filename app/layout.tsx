@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { NavigationProvider } from "@/contexts/NavigationContext";
+import { MFAChallengeDialog } from "@/components/auth/MFAChallengeDialog";
 
 export const metadata: Metadata = {
   title: "Monitrax - Personal Finance & Debt Planning",
@@ -27,6 +28,7 @@ export default function RootLayout({
             <NavigationProvider>
               {children}
             </NavigationProvider>
+            <MFAChallengeDialog />
           </AuthProvider>
         </ThemeProvider>
       </body>
