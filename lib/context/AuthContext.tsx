@@ -1,15 +1,25 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
+  onAuthStateChanged,
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { getFirebaseAuth, isFirebaseConfigured } from '@/lib/firebase/config';
+import {
+  isMFAError,
+  getMFAChallengeFromError,
+  resolveWithTOTP,
+  resolveWithPhone,
+  sendPhoneMFACode,
+  type MFAChallengeState,
+  type MFAFactorInfo,
+} from '@/lib/firebase/mfa';
 
 interface User {
   id: string;
@@ -27,6 +37,18 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   isGCPEnabled: boolean;
+  /** Current Firebase user (needed for MFA enrollment in settings) */
+  firebaseUser: FirebaseUser | null;
+  /** MFA challenge state — non-null when login requires a second factor */
+  mfaChallenge: MFAChallengeState | null;
+  /** Complete MFA sign-in with a TOTP code */
+  resolveMFAWithTOTP: (hintUid: string, code: string) => Promise<void>;
+  /** Send SMS for phone MFA during sign-in challenge */
+  sendMFAPhoneCode: (hintIndex: number, recaptchaVerifier: import('firebase/auth').ApplicationVerifier) => Promise<void>;
+  /** Complete MFA sign-in with a phone SMS code */
+  resolveMFAWithPhone: (code: string) => Promise<void>;
+  /** Cancel the current MFA challenge */
+  cancelMFAChallenge: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,6 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
+  const [mfaChallenge, setMFAChallenge] = useState<MFAChallengeState | null>(null);
   const gcpEnabled = isFirebaseConfigured();
 
   useEffect(() => {
@@ -83,6 +107,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
+  // Track Firebase auth state so firebaseUser stays current (needed for MFA enrollment)
+  useEffect(() => {
+    if (!gcpEnabled) return;
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+      setFirebaseUser(fbUser);
+    });
+    return unsubscribe;
+  }, [gcpEnabled]);
+
   /**
    * Helper to persist auth state after successful login/register
    */
@@ -94,18 +130,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
+   * Handle a successful Firebase credential (post sign-in or post MFA resolution).
+   * Syncs with the Monitrax backend and persists the session.
+   */
+  const handleFirebaseCredential = async (credential: import('firebase/auth').UserCredential) => {
+    const result = await syncFirebaseUser(credential.user);
+    persistAuth(result.token, result.user);
+    setMFAChallenge(null);
+  };
+
+  /**
+   * Handle a Firebase auth error. If it's an MFA challenge, capture it.
+   * Otherwise, re-throw.
+   */
+  const handleFirebaseAuthError = (error: unknown): void => {
+    if (isMFAError(error)) {
+      const challenge = getMFAChallengeFromError(error);
+      setMFAChallenge(challenge);
+      // Don't throw — the caller should check mfaChallenge state
+      return;
+    }
+    throw error;
+  };
+
+  /**
    * Login with email/password.
    * Uses Firebase Auth if GCP Identity Platform is configured,
    * otherwise falls back to the legacy Monitrax API.
+   *
+   * If the user has MFA enrolled, this will set mfaChallenge instead of completing login.
    */
   const login = async (email: string, password: string) => {
     if (gcpEnabled) {
       const auth = getFirebaseAuth();
       if (!auth) throw new Error('Firebase Auth not initialized');
 
-      const credential = await signInWithEmailAndPassword(auth, email, password);
-      const result = await syncFirebaseUser(credential.user);
-      persistAuth(result.token, result.user);
+      try {
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        await handleFirebaseCredential(credential);
+      } catch (error) {
+        handleFirebaseAuthError(error);
+      }
       return;
     }
 
@@ -132,6 +197,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /**
    * Login with Google via Firebase Auth popup.
    * Only available when GCP Identity Platform is configured.
+   *
+   * If the user has MFA enrolled, this will set mfaChallenge instead of completing login.
    */
   const loginWithGoogle = async () => {
     const auth = getFirebaseAuth();
@@ -141,9 +208,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     provider.addScope('email');
     provider.addScope('profile');
 
-    const credential = await signInWithPopup(auth, provider);
-    const result = await syncFirebaseUser(credential.user);
-    persistAuth(result.token, result.user);
+    try {
+      const credential = await signInWithPopup(auth, provider);
+      await handleFirebaseCredential(credential);
+    } catch (error) {
+      handleFirebaseAuthError(error);
+    }
   };
 
   /**
@@ -181,6 +251,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     persistAuth(data.token, data.user);
   };
 
+  // ==========================================================================
+  // MFA Challenge Resolution
+  // ==========================================================================
+
+  /**
+   * Complete MFA with a TOTP code from authenticator app.
+   */
+  const resolveMFAWithTOTP = useCallback(async (hintUid: string, code: string) => {
+    if (!mfaChallenge) throw new Error('No MFA challenge in progress');
+    const credential = await resolveWithTOTP(mfaChallenge.resolver, hintUid, code);
+    await handleFirebaseCredential(credential);
+  }, [mfaChallenge]);
+
+  /**
+   * Send a phone verification SMS for MFA challenge.
+   */
+  const sendMFAPhoneCode = useCallback(async (
+    hintIndex: number,
+    recaptchaVerifier: import('firebase/auth').ApplicationVerifier
+  ) => {
+    if (!mfaChallenge) throw new Error('No MFA challenge in progress');
+    const verificationId = await sendPhoneMFACode(
+      mfaChallenge.resolver,
+      hintIndex,
+      recaptchaVerifier
+    );
+    setMFAChallenge({
+      ...mfaChallenge,
+      phoneVerificationSent: true,
+      phoneVerificationId: verificationId,
+    });
+  }, [mfaChallenge]);
+
+  /**
+   * Complete MFA with a phone SMS code.
+   */
+  const resolveMFAWithPhone = useCallback(async (code: string) => {
+    if (!mfaChallenge?.phoneVerificationId) throw new Error('No phone verification in progress');
+    const credential = await resolveWithPhone(
+      mfaChallenge.resolver,
+      mfaChallenge.phoneVerificationId,
+      code
+    );
+    await handleFirebaseCredential(credential);
+  }, [mfaChallenge]);
+
+  /**
+   * Cancel the current MFA challenge (go back to login form).
+   */
+  const cancelMFAChallenge = useCallback(() => {
+    setMFAChallenge(null);
+  }, []);
+
   /**
    * Logout — clears both Firebase and local state
    */
@@ -197,13 +320,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setToken(null);
     setUser(null);
+    setMFAChallenge(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, loginWithGoogle, register, logout, isLoading, isGCPEnabled: gcpEnabled }}
+      value={{
+        user,
+        token,
+        login,
+        loginWithGoogle,
+        register,
+        logout,
+        isLoading,
+        isGCPEnabled: gcpEnabled,
+        firebaseUser,
+        mfaChallenge,
+        resolveMFAWithTOTP,
+        sendMFAPhoneCode,
+        resolveMFAWithPhone,
+        cancelMFAChallenge,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -28,15 +28,15 @@ export default function SignInPage() {
     apple: false,
     microsoft: false,
   });
-  const { login, loginWithGoogle, user, isGCPEnabled } = useAuth();
+  const { login, loginWithGoogle, user, isGCPEnabled, mfaChallenge, token } = useAuth();
   const router = useRouter();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (including after MFA resolution)
   useEffect(() => {
-    if (user) {
+    if ((user || token) && !mfaChallenge) {
       router.push('/dashboard');
     }
-  }, [user, router]);
+  }, [user, token, mfaChallenge, router]);
 
   // Check which OAuth providers are configured (legacy mode only)
   useEffect(() => {
@@ -61,7 +61,7 @@ export default function SignInPage() {
 
     try {
       await login(email, password);
-      router.push('/dashboard');
+      // Navigation happens via useEffect when token is set (handles MFA flow too)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Incorrect email or password';
       if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password')) {
@@ -85,7 +85,7 @@ export default function SignInPage() {
     try {
       if (isGCPEnabled) {
         await loginWithGoogle();
-        router.push('/dashboard');
+        // Navigation happens via useEffect when token is set (handles MFA flow too)
       } else {
         window.location.href = '/api/auth/oauth/google';
       }
