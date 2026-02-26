@@ -125,3 +125,48 @@ These components were written before the GCP migration when auth was cookie-base
 
 ### Testing
 - [x] Build passes (`npm run build`)
+
+---
+
+## Session: gcp-identity-migration-phase-V6Y66 (auth fixes round 2 + idle timeout)
+
+### Changes Made — Firebase Branding, Race Condition, Auth Headers Round 2, Idle Timeout
+- **Type**: Bug Fix / Feature
+- **Scope**: Authentication, Security
+- **Description**: Fixed three issues reported by the user: (1) Google Sign-in popup showing Firebase domain instead of Monitrax, (2) intermittent 500 errors when navigating between pages, (3) more pages discovered with missing auth headers. Also added a 30-minute inactivity auto-logout with a 2-minute warning dialog.
+
+### Issue 1: Firebase Branding Fix
+- `lib/firebase/config.ts` — Added `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` env var support. When set (e.g., to `monitrax.com.au`), the Google account chooser shows "Sign in to Monitrax" instead of "Sign in to monitrax-479700.firebaseapp.com".
+
+### Issue 2: Race Condition in User Sync (Intermittent 500s)
+- `lib/auth/gcpIdentity.ts` — Root cause: when user navigates to a page, 4-6 API calls fire in parallel. Each verifies the token and tries to sync the user. If the OAuthAccount link doesn't exist yet, all concurrent calls try to create it; the first succeeds, the others crash with a unique constraint error → 500.
+  - Fix: Changed `prisma.oAuthAccount.create()` to `prisma.oAuthAccount.upsert()`
+  - Fix: Added try/catch around new-user creation with retry-on-conflict
+
+### Issue 3: 10 More Pages/Components Missing Auth Headers
+- `app/dashboard/settings/page.tsx` — Was using `localStorage.getItem('token')` (broken in GCP flow); now uses `useAuth()`
+- `app/dashboard/admin/audit-logs/page.tsx` — Added `useAuth()` + auth headers
+- `app/dashboard/properties/[id]/strategy/page.tsx` — Added `useAuth()` + auth headers
+- `app/dashboard/loans/[id]/strategy/page.tsx` — Added `useAuth()` + auth headers
+- `app/dashboard/investments/holdings/[id]/strategy/page.tsx` — Added `useAuth()` + auth headers
+- `components/strategy/EntityStrategyTab.tsx` — Added `useAuth()` + auth headers to 3 fetch calls
+- `app/(dashboard)/strategy/[id]/page.tsx` — Added `useAuth()` + auth headers to 5 fetch calls
+- `components/onboarding/InitialSetupWizard.tsx` — Added token parameter + auth headers to 6 POST calls
+
+### Feature: 30-Minute Inactivity Auto-Logout
+- `components/auth/IdleTimeoutGuard.tsx` — New component. After 28 min inactivity, shows warning dialog with countdown. At 30 min, auto-logs out. User can click "Stay Logged In" to reset.
+- `app/layout.tsx` — Mounted `IdleTimeoutGuard` globally inside AuthProvider
+
+### Files Created
+- `components/auth/IdleTimeoutGuard.tsx`
+
+### Files Modified
+- `lib/firebase/config.ts`, `lib/auth/gcpIdentity.ts`, `app/layout.tsx`
+- `app/dashboard/settings/page.tsx`, `app/dashboard/admin/audit-logs/page.tsx`
+- `app/dashboard/properties/[id]/strategy/page.tsx`, `app/dashboard/loans/[id]/strategy/page.tsx`
+- `app/dashboard/investments/holdings/[id]/strategy/page.tsx`
+- `components/strategy/EntityStrategyTab.tsx`, `app/(dashboard)/strategy/[id]/page.tsx`
+- `components/onboarding/InitialSetupWizard.tsx`
+
+### Testing
+- [x] Build passes (`npm run build`)
