@@ -16,6 +16,12 @@ const nextConfig: NextConfig = {
         source: '/__/auth/:path*',
         destination: 'https://monitrax-479700.firebaseapp.com/__/auth/:path*',
       },
+      // Serve init.json from our own API because the Firebase project may not
+      // have Hosting deployed (returns 403/404 otherwise).
+      {
+        source: '/__/firebase/init.json',
+        destination: '/api/firebase-init',
+      },
       {
         source: '/__/firebase/:path*',
         destination: 'https://monitrax-479700.firebaseapp.com/__/firebase/:path*',
