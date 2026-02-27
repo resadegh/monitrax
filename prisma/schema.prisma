@@ -165,11 +165,14 @@ enum AuditAction {
   // Auth
   LOGIN
   LOGOUT
+  REGISTER
   MFA_CHALLENGE
   MFA_SUCCESS
   MFA_FAILURE
   PASSWORD_CHANGE
   PASSWORD_RESET
+  EMAIL_VERIFIED
+  OAUTH_LOGIN
 
   // Passkey / WebAuthn
   PASSKEY_REGISTER
@@ -185,6 +188,7 @@ enum AuditAction {
   // Special operations
   EXPORT
   BULK_DELETE
+  API_REQUEST
 
   // Admin operations
   ROLE_CHANGE

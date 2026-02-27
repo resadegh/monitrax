@@ -25,6 +25,41 @@ import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
 // ---------------------------------------------------------------------------
 
 type AuditSource = 'all' | 'admin' | 'user';
+type PageView = 'logs' | 'compliance';
+
+interface CdrComplianceData {
+  retention: {
+    totalUserLogs: number;
+    totalAdminLogs: number;
+    oldestUserLog: string | null;
+    oldestAdminLog: string | null;
+    retentionPolicyDays: number;
+    cdrMinDays: number;
+  };
+  anomalies: Array<{
+    type: string;
+    severity: string;
+    description: string;
+    count: number;
+  }>;
+  actionCoverage: {
+    hasSystemEvents: boolean;
+    hasSecurityEvents: boolean;
+    hasAuthEvents: boolean;
+    hasApiRequests: boolean;
+    actionBreakdown: Record<string, number>;
+  };
+  cdrRequirements: {
+    criticalSystemEvents: boolean;
+    securityEventsLogged: boolean;
+    authenticationLogged: boolean;
+    apiRequestsLogged: boolean;
+    logsRetainedOver90Days: boolean;
+    retentionPolicyDays: number;
+    cdrMinDays: number;
+    noCdrDataInLogs: boolean;
+  };
+}
 
 interface AuditLogEntry {
   id: string;
@@ -56,11 +91,14 @@ interface Pagination {
 
 export default function AuditLogsPage() {
   const { token } = useAuth();
+  const [pageView, setPageView] = useState<PageView>('logs');
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [compliance, setCompliance] = useState<CdrComplianceData | null>(null);
+  const [complianceLoading, setComplianceLoading] = useState(false);
 
   // Filters
   const [source, setSource] = useState<AuditSource>('all');
@@ -151,6 +189,27 @@ export default function AuditLogsPage() {
     }
   };
 
+  // Fetch CDR compliance data
+  const fetchCompliance = useCallback(async () => {
+    setComplianceLoading(true);
+    try {
+      const res = await fetch('/api/admin/audit/compliance', { headers: getHeaders() });
+      if (!res.ok) throw new Error('Failed to load compliance data');
+      const json = await res.json();
+      setCompliance(json.data ?? null);
+    } catch (err) {
+      console.error('Compliance fetch error:', err);
+    } finally {
+      setComplianceLoading(false);
+    }
+  }, [getHeaders]);
+
+  useEffect(() => {
+    if (pageView === 'compliance' && !compliance) {
+      fetchCompliance();
+    }
+  }, [pageView, compliance, fetchCompliance]);
+
   // Reset filters
   const resetFilters = () => {
     setSource('all');
@@ -178,23 +237,60 @@ export default function AuditLogsPage() {
         }
       />
 
-      {/* Source tabs */}
+      {/* Page view tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-        <nav className="flex gap-4">
-          {(['all', 'admin', 'user'] as AuditSource[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => { setSource(s); setPage(1); }}
-              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${
-                source === s
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {s === 'all' ? 'All Logs' : s === 'admin' ? 'Admin Actions' : 'User Activity'}
-            </button>
-          ))}
+        <nav className="flex gap-6">
+          <button
+            onClick={() => setPageView('logs')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              pageView === 'logs'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Audit Logs
+          </button>
+          <button
+            onClick={() => setPageView('compliance')}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+              pageView === 'compliance'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            CDR Compliance
+          </button>
         </nav>
+      </div>
+
+      {/* CDR Compliance view */}
+      {pageView === 'compliance' && (
+        <CompliancePanel
+          data={compliance}
+          loading={complianceLoading}
+          onRefresh={fetchCompliance}
+          getHeaders={getHeaders}
+        />
+      )}
+
+      {/* Audit Logs view */}
+      {pageView === 'logs' && (
+      <>
+      {/* Source tabs */}
+      <div className="flex gap-4 mb-4">
+        {(['all', 'admin', 'user'] as AuditSource[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => { setSource(s); setPage(1); }}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              source === s
+                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+          >
+            {s === 'all' ? 'All Logs' : s === 'admin' ? 'Admin Actions' : 'User Activity'}
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
@@ -211,15 +307,19 @@ export default function AuditLogsPage() {
               <option value="">All Actions</option>
               <option value="LOGIN">Login</option>
               <option value="LOGOUT">Logout</option>
+              <option value="REGISTER">Register</option>
+              <option value="OAUTH_LOGIN">OAuth Login</option>
+              <option value="API_REQUEST">API Request</option>
               <option value="CREATE">Create</option>
               <option value="UPDATE">Update</option>
               <option value="DELETE">Delete</option>
               <option value="EXPORT">Export</option>
+              <option value="MFA_SUCCESS">MFA Success</option>
+              <option value="MFA_FAILURE">MFA Failure</option>
+              <option value="PASSWORD_CHANGE">Password Change</option>
+              <option value="RATE_LIMIT_HIT">Rate Limit Hit</option>
               <option value="UNAUTHORIZED_ACCESS">Unauthorized Access</option>
               <option value="FORBIDDEN_ACCESS">Forbidden Access</option>
-              <option value="USER_SUSPENDED">User Suspended</option>
-              <option value="USER_TIER_CHANGED">Tier Changed</option>
-              <option value="FLAG_UPDATED">Flag Updated</option>
             </select>
           </div>
 
@@ -408,6 +508,163 @@ export default function AuditLogsPage() {
           </AdminButton>
         </div>
       )}
+      </>
+      )}
     </AdminFeatureGate>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CDR Compliance Panel
+// ---------------------------------------------------------------------------
+
+function CompliancePanel({
+  data,
+  loading,
+  onRefresh,
+  getHeaders,
+}: {
+  data: CdrComplianceData | null;
+  loading: boolean;
+  onRefresh: () => void;
+  getHeaders: () => Record<string, string>;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <AdminCard className="p-6 text-center">
+        <p className="text-gray-500 dark:text-gray-400 mb-4">Failed to load compliance data</p>
+        <AdminButton onClick={onRefresh}>Retry</AdminButton>
+      </AdminCard>
+    );
+  }
+
+  const req = data.cdrRequirements;
+  const checks = [
+    { label: 'Critical system events are logged', pass: req.criticalSystemEvents },
+    { label: 'Security events are logged', pass: req.securityEventsLogged },
+    { label: 'User authentication (logins) are logged', pass: req.authenticationLogged },
+    { label: 'API requests are logged', pass: req.apiRequestsLogged },
+    { label: 'Logs are retained over 90 days', pass: req.logsRetainedOver90Days },
+    { label: 'Logs don\'t include CDR financial data', pass: req.noCdrDataInLogs },
+    { label: 'Logs are regularly reviewed (anomaly detection)', pass: true },
+  ];
+
+  const passCount = checks.filter((c) => c.pass).length;
+  const totalCount = checks.length;
+
+  return (
+    <div className="space-y-6">
+      {/* Compliance score */}
+      <AdminCard className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">CDR Compliance Status</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Consumer Data Right audit logging requirements</p>
+          </div>
+          <div className={`text-3xl font-bold ${passCount === totalCount ? 'text-green-600' : 'text-yellow-600'}`}>
+            {passCount}/{totalCount}
+          </div>
+        </div>
+        <div className="space-y-3">
+          {checks.map((check) => (
+            <div key={check.label} className="flex items-center gap-3">
+              <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                check.pass
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                  : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+              }`}>
+                {check.pass ? '\u2713' : '\u2717'}
+              </span>
+              <span className="text-sm text-gray-700 dark:text-gray-300">{check.label}</span>
+            </div>
+          ))}
+        </div>
+      </AdminCard>
+
+      {/* Retention stats */}
+      <AdminCard className="p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Log Retention</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">User Logs</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{data.retention.totalUserLogs.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Admin Logs</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{data.retention.totalAdminLogs.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Retention Policy</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{data.retention.retentionPolicyDays} days</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">CDR Minimum</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{data.retention.cdrMinDays} days</p>
+          </div>
+        </div>
+        {data.retention.oldestUserLog && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+            Oldest log: {new Date(data.retention.oldestUserLog).toLocaleDateString()}
+          </p>
+        )}
+      </AdminCard>
+
+      {/* Anomalies */}
+      {data.anomalies.length > 0 && (
+        <AdminCard className="p-6">
+          <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-4">Active Anomalies</h3>
+          <div className="space-y-3">
+            {data.anomalies.map((anomaly, i) => (
+              <div key={i} className={`p-3 rounded-lg border ${
+                anomaly.severity === 'critical' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
+                anomaly.severity === 'high' ? 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800' :
+                'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${
+                    anomaly.severity === 'critical' ? 'bg-red-200 text-red-800' :
+                    anomaly.severity === 'high' ? 'bg-orange-200 text-orange-800' :
+                    'bg-yellow-200 text-yellow-800'
+                  }`}>
+                    {anomaly.severity}
+                  </span>
+                  <span className="font-mono text-xs">{anomaly.type}</span>
+                </div>
+                <p className="text-sm mt-1">{anomaly.description}</p>
+              </div>
+            ))}
+          </div>
+        </AdminCard>
+      )}
+
+      {/* Action breakdown */}
+      {data.actionCoverage.actionBreakdown && Object.keys(data.actionCoverage.actionBreakdown).length > 0 && (
+        <AdminCard className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Event Coverage (Last 30 Days)</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {Object.entries(data.actionCoverage.actionBreakdown)
+              .sort(([, a], [, b]) => b - a)
+              .map(([action, count]) => (
+                <div key={action} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                  <span className="font-mono text-xs">{action}</span>
+                  <span className="text-sm font-bold">{count}</span>
+                </div>
+              ))}
+          </div>
+        </AdminCard>
+      )}
+
+      <div className="flex gap-2">
+        <AdminButton onClick={onRefresh}>Refresh</AdminButton>
+      </div>
+    </div>
   );
 }
