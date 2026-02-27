@@ -64,8 +64,8 @@ export function withPermission<T = unknown>(
   permission: Permission,
   handler: AuthenticatedHandler<T>,
   options?: GuardOptions
-): (request: NextRequest, params?: T) => Promise<Response> {
-  return async (request: NextRequest, params?: T) => {
+): (request: NextRequest, params: T) => Promise<Response> {
+  return async (request: NextRequest, params: T) => {
     const auth = await getAuthContext(request);
 
     if (!auth) {

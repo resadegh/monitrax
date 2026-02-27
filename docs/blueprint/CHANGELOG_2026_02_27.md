@@ -134,3 +134,78 @@
 ### PR
 - PR URL: (pending)
 - Status: Open
+
+---
+
+## Session: gcp-identity-migration-phase-V6Y66 (continued — Sub-Phase 34.3a Properties RBAC)
+
+### Changes Made — RBAC Enforcement on Properties Module (34.3a)
+- **Type**: Security Enhancement
+- **Scope**: Properties API routes — RBAC permission enforcement
+- **Description**: Migrated all Properties module API routes from `withAuth()` (authentication only) to `withPermission()` (authentication + RBAC authorization). This is the pilot module for Sub-Phase 34.3. After testing this module, the same pattern will be applied to all remaining user API routes.
+
+### Permission Mapping Applied
+| Route | Method | Permission | Roles Allowed |
+|-------|--------|-----------|---------------|
+| `/api/properties` | GET | `property.read` | OWNER, ADMIN, CONTRIBUTOR, VIEWER |
+| `/api/properties` | POST | `property.write` | OWNER, ADMIN, CONTRIBUTOR |
+| `/api/properties/[id]` | GET | `property.read` | OWNER, ADMIN, CONTRIBUTOR, VIEWER |
+| `/api/properties/[id]` | PUT | `property.write` | OWNER, ADMIN, CONTRIBUTOR |
+| `/api/properties/[id]` | DELETE | `property.delete` | OWNER, ADMIN |
+| `/api/properties/[id]/depreciation` | GET | `property.read` | OWNER, ADMIN, CONTRIBUTOR, VIEWER |
+| `/api/properties/[id]/depreciation` | POST | `property.write` | OWNER, ADMIN, CONTRIBUTOR |
+| `/api/properties/[id]/depreciation/[depId]` | GET | `property.read` | OWNER, ADMIN, CONTRIBUTOR, VIEWER |
+| `/api/properties/[id]/depreciation/[depId]` | PUT | `property.write` | OWNER, ADMIN, CONTRIBUTOR |
+| `/api/properties/[id]/depreciation/[depId]` | DELETE | `property.delete` | OWNER, ADMIN |
+
+### Migration Pattern
+```typescript
+// BEFORE (withAuth from lib/middleware.ts — auth only):
+export async function GET(request: NextRequest) {
+  return withAuth(request, async (authReq) => {
+    const userId = authReq.user!.userId;
+  });
+}
+
+// AFTER (withPermission from lib/auth/guards.ts — auth + RBAC):
+export const GET = withPermission('property.read', async (request, auth) => {
+  const userId = auth.userId;
+});
+```
+
+### Files Modified
+- `app/api/properties/route.ts` — GET: `property.read`, POST: `property.write`
+- `app/api/properties/[id]/route.ts` — GET: `property.read`, PUT: `property.write`, DELETE: `property.delete`
+- `app/api/properties/[id]/depreciation/route.ts` — GET: `property.read`, POST: `property.write`
+- `app/api/properties/[id]/depreciation/[depId]/route.ts` — GET: `property.read`, PUT: `property.write`, DELETE: `property.delete`
+- `lib/auth/guards.ts` — Fixed `withPermission` return type: `params?: T` → `params: T` for Next.js dynamic route compatibility
+
+### Documentation Updated
+- `docs/blueprint/CHANGELOG_2026_02_27.md` — This entry
+- `docs/blueprint/PHASE_34_CDR_SECURITY_HARDENING.md` — Sub-phase 34.3a noted as in-progress
+
+### Testing
+- [x] Build passes (`npm run build`)
+- [x] TypeScript type check passes (`tsc --noEmit`)
+- [ ] Manual role-based testing (deploy required)
+
+### Test Plan for Properties Module
+- [ ] OWNER can GET, POST, PUT, DELETE properties and depreciation schedules
+- [ ] ADMIN can GET, POST, PUT, DELETE properties and depreciation schedules
+- [ ] CONTRIBUTOR can GET, POST, PUT properties; DELETE returns 403
+- [ ] VIEWER can GET properties; POST/PUT/DELETE return 403
+
+### PR
+- PR URL: (pending)
+- Status: Open
+
+### Deferred: Admin Audit Log Access Gaps (Documented for Future Decision)
+
+**Finding**: During this session, a comprehensive review of audit log access identified these gaps:
+
+1. **Dashboard audit page (`/dashboard/admin/audit-logs`)** — Full UI built but calls `/api/admin/audit-logs` which doesn't exist (actual endpoint is `/api/admin/audit`). Fix: create the missing endpoint or update the UI to use the correct endpoint.
+2. **Settings tab (`/admin/settings?tab=audit`)** — Uses hardcoded mock data, not connected to any API.
+3. **User AuditLog table** — No API endpoint exposes `queryAuditLogs()` from `lib/security/auditLog.ts`. Admin can only see `AdminAuditLog` records, not user-level `AuditLog` records.
+4. **Export endpoint** — Dashboard calls `/api/admin/audit-logs/export` which doesn't exist.
+
+**Decision**: Deferred to a future session. These are UI/API wiring issues, not security gaps — the underlying audit data is being persisted correctly (confirmed in 34.2).
