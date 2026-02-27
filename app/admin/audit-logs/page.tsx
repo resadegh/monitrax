@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { AdminHeader } from '@/components/admin/layout/AdminHeader';
 import { AdminCard, AdminCardHeader } from '@/components/admin/ui/AdminCard';
 import { AdminTable } from '@/components/admin/ui/AdminTable';
@@ -54,9 +55,11 @@ interface Pagination {
 // ---------------------------------------------------------------------------
 
 export default function AuditLogsPage() {
+  const { token } = useAuth();
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
   // Filters
@@ -69,9 +72,15 @@ export default function AuditLogsPage() {
   const [page, setPage] = useState(1);
   const limit = 50;
 
+  // Build auth headers (Bearer token if available, otherwise rely on cookies)
+  const getHeaders = useCallback((): Record<string, string> => {
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [token]);
+
   // Fetch logs
   const fetchLogs = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({
         page: String(page),
@@ -84,19 +93,27 @@ export default function AuditLogsPage() {
       if (startDate) params.set('startDate', startDate);
       if (endDate) params.set('endDate', endDate);
 
-      const res = await fetch(`/api/admin/audit?${params}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to load audit logs');
+      const res = await fetch(`/api/admin/audit?${params}`, {
+        headers: getHeaders(),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        const msg = errJson?.error?.message || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
 
       const json = await res.json();
       setLogs(json.data ?? []);
       setPagination(json.pagination ?? null);
     } catch (err) {
       console.error('Error loading audit logs:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
       setLogs([]);
     } finally {
       setLoading(false);
     }
-  }, [page, source, action, status, entityType, startDate, endDate]);
+  }, [page, source, action, status, entityType, startDate, endDate, getHeaders]);
 
   useEffect(() => {
     fetchLogs();
@@ -113,7 +130,9 @@ export default function AuditLogsPage() {
       if (startDate) params.set('startDate', startDate);
       if (endDate) params.set('endDate', endDate);
 
-      const res = await fetch(`/api/admin/audit/export?${params}`, { credentials: 'include' });
+      const res = await fetch(`/api/admin/audit/export?${params}`, {
+        headers: getHeaders(),
+      });
       if (!res.ok) throw new Error('Failed to export');
 
       const blob = await res.blob();
@@ -257,6 +276,16 @@ export default function AuditLogsPage() {
           <AdminButton variant="outline" onClick={resetFilters}>Reset</AdminButton>
         </div>
       </AdminCard>
+
+      {/* Error banner */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+          <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
+          <AdminButton variant="outline" size="sm" onClick={fetchLogs} className="mt-2">
+            Retry
+          </AdminButton>
+        </div>
+      )}
 
       {/* Results summary */}
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
