@@ -16,9 +16,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (password.length < 8) {
+    // Password strength validation (CDR compliance — Phase 34)
+    const passwordErrors: string[] = [];
+    if (password.length < 12) passwordErrors.push('at least 12 characters');
+    if (!/[A-Z]/.test(password)) passwordErrors.push('an uppercase letter');
+    if (!/[a-z]/.test(password)) passwordErrors.push('a lowercase letter');
+    if (!/[0-9]/.test(password)) passwordErrors.push('a number');
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) passwordErrors.push('a special character');
+
+    if (passwordErrors.length > 0) {
       return NextResponse.json(
-        { error: 'Password must be at least 8 characters' },
+        { error: `Password must contain: ${passwordErrors.join(', ')}` },
         { status: 400 }
       );
     }

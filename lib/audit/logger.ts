@@ -4,6 +4,7 @@
  */
 
 import { log } from '@/lib/utils/logger';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 // ============================================
 // TYPES
@@ -77,8 +78,22 @@ export async function logAuditEvent(event: AuditEvent): Promise<void> {
       metadata: event.metadata,
     });
 
-    // TODO: Persist to AuditLog table when schema is updated
-    // await prisma.auditLog.create({ data: { ... } });
+    // Persist to AuditLog table via the DB-backed audit service (Phase 34)
+    await createAuditLog({
+      userId: event.principalId !== 'unknown' ? event.principalId : undefined,
+      action: event.type,
+      status: event.outcome === 'FAILURE' ? 'FAILURE' : 'SUCCESS',
+      entityType: event.targetEntity,
+      entityId: event.targetId,
+      ipAddress: event.ip,
+      userAgent: event.userAgent,
+      metadata: {
+        ...event.metadata,
+        ...(event.principalEmail && { principalEmail: event.principalEmail }),
+        ...(event.reason && { reason: event.reason }),
+        ...(event.tenantId && { tenantId: event.tenantId }),
+      },
+    });
   } catch (error) {
     // Don't let audit logging failures affect the main flow
     log.error('Failed to log audit event', error as Error, { event });

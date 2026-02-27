@@ -94,3 +94,43 @@
 ### PR
 - PR URL: (pending)
 - Status: Open
+
+---
+
+## Session: gcp-identity-migration-phase-V6Y66 (continued — Sub-Phase 34.1 + 34.2 Implementation)
+
+### Changes Made — CDR Security Hardening: Trivial Fixes + Audit Persistence
+- **Type**: Security Enhancement
+- **Scope**: Authentication, password validation, session management, audit logging, admin auth
+- **Description**: Implemented Sub-Phase 34.1 (trivial fixes) and Sub-Phase 34.2 (audit log persistence) from the Phase 34 CDR Security Hardening plan.
+
+### Sub-Phase 34.1 Changes
+1. **Server idle timeout**: `lib/session/sessionManager.ts:46` — changed from 60 min to 30 min (CDR compliance, matches client-side)
+2. **Bcrypt rounds**: `lib/auth.ts:27` — increased from 10 to 12 (OWASP recommendation)
+3. **Password strength validation**: `app/api/auth/register/route.ts` — now requires 12+ chars, uppercase, lowercase, digit, special character
+4. **Admin password hashing**: `lib/admin/auth.ts` — replaced SHA256 with bcrypt(12). `verifyPassword()` is backward-compatible with existing SHA256 hashes via prefix detection.
+5. **Admin seed script**: `prisma/seed-admin.ts` — updated to use bcrypt
+
+### Sub-Phase 34.2 Changes
+1. **Audit log persistence**: `lib/audit/logger.ts` — wired `logAuditEvent()` to delegate to `createAuditLog()` from `lib/security/auditLog.ts`, which persists to the `AuditLog` DB table
+
+### Files Modified
+- `lib/session/sessionManager.ts` — idle timeout 60min → 30min
+- `lib/auth.ts` — bcrypt rounds 10 → 12
+- `app/api/auth/register/route.ts` — password complexity validation
+- `lib/admin/auth.ts` — bcrypt password hashing + backward-compatible verification
+- `prisma/seed-admin.ts` — bcrypt hashing for admin seed
+- `lib/audit/logger.ts` — DB persistence via `createAuditLog()`
+- `docs/blueprint/PHASE_34_CDR_SECURITY_HARDENING.md` — marked 34.1 + 34.2 complete, updated findings status
+
+### Documentation Updated
+- `docs/blueprint/PHASE_34_CDR_SECURITY_HARDENING.md` — Sub-phases 34.1 + 34.2 marked complete
+- `docs/blueprint/CHANGELOG_2026_02_27.md` — This entry
+
+### Testing
+- [x] Build passes (`npm run build`)
+- [ ] Manual testing (deploy required)
+
+### PR
+- PR URL: (pending)
+- Status: Open

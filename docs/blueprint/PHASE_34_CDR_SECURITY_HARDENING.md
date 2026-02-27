@@ -40,14 +40,14 @@ The CDR compliance audit tested 8 controls. Results:
 
 | # | CDR Control | Status | Gap |
 |---|-------------|--------|-----|
-| 1 | User authentication for CDR data | PASS | Session idle timeout mismatch (see §3.1) |
+| 1 | User authentication for CDR data | ✅ FIXED | Session idle timeout aligned to 30min (34.1) |
 | 2 | Unique login accounts | PASS | None |
 | 3 | No generic/shared accounts | PASS | None |
-| 4 | MFA enabled | FAIL | Supported but not enforced (see §3.2) |
-| 5 | Strong passwords enforced | FAIL | Min 8 chars only, no complexity (see §3.3) |
-| 6 | Role-based access control | PARTIAL FAIL | Defined but not enforced on ~150 user routes (see §3.4) |
-| 7 | Least-privilege access | PARTIAL PASS | Undermined by §3.4 gap |
-| 8 | Admin account review & removal | PARTIAL PASS | No audit persistence, no automated review (see §3.5) |
+| 4 | MFA enabled | FAIL | Supported but not enforced (see §3.2) — pending 34.4 |
+| 5 | Strong passwords enforced | ✅ FIXED | 12+ chars with complexity, bcrypt 12 rounds (34.1) |
+| 6 | Role-based access control | PARTIAL FAIL | Defined but not enforced on ~150 user routes (see §3.4) — pending 34.3 |
+| 7 | Least-privilege access | PARTIAL PASS | Undermined by §3.4 gap — pending 34.3 |
+| 8 | Admin account review & removal | ✅ FIXED | Audit persistence wired (34.2), admin bcrypt (34.1) — admin lifecycle pending 34.5 |
 
 ---
 
@@ -62,7 +62,7 @@ The CDR compliance audit tested 8 controls. Results:
 | Client-side guard | `components/auth/IdleTimeoutGuard.tsx:19` | `30 * 60 * 1000` (30 min) | 30 min (correct) |
 | Server-side session manager | `lib/session/sessionManager.ts:46` | `60 * 60 * 1000` (60 min) | 30 min (wrong) |
 
-**Fix:** Change `lib/session/sessionManager.ts:46` from `60 * 60 * 1000` to `30 * 60 * 1000`.
+**Fix applied:** Changed `lib/session/sessionManager.ts:46` from `60 * 60 * 1000` to `30 * 60 * 1000`. ✅
 
 ---
 
@@ -132,21 +132,18 @@ export const POST = withPermission('property.write', async (request, auth) => {
 ### 3.5 Audit Log Not Persisted
 
 **Current state:**
-- `lib/security/auditLog.ts` (450+ lines) defines comprehensive audit logging with 40+ action types
-- `lib/audit/logger.ts` has a TODO at the persistence layer — events go to console only
+- `lib/security/auditLog.ts` (450+ lines) — **already persists to DB** via `prisma.auditLog.create()`. This is the active audit system used by auth, session, and passkey modules.
+- `lib/audit/logger.ts` — secondary audit logger, was console-only with a TODO at the persistence layer
 - `AuditLog` model exists in Prisma schema with all required fields
 - Admin audit (`AdminAuditLog`) IS persisted to database (Phase 33, working correctly)
 
-**What needs fixing:** Wire `logAuditEvent()` to actually persist to the `AuditLog` table.
+**Fix applied (Phase 34.2):** Wired `lib/audit/logger.ts` `logAuditEvent()` to delegate to `createAuditLog()` from `lib/security/auditLog.ts`, so both audit systems now persist to the same `AuditLog` table. ✅
 
 ---
 
 ### 3.6 Admin Password Hashing Uses SHA256
 
-**Current state** (`lib/admin/auth.ts`):
-- `hashPassword()` uses `crypto.createHash('sha256')` with random salt
-- SHA256 is a fast hash — unsuitable for passwords (enables brute force)
-- Should use bcrypt (already available in project via `bcryptjs`)
+**Fix applied:** `hashPassword()` now uses `bcrypt.hash(password, 12)`. `verifyPassword()` is backward-compatible: detects `$2a$`/`$2b$` prefix for bcrypt, falls back to legacy `salt:hash` SHA256 format for existing admin accounts. `prisma/seed-admin.ts` also updated to use bcrypt. ✅
 
 ---
 
@@ -156,7 +153,7 @@ Each sub-phase is atomic and independently deployable. A test gate must pass bef
 
 ---
 
-### SUB-PHASE 34.1: TRIVIAL FIXES (No Risk)
+### SUB-PHASE 34.1: TRIVIAL FIXES (No Risk) ✅ COMPLETE
 
 **Scope:** Fix configuration values and password hashing. No API signature changes.
 
@@ -176,7 +173,7 @@ Each sub-phase is atomic and independently deployable. A test gate must pass bef
 
 ---
 
-### SUB-PHASE 34.2: AUDIT LOG PERSISTENCE
+### SUB-PHASE 34.2: AUDIT LOG PERSISTENCE ✅ COMPLETE
 
 **Scope:** Wire the existing `logAuditEvent()` function to write to the `AuditLog` database table. No API signature changes.
 

@@ -6,15 +6,13 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { createHash, randomBytes } from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-// Hash password using salt:hash format (same as lib/admin/auth.ts)
+// Hash password using bcrypt (same as lib/admin/auth.ts — Phase 34)
 function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString('hex');
-  const hash = createHash('sha256').update(password + salt).digest('hex');
-  return `${salt}:${hash}`;
+  return bcrypt.hashSync(password, 12);
 }
 
 async function seedAdmin() {
