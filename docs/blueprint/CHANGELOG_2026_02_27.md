@@ -28,3 +28,29 @@
 ### PR
 - PR URL: (pending — changes on branch `claude/gcp-identity-migration-phase-V6Y66`)
 - Status: Open
+
+---
+
+## Session: gcp-identity-migration-phase-V6Y66 (continued — CSP & COOP fix)
+
+### Changes Made — Fix CSP frame-src and COOP Headers Blocking Google Sign-In Popup
+- **Type**: Bug Fix
+- **Scope**: Authentication — Middleware CSP, Cross-Origin-Opener-Policy
+- **Description**: After deploying the previous fix, Google sign-in still failed because:
+  1. **CSP `frame-src` missing `'self'`**: Firebase SDK loads a hidden iframe at `/__/auth/iframe` on the same origin (`www.monitrax.com.au`) for popup-to-parent communication. The CSP's `frame-src` only allowed `https://*.firebaseapp.com`, `https://*.google.com`, and `https://accounts.google.com` — missing `'self'`. The browser blocked the iframe entirely, breaking the auth flow.
+  2. **Cross-Origin-Opener-Policy severing popup communication**: The Firebase Hosting response for `/__/auth/handler` includes a COOP header that severs the `window.opener` relationship, preventing the popup from communicating the auth result back via `window.closed` checks.
+
+### Files Modified
+- `middleware.ts` — Added `'self'` to `frame-src` in the CSP directive. Added `Cross-Origin-Opener-Policy: same-origin-allow-popups` header so the parent window allows popup communication.
+- `next.config.ts` — Added `headers()` config to set `Cross-Origin-Opener-Policy: unsafe-none` on `/__/auth/:path*` routes (which bypass middleware), overriding any COOP header from the proxied Firebase response.
+
+### Documentation Updated
+- `docs/blueprint/CHANGELOG_2026_02_27.md` — This entry
+
+### Testing
+- [x] Build passes (`npm run build`)
+- [ ] Manual testing (deploy required to verify in production)
+
+### PR
+- PR URL: (pending)
+- Status: Open
