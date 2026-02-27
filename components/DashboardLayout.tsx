@@ -295,10 +295,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    // Only redirect to signin when there's genuinely no authenticated session.
+    // If token exists but user is null, the profile is still being fetched
+    // from /api/auth/me — wait for it instead of redirecting.
+    if (!isLoading && !user && !token) {
       router.push('/signin');
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, token, router]);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -316,7 +319,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => document.removeEventListener('keydown', handleEscape);
   }, []);
 
-  if (isLoading) {
+  if (isLoading || (token && !user)) {
+    // Show loading spinner while:
+    // 1. AuthContext is still initializing (isLoading)
+    // 2. Token exists but user profile hasn't loaded yet (fetchUserProfile in progress)
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
