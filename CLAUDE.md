@@ -30,6 +30,7 @@ docs/blueprint/04_GRDCS_SPECIFICATION.md
 docs/blueprint/06_UI_UX_FOUNDATION.md
 docs/blueprint/07_API_STANDARDS.md
 docs/blueprint/MASTER_BLUEPRINT.md
+docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md
 ```
 
 ### Step 2: Read Relevant Phase Documents
@@ -732,6 +733,139 @@ Before writing code, ask yourself:
 - [ ] Am I putting business logic in an API route instead of a service? (§12.3)
 - [ ] Will this change create dead code? If so, delete the old code (§12.1)
 - [ ] Am I using `withPermission()` (not bare `withAuth()`)? (§12.5)
+- [ ] Does this change touch CDR data? If so, follow CDR compliance rules (§13)
+- [ ] Is CDR data sanitized from logs and error responses? (§13.3)
+- [ ] Does CDR data access verify active consent? (§13.2)
+
+---
+
+## PART 13: CDR COMPLIANCE — CONSUMER DATA RIGHT (MANDATORY)
+
+> **Monitrax handles CDR-regulated financial data. Every code change must comply with CDR rules.**
+> **This section codifies the Basiq accreditation requirements into enforceable build rules.**
+> **Full requirement tracking: `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md`**
+
+### 13.1 CDR Data Classification
+
+**CDR data** = any data received from a consumer's financial institution via the CDR regime.
+This includes: account balances, transaction histories, account numbers, BSBs, loan details,
+income records, and any derived data (aggregations, scores, insights).
+
+| Classification | Examples | Handling Rules |
+|----------------|----------|----------------|
+| **CDR-Protected** | Account balances, transactions, BSBs, loan balances | Encrypted at rest (CMEK), sanitized from logs, consent-gated access |
+| **CDR-Derived** | Health scores, net worth, cashflow forecasts | Treated as CDR data if derived from CDR inputs |
+| **Non-CDR** | User profile, preferences, UI settings | Standard data handling |
+
+### 13.2 Consent Lifecycle — ABSOLUTE RULE
+
+**CDR data MUST be governed by consent. No consent = no data access.**
+
+| Rule | Implementation |
+|------|----------------|
+| **Consent before access** | CDR data routes must verify active consent (`ConsentStatus.ACTIVE`) before returning data |
+| **Consent expiry → data deletion** | When `consentExpiresAt` passes, associated CDR data MUST be deleted/anonymized |
+| **Consent revocation → immediate deletion** | When consent is revoked (`ConsentStatus.REVOKED`), CDR data MUST be purged within 24 hours |
+| **Deletion is irreversible** | No soft-delete for CDR data. Hard-delete or anonymize beyond recovery |
+| **Audit the deletion** | Every CDR data deletion MUST be logged via `createAuditLog()` with action `CDR_DATA_DELETED` |
+
+**Canonical service:** `lib/services/cdrDataLifecycle.ts` (to be created)
+
+**Automated enforcement:**
+- GCP Cloud Scheduler triggers daily consent expiry check
+- Expired/revoked consents trigger CDR data purge job
+- Purge job deletes CDR data, logs audit trail, notifies user
+
+### 13.3 CDR Data Protection in Code
+
+**Rules for ALL code that touches CDR data:**
+
+| Rule | Enforcement |
+|------|-------------|
+| **Never log CDR data** | Use `sanitizeCdrMetadata()` from `lib/security/cdrAuditCompliance.ts` for all audit metadata |
+| **Never cache CDR data in localStorage/sessionStorage** | Browser storage is not encrypted. CDR data stays in React state only |
+| **Never include CDR data in error messages** | Catch errors at boundaries, return generic messages to client |
+| **Never expose CDR data in URLs** | No account numbers, balances, or BSBs in query parameters |
+| **Never send CDR data to third parties** | Unless explicitly consented and documented |
+| **De-identify for analytics** | Any CDR data used for analytics/reporting must be de-identified first |
+
+### 13.4 CDR-Specific Auth Guards
+
+**CDR data routes require elevated authentication:**
+
+```typescript
+// Pattern for CDR data routes
+export async function GET(request: NextRequest) {
+  return withPermission(request, 'cdr_data.read', async (authReq) => {
+    // 1. Verify active consent
+    // 2. Check MFA if org policy requires it
+    // 3. Return data
+    // 4. Audit the access (fire-and-forget)
+  });
+}
+```
+
+| Guard | When to Use |
+|-------|-------------|
+| `withPermission(req, 'cdr_data.read')` | Any route that returns CDR-protected data |
+| `withPermission(req, 'cdr_data.write')` | Any route that modifies CDR data |
+| `withPermission(req, 'cdr_data.delete')` | Any route that deletes CDR data |
+| `withMFARequired()` | CDR data routes when org has `mfaEnforced: true` |
+
+### 13.5 CDR Data Retention
+
+| Rule | Policy |
+|------|--------|
+| **Default retention** | CDR data retained while consent is ACTIVE, deleted when expired/revoked |
+| **Legal retention override** | Some CDR data may need retention beyond consent (e.g., loan applications). Document exceptions in CDR Data Retention Schedule |
+| **Retention schedule** | Maintained in `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md` (to be created) |
+| **No indefinite retention** | All CDR data MUST have a defined retention period |
+
+### 13.6 Environment Separation
+
+| Rule | Description |
+|------|-------------|
+| **Production only** | Real CDR data MUST only exist in production environment |
+| **Dev/staging** | MUST use synthetic/mock data. NEVER seed with real CDR data |
+| **Database access** | Production database accessible only via GCP Console/IAM. No direct SSH/tunnel from dev machines |
+| **Env variables** | Production secrets managed via GCP Secret Manager (not `.env` files) |
+
+### 13.7 CDR Compliance Checklist — Before Every CDR-Related Change
+
+Before modifying ANY code that touches CDR data:
+
+- [ ] Does this route use `withPermission()` with a `cdr_data.*` permission? (§13.4)
+- [ ] Is CDR data sanitized from all log/audit metadata? (§13.3)
+- [ ] Does the data access check for active consent? (§13.2)
+- [ ] Is CDR data excluded from error responses? (§13.3)
+- [ ] Will this change affect CDR data retention/deletion? If so, update lifecycle service (§13.2)
+- [ ] Is the compliance matrix up to date? (`docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md`)
+
+### 13.8 Required Policy Documents (Non-Code)
+
+These documents are required for Basiq CDR accreditation and MUST be created/maintained:
+
+| Document | Path | Covers |
+|----------|------|--------|
+| CDR Data Retention Schedule | `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md` | What data, how long, why, legal basis |
+| Device & Endpoint Security Policy | `docs/policy/DEVICE_SECURITY_POLICY.md` | Staff device requirements (Basiq §4) |
+| Incident Response Plan | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Breach notification, containment, remediation |
+| Security Awareness Policy | `docs/policy/SECURITY_AWARENESS_POLICY.md` | Training requirements for future staff (Basiq §7) |
+| Approved Dependencies List | `docs/policy/APPROVED_DEPENDENCIES.md` | Reviewed and approved npm packages (Basiq §6.4) |
+
+### 13.9 GCP Services Required for CDR Compliance
+
+These GCP services MUST be enabled for CDR compliance (per Basiq §8):
+
+| Service | Purpose | Priority |
+|---------|---------|----------|
+| **Cloud Armor** | WAF, DDoS protection for CDR data endpoints | P0 |
+| **Security Command Center** | Vulnerability scanning, compliance monitoring | P0 |
+| **Cloud KMS (CMEK)** | Customer-managed encryption keys for CDR data at rest | P1 |
+| **Cloud Logging** | Centralized log retention (>90 days), search, alerting | P1 |
+| **Cloud Monitoring** | Uptime checks, error rate alerts, anomaly detection | P1 |
+| **Error Reporting** | Automated error grouping and alerting | P1 |
+| **Cloud DLP** | PII detection and redaction in CDR data | P2 |
 
 ---
 
@@ -754,4 +888,4 @@ Before writing code, ask yourself:
 ---
 
 *Last Updated: 2026-02-27*
-*Protocol Version: 1.4*
+*Protocol Version: 1.5*
