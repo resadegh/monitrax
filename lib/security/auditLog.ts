@@ -113,7 +113,7 @@ export async function logBlocked(entry: Omit<AuditLogEntry, 'status'>): Promise<
  */
 export async function logAuth(params: {
   userId?: string;
-  action: 'LOGIN' | 'LOGOUT' | 'MFA_CHALLENGE' | 'MFA_SUCCESS' | 'MFA_FAILURE' | 'PASSWORD_CHANGE' | 'PASSWORD_RESET' | 'PASSKEY_REGISTER' | 'PASSKEY_UPDATE' | 'PASSKEY_DELETE';
+  action: 'LOGIN' | 'LOGOUT' | 'REGISTER' | 'EMAIL_VERIFIED' | 'OAUTH_LOGIN' | 'MFA_CHALLENGE' | 'MFA_SUCCESS' | 'MFA_FAILURE' | 'PASSWORD_CHANGE' | 'PASSWORD_RESET' | 'PASSKEY_REGISTER' | 'PASSKEY_UPDATE' | 'PASSKEY_DELETE';
   status?: AuditStatus;
   ipAddress?: string;
   userAgent?: string;

@@ -1,3 +1,17 @@
+/**
+ * @deprecated LEGACY — Local password auth route.
+ *
+ * Since Feb 2026, GCP Identity Platform (Firebase Auth) is the sole identity
+ * provider. The frontend calls Firebase SDK directly for login, NOT this route.
+ * The Monitrax JWT this route returns is incompatible with withAuth() middleware
+ * which only verifies GCP/Firebase ID tokens.
+ *
+ * Auth events are now captured at the GCP boundary in syncGCPUser()
+ * (lib/auth/gcpIdentity.ts) as OAUTH_LOGIN audit events.
+ *
+ * This route is retained for backward compatibility only.
+ * See: docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { verifyPassword, generateToken } from '@/lib/auth';
