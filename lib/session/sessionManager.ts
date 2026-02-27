@@ -43,7 +43,7 @@ export interface CreateSessionInput {
 
 const SESSION_DURATION_DEFAULT = 24 * 60 * 60 * 1000; // 24 hours
 const SESSION_DURATION_REMEMBER = 30 * 24 * 60 * 60 * 1000; // 30 days
-const IDLE_TIMEOUT = 60 * 60 * 1000; // 1 hour idle timeout
+const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minute idle timeout (CDR compliance)
 
 // =============================================================================
 // IN-MEMORY SESSION STORE (Replace with Redis in production)

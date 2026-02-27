@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { extractPropertyLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('property.read', async (request, auth) => {
     try {
       const properties = await prisma.property.findMany({
-        where: { userId: authReq.user!.userId },
+        where: { userId: auth.userId },
         include: {
           loans: {
             include: {
@@ -38,11 +37,9 @@ export async function GET(request: NextRequest) {
       console.error('Get properties error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('property.write', async (request, auth) => {
     try {
       const body = await request.json();
       const {
@@ -71,7 +68,7 @@ export async function POST(request: NextRequest) {
 
       const property = await prisma.property.create({
         data: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           name,
           type,
           address,
@@ -94,5 +91,4 @@ export async function POST(request: NextRequest) {
       console.error('Create property error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

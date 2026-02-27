@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership } from '@/lib/utils/ownership';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const GET = withPermission<RouteContext>('property.read', async (request, auth, context) => {
     try {
-      const { id } = await params;
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
 
       // First fetch the property with related data to get IDs
       const property = await prisma.property.findUnique({
@@ -23,7 +21,7 @@ export async function GET(
         },
       });
 
-      const ownershipResult = verifyOwnership(property, authReq.user!.userId, 'Property');
+      const ownershipResult = verifyOwnership(property, auth.userId, 'Property');
       if (!ownershipResult.success) return ownershipResult.response;
 
       // Extract IDs for transaction queries
@@ -228,16 +226,11 @@ export async function GET(
       console.error('Get property error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const PUT = withPermission<RouteContext>('property.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const body = await request.json();
       const {
         name,
@@ -261,7 +254,7 @@ export async function PUT(
         where: { id },
       });
 
-      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Property');
+      const ownershipResult = verifyOwnership(existing, auth.userId, 'Property');
       if (!ownershipResult.success) return ownershipResult.response;
 
       const property = await prisma.property.update({
@@ -289,22 +282,17 @@ export async function PUT(
       console.error('Update property error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('property.delete', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       // Verify ownership
       const existing = await prisma.property.findUnique({
         where: { id },
       });
 
-      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Property');
+      const ownershipResult = verifyOwnership(existing, auth.userId, 'Property');
       if (!ownershipResult.success) return ownershipResult.response;
 
       await prisma.property.delete({
@@ -316,5 +304,4 @@ export async function DELETE(
       console.error('Delete property error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
