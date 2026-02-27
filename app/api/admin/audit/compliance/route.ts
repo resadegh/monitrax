@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
           retentionPolicyDays: DEFAULT_RETENTION_DAYS,
           cdrMinDays: CDR_MIN_RETENTION_DAYS,
           noCdrDataInLogs: true, // Enforced by sanitizeCdrMetadata in withAuth
+          authProvider: 'gcp-identity-platform', // Primary auth events captured by GCP + OAUTH_LOGIN in local audit trail
         },
       },
     });
@@ -130,7 +131,7 @@ async function getActionCoverage(): Promise<{
   return {
     hasSystemEvents: actions.has('UNAUTHORIZED_ACCESS') || actions.has('FORBIDDEN_ACCESS') || actions.has('RATE_LIMIT_HIT'),
     hasSecurityEvents: actions.has('RATE_LIMIT_HIT') || actions.has('ACCOUNT_LOCKED') || actions.has('MFA_FAILURE'),
-    hasAuthEvents: actions.has('LOGIN') || actions.has('LOGOUT') || actions.has('REGISTER'),
+    hasAuthEvents: actions.has('OAUTH_LOGIN') || actions.has('LOGIN') || actions.has('LOGOUT') || actions.has('REGISTER'),
     hasApiRequests: actions.has('API_REQUEST'),
     actionBreakdown: breakdown,
   };

@@ -1,8 +1,18 @@
+/**
+ * @deprecated LEGACY — Local password registration route.
+ *
+ * Since Feb 2026, GCP Identity Platform (Firebase Auth) is the sole identity
+ * provider. The frontend calls Firebase SDK directly for registration, NOT
+ * this route. New users are auto-synced to the local DB via syncGCPUser()
+ * which logs REGISTER audit events.
+ *
+ * This route is retained for backward compatibility only.
+ * See: docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { hashPassword, generateToken } from '@/lib/auth';
 import { sendVerificationEmail } from '@/lib/security/emailVerification';
-import { logAuth } from '@/lib/security/auditLog';
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,18 +77,6 @@ export async function POST(request: NextRequest) {
     const token = generateToken({
       userId: user.id,
       email: user.email,
-    });
-
-    // Audit log: registration
-    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0] ||
-                      request.headers.get('x-real-ip') || undefined;
-    const userAgent = request.headers.get('user-agent') || undefined;
-    await logAuth({
-      userId: user.id,
-      action: 'REGISTER',
-      status: 'SUCCESS',
-      ipAddress,
-      userAgent,
     });
 
     // Return user (without password) and token

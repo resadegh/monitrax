@@ -379,6 +379,70 @@ If work is incomplete, document:
 
 ---
 
+## PART 10: RESEARCH-BEFORE-ACTION PROTOCOL (CRITICAL)
+
+> **This section exists because of a recurring issue: making assumptions instead of reading
+> the documentation and understanding the architecture before writing code.**
+> **This is a PERMANENT behavioral rule that applies to EVERY session, EVERY task, EVERY decision.**
+
+### 10.1 The Rule: NEVER Guess — ALWAYS Verify
+
+Before making ANY design decision or writing ANY code, you MUST:
+
+1. **Read the relevant blueprint documents** — not skim, READ
+2. **Read the relevant source code** — understand how it currently works
+3. **Trace the data flow** — follow the actual code path end-to-end
+4. **Check recent changelogs** — understand what has changed recently
+5. **Only THEN** propose or implement a solution
+
+### 10.2 Common Mistakes to Avoid
+
+| Mistake | Correct Behavior |
+|---------|-----------------|
+| Assuming how auth works | Read `01_ARCHITECTURE_OVERVIEW.md` §6, `PHASE_10*.md`, and the actual auth code |
+| Assuming a route is used | Check if the frontend actually calls it (read the page/component) |
+| Assuming a feature exists | Search the codebase with Glob/Grep before claiming it exists |
+| Adding code to a file without reading it | ALWAYS read the full file first |
+| Making changes based on a previous session's memory | Re-verify — the codebase may have changed |
+| Adding logging/features to dead code | Verify the code path is actually exercised |
+
+### 10.3 The Research Checklist (Before Every Change)
+
+For EVERY change, complete this checklist mentally:
+
+- [ ] **What does the blueprint say?** — Read the relevant Phase doc and architecture doc
+- [ ] **How does it currently work?** — Read the actual implementation files end-to-end
+- [ ] **What calls this code?** — Trace callers/consumers (frontend → API → service → DB)
+- [ ] **Is this code even active?** — Verify the code path is reachable from the frontend
+- [ ] **What are the dependencies?** — Read connected modules/services
+- [ ] **What changed recently?** — Check changelogs and recent commits
+
+### 10.4 Build Plan Requirement
+
+For ANY non-trivial change:
+
+1. **Create a build plan** using TodoWrite BEFORE writing code
+2. **Track progress** — update todo status as you complete each item
+3. **Keep the plan current** — add/remove tasks as scope changes
+4. **Mark completion** — never leave stale todos
+
+### 10.5 When Continuing a Previous Session
+
+When resuming from a previous session or context summary:
+
+1. **Do NOT trust the summary blindly** — verify key claims by reading files
+2. **Re-read affected source files** — they may have changed
+3. **Re-read relevant Phase docs** — requirements may have been updated
+4. **Check git log** — see what was actually committed vs what was claimed
+
+### 10.6 Enforcement
+
+This protocol is enforced by CLAUDE.md and must be followed in EVERY session.
+If you catch yourself about to write code without having read the relevant documents
+and source files, **STOP and read them first**. No exceptions.
+
+---
+
 ## ENFORCEMENT
 
 **This protocol is MANDATORY for every Claude Code session working on Monitrax.**
@@ -397,5 +461,5 @@ If work is incomplete, document:
 
 ---
 
-*Last Updated: 2026-01-28*
-*Protocol Version: 1.0*
+*Last Updated: 2026-02-27*
+*Protocol Version: 1.1*

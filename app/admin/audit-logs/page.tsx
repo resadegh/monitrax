@@ -550,7 +550,7 @@ function CompliancePanel({
   const checks = [
     { label: 'Critical system events are logged', pass: req.criticalSystemEvents },
     { label: 'Security events are logged', pass: req.securityEventsLogged },
-    { label: 'User authentication (logins) are logged', pass: req.authenticationLogged },
+    { label: 'User authentication logged (GCP Identity Platform + OAUTH_LOGIN)', pass: req.authenticationLogged },
     { label: 'API requests are logged', pass: req.apiRequestsLogged },
     { label: 'Logs are retained over 90 days', pass: req.logsRetainedOver90Days },
     { label: 'Logs don\'t include CDR financial data', pass: req.noCdrDataInLogs },
@@ -568,6 +568,7 @@ function CompliancePanel({
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">CDR Compliance Status</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">Consumer Data Right audit logging requirements</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Auth provider: GCP Identity Platform (Firebase Auth) — auth events captured via OAUTH_LOGIN + API_REQUEST</p>
           </div>
           <div className={`text-3xl font-bold ${passCount === totalCount ? 'text-green-600' : 'text-yellow-600'}`}>
             {passCount}/{totalCount}

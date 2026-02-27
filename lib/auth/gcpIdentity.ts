@@ -13,6 +13,7 @@
 
 import { prisma } from '@/lib/db';
 import { log } from '@/lib/utils/logger';
+import { logAuth } from '@/lib/security/auditLog';
 
 // =============================================================================
 // CONFIGURATION
@@ -139,6 +140,16 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
       },
     });
 
+    // CDR: Log GCP-authenticated login event
+    logAuth({
+      userId: existingOAuth.userId,
+      action: 'OAUTH_LOGIN',
+      status: 'SUCCESS',
+      ipAddress,
+      userAgent,
+      metadata: { provider: 'gcp-identity', gcpUid: uid, signInProvider },
+    }).catch(() => {}); // fire-and-forget — never block auth flow
+
     log.info('GCP Identity user sync completed (existing link)', {
       userId: existingOAuth.userId,
       gcpUid: uid,
@@ -199,6 +210,16 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
       });
     }
 
+    // CDR: Log first GCP-authenticated login for existing user
+    logAuth({
+      userId: existingUser.id,
+      action: 'OAUTH_LOGIN',
+      status: 'SUCCESS',
+      ipAddress,
+      userAgent,
+      metadata: { provider: 'gcp-identity', gcpUid: uid, signInProvider, firstLink: true },
+    }).catch(() => {});
+
     log.info('GCP Identity user sync completed (linked existing user)', {
       userId: existingUser.id,
       gcpUid: uid,
@@ -238,6 +259,16 @@ export async function syncGCPUser(input: GCPUserSyncInput): Promise<GCPUserSyncR
         },
       },
     });
+
+    // CDR: Log GCP-authenticated registration (new user created via GCP)
+    logAuth({
+      userId: newUser.id,
+      action: 'REGISTER',
+      status: 'SUCCESS',
+      ipAddress,
+      userAgent,
+      metadata: { provider: 'gcp-identity', gcpUid: uid, signInProvider, isNewUser: true },
+    }).catch(() => {});
 
     log.info('GCP Identity user sync completed (new user created)', {
       userId: newUser.id,
