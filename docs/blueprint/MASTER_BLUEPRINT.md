@@ -579,7 +579,7 @@ return withAuth(request, handler);
 
 **Inactivity timeout**: 30-minute idle auto-logout with 2-minute warning dialog (`IdleTimeoutGuard` component, mounted globally in `app/layout.tsx`). Tracks mouse, keyboard, touch, scroll, and click events.
 
-**Custom domain branding**: Set `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` env var to your domain (e.g., `monitrax.com.au`) so Google sign-in popup shows your brand instead of `{projectId}.firebaseapp.com`.
+**Custom domain branding**: Set `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` env var to your domain (e.g., `monitrax.com.au`) so Google sign-in popup shows your brand instead of `{projectId}.firebaseapp.com`. Requires Next.js rewrites in `next.config.ts` to proxy `/__/auth/*` and `/__/firebase/*` to Firebase, plus a local `/api/firebase-init` route to serve `/__/firebase/init.json` (Firebase Hosting may not be deployed). The middleware matcher must exclude `__/` paths so CSP headers are not applied to the proxied auth handler.
 
 ### Response Format (GRDCS)
 
