@@ -1,8 +1,16 @@
 'use client';
 
 /**
- * Admin Audit Logs Viewer
- * Phase 10: Comprehensive audit log viewing and filtering
+ * @deprecated LEGACY — DELETE WHEN ALL TESTS PASS
+ *
+ * This page has been replaced by /admin/audit-logs (the admin portal).
+ * Canonical audit log UI: app/admin/audit-logs/page.tsx
+ * Canonical audit API: /api/admin/audit (supports ?source=admin|user|all)
+ *
+ * This file is kept temporarily for backwards compatibility.
+ * Remove this entire directory once migration is verified.
+ *
+ * Previously: Admin Audit Logs Viewer (Phase 10)
  */
 
 import { useState, useEffect } from 'react';

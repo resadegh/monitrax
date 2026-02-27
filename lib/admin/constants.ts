@@ -52,6 +52,9 @@ export const ADMIN_ROUTES = {
   SUPPORT_LOGS: '/admin/support/logs',
   SUPPORT_ERRORS: '/admin/support/errors',
 
+  // Audit Logs (canonical location — replaces /dashboard/admin/audit-logs)
+  AUDIT_LOGS: '/admin/audit-logs',
+
   // Admin settings
   SETTINGS: '/admin/settings',
   SETTINGS_ADMINS: '/admin/settings/admins',
