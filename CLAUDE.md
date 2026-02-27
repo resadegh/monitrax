@@ -2,12 +2,20 @@
 
 > **This document defines the MANDATORY change management process for ALL Claude Code sessions.**
 > **Every instruction in this file MUST be followed WITHOUT user prompting.**
+> **READ THIS ENTIRE FILE at the start of every session. No exceptions. No skipping.**
 
 ---
 
 ## PART 1: SESSION STARTUP PROTOCOL (MANDATORY)
 
 At the START of every new session, BEFORE making ANY changes, you MUST complete these steps:
+
+### Step 0: Read This File (CLAUDE.md) — FIRST
+
+**Before reading any other file, before writing any code, before making any design decision:**
+Read this entire CLAUDE.md file. It contains all build rules, architecture constraints,
+quality standards, and process requirements. Skipping this step leads to violations of
+established rules and wastes time on approaches that are already documented as incorrect.
 
 ### Step 1: Read ALL Core Blueprint Documents
 
@@ -646,7 +654,42 @@ export async function GET(request: NextRequest) {
 | **Phase doc updates** | Mark completed items ✅ in the relevant `PHASE_*.md` |
 | **Master Blueprint sync** | Update `MASTER_BLUEPRINT.md` when phase status changes |
 
-### 12.7 Simplicity Over Cleverness
+### 12.7 GCP-First — Prefer Platform Services Over Custom Code
+
+> **Before building ANY new capability, check whether GCP already provides it.**
+> **Custom code is a liability. Managed services are maintained, scaled, and secured by Google.**
+
+**The Rule:** For every new feature, infrastructure need, or cross-cutting concern, the
+decision process is:
+
+1. **Can GCP do this natively?** → Use the GCP service (e.g., Cloud Tasks, Pub/Sub, Cloud Scheduler, Secret Manager, Cloud Logging, Error Reporting)
+2. **Can a GCP service replace existing custom code?** → Plan migration, document cost trade-off
+3. **Is the GCP service cost-prohibitive for our scale?** → Document the justification, then build minimal custom code
+4. **None of the above?** → Only then write custom implementation
+
+**Examples:**
+
+| Need | GCP Service | DON'T Build |
+|------|------------|------------|
+| Auth & MFA | GCP Identity Platform (Firebase Auth) ✅ Already using | Custom JWT/session system |
+| Audit log storage | Cloud Logging / BigQuery | Custom log aggregation |
+| Scheduled jobs | Cloud Scheduler + Cloud Functions | Custom cron / setInterval |
+| Background tasks | Cloud Tasks / Pub/Sub | Custom queue system |
+| Secrets management | Secret Manager | `.env` files in production |
+| Error tracking | Error Reporting | Custom error aggregation |
+| Rate limiting | Cloud Armor / API Gateway | Custom middleware counters |
+| File storage | Cloud Storage | Local filesystem uploads |
+| Email delivery | GCP + SendGrid/Mailgun | Custom SMTP code |
+| Monitoring/alerts | Cloud Monitoring | Custom health-check endpoints |
+
+**Cost Justification Required:**
+If a GCP service is rejected, document in the changelog:
+- Which GCP service was considered
+- Why it was rejected (cost, feature gap, latency, etc.)
+- What custom alternative was chosen
+- Review date to re-evaluate
+
+### 12.8 Simplicity Over Cleverness
 
 | Do This | Not This |
 |---------|----------|
@@ -659,7 +702,7 @@ export async function GET(request: NextRequest) {
 | 3 lines of clear code | 1 line of clever code |
 | Fail loudly at boundaries | Silently swallow errors everywhere |
 
-### 12.8 Dependency & Import Hygiene
+### 12.9 Dependency & Import Hygiene
 
 - **No circular imports** — if module A imports from B, B must NOT import from A
 - **No barrel re-exports** unless they serve a clear organizational purpose
@@ -667,7 +710,7 @@ export async function GET(request: NextRequest) {
 - **Check for unused imports** after every edit — remove them immediately
 - **Module boundaries are strict** (see §6.3) — properties cannot fetch loans directly
 
-### 12.9 Performance Standards
+### 12.10 Performance Standards
 
 | Rule | Description |
 |------|-------------|
@@ -677,16 +720,18 @@ export async function GET(request: NextRequest) {
 | **No N+1 queries** | Fetch related data with Prisma `include`, not in loops |
 | **Fire-and-forget for non-critical ops** | Audit logging uses `.catch(() => {})` pattern — never block responses |
 
-### 12.10 Before Every Session — Code Quality Checklist
+### 12.11 Before Every Session — Code Quality Checklist
 
 Before writing code, ask yourself:
 
-- [ ] Does a canonical service/utility already exist for this logic?
-- [ ] Am I duplicating an existing API endpoint?
-- [ ] Is this calculation already in `lib/calculations/` or `lib/utils/`?
-- [ ] Am I putting business logic in an API route instead of a service?
-- [ ] Will this change create dead code? If so, delete the old code
-- [ ] Am I using `withPermission()` (not bare `withAuth()`)?
+- [ ] **Have I read CLAUDE.md in full?** — This file is the source of truth for all build rules
+- [ ] Does a GCP managed service already solve this? (§12.7)
+- [ ] Does a canonical service/utility already exist for this logic? (§12.2)
+- [ ] Am I duplicating an existing API endpoint? (§12.4)
+- [ ] Is this calculation already in `lib/calculations/` or `lib/utils/`? (§12.3)
+- [ ] Am I putting business logic in an API route instead of a service? (§12.3)
+- [ ] Will this change create dead code? If so, delete the old code (§12.1)
+- [ ] Am I using `withPermission()` (not bare `withAuth()`)? (§12.5)
 
 ---
 
@@ -709,4 +754,4 @@ Before writing code, ask yourself:
 ---
 
 *Last Updated: 2026-02-27*
-*Protocol Version: 1.3*
+*Protocol Version: 1.4*
