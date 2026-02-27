@@ -113,6 +113,30 @@ Add Firebase domains to Content-Security-Policy:
 - `script-src`: `apis.google.com`
 - `frame-src`: `*.firebaseapp.com`, `*.google.com` (for popup)
 
+**IMPORTANT**: The middleware matcher MUST exclude `__/` paths so that our CSP is NOT
+applied to the proxied Firebase auth handler pages. The handler loads its own scripts
+from `gstatic.com`, `googleapis.com`, etc. that are outside our `script-src` allowlist.
+
+### 3.7 Custom Domain Auth Proxy (Next.js Rewrites)
+
+**File**: `next.config.ts`
+
+When using a custom `authDomain` (e.g., `www.monitrax.com.au`), the Firebase SDK opens
+a popup to `{authDomain}/__/auth/handler`. Next.js rewrites proxy these requests to the
+Firebase project's `firebaseapp.com` domain:
+
+| Source | Destination | Notes |
+|--------|-------------|-------|
+| `/__/auth/:path*` | `https://{projectId}.firebaseapp.com/__/auth/:path*` | Firebase Auth handler |
+| `/__/firebase/init.json` | `/api/firebase-init` (local) | Serves config from env vars; Firebase Hosting returns 403 if not deployed |
+| `/__/firebase/:path*` | `https://{projectId}.firebaseapp.com/__/firebase/:path*` | Other Firebase assets |
+
+**File**: `app/api/firebase-init/route.ts`
+
+Local API route that serves the Firebase project config (`projectId`, `apiKey`, `authDomain`)
+from `NEXT_PUBLIC_*` environment variables. Required because the Firebase Auth handler fetches
+`/__/firebase/init.json` from the same origin, and Firebase Hosting may not be deployed.
+
 ### 3.6 Environment Variables
 
 | Variable | Type | Description |
@@ -160,7 +184,7 @@ Add Firebase domains to Content-Security-Policy:
 | Firebase SDK increases bundle size | Tree-shaking — only import `firebase/auth` |
 | Existing users can't log in | Auto-sync handles both new and existing users by email |
 | ~~Token mismatch~~ | ~~GCP token → sync → Monitrax JWT bridge~~ (eliminated in Phase 4 — GCP tokens used directly) |
-| CSP blocks Firebase | Update middleware CSP headers |
+| CSP blocks Firebase | Update middleware CSP headers + exclude `__/` paths from middleware matcher |
 | Missing env vars in production | `isGCPIdentityConfigured()` check — falls back gracefully |
 
 ---
@@ -191,4 +215,4 @@ Add Firebase domains to Content-Security-Policy:
 
 ---
 
-*Last Updated: 2026-02-26*
+*Last Updated: 2026-02-27*
