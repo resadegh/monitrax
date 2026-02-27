@@ -443,6 +443,88 @@ and source files, **STOP and read them first**. No exceptions.
 
 ---
 
+## PART 11: MANDATORY CHANGE DOCUMENTATION & BUILD TRACKING (NON-NEGOTIABLE)
+
+> **Every code change MUST be documented and tracked. No exceptions.**
+> **This section exists because undocumented changes lead to lost context, debugging guesswork,
+> and repeated mistakes across sessions. This is a PERMANENT, NON-NEGOTIABLE rule.**
+
+### 11.1 Change Log — Every Session, Every Change
+
+For EVERY session that produces code changes, you MUST create or update a changelog:
+
+**File**: `docs/blueprint/CHANGELOG_YYYY_MM_DD.md` (one per day, append if exists)
+
+**Required content for each change:**
+
+```markdown
+## Session: {session-id-suffix}
+
+### Changes Made
+- **Type**: Feature / Fix / Refactor / Enhancement
+- **Scope**: {module/component affected}
+- **Root Cause** (for fixes): {why the bug existed}
+- **Solution**: {what was changed and why}
+
+### Files Modified
+- `path/to/file.ts` — {description of change}
+
+### Build Status
+- [x] TypeScript compilation passes
+- [x] Build passes (`npm run build`)
+- [ ] Tests pass (if applicable)
+
+### Commit History
+| Hash | Message |
+|------|---------|
+| abc1234 | fix(scope): description |
+```
+
+### 11.2 Build Tracker — Always Verify Before Committing
+
+**Before EVERY commit:**
+
+1. Run `npm run build` (or at minimum verify TypeScript compiles)
+2. Record the build result in the changelog
+3. If the build fails, **fix it before committing** — NEVER commit broken code
+4. If a pre-existing build issue blocks (unrelated to your changes), document it clearly
+
+**Track build status throughout the session:**
+
+| Step | Status | Notes |
+|------|--------|-------|
+| Initial build | PASS/FAIL | Before making changes |
+| After change 1 | PASS/FAIL | Description |
+| After change 2 | PASS/FAIL | Description |
+| Final build | PASS/FAIL | Before push |
+
+### 11.3 Progress Summary — On Request or Session End
+
+When asked for progress OR at session end, provide a structured summary:
+
+1. **What was done** — List all changes with file paths and commit hashes
+2. **What was verified** — Build status, manual checks performed
+3. **What remains** — Pending work, known issues, follow-up tasks
+4. **Architecture decisions** — Why specific approaches were chosen
+
+### 11.4 Inline Documentation for Complex Fixes
+
+When fixing bugs, always add a brief comment explaining the fix in the code itself:
+
+```typescript
+// Fix: [description of what was wrong and why this is correct]
+// See: docs/blueprint/CHANGELOG_YYYY_MM_DD.md
+```
+
+### 11.5 Enforcement
+
+- This rule is NON-NEGOTIABLE across ALL sessions
+- Undocumented changes are treated as incomplete work
+- If you realize you forgot to document a change, stop and document it immediately
+- Changelog entries are the **primary audit trail** for all Claude Code sessions
+
+---
+
 ## ENFORCEMENT
 
 **This protocol is MANDATORY for every Claude Code session working on Monitrax.**
@@ -462,4 +544,4 @@ and source files, **STOP and read them first**. No exceptions.
 ---
 
 *Last Updated: 2026-02-27*
-*Protocol Version: 1.1*
+*Protocol Version: 1.2*
