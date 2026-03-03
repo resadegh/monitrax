@@ -4,9 +4,9 @@
  * POST /api/accounts/[id]/import/[batchId]/review - Confirm/edit reviewed transactions
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   processUserConfirmation,
   type LearningContext,
@@ -19,14 +19,12 @@ import { ImportStatus, ImportReviewStatus, TransactionSource, TransactionReviewQ
 // GET - Get Review Queue
 // =============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; batchId: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+type RouteContext = { params: Promise<{ id: string; batchId: string }> };
+
+export const GET = withPermission<RouteContext>('account.read', async (request, auth, context) => {
     try {
-      const { id: accountId, batchId } = await params;
-      const userId = authReq.user!.userId;
+      const { id: accountId, batchId } = await context!.params;
+      const userId = auth.userId;
 
       // Verify ownership
       const batch = await prisma.importBatch.findFirst({
@@ -136,8 +134,7 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // POST - Confirm/Edit Reviews
@@ -161,14 +158,10 @@ interface BulkReviewRequest {
   confirmAllPending?: boolean;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; batchId: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission<RouteContext>('account.write', async (request, auth, context) => {
     try {
-      const { id: accountId, batchId } = await params;
-      const userId = authReq.user!.userId;
+      const { id: accountId, batchId } = await context!.params;
+      const userId = auth.userId;
 
       // Verify ownership
       const batch = await prisma.importBatch.findFirst({
@@ -310,8 +303,7 @@ export async function POST(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // HELPER FUNCTIONS

@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { extractAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('account.read', async (request, auth) => {
     try {
       const accounts = await prisma.account.findMany({
-        where: { userId: authReq.user!.userId },
+        where: { userId: auth.userId },
         include: {
           linkedLoan: true,
           unifiedTransactions: {
@@ -62,11 +61,9 @@ export async function GET(request: NextRequest) {
       console.error('Get accounts error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('account.write', async (request, auth) => {
     try {
       const body = await request.json();
       const { name, type, institution, currentBalance } = body;
@@ -77,7 +74,7 @@ export async function POST(request: NextRequest) {
 
       const account = await prisma.account.create({
         data: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           name,
           type,
           institution: institution || null,
@@ -90,5 +87,4 @@ export async function POST(request: NextRequest) {
       console.error('Create account error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

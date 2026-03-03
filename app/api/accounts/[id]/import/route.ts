@@ -4,9 +4,9 @@
  * GET /api/accounts/[id]/import - Get import history for account
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { parseQIF, isValidQIF } from '@/lib/bank/parsers/qif';
 import { normaliseTransactions } from '@/lib/bank/normalisation';
 import { detectDuplicates, detectOverlap, getDuplicateSummaryMessage } from '@/lib/bank/smartDuplicateDetection';
@@ -22,17 +22,15 @@ import crypto from 'crypto';
 // GET - Import History
 // =============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const GET = withPermission<RouteContext>('account.read', async (request, auth, context) => {
     try {
-      const { id: accountId } = await params;
+      const { id: accountId } = await context!.params;
 
       // Verify account ownership
       const account = await prisma.account.findFirst({
-        where: { id: accountId, userId: authReq.user!.userId },
+        where: { id: accountId, userId: auth.userId },
       });
 
       if (!account) {
@@ -43,7 +41,7 @@ export async function GET(
       const imports = await prisma.importBatch.findMany({
         where: {
           accountId,
-          userId: authReq.user!.userId,
+          userId: auth.userId,
         },
         orderBy: { createdAt: 'desc' },
         take: 20,
@@ -68,7 +66,7 @@ export async function GET(
       // Get pending review count
       const pendingReviewCount = await prisma.transactionReviewQueue.count({
         where: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           status: ImportReviewStatus.PENDING,
           importBatch: {
             accountId,
@@ -90,21 +88,16 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // POST - Upload and Process Import
 // =============================================================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission<RouteContext>('account.write', async (request, auth, context) => {
     try {
-      const { id: accountIdParam } = await params;
-      const userId = authReq.user!.userId;
+      const { id: accountIdParam } = await context!.params;
+      const userId = auth.userId;
 
       // Parse form data
       const formData = await request.formData();
@@ -466,5 +459,4 @@ export async function POST(
         { status: 500 }
       );
     }
-  });
-}
+});
