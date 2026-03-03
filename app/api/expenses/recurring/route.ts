@@ -9,9 +9,9 @@
  * what's already tracked and should be excluded from AI variable estimates.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { toMonthly } from '@/lib/utils/frequencies';
 import {
   RecurringExpenseItem,
@@ -28,10 +28,9 @@ const VARIABLE_EXPENSE_CATEGORIES = [
   'OTHER',
 ];
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('expense.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch all user expenses
       const expenses = await prisma.expense.findMany({
@@ -105,5 +104,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

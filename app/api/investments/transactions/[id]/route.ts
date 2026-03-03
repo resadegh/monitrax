@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { verifyIndirectOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
 
@@ -14,134 +14,121 @@ const updateTransactionSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
-    try {
-      const { id } = await params;
-      const transaction = await prisma.investmentTransaction.findUnique({
-        where: { id },
-        include: {
-          investmentAccount: true,
-          holding: true,
-        },
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const GET = withPermission<RouteContext>('investment.read', async (request, auth, context) => {
+  try {
+    const { id } = await context!.params;
+    const transaction = await prisma.investmentTransaction.findUnique({
+      where: { id },
+      include: {
+        investmentAccount: true,
+        holding: true,
+      },
+    });
+
+    const ownershipResult = verifyIndirectOwnership(
+      transaction,
+      transaction?.investmentAccount,
+      auth.userId,
+      'Transaction'
+    );
+    if (!ownershipResult.success) return ownershipResult.response;
+
+    return NextResponse.json(ownershipResult.resource);
+  } catch (error) {
+    console.error('Get investment transaction error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});
+
+export const PUT = withPermission<RouteContext>('investment.write', async (request, auth, context) => {
+  try {
+    const { id } = await context!.params;
+    const body = await request.json();
+    const validation = updateTransactionSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.errors },
+        { status: 400 }
+      );
+    }
+
+    // Verify ownership via investment account
+    const existing = await prisma.investmentTransaction.findUnique({
+      where: { id },
+      include: { investmentAccount: true },
+    });
+
+    const ownershipResult = verifyIndirectOwnership(
+      existing,
+      existing?.investmentAccount,
+      auth.userId,
+      'Transaction'
+    );
+    if (!ownershipResult.success) return ownershipResult.response;
+
+    // Use verified resource (TypeScript knows it's non-null after success check)
+    const verifiedTransaction = ownershipResult.resource;
+
+    const { holdingId, date, type, price, units, fees, notes } = validation.data;
+
+    // If holdingId is being updated, verify it belongs to the same account
+    if (holdingId !== undefined && holdingId !== null) {
+      const holding = await prisma.investmentHolding.findUnique({
+        where: { id: holdingId },
       });
 
-      const ownershipResult = verifyIndirectOwnership(
-        transaction,
-        transaction?.investmentAccount,
-        authReq.user!.userId,
-        'Transaction'
-      );
-      if (!ownershipResult.success) return ownershipResult.response;
-
-      return NextResponse.json(ownershipResult.resource);
-    } catch (error) {
-      console.error('Get investment transaction error:', error);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-  });
-}
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
-    try {
-      const { id } = await params;
-      const body = await request.json();
-      const validation = updateTransactionSchema.safeParse(body);
-
-      if (!validation.success) {
-        return NextResponse.json(
-          { error: 'Validation failed', details: validation.error.errors },
-          { status: 400 }
-        );
+      if (!holding || holding.investmentAccountId !== verifiedTransaction.investmentAccountId) {
+        return NextResponse.json({ error: 'Holding not found in this account' }, { status: 404 });
       }
-
-      // Verify ownership via investment account
-      const existing = await prisma.investmentTransaction.findUnique({
-        where: { id },
-        include: { investmentAccount: true },
-      });
-
-      const ownershipResult = verifyIndirectOwnership(
-        existing,
-        existing?.investmentAccount,
-        authReq.user!.userId,
-        'Transaction'
-      );
-      if (!ownershipResult.success) return ownershipResult.response;
-
-      // Use verified resource (TypeScript knows it's non-null after success check)
-      const verifiedTransaction = ownershipResult.resource;
-
-      const { holdingId, date, type, price, units, fees, notes } = validation.data;
-
-      // If holdingId is being updated, verify it belongs to the same account
-      if (holdingId !== undefined && holdingId !== null) {
-        const holding = await prisma.investmentHolding.findUnique({
-          where: { id: holdingId },
-        });
-
-        if (!holding || holding.investmentAccountId !== verifiedTransaction.investmentAccountId) {
-          return NextResponse.json({ error: 'Holding not found in this account' }, { status: 404 });
-        }
-      }
-
-      const transaction = await prisma.investmentTransaction.update({
-        where: { id },
-        data: {
-          ...(holdingId !== undefined && { holdingId }),
-          ...(date !== undefined && { date: new Date(date) }),
-          ...(type !== undefined && { type }),
-          ...(price !== undefined && { price }),
-          ...(units !== undefined && { units }),
-          ...(fees !== undefined && { fees }),
-          ...(notes !== undefined && { notes }),
-        },
-      });
-
-      return NextResponse.json(transaction);
-    } catch (error) {
-      console.error('Update investment transaction error:', error);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
-    try {
-      const { id } = await params;
-      // Verify ownership
-      const existing = await prisma.investmentTransaction.findUnique({
-        where: { id },
-        include: { investmentAccount: true },
-      });
+    const transaction = await prisma.investmentTransaction.update({
+      where: { id },
+      data: {
+        ...(holdingId !== undefined && { holdingId }),
+        ...(date !== undefined && { date: new Date(date) }),
+        ...(type !== undefined && { type }),
+        ...(price !== undefined && { price }),
+        ...(units !== undefined && { units }),
+        ...(fees !== undefined && { fees }),
+        ...(notes !== undefined && { notes }),
+      },
+    });
 
-      const ownershipResult = verifyIndirectOwnership(
-        existing,
-        existing?.investmentAccount,
-        authReq.user!.userId,
-        'Transaction'
-      );
-      if (!ownershipResult.success) return ownershipResult.response;
+    return NextResponse.json(transaction);
+  } catch (error) {
+    console.error('Update investment transaction error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});
 
-      await prisma.investmentTransaction.delete({
-        where: { id },
-      });
+export const DELETE = withPermission<RouteContext>('investment.delete', async (request, auth, context) => {
+  try {
+    const { id } = await context!.params;
+    // Verify ownership
+    const existing = await prisma.investmentTransaction.findUnique({
+      where: { id },
+      include: { investmentAccount: true },
+    });
 
-      return NextResponse.json({ message: 'Transaction deleted successfully' });
-    } catch (error) {
-      console.error('Delete investment transaction error:', error);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-  });
-}
+    const ownershipResult = verifyIndirectOwnership(
+      existing,
+      existing?.investmentAccount,
+      auth.userId,
+      'Transaction'
+    );
+    if (!ownershipResult.success) return ownershipResult.response;
+
+    await prisma.investmentTransaction.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ message: 'Transaction deleted successfully' });
+  } catch (error) {
+    console.error('Delete investment transaction error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});
