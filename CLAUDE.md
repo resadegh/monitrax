@@ -2,12 +2,20 @@
 
 > **This document defines the MANDATORY change management process for ALL Claude Code sessions.**
 > **Every instruction in this file MUST be followed WITHOUT user prompting.**
+> **READ THIS ENTIRE FILE at the start of every session. No exceptions. No skipping.**
 
 ---
 
 ## PART 1: SESSION STARTUP PROTOCOL (MANDATORY)
 
 At the START of every new session, BEFORE making ANY changes, you MUST complete these steps:
+
+### Step 0: Read This File (CLAUDE.md) — FIRST
+
+**Before reading any other file, before writing any code, before making any design decision:**
+Read this entire CLAUDE.md file. It contains all build rules, architecture constraints,
+quality standards, and process requirements. Skipping this step leads to violations of
+established rules and wastes time on approaches that are already documented as incorrect.
 
 ### Step 1: Read ALL Core Blueprint Documents
 
@@ -22,6 +30,7 @@ docs/blueprint/04_GRDCS_SPECIFICATION.md
 docs/blueprint/06_UI_UX_FOUNDATION.md
 docs/blueprint/07_API_STANDARDS.md
 docs/blueprint/MASTER_BLUEPRINT.md
+docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md
 ```
 
 ### Step 2: Read Relevant Phase Documents
@@ -525,6 +534,341 @@ When fixing bugs, always add a brief comment explaining the fix in the code itse
 
 ---
 
+## PART 12: CODE QUALITY & ARCHITECTURE INTEGRITY (CRITICAL)
+
+> **The codebase MUST remain clean, simple, and maintainable at all times.**
+> **Every session MUST leave the code in equal or better condition than it was found.**
+> **This is a PERMANENT, NON-NEGOTIABLE rule.**
+
+### 12.1 Clean Code — Zero Tolerance for Bloat
+
+| Rule | Description |
+|------|-------------|
+| **No dead code** | Delete unused functions, routes, imports, and variables. If uncertain, mark with `@deprecated` + removal date |
+| **No duplicate logic** | Every calculation, transformation, or business rule must exist in ONE canonical location |
+| **No redundant APIs** | One endpoint per data concern. Never create a new endpoint that overlaps with an existing one |
+| **No orphaned files** | Every file must be reachable from the app. If it's not imported anywhere, delete it |
+| **No commented-out code** | Delete it. Git has history if you need it back |
+
+**When encountering dead code during a session:**
+
+1. If the dead code is **in your change path** — delete it immediately
+2. If the dead code is **outside your change path** — add a `// @deprecated YYYY-MM-DD: [reason]` tag
+3. Log all dead code discoveries in the session changelog
+
+### 12.2 Single Source of Truth (SSOT) — ABSOLUTE RULE
+
+**Every piece of data and every calculation MUST have exactly ONE canonical source.**
+
+| Data/Logic | Canonical Source | NEVER duplicate in |
+|------------|-----------------|-------------------|
+| Financial snapshot | `lib/services/masterFinancialService.ts` → `getMasterFinancialSnapshot()` | API route handlers |
+| Net worth | `lib/calculations/netWorthCalculator.ts` | Components, route handlers |
+| Cashflow | `lib/calculations/cashflowOrchestrator.ts` | Components, route handlers |
+| Expense aggregation | `lib/calculations/expenseAggregator.ts` | Route handlers |
+| Income aggregation | `lib/calculations/incomeAggregator.ts` | Route handlers |
+| Loan aggregation | `lib/calculations/loanAggregator.ts` | Route handlers |
+| LVR, rental yield, equity | `lib/utils/calculations.ts` | Route handlers |
+| Currency formatting | `lib/utils/formatters.ts` | Components |
+| Frequency conversion | `lib/utils/frequencies.ts` → `toMonthly()`, `toAnnual()` | Route handlers, components |
+| Auth token verification | `lib/middleware.ts` → `withAuth()` | Route handlers |
+| Permission checks | `lib/auth/guards.ts` → `withPermission()` | Route handlers |
+
+**Before writing ANY calculation:**
+1. Search `lib/calculations/`, `lib/utils/`, `lib/services/` for an existing implementation
+2. If it exists — **import and use it**
+3. If it doesn't exist — **create it in the canonical location**, then import
+
+**NEVER inline financial calculations in API route handlers or components.**
+
+### 12.3 Single Calculation Engine — No Competing Implementations
+
+**Rules:**
+- There must be **ONE** snapshot endpoint: `/api/master-snapshot` (powered by `getMasterFinancialSnapshot()`)
+- There must be **ONE** health engine: `lib/health/` → `generateHealthReport()`
+- There must be **ONE** cashflow calculator: `lib/calculations/cashflowOrchestrator.ts`
+- API routes are **thin wrappers** — they fetch data, call a canonical engine, return the result
+- API routes must **NEVER** contain business logic beyond input validation and response formatting
+
+**Pattern for API routes:**
+```typescript
+// CORRECT: Thin wrapper calling canonical service
+export async function GET(request: NextRequest) {
+  return withPermission(request, 'entity.read', async (authReq) => {
+    const data = await canonicalService.getData(authReq.user!.userId);
+    return NextResponse.json({ success: true, data });
+  });
+}
+
+// WRONG: Business logic in route handler
+export async function GET(request: NextRequest) {
+  return withAuth(request, async (authReq) => {
+    const items = await prisma.entity.findMany({ where: { userId } });
+    const total = items.reduce((sum, i) => sum + i.amount, 0); // ❌ Inline calc
+    const monthly = total / 12; // ❌ Should use toMonthly()
+    return NextResponse.json({ total, monthly });
+  });
+}
+```
+
+### 12.4 API Hygiene — One Endpoint Per Concern
+
+**Rules:**
+- Every API endpoint must have a **clear, non-overlapping responsibility**
+- Before creating a new endpoint, search for existing ones that serve the same data
+- If two endpoints return similar data, **consolidate** them
+- Frontend should call the **minimum number of endpoints** per page load
+- Server-to-server API calls (e.g., one route calling another) are a **code smell** — refactor to use shared services
+
+**Known violations to resolve:**
+
+| Duplicate | Canonical Replacement | Action |
+|-----------|----------------------|--------|
+| `/api/portfolio/snapshot` | `/api/master-snapshot` | Migrate callers, then delete |
+| `/api/financial-snapshot` | `/api/master-snapshot` | Migrate callers, then delete |
+| `/api/auth/login` | Firebase Auth SDK (client-side) | Delete (dead code) |
+| `/api/auth/register` | Firebase Auth SDK (client-side) | Delete (dead code) |
+
+### 12.5 Secure by Design — Not Bolted On
+
+| Principle | Implementation |
+|-----------|---------------|
+| **Auth at the boundary** | Every API route MUST use `withPermission()` (not bare `withAuth()`) |
+| **Least privilege** | Use granular permissions: `entity.read`, `entity.write`, `entity.delete` |
+| **No secrets in code** | All secrets via environment variables. Never commit `.env`, credentials, or API keys |
+| **Input validation at system boundaries** | Validate all user input in API routes. Trust internal code |
+| **CDR data protection** | Financial data NEVER appears in audit log metadata. Use `sanitizeCdrMetadata()` |
+| **Audit everything** | Every state-changing action must be logged via `createAuditLog()` |
+| **MFA enforcement** | CDR data routes and admin routes must require MFA when org policy demands it |
+| **Session management** | 30-minute idle timeout. Token refresh handled by Firebase SDK |
+
+### 12.6 Release Management & Deployment
+
+| Rule | Description |
+|------|-------------|
+| **Feature branches only** | Never commit to `main` directly. Always use `claude/{feature}-{session}` |
+| **Atomic commits** | Each commit is a single logical change. Reversible independently |
+| **Build before commit** | `npm run build` MUST pass before any commit |
+| **Lint before push** | `npm run lint` should pass (document pre-existing failures) |
+| **PR for every deployment** | No direct deployments. All changes via pull request |
+| **Changelog per session** | Every session with code changes gets a `docs/blueprint/CHANGELOG_*.md` entry |
+| **Phase doc updates** | Mark completed items ✅ in the relevant `PHASE_*.md` |
+| **Master Blueprint sync** | Update `MASTER_BLUEPRINT.md` when phase status changes |
+
+### 12.7 GCP-First — Prefer Platform Services Over Custom Code
+
+> **Before building ANY new capability, check whether GCP already provides it.**
+> **Custom code is a liability. Managed services are maintained, scaled, and secured by Google.**
+
+**The Rule:** For every new feature, infrastructure need, or cross-cutting concern, the
+decision process is:
+
+1. **Can GCP do this natively?** → Use the GCP service (e.g., Cloud Tasks, Pub/Sub, Cloud Scheduler, Secret Manager, Cloud Logging, Error Reporting)
+2. **Can a GCP service replace existing custom code?** → Plan migration, document cost trade-off
+3. **Is the GCP service cost-prohibitive for our scale?** → Document the justification, then build minimal custom code
+4. **None of the above?** → Only then write custom implementation
+
+**Examples:**
+
+| Need | GCP Service | DON'T Build |
+|------|------------|------------|
+| Auth & MFA | GCP Identity Platform (Firebase Auth) ✅ Already using | Custom JWT/session system |
+| Audit log storage | Cloud Logging / BigQuery | Custom log aggregation |
+| Scheduled jobs | Cloud Scheduler + Cloud Functions | Custom cron / setInterval |
+| Background tasks | Cloud Tasks / Pub/Sub | Custom queue system |
+| Secrets management | Secret Manager | `.env` files in production |
+| Error tracking | Error Reporting | Custom error aggregation |
+| Rate limiting | Cloud Armor / API Gateway | Custom middleware counters |
+| File storage | Cloud Storage | Local filesystem uploads |
+| Email delivery | GCP + SendGrid/Mailgun | Custom SMTP code |
+| Monitoring/alerts | Cloud Monitoring | Custom health-check endpoints |
+
+**Cost Justification Required:**
+If a GCP service is rejected, document in the changelog:
+- Which GCP service was considered
+- Why it was rejected (cost, feature gap, latency, etc.)
+- What custom alternative was chosen
+- Review date to re-evaluate
+
+### 12.8 Simplicity Over Cleverness
+
+| Do This | Not This |
+|---------|----------|
+| Import from canonical utils | Redefine the same function locally |
+| Use existing services | Create a "simpler" version for your use case |
+| Fix the root cause | Add a workaround that hides the problem |
+| Delete unused code | Comment it out "just in case" |
+| One way to do things | Multiple paths to the same result |
+| Flat, readable code | Deep abstractions for simple operations |
+| 3 lines of clear code | 1 line of clever code |
+| Fail loudly at boundaries | Silently swallow errors everywhere |
+
+### 12.9 Dependency & Import Hygiene
+
+- **No circular imports** — if module A imports from B, B must NOT import from A
+- **No barrel re-exports** unless they serve a clear organizational purpose
+- **Prefer specific imports** over importing entire modules
+- **Check for unused imports** after every edit — remove them immediately
+- **Module boundaries are strict** (see §6.3) — properties cannot fetch loans directly
+
+### 12.10 Performance Standards
+
+| Rule | Description |
+|------|-------------|
+| **Minimize API calls per page** | Dashboard should need 1-2 API calls, not 5+ |
+| **No server-to-server HTTP calls** | Use shared services instead of one route calling another |
+| **Parallel DB queries** | Use `Promise.all()` for independent queries within a single route |
+| **No N+1 queries** | Fetch related data with Prisma `include`, not in loops |
+| **Fire-and-forget for non-critical ops** | Audit logging uses `.catch(() => {})` pattern — never block responses |
+
+### 12.11 Before Every Session — Code Quality Checklist
+
+Before writing code, ask yourself:
+
+- [ ] **Have I read CLAUDE.md in full?** — This file is the source of truth for all build rules
+- [ ] Does a GCP managed service already solve this? (§12.7)
+- [ ] Does a canonical service/utility already exist for this logic? (§12.2)
+- [ ] Am I duplicating an existing API endpoint? (§12.4)
+- [ ] Is this calculation already in `lib/calculations/` or `lib/utils/`? (§12.3)
+- [ ] Am I putting business logic in an API route instead of a service? (§12.3)
+- [ ] Will this change create dead code? If so, delete the old code (§12.1)
+- [ ] Am I using `withPermission()` (not bare `withAuth()`)? (§12.5)
+- [ ] Does this change touch CDR data? If so, follow CDR compliance rules (§13)
+- [ ] Is CDR data sanitized from logs and error responses? (§13.3)
+- [ ] Does CDR data access verify active consent? (§13.2)
+
+---
+
+## PART 13: CDR COMPLIANCE — CONSUMER DATA RIGHT (MANDATORY)
+
+> **Monitrax handles CDR-regulated financial data. Every code change must comply with CDR rules.**
+> **This section codifies the Basiq accreditation requirements into enforceable build rules.**
+> **Full requirement tracking: `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md`**
+
+### 13.1 CDR Data Classification
+
+**CDR data** = any data received from a consumer's financial institution via the CDR regime.
+This includes: account balances, transaction histories, account numbers, BSBs, loan details,
+income records, and any derived data (aggregations, scores, insights).
+
+| Classification | Examples | Handling Rules |
+|----------------|----------|----------------|
+| **CDR-Protected** | Account balances, transactions, BSBs, loan balances | Encrypted at rest (CMEK), sanitized from logs, consent-gated access |
+| **CDR-Derived** | Health scores, net worth, cashflow forecasts | Treated as CDR data if derived from CDR inputs |
+| **Non-CDR** | User profile, preferences, UI settings | Standard data handling |
+
+### 13.2 Consent Lifecycle — ABSOLUTE RULE
+
+**CDR data MUST be governed by consent. No consent = no data access.**
+
+| Rule | Implementation |
+|------|----------------|
+| **Consent before access** | CDR data routes must verify active consent (`ConsentStatus.ACTIVE`) before returning data |
+| **Consent expiry → data deletion** | When `consentExpiresAt` passes, associated CDR data MUST be deleted/anonymized |
+| **Consent revocation → immediate deletion** | When consent is revoked (`ConsentStatus.REVOKED`), CDR data MUST be purged within 24 hours |
+| **Deletion is irreversible** | No soft-delete for CDR data. Hard-delete or anonymize beyond recovery |
+| **Audit the deletion** | Every CDR data deletion MUST be logged via `createAuditLog()` with action `CDR_DATA_DELETED` |
+
+**Canonical service:** `lib/services/cdrDataLifecycle.ts` (to be created)
+
+**Automated enforcement:**
+- GCP Cloud Scheduler triggers daily consent expiry check
+- Expired/revoked consents trigger CDR data purge job
+- Purge job deletes CDR data, logs audit trail, notifies user
+
+### 13.3 CDR Data Protection in Code
+
+**Rules for ALL code that touches CDR data:**
+
+| Rule | Enforcement |
+|------|-------------|
+| **Never log CDR data** | Use `sanitizeCdrMetadata()` from `lib/security/cdrAuditCompliance.ts` for all audit metadata |
+| **Never cache CDR data in localStorage/sessionStorage** | Browser storage is not encrypted. CDR data stays in React state only |
+| **Never include CDR data in error messages** | Catch errors at boundaries, return generic messages to client |
+| **Never expose CDR data in URLs** | No account numbers, balances, or BSBs in query parameters |
+| **Never send CDR data to third parties** | Unless explicitly consented and documented |
+| **De-identify for analytics** | Any CDR data used for analytics/reporting must be de-identified first |
+
+### 13.4 CDR-Specific Auth Guards
+
+**CDR data routes require elevated authentication:**
+
+```typescript
+// Pattern for CDR data routes
+export async function GET(request: NextRequest) {
+  return withPermission(request, 'cdr_data.read', async (authReq) => {
+    // 1. Verify active consent
+    // 2. Check MFA if org policy requires it
+    // 3. Return data
+    // 4. Audit the access (fire-and-forget)
+  });
+}
+```
+
+| Guard | When to Use |
+|-------|-------------|
+| `withPermission(req, 'cdr_data.read')` | Any route that returns CDR-protected data |
+| `withPermission(req, 'cdr_data.write')` | Any route that modifies CDR data |
+| `withPermission(req, 'cdr_data.delete')` | Any route that deletes CDR data |
+| `withMFARequired()` | CDR data routes when org has `mfaEnforced: true` |
+
+### 13.5 CDR Data Retention
+
+| Rule | Policy |
+|------|--------|
+| **Default retention** | CDR data retained while consent is ACTIVE, deleted when expired/revoked |
+| **Legal retention override** | Some CDR data may need retention beyond consent (e.g., loan applications). Document exceptions in CDR Data Retention Schedule |
+| **Retention schedule** | Maintained in `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md` (to be created) |
+| **No indefinite retention** | All CDR data MUST have a defined retention period |
+
+### 13.6 Environment Separation
+
+| Rule | Description |
+|------|-------------|
+| **Production only** | Real CDR data MUST only exist in production environment |
+| **Dev/staging** | MUST use synthetic/mock data. NEVER seed with real CDR data |
+| **Database access** | Production database accessible only via GCP Console/IAM. No direct SSH/tunnel from dev machines |
+| **Env variables** | Production secrets managed via GCP Secret Manager (not `.env` files) |
+
+### 13.7 CDR Compliance Checklist — Before Every CDR-Related Change
+
+Before modifying ANY code that touches CDR data:
+
+- [ ] Does this route use `withPermission()` with a `cdr_data.*` permission? (§13.4)
+- [ ] Is CDR data sanitized from all log/audit metadata? (§13.3)
+- [ ] Does the data access check for active consent? (§13.2)
+- [ ] Is CDR data excluded from error responses? (§13.3)
+- [ ] Will this change affect CDR data retention/deletion? If so, update lifecycle service (§13.2)
+- [ ] Is the compliance matrix up to date? (`docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md`)
+
+### 13.8 Required Policy Documents (Non-Code)
+
+These documents are required for Basiq CDR accreditation and MUST be created/maintained:
+
+| Document | Path | Covers |
+|----------|------|--------|
+| CDR Data Retention Schedule | `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md` | What data, how long, why, legal basis |
+| Device & Endpoint Security Policy | `docs/policy/DEVICE_SECURITY_POLICY.md` | Staff device requirements (Basiq §4) |
+| Incident Response Plan | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Breach notification, containment, remediation |
+| Security Awareness Policy | `docs/policy/SECURITY_AWARENESS_POLICY.md` | Training requirements for future staff (Basiq §7) |
+| Approved Dependencies List | `docs/policy/APPROVED_DEPENDENCIES.md` | Reviewed and approved npm packages (Basiq §6.4) |
+
+### 13.9 GCP Services Required for CDR Compliance
+
+These GCP services MUST be enabled for CDR compliance (per Basiq §8):
+
+| Service | Purpose | Priority |
+|---------|---------|----------|
+| **Cloud Armor** | WAF, DDoS protection for CDR data endpoints | P0 |
+| **Security Command Center** | Vulnerability scanning, compliance monitoring | P0 |
+| **Cloud KMS (CMEK)** | Customer-managed encryption keys for CDR data at rest | P1 |
+| **Cloud Logging** | Centralized log retention (>90 days), search, alerting | P1 |
+| **Cloud Monitoring** | Uptime checks, error rate alerts, anomaly detection | P1 |
+| **Error Reporting** | Automated error grouping and alerting | P1 |
+| **Cloud DLP** | PII detection and redaction in CDR data | P2 |
+
+---
+
 ## ENFORCEMENT
 
 **This protocol is MANDATORY for every Claude Code session working on Monitrax.**
@@ -544,4 +888,4 @@ When fixing bugs, always add a brief comment explaining the fix in the code itse
 ---
 
 *Last Updated: 2026-02-27*
-*Protocol Version: 1.2*
+*Protocol Version: 1.5*

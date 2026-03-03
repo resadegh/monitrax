@@ -108,3 +108,58 @@ Two changes to `components/DashboardLayout.tsx`:
 ### Blueprint Alignment
 - Follows: `docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md` (GCP Identity Platform auth flow)
 - Follows: `docs/blueprint/PHASE_07_DASHBOARD_REBUILD.md` (Dashboard data loading)
+
+---
+
+## Session: V6Y66 (continued — CDR compliance documentation)
+
+### Changes Made
+- **Type**: Documentation / Compliance
+- **Scope**: CDR compliance tracking and build requirements
+- **Description**: Created comprehensive CDR/Basiq compliance matrix mapping all 54 accreditation requirements. Added CDR compliance rules (Part 13) to CLAUDE.md for enforceable build-time checks.
+
+### Files Created
+- `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md` — Full Basiq accreditation requirement tracking (54 requirements across 9 sections: Auth, Logging, System Security, Device Management, CDR Data Handling, Dev Practices, HR, GCP Tools, Other Tools). Each requirement has status (DONE/PARTIAL/TODO/N/A), implementation details, gap analysis, and response guidance. Includes 4-tier priority roadmap and overall compliance score (~55%).
+
+### Files Modified
+- `CLAUDE.md` — Added Part 13: CDR Compliance — Consumer Data Right (9 sub-sections)
+  - §13.1 CDR Data Classification (protected vs derived vs non-CDR)
+  - §13.2 Consent Lifecycle (consent-gated access, expiry/revocation → data deletion)
+  - §13.3 CDR Data Protection in Code (never log, never cache, never expose)
+  - §13.4 CDR-Specific Auth Guards (cdr_data.read/write/delete permissions)
+  - §13.5 CDR Data Retention (policy rules)
+  - §13.6 Environment Separation (prod-only CDR data, synthetic for dev)
+  - §13.7 CDR Compliance Checklist (pre-change checks)
+  - §13.8 Required Policy Documents (5 docs for Basiq accreditation)
+  - §13.9 GCP Services Required for CDR (7 services with priority)
+  - Also: Added CDR compliance matrix to Step 1 reading list, added CDR checks to §12.11 pre-session checklist
+  - Protocol version bumped to 1.5
+
+### Documentation Updated
+- `CLAUDE.md` — Part 13 CDR Compliance, pre-session checklist extended
+- `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md` — New compliance tracking document
+
+### Compliance Summary
+| Category | Score | Key Gaps |
+|----------|-------|----------|
+| Auth & Access | 70% | RBAC enforcement (Phase 34.3), MFA guard wiring (Phase 34.4) |
+| Logging | 85% | Automated alerting, formal retention policy |
+| System Security | 50% | Cloud Armor, dependency scanning, security testing |
+| CDR Data Handling | 30% | Consent lifecycle service, data deletion automation, de-identification |
+| Dev Practices | 60% | Test coverage for CDR paths, Dependabot |
+| GCP Tools | 20% | Cloud Armor, SCC, KMS, Logging, Monitoring, DLP |
+| **Overall** | **~55%** | CDR data lifecycle is the largest gap |
+
+### Commit History
+| Hash | Message |
+|------|---------|
+| 8a29a88 | docs(cdr): add comprehensive Basiq CDR compliance matrix |
+| (pending) | docs(claude): add Part 13 CDR compliance rules to CLAUDE.md |
+
+### Testing
+- [x] Documentation changes only — no code changes
+- [ ] Build verification (documentation only, no code impact)
+
+### Blueprint Alignment
+- Follows: `docs/blueprint/PHASE_34_CDR_SECURITY_HARDENING.md`
+- Follows: `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md`
