@@ -1,15 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership, verifyRelatedOwnership } from '@/lib/utils/ownership';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const GET = withPermission<RouteContext>('loan.read', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const loan = await prisma.loan.findUnique({
         where: { id },
         include: {
@@ -21,7 +19,7 @@ export async function GET(
         },
       });
 
-      const ownershipResult = verifyOwnership(loan, authReq.user!.userId, 'Loan');
+      const ownershipResult = verifyOwnership(loan, auth.userId, 'Loan');
       if (!ownershipResult.success) return ownershipResult.response;
 
       return NextResponse.json(ownershipResult.resource);
@@ -29,16 +27,11 @@ export async function GET(
       console.error('Get loan error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const PUT = withPermission<RouteContext>('loan.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const body = await request.json();
       const {
         name,
@@ -63,33 +56,33 @@ export async function PUT(
         where: { id },
       });
 
-      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Loan');
+      const ownershipResult = verifyOwnership(existing, auth.userId, 'Loan');
       if (!ownershipResult.success) return ownershipResult.response;
 
       // Validate ownership of related entities
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        const result = verifyRelatedOwnership(property, auth.userId, 'Property');
         if (!result.success) return result.response;
       }
 
       if (offsetAccountId) {
         const account = await prisma.account.findUnique({ where: { id: offsetAccountId } });
-        const result = verifyRelatedOwnership(account, authReq.user!.userId, 'Offset account');
+        const result = verifyRelatedOwnership(account, auth.userId, 'Offset account');
         if (!result.success) return result.response;
       }
 
       // Validate linked asset (for CAR loans)
       if (linkedAssetId) {
         const asset = await prisma.asset.findUnique({ where: { id: linkedAssetId } });
-        const result = verifyRelatedOwnership(asset, authReq.user!.userId, 'Asset');
+        const result = verifyRelatedOwnership(asset, auth.userId, 'Asset');
         if (!result.success) return result.response;
       }
 
       // Validate linked account (for LINE_OF_CREDIT)
       if (linkedAccountId) {
         const account = await prisma.account.findUnique({ where: { id: linkedAccountId } });
-        const result = verifyRelatedOwnership(account, authReq.user!.userId, 'Linked account');
+        const result = verifyRelatedOwnership(account, auth.userId, 'Linked account');
         if (!result.success) return result.response;
       }
 
@@ -125,22 +118,17 @@ export async function PUT(
       console.error('Update loan error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('loan.delete', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       // Verify ownership
       const existing = await prisma.loan.findUnique({
         where: { id },
       });
 
-      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Loan');
+      const ownershipResult = verifyOwnership(existing, auth.userId, 'Loan');
       if (!ownershipResult.success) return ownershipResult.response;
 
       await prisma.loan.delete({
@@ -152,5 +140,4 @@ export async function DELETE(
       console.error('Delete loan error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
