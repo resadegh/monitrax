@@ -5,7 +5,7 @@ import { toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
 // GET /api/assets - List all assets for the user
-export const GET = withPermission('investment.read', async (request, auth) => {
+export const GET = withPermission('property.read', async (request, auth) => {
     try {
       const assets = await prisma.asset.findMany({
         where: { userId: auth.userId },
@@ -111,7 +111,7 @@ export const GET = withPermission('investment.read', async (request, auth) => {
 });
 
 // POST /api/assets - Create a new asset
-export const POST = withPermission('investment.write', async (request, auth) => {
+export const POST = withPermission('property.write', async (request, auth) => {
     try {
       const body = await request.json();
       const {

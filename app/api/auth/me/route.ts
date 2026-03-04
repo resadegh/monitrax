@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 
-export const GET = withPermission('security.read', async (request, auth) => {
+export const GET = withPermission('user.read', async (request, auth) => {
     try {
       const user = await prisma.user.findUnique({
         where: { id: auth.userId },
