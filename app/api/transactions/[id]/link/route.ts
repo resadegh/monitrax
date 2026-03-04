@@ -9,9 +9,9 @@
  * - unlink: Remove link from transaction
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 interface LinkRequest {
   action: 'link' | 'create' | 'update' | 'unlink' | 'transfer' | 'investment';
@@ -47,14 +47,12 @@ interface LinkRequest {
   learnMerchant?: boolean; // Store merchant -> category mapping for future suggestions
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const POST = withPermission<RouteContext>('transaction.write', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id: transactionId } = await params;
+      const userId = auth.userId;
+      const { id: transactionId } = await context!.params;
       const body: LinkRequest = await request.json();
 
       // Verify transaction belongs to user
@@ -892,14 +890,10 @@ export async function POST(
 }
 
 // GET - Get matching Income/Expense entries for a transaction
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission<RouteContext>('transaction.read', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id: transactionId } = await params;
+      const userId = auth.userId;
+      const { id: transactionId } = await context!.params;
 
       // Get transaction
       const transaction = await prisma.unifiedTransaction.findFirst({
@@ -1435,8 +1429,7 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // Simple text similarity function
 function calculateSimilarity(text1: string, text2: string): number {

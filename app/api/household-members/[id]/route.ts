@@ -7,9 +7,9 @@
  * Phase 29: Household Member Management
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { z } from 'zod';
 import { HouseholdRelationship } from '@prisma/client';
 import {
@@ -17,6 +17,8 @@ import {
   orphanMemberCategories,
   regenerateMemberCategories,
 } from '@/lib/services/householdCategoryService';
+
+type RouteContext = { params: Promise<{ id: string }> };
 
 // =============================================================================
 // VALIDATION SCHEMAS
@@ -34,14 +36,10 @@ const UpdateMemberSchema = z.object({
 // GET - Retrieve a specific member
 // =============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission<RouteContext>('settings.read', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id } = await params;
+      const userId = auth.userId;
+      const { id } = await context!.params;
 
       // Get member with ownership verification
       const member = await prisma.householdMember.findFirst({
@@ -81,21 +79,16 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // PUT - Update a member
 // =============================================================================
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const PUT = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id } = await params;
+      const userId = auth.userId;
+      const { id } = await context!.params;
       const body = await request.json();
 
       // Validate input
@@ -200,21 +193,16 @@ export async function PUT(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // DELETE - Delete a member (orphans categories instead of deleting them)
 // =============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const DELETE = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id } = await params;
+      const userId = auth.userId;
+      const { id } = await context!.params;
 
       // Get member with ownership verification
       const member = await prisma.householdMember.findFirst({
@@ -264,8 +252,7 @@ export async function DELETE(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // HELPER: Update household counts from members
