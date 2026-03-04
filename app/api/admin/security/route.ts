@@ -59,10 +59,7 @@ export async function GET(request: NextRequest) {
       prisma.auditLog.count({
         where: {
           createdAt: { gte: oneDayAgo },
-          OR: [
-            { action: 'LOGIN_SUCCESS' },
-            { action: 'ADMIN_LOGIN' },
-          ],
+          action: 'LOGIN',
           status: 'SUCCESS',
         },
       }),
@@ -70,20 +67,15 @@ export async function GET(request: NextRequest) {
       prisma.auditLog.count({
         where: {
           createdAt: { gte: oneDayAgo },
-          OR: [
-            { action: 'LOGIN_FAILURE' },
-            { action: 'ADMIN_LOGIN_FAILED' },
-          ],
+          action: 'LOGIN',
+          status: 'FAILURE',
         },
       }),
       // Successful logins last 7 days
       prisma.auditLog.count({
         where: {
           createdAt: { gte: sevenDaysAgo },
-          OR: [
-            { action: 'LOGIN_SUCCESS' },
-            { action: 'ADMIN_LOGIN' },
-          ],
+          action: 'LOGIN',
           status: 'SUCCESS',
         },
       }),
@@ -91,10 +83,8 @@ export async function GET(request: NextRequest) {
       prisma.auditLog.count({
         where: {
           createdAt: { gte: sevenDaysAgo },
-          OR: [
-            { action: 'LOGIN_FAILURE' },
-            { action: 'ADMIN_LOGIN_FAILED' },
-          ],
+          action: 'LOGIN',
+          status: 'FAILURE',
         },
       }),
       // MFA challenges

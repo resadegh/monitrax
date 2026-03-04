@@ -107,11 +107,12 @@ export async function GET(request: NextRequest) {
         orderBy: { _count: { action: 'desc' } },
         take: 10,
       }),
-      // CDR data deletion events
+      // CDR data deletion events (DELETE action on OrganizationClient entityType)
       prisma.auditLog.count({
         where: {
           createdAt: { gte: ninetyDaysAgo },
-          action: 'CDR_DATA_DELETED',
+          action: 'DELETE',
+          entityType: { contains: 'OrganizationClient' },
         },
       }),
       // Failed access attempts on CDR data
@@ -139,11 +140,7 @@ export async function GET(request: NextRequest) {
       prisma.auditLog.count({
         where: {
           createdAt: { gte: ninetyDaysAgo },
-          OR: [
-            { action: 'LOGIN_SUCCESS' },
-            { action: 'LOGIN_FAILURE' },
-            { action: 'ADMIN_LOGIN' },
-          ],
+          action: 'LOGIN',
         },
       }),
       // RBAC violations (forbidden access attempts)
