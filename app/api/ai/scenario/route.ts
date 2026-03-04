@@ -23,7 +23,7 @@ const VALID_SCENARIO_TYPES = [
 
 type ScenarioType = (typeof VALID_SCENARIO_TYPES)[number];
 
-export const POST = withPermission('report.write', async (request, auth) => {
+export const POST = withPermission('report.read', async (request, auth) => {
   try {
     const userId = auth.userId;
 

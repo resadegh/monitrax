@@ -886,8 +886,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // GET - Get matching Income/Expense entries for a transaction
 export const GET = withPermission<RouteContext>('transaction.read', async (request, auth, context) => {

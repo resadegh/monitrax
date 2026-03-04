@@ -23,7 +23,7 @@ const VALID_GOAL_TYPES = [
 
 type GoalType = (typeof VALID_GOAL_TYPES)[number];
 
-export const POST = withPermission('report.write', async (request, auth) => {
+export const POST = withPermission('report.read', async (request, auth) => {
   try {
     const userId = auth.userId;
 
