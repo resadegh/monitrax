@@ -87,14 +87,12 @@ export async function GET(request: NextRequest) {
 
     // Query feature usage from AuditLog
     // GCP Migration: Replace with Cloud Logging query when available
+    // Note: action is an enum, so we filter by entityType patterns only (string field)
     const featureUsage = await Promise.all(
       Object.entries(FEATURE_MAPPING).map(async ([key, { name, pattern }]) => {
-        // Build OR conditions for patterns
+        // Build OR conditions for entityType patterns (string field supports contains)
         const orConditions = pattern.map((p) => ({
-          OR: [
-            { action: { contains: p } },
-            { entityType: { contains: p } },
-          ],
+          entityType: { contains: p, mode: 'insensitive' as const },
         }));
 
         // Current period unique users
@@ -102,7 +100,7 @@ export async function GET(request: NextRequest) {
           where: {
             userId: { not: null },
             createdAt: { gte: oneMonthAgo },
-            OR: orConditions.flatMap((c) => c.OR),
+            OR: orConditions,
           },
           select: { userId: true },
           distinct: ['userId'],
@@ -113,7 +111,7 @@ export async function GET(request: NextRequest) {
           where: {
             userId: { not: null },
             createdAt: { gte: twoMonthsAgo, lt: oneMonthAgo },
-            OR: orConditions.flatMap((c) => c.OR),
+            OR: orConditions,
           },
           select: { userId: true },
           distinct: ['userId'],
