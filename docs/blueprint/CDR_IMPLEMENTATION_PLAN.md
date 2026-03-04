@@ -14,7 +14,7 @@
 
 | Phase | Description | Status | Completed |
 |-------|-------------|--------|-----------|
-| **A** | RBAC Enforcement | 🔲 Pending | — |
+| **A** | RBAC Enforcement | 🟡 **IN PROGRESS** | 23/~99 routes migrated (2026-03-04) |
 | **B** | MFA Enforcement | 🔲 Pending | — |
 | **C** | Admin Lifecycle Management | ✅ **COMPLETE** | 2026-03-04 |
 | **D** | CDR Data Lifecycle Service | 🔲 Pending | — |
