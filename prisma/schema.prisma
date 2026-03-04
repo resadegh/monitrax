@@ -49,9 +49,10 @@ enum AccountType {
 }
 
 enum BalanceSource {
-  MANUAL     // User manually entered balance
-  IMPORT     // Balance from CSV/QIF/OFX import
-  BASIQ      // Balance from Open Banking (Basiq)
+  MANUAL          // User manually entered balance
+  IMPORT          // Balance from CSV/QIF/OFX import
+  BASIQ           // Balance from Open Banking (Basiq)
+  USER_VERIFIED   // User verified balance after import
 }
 
 enum IncomeType {
@@ -164,6 +165,7 @@ enum AuditAction {
   // Auth
   LOGIN
   LOGOUT
+  REGISTER
   MFA_CHALLENGE
   MFA_SUCCESS
   MFA_FAILURE
