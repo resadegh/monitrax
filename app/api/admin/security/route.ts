@@ -101,7 +101,11 @@ export async function GET(request: NextRequest) {
       prisma.auditLog.count({
         where: {
           createdAt: { gte: sevenDaysAgo },
-          action: { contains: 'MFA' },
+          OR: [
+            { action: 'MFA_CHALLENGE' },
+            { action: 'MFA_SUCCESS' },
+            { action: 'MFA_FAILURE' },
+          ],
         },
       }),
       // Currently locked admin accounts
@@ -175,14 +179,14 @@ export async function GET(request: NextRequest) {
       prisma.auditLog.count({
         where: {
           createdAt: { gte: sevenDaysAgo },
-          action: { contains: 'UNAUTHORIZED' },
+          action: 'UNAUTHORIZED_ACCESS',
         },
       }),
       // Forbidden access attempts (403)
       prisma.auditLog.count({
         where: {
           createdAt: { gte: sevenDaysAgo },
-          action: { contains: 'FORBIDDEN' },
+          action: 'FORBIDDEN_ACCESS',
         },
       }),
       // Routes with most auth failures

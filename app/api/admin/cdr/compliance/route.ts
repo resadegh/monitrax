@@ -96,15 +96,12 @@ export async function GET(request: NextRequest) {
       failedCdrAccess,
     ] = await Promise.all([
       // Recent CDR data access events (aggregated count by action)
+      // Note: Filter by entityType since action is an enum without CDR-specific values
       prisma.auditLog.groupBy({
         by: ['action'],
         where: {
           createdAt: { gte: ninetyDaysAgo },
-          OR: [
-            { action: { contains: 'CDR' } },
-            { action: { contains: 'CONSENT' } },
-            { entityType: { contains: 'OrganizationClient' } },
-          ],
+          entityType: { contains: 'OrganizationClient' },
         },
         _count: { action: true },
         orderBy: { _count: { action: 'desc' } },
@@ -118,14 +115,12 @@ export async function GET(request: NextRequest) {
         },
       }),
       // Failed access attempts on CDR data
+      // Note: Filter by entityType and status since action is an enum
       prisma.auditLog.count({
         where: {
           createdAt: { gte: ninetyDaysAgo },
           status: 'FAILURE',
-          OR: [
-            { action: { contains: 'CDR' } },
-            { action: { contains: 'CONSENT' } },
-          ],
+          entityType: { contains: 'OrganizationClient' },
         },
       }),
     ]);
@@ -157,8 +152,8 @@ export async function GET(request: NextRequest) {
           createdAt: { gte: ninetyDaysAgo },
           status: 'FAILURE',
           OR: [
-            { action: { contains: 'FORBIDDEN' } },
-            { action: { contains: 'UNAUTHORIZED' } },
+            { action: 'FORBIDDEN_ACCESS' },
+            { action: 'UNAUTHORIZED_ACCESS' },
           ],
         },
       }),
