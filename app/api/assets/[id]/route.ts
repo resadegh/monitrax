@@ -8,7 +8,7 @@ import { verifyOwnership } from '@/lib/utils/ownership';
 type RouteContext = { params: Promise<{ id: string }> };
 
 // GET /api/assets/:id - Get a single asset with full details
-export const GET = withPermission<RouteContext>('property.read', async (request, auth, context) => {
+export const GET = withPermission<RouteContext>('investment.read', async (request, auth, context) => {
     try {
       const { id } = await context!.params;
       const asset = await prisma.asset.findUnique({
@@ -78,7 +78,7 @@ export const GET = withPermission<RouteContext>('property.read', async (request,
 });
 
 // PUT /api/assets/:id - Update an asset
-export const PUT = withPermission<RouteContext>('property.write', async (request, auth, context) => {
+export const PUT = withPermission<RouteContext>('investment.write', async (request, auth, context) => {
     try {
       const { id } = await context!.params;
       const body = await request.json();
@@ -185,7 +185,7 @@ export const PUT = withPermission<RouteContext>('property.write', async (request
 });
 
 // DELETE /api/assets/:id - Delete an asset
-export const DELETE = withPermission<RouteContext>('property.delete', async (request, auth, context) => {
+export const DELETE = withPermission<RouteContext>('investment.delete', async (request, auth, context) => {
     try {
       const { id } = await context!.params;
 
