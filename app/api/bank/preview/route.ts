@@ -11,7 +11,7 @@ import { parseCSV, parseQIF, isValidQIF, suggestColumnMappings, normaliseTransac
 import { batchFindMatches, getMatchSummary, type RecurringMatch } from '@/lib/bank/recurringMatcher';
 import type { ParseOptions, ImportFileFormat } from '@/lib/bank/types';
 
-export const POST = withPermission('account.write', async (request, auth) => {
+export const POST = withPermission('account.read', async (request, auth) => {
     try {
       const userId = auth.userId;
 
