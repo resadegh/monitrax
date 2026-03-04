@@ -1,15 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership, verifyRelatedOwnership } from '@/lib/utils/ownership';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const GET = withPermission<RouteContext>('income.read', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const income = await prisma.income.findUnique({
         where: { id },
         include: {
@@ -19,7 +17,7 @@ export async function GET(
       });
 
       // Verify ownership using centralized utility
-      const result = verifyOwnership(income, authReq.user!.userId, 'Income');
+      const result = verifyOwnership(income, auth.userId, 'Income');
       if (!result.success) return result.response;
 
       return NextResponse.json(result.resource);
@@ -27,16 +25,11 @@ export async function GET(
       console.error('Get income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const PUT = withPermission<RouteContext>('income.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const body = await request.json();
       const {
         name,
@@ -63,19 +56,19 @@ export async function PUT(
 
       // Verify ownership
       const existing = await prisma.income.findUnique({ where: { id } });
-      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Income');
+      const ownershipResult = verifyOwnership(existing, auth.userId, 'Income');
       if (!ownershipResult.success) return ownershipResult.response;
 
       // Validate ownership of related entities
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        const result = verifyRelatedOwnership(property, auth.userId, 'Property');
         if (!result.success) return result.response;
       }
 
       if (investmentAccountId) {
         const investmentAccount = await prisma.investmentAccount.findUnique({ where: { id: investmentAccountId } });
-        const result = verifyRelatedOwnership(investmentAccount, authReq.user!.userId, 'Investment account');
+        const result = verifyRelatedOwnership(investmentAccount, auth.userId, 'Investment account');
         if (!result.success) return result.response;
       }
 
@@ -146,20 +139,15 @@ export async function PUT(
       console.error('Update income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('income.delete', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
 
       // Verify ownership using centralized utility
       const existing = await prisma.income.findUnique({ where: { id } });
-      const result = verifyOwnership(existing, authReq.user!.userId, 'Income');
+      const result = verifyOwnership(existing, auth.userId, 'Income');
       if (!result.success) return result.response;
 
       await prisma.income.delete({ where: { id } });
@@ -169,5 +157,4 @@ export async function DELETE(
       console.error('Delete income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

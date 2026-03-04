@@ -9,8 +9,8 @@
  * @see docs/blueprint/07_API_STANDARDS.md for API standards
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import {
   searchEngine,
   SearchEntityType,
@@ -36,10 +36,9 @@ const TYPE_MAP: Record<string, SearchEntityType | 'all'> = {
   holding: 'holding',
 };
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const { searchParams } = new URL(request.url);
 
       // Parse query parameters
@@ -98,5 +97,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

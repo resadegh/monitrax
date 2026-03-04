@@ -7,9 +7,9 @@
  * Blueprint reference: PHASE_13_TRANSACTIONAL_INTELLIGENCE.md Section 13.2 Component 4
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   calculateSpendingSummary,
   analyseTrend,
@@ -19,11 +19,10 @@ import {
   UnifiedTransaction,
 } from '@/lib/tie';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('transaction.read', async (request, auth) => {
     try {
       const { searchParams } = new URL(request.url);
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Date range (default: last 6 months)
       const months = parseInt(searchParams.get('months') || '6');
@@ -156,5 +155,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

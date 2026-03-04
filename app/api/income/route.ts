@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('income.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch income entries and linked transactions in parallel
       const [income, linkedTransactions] = await Promise.all([
@@ -164,11 +163,9 @@ export async function GET(request: NextRequest) {
       console.error('Get income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('income.write', async (request, auth) => {
     try {
       const body = await request.json();
       const {
@@ -201,13 +198,13 @@ export async function POST(request: NextRequest) {
       // Validate ownership of related entities using centralized utility
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        const result = verifyRelatedOwnership(property, auth.userId, 'Property');
         if (!result.success) return result.response;
       }
 
       if (investmentAccountId) {
         const investmentAccount = await prisma.investmentAccount.findUnique({ where: { id: investmentAccountId } });
-        const result = verifyRelatedOwnership(investmentAccount, authReq.user!.userId, 'Investment account');
+        const result = verifyRelatedOwnership(investmentAccount, auth.userId, 'Investment account');
         if (!result.success) return result.response;
       }
 
@@ -238,7 +235,7 @@ export async function POST(request: NextRequest) {
 
       const incomeRecord = await prisma.income.create({
         data: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           name,
           type,
           amount: toNumber(amount) ?? 0,
@@ -268,5 +265,4 @@ export async function POST(request: NextRequest) {
       console.error('Create income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractExpenseLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('expense.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch expenses and linked transactions in parallel
       const [expenses, linkedTransactions] = await Promise.all([
@@ -156,11 +155,9 @@ export async function GET(request: NextRequest) {
       console.error('Get expenses error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('expense.write', async (request, auth) => {
     try {
       const body = await request.json();
       const { name, category, customCategoryId, amount, frequency, isTaxDeductible, isEssential, isRecurring, propertyId, loanId, investmentAccountId, assetId, vendorName, sourceType } = body;
@@ -178,33 +175,33 @@ export async function POST(request: NextRequest) {
       // Validate ownership of related entities using centralized utility
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        const result = verifyRelatedOwnership(property, auth.userId, 'Property');
         if (!result.success) return result.response;
       }
 
       if (loanId) {
         const loan = await prisma.loan.findUnique({ where: { id: loanId } });
-        const result = verifyRelatedOwnership(loan, authReq.user!.userId, 'Loan');
+        const result = verifyRelatedOwnership(loan, auth.userId, 'Loan');
         if (!result.success) return result.response;
       }
 
       if (investmentAccountId) {
         const investmentAccount = await prisma.investmentAccount.findUnique({ where: { id: investmentAccountId } });
-        const result = verifyRelatedOwnership(investmentAccount, authReq.user!.userId, 'Investment account');
+        const result = verifyRelatedOwnership(investmentAccount, auth.userId, 'Investment account');
         if (!result.success) return result.response;
       }
 
       // Validate asset ownership
       if (assetId) {
         const asset = await prisma.asset.findUnique({ where: { id: assetId } });
-        const result = verifyRelatedOwnership(asset, authReq.user!.userId, 'Asset');
+        const result = verifyRelatedOwnership(asset, auth.userId, 'Asset');
         if (!result.success) return result.response;
       }
 
       // Validate custom category ownership
       if (customCategoryId) {
         const customCategory = await prisma.category.findFirst({
-          where: { id: customCategoryId, userId: authReq.user!.userId, type: 'EXPENSE' },
+          where: { id: customCategoryId, userId: auth.userId, type: 'EXPENSE' },
         });
         if (!customCategory) {
           return NextResponse.json({ error: 'Custom category not found or unauthorized' }, { status: 403 });
@@ -213,7 +210,7 @@ export async function POST(request: NextRequest) {
 
       const expense = await prisma.expense.create({
         data: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           name,
           category: category || 'OTHER',
           customCategoryId: customCategoryId || null,
@@ -245,5 +242,4 @@ export async function POST(request: NextRequest) {
       console.error('Create expense error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

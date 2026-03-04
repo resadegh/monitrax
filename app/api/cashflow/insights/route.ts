@@ -5,9 +5,9 @@
  * Returns cashflow-specific insights.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 /**
  * GET /api/cashflow/insights
@@ -20,10 +20,9 @@ import { withAuth } from '@/lib/middleware';
  *
  * Returns cashflow insights from database
  */
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const { searchParams } = new URL(request.url);
       const severity = searchParams.get('severity');
       const category = searchParams.get('category');
@@ -106,8 +105,7 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 /**
  * PATCH /api/cashflow/insights
@@ -120,10 +118,9 @@ export async function GET(request: NextRequest) {
  *
  * Update insight status
  */
-export async function PATCH(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const PATCH = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const body = await request.json();
       const { insightId, action } = body;
 
@@ -201,5 +198,4 @@ export async function PATCH(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

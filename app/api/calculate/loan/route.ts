@@ -5,9 +5,9 @@
  * Calculate loan amortisation, repayments, and projections.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 // =============================================================================
 // REQUEST SCHEMA
@@ -131,8 +131,7 @@ function convertToFrequency(monthlyAmount: number, frequency: string): number {
 // ROUTE HANDLER
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async () => {
+export const POST = withPermission('report.read', async (request, auth) => {
     try {
       const body = await request.json();
 
@@ -241,5 +240,4 @@ export async function POST(request: NextRequest) {
       console.error('Loan calculation error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

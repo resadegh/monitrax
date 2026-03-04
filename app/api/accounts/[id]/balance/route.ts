@@ -3,18 +3,16 @@
  * POST /api/accounts/[id]/balance - Update account balance after user verification
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const POST = withPermission<RouteContext>('account.write', async (request, auth, context) => {
     try {
-      const { id: accountId } = await params;
-      const userId = authReq.user!.userId;
+      const { id: accountId } = await context!.params;
+      const userId = auth.userId;
 
       const body = await request.json();
       const { verifiedBalance, batchId } = body;
@@ -73,17 +71,12 @@ export async function POST(
         { status: 500 }
       );
     }
-  });
-}
+});
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission<RouteContext>('account.read', async (request, auth, context) => {
     try {
-      const { id: accountId } = await params;
-      const userId = authReq.user!.userId;
+      const { id: accountId } = await context!.params;
+      const userId = auth.userId;
 
       // Verify account ownership
       const account = await prisma.account.findFirst({
@@ -113,5 +106,4 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});

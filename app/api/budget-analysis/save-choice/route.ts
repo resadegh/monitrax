@@ -7,18 +7,17 @@
  * Saves the user's final budget choice after reviewing AI analysis.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 // =============================================================================
 // API Handler
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('expense.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const body = await request.json();
 
       const { analysisId, choice, customBudget, adjustments } = body;
@@ -172,5 +171,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

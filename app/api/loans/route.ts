@@ -1,13 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractLoanLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('loan.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch loans and linked transactions in parallel
       const [loans, linkedTransactions] = await Promise.all([
@@ -134,11 +133,9 @@ export async function GET(request: NextRequest) {
       console.error('Get loans error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('loan.write', async (request, auth) => {
     try {
       const body = await request.json();
       const {
@@ -178,33 +175,33 @@ export async function POST(request: NextRequest) {
       // Validate ownership of related entities using centralized utility
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        const result = verifyRelatedOwnership(property, authReq.user!.userId, 'Property');
+        const result = verifyRelatedOwnership(property, auth.userId, 'Property');
         if (!result.success) return result.response;
       }
 
       if (offsetAccountId) {
         const account = await prisma.account.findUnique({ where: { id: offsetAccountId } });
-        const result = verifyRelatedOwnership(account, authReq.user!.userId, 'Offset account');
+        const result = verifyRelatedOwnership(account, auth.userId, 'Offset account');
         if (!result.success) return result.response;
       }
 
       // Validate linked asset (for CAR loans)
       if (linkedAssetId) {
         const asset = await prisma.asset.findUnique({ where: { id: linkedAssetId } });
-        const result = verifyRelatedOwnership(asset, authReq.user!.userId, 'Asset');
+        const result = verifyRelatedOwnership(asset, auth.userId, 'Asset');
         if (!result.success) return result.response;
       }
 
       // Validate linked account (for LINE_OF_CREDIT)
       if (linkedAccountId) {
         const account = await prisma.account.findUnique({ where: { id: linkedAccountId } });
-        const result = verifyRelatedOwnership(account, authReq.user!.userId, 'Linked account');
+        const result = verifyRelatedOwnership(account, auth.userId, 'Linked account');
         if (!result.success) return result.response;
       }
 
       const loan = await prisma.loan.create({
         data: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           name,
           type,
           propertyId: propertyId || null,
@@ -228,5 +225,4 @@ export async function POST(request: NextRequest) {
       console.error('Create loan error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

@@ -5,9 +5,9 @@
  * Returns cashflow forecasts and optimisation recommendations.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   generateForecast,
   generateOptimisations,
@@ -280,10 +280,9 @@ async function buildCOEInput(
  *
  * Note: 'lite' mode returns minimal data for faster loading on cold starts
  */
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const { searchParams } = new URL(request.url);
       const type = searchParams.get('type') || 'full';
       const days = parseInt(searchParams.get('days') || '90', 10);
@@ -493,5 +492,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

@@ -11,9 +11,9 @@
  * 3. No existing summary
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   generateGeminiSummary,
   generateDataHash,
@@ -169,10 +169,9 @@ async function buildSummaryInput(userId: string) {
 // GET - Retrieve cached summary
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Check for cached summary
       const cached = await prisma.cashflowSummary.findFirst({
@@ -245,17 +244,15 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // POST - Force regeneration
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Build current input
       const currentInput = await buildSummaryInput(userId);
@@ -294,5 +291,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

@@ -5,9 +5,9 @@
  * Run stress tests and what-if scenarios on cashflow projections.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   runStressTests,
   runCustomStressTest,
@@ -161,10 +161,9 @@ async function buildCFEInput(
  *
  * Returns stress test results across predefined scenarios
  */
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const { searchParams } = new URL(request.url);
       const scenarioIds = searchParams.get('scenarios');
 
@@ -226,8 +225,7 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 /**
  * POST /api/cashflow/stress-test
@@ -247,10 +245,9 @@ export async function GET(request: NextRequest) {
  *
  * Run a custom stress test scenario
  */
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const body = await request.json();
 
       // Validate parameters
@@ -319,5 +316,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

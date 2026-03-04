@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 // Prisma transaction client type
 type TransactionClient = Omit<
@@ -179,10 +179,9 @@ function getLoanType(propertyType: PropertyType): 'HOME' | 'INVESTMENT' {
 // POST - Bulk create all onboarding data
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('settings.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const data: WizardData = await request.json();
 
       // ID mapping for linking (temp ID -> real ID)
@@ -476,8 +475,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // Helper to generate asset name
 function getAssetName(asset: AssetInput): string {

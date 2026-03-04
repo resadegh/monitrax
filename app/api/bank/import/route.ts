@@ -3,10 +3,10 @@
  * POST /api/bank/import - Upload and process bank statement files
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createHash, randomUUID } from 'crypto';
 import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   parseCSV,
   parseQIF,
@@ -23,10 +23,9 @@ import type {
   ParseOptions,
 } from '@/lib/bank/types';
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('account.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       const formData = await request.formData();
       const file = formData.get('file') as File | null;
@@ -418,14 +417,12 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // GET - List import history
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('account.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       const imports = await prisma.bankImportFile.findMany({
         where: { userId },
@@ -441,5 +438,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

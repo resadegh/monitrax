@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 // Profile types - will use Prisma enum after client regeneration
 const VALID_PROFILE_TYPES = ['HOMEOWNER', 'INVESTOR', 'MIXED', 'STARTER'] as const;
@@ -21,10 +21,9 @@ const DEFAULT_PREFERENCES = {
  * GET /api/onboarding/state
  * Get onboarding state for the current user
  */
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('settings.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Check if user has any data (to determine if they should see onboarding)
       const [propertyCount, accountCount, incomeCount, expenseCount] = await Promise.all([
@@ -123,17 +122,15 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 /**
  * POST /api/onboarding/state
  * Update onboarding state for the current user
  */
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('settings.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const body = await request.json();
 
       const {
@@ -263,5 +260,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

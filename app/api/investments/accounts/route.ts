@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { z } from 'zod';
 import { extractInvestmentAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
@@ -18,82 +18,78 @@ const createAccountSchema = z.object({
   costBasisMethod: z.enum(['FIFO', 'LIFO', 'HIFO', 'SPECIFIC', 'AVERAGE']).default('FIFO'),
 });
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
-    try {
-      const accounts = await prisma.investmentAccount.findMany({
-        where: { userId: authReq.user!.userId },
-        include: {
-          holdings: true,
-          transactions: {
-            orderBy: { date: 'desc' },
-            take: 10,
-          },
-          incomes: true,
-          expenses: true,
+export const GET = withPermission('investment.read', async (request, auth) => {
+  try {
+    const accounts = await prisma.investmentAccount.findMany({
+      where: { userId: auth.userId },
+      include: {
+        holdings: true,
+        transactions: {
+          orderBy: { date: 'desc' },
+          take: 10,
         },
-        orderBy: { createdAt: 'desc' },
-      });
+        incomes: true,
+        expenses: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-      // Apply GRDCS wrapper to each investment account
-      const accountsWithLinks = accounts.map((account: typeof accounts[number]) => {
-        const links = extractInvestmentAccountLinks(account);
-        return wrapWithGRDCS(account as Record<string, unknown>, 'investmentAccount', links);
-      });
+    // Apply GRDCS wrapper to each investment account
+    const accountsWithLinks = accounts.map((account: typeof accounts[number]) => {
+      const links = extractInvestmentAccountLinks(account);
+      return wrapWithGRDCS(account as Record<string, unknown>, 'investmentAccount', links);
+    });
 
-      return NextResponse.json({
-        data: accountsWithLinks,
-        _meta: {
-          count: accountsWithLinks.length,
-          totalLinkedEntities: accountsWithLinks.reduce((sum: number, a: { _meta: { linkedCount: number } }) => sum + a._meta.linkedCount, 0),
-        },
-      });
-    } catch (error) {
-      console.error('Get investment accounts error:', error);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({
+      data: accountsWithLinks,
+      _meta: {
+        count: accountsWithLinks.length,
+        totalLinkedEntities: accountsWithLinks.reduce((sum: number, a: { _meta: { linkedCount: number } }) => sum + a._meta.linkedCount, 0),
+      },
+    });
+  } catch (error) {
+    console.error('Get investment accounts error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});
+
+export const POST = withPermission('investment.write', async (request, auth) => {
+  try {
+    const body = await request.json();
+    const validation = createAccountSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.errors },
+        { status: 400 }
+      );
     }
-  });
-}
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
-    try {
-      const body = await request.json();
-      const validation = createAccountSchema.safeParse(body);
+    const {
+      name, type, platform, currency,
+      openingDate, openingBalance, cashBalance,
+      totalDeposits, totalWithdrawals, costBasisMethod
+    } = validation.data;
 
-      if (!validation.success) {
-        return NextResponse.json(
-          { error: 'Validation failed', details: validation.error.errors },
-          { status: 400 }
-        );
-      }
+    const account = await prisma.investmentAccount.create({
+      data: {
+        userId: auth.userId,
+        name,
+        type,
+        platform: platform || null,
+        currency: currency || 'AUD',
+        openingDate: openingDate ? new Date(openingDate) : null,
+        openingBalance: openingBalance || 0,
+        cashBalance: cashBalance || 0,
+        totalDeposits: totalDeposits || 0,
+        totalWithdrawals: totalWithdrawals || 0,
+        costBasisMethod: costBasisMethod || 'FIFO',
+      },
+    });
 
-      const {
-        name, type, platform, currency,
-        openingDate, openingBalance, cashBalance,
-        totalDeposits, totalWithdrawals, costBasisMethod
-      } = validation.data;
-
-      const account = await prisma.investmentAccount.create({
-        data: {
-          userId: authReq.user!.userId,
-          name,
-          type,
-          platform: platform || null,
-          currency: currency || 'AUD',
-          openingDate: openingDate ? new Date(openingDate) : null,
-          openingBalance: openingBalance || 0,
-          cashBalance: cashBalance || 0,
-          totalDeposits: totalDeposits || 0,
-          totalWithdrawals: totalWithdrawals || 0,
-          costBasisMethod: costBasisMethod || 'FIFO',
-        },
-      });
-
-      return NextResponse.json(account, { status: 201 });
-    } catch (error) {
-      console.error('Create investment account error:', error);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-  });
-}
+    return NextResponse.json(account, { status: 201 });
+  } catch (error) {
+    console.error('Create investment account error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});

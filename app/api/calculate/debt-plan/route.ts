@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { runDebtPlan, LoanInput, PlannerSettings } from '@/lib/planning/debtPlanner';
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('report.read', async (request, auth) => {
     try {
       const body = await request.json();
       const settings: PlannerSettings = body.settings;
@@ -18,7 +17,7 @@ export async function POST(request: NextRequest) {
 
       // Fetch user's loans with offset account balances
       const loans = await prisma.loan.findMany({
-        where: { userId: authReq.user!.userId },
+        where: { userId: auth.userId },
         include: { offsetAccount: true },
       });
 
@@ -71,5 +70,4 @@ export async function POST(request: NextRequest) {
       console.error('Debt planner error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

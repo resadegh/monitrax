@@ -8,9 +8,9 @@
  * Uses ONLY real calculated numbers - no hallucination.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   calculateCashflowHealthScore,
   HealthScoreInput,
@@ -560,10 +560,9 @@ function buildForecastSummary(
 // MAIN API HANDLER
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch all financial data
       const data = await fetchUserFinancialData(userId);
@@ -685,5 +684,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

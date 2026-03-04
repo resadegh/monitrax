@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { Frequency } from '@/lib/validation/common';
 import { ExpenseCategory, ExpenseSourceType } from '@/lib/validation/expenses';
 
@@ -15,8 +15,7 @@ interface BulkExpenseItem {
   isEssential?: boolean;
 }
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('expense.write', async (request, auth) => {
     try {
       const body = await request.json();
       const { expenses } = body as { expenses: BulkExpenseItem[] };
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
         const properties = await prisma.property.findMany({
           where: {
             id: { in: propertyIds as string[] },
-            userId: authReq.user!.userId
+            userId: auth.userId
           },
           select: { id: true }
         });
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
         expenses.map(expense =>
           prisma.expense.create({
             data: {
-              userId: authReq.user!.userId,
+              userId: auth.userId,
               name: expense.name,
               category: expense.category as ExpenseCategory,
               amount: parseFloat(String(expense.amount)),
@@ -83,5 +82,4 @@ export async function POST(request: NextRequest) {
       console.error('Bulk create expenses error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
