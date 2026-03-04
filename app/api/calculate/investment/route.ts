@@ -5,9 +5,9 @@
  * Calculate investment performance, returns, and franking credits.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import prisma from '@/lib/db';
 import {
   calculateHoldingValue,
@@ -64,8 +64,7 @@ const investmentCalculationSchema = z.object({
 // ROUTE HANDLER
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('report.read', async (request, auth) => {
     try {
       const body = await request.json();
 
@@ -114,7 +113,7 @@ export async function POST(request: NextRequest) {
       if (!holdingsData && !input.accountId) {
         // Fetch all investment accounts for user
         const accounts = await prisma.investmentAccount.findMany({
-          where: { userId: authReq.user!.userId },
+          where: { userId: auth.userId },
           include: {
             holdings: true,
             transactions: true,
@@ -145,7 +144,7 @@ export async function POST(request: NextRequest) {
         const account = await prisma.investmentAccount.findFirst({
           where: {
             id: input.accountId,
-            userId: authReq.user!.userId,
+            userId: auth.userId,
           },
           include: {
             holdings: true,
@@ -301,5 +300,4 @@ export async function POST(request: NextRequest) {
       console.error('Investment calculation error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

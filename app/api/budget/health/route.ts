@@ -3,16 +3,15 @@
  * GET /api/budget/health - Generate monthly financial health narrative
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { generateMonthlyReport, generateHealthNarrative, getAvailableMonths } from '@/lib/bank';
 import type { CategorisedTransaction, BudgetTarget, MonthlyHealthReport, CategoryBreakdown, HealthInsight } from '@/lib/bank/types';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('expense.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       const { searchParams } = new URL(request.url);
       const month = searchParams.get('month'); // YYYY-MM format
@@ -169,5 +168,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

@@ -1,15 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
 // GET /api/assets - List all assets for the user
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('investment.read', async (request, auth) => {
     try {
       const assets = await prisma.asset.findMany({
-        where: { userId: authReq.user!.userId },
+        where: { userId: auth.userId },
         include: {
           expenses: {
             select: {
@@ -109,12 +108,10 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // POST /api/assets - Create a new asset
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('investment.write', async (request, auth) => {
     try {
       const body = await request.json();
       const {
@@ -155,7 +152,7 @@ export async function POST(request: NextRequest) {
 
       const asset = await prisma.asset.create({
         data: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           name,
           type,
           description,
@@ -202,5 +199,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

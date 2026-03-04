@@ -4,19 +4,18 @@
  * PUT /api/settings/categorization - Update user's categorization settings
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { getLearningStats } from '@/lib/bank/aiLearning';
 
 // =============================================================================
 // GET - Get Settings
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('settings.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Get user settings or return defaults
       const settings = await prisma.userCategorizationSettings.findUnique({
@@ -59,8 +58,7 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // PUT - Update Settings
@@ -79,10 +77,9 @@ interface UpdateSettingsRequest {
   pendingReviewThreshold?: number;
 }
 
-export async function PUT(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const PUT = withPermission('settings.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const body: UpdateSettingsRequest = await request.json();
 
       // Validate thresholds
@@ -155,5 +152,4 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

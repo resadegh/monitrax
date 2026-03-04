@@ -5,23 +5,21 @@
  * DELETE /api/strategy/:id - Delete recommendation
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
+
+type RouteContext = { params: Promise<{ id: string }> };
 
 // GET single recommendation with full details
-export async function GET(
-  request: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission<RouteContext>('report.read', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
 
       const recommendation = await prisma.strategyRecommendation.findFirst({
         where: {
-          id: params.id,
+          id,
           userId,
         },
       });
@@ -50,18 +48,13 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // PATCH recommendation (accept/dismiss)
-export async function PATCH(
-  request: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const PATCH = withPermission<RouteContext>('report.write', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
 
       // Parse body
       const body = await request.json();
@@ -89,7 +82,7 @@ export async function PATCH(
 
       const recommendation = await prisma.strategyRecommendation.updateMany({
         where: {
-          id: params.id,
+          id,
           userId,
         },
         data: updateData,
@@ -104,7 +97,7 @@ export async function PATCH(
 
       // Fetch updated recommendation
       const updated = await prisma.strategyRecommendation.findUnique({
-        where: { id: params.id },
+        where: { id },
       });
 
       return NextResponse.json({
@@ -124,23 +117,18 @@ export async function PATCH(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // DELETE recommendation
-export async function DELETE(
-  request: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const DELETE = withPermission<RouteContext>('report.delete', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
 
       // Delete recommendation
       const deleted = await prisma.strategyRecommendation.deleteMany({
         where: {
-          id: params.id,
+          id,
           userId,
         },
       });
@@ -169,5 +157,4 @@ export async function DELETE(
         { status: 500 }
       );
     }
-  });
-}
+});

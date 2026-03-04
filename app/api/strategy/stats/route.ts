@@ -3,9 +3,9 @@
  * GET /api/strategy/stats - Get summary statistics
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 export async function GET(request: NextRequest) {
   return withAuth(request, async (authReq: AuthenticatedRequest) => {

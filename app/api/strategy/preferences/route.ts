@@ -6,18 +6,17 @@
  * PUT /api/strategy/preferences - Update user strategy preferences
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, type AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 // =============================================================================
 // GET - Fetch User Preferences
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch user strategy session (preferences)
       const session = await prisma.strategySession.findFirst({
@@ -54,17 +53,15 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // PUT - Update User Preferences
 // =============================================================================
 
-export async function PUT(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const PUT = withPermission('report.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const body = await request.json();
 
       // Validate required fields

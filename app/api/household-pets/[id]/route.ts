@@ -7,15 +7,17 @@
  * Phase 29: Household Pet Management
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { z } from 'zod';
 import { HouseholdPetType } from '@prisma/client';
 import {
   updatePetCategoryNames,
   orphanPetCategories,
 } from '@/lib/services/householdCategoryService';
+
+type RouteContext = { params: Promise<{ id: string }> };
 
 // =============================================================================
 // VALIDATION SCHEMAS
@@ -32,14 +34,10 @@ const UpdatePetSchema = z.object({
 // GET - Retrieve a specific pet
 // =============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission<RouteContext>('settings.read', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id } = await params;
+      const userId = auth.userId;
+      const { id } = await context!.params;
 
       // Get pet with ownership verification
       const pet = await prisma.householdPet.findFirst({
@@ -79,21 +77,16 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // PUT - Update a pet
 // =============================================================================
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const PUT = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id } = await params;
+      const userId = auth.userId;
+      const { id } = await context!.params;
       const body = await request.json();
 
       // Validate input
@@ -184,21 +177,16 @@ export async function PUT(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // DELETE - Delete a pet (orphans categories instead of deleting them)
 // =============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const DELETE = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id } = await params;
+      const userId = auth.userId;
+      const { id } = await context!.params;
 
       // Get pet with ownership verification
       const pet = await prisma.householdPet.findFirst({
@@ -248,8 +236,7 @@ export async function DELETE(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // HELPER: Update household pet counts

@@ -1,18 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { verifyOwnership } from '@/lib/utils/ownership';
 
+type RouteContext = { params: Promise<{ id: string }> };
+
 // GET /api/assets/:id - Get a single asset with full details
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission<RouteContext>('investment.read', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const asset = await prisma.asset.findUnique({
         where: { id },
         include: {
@@ -28,7 +26,7 @@ export async function GET(
         },
       });
 
-      const ownershipResult = verifyOwnership(asset, authReq.user!.userId, 'Asset');
+      const ownershipResult = verifyOwnership(asset, auth.userId, 'Asset');
       if (!ownershipResult.success) return ownershipResult.response;
 
       // Use verified resource (TypeScript knows it's non-null after success check)
@@ -77,17 +75,12 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // PUT /api/assets/:id - Update an asset
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const PUT = withPermission<RouteContext>('investment.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const body = await request.json();
 
       // Verify ownership
@@ -95,7 +88,7 @@ export async function PUT(
         where: { id },
       });
 
-      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Asset');
+      const ownershipResult = verifyOwnership(existing, auth.userId, 'Asset');
       if (!ownershipResult.success) return ownershipResult.response;
 
       // Use verified resource (TypeScript knows it's non-null after success check)
@@ -189,24 +182,19 @@ export async function PUT(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // DELETE /api/assets/:id - Delete an asset
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('investment.delete', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
 
       // Verify ownership
       const existing = await prisma.asset.findUnique({
         where: { id },
       });
 
-      const ownershipResult = verifyOwnership(existing, authReq.user!.userId, 'Asset');
+      const ownershipResult = verifyOwnership(existing, auth.userId, 'Asset');
       if (!ownershipResult.success) return ownershipResult.response;
 
       // Delete the asset (cascades to value history and service records)
@@ -222,5 +210,4 @@ export async function DELETE(
         { status: 500 }
       );
     }
-  });
-}
+});

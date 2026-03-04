@@ -1,19 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { calculateTaxPosition } from '@/lib/tax/auTax';
 import { toAnnual } from '@/lib/utils/frequencies';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
       // Fetch user's income and expenses
       const income = await prisma.income.findMany({
-        where: { userId: authReq.user!.userId },
+        where: { userId: auth.userId },
       });
 
       const expenses = await prisma.expense.findMany({
-        where: { userId: authReq.user!.userId },
+        where: { userId: auth.userId },
       });
 
       // Convert to annual amounts and prepare for tax calculation
@@ -61,5 +60,4 @@ export async function GET(request: NextRequest) {
       console.error('Tax calculation error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

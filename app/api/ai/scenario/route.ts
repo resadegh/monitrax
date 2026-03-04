@@ -5,14 +5,14 @@
  * Analyze "what-if" financial scenarios
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   analyzeScenario,
   buildFinancialContextFromSnapshot,
   isGeminiConfigured,
 } from '@/lib/ai';
 import { collectStrategyData } from '@/lib/strategy';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 const VALID_SCENARIO_TYPES = [
   'extra_payment',
@@ -23,10 +23,9 @@ const VALID_SCENARIO_TYPES = [
 
 type ScenarioType = (typeof VALID_SCENARIO_TYPES)[number];
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('report.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Check if AI is configured
       if (!isGeminiConfigured()) {
@@ -126,5 +125,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

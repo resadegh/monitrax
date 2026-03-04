@@ -5,23 +5,20 @@
  * DELETE /api/categories/[id]    - Delete/deactivate a category
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership } from '@/lib/utils/ownership';
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+type RouteContext = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/categories/[id]
  * Get a single category by ID
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission<RouteContext>('settings.read', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
 
       // Check if it's a system category
       if (id.startsWith('system:')) {
@@ -35,7 +32,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         where: { id },
       });
 
-      const ownershipResult = verifyOwnership(category, authReq.user!.userId, 'Category');
+      const ownershipResult = verifyOwnership(category, auth.userId, 'Category');
       if (!ownershipResult.success) return ownershipResult.response;
 
       // Use verified resource (TypeScript knows it's non-null after success check)
@@ -60,17 +57,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       console.error('Get category error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
 /**
  * PUT /api/categories/[id]
  * Update a category
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  return withAuth(request, async (authReq) => {
+export const PUT = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const body = await request.json();
       const { name, description, color, icon, isActive, sortOrder } = body;
 
@@ -86,7 +81,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         where: { id },
       });
 
-      const ownershipResult = verifyOwnership(category, authReq.user!.userId, 'Category');
+      const ownershipResult = verifyOwnership(category, auth.userId, 'Category');
       if (!ownershipResult.success) return ownershipResult.response;
 
       // Prepare update data
@@ -104,7 +99,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         // Check for duplicate code
         const existing = await prisma.category.findFirst({
           where: {
-            userId: authReq.user!.userId,
+            userId: auth.userId,
             code: updateData.code as string,
             id: { not: id },
           },
@@ -149,18 +144,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       console.error('Update category error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
 /**
  * DELETE /api/categories/[id]
  * Delete a category (soft delete - marks as inactive)
  * If force=true, permanently deletes if no expenses/income use it
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const { searchParams } = new URL(request.url);
       const force = searchParams.get('force') === 'true';
 
@@ -180,7 +173,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         },
       });
 
-      const ownershipResult = verifyOwnership(category, authReq.user!.userId, 'Category');
+      const ownershipResult = verifyOwnership(category, auth.userId, 'Category');
       if (!ownershipResult.success) return ownershipResult.response;
 
       // Use verified resource (TypeScript knows it's non-null after success check)
@@ -225,5 +218,4 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       console.error('Delete category error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

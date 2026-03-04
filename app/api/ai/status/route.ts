@@ -6,12 +6,11 @@
  * Phase 27 - Now powered by Google Gemini
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { isGeminiConfigured, GEMINI_MODELS, AI_ENGINE_VERSION } from '@/lib/ai';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
       const configured = isGeminiConfigured();
 
@@ -48,5 +47,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

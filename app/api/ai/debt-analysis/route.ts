@@ -8,9 +8,9 @@
  * Phase 27 - Powered by Google Gemini AI
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   isGeminiConfigured,
   generateGeminiJSONCompletion,
@@ -69,282 +69,280 @@ interface DebtAnalysisResponse {
 // API Handler
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('report.read', async (request, auth) => {
+  try {
+    const userId = auth.userId;
+
+    // Parse request body to get pre-calculated availableForExtraRepayments from frontend
+    let requestBody: { availableForExtraRepayments?: number } = {};
     try {
-      const userId = authReq.user!.userId;
+      requestBody = await request.json();
+    } catch {
+      // No body provided - will calculate on server side
+    }
 
-      // Parse request body to get pre-calculated availableForExtraRepayments from frontend
-      let requestBody: { availableForExtraRepayments?: number } = {};
-      try {
-        requestBody = await authReq.json();
-      } catch {
-        // No body provided - will calculate on server side
-      }
-
-      // Check if Gemini is configured
-      if (!isGeminiConfigured()) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'AI analysis not available',
-            message: 'Please configure GEMINI_API_KEY to enable AI debt analysis.',
-          },
-          { status: 503 }
-        );
-      }
-
-      console.log(`[API] AI Debt Analysis request for user: ${userId}`);
-
-      // Fetch user's loans with offset accounts
-      const loans = await prisma.loan.findMany({
-        where: { userId },
-        include: {
-          offsetAccount: true,
-          property: {
-            select: {
-              id: true,
-              name: true,
-              address: true,
-              type: true,
-            }
-          }
-        },
-        orderBy: { principal: 'desc' },
-      });
-
-      if (loans.length === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'No loans found',
-            message: 'Please add your loans before running AI debt analysis.',
-          },
-          { status: 404 }
-        );
-      }
-
-      // Fetch user's income, expenses, accounts, and budget analysis for cash flow context
-      const [incomes, expenses, accounts, budgetAnalysis] = await Promise.all([
-        prisma.income.findMany({
-          where: { userId },
-          select: {
-            amount: true,
-            frequency: true,
-            type: true,
-            salaryType: true,  // GROSS or NET
-            netAmount: true,   // User-provided NET amount
-          },
-        }),
-        prisma.expense.findMany({
-          where: { userId },
-          select: { amount: true, frequency: true, isEssential: true },
-        }),
-        prisma.account.findMany({
-          where: { userId },
-          select: { currentBalance: true, type: true },
-        }),
-        // Phase 28: Check for confirmed budget analysis with realistic expenses
-        prisma.budgetAnalysis.findFirst({
-          where: {
-            userId,
-            status: 'CONFIRMED',
-          },
-          orderBy: { analysisDate: 'desc' },
-        }),
-      ]);
-
-      // Calculate monthly totals - helper function
-      const convertToMonthly = (amount: number, freq: string): number => {
-        switch (freq) {
-          case 'WEEKLY': return amount * 52 / 12;
-          case 'FORTNIGHTLY': return amount * 26 / 12;
-          case 'MONTHLY': return amount;
-          case 'QUARTERLY': return amount / 3;
-          case 'ANNUALLY': return amount / 12;
-          default: return amount;
-        }
-      };
-
-      // Calculate NET income (after PAYG tax) - same as Cashflow API
-      let monthlyNetIncome = 0;
-      for (const income of incomes) {
-        const annualAmount = convertToMonthly(income.amount, income.frequency) * 12;
-        let annualNet: number;
-
-        if (income.type === 'SALARY' && income.salaryType === 'GROSS') {
-          // GROSS salary: calculate PAYG tax
-          const takeHome = calculateTakeHomePay(annualAmount, income.frequency as any);
-          annualNet = takeHome.netAmount;
-        } else if (income.netAmount) {
-          // User provided NET amount directly
-          annualNet = convertToMonthly(income.netAmount, income.frequency) * 12;
-        } else {
-          // Already NET or non-taxable (rental, dividends, etc.)
-          annualNet = annualAmount;
-        }
-
-        monthlyNetIncome += annualNet / 12;
-      }
-
-      const trackedExpenses = expenses.reduce((sum: number, e: typeof expenses[0]) => sum + convertToMonthly(e.amount, e.frequency), 0);
-
-      // Phase 28: Use realistic budget if available, otherwise use tracked expenses only
-      const hasRealisticBudget = budgetAnalysis && budgetAnalysis.userFinalBudget;
-      const monthlyExpenses = hasRealisticBudget
-        ? budgetAnalysis.userFinalBudget!
-        : trackedExpenses;
-      const monthlySurplus = monthlyNetIncome - monthlyExpenses;
-      const totalLoanRepayments = loans.reduce((sum: number, l: typeof loans[0]) => sum + convertToMonthly(l.minRepayment, l.repaymentFrequency), 0);
-      const totalDebt = loans.reduce((sum: number, l: typeof loans[0]) => sum + l.principal, 0);
-      const totalOffsetBalance = loans.reduce((sum: number, l: typeof loans[0]) => sum + (l.offsetAccount?.currentBalance || 0), 0);
-      const cashBalance = accounts.reduce((sum: number, a: typeof accounts[0]) => sum + a.currentBalance, 0);
-
-      // CRITICAL: Use the pre-calculated availableForExtraRepayments from frontend if provided
-      // This ensures the AI uses the EXACT same value shown in the UI header ($494)
-      // The frontend calculates this using the cashflow API which has the authoritative calculation
-      const calculatedAvailable = Math.max(0, monthlySurplus - totalLoanRepayments);
-      const availableForExtraRepayments = requestBody.availableForExtraRepayments !== undefined && requestBody.availableForExtraRepayments >= 0
-        ? requestBody.availableForExtraRepayments
-        : calculatedAvailable;
-
-      console.log('[API] Debt Analysis - Cash Flow Breakdown:');
-      console.log(`  Monthly NET Income: $${monthlyNetIncome.toFixed(0)}`);
-      console.log(`  Monthly Expenses: $${monthlyExpenses.toFixed(0)}${hasRealisticBudget ? ' (realistic budget)' : ' (tracked only)'}`);
-      if (hasRealisticBudget) {
-        console.log(`    └── Tracked: $${trackedExpenses.toFixed(0)}, Variable Est: $${(budgetAnalysis.aiVariableEstimate || 0).toFixed(0)}`);
-      }
-      console.log(`  Monthly Loan Repayments: $${totalLoanRepayments.toFixed(0)}`);
-      console.log(`  Server Calculated Available: $${calculatedAvailable.toFixed(0)}`);
-      console.log(`  Frontend Provided Available: $${requestBody.availableForExtraRepayments !== undefined ? requestBody.availableForExtraRepayments.toFixed(0) : 'N/A'}`);
-      console.log(`  >>> USING Available for Extra: $${availableForExtraRepayments.toFixed(0)} <<<`);
-
-      // Build comprehensive prompt for AI
-      const userPrompt = buildDebtAnalysisPrompt({
-        loans,
-        monthlyIncome: monthlyNetIncome,  // Use NET income, not GROSS
-        monthlyExpenses,
-        monthlySurplus,
-        totalLoanRepayments,
-        totalDebt,
-        totalOffsetBalance,
-        cashBalance,
-        availableForExtraRepayments,  // CRITICAL: Pass the pre-calculated available amount
-      });
-
-      console.log('[API] Generating AI debt analysis...');
-
-      // Generate AI analysis
-      const { data, usage } = await generateGeminiJSONCompletion<DebtAnalysisResponse>({
-        model: GEMINI_MODELS.FINANCIAL_ADVISOR,
-        systemPrompt: DEBT_ANALYSIS_PROMPT,
-        userPrompt,
-        maxTokens: 3000,
-        temperature: 0.7,
-      });
-
-      console.log(`[API] AI debt analysis generated. Tokens: ${usage.totalTokens}`);
-
-      // =======================================================================
-      // SERVER-SIDE VALIDATION: Cap AI recommendations to actual available cashflow
-      // The AI cannot be fully trusted to follow constraints, so we enforce them here
-      // =======================================================================
-
-      const validatedAnalysis = validateAndCapRecommendations(data, availableForExtraRepayments, cashBalance);
-
-      console.log('[API] Validated surplus recommendations:');
-      console.log(`  AI Original - Min: $${data.optimalSurplus?.minimum}, Rec: $${data.optimalSurplus?.recommended}, Agg: $${data.optimalSurplus?.aggressive}`);
-      console.log(`  After Cap - Min: $${validatedAnalysis.optimalSurplus.minimum}, Rec: $${validatedAnalysis.optimalSurplus.recommended}, Agg: $${validatedAnalysis.optimalSurplus.aggressive}`);
-
-      // =======================================================================
-      // PERSIST: Save the analysis to database so it persists across page loads
-      // =======================================================================
-      try {
-        await prisma.debtAnalysis.create({
-          data: {
-            userId,
-            summary: validatedAnalysis.summary || '',
-            debtHealthScore: validatedAnalysis.debtHealthScore || 0,
-            recommendedStrategy: validatedAnalysis.recommendedStrategy || 'AVALANCHE',
-            strategyReason: validatedAnalysis.strategyReason || '',
-            surplusMinimum: validatedAnalysis.optimalSurplus?.minimum || 0,
-            surplusRecommended: validatedAnalysis.optimalSurplus?.recommended || 0,
-            surplusAggressive: validatedAnalysis.optimalSurplus?.aggressive || 0,
-            surplusReasoning: validatedAnalysis.optimalSurplus?.reasoning || null,
-            keyInsights: validatedAnalysis.keyInsights || [],
-            loanPriority: validatedAnalysis.loanPriority || [],
-            actionPlan: validatedAnalysis.actionPlan || [],
-            projections: validatedAnalysis.projections || null,
-            warnings: validatedAnalysis.warnings || [],
-            totalDebt,
-            monthlyIncome: monthlyNetIncome,
-            monthlyExpenses,
-            availableForExtra: availableForExtraRepayments,
-            loanCount: loans.length,
-          },
-        });
-        console.log('[API] Debt analysis saved to database');
-      } catch (saveError) {
-        // Don't fail the request if save fails - just log it
-        console.error('[API] Failed to save debt analysis to database:', saveError);
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          analysis: validatedAnalysis,
-          context: {
-            totalDebt,
-            totalOffsetBalance,
-            monthlyIncome: monthlyNetIncome,  // Use NET income
-            monthlyExpenses,
-            monthlySurplus,
-            totalLoanRepayments,
-            availableForExtraRepayments,
-            cashBalance,
-            loanCount: loans.length,
-
-            // Phase 28: Budget analysis integration
-            budgetAnalysis: hasRealisticBudget ? {
-              available: true,
-              totalRealisticBudget: budgetAnalysis.userFinalBudget,
-              recurringExpenses: budgetAnalysis.recurringExpensesTotal,
-              variableExpenses: budgetAnalysis.aiVariableEstimate,
-              usedInCalculation: true,
-            } : {
-              available: false,
-              usedInCalculation: false,
-            },
-
-            // Comparison: with vs without realistic budget
-            comparison: hasRealisticBudget ? {
-              withoutBudgetAnalysis: {
-                monthlyExpenses: trackedExpenses,
-                availableForExtra: Math.max(0, (monthlyNetIncome - trackedExpenses) - totalLoanRepayments),
-              },
-              withBudgetAnalysis: {
-                monthlyExpenses: monthlyExpenses,
-                availableForExtra: availableForExtraRepayments,
-              },
-            } : null,
-          },
-          usage,
-        },
-      });
-    } catch (error) {
-      console.error('[API] AI Debt Analysis error:', error);
-
+    // Check if Gemini is configured
+    if (!isGeminiConfigured()) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Failed to generate debt analysis',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          error: 'AI analysis not available',
+          message: 'Please configure GEMINI_API_KEY to enable AI debt analysis.',
         },
-        { status: 500 }
+        { status: 503 }
       );
     }
-  });
-}
+
+    console.log(`[API] AI Debt Analysis request for user: ${userId}`);
+
+    // Fetch user's loans with offset accounts
+    const loans = await prisma.loan.findMany({
+      where: { userId },
+      include: {
+        offsetAccount: true,
+        property: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            type: true,
+          }
+        }
+      },
+      orderBy: { principal: 'desc' },
+    });
+
+    if (loans.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'No loans found',
+          message: 'Please add your loans before running AI debt analysis.',
+        },
+        { status: 404 }
+      );
+    }
+
+    // Fetch user's income, expenses, accounts, and budget analysis for cash flow context
+    const [incomes, expenses, accounts, budgetAnalysis] = await Promise.all([
+      prisma.income.findMany({
+        where: { userId },
+        select: {
+          amount: true,
+          frequency: true,
+          type: true,
+          salaryType: true,  // GROSS or NET
+          netAmount: true,   // User-provided NET amount
+        },
+      }),
+      prisma.expense.findMany({
+        where: { userId },
+        select: { amount: true, frequency: true, isEssential: true },
+      }),
+      prisma.account.findMany({
+        where: { userId },
+        select: { currentBalance: true, type: true },
+      }),
+      // Phase 28: Check for confirmed budget analysis with realistic expenses
+      prisma.budgetAnalysis.findFirst({
+        where: {
+          userId,
+          status: 'CONFIRMED',
+        },
+        orderBy: { analysisDate: 'desc' },
+      }),
+    ]);
+
+    // Calculate monthly totals - helper function
+    const convertToMonthly = (amount: number, freq: string): number => {
+      switch (freq) {
+        case 'WEEKLY': return amount * 52 / 12;
+        case 'FORTNIGHTLY': return amount * 26 / 12;
+        case 'MONTHLY': return amount;
+        case 'QUARTERLY': return amount / 3;
+        case 'ANNUALLY': return amount / 12;
+        default: return amount;
+      }
+    };
+
+    // Calculate NET income (after PAYG tax) - same as Cashflow API
+    let monthlyNetIncome = 0;
+    for (const income of incomes) {
+      const annualAmount = convertToMonthly(income.amount, income.frequency) * 12;
+      let annualNet: number;
+
+      if (income.type === 'SALARY' && income.salaryType === 'GROSS') {
+        // GROSS salary: calculate PAYG tax
+        const takeHome = calculateTakeHomePay(annualAmount, income.frequency as any);
+        annualNet = takeHome.netAmount;
+      } else if (income.netAmount) {
+        // User provided NET amount directly
+        annualNet = convertToMonthly(income.netAmount, income.frequency) * 12;
+      } else {
+        // Already NET or non-taxable (rental, dividends, etc.)
+        annualNet = annualAmount;
+      }
+
+      monthlyNetIncome += annualNet / 12;
+    }
+
+    const trackedExpenses = expenses.reduce((sum: number, e: typeof expenses[0]) => sum + convertToMonthly(e.amount, e.frequency), 0);
+
+    // Phase 28: Use realistic budget if available, otherwise use tracked expenses only
+    const hasRealisticBudget = budgetAnalysis && budgetAnalysis.userFinalBudget;
+    const monthlyExpenses = hasRealisticBudget
+      ? budgetAnalysis.userFinalBudget!
+      : trackedExpenses;
+    const monthlySurplus = monthlyNetIncome - monthlyExpenses;
+    const totalLoanRepayments = loans.reduce((sum: number, l: typeof loans[0]) => sum + convertToMonthly(l.minRepayment, l.repaymentFrequency), 0);
+    const totalDebt = loans.reduce((sum: number, l: typeof loans[0]) => sum + l.principal, 0);
+    const totalOffsetBalance = loans.reduce((sum: number, l: typeof loans[0]) => sum + (l.offsetAccount?.currentBalance || 0), 0);
+    const cashBalance = accounts.reduce((sum: number, a: typeof accounts[0]) => sum + a.currentBalance, 0);
+
+    // CRITICAL: Use the pre-calculated availableForExtraRepayments from frontend if provided
+    // This ensures the AI uses the EXACT same value shown in the UI header ($494)
+    // The frontend calculates this using the cashflow API which has the authoritative calculation
+    const calculatedAvailable = Math.max(0, monthlySurplus - totalLoanRepayments);
+    const availableForExtraRepayments = requestBody.availableForExtraRepayments !== undefined && requestBody.availableForExtraRepayments >= 0
+      ? requestBody.availableForExtraRepayments
+      : calculatedAvailable;
+
+    console.log('[API] Debt Analysis - Cash Flow Breakdown:');
+    console.log(`  Monthly NET Income: $${monthlyNetIncome.toFixed(0)}`);
+    console.log(`  Monthly Expenses: $${monthlyExpenses.toFixed(0)}${hasRealisticBudget ? ' (realistic budget)' : ' (tracked only)'}`);
+    if (hasRealisticBudget) {
+      console.log(`    └── Tracked: $${trackedExpenses.toFixed(0)}, Variable Est: $${(budgetAnalysis.aiVariableEstimate || 0).toFixed(0)}`);
+    }
+    console.log(`  Monthly Loan Repayments: $${totalLoanRepayments.toFixed(0)}`);
+    console.log(`  Server Calculated Available: $${calculatedAvailable.toFixed(0)}`);
+    console.log(`  Frontend Provided Available: $${requestBody.availableForExtraRepayments !== undefined ? requestBody.availableForExtraRepayments.toFixed(0) : 'N/A'}`);
+    console.log(`  >>> USING Available for Extra: $${availableForExtraRepayments.toFixed(0)} <<<`);
+
+    // Build comprehensive prompt for AI
+    const userPrompt = buildDebtAnalysisPrompt({
+      loans,
+      monthlyIncome: monthlyNetIncome,  // Use NET income, not GROSS
+      monthlyExpenses,
+      monthlySurplus,
+      totalLoanRepayments,
+      totalDebt,
+      totalOffsetBalance,
+      cashBalance,
+      availableForExtraRepayments,  // CRITICAL: Pass the pre-calculated available amount
+    });
+
+    console.log('[API] Generating AI debt analysis...');
+
+    // Generate AI analysis
+    const { data, usage } = await generateGeminiJSONCompletion<DebtAnalysisResponse>({
+      model: GEMINI_MODELS.FINANCIAL_ADVISOR,
+      systemPrompt: DEBT_ANALYSIS_PROMPT,
+      userPrompt,
+      maxTokens: 3000,
+      temperature: 0.7,
+    });
+
+    console.log(`[API] AI debt analysis generated. Tokens: ${usage.totalTokens}`);
+
+    // =======================================================================
+    // SERVER-SIDE VALIDATION: Cap AI recommendations to actual available cashflow
+    // The AI cannot be fully trusted to follow constraints, so we enforce them here
+    // =======================================================================
+
+    const validatedAnalysis = validateAndCapRecommendations(data, availableForExtraRepayments, cashBalance);
+
+    console.log('[API] Validated surplus recommendations:');
+    console.log(`  AI Original - Min: $${data.optimalSurplus?.minimum}, Rec: $${data.optimalSurplus?.recommended}, Agg: $${data.optimalSurplus?.aggressive}`);
+    console.log(`  After Cap - Min: $${validatedAnalysis.optimalSurplus.minimum}, Rec: $${validatedAnalysis.optimalSurplus.recommended}, Agg: $${validatedAnalysis.optimalSurplus.aggressive}`);
+
+    // =======================================================================
+    // PERSIST: Save the analysis to database so it persists across page loads
+    // =======================================================================
+    try {
+      await prisma.debtAnalysis.create({
+        data: {
+          userId,
+          summary: validatedAnalysis.summary || '',
+          debtHealthScore: validatedAnalysis.debtHealthScore || 0,
+          recommendedStrategy: validatedAnalysis.recommendedStrategy || 'AVALANCHE',
+          strategyReason: validatedAnalysis.strategyReason || '',
+          surplusMinimum: validatedAnalysis.optimalSurplus?.minimum || 0,
+          surplusRecommended: validatedAnalysis.optimalSurplus?.recommended || 0,
+          surplusAggressive: validatedAnalysis.optimalSurplus?.aggressive || 0,
+          surplusReasoning: validatedAnalysis.optimalSurplus?.reasoning || null,
+          keyInsights: validatedAnalysis.keyInsights || [],
+          loanPriority: validatedAnalysis.loanPriority || [],
+          actionPlan: validatedAnalysis.actionPlan || [],
+          projections: validatedAnalysis.projections || null,
+          warnings: validatedAnalysis.warnings || [],
+          totalDebt,
+          monthlyIncome: monthlyNetIncome,
+          monthlyExpenses,
+          availableForExtra: availableForExtraRepayments,
+          loanCount: loans.length,
+        },
+      });
+      console.log('[API] Debt analysis saved to database');
+    } catch (saveError) {
+      // Don't fail the request if save fails - just log it
+      console.error('[API] Failed to save debt analysis to database:', saveError);
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        analysis: validatedAnalysis,
+        context: {
+          totalDebt,
+          totalOffsetBalance,
+          monthlyIncome: monthlyNetIncome,  // Use NET income
+          monthlyExpenses,
+          monthlySurplus,
+          totalLoanRepayments,
+          availableForExtraRepayments,
+          cashBalance,
+          loanCount: loans.length,
+
+          // Phase 28: Budget analysis integration
+          budgetAnalysis: hasRealisticBudget ? {
+            available: true,
+            totalRealisticBudget: budgetAnalysis.userFinalBudget,
+            recurringExpenses: budgetAnalysis.recurringExpensesTotal,
+            variableExpenses: budgetAnalysis.aiVariableEstimate,
+            usedInCalculation: true,
+          } : {
+            available: false,
+            usedInCalculation: false,
+          },
+
+          // Comparison: with vs without realistic budget
+          comparison: hasRealisticBudget ? {
+            withoutBudgetAnalysis: {
+              monthlyExpenses: trackedExpenses,
+              availableForExtra: Math.max(0, (monthlyNetIncome - trackedExpenses) - totalLoanRepayments),
+            },
+            withBudgetAnalysis: {
+              monthlyExpenses: monthlyExpenses,
+              availableForExtra: availableForExtraRepayments,
+            },
+          } : null,
+        },
+        usage,
+      },
+    });
+  } catch (error) {
+    console.error('[API] AI Debt Analysis error:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to generate debt analysis',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+});
 
 // =============================================================================
 // Server-Side Validation

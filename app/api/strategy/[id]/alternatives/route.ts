@@ -3,24 +3,22 @@
  * GET /api/strategy/:id/alternatives - Get alternative approaches for a recommendation
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { generateAlternatives } from '@/lib/strategy';
 
-export async function GET(
-  request: NextRequest,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const GET = withPermission<RouteContext>('report.read', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
 
       // Fetch recommendation
       const recommendation = await prisma.strategyRecommendation.findFirst({
         where: {
-          id: params.id,
+          id: id,
           userId,
         },
       });
@@ -60,5 +58,4 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});

@@ -6,9 +6,9 @@
  * Uses centralized cashflowOrchestrator for all calculations.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import prisma from '@/lib/db';
 import { calculateCashflow, CashflowInput } from '@/lib/calculations/cashflowOrchestrator';
 
@@ -112,8 +112,7 @@ function transformLoanData(loans: any[]): CashflowInput['loans'] {
 // ROUTE HANDLER
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('report.read', async (request, auth) => {
     try {
       const body = await request.json();
 
@@ -138,21 +137,21 @@ export async function POST(request: NextRequest) {
       // Fetch from database if not provided
       if (input.fetchFromDatabase && !incomeData) {
         const dbIncome = await prisma.income.findMany({
-          where: { userId: authReq.user!.userId },
+          where: { userId: auth.userId },
         });
         incomeData = dbIncome;
       }
 
       if (input.fetchFromDatabase && !expenseData) {
         const dbExpenses = await prisma.expense.findMany({
-          where: { userId: authReq.user!.userId },
+          where: { userId: auth.userId },
         });
         expenseData = dbExpenses;
       }
 
       if (input.fetchFromDatabase && !loanData) {
         const dbLoans = await prisma.loan.findMany({
-          where: { userId: authReq.user!.userId },
+          where: { userId: auth.userId },
           include: { offsetAccount: true },
         });
         loanData = dbLoans;
@@ -207,19 +206,17 @@ export async function POST(request: NextRequest) {
       console.error('Cashflow calculation error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
 // GET endpoint - fetch user's cashflow from database
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
       // Fetch all user data
       const [income, expenses, loans] = await Promise.all([
-        prisma.income.findMany({ where: { userId: authReq.user!.userId } }),
-        prisma.expense.findMany({ where: { userId: authReq.user!.userId } }),
+        prisma.income.findMany({ where: { userId: auth.userId } }),
+        prisma.expense.findMany({ where: { userId: auth.userId } }),
         prisma.loan.findMany({
-          where: { userId: authReq.user!.userId },
+          where: { userId: auth.userId },
           include: { offsetAccount: true },
         }),
       ]);
@@ -245,5 +242,4 @@ export async function GET(request: NextRequest) {
       console.error('Cashflow calculation error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
