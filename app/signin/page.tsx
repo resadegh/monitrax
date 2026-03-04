@@ -28,29 +28,31 @@ export default function SignInPage() {
     apple: false,
     microsoft: false,
   });
-  const { login, user } = useAuth();
+  const { login, loginWithGoogle, user, isGCPEnabled, mfaChallenge, token } = useAuth();
   const router = useRouter();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (including after MFA resolution)
   useEffect(() => {
-    if (user) {
+    if ((user || token) && !mfaChallenge) {
       router.push('/dashboard');
     }
-  }, [user, router]);
+  }, [user, token, mfaChallenge, router]);
 
-  // Check which OAuth providers are configured
+  // Check which OAuth providers are configured (legacy mode only)
   useEffect(() => {
-    fetch('/api/auth/providers')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.available) {
-          setAvailableProviders(data.available);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to fetch providers:', err);
-      });
-  }, []);
+    if (!isGCPEnabled) {
+      fetch('/api/auth/providers')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.available) {
+            setAvailableProviders(data.available);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to fetch providers:', err);
+        });
+    }
+  }, [isGCPEnabled]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,16 +61,46 @@ export default function SignInPage() {
 
     try {
       await login(email, password);
-      router.push('/dashboard');
+      // Navigation happens via useEffect when token is set (handles MFA flow too)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Incorrect email or password');
+      const message = err instanceof Error ? err.message : 'Incorrect email or password';
+      if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password')) {
+        setError('Incorrect email or password');
+      } else if (message.includes('auth/user-not-found')) {
+        setError('No account found with this email');
+      } else if (message.includes('auth/too-many-requests')) {
+        setError('Too many failed attempts. Please try again later.');
+      } else {
+        setError(message);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOAuthLogin = (provider: 'google' | 'facebook') => {
-    window.location.href = `/api/auth/oauth/${provider}`;
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setIsLoading(true);
+
+    try {
+      if (isGCPEnabled) {
+        await loginWithGoogle();
+        // Navigation happens via useEffect when token is set (handles MFA flow too)
+      } else {
+        window.location.href = '/api/auth/oauth/google';
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Google sign-in failed';
+      if (message.includes('auth/popup-closed-by-user')) {
+        setError('');
+      } else if (message.includes('auth/popup-blocked')) {
+        setError('Pop-up was blocked. Please allow pop-ups for this site.');
+      } else {
+        setError(message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -122,12 +154,12 @@ export default function SignInPage() {
           )}
 
           {/* OAuth buttons */}
-          {availableProviders.google && (
+          {(isGCPEnabled || availableProviders.google) && (
             <Button
               type="button"
               variant="outline"
               className="w-full mb-4"
-              onClick={() => handleOAuthLogin('google')}
+              onClick={handleGoogleSignIn}
               disabled={isLoading}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -140,7 +172,7 @@ export default function SignInPage() {
             </Button>
           )}
 
-          {(availableProviders.google || availableProviders.facebook) && (
+          {(isGCPEnabled || availableProviders.google || availableProviders.facebook) && (
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t" />

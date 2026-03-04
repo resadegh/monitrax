@@ -1,14 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
+import { verifyOwnership } from '@/lib/utils/ownership';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const GET = withPermission<RouteContext>('account.read', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const account = await prisma.account.findUnique({
         where: { id },
         include: {
@@ -20,36 +19,27 @@ export async function GET(
         },
       });
 
-      if (!account || account.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Account not found' }, { status: 404 });
-      }
+      // Verify ownership using centralized utility
+      const result = verifyOwnership(account, auth.userId, 'Account');
+      if (!result.success) return result.response;
 
-      return NextResponse.json(account);
+      return NextResponse.json(result.resource);
     } catch (error) {
       console.error('Get account error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const PUT = withPermission<RouteContext>('account.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const body = await request.json();
       const { name, type, currentBalance, interestRate } = body;
 
       // Verify ownership
-      const existing = await prisma.account.findUnique({
-        where: { id },
-      });
-
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Account not found' }, { status: 404 });
-      }
+      const existing = await prisma.account.findUnique({ where: { id } });
+      const result = verifyOwnership(existing, auth.userId, 'Account');
+      if (!result.success) return result.response;
 
       const account = await prisma.account.update({
         where: { id },
@@ -66,33 +56,22 @@ export async function PUT(
       console.error('Update account error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('account.delete', async (request, auth, context) => {
     try {
-      const { id } = await params;
-      // Verify ownership
-      const existing = await prisma.account.findUnique({
-        where: { id },
-      });
+      const { id } = await context!.params;
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Account not found' }, { status: 404 });
-      }
+      // Verify ownership using centralized utility
+      const existing = await prisma.account.findUnique({ where: { id } });
+      const result = verifyOwnership(existing, auth.userId, 'Account');
+      if (!result.success) return result.response;
 
-      await prisma.account.delete({
-        where: { id },
-      });
+      await prisma.account.delete({ where: { id } });
 
       return NextResponse.json({ message: 'Account deleted successfully' });
     } catch (error) {
       console.error('Delete account error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

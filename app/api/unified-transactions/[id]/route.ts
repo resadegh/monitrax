@@ -9,22 +9,20 @@
  * Blueprint reference: PHASE_13_TRANSACTIONAL_INTELLIGENCE.md Section 13.5.2
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
+
+type RouteContext = { params: Promise<{ id: string }> };
 
 // =============================================================================
 // GET - Single Transaction
 // =============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission<RouteContext>('transaction.read', async (request, auth, context) => {
     try {
-      const { id } = await params;
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
 
       const transaction = await prisma.unifiedTransaction.findUnique({
         where: { id },
@@ -53,21 +51,16 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // PATCH - Update Transaction (Category Correction, Tags)
 // =============================================================================
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const PATCH = withPermission<RouteContext>('transaction.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
       const body = await request.json();
 
       // Verify ownership
@@ -176,21 +169,16 @@ export async function PATCH(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // DELETE - Delete Transaction
 // =============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('transaction.delete', async (request, auth, context) => {
     try {
-      const { id } = await params;
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
 
       // Verify ownership
       const existing = await prisma.unifiedTransaction.findUnique({
@@ -221,5 +209,4 @@ export async function DELETE(
         { status: 500 }
       );
     }
-  });
-}
+});

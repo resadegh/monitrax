@@ -5,9 +5,9 @@
  * Calculate property return on investment metrics.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import prisma from '@/lib/db';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
@@ -134,8 +134,7 @@ function calculatePropertyROI(
 // ROUTE HANDLER
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('report.read', async (request, auth) => {
     try {
       const body = await request.json();
 
@@ -159,7 +158,7 @@ export async function POST(request: NextRequest) {
         const property = await prisma.property.findFirst({
           where: {
             id: input.propertyId,
-            userId: authReq.user!.userId,
+            userId: auth.userId,
           },
           include: {
             loans: {
@@ -272,5 +271,4 @@ export async function POST(request: NextRequest) {
       console.error('Property ROI calculation error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

@@ -1690,3 +1690,501 @@ This migration:
 1. Adds `isInvestmentContribution` boolean field to `unified_transactions`
 2. Adds `investmentTransactionId` nullable unique field to `unified_transactions`
 
+---
+
+## 13.20 Transaction Categorization Bug Fixes
+
+> **Status: FIXED** (February 2026)
+
+### 13.20.1 Batch Categorization Fix
+
+**Issue:** When categorizing transactions with batch mode (same vendor transactions), only the main transaction was being categorized while additional selected transactions remained uncategorized.
+
+**Root Cause:** The batch categorization query was finding transactions that already had categories set or were marked as investment contributions.
+
+**Fix Applied (app/api/transactions/[id]/link/route.ts):**
+
+```typescript
+const sameVendorTransactions = await prisma.unifiedTransaction.findMany({
+  where: {
+    userId,
+    id: { not: transactionId },
+    OR: merchantName
+      ? [
+          { merchantStandardised: merchantName },
+          { description: { contains: merchantName, mode: 'insensitive' as const } },
+        ]
+      : [{ merchantStandardised: merchantName }],
+    // Only uncategorized transactions (no links, not transfer, not investment)
+    incomeId: null,
+    expenseId: null,
+    loanId: null,
+    isTransfer: false,
+    isInvestmentContribution: false,  // Exclude investment contributions
+    categoryLevel1: null,              // Exclude transactions with category already set
+  },
+  orderBy: { date: 'desc' },
+  take: 20,
+});
+```
+
+### 13.20.2 Merchant Learning Fix
+
+**Issue:** The "Remember category for future transactions" checkbox was not working with custom categories.
+
+**Root Cause:** The merchant mapping was storing the system category code (e.g., 'OTHER') instead of the actual custom category name.
+
+**Schema Update (prisma/schema.prisma):**
+
+```prisma
+model MerchantMapping {
+  // ... existing fields ...
+  customCategoryId      String?   // Reference to user's custom Category if used
+}
+```
+
+**Fix Applied (app/api/transactions/[id]/link/route.ts):**
+
+```typescript
+// Learn merchant mapping for future suggestions
+// Use the actual category (or custom category name if custom)
+const categoryToLearn = body.customCategoryId
+  ? (await prisma.category.findUnique({
+      where: { id: body.customCategoryId },
+      select: { name: true }
+    }))?.name || body.category
+  : body.category;
+
+if (body.learnMerchant && transaction.merchantStandardised && categoryToLearn) {
+  await prisma.merchantMapping.upsert({
+    where: {
+      userId_merchantRaw: {
+        userId,
+        merchantRaw: transaction.merchantStandardised,
+      },
+    },
+    update: {
+      categoryLevel1: categoryToLearn,
+      customCategoryId: body.customCategoryId || null,
+      usageCount: { increment: 1 },
+      updatedAt: new Date(),
+    },
+    create: {
+      userId,
+      merchantRaw: transaction.merchantStandardised,
+      merchantStandardised: transaction.merchantStandardised,
+      categoryLevel1: categoryToLearn,
+      customCategoryId: body.customCategoryId || null,
+      source: 'USER',
+      confidence: 1.0,
+      usageCount: 1,
+    },
+  });
+}
+```
+
+### 13.20.3 Transfer Label Update
+
+**Change:** Updated the transfer checkbox label to include credit card repayments.
+
+**UI Update (components/transactions/TransactionLinkDialog.tsx):**
+
+```tsx
+<Label htmlFor="isTransfer">
+  Transfer / Credit Card Repayment
+</Label>
+<p className="text-xs text-muted-foreground">
+  Internal transfers and credit card payments are excluded from income/expense calculations
+</p>
+```
+
+### 13.20.4 Skip Transaction Button
+
+**Feature:** Added a "Skip for now" button that allows users to skip the current transaction and move to the next one without categorizing it.
+
+**Implementation (components/transactions/TransactionLinkDialog.tsx):**
+
+```tsx
+{/* Skip button - allows skipping to next transaction */}
+{hasMoreTransactions && onNavigateNext && (
+  <div className="flex justify-end border-t pt-3">
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => {
+        onNavigateNext();
+      }}
+      className="text-muted-foreground"
+    >
+      Skip for now →
+    </Button>
+  </div>
+)}
+```
+
+**Use Cases:**
+- Transaction needs investigation before categorization
+- User wants to batch similar transactions later
+- Transaction details are unclear and need bank statement review
+
+---
+
+## 13.21 Transaction Reconciliation (Budget vs Actual)
+
+> **Status: IMPLEMENTED** (February 2026)
+> **Updated: February 4, 2026** - Simplified to Budget = Manual Entries, Actual = Transactions
+
+### 13.21.1 Overview
+
+Transaction reconciliation separates **Budget** (what users plan/expect) from **Actual** (what transactions show in real-time).
+
+**Core Design:**
+- **Budget** = Manual income/expense entries (user's planned amounts)
+- **Actual** = Calculated from linked transactions (real-time from bank feeds)
+
+**Problem Solved:**
+When users both create manual entries AND categorize bank transactions, the old approach of "updating amounts" caused confusion about what was budget vs actual.
+
+**New Solution:**
+- Manual entries remain as BUDGET (never auto-modified)
+- Linking transactions = TAGGING only (no amount updates)
+- Actual is calculated in real-time from linked transactions
+- Users see both Budget and Actual side-by-side
+
+### 13.21.2 Schema (Unchanged)
+
+**Expense and Income models (prisma/schema.prisma):**
+
+```prisma
+model Expense {
+  // ... existing fields ...
+
+  // Budget vs Actual Reconciliation
+  budgetedAmount        Float?            // Original budgeted/estimated amount
+  lastReconciled        DateTime?         // When last reconciled (for audit)
+}
+
+model Income {
+  // ... existing fields ...
+
+  // Budget vs Actual Reconciliation
+  budgetedAmount        Float?            // Original budgeted/estimated amount
+  lastReconciled        DateTime?         // When last reconciled (for audit)
+}
+```
+
+### 13.21.3 True Monthly Average Calculation (Payment Timing Aware)
+
+The system calculates accurate monthly averages based on **payment timing**:
+
+| Payment Type | Categories | Calculation |
+|--------------|------------|-------------|
+| **ADVANCE** | Rent, Property Trust | Exclude last payment (covers future) |
+| **ARREARS** | Salary, Utilities, Insurance | Include all payments (all completed) |
+
+```typescript
+// Determine payment timing based on category
+const isRentalCategory =
+  transaction.categoryLevel1?.toUpperCase() === 'RENTAL' ||
+  transaction.categoryLevel1?.toUpperCase() === 'RENT' ||
+  learnedCategory?.toUpperCase() === 'RENTAL' ||
+  merchantName?.toLowerCase().includes('rent') ||
+  merchantName?.toLowerCase().includes('trust');
+
+const paymentTiming = isRentalCategory ? 'ADVANCE' : 'ARREARS';
+
+// Calculate sum based on payment timing
+let sumForAverage: number;
+if (paymentTiming === 'ADVANCE') {
+  // Exclude last payment (covers future period)
+  sumForAverage = sortedTxs.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
+} else {
+  // Include all payments (all cover completed periods)
+  sumForAverage = amounts.reduce((sum, a) => sum + a, 0);
+}
+
+const trueMonthlyAverage = monthsCovered > 0 ? sumForAverage / monthsCovered : avgAmount;
+```
+
+**Example 1 - Rental Income (ADVANCE):**
+```
+Transactions:
+- Nov 8, 2025:  $3,362 (covers period starting Nov 8)
+- Nov 17, 2025: $1,651
+- Dec 1, 2025:  $3,313
+- Dec 16, 2025: $2,205
+- Jan 2, 2026:  $2,205
+- Jan 16, 2026: $1,651  ← EXCLUDE (covers future period)
+
+Payment Timing: ADVANCE (detected as rental)
+Sum (excluding last): $12,736
+Period: 69 days = 2.27 months
+True Monthly Average: $5,610/month
+```
+
+**Example 2 - Salary (ARREARS):**
+```
+Transactions:
+- Dec 31, 2025: $5,000 (for December work - completed)
+- Jan 31, 2026: $5,000 (for January work - completed)
+- Feb 28, 2026: $5,000 (for February work - completed)
+
+Payment Timing: ARREARS (default for non-rental)
+Sum (all payments): $15,000
+Period: 59 days = 1.94 months
+True Monthly Average: $7,732/month (or $5,000 if normalized)
+```
+
+### 13.21.4 Master Financial Service Updates
+
+**File:** `lib/services/masterFinancialService.ts`
+
+Added transaction-based actual calculation:
+
+```typescript
+interface RawLinkedTransaction {
+  id: string;
+  date: Date;
+  amount: number;
+  direction: string;
+  incomeId: string | null;
+  expenseId: string | null;
+}
+
+// Calculate actual from transactions for a specific month
+function calculateActualFromTransactions(
+  entryId: string,
+  entryType: 'income' | 'expense',
+  transactions: RawLinkedTransaction[],
+  targetMonth: number,
+  targetYear: number
+): number | null {
+  const entryTransactions = transactions.filter(t => {
+    const txDate = new Date(t.date);
+    const isCorrectEntry = entryType === 'income'
+      ? t.incomeId === entryId
+      : t.expenseId === entryId;
+    const isCorrectMonth = txDate.getMonth() === targetMonth
+      && txDate.getFullYear() === targetYear;
+    return isCorrectEntry && isCorrectMonth;
+  });
+
+  if (entryTransactions.length === 0) return null;
+  return entryTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+}
+```
+
+### 13.21.5 API Response Changes
+
+**GET /api/income and GET /api/expenses now return:**
+
+```json
+{
+  "data": [{
+    "id": "...",
+    "name": "Rental Income",
+    "amount": 5200,
+    "budgetAmount": 5200,
+    "actualFromTransactions": 5610.50,
+    "transactionCount": 5,
+    "hasTransactions": true
+  }]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `amount` | Entry amount (= Budget) |
+| `budgetAmount` | Same as amount (for clarity) |
+| `actualFromTransactions` | Sum of linked transactions for current month |
+| `transactionCount` | Number of linked transactions |
+| `hasTransactions` | Whether any transactions are linked |
+
+### 13.21.6 UI Changes
+
+**TransactionLinkDialog Updates:**
+
+1. **Pattern Detection Alert (Updated):**
+   ```
+   Pattern Detected
+   6 transactions over 2.3 months
+   Monthly Average: $5,610
+   (Amounts vary: property costs may be deducted)
+   ```
+
+2. **Linking Simplified:**
+   - **REMOVED** "Link & Update Amount" button
+   - **REMOVED** reconciliation recommendations
+   - Only "Link" button remains (tags transaction to entry)
+
+3. **Income/Expense Page (Updated):**
+   | Name | Category | Frequency | Budget | Actual |
+   |------|----------|-----------|--------|--------|
+   | Thornlands Rent | Rental | Monthly | $5,200 | $5,610 (+7.9%) |
+
+   - Green text when actual > budget (good for income)
+   - "No transactions" when no linked transactions exist
+
+### 13.21.7 Reconciliation Flow (Updated)
+
+1. User creates manual income/expense entry with BUDGET amount
+2. User imports/categorizes bank transactions
+3. User links transaction to entry (tagging only, no amount change)
+4. System calculates ACTUAL from linked transactions in real-time
+5. UI displays both Budget and Actual with variance
+
+**Key Change:** Linking = Tagging only. Entry amounts NEVER auto-update.
+
+### 13.21.8 Budget Variance Display
+
+The system now shows:
+- **Budget**: Entry amount (user's planned value)
+- **Actual**: Sum of linked transactions for current month
+- **Variance %**: (Actual - Budget) / Budget × 100
+
+For income: Positive variance = good (earning more than expected)
+For expenses: Negative variance = good (spending less than expected)
+
+### 13.21.9 Design Principles Alignment
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Single Source of Truth** | Actuals calculated in Master Financial Service |
+| **Pure Engines** | `calculateActualFromTransactions()` is pure (no DB calls) |
+| **No Amount Updates** | Linking = tagging only, entry amounts remain as budget |
+| **Date-Based Aggregation** | Actuals grouped by transaction date into calendar months |
+| **Payment Timing Awareness** | ADVANCE (rent) excludes last, ARREARS (salary) includes all |
+| **Category-Based Detection** | Rental detected by category/merchant name for timing logic |
+
+
+  // ... existing fields ...
+  budgetVariance: BudgetVariance;
+}
+
+// Added to MasterIncomeBreakdown
+interface MasterIncomeBreakdown {
+  // ... existing fields ...
+  budgetVariance: BudgetVariance;
+}
+```
+
+### 13.21.5 API Enhancements
+
+**GET `/api/transactions/[id]/link`:**
+
+Returns additional fields for reconciliation:
+
+```typescript
+interface MatchResult {
+  // ... existing fields ...
+  propertyId?: string | null;
+  budgetedAmount?: number | null;
+  lastReconciled?: Date | null;
+  reconciliationRecommendation?: 'update_amount' | 'link_only' | 'create_new';
+  categoryMatch?: boolean;
+}
+
+// Response also includes transaction pattern analysis
+{
+  transaction: { ... },
+  suggestedMatches: MatchResult[],
+  transactionPattern: {
+    count: number,
+    detectedFrequency: string,    // WEEKLY, FORTNIGHTLY, MONTHLY, etc.
+    averageAmount: number,
+    averageIntervalDays: number,
+    dateRange: { first: Date, last: Date }
+  },
+  // ... other fields
+}
+```
+
+**POST `/api/transactions/[id]/link` (action: link or update):**
+
+When `updateAmount: true`, the API now:
+1. Saves the current amount as `budgetedAmount` (if not already set)
+2. Updates the entry's amount to the transaction amount
+3. Sets `lastReconciled` to current timestamp
+
+```typescript
+// Budget tracking on update
+if (body.updateAmount) {
+  const budgetedAmount = expense.budgetedAmount ?? expense.amount;
+  await prisma.expense.update({
+    where: { id: body.targetId },
+    data: {
+      amount: transaction.amount,
+      budgetedAmount: budgetedAmount,
+      lastReconciled: new Date(),
+    },
+  });
+}
+```
+
+### 13.21.6 UI Changes
+
+**TransactionLinkDialog Updates:**
+
+1. **Pattern Detection Alert:**
+   When transaction pattern is detected (3+ transactions from same vendor), displays:
+   ```
+   Pattern Detected
+   5 transactions from this vendor over the last 12 months.
+   Average: $47.50 / monthly
+   ```
+
+2. **Reconciliation Recommendation:**
+   Match cards show recommendations based on amount variance:
+   - **Link Only**: Amount matches within 5%
+   - **Update Amount**: Amount differs by 5-50% (highlighted, recommended)
+   - **Create New**: Amount differs by >50%
+
+3. **Budget Display:**
+   If an entry has a budgeted amount different from actual, it's shown:
+   ```
+   $47.32
+   Diff: $2.68 (5%)
+   Budget: $50.00
+   ```
+
+4. **Category Match Badge:**
+   Entries matching the transaction's predicted category show a "Category match" badge.
+
+### 13.21.7 Reconciliation Flow
+
+1. User opens Transaction Link dialog for a bank transaction
+2. System analyzes same-vendor transactions to detect pattern
+3. System matches against existing income/expense entries
+4. For matches with amount differences, system recommends "Link & Update"
+5. User clicks "Link & Update":
+   - Entry's current amount saved as budgetedAmount
+   - Entry's amount updated to transaction amount
+   - lastReconciled timestamp set
+6. Budget variance is now trackable in Master Financial Service
+
+### 13.21.8 Budget Variance Tracking
+
+The system now tracks:
+- **entriesWithBudget**: Count of entries with budgeted amounts set
+- **entriesReconciled**: Count of entries reconciled from transactions
+- **variance**: Difference between actual and budgeted
+- **variancePercent**: Percentage over/under budget
+- **status**: 'under', 'over', or 'on_track' (within 5%)
+
+This data feeds into:
+- Budget Analysis page comparisons
+- Financial Health calculations
+- CFO Dashboard insights
+
+### 13.21.9 Design Principles Alignment
+
+This feature follows Monitrax design principles:
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Single Source of Truth** | Budget calculations in Master Financial Service |
+| **Pure Engines** | Reconciliation utilities are pure functions (no DB calls) |
+| **Canonical Utility Locations** | `lib/utils/reconciliation.ts` added to design docs |
+| **No Duplicate Logic** | Variance calculations centralized |
+| **Per-Property Scope** | Matching considers propertyId for property-related entries |
+

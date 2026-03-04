@@ -11,6 +11,7 @@ import {
   Zap, Plus, Trash2, Home, Car, Utensils, Wifi, Shield, Dumbbell, Tv, Building2,
   Droplets, Flame, Phone, CreditCard, Receipt, Sparkles, ChevronDown, ChevronUp, KeyRound
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface Property {
   id: string;
@@ -271,14 +272,6 @@ export function ExpenseWizard({ open, onOpenChange, properties, token, onSuccess
       setSaving(false);
     }
   };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

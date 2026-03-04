@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { calculateLinkageHealth } from '@/lib/intelligence/linkageHealthService';
 
 // Import snapshot fetcher - we'll fetch internally
@@ -24,11 +24,10 @@ async function fetchSnapshot(request: NextRequest, userId: string): Promise<Resp
   });
 }
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
       const startTime = Date.now();
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch Snapshot 2.0 data (single source of truth)
       const snapshotResponse = await fetchSnapshot(request, userId);
@@ -62,5 +61,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

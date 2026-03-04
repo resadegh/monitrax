@@ -1,15 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
+import { toAnnual } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
+import { verifyOwnership } from '@/lib/utils/ownership';
+
+type RouteContext = { params: Promise<{ id: string }> };
 
 // GET /api/assets/:id - Get a single asset with full details
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission<RouteContext>('investment.read', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const asset = await prisma.asset.findUnique({
         where: { id },
         include: {
@@ -25,46 +26,39 @@ export async function GET(
         },
       });
 
-      if (!asset || asset.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(asset, auth.userId, 'Asset');
+      if (!ownershipResult.success) return ownershipResult.response;
+
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedAsset = ownershipResult.resource;
 
       // Type for expense
-      type AssetExpense = (typeof asset.expenses)[number];
+      type AssetExpense = (typeof verifiedAsset.expenses)[number];
 
-      // Calculate computed fields
-      const frequencyMultipliers: Record<string, number> = {
-        WEEKLY: 52,
-        FORTNIGHTLY: 26,
-        MONTHLY: 12,
-        QUARTERLY: 4,
-        ANNUAL: 1,
-      };
-
-      const annualExpenses = asset.expenses.reduce((total: number, expense: AssetExpense) => {
-        const multiplier = frequencyMultipliers[expense.frequency] || 1;
-        return total + expense.amount * multiplier;
+      // Calculate computed fields using centralized utility
+      const annualExpenses = verifiedAsset.expenses.reduce((total: number, expense: AssetExpense) => {
+        return total + toAnnual(expense.amount, expense.frequency as Frequency);
       }, 0);
 
-      const totalExpenses = asset.expenses.reduce((total: number, expense: AssetExpense) => {
+      const totalExpenses = verifiedAsset.expenses.reduce((total: number, expense: AssetExpense) => {
         return total + expense.amount;
       }, 0);
 
-      const depreciation = asset.purchasePrice - asset.currentValue;
+      const depreciation = verifiedAsset.purchasePrice - verifiedAsset.currentValue;
       const depreciationPercent =
-        asset.purchasePrice > 0 ? (depreciation / asset.purchasePrice) * 100 : 0;
+        verifiedAsset.purchasePrice > 0 ? (depreciation / verifiedAsset.purchasePrice) * 100 : 0;
 
       const totalCostOfOwnership =
-        asset.purchasePrice + totalExpenses - (asset.salePrice || 0);
+        verifiedAsset.purchasePrice + totalExpenses - (verifiedAsset.salePrice || 0);
 
       // Vehicle-specific: cost per km if applicable
       let costPerKm = null;
-      if (asset.type === 'VEHICLE' && asset.vehicleOdometer && asset.vehicleOdometer > 0) {
-        costPerKm = totalCostOfOwnership / asset.vehicleOdometer;
+      if (verifiedAsset.type === 'VEHICLE' && verifiedAsset.vehicleOdometer && verifiedAsset.vehicleOdometer > 0) {
+        costPerKm = totalCostOfOwnership / verifiedAsset.vehicleOdometer;
       }
 
       return NextResponse.json({
-        ...asset,
+        ...verifiedAsset,
         _computed: {
           annualExpenses,
           totalExpenses,
@@ -81,17 +75,12 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // PUT /api/assets/:id - Update an asset
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const PUT = withPermission<RouteContext>('investment.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const body = await request.json();
 
       // Verify ownership
@@ -99,9 +88,11 @@ export async function PUT(
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, auth.userId, 'Asset');
+      if (!ownershipResult.success) return ownershipResult.response;
+
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedExisting = ownershipResult.resource;
 
       const {
         name,
@@ -135,7 +126,7 @@ export async function PUT(
       } = body;
 
       // Check if value changed - record in history
-      const valueChanged = currentValue && currentValue !== existing.currentValue;
+      const valueChanged = currentValue && currentValue !== verifiedExisting.currentValue;
 
       const asset = await prisma.asset.update({
         where: { id },
@@ -191,26 +182,20 @@ export async function PUT(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // DELETE /api/assets/:id - Delete an asset
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('investment.delete', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
 
       // Verify ownership
       const existing = await prisma.asset.findUnique({
         where: { id },
       });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(existing, auth.userId, 'Asset');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       // Delete the asset (cascades to value history and service records)
       await prisma.asset.delete({
@@ -225,5 +210,4 @@ export async function DELETE(
         { status: 500 }
       );
     }
-  });
-}
+});

@@ -5,22 +5,20 @@
  * DELETE /api/categories/[id]    - Delete/deactivate a category
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
+import { verifyOwnership } from '@/lib/utils/ownership';
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+type RouteContext = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/categories/[id]
  * Get a single category by ID
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission<RouteContext>('settings.read', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
 
       // Check if it's a system category
       if (id.startsWith('system:')) {
@@ -34,44 +32,40 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         where: { id },
       });
 
-      if (!category) {
-        return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(category, auth.userId, 'Category');
+      if (!ownershipResult.success) return ownershipResult.response;
 
-      if (category.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-      }
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedCategory = ownershipResult.resource;
 
       return NextResponse.json({
         success: true,
         data: {
-          id: category.id,
-          code: category.code,
-          name: category.name,
-          type: category.type,
+          id: verifiedCategory.id,
+          code: verifiedCategory.code,
+          name: verifiedCategory.name,
+          type: verifiedCategory.type,
           isSystem: false,
-          isActive: category.isActive,
-          sortOrder: category.sortOrder,
-          color: category.color,
-          icon: category.icon,
-          description: category.description,
+          isActive: verifiedCategory.isActive,
+          sortOrder: verifiedCategory.sortOrder,
+          color: verifiedCategory.color,
+          icon: verifiedCategory.icon,
+          description: verifiedCategory.description,
         },
       });
     } catch (error) {
       console.error('Get category error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
 /**
  * PUT /api/categories/[id]
  * Update a category
  */
-export async function PUT(request: NextRequest, { params }: RouteParams) {
-  return withAuth(request, async (authReq) => {
+export const PUT = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const body = await request.json();
       const { name, description, color, icon, isActive, sortOrder } = body;
 
@@ -87,13 +81,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         where: { id },
       });
 
-      if (!category) {
-        return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-      }
-
-      if (category.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-      }
+      const ownershipResult = verifyOwnership(category, auth.userId, 'Category');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       // Prepare update data
       const updateData: Record<string, unknown> = {};
@@ -110,7 +99,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         // Check for duplicate code
         const existing = await prisma.category.findFirst({
           where: {
-            userId: authReq.user!.userId,
+            userId: auth.userId,
             code: updateData.code as string,
             id: { not: id },
           },
@@ -155,18 +144,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       console.error('Update category error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
 /**
  * DELETE /api/categories/[id]
  * Delete a category (soft delete - marks as inactive)
  * If force=true, permanently deletes if no expenses/income use it
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
+      const { id } = await context!.params;
       const { searchParams } = new URL(request.url);
       const force = searchParams.get('force') === 'true';
 
@@ -186,16 +173,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         },
       });
 
-      if (!category) {
-        return NextResponse.json({ error: 'Category not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(category, auth.userId, 'Category');
+      if (!ownershipResult.success) return ownershipResult.response;
 
-      if (category.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-      }
+      // Use verified resource (TypeScript knows it's non-null after success check)
+      const verifiedCategory = ownershipResult.resource;
 
-      const hasExpenses = category.expenses.length > 0;
-      const hasIncome = category.income.length > 0;
+      const hasExpenses = verifiedCategory.expenses.length > 0;
+      const hasIncome = verifiedCategory.income.length > 0;
       const isInUse = hasExpenses || hasIncome;
 
       if (isInUse && force) {
@@ -233,5 +218,4 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       console.error('Delete category error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

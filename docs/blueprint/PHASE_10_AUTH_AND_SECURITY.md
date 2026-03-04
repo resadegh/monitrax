@@ -45,38 +45,53 @@ This phase brings Monitrax to professional/enterprise readiness.
 
 # 3. IDENTITY PROVIDER INTEGRATION
 
-Supported providers:
-- **Clerk.dev** (recommended: UX + MFA + org management)
-- Supabase Auth (cost-effective)
-- Auth0 (enterprise)
+> **DECISION (February 2026):** GCP Identity Platform (Firebase Auth) was selected as the
+> sole identity provider. Clerk.dev, Auth0, and Supabase Auth were evaluated but not chosen.
+> GCP was selected for CDR compliance, Google Cloud ecosystem integration, and to avoid
+> duplicating identity management in the application.
+
+**Chosen Provider:**
+- **GCP Identity Platform / Firebase Auth** — sole identity provider (Feb 2026 cutover)
+
+**What GCP Manages (not duplicated in Monitrax):**
+- Authentication (email/password, Google OAuth, other providers)
+- MFA (TOTP via `TotpMultiFactorGenerator`, SMS)
+- Password reset (`sendPasswordResetEmail`)
+- Email verification
+- Brute-force protection
+- Token lifecycle (1-hour expiry, auto-refresh via Firebase SDK)
+
+**What Monitrax Manages Locally:**
+- Local user record (for DB relations, roles, preferences)
+- RBAC roles and permissions (`lib/auth/permissions.ts`)
+- Audit logging (`lib/security/auditLog.ts`)
+- OAuthAccount link (maps GCP UID to local userId)
 
 ## 3.1 Requirements
 
-- OAuth + Passwordless + MFA support
-- JWT session tokens issued by IdP
-- Public keys available via JWKS
-- Backend validates tokens on every request
-- Roles/permissions available via custom claims
-- Org/team support for multi-tenant accounts
+- ✅ OAuth + Passwordless + MFA support (via Firebase Auth)
+- ✅ ID tokens verified using Google's published public certificates (RS256)
+- ✅ Backend validates tokens on every request via `verifyGCPIdToken()`
+- ✅ Roles stored locally in Monitrax database
+- ⏳ Org/team support for multi-tenant accounts (future)
 
 ## 3.2 Session Model
 
-- Frontend stores session token (httpOnly cookie preferred)
-- Backend verifies:
-  - signature
-  - expiration
-  - audience
-  - issuer
-  - role claims
-  - org ID
-  - user ID
+- Frontend uses Firebase SDK `onIdTokenChanged` for token lifecycle
+- Firebase ID tokens auto-refresh every hour
+- Backend verifies on every request:
+  - RS256 signature (Google public certs, kid-matched)
+  - Expiration (`exp`)
+  - Audience (`aud` = GCP project ID)
+  - Issuer (`iss` = `https://securetoken.google.com/{project-id}`)
+  - `auth_time` not in the future
+  - Local user exists (by GCP UID or email)
 
 ## 3.3 Token Types
 
-- Access token (short-lived)
-- Refresh token (server-side rotation)
-- Session token (browser)
-- Org membership token (optional)
+- **Firebase ID Token** — primary auth token (1-hour expiry, auto-refreshed)
+- **Firebase Refresh Token** — managed by Firebase SDK (client-side only)
+- ~~Access token / Refresh token / Session token~~ — legacy Monitrax JWT types, no longer used for API auth
 
 ---
 
@@ -280,10 +295,20 @@ Must include:
 
 ## 10.2 Sensitive UI Behaviour
 
-- Auto-logout on token expiry  
-- Refresh token rotation  
-- Block UI until auth resolved  
-- Logout on org removal  
+- ✅ Auto-logout on inactivity (30-minute idle timeout with 2-minute warning dialog)
+- ✅ Auto-logout on token expiry (Firebase SDK handles token lifecycle)
+- Block UI until auth resolved
+- Logout on org removal
+
+### 10.3 Inactivity Timeout (Implemented Feb 2026)
+
+- **Component**: `components/auth/IdleTimeoutGuard.tsx`
+- **Mounted**: Globally in `app/layout.tsx` inside `AuthProvider`
+- **Timeout**: 30 minutes of inactivity → auto-logout
+- **Warning**: 2-minute warning dialog appears at 28 minutes
+- **Activity events tracked**: mousedown, mousemove, keydown, touchstart, scroll, click
+- **User can**: Click "Stay Logged In" to reset timer, or "Log Out Now"
+- **Only active** when user is authenticated (has a valid Firebase ID token)  
 
 ---
 
@@ -339,10 +364,16 @@ Phase 10 is complete when:
 
 # IMPLEMENTATION STATUS
 
-**Status:** 50% Complete (PAUSED - Moving to Phase 11)
-**Last Updated:** 2025-12-09
-**Branch:** `claude/audit-settings-architecture-01FrJLMk1htrKLxFgKPAGjA3`
+**Status:** 50% Custom Auth Complete (PAUSED) → **GCP Identity Platform Cutover COMPLETE (Feb 2026)**
+**Last Updated:** 2026-02-26
+**Branch:** `claude/gcp-identity-migration-phase-V6Y66`
 **Detailed Progress:** See `/docs/PHASE_10_PROGRESS.md`
+
+> **KEY UPDATE (Feb 2026):** The custom Monitrax JWT auth system built in Phase 10
+> has been superseded by GCP Identity Platform as the sole identity provider.
+> All API routes now verify GCP/Firebase ID tokens. Legacy JWT auth code is retained
+> but no longer used for API authentication. See `GCP_IDENTITY_MIGRATION_PHASE2.md`
+> and `GCP_IDENTITY_MIGRATION_PHASE3_MFA.md` for migration details.
 
 ---
 
@@ -682,23 +713,23 @@ Phase 10 is complete when:
 # Database
 DATABASE_URL=postgresql://...
 
-# OAuth Providers (optional - dynamic detection)
+# GCP Identity Platform / Firebase Auth (PRIMARY — Required)
+GCP_PROJECT_ID=monitrax-479700
+NEXT_PUBLIC_GCP_PROJECT_ID=monitrax-479700
+NEXT_PUBLIC_FIREBASE_API_KEY=AIza...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=monitrax.com.au  # Custom domain for Google sign-in branding
+
+# Legacy OAuth Providers (optional — preserved for non-GCP mode)
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI=https://www.monitrax.com.au/api/auth/callback/google
-FACEBOOK_CLIENT_ID=...
-FACEBOOK_CLIENT_SECRET=...
-APPLE_CLIENT_ID=...
-APPLE_CLIENT_SECRET=...
-MICROSOFT_CLIENT_ID=...
-MICROSOFT_CLIENT_SECRET=...
 
 # Email Service (Resend)
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 FROM_EMAIL=Monitrax <noreply@monitrax.com.au>
 NEXT_PUBLIC_APP_URL=https://www.monitrax.com.au
 
-# Security
+# Security (Legacy — JWT_SECRET still used by magic links/session tracking)
 JWT_SECRET=...
 SESSION_SECRET=...
 ENCRYPTION_KEY=... (32 bytes for AES-256)
@@ -729,14 +760,16 @@ ENCRYPTION_KEY=... (32 bytes for AES-256)
    GOOGLE_REDIRECT_URI=https://www.monitrax.com.au/api/auth/callback/google
    ```
 
-4. **OAuth Flow:**
+4. **OAuth Flow (Current — GCP/Firebase):**
    - User clicks "Continue with Google" on login page
-   - Redirected to Google for authentication
-   - Google redirects to `/api/auth/callback/google`
-   - Callback creates/updates user, generates JWT
-   - Redirects to `/oauth-callback` page (Suspense-wrapped)
-   - Client stores token in localStorage
-   - Redirects to dashboard
+   - Firebase SDK opens Google sign-in popup (or redirect)
+   - Firebase returns GCP ID token via `onIdTokenChanged`
+   - Token sent as `Authorization: Bearer <token>` to all API calls
+   - Server verifies via `verifyGCPIdToken()` + auto-syncs user if needed
+   - No Monitrax JWT issued; Firebase manages token lifecycle
+
+   **Legacy OAuth Flow (preserved but unused):**
+   - `/api/auth/oauth/google` → `/api/auth/callback/google` → custom JWT
 
 ### Resend Email Integration
 
@@ -768,14 +801,14 @@ ENCRYPTION_KEY=... (32 bytes for AES-256)
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://...` |
-| `JWT_SECRET` | Secret for JWT signing | `your-secure-secret` |
-| `NEXTAUTH_URL` | Production URL | `https://www.monitrax.com.au` |
+| `GCP_PROJECT_ID` | GCP project (server-side token verification) | `monitrax-479700` |
+| `NEXT_PUBLIC_GCP_PROJECT_ID` | GCP project (client-side Firebase config) | `monitrax-479700` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Web API key | `AIza...` |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Custom domain for Google sign-in branding | `monitrax.com.au` |
 | `NEXT_PUBLIC_APP_URL` | Public app URL | `https://www.monitrax.com.au` |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | `xxx.apps.googleusercontent.com` |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | `GOCSPX-xxx` |
-| `GOOGLE_REDIRECT_URI` | OAuth callback URL | `https://www.monitrax.com.au/api/auth/callback/google` |
+| `JWT_SECRET` | Legacy — used by magic links/session tracking | `your-secure-secret` |
 | `RESEND_API_KEY` | Resend email API key | `re_xxx` |
-| `FROM_EMAIL` | Email sender address | `Monitrax <onboarding@resend.dev>` |
+| `FROM_EMAIL` | Email sender address | `Monitrax <noreply@monitrax.com.au>` |
 
 ---
 
@@ -840,11 +873,12 @@ ENCRYPTION_KEY=... (32 bytes for AES-256)
 
 ### Design Decisions Made
 
-1. **No Third-Party IdP:** Built custom auth instead of Clerk/Auth0
+1. ~~**No Third-Party IdP:** Built custom auth instead of Clerk/Auth0~~ → **SUPERSEDED:** GCP Identity Platform adopted as sole identity provider (Feb 2026)
 2. **Real WebAuthn:** Full implementation, not stubs
 3. **Multi-Provider OAuth:** Support for 4 providers out of the box
 4. **Dynamic UI:** Login adapts to configured providers
 5. **Comprehensive Audit:** All security events logged permanently
+6. **GCP-Only Cutover (Feb 2026):** All API routes verify GCP/Firebase ID tokens. No Monitrax JWTs for API auth.
 
 ### Security Considerations
 
@@ -856,6 +890,7 @@ ENCRYPTION_KEY=... (32 bytes for AES-256)
 
 ---
 
-**Phase 10 Status:** PAUSED at 45% - Solid foundation complete, ready for Phase 11.
-**Next Phase:** Moving to Phase 11 (AI Strategy Engine)
-**Return Priority:** User-facing security UI when resuming Phase 10
+**Phase 10 Status:** Custom auth PAUSED at 45% → GCP Identity Platform cutover COMPLETE (Feb 2026).
+**Identity Provider:** GCP Identity Platform (Firebase Auth) — sole provider for all API authentication.
+**Next Priority:** User-facing security UI when resuming Phase 10 (session management, passkey UI, org admin).
+**Legacy Code:** Custom JWT auth (`generateToken`, `verifyPassword`, login/register routes) retained but no longer used for API auth. Will be cleaned up in future sessions.

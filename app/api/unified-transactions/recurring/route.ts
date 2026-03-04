@@ -8,9 +8,9 @@
  * Blueprint reference: PHASE_13_TRANSACTIONAL_INTELLIGENCE.md Section 13.5.3
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   detectRecurringPayments,
   UnifiedTransaction,
@@ -20,10 +20,9 @@ import {
 // GET - List Recurring Payments
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('transaction.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const { searchParams } = new URL(request.url);
 
       const isActive = searchParams.get('active');
@@ -80,17 +79,15 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // POST - Detect Recurring Payments
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('transaction.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch all user transactions (last 12 months)
       const startDate = new Date();
@@ -219,5 +216,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
+import { verifyOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
+
+type RouteContext = { params: Promise<{ id: string }> };
 
 const createDepreciationSchema = z.object({
   category: z.enum(['DIV40', 'DIV43']),
@@ -13,22 +16,17 @@ const createDepreciationSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission<RouteContext>('property.read', async (request, auth, context) => {
     try {
-      const { id: propertyId } = await params;
+      const { id: propertyId } = await context!.params;
 
       // Verify property ownership
       const property = await prisma.property.findUnique({
         where: { id: propertyId },
       });
 
-      if (!property || property.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(property, auth.userId, 'Property');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const schedules = await prisma.depreciationSchedule.findMany({
         where: { propertyId },
@@ -40,16 +38,11 @@ export async function GET(
       console.error('Get depreciation schedules error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission<RouteContext>('property.write', async (request, auth, context) => {
     try {
-      const { id: propertyId } = await params;
+      const { id: propertyId } = await context!.params;
       const body = await request.json();
       const validation = createDepreciationSchema.safeParse(body);
 
@@ -65,9 +58,8 @@ export async function POST(
         where: { id: propertyId },
       });
 
-      if (!property || property.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Property not found' }, { status: 404 });
-      }
+      const ownershipResult = verifyOwnership(property, auth.userId, 'Property');
+      if (!ownershipResult.success) return ownershipResult.response;
 
       const { category, assetName, cost, startDate, rate, method, notes } = validation.data;
 
@@ -89,5 +81,4 @@ export async function POST(
       console.error('Create depreciation schedule error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

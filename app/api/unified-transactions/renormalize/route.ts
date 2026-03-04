@@ -5,19 +5,18 @@
  * POST - Trigger re-normalization of all transactions
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { renormaliseMerchant } from '@/lib/bank';
 
 // =============================================================================
 // POST - Re-normalize All Merchant Names
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('transaction.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Get all transactions with merchantRaw
       const transactions = await prisma.unifiedTransaction.findMany({
@@ -69,5 +68,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

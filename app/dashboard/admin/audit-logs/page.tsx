@@ -1,11 +1,20 @@
 'use client';
 
 /**
- * Admin Audit Logs Viewer
- * Phase 10: Comprehensive audit log viewing and filtering
+ * @deprecated LEGACY — DELETE WHEN ALL TESTS PASS
+ *
+ * This page has been replaced by /admin/audit-logs (the admin portal).
+ * Canonical audit log UI: app/admin/audit-logs/page.tsx
+ * Canonical audit API: /api/admin/audit (supports ?source=admin|user|all)
+ *
+ * This file is kept temporarily for backwards compatibility.
+ * Remove this entire directory once migration is verified.
+ *
+ * Previously: Admin Audit Logs Viewer (Phase 10)
  */
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,6 +66,7 @@ interface AuditLogsResponse {
 // ============================================
 
 export default function AuditLogsPage() {
+  const { token } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -89,7 +99,9 @@ export default function AuditLogsPage() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
-      const response = await fetch(`/api/admin/audit-logs?${params}`);
+      const response = await fetch(`/api/admin/audit-logs?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to load audit logs');
@@ -119,7 +131,9 @@ export default function AuditLogsPage() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
-      const response = await fetch(`/api/admin/audit-logs/export?${params}`);
+      const response = await fetch(`/api/admin/audit-logs/export?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to export audit logs');
@@ -157,8 +171,8 @@ export default function AuditLogsPage() {
   };
 
   useEffect(() => {
-    loadLogs();
-  }, [page]);
+    if (token) loadLogs();
+  }, [page, token]);
 
   // ============================================
   // RENDER

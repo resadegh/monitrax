@@ -8,9 +8,9 @@
  * Blueprint reference: PHASE_29_RECURRING_EXPENSE_LINKING.md
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   findAllExpenseMatches,
   getMatchSummary,
@@ -22,10 +22,9 @@ import {
 // GET - Get Match Suggestions
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('expense.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const { searchParams } = new URL(request.url);
 
       const includeLinked = searchParams.get('includeLinked') === 'true';
@@ -118,17 +117,15 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // POST - Run Matching and Update Suggestions
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('expense.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch unlinked recurring payments
       const recurringPayments = await prisma.recurringPayment.findMany({
@@ -198,5 +195,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

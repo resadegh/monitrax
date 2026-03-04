@@ -13,6 +13,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GeminiSummary, CashflowIntelligence } from './types';
 import crypto from 'crypto';
+import { formatCurrencyForPrompt } from '@/lib/ai/google/geminiClient';
 
 // =============================================================================
 // CONFIGURATION
@@ -123,8 +124,6 @@ export function hasSignificantChange(
  * Build the prompt for Gemini using ONLY real numbers
  */
 function buildPrompt(input: SummaryInput): string {
-  const formatCurrency = (amount: number) => `$${amount.toLocaleString('en-AU', { maximumFractionDigits: 0 })}`;
-
   let prompt = `You are a friendly Australian financial advisor. Write a brief, actionable summary of this person's cashflow situation. Use a warm, encouraging tone but be honest about challenges.
 
 IMPORTANT RULES:
@@ -136,22 +135,22 @@ IMPORTANT RULES:
 
 FINANCIAL DATA (all figures are monthly unless stated):
 - Health Score: ${input.healthScore.overallScore}/100 (${input.healthScore.tier})
-- Monthly Income: ${formatCurrency(input.monthlyIncome)}
-- Monthly Expenses: ${formatCurrency(input.monthlyExpenses)}
-- Loan Repayments: ${formatCurrency(input.monthlyLoanRepayments)}
-- Net Surplus: ${formatCurrency(input.netSurplus)}
+- Monthly Income: ${formatCurrencyForPrompt(input.monthlyIncome)}
+- Monthly Expenses: ${formatCurrencyForPrompt(input.monthlyExpenses)}
+- Loan Repayments: ${formatCurrencyForPrompt(input.monthlyLoanRepayments)}
+- Net Surplus: ${formatCurrencyForPrompt(input.netSurplus)}
 - Emergency Buffer: ${input.emergencyBuffer.toFixed(1)} months
-- Money Leaks: ${formatCurrency(input.leakageTotal)}/month identified
+- Money Leaks: ${formatCurrencyForPrompt(input.leakageTotal)}/month identified
 - Forecast Risk: ${input.forecastRisk}
 - Break-Even Day: Day ${input.breakEvenDay > 0 ? input.breakEvenDay : 'N/A'}`;
 
   if (input.topLeaks.length > 0) {
-    prompt += `\n- Top Leak Categories: ${input.topLeaks.slice(0, 3).map(l => `${l.category} (${formatCurrency(l.amount)})`).join(', ')}`;
+    prompt += `\n- Top Leak Categories: ${input.topLeaks.slice(0, 3).map(l => `${l.category} (${formatCurrencyForPrompt(l.amount)})`).join(', ')}`;
   }
 
   if (input.hasBudget && input.budgetVariance !== undefined) {
     const overUnder = input.budgetVariance > 0 ? 'over' : 'under';
-    prompt += `\n- Budget Status: ${formatCurrency(Math.abs(input.budgetVariance))} ${overUnder} budget`;
+    prompt += `\n- Budget Status: ${formatCurrencyForPrompt(Math.abs(input.budgetVariance))} ${overUnder} budget`;
   }
 
   if (input.smartActionCount > 0 && input.topAction) {
@@ -284,11 +283,9 @@ export async function generateGeminiSummary(
  * Generate a fallback summary without AI
  */
 function generateFallbackSummary(input: SummaryInput): string {
-  const formatCurrency = (amount: number) => `$${amount.toLocaleString('en-AU', { maximumFractionDigits: 0 })}`;
-
   const surplusText = input.netSurplus >= 0
-    ? `a monthly surplus of ${formatCurrency(input.netSurplus)}`
-    : `a monthly deficit of ${formatCurrency(Math.abs(input.netSurplus))}`;
+    ? `a monthly surplus of ${formatCurrencyForPrompt(input.netSurplus)}`
+    : `a monthly deficit of ${formatCurrencyForPrompt(Math.abs(input.netSurplus))}`;
 
   const tierText = {
     'EXCELLENT': 'Your cashflow is in excellent shape.',
@@ -298,14 +295,14 @@ function generateFallbackSummary(input: SummaryInput): string {
     'CRITICAL': 'Your cashflow needs immediate attention.',
   }[input.healthScore.tier] || 'Your cashflow health score is ' + input.healthScore.overallScore + '/100.';
 
-  let summary = `${tierText} With ${formatCurrency(input.monthlyIncome)} coming in and ${formatCurrency(input.monthlyExpenses + input.monthlyLoanRepayments)} going out, you have ${surplusText}.`;
+  let summary = `${tierText} With ${formatCurrencyForPrompt(input.monthlyIncome)} coming in and ${formatCurrencyForPrompt(input.monthlyExpenses + input.monthlyLoanRepayments)} going out, you have ${surplusText}.`;
 
   if (input.emergencyBuffer < 3) {
     summary += ` Your emergency buffer of ${input.emergencyBuffer.toFixed(1)} months is below the recommended 3-6 months.`;
   }
 
   if (input.leakageTotal > 100) {
-    summary += ` We've identified ${formatCurrency(input.leakageTotal)} in potential monthly savings.`;
+    summary += ` We've identified ${formatCurrencyForPrompt(input.leakageTotal)} in potential monthly savings.`;
   }
 
   if (input.topAction) {

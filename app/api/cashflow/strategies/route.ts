@@ -5,9 +5,9 @@
  * Returns and manages cashflow optimisation strategies.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 /**
  * GET /api/cashflow/strategies
@@ -19,10 +19,9 @@ import { withAuth } from '@/lib/middleware';
  *
  * Returns cashflow strategies from database
  */
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const { searchParams } = new URL(request.url);
       const type = searchParams.get('type');
       const status = searchParams.get('status');
@@ -104,8 +103,7 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 /**
  * PATCH /api/cashflow/strategies
@@ -119,10 +117,9 @@ export async function GET(request: NextRequest) {
  *
  * Update strategy status
  */
-export async function PATCH(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const PATCH = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const body = await request.json();
       const { strategyId, action, dismissReason } = body;
 
@@ -200,5 +197,4 @@ export async function PATCH(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

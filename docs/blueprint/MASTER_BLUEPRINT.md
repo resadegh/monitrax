@@ -4,8 +4,8 @@
 
 ---
 
-**Version:** 2.3
-**Last Updated:** 2025-12-14
+**Version:** 2.4
+**Last Updated:** 2026-02-26
 **Status:** Active Development
 **Owners:** ReNew (Newsha & Reza)
 **Architect:** ChatGPT | **Engineer:** Claude
@@ -48,12 +48,13 @@
 | **Portfolio Strategy** | Investment tracking, performance analytics |
 | **Wealth Forecasting** | Multi-year projections, risk analysis |
 
-### Current State (December 2025)
+### Current State (February 2026)
 
 - **26 Phases** defined in the blueprint
 - **14 Phases** fully implemented (including Phase 25 Document Management Engine)
+- **GCP Identity Platform** — sole identity provider (Firebase Auth, MFA, OAuth)
 - **Active Development:** Phase 19 (Document Management UI), Phase 21 (Asset Management)
-- **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel
+- **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel, GCP Identity Platform
 
 ---
 
@@ -91,23 +92,31 @@
 | **Frontend** | Next.js 15, React Server Components, TailwindCSS, Shadcn/UI |
 | **Backend** | Next.js API Routes, Prisma ORM |
 | **Database** | PostgreSQL (Render) |
-| **Authentication** | Clerk.dev (MFA, OAuth, Session Management) |
+| **Authentication** | GCP Identity Platform / Firebase Auth (MFA, OAuth, Token Verification) |
 | **Deployment** | Vercel (Frontend), Render (Backend + Database) |
 | **File Storage** | Google Cloud Storage (primary), Database (fallback), Local Drive (optional) |
 
 ### Build & Deployment
 
+> ⚠️ **CRITICAL SAFETY UPDATE (Feb 2026)**: Build scripts NO LONGER include `prisma db push`. Schema changes are now MANUAL ONLY to prevent accidental data loss.
+
 | Aspect | Configuration |
 |--------|---------------|
-| **Build Command (Vercel)** | `prisma generate && prisma db push --accept-data-loss && next build` |
-| **Build Command (Render)** | `npm install && npx prisma generate && npx prisma db push && npm run build` |
-| **Schema Sync** | `prisma db push` (automatic on deploy) |
-| **Migration Strategy** | Schema auto-syncs to database on every deployment |
+| **Build Command (Vercel)** | `prisma generate && next build` |
+| **Build Command (Render)** | `npm install && npx prisma generate && npm run build` |
+| **Schema Sync** | **MANUAL ONLY** — via Render Shell |
+| **Migration Strategy** | Manual review required before any schema change |
 | **Health Check** | `/api/health` |
 
-**IMPORTANT:** Database schema changes are applied automatically via `prisma db push` during the build process. No manual migration commands are required after merging code.
+**⛔ NEVER ADD `prisma db push` TO BUILD SCRIPTS**
 
-**Note on `--accept-data-loss`:** This flag is used in the Vercel build because new unique constraints on nullable fields trigger warnings even though no actual data loss occurs (multiple NULL values are allowed in unique constraints).
+Schema changes must be applied manually:
+1. Create database backup via Render Dashboard
+2. Review changes: `npx prisma db push --preview-feature`
+3. If DROP statements appear, STOP and verify
+4. Run via Render Shell: `npx prisma db push`
+
+**Why This Changed:** The database contains legacy tables not in the Prisma schema. Automatic `prisma db push` would delete these tables and their data. See incident documentation in `CHANGELOG_2026_02_03.md`.
 
 See: `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` for full deployment documentation.
 
@@ -156,10 +165,10 @@ Every API response follows a standardised format:
 | **7** | Dashboard Rebuild | ✅ Complete | Portfolio Snapshot API, SVG charts, insights panel |
 | **8** | Global Data Consistency | ✅ Complete | GRDCS, LinkedDataPanel, cross-module navigation |
 | **9** | Global Nav & Health Insights | ✅ Complete | Navigation framework, health indicators |
-| **10** | Auth & Security | ✅ Complete | MFA, passkeys, session management, audit logging |
+| **10** | Auth & Security | ✅ Complete | MFA, passkeys, session management, audit logging. **Identity provider: GCP Identity Platform (Feb 2026 cutover — sole provider, no Monitrax JWTs for API auth)** |
 | **11** | AI Strategy Engine | ✅ Complete | Recommendations, forecasting, conflict resolution |
 | **12** | Financial Health Engine | ✅ Complete | Health scores, category scoring, risk modelling |
-| **13** | Transactional Intelligence | ✅ Complete | Transaction records, category inference |
+| **13** | Transactional Intelligence | ✅ Complete | Transaction records, category inference, Budget vs Actual tracking (Feb 2026) |
 | **14** | Cashflow Optimisation | ✅ Complete | Forecasting, stress testing, optimisation |
 | **16** | Reporting & Integrations | ✅ Complete | Report generators, CSV/Excel/JSON exporters |
 | **17** | Personal CFO Engine | ✅ Complete | CFO Score, Risk Radar, Action Engine |
@@ -167,6 +176,7 @@ Every API response follows a standardised format:
 | **25** | Document Management Engine | ✅ Complete | Rule-based upload orchestration, auto-categorization, cascade linking |
 | **26** | Document Intelligence Engine | ✅ Complete | OCR extraction, Gemini AI analysis, form auto-fill |
 | **27** | Gemini AI Migration | ✅ Complete | All AI features migrated from OpenAI to Google Gemini |
+| **29** | Household Profile Redesign | ✅ Complete | Named members/pets, auto-category generation, onboarding integration |
 
 ### In Progress
 
@@ -188,6 +198,7 @@ Every API response follows a standardised format:
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
 | **22** | Marketing Site & Auth Shell | 📋 Planned | Landing page, sign-in experience, public marketing routes |
 | **28** | Advanced Analytics | 📋 Planned | Enhanced reporting, visualization, export improvements |
+| **34** | CDR Security Hardening | 📋 Planned | RBAC enforcement on ~150 routes, MFA enforcement, audit persistence, password hardening |
 
 ---
 
@@ -261,6 +272,12 @@ Every API response follows a standardised format:
 - Investment account linking
 - Frequency normalisation
 
+**Budget vs Actual Tracking (Feb 2026):**
+- Entry amount = Budget (user's planned amount)
+- Actual = Calculated from linked transactions in real-time
+- UI shows both Budget and Actual columns with variance %
+- True monthly average calculation for advance payments (e.g., rent)
+
 **Phase 20 Enhancements (Planned):**
 - Gross/Net salary with automatic PAYG calculation
 - Superannuation tracking (SG, salary sacrifice)
@@ -276,6 +293,12 @@ Every API response follows a standardised format:
 - Property/loan/investment linking
 - Essential vs discretionary
 - Receipt attachments (Phase 19.1)
+
+**Budget vs Actual Tracking (Feb 2026):**
+- Entry amount = Budget (user's planned amount)
+- Actual = Calculated from linked transactions in real-time
+- UI shows both Budget and Actual columns with variance %
+- Transaction linking = tagging only (no amount auto-update)
 
 **UI Features (2025-12-01):**
 - Grouped view by category or property
@@ -430,6 +453,41 @@ See: `docs/blueprint/PHASE_20_AUSTRALIAN_TAX_INTELLIGENCE_ENGINE.md`
 See: `docs/blueprint/PHASE_19_DOCUMENT_MANAGEMENT.md`
 See: `docs/blueprint/PHASE_25_DOCUMENT_MANAGEMENT_ENGINE.md`
 
+### 5.10 Household Module (Phase 29)
+
+**Status:** ✅ Complete (February 2026)
+
+**Purpose:** Captures detailed household composition for personalized financial tracking and category generation.
+
+**Capabilities:**
+- Named household members with relationships
+- Pet tracking with types and breeds
+- Auto-category generation based on household
+- Migration prompt for existing users
+- Integration with onboarding wizard
+
+**Household Members:**
+- Relationships: Self, Spouse, Partner, Child, Parent, Sibling, Other
+- Income earner flag for salary/super category generation
+- Date of birth for age-based planning
+
+**Household Pets:**
+- Types: Dog, Cat, Bird, Fish, Rabbit, Reptile, Other
+- Breed tracking
+- Auto-generates pet expense categories
+
+**Auto-Generated Categories:**
+- Income earners: Salary, Super Contributions, Work Expenses, Health Insurance
+- Non-earner adults: Personal Spending, Health Expenses
+- Children: School Fees, Childcare, Kids Activities
+- Pets: Food & Supplies, Vet Visits, Insurance, Grooming
+
+**Category Orphaning:**
+- When members/pets are deleted, categories are unlinked (not deleted)
+- Preserves expense history and allows reassignment
+
+See: `docs/blueprint/CHANGELOG_2026_02_03.md` for implementation details.
+
 ---
 
 ## 6. Data Model Overview
@@ -438,6 +496,11 @@ See: `docs/blueprint/PHASE_25_DOCUMENT_MANAGEMENT_ENGINE.md`
 
 ```
 User
+├── HouseholdProfile (Phase 29)
+│   ├── HouseholdMembers
+│   │   └── Categories (linked)
+│   └── HouseholdPets
+│       └── Categories (linked)
 ├── Properties
 │   ├── Loans
 │   ├── Income (rental)
@@ -458,6 +521,8 @@ User
 │   └── Documents
 ├── Income (general)
 ├── Expenses (general)
+├── Categories
+│   └── HouseholdMember/Pet (optional link)
 ├── DebtPlans
 │   └── DebtPlanLoans
 ├── Documents
@@ -469,6 +534,10 @@ User
 
 | Entity | Links To |
 |--------|----------|
+| HouseholdProfile | HouseholdMembers, HouseholdPets |
+| HouseholdMember | Categories (auto-generated) |
+| HouseholdPet | Categories (auto-generated) |
+| Category | HouseholdMember (optional), HouseholdPet (optional) |
 | Property | Loans, Income, Expenses, Depreciation, Documents |
 | Loan | Property, Offset Account, Expenses |
 | Account | Linked Loan |
@@ -481,13 +550,37 @@ User
 
 ## 7. API Standards & Patterns
 
-### Authentication
+### Authentication (GCP Identity Platform)
 
-All API routes require Bearer token authentication:
+All API routes require Bearer token authentication using **GCP/Firebase ID tokens**.
+GCP Identity Platform is the sole identity provider — no Monitrax JWTs are issued for API authentication.
+
 ```typescript
+// API routes use one of three entry points:
+// 1. verifyToken() — verifies GCP token, returns { userId, email }
 const token = request.headers.get('Authorization')?.replace('Bearer ', '');
 const user = await verifyToken(token);
+
+// 2. getAuthContext() — verifies GCP token, returns full AuthContext with role
+const context = await getAuthContext(request);
+
+// 3. withAuth() — middleware wrapper, verifies GCP token + auto-syncs user
+return withAuth(request, handler);
 ```
+
+**Auth entry points** (all verify GCP/Firebase ID tokens):
+| Function | Location | Returns |
+|----------|----------|---------|
+| `verifyToken()` | `lib/auth.ts` | `{ userId, email }` |
+| `getCurrentUser()` | `lib/auth.ts` | `{ id, email }` |
+| `getAuthContext()` | `lib/auth/context.ts` | `{ userId, email, role, name, tenantId }` |
+| `withAuth()` | `lib/middleware.ts` | Middleware wrapper |
+
+**Client-side**: Firebase SDK (`onIdTokenChanged`) manages token lifecycle. Tokens auto-refresh every hour. All fetch calls MUST include `Authorization: Bearer ${token}` using `useAuth()` hook.
+
+**Inactivity timeout**: 30-minute idle auto-logout with 2-minute warning dialog (`IdleTimeoutGuard` component, mounted globally in `app/layout.tsx`). Tracks mouse, keyboard, touch, scroll, and click events.
+
+**Custom domain branding**: Set `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` env var to your domain (e.g., `monitrax.com.au`) so Google sign-in popup shows your brand instead of `{projectId}.firebaseapp.com`. Requires Next.js rewrites in `next.config.ts` to proxy `/__/auth/*` and `/__/firebase/*` to Firebase, plus a local `/api/firebase-init` route to serve `/__/firebase/init.json` (Firebase Hosting may not be deployed). The middleware matcher must exclude `__/` paths so CSP headers are not applied to the proxied auth handler.
 
 ### Response Format (GRDCS)
 
@@ -603,8 +696,17 @@ When implementing new features:
 ### Common Imports
 
 ```typescript
-// Authentication
+// Authentication — server-side GCP/Firebase token verification (async)
 import { verifyToken } from '@/lib/auth';
+// Or use the full auth context (includes role, tenantId):
+import { getAuthContext } from '@/lib/auth/context';
+// Or use the middleware wrapper:
+import { withAuth } from '@/lib/middleware';
+
+// Authentication — client-side (React hook for Firebase ID token)
+// In components: const { token, user, logout } = useAuth();
+// All fetch calls MUST include: headers: { Authorization: `Bearer ${token}` }
+import { useAuth } from '@/lib/context/AuthContext';
 
 // Database
 import { prisma } from '@/lib/db';

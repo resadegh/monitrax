@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
+import { verifyOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
 
 const updateAccountSchema = z.object({
@@ -17,115 +18,99 @@ const updateAccountSchema = z.object({
   costBasisMethod: z.enum(['FIFO', 'LIFO', 'HIFO', 'SPECIFIC', 'AVERAGE']).optional(),
 });
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
-    try {
-      const { id } = await params;
-      const account = await prisma.investmentAccount.findUnique({
-        where: { id },
-        include: {
-          holdings: true,
-          transactions: {
-            orderBy: { date: 'desc' },
-          },
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const GET = withPermission<RouteContext>('investment.read', async (request, auth, context) => {
+  try {
+    const { id } = await context!.params;
+    const account = await prisma.investmentAccount.findUnique({
+      where: { id },
+      include: {
+        holdings: true,
+        transactions: {
+          orderBy: { date: 'desc' },
         },
-      });
+      },
+    });
 
-      if (!account || account.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
-      }
+    const ownershipResult = verifyOwnership(account, auth.userId, 'Investment account');
+    if (!ownershipResult.success) return ownershipResult.response;
 
-      return NextResponse.json(account);
-    } catch (error) {
-      console.error('Get investment account error:', error);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(ownershipResult.resource);
+  } catch (error) {
+    console.error('Get investment account error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});
+
+export const PUT = withPermission<RouteContext>('investment.write', async (request, auth, context) => {
+  try {
+    const { id } = await context!.params;
+    const body = await request.json();
+    const validation = updateAccountSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.errors },
+        { status: 400 }
+      );
     }
-  });
-}
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
-    try {
-      const { id } = await params;
-      const body = await request.json();
-      const validation = updateAccountSchema.safeParse(body);
+    // Verify ownership
+    const existing = await prisma.investmentAccount.findUnique({
+      where: { id },
+    });
 
-      if (!validation.success) {
-        return NextResponse.json(
-          { error: 'Validation failed', details: validation.error.errors },
-          { status: 400 }
-        );
-      }
+    const ownershipResult = verifyOwnership(existing, auth.userId, 'Investment account');
+    if (!ownershipResult.success) return ownershipResult.response;
 
-      // Verify ownership
-      const existing = await prisma.investmentAccount.findUnique({
-        where: { id },
-      });
+    const {
+      name, type, platform, currency,
+      openingDate, openingBalance, cashBalance,
+      totalDeposits, totalWithdrawals, costBasisMethod
+    } = validation.data;
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
-      }
+    const account = await prisma.investmentAccount.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(type !== undefined && { type }),
+        ...(platform !== undefined && { platform }),
+        ...(currency !== undefined && { currency }),
+        ...(openingDate !== undefined && { openingDate: openingDate ? new Date(openingDate) : null }),
+        ...(openingBalance !== undefined && { openingBalance }),
+        ...(cashBalance !== undefined && { cashBalance }),
+        ...(totalDeposits !== undefined && { totalDeposits }),
+        ...(totalWithdrawals !== undefined && { totalWithdrawals }),
+        ...(costBasisMethod !== undefined && { costBasisMethod }),
+      },
+    });
 
-      const {
-        name, type, platform, currency,
-        openingDate, openingBalance, cashBalance,
-        totalDeposits, totalWithdrawals, costBasisMethod
-      } = validation.data;
+    return NextResponse.json(account);
+  } catch (error) {
+    console.error('Update investment account error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});
 
-      const account = await prisma.investmentAccount.update({
-        where: { id },
-        data: {
-          ...(name !== undefined && { name }),
-          ...(type !== undefined && { type }),
-          ...(platform !== undefined && { platform }),
-          ...(currency !== undefined && { currency }),
-          ...(openingDate !== undefined && { openingDate: openingDate ? new Date(openingDate) : null }),
-          ...(openingBalance !== undefined && { openingBalance }),
-          ...(cashBalance !== undefined && { cashBalance }),
-          ...(totalDeposits !== undefined && { totalDeposits }),
-          ...(totalWithdrawals !== undefined && { totalWithdrawals }),
-          ...(costBasisMethod !== undefined && { costBasisMethod }),
-        },
-      });
+export const DELETE = withPermission<RouteContext>('investment.delete', async (request, auth, context) => {
+  try {
+    const { id } = await context!.params;
+    // Verify ownership
+    const existing = await prisma.investmentAccount.findUnique({
+      where: { id },
+    });
 
-      return NextResponse.json(account);
-    } catch (error) {
-      console.error('Update investment account error:', error);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-  });
-}
+    const ownershipResult = verifyOwnership(existing, auth.userId, 'Investment account');
+    if (!ownershipResult.success) return ownershipResult.response;
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq) => {
-    try {
-      const { id } = await params;
-      // Verify ownership
-      const existing = await prisma.investmentAccount.findUnique({
-        where: { id },
-      });
+    await prisma.investmentAccount.delete({
+      where: { id },
+    });
 
-      if (!existing || existing.userId !== authReq.user!.userId) {
-        return NextResponse.json({ error: 'Investment account not found' }, { status: 404 });
-      }
-
-      await prisma.investmentAccount.delete({
-        where: { id },
-      });
-
-      return NextResponse.json({ message: 'Investment account deleted successfully' });
-    } catch (error) {
-      console.error('Delete investment account error:', error);
-      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-  });
-}
+    return NextResponse.json({ message: 'Investment account deleted successfully' });
+  } catch (error) {
+    console.error('Delete investment account error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});

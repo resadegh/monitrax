@@ -4,14 +4,13 @@
  * PUT - Update user profile
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (req: AuthenticatedRequest) => {
+export const GET = withPermission('settings.read', async (request, auth) => {
     try {
-      const userId = req.user!.userId;
+      const userId = auth.userId;
 
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -46,13 +45,11 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
-export async function PUT(request: NextRequest) {
-  return withAuth(request, async (req: AuthenticatedRequest) => {
+export const PUT = withPermission('settings.write', async (request, auth) => {
     try {
-      const userId = req.user!.userId;
+      const userId = auth.userId;
       const body = await request.json();
 
       const { name, mobile, phone, location, timezone, bio } = body;
@@ -109,5 +106,4 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

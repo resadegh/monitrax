@@ -27,6 +27,7 @@ import {
   Package,
 } from 'lucide-react';
 import type { GRDCSLinkedEntity, GRDCSMissingLink, GRDCSEntityType } from '@/lib/grdcs';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 // Icon mapping for entity types
 const ENTITY_ICONS: Record<GRDCSEntityType, React.ComponentType<{ className?: string }>> = {
@@ -141,15 +142,6 @@ export function LinkedDataPanel({
     acc[entity.type].push(entity);
     return acc;
   }, {} as Record<GRDCSEntityType, GRDCSLinkedEntity[]>);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const getHealthColor = (score: number) => {
     if (score >= 80) return 'text-green-600';

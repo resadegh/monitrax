@@ -17,8 +17,11 @@ import {
   Home, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   Landmark, DollarSign, Receipt, Calendar, Building2,
   ChevronRight, Percent, PiggyBank, FileText, Eye, Link2, Lightbulb,
-  LayoutGrid, List, KeyRound
+  LayoutGrid, List, KeyRound, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { formatCurrency } from '@/lib/utils/formatters';
+import { toAnnual } from '@/lib/utils/frequencies';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
@@ -37,6 +40,13 @@ interface Loan {
   isInterestOnly: boolean;
   minRepayment: number;
   repaymentFrequency: string;
+  // Budget vs Actual fields
+  budgetAmount?: number;
+  actualFromTransactions?: number | null;
+  currentMonthActual?: number | null;
+  monthlyAverageActual?: number | null;
+  transactionCount?: number;
+  hasTransactions?: boolean;
 }
 
 interface Income {
@@ -45,6 +55,13 @@ interface Income {
   type: string;
   amount: number;
   frequency: string;
+  // Budget vs Actual fields
+  budgetAmount?: number;
+  actualFromTransactions?: number | null;
+  currentMonthActual?: number | null;
+  monthlyAverageActual?: number | null;
+  transactionCount?: number;
+  hasTransactions?: boolean;
 }
 
 interface Expense {
@@ -54,6 +71,13 @@ interface Expense {
   amount: number;
   frequency: string;
   isTaxDeductible: boolean;
+  // Budget vs Actual fields
+  budgetAmount?: number;
+  actualFromTransactions?: number | null;
+  currentMonthActual?: number | null;
+  monthlyAverageActual?: number | null;
+  transactionCount?: number;
+  hasTransactions?: boolean;
 }
 
 interface DepreciationSchedule {
@@ -131,6 +155,8 @@ function PropertiesPageContent() {
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
   const [expensePropertyId, setExpensePropertyId] = useState<string | null>(null);
+  // Budget vs Actual: Toggle between monthly and annual view
+  const [financialViewMode, setFinancialViewMode] = useState<'monthly' | 'annual'>('monthly');
 
   // CMNF navigation handler for LinkedDataPanel
   const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
@@ -309,24 +335,40 @@ function PropertiesPageContent() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  // Use centralized utilities - formatCurrency from lib/utils/formatters, toAnnual from lib/utils/frequencies
+  const convertToAnnual = (amount: number, frequency: string) =>
+    toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
+
+  // Convert amount to monthly based on frequency
+  const convertToMonthly = (amount: number, frequency: string) => {
+    const freqMultipliers: Record<string, number> = {
+      WEEKLY: 52 / 12,
+      FORTNIGHTLY: 26 / 12,
+      MONTHLY: 1,
+      QUARTERLY: 1 / 3,
+      ANNUAL: 1 / 12,
+    };
+    return amount * (freqMultipliers[frequency] || 1);
   };
 
-  const convertToAnnual = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52;
-      case 'FORTNIGHTLY': return amount * 26;
-      case 'MONTHLY': return amount * 12;
-      case 'QUARTERLY': return amount * 4;
-      case 'ANNUAL': return amount;
-      default: return amount * 12;
-    }
+  // Normalize amount based on current view mode (monthly/annual)
+  const normalizeAmount = (amount: number, frequency: string) => {
+    const monthly = convertToMonthly(amount, frequency);
+    return financialViewMode === 'annual' ? monthly * 12 : monthly;
+  };
+
+  // Get normalized actual (already in monthly from API)
+  const normalizeActual = (monthlyActual: number | null | undefined) => {
+    if (monthlyActual === null || monthlyActual === undefined) return null;
+    return financialViewMode === 'annual' ? monthlyActual * 12 : monthlyActual;
+  };
+
+  // Calculate variance between actual and budget
+  const calculateVariance = (budget: number, actual: number | null | undefined) => {
+    if (actual === null || actual === undefined) return { amount: null, percent: null };
+    const diff = actual - budget;
+    const percent = budget > 0 ? (diff / budget) * 100 : 0;
+    return { amount: diff, percent };
   };
 
   const calculateGain = (property: Property) => {
@@ -982,22 +1024,58 @@ function PropertiesPageContent() {
                     </div>
                   </div>
 
-                  {selectedProperty.type === 'INVESTMENT' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">Rental Yield</p>
-                        <p className="text-xl font-bold text-purple-600">
-                          {calculateRentalYield(selectedProperty).toFixed(2)}%
-                        </p>
+                  {selectedProperty.type === 'INVESTMENT' && (() => {
+                    // Calculate actual cashflow for Details tab
+                    const annualIncomeBudget = selectedProperty.income?.reduce((sum, inc) =>
+                      sum + convertToAnnual(inc.amount, inc.frequency), 0) || 0;
+                    const annualIncomeActual = selectedProperty.income?.reduce((sum, inc) =>
+                      sum + ((inc.monthlyAverageActual || 0) * 12), 0) || 0;
+                    const hasIncomeActuals = selectedProperty.income?.some(inc => inc.hasTransactions);
+
+                    const annualExpenseBudget = selectedProperty.expenses?.reduce((sum, exp) =>
+                      sum + convertToAnnual(exp.amount, exp.frequency), 0) || 0;
+                    const annualExpenseActual = selectedProperty.expenses?.reduce((sum, exp) =>
+                      sum + ((exp.monthlyAverageActual || 0) * 12), 0) || 0;
+                    const hasExpenseActuals = selectedProperty.expenses?.some(exp => exp.hasTransactions);
+
+                    const annualLoanBudget = calculateAnnualLoanRepayments(selectedProperty);
+                    const annualLoanActual = selectedProperty.loans?.reduce((sum, loan) =>
+                      sum + ((loan.monthlyAverageActual || 0) * 12), 0) || 0;
+                    const hasLoanActuals = selectedProperty.loans?.some(loan => loan.hasTransactions);
+
+                    const cashflowBudget = annualIncomeBudget - annualExpenseBudget - annualLoanBudget;
+                    const cashflowActual = hasIncomeActuals || hasExpenseActuals || hasLoanActuals
+                      ? annualIncomeActual - annualExpenseActual - annualLoanActual
+                      : null;
+
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <p className="text-sm text-muted-foreground">Rental Yield</p>
+                          <p className="text-xl font-bold text-purple-600">
+                            {calculateRentalYield(selectedProperty).toFixed(2)}%
+                          </p>
+                        </div>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <p className="text-sm text-muted-foreground">Annual Cashflow</p>
+                          <div className="flex justify-between items-baseline">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Budget</p>
+                              <p className={`text-xl font-bold ${cashflowBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {formatCurrency(cashflowBudget)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Actual</p>
+                              <p className={`text-xl font-bold ${cashflowActual !== null ? (cashflowActual >= 0 ? 'text-green-600' : 'text-red-600') : 'text-muted-foreground'}`}>
+                                {cashflowActual !== null ? formatCurrency(cashflowActual) : '—'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-sm text-muted-foreground">Annual Cashflow</p>
-                        <p className={`text-xl font-bold ${calculateCashflow(selectedProperty) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatCurrency(calculateCashflow(selectedProperty))}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Property Location Map */}
                   {(selectedProperty.latitude && selectedProperty.longitude) || selectedProperty.address ? (
@@ -1066,61 +1144,202 @@ function PropertiesPageContent() {
 
                 <TabsContent value="cashflow" className="mt-4">
                   <div className="space-y-4">
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="p-3 bg-green-50 rounded-lg">
-                        <p className="text-xs text-muted-foreground">Annual Income</p>
-                        <p className="text-lg font-bold text-green-600">
-                          {formatCurrency(selectedProperty.income?.reduce((sum, inc) =>
-                            sum + convertToAnnual(inc.amount, inc.frequency), 0) || 0)}
-                        </p>
-                      </div>
-                      <div className="p-3 bg-red-50 rounded-lg">
-                        <p className="text-xs text-muted-foreground">Annual Expenses</p>
-                        <p className="text-lg font-bold text-red-600">
-                          {formatCurrency(selectedProperty.expenses?.reduce((sum, exp) =>
-                            sum + convertToAnnual(exp.amount, exp.frequency), 0) || 0)}
-                        </p>
-                      </div>
-                      <div className="p-3 bg-orange-50 rounded-lg">
-                        <p className="text-xs text-muted-foreground">Annual Loan Repayments</p>
-                        <p className="text-lg font-bold text-orange-600">
-                          {formatCurrency(calculateAnnualLoanRepayments(selectedProperty))}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Interest: {formatCurrency(calculateAnnualInterest(selectedProperty))}
-                        </p>
-                      </div>
-                      <div className={`p-3 rounded-lg ${calculateCashflow(selectedProperty) >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                        <p className="text-xs text-muted-foreground">Net Cashflow</p>
-                        <p className={`text-lg font-bold ${calculateCashflow(selectedProperty) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                          {formatCurrency(calculateCashflow(selectedProperty))}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">per year</p>
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">View:</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm ${financialViewMode === 'monthly' ? 'font-medium' : 'text-muted-foreground'}`}>Monthly</span>
+                        <Switch
+                          checked={financialViewMode === 'annual'}
+                          onCheckedChange={(checked) => setFinancialViewMode(checked ? 'annual' : 'monthly')}
+                        />
+                        <span className={`text-sm ${financialViewMode === 'annual' ? 'font-medium' : 'text-muted-foreground'}`}>Annual</span>
                       </div>
                     </div>
 
+                    {/* Summary Cards with Budget vs Actual */}
+                    {(() => {
+                      // Calculate totals for Budget (from entries) and Actual (from transactions)
+                      const incomeBudget = selectedProperty.income?.reduce((sum, inc) =>
+                        sum + normalizeAmount(inc.amount, inc.frequency), 0) || 0;
+                      const incomeActual = selectedProperty.income?.reduce((sum, inc) =>
+                        sum + (normalizeActual(inc.monthlyAverageActual) || 0), 0) || 0;
+                      const hasIncomeActuals = selectedProperty.income?.some(inc => inc.hasTransactions);
+
+                      const expenseBudget = selectedProperty.expenses?.reduce((sum, exp) =>
+                        sum + normalizeAmount(exp.amount, exp.frequency), 0) || 0;
+                      const expenseActual = selectedProperty.expenses?.reduce((sum, exp) =>
+                        sum + (normalizeActual(exp.monthlyAverageActual) || 0), 0) || 0;
+                      const hasExpenseActuals = selectedProperty.expenses?.some(exp => exp.hasTransactions);
+
+                      const loanBudget = selectedProperty.loans?.reduce((sum, loan) =>
+                        sum + normalizeAmount(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY'), 0) || 0;
+                      const loanActual = selectedProperty.loans?.reduce((sum, loan) =>
+                        sum + (normalizeActual(loan.monthlyAverageActual) || 0), 0) || 0;
+                      const hasLoanActuals = selectedProperty.loans?.some(loan => loan.hasTransactions);
+
+                      const cashflowBudget = incomeBudget - expenseBudget - loanBudget;
+                      const cashflowActual = hasIncomeActuals || hasExpenseActuals || hasLoanActuals
+                        ? incomeActual - expenseActual - loanActual
+                        : null;
+
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Income */}
+                          <div className="p-3 bg-green-50 rounded-lg">
+                            <p className="text-xs text-muted-foreground">Income</p>
+                            <div className="flex justify-between items-baseline">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Budget</p>
+                                <p className={`text-lg font-bold ${incomeBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(incomeBudget)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">Actual</p>
+                                <p className={`text-lg font-bold ${hasIncomeActuals ? (incomeActual >= 0 ? 'text-green-600' : 'text-red-600') : 'text-muted-foreground'}`}>
+                                  {hasIncomeActuals ? formatCurrency(incomeActual) : '—'}
+                                </p>
+                              </div>
+                            </div>
+                            {hasIncomeActuals && (
+                              <div className={`text-xs mt-1 flex items-center gap-1 ${incomeActual >= incomeBudget ? 'text-green-600' : 'text-red-600'}`}>
+                                {incomeActual >= incomeBudget ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                                {formatCurrency(incomeActual - incomeBudget)} ({((incomeActual - incomeBudget) / incomeBudget * 100).toFixed(0)}%)
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Expenses */}
+                          <div className="p-3 bg-red-50 rounded-lg">
+                            <p className="text-xs text-muted-foreground">Expenses</p>
+                            <div className="flex justify-between items-baseline">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Budget</p>
+                                <p className="text-lg font-bold text-red-600">{formatCurrency(expenseBudget)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">Actual</p>
+                                <p className={`text-lg font-bold ${hasExpenseActuals ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                  {hasExpenseActuals ? formatCurrency(expenseActual) : '—'}
+                                </p>
+                              </div>
+                            </div>
+                            {hasExpenseActuals && (
+                              <div className={`text-xs mt-1 flex items-center gap-1 ${expenseActual <= expenseBudget ? 'text-green-600' : 'text-red-600'}`}>
+                                {expenseActual <= expenseBudget ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
+                                {formatCurrency(expenseActual - expenseBudget)} ({((expenseActual - expenseBudget) / expenseBudget * 100).toFixed(0)}%)
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Loan Repayments */}
+                          <div className="p-3 bg-orange-50 rounded-lg">
+                            <p className="text-xs text-muted-foreground">Loan Repayments</p>
+                            <div className="flex justify-between items-baseline">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Budget</p>
+                                <p className="text-lg font-bold text-red-600">{formatCurrency(loanBudget)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">Actual</p>
+                                <p className={`text-lg font-bold ${hasLoanActuals ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                  {hasLoanActuals ? formatCurrency(loanActual) : '—'}
+                                </p>
+                              </div>
+                            </div>
+                            {hasLoanActuals && (
+                              <div className={`text-xs mt-1 flex items-center gap-1 ${loanActual <= loanBudget ? 'text-green-600' : 'text-red-600'}`}>
+                                {loanActual <= loanBudget ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
+                                {formatCurrency(loanActual - loanBudget)} ({loanBudget > 0 ? ((loanActual - loanBudget) / loanBudget * 100).toFixed(0) : 0}%)
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Net Cashflow */}
+                          <div className={`p-3 rounded-lg ${cashflowBudget >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                            <p className="text-xs text-muted-foreground">Net Cashflow</p>
+                            <div className="flex justify-between items-baseline">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Budget</p>
+                                <p className={`text-lg font-bold ${cashflowBudget >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                  {formatCurrency(cashflowBudget)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">Actual</p>
+                                <p className={`text-lg font-bold ${cashflowActual !== null ? (cashflowActual >= 0 ? 'text-green-700' : 'text-red-700') : 'text-muted-foreground'}`}>
+                                  {cashflowActual !== null ? formatCurrency(cashflowActual) : '—'}
+                                </p>
+                              </div>
+                            </div>
+                            {cashflowActual !== null && (
+                              <div className={`text-xs mt-1 flex items-center gap-1 ${cashflowActual >= cashflowBudget ? 'text-green-600' : 'text-red-600'}`}>
+                                {cashflowActual >= cashflowBudget ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                                {formatCurrency(cashflowActual - cashflowBudget)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Income Section */}
                     <div>
                       <h4 className="font-medium mb-2 flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-green-600" />
                         Income
                       </h4>
                       {selectedProperty.income && selectedProperty.income.length > 0 ? (
-                        <div className="space-y-2">
-                          {selectedProperty.income.map((inc) => (
-                            <div key={inc.id} className="flex justify-between p-3 bg-green-50 rounded-lg">
-                              <span>{inc.name}</span>
-                              <span className="font-medium text-green-600">
-                                {formatCurrency(inc.amount)}/{inc.frequency.toLowerCase()}
-                              </span>
-                            </div>
-                          ))}
+                        <div className="space-y-1">
+                          {/* Column Headers */}
+                          <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                            <div className="col-span-4">Name</div>
+                            <div className="col-span-2 text-right">Budget</div>
+                            <div className="col-span-3 text-right">Actual</div>
+                            <div className="col-span-3 text-right">Variance</div>
+                          </div>
+                          {selectedProperty.income.map((inc) => {
+                            const budget = normalizeAmount(inc.amount, inc.frequency);
+                            const actual = normalizeActual(inc.monthlyAverageActual);
+                            const variance = calculateVariance(budget, actual);
+                            return (
+                              <div key={inc.id} className="grid grid-cols-12 gap-2 px-3 py-2 bg-green-50 rounded-lg items-center">
+                                <div className="col-span-4 truncate">{inc.name}</div>
+                                <div className="col-span-2 text-right font-medium text-green-600">
+                                  {formatCurrency(budget)}
+                                </div>
+                                <div className="col-span-3 text-right">
+                                  {inc.hasTransactions ? (
+                                    <div>
+                                      <span className="font-medium text-green-600">{formatCurrency(actual || 0)}</span>
+                                      <span className="text-xs text-muted-foreground block">{inc.transactionCount} txns</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </div>
+                                <div className="col-span-3 text-right">
+                                  {variance.amount !== null ? (
+                                    <div className={variance.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                      <div className="flex items-center justify-end gap-1">
+                                        {variance.amount >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                                        <span className="font-medium">{variance.amount >= 0 ? '+' : ''}{formatCurrency(variance.amount)}</span>
+                                      </div>
+                                      <span className="text-xs">({variance.amount >= 0 ? '+' : ''}{variance.percent?.toFixed(0)}%)</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">No income linked.</p>
                       )}
                     </div>
 
+                    {/* Expenses Section */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium flex items-center gap-2">
@@ -1137,20 +1356,57 @@ function PropertiesPageContent() {
                         </Button>
                       </div>
                       {selectedProperty.expenses && selectedProperty.expenses.length > 0 ? (
-                        <div className="space-y-2">
-                          {selectedProperty.expenses.map((exp) => (
-                            <div key={exp.id} className="flex justify-between p-3 bg-red-50 rounded-lg">
-                              <div>
-                                <span>{exp.name}</span>
-                                {exp.isTaxDeductible && (
-                                  <Badge variant="outline" className="ml-2 text-xs">Deductible</Badge>
-                                )}
+                        <div className="space-y-1">
+                          {/* Column Headers */}
+                          <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                            <div className="col-span-4">Name</div>
+                            <div className="col-span-2 text-right">Budget</div>
+                            <div className="col-span-3 text-right">Actual</div>
+                            <div className="col-span-3 text-right">Variance</div>
+                          </div>
+                          {selectedProperty.expenses.map((exp) => {
+                            const budget = normalizeAmount(exp.amount, exp.frequency);
+                            const actual = normalizeActual(exp.monthlyAverageActual);
+                            const variance = calculateVariance(budget, actual);
+                            // For expenses, negative variance (spending less) is good
+                            const isGoodVariance = variance.amount !== null && variance.amount <= 0;
+                            return (
+                              <div key={exp.id} className="grid grid-cols-12 gap-2 px-3 py-2 bg-red-50 rounded-lg items-center">
+                                <div className="col-span-4">
+                                  <span className="truncate block">{exp.name}</span>
+                                  {exp.isTaxDeductible && (
+                                    <Badge variant="outline" className="text-xs mt-1">Deductible</Badge>
+                                  )}
+                                </div>
+                                <div className="col-span-2 text-right font-medium text-red-600">
+                                  {formatCurrency(budget)}
+                                </div>
+                                <div className="col-span-3 text-right">
+                                  {exp.hasTransactions ? (
+                                    <div>
+                                      <span className="font-medium text-red-600">{formatCurrency(actual || 0)}</span>
+                                      <span className="text-xs text-muted-foreground block">{exp.transactionCount} txns</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </div>
+                                <div className="col-span-3 text-right">
+                                  {variance.amount !== null ? (
+                                    <div className={isGoodVariance ? 'text-green-600' : 'text-red-600'}>
+                                      <div className="flex items-center justify-end gap-1">
+                                        {isGoodVariance ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
+                                        <span className="font-medium">{variance.amount >= 0 ? '+' : ''}{formatCurrency(variance.amount)}</span>
+                                      </div>
+                                      <span className="text-xs">({variance.amount >= 0 ? '+' : ''}{variance.percent?.toFixed(0)}%)</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </div>
                               </div>
-                              <span className="font-medium text-red-600">
-                                {formatCurrency(exp.amount)}/{exp.frequency.toLowerCase()}
-                              </span>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">No expenses linked. Click &quot;Add Expense&quot; to add one.</p>
@@ -1164,25 +1420,57 @@ function PropertiesPageContent() {
                         Loan Repayments
                       </h4>
                       {selectedProperty.loans && selectedProperty.loans.length > 0 ? (
-                        <div className="space-y-2">
-                          {selectedProperty.loans.map((loan) => (
-                            <div key={loan.id} className="flex justify-between p-3 bg-orange-50 rounded-lg">
-                              <div>
-                                <span>{loan.name}</span>
-                                <p className="text-xs text-muted-foreground">
-                                  {loan.isInterestOnly ? 'Interest Only' : 'P&I'} • {(loan.interestRateAnnual * 100).toFixed(2)}%
-                                </p>
+                        <div className="space-y-1">
+                          {/* Column Headers */}
+                          <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                            <div className="col-span-4">Name</div>
+                            <div className="col-span-2 text-right">Budget</div>
+                            <div className="col-span-3 text-right">Actual</div>
+                            <div className="col-span-3 text-right">Variance</div>
+                          </div>
+                          {selectedProperty.loans.map((loan) => {
+                            const budget = normalizeAmount(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY');
+                            const actual = normalizeActual(loan.monthlyAverageActual);
+                            const variance = calculateVariance(budget, actual);
+                            // For loans, negative variance (paying less) might be good or bad depending on context
+                            const isGoodVariance = variance.amount !== null && variance.amount <= 0;
+                            return (
+                              <div key={loan.id} className="grid grid-cols-12 gap-2 px-3 py-2 bg-orange-50 rounded-lg items-center">
+                                <div className="col-span-4">
+                                  <span className="truncate block">{loan.name}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {loan.isInterestOnly ? 'IO' : 'P&I'} • {(loan.interestRateAnnual * 100).toFixed(2)}%
+                                  </span>
+                                </div>
+                                <div className="col-span-2 text-right font-medium text-orange-600">
+                                  {formatCurrency(budget)}
+                                </div>
+                                <div className="col-span-3 text-right">
+                                  {loan.hasTransactions ? (
+                                    <div>
+                                      <span className="font-medium text-orange-600">{formatCurrency(actual || 0)}</span>
+                                      <span className="text-xs text-muted-foreground block">{loan.transactionCount} txns</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </div>
+                                <div className="col-span-3 text-right">
+                                  {variance.amount !== null ? (
+                                    <div className={isGoodVariance ? 'text-green-600' : 'text-red-600'}>
+                                      <div className="flex items-center justify-end gap-1">
+                                        {isGoodVariance ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
+                                        <span className="font-medium">{variance.amount >= 0 ? '+' : ''}{formatCurrency(variance.amount)}</span>
+                                      </div>
+                                      <span className="text-xs">({variance.amount >= 0 ? '+' : ''}{variance.percent?.toFixed(0)}%)</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-right">
-                                <span className="font-medium text-orange-600">
-                                  {formatCurrency(loan.minRepayment || 0)}/{(loan.repaymentFrequency || 'monthly').toLowerCase()}
-                                </span>
-                                <p className="text-xs text-muted-foreground">
-                                  {formatCurrency(convertToAnnual(loan.minRepayment || 0, loan.repaymentFrequency || 'MONTHLY'))}/yr
-                                </p>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">No loans linked.</p>

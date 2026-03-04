@@ -3,16 +3,15 @@
  * GET /api/budget/comparison - Compare actual spending vs budget targets
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { generateMonthlyReport } from '@/lib/bank';
 import type { CategorisedTransaction, BudgetTarget } from '@/lib/bank/types';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('expense.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       const { searchParams } = new URL(request.url);
       const month = searchParams.get('month'); // YYYY-MM format
@@ -102,14 +101,12 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // POST - Create or update budget targets
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('expense.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       const body = await request.json();
       const { targets } = body;
@@ -163,5 +160,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

@@ -3,18 +3,17 @@
  * POST /api/bank/preview - Preview parsed bank statement before importing
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { parseCSV, parseQIF, isValidQIF, suggestColumnMappings, normaliseTransactions, countPotentialDuplicates } from '@/lib/bank';
 import { batchFindMatches, getMatchSummary, type RecurringMatch } from '@/lib/bank/recurringMatcher';
 import type { ParseOptions, ImportFileFormat } from '@/lib/bank/types';
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('account.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       const formData = await request.formData();
       const file = formData.get('file') as File | null;
@@ -271,5 +270,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

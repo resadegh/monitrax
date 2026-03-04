@@ -7,8 +7,8 @@
  * Returns: { accountsSynced: number, transactionsSynced: number }
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import {
   getAccounts,
@@ -19,122 +19,120 @@ import {
   type BasiqTransaction,
 } from '@/lib/basiq';
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (req: AuthenticatedRequest) => {
-    try {
-      const userId = req.user!.userId;
-      const body = await request.json().catch(() => ({}));
-      const { connectionId } = body;
+export const POST = withPermission('account.write', async (request, auth) => {
+  try {
+    const userId = auth.userId;
+    const body = await request.json().catch(() => ({}));
+    const { connectionId } = body;
 
-      // Get user's Basiq user ID
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { basiqUserId: true },
-      });
+    // Get user's Basiq user ID
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { basiqUserId: true },
+    });
 
-      if (!user?.basiqUserId) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: { code: 'NOT_FOUND', message: 'No Basiq connection found. Please connect a bank first.' },
-          },
-          { status: 404 }
-        );
-      }
-
-      // Get connections to sync
-      const connectionsQuery = connectionId
-        ? { userId, id: connectionId }
-        : { userId, status: 'ACTIVE' as const };
-
-      const connections = await prisma.basiqConnection.findMany({
-        where: connectionsQuery,
-      });
-
-      if (connections.length === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: { code: 'NOT_FOUND', message: 'No active connections to sync' },
-          },
-          { status: 404 }
-        );
-      }
-
-      let accountsSynced = 0;
-      let transactionsSynced = 0;
-      const errors: string[] = [];
-
-      // Refresh connections first
-      for (const connection of connections) {
-        try {
-          await refreshConnection(user.basiqUserId, connection.basiqConnectionId);
-        } catch (refreshError) {
-          console.warn(`Failed to refresh connection ${connection.id}:`, refreshError);
-        }
-      }
-
-      // Wait a moment for Basiq to process the refresh
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      // Fetch and sync accounts
-      const basiqAccounts = await getAccounts(user.basiqUserId);
-
-      for (const basiqAccount of basiqAccounts) {
-        try {
-          const synced = await syncAccount(userId, basiqAccount, connections);
-          if (synced) accountsSynced++;
-        } catch (accountError) {
-          console.error(`Failed to sync account ${basiqAccount.id}:`, accountError);
-          errors.push(`Account ${basiqAccount.name}: ${accountError}`);
-        }
-      }
-
-      // Fetch and sync transactions
-      const basiqTransactions = await getTransactions(user.basiqUserId, { limit: 500 });
-
-      for (const basiqTransaction of basiqTransactions) {
-        try {
-          const synced = await syncTransaction(userId, basiqTransaction);
-          if (synced) transactionsSynced++;
-        } catch (txError) {
-          console.error(`Failed to sync transaction ${basiqTransaction.id}:`, txError);
-          errors.push(`Transaction: ${txError}`);
-        }
-      }
-
-      // Update connection sync timestamps
-      await prisma.basiqConnection.updateMany({
-        where: { id: { in: connections.map((c: typeof connections[number]) => c.id) } },
-        data: { lastSyncedAt: new Date(), lastSyncError: errors.length > 0 ? errors.join('; ') : null },
-      });
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          accountsSynced,
-          transactionsSynced,
-          errors: errors.length > 0 ? errors : undefined,
-        },
-        meta: {
-          timestamp: new Date().toISOString(),
-        },
-      });
-    } catch (error) {
-      console.error('Error syncing Basiq data:', error);
+    if (!user?.basiqUserId) {
       return NextResponse.json(
         {
           success: false,
-          error: {
-            code: 'SERVER_ERROR',
-            message: error instanceof Error ? error.message : 'Failed to sync bank data',
-          },
+          error: { code: 'NOT_FOUND', message: 'No Basiq connection found. Please connect a bank first.' },
         },
-        { status: 500 }
+        { status: 404 }
       );
     }
-  });
-}
+
+    // Get connections to sync
+    const connectionsQuery = connectionId
+      ? { userId, id: connectionId }
+      : { userId, status: 'ACTIVE' as const };
+
+    const connections = await prisma.basiqConnection.findMany({
+      where: connectionsQuery,
+    });
+
+    if (connections.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'No active connections to sync' },
+        },
+        { status: 404 }
+      );
+    }
+
+    let accountsSynced = 0;
+    let transactionsSynced = 0;
+    const errors: string[] = [];
+
+    // Refresh connections first
+    for (const connection of connections) {
+      try {
+        await refreshConnection(user.basiqUserId, connection.basiqConnectionId);
+      } catch (refreshError) {
+        console.warn(`Failed to refresh connection ${connection.id}:`, refreshError);
+      }
+    }
+
+    // Wait a moment for Basiq to process the refresh
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Fetch and sync accounts
+    const basiqAccounts = await getAccounts(user.basiqUserId);
+
+    for (const basiqAccount of basiqAccounts) {
+      try {
+        const synced = await syncAccount(userId, basiqAccount, connections);
+        if (synced) accountsSynced++;
+      } catch (accountError) {
+        console.error(`Failed to sync account ${basiqAccount.id}:`, accountError);
+        errors.push(`Account ${basiqAccount.name}: ${accountError}`);
+      }
+    }
+
+    // Fetch and sync transactions
+    const basiqTransactions = await getTransactions(user.basiqUserId, { limit: 500 });
+
+    for (const basiqTransaction of basiqTransactions) {
+      try {
+        const synced = await syncTransaction(userId, basiqTransaction);
+        if (synced) transactionsSynced++;
+      } catch (txError) {
+        console.error(`Failed to sync transaction ${basiqTransaction.id}:`, txError);
+        errors.push(`Transaction: ${txError}`);
+      }
+    }
+
+    // Update connection sync timestamps
+    await prisma.basiqConnection.updateMany({
+      where: { id: { in: connections.map((c: typeof connections[number]) => c.id) } },
+      data: { lastSyncedAt: new Date(), lastSyncError: errors.length > 0 ? errors.join('; ') : null },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        accountsSynced,
+        transactionsSynced,
+        errors: errors.length > 0 ? errors : undefined,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error syncing Basiq data:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'SERVER_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to sync bank data',
+        },
+      },
+      { status: 500 }
+    );
+  }
+});
 
 async function syncAccount(
   userId: string,

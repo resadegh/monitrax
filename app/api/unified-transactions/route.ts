@@ -8,9 +8,9 @@
  * Blueprint reference: PHASE_13_TRANSACTIONAL_INTELLIGENCE.md Section 13.6
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   categoriseTransaction,
   cleanMerchantName,
@@ -24,8 +24,7 @@ import {
 // GET - List Unified Transactions
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('transaction.read', async (request, auth) => {
     try {
       const { searchParams } = new URL(request.url);
 
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
 
       // Build where clause
       const where: Record<string, unknown> = {
-        userId: authReq.user!.userId,
+        userId: auth.userId,
       };
 
       if (accountId) where.accountId = accountId;
@@ -73,12 +72,14 @@ export async function GET(request: NextRequest) {
       if (excludeTransfers === 'true') where.isTransfer = { not: true };
       if (direction) where.direction = direction;
 
-      // Uncategorized filter: no income/expense/loan link and not a transfer
+      // Uncategorized filter: transactions available for categorization
+      // Must have no links (income/expense/loan), not be a transfer, not be investment contribution
       if (uncategorized === 'true') {
         where.incomeId = null;
         where.expenseId = null;
         where.loanId = null;
-        where.isTransfer = false;
+        where.isTransfer = { not: true }; // false or null
+        where.isInvestmentContribution = { not: true }; // false or null
       }
 
       if (startDate || endDate) {
@@ -124,18 +125,16 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // POST - Create Unified Transaction(s)
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('transaction.write', async (request, auth) => {
     try {
       const body = await request.json();
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Check if batch import
       if (Array.isArray(body.transactions)) {
@@ -266,8 +265,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // BATCH IMPORT HANDLER

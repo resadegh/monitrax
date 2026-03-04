@@ -19,11 +19,18 @@ export function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-  // CSP
+  // CSP — includes Firebase/GCP Identity Platform domains for authentication
+  // 'self' in frame-src is required because Firebase SDK loads a hidden iframe
+  // at /__/auth/iframe on the same domain for popup auth communication.
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
+    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseauth.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; frame-src 'self' https://*.firebaseapp.com https://*.google.com https://accounts.google.com; frame-ancestors 'none'"
   );
+
+  // Allow popup-based auth flows (e.g. signInWithPopup) to communicate back
+  // to the opener window. Without this, Cross-Origin-Opener-Policy may sever
+  // the window.opener relationship and block window.closed checks.
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
 
   // HSTS in production
   if (process.env.NODE_ENV === 'production') {
@@ -52,7 +59,10 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - __/auth and __/firebase (proxied Firebase Auth handler — must not
+     *   have our CSP applied because the handler loads its own scripts
+     *   from gstatic.com, googleapis.com, etc.)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public/|__/).*)',
   ],
 };

@@ -6,9 +6,9 @@
  * POST   /api/categories         - Create a new custom category
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, INCOME_TYPES, INCOME_TYPE_LABELS } from '@/lib/categories/unified';
 
 // System categories - these are always available for all users
@@ -49,8 +49,7 @@ function getSystemCategories() {
  *   - type: 'EXPENSE' | 'INCOME' (optional filter)
  *   - includeSystem: 'true' | 'false' (default: true)
  */
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('settings.read', async (request, auth) => {
     try {
       const { searchParams } = new URL(request.url);
       const typeFilter = searchParams.get('type') as 'EXPENSE' | 'INCOME' | null;
@@ -59,7 +58,7 @@ export async function GET(request: NextRequest) {
       // Get user's custom categories
       const customCategories = await prisma.category.findMany({
         where: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           isActive: true,
           ...(typeFilter && { type: typeFilter }),
         },
@@ -108,15 +107,13 @@ export async function GET(request: NextRequest) {
       console.error('Get categories error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
 /**
  * POST /api/categories
  * Create a new custom category
  */
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('settings.write', async (request, auth) => {
     try {
       const body = await request.json();
       const { name, type, description, color, icon } = body;
@@ -147,7 +144,7 @@ export async function POST(request: NextRequest) {
       // Check if code already exists for this user
       const existing = await prisma.category.findFirst({
         where: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           code,
         },
       });
@@ -173,13 +170,13 @@ export async function POST(request: NextRequest) {
 
       // Get next sort order
       const maxSortOrder = await prisma.category.aggregate({
-        where: { userId: authReq.user!.userId, type },
+        where: { userId: auth.userId, type },
         _max: { sortOrder: true },
       });
 
       const category = await prisma.category.create({
         data: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           name: name.trim(),
           code,
           type,
@@ -210,5 +207,4 @@ export async function POST(request: NextRequest) {
       console.error('Create category error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

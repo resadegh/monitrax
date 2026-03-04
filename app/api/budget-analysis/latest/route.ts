@@ -7,9 +7,9 @@
  * Returns the user's most recent budget analysis with staleness indicator.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 // Analysis is considered stale after 30 days
 const STALE_DAYS = 30;
@@ -18,10 +18,9 @@ const STALE_DAYS = 30;
 // API Handler
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('expense.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch most recent analysis
       const analysis = await prisma.budgetAnalysis.findFirst({
@@ -64,6 +63,9 @@ export async function GET(request: NextRequest) {
         profileChanged = profileUpdated > analysisDate;
       }
 
+      // Parse the recurringBreakdown to extract committed vs discretionary
+      const breakdown = (analysis.recurringBreakdown as any) || {};
+
       return NextResponse.json({
         success: true,
         data: {
@@ -79,10 +81,33 @@ export async function GET(request: NextRequest) {
           profileChanged,
           daysOld: daysSinceAnalysis,
 
-          // Include full breakdown for UI
+          // NEW: Properly separated committed vs discretionary
+          committed: {
+            total: breakdown.committedTotal || analysis.recurringExpensesTotal,
+            essentialExpenses: breakdown.essentialExpensesTotal || 0,
+            loanRepayments: breakdown.loanRepaymentsTotal || 0,
+            breakdown: breakdown.committedBreakdown || null,
+          },
+          discretionaryTracked: {
+            total: breakdown.discretionaryTrackedTotal || 0,
+            breakdown: breakdown.discretionaryBreakdown || null,
+          },
+
+          // NEW: Totals with proper breakdown
+          totals: {
+            committedExpenses: breakdown.committedTotal || analysis.recurringExpensesTotal,
+            discretionaryTracked: breakdown.discretionaryTrackedTotal || 0,
+            variableExpenses: analysis.aiVariableEstimate,
+            totalRealisticBudget: analysis.totalRealisticBudget,
+            recurringExpenses: breakdown.total || analysis.recurringExpensesTotal,
+            userReportedTotal: analysis.userReportedTotal,
+            missingExpenses: analysis.missingVariableExpenses,
+          },
+
+          // Legacy format for backwards compatibility
           recurring: {
-            total: analysis.recurringExpensesTotal,
-            breakdown: analysis.recurringBreakdown,
+            total: breakdown.total || analysis.recurringExpensesTotal,
+            breakdown: breakdown.categories ? { categories: breakdown.categories, total: breakdown.total } : analysis.recurringBreakdown,
           },
           variable: {
             total: analysis.aiVariableEstimate,
@@ -107,5 +132,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

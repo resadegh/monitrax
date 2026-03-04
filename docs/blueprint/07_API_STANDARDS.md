@@ -160,16 +160,39 @@ No stack traces are ever leaked to the client.
 
 ---
 
-# **7. Authentication & Security Requirements (Phase 10)**
+# **7. Authentication & Security Requirements**
 
-Even before Phase 10 is implemented, all APIs must be ready for:
+> **Updated February 2026**: GCP Identity Platform is the sole identity provider.
+> All API routes authenticate using GCP/Firebase ID tokens.
 
-### **7.1 Clerk/Supabase/Auth0 JWT Authentication**
-Each request must be capable of:
+### **7.1 GCP Identity Platform Token Authentication**
 
-- Parsing bearer tokens  
-- Rejecting unauthenticated access  
-- Supporting future RBAC  
+All API routes verify GCP/Firebase ID tokens. Three entry points are available:
+
+```typescript
+// Option 1: verifyToken() — lightweight, returns { userId, email }
+import { verifyToken } from '@/lib/auth';
+const user = await verifyToken(token);
+
+// Option 2: getAuthContext() — full context with role, name, tenantId
+import { getAuthContext } from '@/lib/auth/context';
+const context = await getAuthContext(request);
+
+// Option 3: withAuth() — middleware wrapper with auto-sync
+import { withAuth } from '@/lib/middleware';
+return withAuth(request, handler);
+```
+
+**Token flow:**
+1. Client obtains Firebase ID token via Firebase SDK (`onIdTokenChanged`)
+2. Client sends `Authorization: Bearer <firebase-id-token>` with every request
+3. Server verifies token via `verifyGCPIdToken()` (Google public certs, RS256)
+4. Server looks up local user by GCP UID or auto-syncs on first request
+
+**Key rules:**
+- No Monitrax JWTs are issued for API authentication
+- Tokens expire after 1 hour (Firebase SDK auto-refreshes)
+- RBAC permissions checked via `getAuthContext()` or route guards
 
 ### **7.2 Rate Limiting Hooks**
 All endpoints must expose a wrapper:
@@ -178,14 +201,13 @@ All endpoints must expose a wrapper:
 withRateLimit(handler, { max: X, windowMs: Y })
 ```
 
-Implementation happens in Phase 10.
-
 ### **7.3 Audit Logging**
-All mutations will later be logged:
+All mutations are logged:
 
-- Who changed data  
-- When  
-- Old vs new values  
+- Who changed data (userId from GCP token)
+- When (timestamp)
+- Old vs new values
+- IP address and user agent  
 
 ---
 

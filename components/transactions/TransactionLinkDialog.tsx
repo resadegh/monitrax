@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link2, Plus, RefreshCw, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package, ArrowRightLeft, TrendingUp } from 'lucide-react';
+import { Link2, Plus, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package, ArrowRightLeft, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
   Dialog,
@@ -36,6 +36,7 @@ import {
   INCOME_TYPE_LABELS,
 } from '@/lib/categories/unified';
 import { CategorySelect } from '@/components/categories/CategorySelect';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface Transaction {
   id: string;
@@ -58,6 +59,28 @@ interface MatchResult {
   confidence: number;
   amountMatch: boolean;
   amountDiff: number;
+  // Budget vs Actual: Entry amount is budget, transactions provide actual
+  propertyId?: string | null;
+  propertyName?: string | null;
+  budgetedAmount?: number | null;
+  categoryMatch?: boolean;
+}
+
+interface TransactionPattern {
+  count: number;
+  detectedFrequency: string;
+  averageAmount: number;
+  averageIntervalDays: number;
+  // New fields for accurate monthly calculation
+  trueMonthlyAverage?: number;
+  totalAmount?: number;
+  sumForAverage?: number;
+  monthsCovered?: number;
+  paymentTiming?: 'ADVANCE' | 'ARREARS'; // ADVANCE = rent (exclude last), ARREARS = salary (include all)
+  dateRange: {
+    first: string;
+    last: string;
+  };
 }
 
 interface SameVendorTransaction {
@@ -161,6 +184,9 @@ export function TransactionLinkDialog({
   const [learnedCategory, setLearnedCategory] = useState<string | null>(null);
   const [learnMerchant, setLearnMerchant] = useState(true); // Default to learning
 
+  // Phase 30: Transaction pattern for reconciliation
+  const [transactionPattern, setTransactionPattern] = useState<TransactionPattern | null>(null);
+
   // Create new form state
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('');
@@ -185,8 +211,7 @@ export function TransactionLinkDialog({
   const [isRecurringInvestment, setIsRecurringInvestment] = useState(false);
   const [investmentFrequency, setInvestmentFrequency] = useState('MONTHLY');
 
-  // Link options
-  const [updateAmountOnLink, setUpdateAmountOnLink] = useState(false);
+  // Link options removed - linking now only tags transactions (budget vs actual model)
 
   // Load matches when dialog opens
   useEffect(() => {
@@ -211,11 +236,11 @@ export function TransactionLinkDialog({
       setInvestmentContributionAccountId(null);
       setIsRecurringInvestment(false);
       setInvestmentFrequency('MONTHLY');
-      setUpdateAmountOnLink(false);
       setSameVendorTransactions([]);
       setSelectedVendorTransactions(new Set());
       setLearnedCategory(null);
       setLearnMerchant(true);
+      setTransactionPattern(null);
       setSuccess(null);
       setError(null);
     }
@@ -272,6 +297,8 @@ export function TransactionLinkDialog({
       }
       // Store learned category for display
       setLearnedCategory(data.learnedCategory || null);
+      // Phase 30: Store transaction pattern for reconciliation
+      setTransactionPattern(data.transactionPattern || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load matches');
     } finally {
@@ -279,7 +306,7 @@ export function TransactionLinkDialog({
     }
   };
 
-  const handleLink = async (targetId: string, type: 'income' | 'expense' | 'loan', shouldUpdateAmount: boolean = false) => {
+  const handleLink = async (targetId: string, type: 'income' | 'expense' | 'loan') => {
     if (!transaction) return;
     setSaving(true);
     setError(null);
@@ -295,7 +322,7 @@ export function TransactionLinkDialog({
           action: 'link',
           type,
           targetId,
-          updateAmount: shouldUpdateAmount,
+          // updateAmount removed - linking only tags transactions (budget vs actual model)
           additionalTransactionIds: Array.from(selectedVendorTransactions),
           learnMerchant,
         }),
@@ -325,33 +352,6 @@ export function TransactionLinkDialog({
     }
   };
 
-  const handleUpdateAmount = async (targetId: string, type: 'income' | 'expense' | 'loan') => {
-    if (!transaction) return;
-    setSaving(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/transactions/${transaction.id}/link`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ action: 'update', type, targetId }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-
-      setSuccess(data.message);
-      onLinked?.();
-      loadMatches(); // Refresh to show updated amounts
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleCreate = async () => {
     if (!transaction || !newName || (!newCategory && !isTransfer && !isInvestmentContribution)) return;
@@ -571,9 +571,6 @@ export function TransactionLinkDialog({
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
-
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('en-AU', {
       day: 'numeric',
@@ -662,7 +659,7 @@ export function TransactionLinkDialog({
                   <div className="flex items-center gap-2">
                     <Checkbox
                       checked={selectedVendorTransactions.has(tx.id)}
-                      onCheckedChange={() => toggleVendorTransaction(tx.id)}
+                      className="pointer-events-none"
                     />
                     <div>
                       <p className="text-sm font-medium truncate max-w-[180px]">
@@ -740,6 +737,32 @@ export function TransactionLinkDialog({
 
             {/* Suggested Matches */}
             <TabsContent value="match" className="space-y-2 max-h-64 overflow-auto">
+              {/* Transaction Pattern Alert */}
+              {transactionPattern && transactionPattern.count >= 3 && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 mb-2">
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    Pattern Detected
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    {transactionPattern.count} transactions over {transactionPattern.monthsCovered?.toFixed(1) || '?'} months
+                    {transactionPattern.paymentTiming === 'ADVANCE' && ' (paid in advance)'}
+                  </p>
+                  <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 mt-1">
+                    Monthly Average: {formatCurrency(transactionPattern.trueMonthlyAverage || transactionPattern.averageAmount)}
+                  </p>
+                  {transactionPattern.paymentTiming === 'ADVANCE' && (
+                    <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                      (Last payment excluded - covers future period)
+                    </p>
+                  )}
+                  {transactionPattern.trueMonthlyAverage && transactionPattern.averageAmount &&
+                   Math.abs(transactionPattern.trueMonthlyAverage - transactionPattern.averageAmount) > 100 && (
+                    <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                      (Amounts vary: fees or costs may be deducted)
+                    </p>
+                  )}
+                </div>
+              )}
               {suggestedMatches.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No matching entries found
@@ -748,43 +771,55 @@ export function TransactionLinkDialog({
                 suggestedMatches.map((match) => (
                   <div
                     key={match.id}
-                    className="p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
+                    className={`p-3 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                      match.propertyName ? 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20' : ''
+                    }`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="font-medium">{match.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{match.name}</p>
+                          {match.propertyName && (
+                            <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-blue-300">
+                              <Home className="h-3 w-3 mr-1" />
+                              {match.propertyName}
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Badge variant="outline">{match.category}</Badge>
                           <span>{match.frequency}</span>
+                          {match.categoryMatch && (
+                            <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                              Category match
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold">{formatCurrency(match.amount)}</p>
                         {!match.amountMatch && (
                           <p className="text-xs text-amber-600">
-                            Diff: {formatCurrency(match.amountDiff)}
+                            Diff: {formatCurrency(match.amountDiff)} ({match.amount > 0 ? Math.round((match.amountDiff / match.amount) * 100) : 0}%)
+                          </p>
+                        )}
+                        {match.budgetedAmount && match.budgetedAmount !== match.amount && (
+                          <p className="text-xs text-slate-500">
+                            Budget: {formatCurrency(match.budgetedAmount)}
                           </p>
                         )}
                       </div>
                     </div>
+
                     <div className="flex gap-2 flex-wrap">
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleLink(match.id, match.type, false)}
+                        variant="default"
+                        onClick={() => handleLink(match.id, match.type)}
                         disabled={saving}
                       >
                         <Link2 className="h-3 w-3 mr-1" />
                         Link{selectedVendorTransactions.size > 0 && ` (${selectedVendorTransactions.size + 1})`}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleLink(match.id, match.type, true)}
-                        disabled={saving}
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        Link & Update
                       </Button>
                     </div>
                   </div>
@@ -820,20 +855,11 @@ export function TransactionLinkDialog({
                       <div className="flex gap-2">
                         <Button
                           size="sm"
-                          variant="outline"
-                          onClick={() => handleLink(income.id, 'income', false)}
+                          onClick={() => handleLink(income.id, 'income')}
                           disabled={saving}
                         >
                           <Link2 className="h-3 w-3 mr-1" />
-                          Link Only
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleLink(income.id, 'income', true)}
-                          disabled={saving}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Link & Update
+                          Link
                         </Button>
                       </div>
                     </div>
@@ -870,20 +896,11 @@ export function TransactionLinkDialog({
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleLink(expense.id, 'expense', false)}
+                            onClick={() => handleLink(expense.id, 'expense')}
                             disabled={saving}
                           >
                             <Link2 className="h-3 w-3 mr-1" />
-                            Link Only
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleLink(expense.id, 'expense', true)}
-                            disabled={saving}
-                          >
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            Link & Update
+                            Link
                           </Button>
                         </div>
                       </div>
@@ -919,20 +936,11 @@ export function TransactionLinkDialog({
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => handleLink(loan.id, 'loan', false)}
+                            onClick={() => handleLink(loan.id, 'loan')}
                             disabled={saving}
                           >
                             <Link2 className="h-3 w-3 mr-1" />
-                            Link Only
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleLink(loan.id, 'loan', true)}
-                            disabled={saving}
-                          >
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            Link & Update
+                            Link
                           </Button>
                         </div>
                       </div>
@@ -961,11 +969,11 @@ export function TransactionLinkDialog({
                   />
                   <Label htmlFor="isTransfer" className="text-sm font-medium cursor-pointer flex items-center gap-2">
                     <ArrowRightLeft className="h-4 w-4 text-amber-600" />
-                    This is a transfer between accounts
+                    Transfer / Credit Card Repayment
                   </Label>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 ml-6">
-                  Transfers are excluded from income/expense calculations
+                  Internal transfers and credit card payments are excluded from income/expense calculations
                 </p>
               </div>
 
@@ -1469,6 +1477,22 @@ export function TransactionLinkDialog({
           <div className="p-2 bg-green-50 dark:bg-green-950/50 text-green-600 rounded text-sm flex items-center gap-2">
             <Check className="h-4 w-4" />
             {success}
+          </div>
+        )}
+
+        {/* Skip button - allows skipping to next transaction */}
+        {hasMoreTransactions && onNavigateNext && (
+          <div className="flex justify-end border-t pt-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onNavigateNext();
+              }}
+              className="text-muted-foreground"
+            >
+              Skip for now →
+            </Button>
           </div>
         )}
       </DialogContent>

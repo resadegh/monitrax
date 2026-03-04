@@ -14,9 +14,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wallet, Plus, Edit2, Trash2, Percent, Eye, Landmark, ArrowUpRight, ArrowDownRight, Building, Link2, LayoutGrid, List, RefreshCw, Unplug, ExternalLink } from 'lucide-react';
+import { Wallet, Plus, Edit2, Trash2, Percent, Eye, Landmark, ArrowUpRight, ArrowDownRight, Building, Link2, LayoutGrid, List, RefreshCw, Unplug, ExternalLink, Upload } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
+import { TransactionImportDialog } from '@/components/bank/TransactionImportDialog';
+import { TransactionReviewPanel } from '@/components/bank/TransactionReviewPanel';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface BasiqConnection {
@@ -108,6 +111,12 @@ function AccountsPageContent() {
   // Transaction pagination in account detail dialog
   const [txPage, setTxPage] = useState(1);
   const TX_PER_PAGE = 20;
+
+  // Phase 29: Import and review state
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showReviewPanel, setShowReviewPanel] = useState(false);
+  const [reviewBatchId, setReviewBatchId] = useState<string | null>(null);
+  const [reviewAccountId, setReviewAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -315,22 +324,9 @@ function AccountsPageContent() {
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-
+  // formatCurrency imported from lib/utils/formatters
   // Full decimal currency formatting for transaction amounts
-  const formatCurrencyFull = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+  const formatCurrencyFull = (amount: number) => formatCurrency(amount, { showCents: true });
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -376,6 +372,10 @@ function AccountsPageContent() {
         description={`Manage your bank accounts • Total balance: ${formatCurrency(totalBalance)}`}
         action={
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Import
+            </Button>
             <Button variant="outline" onClick={handleConnectBank} disabled={isConnecting}>
               {isConnecting ? (
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -879,6 +879,18 @@ function AccountsPageContent() {
               </TabsContent>
 
               <TabsContent value="transactions" className="space-y-4 pt-4">
+                {/* Import Button */}
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowImportDialog(true)}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import Transactions
+                  </Button>
+                </div>
+
                 {selectedAccount.transactions && selectedAccount.transactions.length > 0 ? (
                   <div className="space-y-2">
                     {(() => {
@@ -952,9 +964,13 @@ function AccountsPageContent() {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    <ArrowUpRight className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <Upload className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No transactions recorded</p>
-                    <p className="text-sm">Transaction history will appear here</p>
+                    <p className="text-sm mb-4">Import a QIF or CSV file to get started</p>
+                    <Button onClick={() => setShowImportDialog(true)}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import Transactions
+                    </Button>
                   </div>
                 )}
               </TabsContent>
@@ -1065,6 +1081,53 @@ function AccountsPageContent() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Phase 29: Import Dialog - supports both account-specific and main page import */}
+      <TransactionImportDialog
+        accountId={selectedAccount?.id}
+        accountName={selectedAccount?.name}
+        accounts={accounts.map(a => ({ id: a.id, name: a.name, type: a.type, institution: a.institution }))}
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onImportComplete={(batchId, accountId, needsReview) => {
+          setShowImportDialog(false);
+          if (needsReview) {
+            setReviewBatchId(batchId);
+            setReviewAccountId(accountId);
+            setShowReviewPanel(true);
+          } else {
+            // Reload accounts to show new data
+            loadAccounts();
+          }
+        }}
+        onAccountCreated={() => {
+          // Reload accounts list when new account created
+          loadAccounts();
+        }}
+      />
+
+      {/* Phase 29: Review Panel Dialog */}
+      {reviewBatchId && reviewAccountId && (
+        <Dialog open={showReviewPanel} onOpenChange={setShowReviewPanel}>
+          <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+            <TransactionReviewPanel
+              accountId={reviewAccountId}
+              batchId={reviewBatchId}
+              onComplete={() => {
+                setShowReviewPanel(false);
+                setReviewBatchId(null);
+                setReviewAccountId(null);
+                loadAccounts();
+              }}
+              onCancel={() => {
+                setShowReviewPanel(false);
+                setReviewBatchId(null);
+                setReviewAccountId(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </DashboardLayout>
   );
 }

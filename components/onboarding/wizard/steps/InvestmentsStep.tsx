@@ -21,6 +21,7 @@ import {
   HoldingType,
   generateId,
 } from '../types';
+import { formatCurrency } from '@/lib/utils/formatters';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -96,17 +97,6 @@ function createEmptyHolding(): HoldingInput {
     averagePrice: 0,
     type: 'SHARE',
   };
-}
-
-function formatCurrency(amount: number): string {
-  const absAmount = Math.abs(amount);
-  if (absAmount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(2)}M`;
-  }
-  if (absAmount >= 1000) {
-    return `$${(amount / 1000).toFixed(1)}K`;
-  }
-  return `$${amount.toLocaleString()}`;
 }
 
 // =============================================================================
@@ -567,7 +557,7 @@ export function InvestmentsStep({ data, onUpdate }: InvestmentsStepProps) {
             </div>
             <div>
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(totalValue)}
+                {formatCurrency(totalValue, { abbreviate: true })}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Total Value</div>
             </div>

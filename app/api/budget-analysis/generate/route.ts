@@ -11,9 +11,9 @@
  * 4. Stores the analysis in the database
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { toMonthly } from '@/lib/utils/frequencies';
 import {
   isGeminiConfigured,
@@ -32,10 +32,9 @@ import { VariableExpenseResponse } from '@/lib/budget-analysis/types';
 // API Handler
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('expense.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const body = await request.json().catch(() => ({}));
       const forceRegenerate = body.forceRegenerate === true;
 
@@ -79,26 +78,117 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 3. Fetch recurring expenses
-      const expenses = await prisma.expense.findMany({
+      // 3. Fetch ALL expenses and properly categorize them
+      const allExpenses = await prisma.expense.findMany({
         where: { userId },
       });
 
-      const recurringExpenses = expenses.map((e: typeof expenses[0]) => ({
+      // 3a. Fetch loans for committed expense calculation
+      const loans = await prisma.loan.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          name: true,
+          minRepayment: true,
+          repaymentFrequency: true,
+        },
+      });
+
+      // Calculate loan repayments (monthly)
+      const loanRepaymentsMonthly = loans.reduce((sum: number, loan: typeof loans[0]) => {
+        if (loan.minRepayment && loan.repaymentFrequency) {
+          return sum + toMonthly(loan.minRepayment, loan.repaymentFrequency);
+        }
+        return sum;
+      }, 0);
+
+      // 3b. Separate ESSENTIAL (committed) vs DISCRETIONARY expenses
+      // Essential = isEssential === true (bills, utilities, insurance - MUST pay)
+      // Discretionary = isEssential === false (optional spending - can adjust)
+      const essentialExpenses = allExpenses.filter((e: typeof allExpenses[0]) => e.isEssential === true);
+      const discretionaryExpenses = allExpenses.filter((e: typeof allExpenses[0]) => e.isEssential !== true);
+
+      // Map expenses for AI prompt (still need all tracked expenses for AI context)
+      const recurringExpenses = allExpenses.map((e: typeof allExpenses[0]) => ({
         name: e.name,
         category: e.category,
         monthlyAmount: toMonthly(e.amount, e.frequency),
         vendorName: e.vendorName,
+        isEssential: e.isEssential,
       }));
 
-      const totalRecurringMonthly = recurringExpenses.reduce(
-        (sum: number, e: typeof recurringExpenses[0]) => sum + e.monthlyAmount,
+      // Calculate totals
+      const essentialMonthly = essentialExpenses.reduce(
+        (sum: number, e: typeof essentialExpenses[0]) => sum + toMonthly(e.amount, e.frequency),
+        0
+      );
+      const discretionaryTrackedMonthly = discretionaryExpenses.reduce(
+        (sum: number, e: typeof discretionaryExpenses[0]) => sum + toMonthly(e.amount, e.frequency),
         0
       );
 
-      // Group recurring by category for breakdown
+      // COMMITTED = Essential expenses + Loan repayments (these MUST be paid)
+      const committedMonthly = essentialMonthly + loanRepaymentsMonthly;
+
+      // Total tracked (for AI context - what we already know about)
+      const totalTrackedMonthly = essentialMonthly + discretionaryTrackedMonthly;
+
+      // Group expenses by category AND type for breakdown
+      const committedBreakdown: Record<string, { total: number; items: Array<{ name: string; amount: number; frequency: string; monthlyAmount: number; type: 'expense' | 'loan' }> }> = {};
+      const discretionaryBreakdown: Record<string, { total: number; items: Array<{ name: string; amount: number; frequency: string; monthlyAmount: number }> }> = {};
+
+      // Add essential expenses to committed breakdown
+      essentialExpenses.forEach((e: typeof essentialExpenses[0]) => {
+        if (!committedBreakdown[e.category]) {
+          committedBreakdown[e.category] = { total: 0, items: [] };
+        }
+        const monthlyAmount = toMonthly(e.amount, e.frequency);
+        committedBreakdown[e.category].items.push({
+          name: e.name,
+          amount: e.amount,
+          frequency: e.frequency,
+          monthlyAmount,
+          type: 'expense',
+        });
+        committedBreakdown[e.category].total += monthlyAmount;
+      });
+
+      // Add loans to committed breakdown under "Loan Repayments"
+      if (loans.length > 0) {
+        committedBreakdown['Loan Repayments'] = { total: 0, items: [] };
+        loans.forEach((loan: typeof loans[0]) => {
+          if (loan.minRepayment && loan.repaymentFrequency) {
+            const monthlyAmount = toMonthly(loan.minRepayment, loan.repaymentFrequency);
+            committedBreakdown['Loan Repayments'].items.push({
+              name: loan.name,
+              amount: loan.minRepayment,
+              frequency: loan.repaymentFrequency,
+              monthlyAmount,
+              type: 'loan',
+            });
+            committedBreakdown['Loan Repayments'].total += monthlyAmount;
+          }
+        });
+      }
+
+      // Add discretionary expenses to their breakdown
+      discretionaryExpenses.forEach((e: typeof discretionaryExpenses[0]) => {
+        if (!discretionaryBreakdown[e.category]) {
+          discretionaryBreakdown[e.category] = { total: 0, items: [] };
+        }
+        const monthlyAmount = toMonthly(e.amount, e.frequency);
+        discretionaryBreakdown[e.category].items.push({
+          name: e.name,
+          amount: e.amount,
+          frequency: e.frequency,
+          monthlyAmount,
+        });
+        discretionaryBreakdown[e.category].total += monthlyAmount;
+      });
+
+      // Legacy recurringBreakdown for backwards compatibility (all expenses grouped)
       const recurringBreakdown: Record<string, { total: number; items: Array<{ name: string; amount: number; frequency: string; monthlyAmount: number }> }> = {};
-      expenses.forEach((e: typeof expenses[0]) => {
+      allExpenses.forEach((e: typeof allExpenses[0]) => {
         if (!recurringBreakdown[e.category]) {
           recurringBreakdown[e.category] = { total: 0, items: [] };
         }
@@ -129,12 +219,23 @@ export async function POST(request: NextRequest) {
               userId,
               householdProfileId: householdProfile.id,
               status: 'ANALYZING',
-              recurringExpensesTotal: totalRecurringMonthly,
-              recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly } as any,
+              recurringExpensesTotal: committedMonthly, // Now stores COMMITTED (essential + loans)
+              recurringBreakdown: {
+                // New structure with proper separation
+                committedTotal: committedMonthly,
+                committedBreakdown: { categories: committedBreakdown, total: committedMonthly },
+                discretionaryTrackedTotal: discretionaryTrackedMonthly,
+                discretionaryBreakdown: { categories: discretionaryBreakdown, total: discretionaryTrackedMonthly },
+                loanRepaymentsTotal: loanRepaymentsMonthly,
+                essentialExpensesTotal: essentialMonthly,
+                // Legacy format for backwards compatibility
+                categories: recurringBreakdown,
+                total: totalTrackedMonthly,
+              } as any,
               aiVariableEstimate: 0,
               variableBreakdown: {} as any,
-              totalRealisticBudget: totalRecurringMonthly,
-              userReportedTotal: totalRecurringMonthly,
+              totalRealisticBudget: committedMonthly, // Base is committed only
+              userReportedTotal: totalTrackedMonthly,
             },
           });
 
@@ -151,7 +252,7 @@ export async function POST(request: NextRequest) {
               hobbiesWithCosts: householdProfile.hobbiesWithCosts,
             },
             recurringExpenses,
-            totalRecurringMonthly,
+            totalRecurringMonthly: totalTrackedMonthly,
           });
 
           const { data, usage } = await generateGeminiJSONCompletion<VariableExpenseResponse>({
@@ -191,19 +292,45 @@ export async function POST(request: NextRequest) {
           aiUsage = usage;
 
           // Update analysis with results
+          // Scenarios are now based on COMMITTED expenses:
+          // - Minimum: Committed only (essential + loans)
+          // - Recommended: Committed + tracked discretionary + modest variable
+          // - Comfortable: Committed + tracked discretionary + full variable
           await prisma.budgetAnalysis.update({
             where: { id: pendingAnalysis.id },
             data: {
               status: 'READY',
               aiVariableEstimate: variableResponse.total,
               variableBreakdown: variableResponse as unknown as any,
-              totalRealisticBudget: totalRecurringMonthly + variableResponse.total,
+              // Total realistic = committed + tracked discretionary + AI variable
+              totalRealisticBudget: committedMonthly + discretionaryTrackedMonthly + variableResponse.total,
               missingVariableExpenses: variableResponse.total,
               aiExplanation: variableResponse.explanation,
-              aiConfidence: usedAI ? 0.75 : 0.5,  // Lower confidence for benchmark fallback
-              minimumScenario: variableResponse.scenarios.minimum as unknown as any,
-              recommendedScenario: variableResponse.scenarios.recommended as unknown as any,
-              comfortableScenario: variableResponse.scenarios.comfortable as unknown as any,
+              aiConfidence: usedAI ? 0.75 : 0.5,
+              // Override scenarios with corrected logic
+              minimumScenario: {
+                total: committedMonthly,
+                description: 'Bare essentials only - committed expenses and loan repayments',
+                breakdown: { committed: committedMonthly, discretionary: 0, variable: 0 },
+              } as unknown as any,
+              recommendedScenario: {
+                total: committedMonthly + discretionaryTrackedMonthly + variableResponse.scenarios.recommended.total,
+                description: 'Realistic for comfortable living - includes tracked discretionary and estimated variable',
+                breakdown: {
+                  committed: committedMonthly,
+                  discretionary: discretionaryTrackedMonthly,
+                  variable: variableResponse.scenarios.recommended.total,
+                },
+              } as unknown as any,
+              comfortableScenario: {
+                total: committedMonthly + discretionaryTrackedMonthly + variableResponse.scenarios.comfortable.total,
+                description: 'More flexibility and quality - full discretionary budget plus comfortable variable',
+                breakdown: {
+                  committed: committedMonthly,
+                  discretionary: discretionaryTrackedMonthly,
+                  variable: variableResponse.scenarios.comfortable.total,
+                },
+              } as unknown as any,
             },
           });
 
@@ -242,24 +369,57 @@ export async function POST(request: NextRequest) {
         trackedCategories
       );
 
-      // Create analysis with benchmark data
+      // Create analysis with benchmark data (using corrected committed/discretionary logic)
       const analysis = await prisma.budgetAnalysis.create({
         data: {
           userId,
           householdProfileId: householdProfile.id,
           status: 'READY',
-          recurringExpensesTotal: totalRecurringMonthly,
-          recurringBreakdown: { categories: recurringBreakdown, total: totalRecurringMonthly } as any,
+          recurringExpensesTotal: committedMonthly, // Now stores COMMITTED (essential + loans)
+          recurringBreakdown: {
+            // New structure with proper separation
+            committedTotal: committedMonthly,
+            committedBreakdown: { categories: committedBreakdown, total: committedMonthly },
+            discretionaryTrackedTotal: discretionaryTrackedMonthly,
+            discretionaryBreakdown: { categories: discretionaryBreakdown, total: discretionaryTrackedMonthly },
+            loanRepaymentsTotal: loanRepaymentsMonthly,
+            essentialExpensesTotal: essentialMonthly,
+            // Legacy format for backwards compatibility
+            categories: recurringBreakdown,
+            total: totalTrackedMonthly,
+          } as any,
           aiVariableEstimate: variableResponse.total,
           variableBreakdown: variableResponse as unknown as any,
-          totalRealisticBudget: totalRecurringMonthly + variableResponse.total,
-          userReportedTotal: totalRecurringMonthly,
+          // Total realistic = committed + tracked discretionary + AI variable
+          totalRealisticBudget: committedMonthly + discretionaryTrackedMonthly + variableResponse.total,
+          userReportedTotal: totalTrackedMonthly,
           missingVariableExpenses: variableResponse.total,
           aiExplanation: variableResponse.explanation,
           aiConfidence: 0.5,  // Lower confidence for benchmarks
-          minimumScenario: variableResponse.scenarios.minimum as unknown as any,
-          recommendedScenario: variableResponse.scenarios.recommended as unknown as any,
-          comfortableScenario: variableResponse.scenarios.comfortable as unknown as any,
+          // Corrected scenarios
+          minimumScenario: {
+            total: committedMonthly,
+            description: 'Bare essentials only - committed expenses and loan repayments',
+            breakdown: { committed: committedMonthly, discretionary: 0, variable: 0 },
+          } as unknown as any,
+          recommendedScenario: {
+            total: committedMonthly + discretionaryTrackedMonthly + variableResponse.scenarios.recommended.total,
+            description: 'Realistic for comfortable living - includes tracked discretionary and estimated variable',
+            breakdown: {
+              committed: committedMonthly,
+              discretionary: discretionaryTrackedMonthly,
+              variable: variableResponse.scenarios.recommended.total,
+            },
+          } as unknown as any,
+          comfortableScenario: {
+            total: committedMonthly + discretionaryTrackedMonthly + variableResponse.scenarios.comfortable.total,
+            description: 'More flexibility and quality - full discretionary budget plus comfortable variable',
+            breakdown: {
+              committed: committedMonthly,
+              discretionary: discretionaryTrackedMonthly,
+              variable: variableResponse.scenarios.comfortable.total,
+            },
+          } as unknown as any,
         },
       });
 
@@ -280,22 +440,31 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // Helpers
 // =============================================================================
 
 function formatAnalysisResponse(analysis: any) {
+  const breakdown = analysis.recurringBreakdown || {};
+
   return {
     id: analysis.id,
     analysisDate: analysis.analysisDate,
     status: analysis.status,
 
-    recurring: {
-      total: analysis.recurringExpensesTotal,
-      breakdown: analysis.recurringBreakdown,
+    // NEW: Properly separated committed vs discretionary
+    committed: {
+      total: breakdown.committedTotal || analysis.recurringExpensesTotal,
+      essentialExpenses: breakdown.essentialExpensesTotal || 0,
+      loanRepayments: breakdown.loanRepaymentsTotal || 0,
+      breakdown: breakdown.committedBreakdown || null,
+    },
+
+    discretionaryTracked: {
+      total: breakdown.discretionaryTrackedTotal || 0,
+      breakdown: breakdown.discretionaryBreakdown || null,
     },
 
     variable: {
@@ -303,10 +472,23 @@ function formatAnalysisResponse(analysis: any) {
       breakdown: analysis.variableBreakdown,
     },
 
+    // Legacy format for backwards compatibility
+    recurring: {
+      total: breakdown.total || analysis.recurringExpensesTotal,
+      breakdown: breakdown.categories ? { categories: breakdown.categories, total: breakdown.total } : analysis.recurringBreakdown,
+    },
+
     totals: {
-      recurringExpenses: analysis.recurringExpensesTotal,
+      // Committed = essential expenses + loan repayments (MUST pay)
+      committedExpenses: breakdown.committedTotal || analysis.recurringExpensesTotal,
+      // Discretionary tracked = optional spending already tracked
+      discretionaryTracked: breakdown.discretionaryTrackedTotal || 0,
+      // Variable = AI estimated untracked expenses
       variableExpenses: analysis.aiVariableEstimate,
+      // Total realistic = committed + discretionary + variable
       totalRealisticBudget: analysis.totalRealisticBudget,
+      // Legacy
+      recurringExpenses: breakdown.total || analysis.recurringExpensesTotal,
       userReportedTotal: analysis.userReportedTotal,
       missingExpenses: analysis.missingVariableExpenses,
     },

@@ -83,17 +83,20 @@ function setWelcomeDismissedLocally(userId: string | null): void {
 }
 
 export function useOnboardingState(): UseOnboardingStateReturn {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [state, setState] = useState<OnboardingState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchState = useCallback(async () => {
+    if (!token) return;
     try {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/onboarding/state');
+      const response = await fetch('/api/onboarding/state', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await response.json();
 
       if (!response.ok) {
@@ -106,17 +109,22 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
-    fetchState();
-  }, [fetchState]);
+    if (token) {
+      fetchState();
+    }
+  }, [fetchState, token]);
 
   const updateState = useCallback(async (updates: Record<string, unknown>) => {
     try {
       const response = await fetch('/api/onboarding/state', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(updates),
       });
 
@@ -132,7 +140,7 @@ export function useOnboardingState(): UseOnboardingStateReturn {
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }
-  }, [fetchState]);
+  }, [fetchState, token]);
 
   const setProfileType = useCallback(async (type: OnboardingProfileType) => {
     await updateState({ profileType: type });
@@ -150,7 +158,10 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     try {
       const response = await fetch('/api/onboarding/complete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       const data = await response.json();
@@ -164,7 +175,7 @@ export function useOnboardingState(): UseOnboardingStateReturn {
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }
-  }, [fetchState]);
+  }, [fetchState, token]);
 
   const dismissWelcomeModal = useCallback(async () => {
     // Always save to localStorage as fallback (works even if DB fails)

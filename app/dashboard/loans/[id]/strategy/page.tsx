@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ import {
   Calendar,
   RefreshCw,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 // =============================================================================
 // TYPES
@@ -47,6 +49,7 @@ interface Loan {
 
 export default function LoanStrategyPage() {
   const params = useParams();
+  const { token } = useAuth();
   const loanId = params.id as string;
 
   const [loan, setLoan] = useState<Loan | null>(null);
@@ -54,15 +57,17 @@ export default function LoanStrategyPage() {
   const [showAiPanel, setShowAiPanel] = useState(false);
 
   useEffect(() => {
-    if (loanId) {
+    if (loanId && token) {
       fetchLoan();
     }
-  }, [loanId]);
+  }, [loanId, token]);
 
   async function fetchLoan() {
     try {
       setLoading(true);
-      const response = await fetch(`/api/loans/${loanId}`);
+      const response = await fetch(`/api/loans/${loanId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setLoan(data.data || data);
@@ -74,14 +79,7 @@ export default function LoanStrategyPage() {
     }
   }
 
-  function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  }
+  // formatCurrency imported from lib/utils/formatters
 
   if (loading) {
     return (

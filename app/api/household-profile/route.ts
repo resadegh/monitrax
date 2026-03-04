@@ -1,14 +1,15 @@
 /**
  * HOUSEHOLD PROFILE API
- * GET /api/household-profile - Get user's household profile
+ * GET /api/household-profile - Get user's household profile with members and pets
  * POST /api/household-profile - Create or update household profile
  *
  * Phase 28: Realistic Budget Integration
+ * Phase 29: Household Member and Pet Management
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   validateHouseholdProfile,
   isProfileComplete,
@@ -16,16 +17,43 @@ import {
 } from '@/lib/budget-analysis/types';
 
 // =============================================================================
-// GET - Retrieve household profile
+// GET - Retrieve household profile with members and pets
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('settings.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       const profile = await prisma.householdProfile.findUnique({
         where: { userId },
+        include: {
+          // Phase 29: Include named household members with their categories
+          members: {
+            orderBy: [
+              { sortOrder: 'asc' },
+              { createdAt: 'asc' }
+            ],
+            include: {
+              linkedCategories: {
+                where: { isActive: true },
+                orderBy: { name: 'asc' }
+              }
+            }
+          },
+          // Phase 29: Include named pets with their categories
+          pets: {
+            orderBy: [
+              { sortOrder: 'asc' },
+              { createdAt: 'asc' }
+            ],
+            include: {
+              linkedCategories: {
+                where: { isActive: true },
+                orderBy: { name: 'asc' }
+              }
+            }
+          }
+        }
       });
 
       if (!profile) {
@@ -39,9 +67,20 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // Phase 29: Check if existing user needs to migrate (has counts but no named members)
+      const needsMigration = (profile.adultsCount > 0 && profile.members.length === 0) ||
+                            (profile.petsCount > 0 && profile.pets.length === 0);
+
       return NextResponse.json({
         success: true,
         data: profile,
+        _meta: {
+          needsMigration,
+          memberCount: profile.members.length,
+          petCount: profile.pets.length,
+          totalCategories: profile.members.reduce((sum, m) => sum + m.linkedCategories.length, 0) +
+                          profile.pets.reduce((sum, p) => sum + p.linkedCategories.length, 0)
+        }
       });
     } catch (error) {
       console.error('[API] Get household profile error:', error);
@@ -53,17 +92,15 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // POST - Create or update household profile
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('settings.write', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const body = await request.json();
 
       // Extract and validate input
@@ -144,5 +181,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

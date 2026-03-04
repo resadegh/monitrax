@@ -24,10 +24,13 @@ export interface TaxOffsetsInput {
 /**
  * Calculate Low Income Tax Offset (LITO)
  *
- * For 2024-25:
+ * For 2024-25 (ATO two-tier phase-out):
  * - Full $700 offset for income up to $37,500
- * - Reduces by 5 cents for each dollar over $37,500
+ * - Tier 1: Reduces by 5 cents per dollar from $37,500 to $45,000 (max reduction $375)
+ * - Tier 2: Reduces by 1.5 cents per dollar from $45,000 to $66,667 (max reduction $325)
  * - Phases out completely at $66,667
+ *
+ * Reference: ATO Individual Income Tax Rates
  */
 export function calculateLITO(
   taxableIncome: number,
@@ -55,14 +58,34 @@ export function calculateLITO(
     };
   }
 
-  // Partial LITO - reduce by withdrawal rate
-  const excess = taxableIncome - lito.fullThreshold;
-  const reduction = excess * lito.withdrawalRate;
+  // Two-tier withdrawal calculation
+  let reduction = 0;
+
+  // Tier 1: 5c per dollar from fullThreshold to tier1.threshold
+  if (taxableIncome > lito.fullThreshold) {
+    const tier1Income = Math.min(taxableIncome, lito.tier1.threshold) - lito.fullThreshold;
+    reduction += tier1Income * lito.tier1.withdrawalRate;
+  }
+
+  // Tier 2: 1.5c per dollar from tier1.threshold to cutoffThreshold
+  if (taxableIncome > lito.tier1.threshold) {
+    const tier2Income = taxableIncome - lito.tier1.threshold;
+    reduction += tier2Income * lito.tier2.withdrawalRate;
+  }
+
   const offset = Math.max(0, lito.maxOffset - reduction);
+
+  // Build explanation based on which tiers apply
+  let explanation: string;
+  if (taxableIncome <= lito.tier1.threshold) {
+    explanation = `Reduced LITO - $${lito.maxOffset} minus ${(lito.tier1.withdrawalRate * 100).toFixed(0)}c per $ over $${lito.fullThreshold.toLocaleString()}`;
+  } else {
+    explanation = `Reduced LITO - two-tier phase-out: ${(lito.tier1.withdrawalRate * 100).toFixed(0)}c/$ to $${lito.tier1.threshold.toLocaleString()}, then ${(lito.tier2.withdrawalRate * 100).toFixed(1)}c/$`;
+  }
 
   return {
     offset: Math.round(offset * 100) / 100,
-    explanation: `Reduced LITO - $${lito.maxOffset} minus ${(lito.withdrawalRate * 100).toFixed(0)}c per $ over $${lito.fullThreshold.toLocaleString()}`,
+    explanation,
   };
 }
 

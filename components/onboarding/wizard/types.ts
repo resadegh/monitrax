@@ -6,6 +6,8 @@
  */
 
 import { OnboardingProfileType } from '@/hooks/useOnboardingState';
+import { toAnnual } from '@/lib/utils/frequencies';
+import { Frequency as FrequencyType } from '@/lib/types/prisma-enums';
 
 // =============================================================================
 // WIZARD STEP DEFINITIONS
@@ -13,6 +15,7 @@ import { OnboardingProfileType } from '@/hooks/useOnboardingState';
 
 export type WizardStepId =
   | 'welcome'
+  | 'household'  // Phase 29: Household setup step (first after welcome)
   | 'properties'
   | 'accounts'
   | 'investments'
@@ -35,6 +38,13 @@ export const WIZARD_STEPS: WizardStep[] = [
     title: 'Welcome',
     description: 'Tell us about yourself',
     icon: '👋',
+    profiles: ['STARTER', 'HOMEOWNER', 'INVESTOR', 'MIXED'],
+  },
+  {
+    id: 'household',
+    title: 'Household',
+    description: 'Add your household members',
+    icon: '👨‍👩‍👧‍👦',
     profiles: ['STARTER', 'HOMEOWNER', 'INVESTOR', 'MIXED'],
   },
   {
@@ -322,6 +332,48 @@ export interface ExpenseInput {
 }
 
 // =============================================================================
+// PHASE 29: HOUSEHOLD MEMBER AND PET TYPES
+// =============================================================================
+
+export type HouseholdRelationship = 'SELF' | 'SPOUSE' | 'PARTNER' | 'CHILD' | 'PARENT' | 'SIBLING' | 'OTHER';
+export type HouseholdPetType = 'DOG' | 'CAT' | 'BIRD' | 'FISH' | 'RABBIT' | 'REPTILE' | 'OTHER';
+
+export const RELATIONSHIP_LABELS: Record<HouseholdRelationship, string> = {
+  SELF: 'You',
+  SPOUSE: 'Spouse',
+  PARTNER: 'Partner',
+  CHILD: 'Child',
+  PARENT: 'Parent',
+  SIBLING: 'Sibling',
+  OTHER: 'Other',
+};
+
+export const PET_TYPE_LABELS: Record<HouseholdPetType, string> = {
+  DOG: 'Dog',
+  CAT: 'Cat',
+  BIRD: 'Bird',
+  FISH: 'Fish',
+  RABBIT: 'Rabbit',
+  REPTILE: 'Reptile',
+  OTHER: 'Other',
+};
+
+export interface HouseholdMemberInput {
+  id: string;
+  name: string;
+  relationship: HouseholdRelationship;
+  dateOfBirth?: string;
+  isIncomeEarner: boolean;
+}
+
+export interface HouseholdPetInput {
+  id: string;
+  name: string;
+  type: HouseholdPetType;
+  breed?: string;
+}
+
+// =============================================================================
 // WIZARD STATE
 // =============================================================================
 
@@ -331,19 +383,24 @@ export interface WizardData {
   country: string;
   taxYear: string;
 
-  // Step 2: Properties (with inline loans)
+  // Step 2: Household (Phase 29)
+  householdMembers: HouseholdMemberInput[];
+  householdPets: HouseholdPetInput[];
+  carsCount: number;
+
+  // Step 3: Properties (with inline loans)
   properties: PropertyInput[];
 
-  // Step 3: Accounts
+  // Step 4: Accounts
   accounts: AccountInput[];
 
-  // Step 4: Investments
+  // Step 5: Investments
   investments: InvestmentAccountInput[];
 
-  // Step 5: Assets
+  // Step 6: Assets
   assets: AssetInput[];
 
-  // Step 6: Income & Expenses
+  // Step 7: Income & Expenses
   income: IncomeInput[];
   expenses: ExpenseInput[];
 }
@@ -352,6 +409,9 @@ export const INITIAL_WIZARD_DATA: WizardData = {
   profileType: null,
   country: 'AU',
   taxYear: new Date().getFullYear().toString(),
+  householdMembers: [],
+  householdPets: [],
+  carsCount: 0,
   properties: [],
   accounts: [],
   investments: [],
@@ -396,15 +456,9 @@ export function calculateSummary(data: WizardData): {
   annualLoanRepayments: number;
   monthlyCashflow: number;
 } {
+  // Use centralized frequency utility
   const frequencyToAnnual = (amount: number, freq: string): number => {
-    switch (freq) {
-      case 'WEEKLY': return amount * 52;
-      case 'FORTNIGHTLY': return amount * 26;
-      case 'MONTHLY': return amount * 12;
-      case 'QUARTERLY': return amount * 4;
-      case 'ANNUAL': return amount;
-      default: return amount * 12;
-    }
+    return toAnnual(amount, freq as Frequency);
   };
 
   const totalPropertyValue = data.properties.reduce((sum, p) => sum + p.currentValue, 0);

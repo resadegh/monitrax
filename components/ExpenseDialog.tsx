@@ -21,6 +21,7 @@ import {
   type ExpenseSourceType,
 } from '@/lib/categoryFilters';
 import { FormDocumentUpload, FieldMapping } from '@/components/documents';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 // Types
 interface Property {
@@ -255,14 +256,6 @@ export function ExpenseDialog({
       console.error('Error loading related data:', error);
     }
   };
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;

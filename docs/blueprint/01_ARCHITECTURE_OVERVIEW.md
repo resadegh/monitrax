@@ -309,17 +309,50 @@ On diff detection:
 
 # **6. Security Architecture**
 
-Security will be finalized in Phase 10.
+> **Updated February 2026**: GCP Identity Platform is the sole identity provider.
+> Phase 10 built the foundational auth framework; the GCP migration (Feb 2026)
+> replaced the custom JWT system with GCP/Firebase token verification for all API routes.
 
-High-level goals:
+## **6.1 Identity Provider: GCP Identity Platform**
 
-- External identity provider (Clerk / Auth0 / Supabase Auth)  
-- MFA and passwordless options  
-- Session hardening  
-- RBAC  
-- Full audit logging  
-- Rate limiting  
-- API shielding  
+Monitrax uses **GCP Identity Platform (Firebase Auth)** as the single identity provider.
+No Monitrax JWTs are issued or verified for API authentication.
+
+- **Client-side**: Firebase SDK handles login, registration, MFA, and token lifecycle
+- **Server-side**: `verifyGCPIdToken()` verifies Firebase ID tokens against Google's public certs
+- **User sync**: First-time GCP users are auto-created in the local DB via `syncGCPUser()`
+- **Token flow**: Firebase ID tokens (1-hour expiry, auto-refreshed by SDK) sent as `Authorization: Bearer <token>`
+
+## **6.2 Server-Side Auth Entry Points**
+
+| Entry Point | Location | Purpose |
+|-------------|----------|---------|
+| `verifyToken()` | `lib/auth.ts` | Verify GCP token, return `{ userId, email }` |
+| `getCurrentUser()` | `lib/auth.ts` | Same as verifyToken, returns `{ id, email }` |
+| `getAuthContext()` | `lib/auth/context.ts` | Full auth context with role, name, tenantId |
+| `withAuth()` | `lib/middleware.ts` | Middleware wrapper with auto-sync |
+
+## **6.3 Security Features**
+
+- **MFA**: Firebase TOTP via GCP Identity Platform
+- **Passwordless**: Magic links, passkeys (FIDO2/WebAuthn)
+- **OAuth**: Google, Facebook, Apple, Microsoft (via Firebase Auth)
+- **RBAC**: 4 roles (Owner, Admin, Contributor, Viewer) with 50+ permissions
+- **Audit logging**: Immutable audit trail (40+ event types)
+- **Brute-force protection**: Account lockout after 5 failed attempts
+- **CSP headers**: Firebase/GCP domains whitelisted in middleware
+- **Rate limiting**: Per-user, per-IP, per-endpoint
+- **Inactivity timeout**: 30-minute idle auto-logout with 2-minute warning dialog (`components/auth/IdleTimeoutGuard.tsx`)
+- **Custom sign-in branding**: `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` env var controls Google popup domain display
+- **Concurrent request safety**: `syncGCPUser()` uses upsert + retry-on-conflict for race condition resilience
+
+## **6.4 Client-Side Auth Pattern**
+
+All client components that make API calls MUST:
+1. Import `useAuth` from `@/lib/context/AuthContext`
+2. Destructure `{ token }` from `useAuth()`
+3. Guard fetch calls with `if (!token) return` or `if (token)` in useEffect
+4. Include `Authorization: Bearer ${token}` header in every fetch call
 
 ---
 
@@ -355,20 +388,23 @@ Monitrax uses a split deployment architecture:
 
 ## **8.2 Build & Deploy Process**
 
+> ⚠️ **CRITICAL SAFETY UPDATE (Feb 2026)**: Build scripts NO LONGER include `prisma db push`.
+> Schema changes are now **MANUAL ONLY** to prevent accidental data loss.
+
 **Render Build Command:**
 ```bash
-npm install && npx prisma generate && npx prisma db push && npm run build
+npm install && npx prisma generate && npm run build
 ```
 
-**Key Point:** Schema changes are deployed automatically via `prisma db push`. No manual database migrations required.
+**⛔ NEVER ADD `prisma db push` TO BUILD SCRIPTS** — See `MASTER_BLUEPRINT.md` for details.
 
 ## **8.3 Database Schema Management**
 
 | Strategy | Description |
 |----------|-------------|
-| **Method** | `prisma db push` (auto-sync on deploy) |
-| **Trigger** | Automatic on every Render deployment |
-| **Manual Steps** | None required after merging code |
+| **Method** | **MANUAL ONLY** — via Render Shell |
+| **Trigger** | Manual review required before any schema change |
+| **Manual Steps** | Create backup → Review changes → Run via Render Shell |
 
 For complete deployment documentation, see: `docs/blueprint/09_INFRASTRUCTURE_AND_DEPLOYMENT.md`
 

@@ -43,6 +43,26 @@ export type {
   MagicLinkResult,
 } from './magicLink';
 
+// GCP Identity Platform (Phase 1 Migration)
+export {
+  syncGCPUser,
+  findUserByGCPUid,
+  unlinkGCPAccount,
+  isGCPIdentityConfigured,
+  GCPIdentityError,
+} from './gcpIdentity';
+
+export type {
+  GCPTokenClaims,
+  GCPUserSyncResult,
+  GCPUserSyncInput,
+} from './gcpIdentity';
+
+export {
+  verifyGCPIdToken,
+  extractGCPTokenFromHeader,
+} from './gcpTokenVerifier';
+
 // Passkey / WebAuthn authentication (Phase 10)
 export {
   generateRegistrationOptions,

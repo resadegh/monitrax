@@ -9,9 +9,9 @@
  * - unlink: Remove link from transaction
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
 interface LinkRequest {
   action: 'link' | 'create' | 'update' | 'unlink' | 'transfer' | 'investment';
@@ -47,14 +47,12 @@ interface LinkRequest {
   learnMerchant?: boolean; // Store merchant -> category mapping for future suggestions
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+type RouteContext = { params: Promise<{ id: string }> };
+
+export const POST = withPermission<RouteContext>('transaction.write', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id: transactionId } = await params;
+      const userId = auth.userId;
+      const { id: transactionId } = await context!.params;
       const body: LinkRequest = await request.json();
 
       // Verify transaction belongs to user
@@ -96,11 +94,17 @@ export async function POST(
             targetName = income.name;
             targetCategory = income.type; // SALARY, RENT, RENTAL, INVESTMENT, OTHER
 
-            // Optionally update the income amount
+            // Optionally update the income amount (Phase 30: with budget tracking)
             if (body.updateAmount) {
+              // Save current amount as budgetedAmount if not already set
+              const budgetedAmount = income.budgetedAmount ?? income.amount;
               await prisma.income.update({
                 where: { id: body.targetId },
-                data: { amount: transaction.amount },
+                data: {
+                  amount: transaction.amount,
+                  budgetedAmount: budgetedAmount,
+                  lastReconciled: new Date(),
+                },
               });
             }
           } else if (body.type === 'expense') {
@@ -116,11 +120,17 @@ export async function POST(
             targetName = expense.name;
             targetCategory = expense.category; // HOUSING, UTILITIES, etc.
 
-            // Optionally update the expense amount
+            // Optionally update the expense amount (Phase 30: with budget tracking)
             if (body.updateAmount) {
+              // Save current amount as budgetedAmount if not already set
+              const budgetedAmount = expense.budgetedAmount ?? expense.amount;
               await prisma.expense.update({
                 where: { id: body.targetId },
-                data: { amount: transaction.amount },
+                data: {
+                  amount: transaction.amount,
+                  budgetedAmount: budgetedAmount,
+                  lastReconciled: new Date(),
+                },
               });
             }
           } else if (body.type === 'loan') {
@@ -301,10 +311,66 @@ export async function POST(
               },
             });
 
+            // Batch link additional transactions if provided
+            let batchCount = 0;
+            if (body.additionalTransactionIds && body.additionalTransactionIds.length > 0) {
+              // Verify all transactions belong to user
+              const validIds = await prisma.unifiedTransaction.findMany({
+                where: {
+                  id: { in: body.additionalTransactionIds },
+                  userId,
+                },
+                select: { id: true },
+              });
+
+              if (validIds.length > 0) {
+                await prisma.unifiedTransaction.updateMany({
+                  where: {
+                    id: { in: validIds.map((t: { id: string }) => t.id) },
+                  },
+                  data: {
+                    incomeId: income.id,
+                    isRecurring: true,
+                    categoryLevel1: body.category || 'Income',
+                  },
+                });
+                batchCount = validIds.length;
+              }
+            }
+
+            // Learn merchant mapping for future suggestions
+            if (body.learnMerchant && transaction.merchantStandardised && body.category) {
+              await prisma.merchantMapping.upsert({
+                where: {
+                  userId_merchantRaw: {
+                    userId,
+                    merchantRaw: transaction.merchantStandardised,
+                  },
+                },
+                update: {
+                  categoryLevel1: body.category,
+                  usageCount: { increment: 1 },
+                  updatedAt: new Date(),
+                },
+                create: {
+                  userId,
+                  merchantRaw: transaction.merchantStandardised,
+                  merchantStandardised: transaction.merchantStandardised,
+                  categoryLevel1: body.category,
+                  source: 'USER',
+                  confidence: 1.0,
+                  usageCount: 1,
+                },
+              });
+            }
+
             return NextResponse.json({
               success: true,
               created: { type: 'income', id: income.id, name: income.name },
-              message: 'New income created and linked',
+              batchCount,
+              message: batchCount > 0
+                ? `Categorized ${batchCount + 1} transactions as ${income.name}`
+                : 'New income created and linked',
             });
           } else {
             // Create new Expense entry with source type and entity linking
@@ -419,7 +485,12 @@ export async function POST(
             }
 
             // Learn merchant mapping for future suggestions
-            if (body.learnMerchant && transaction.merchantStandardised && body.category) {
+            // Use the actual category (or custom category name if custom)
+            const categoryToLearn = body.customCategoryId
+              ? (await prisma.category.findUnique({ where: { id: body.customCategoryId }, select: { name: true } }))?.name || body.category
+              : body.category;
+
+            if (body.learnMerchant && transaction.merchantStandardised && categoryToLearn) {
               await prisma.merchantMapping.upsert({
                 where: {
                   userId_merchantRaw: {
@@ -428,7 +499,8 @@ export async function POST(
                   },
                 },
                 update: {
-                  categoryLevel1: body.category,
+                  categoryLevel1: categoryToLearn,
+                  customCategoryId: body.customCategoryId || null,
                   usageCount: { increment: 1 },
                   updatedAt: new Date(),
                 },
@@ -436,7 +508,8 @@ export async function POST(
                   userId,
                   merchantRaw: transaction.merchantStandardised,
                   merchantStandardised: transaction.merchantStandardised,
-                  categoryLevel1: body.category,
+                  categoryLevel1: categoryToLearn,
+                  customCategoryId: body.customCategoryId || null,
                   source: 'USER',
                   confidence: 1.0,
                   usageCount: 1,
@@ -458,7 +531,7 @@ export async function POST(
         }
 
         case 'update': {
-          // Update existing Income/Expense amount with transaction amount
+          // Update existing Income/Expense amount with transaction amount (Phase 30: with budget tracking)
           if (!body.type || !body.targetId) {
             return NextResponse.json(
               { error: 'type and targetId required for update action' },
@@ -467,9 +540,26 @@ export async function POST(
           }
 
           if (body.type === 'income') {
+            // First get current income to preserve budgetedAmount
+            const currentIncome = await prisma.income.findFirst({
+              where: { id: body.targetId, userId },
+            });
+            if (!currentIncome) {
+              return NextResponse.json(
+                { error: 'Income not found' },
+                { status: 404 }
+              );
+            }
+
+            // Save current amount as budgetedAmount if not already set
+            const budgetedAmount = currentIncome.budgetedAmount ?? currentIncome.amount;
             const income = await prisma.income.update({
               where: { id: body.targetId },
-              data: { amount: transaction.amount },
+              data: {
+                amount: transaction.amount,
+                budgetedAmount: budgetedAmount,
+                lastReconciled: new Date(),
+              },
             });
 
             // Also link the transaction with category
@@ -484,13 +574,30 @@ export async function POST(
 
             return NextResponse.json({
               success: true,
-              updated: { type: 'income', id: income.id, newAmount: income.amount },
-              message: `Income amount updated to $${transaction.amount}`,
+              updated: { type: 'income', id: income.id, newAmount: income.amount, budgetedAmount },
+              message: `Income amount updated to $${transaction.amount}${budgetedAmount !== transaction.amount ? ` (budget: $${budgetedAmount})` : ''}`,
             });
           } else if (body.type === 'expense') {
+            // First get current expense to preserve budgetedAmount
+            const currentExpense = await prisma.expense.findFirst({
+              where: { id: body.targetId, userId },
+            });
+            if (!currentExpense) {
+              return NextResponse.json(
+                { error: 'Expense not found' },
+                { status: 404 }
+              );
+            }
+
+            // Save current amount as budgetedAmount if not already set
+            const budgetedAmount = currentExpense.budgetedAmount ?? currentExpense.amount;
             const expense = await prisma.expense.update({
               where: { id: body.targetId },
-              data: { amount: transaction.amount },
+              data: {
+                amount: transaction.amount,
+                budgetedAmount: budgetedAmount,
+                lastReconciled: new Date(),
+              },
             });
 
             // Also link the transaction with category
@@ -505,8 +612,8 @@ export async function POST(
 
             return NextResponse.json({
               success: true,
-              updated: { type: 'expense', id: expense.id, newAmount: expense.amount },
-              message: `Expense amount updated to $${transaction.amount}`,
+              updated: { type: 'expense', id: expense.id, newAmount: expense.amount, budgetedAmount },
+              message: `Expense amount updated to $${transaction.amount}${budgetedAmount !== transaction.amount ? ` (budget: $${budgetedAmount})` : ''}`,
             });
           } else if (body.type === 'loan') {
             const loan = await prisma.loan.update({
@@ -556,6 +663,39 @@ export async function POST(
               });
               await prisma.investmentTransaction.delete({
                 where: { id: existingTx.investmentTransactionId },
+              });
+            }
+          }
+
+          // Phase 30: Revert income/expense amount to budgetedAmount if set
+          if (existingTx?.incomeId) {
+            const income = await prisma.income.findFirst({
+              where: { id: existingTx.incomeId, userId },
+            });
+            if (income?.budgetedAmount !== null && income?.budgetedAmount !== undefined) {
+              // Revert to budgeted amount and clear reconciliation
+              await prisma.income.update({
+                where: { id: existingTx.incomeId },
+                data: {
+                  amount: income.budgetedAmount,
+                  lastReconciled: null,
+                },
+              });
+            }
+          }
+
+          if (existingTx?.expenseId) {
+            const expense = await prisma.expense.findFirst({
+              where: { id: existingTx.expenseId, userId },
+            });
+            if (expense?.budgetedAmount !== null && expense?.budgetedAmount !== undefined) {
+              // Revert to budgeted amount and clear reconciliation
+              await prisma.expense.update({
+                where: { id: existingTx.expenseId },
+                data: {
+                  amount: expense.budgetedAmount,
+                  lastReconciled: null,
+                },
               });
             }
           }
@@ -746,18 +886,13 @@ export async function POST(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // GET - Get matching Income/Expense entries for a transaction
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission<RouteContext>('transaction.read', async (request, auth, context) => {
     try {
-      const userId = authReq.user!.userId;
-      const { id: transactionId } = await params;
+      const userId = auth.userId;
+      const { id: transactionId } = await context!.params;
 
       // Get transaction
       const transaction = await prisma.unifiedTransaction.findFirst({
@@ -774,7 +909,7 @@ export async function GET(
         );
       }
 
-      // Get all income entries
+      // Get all income entries (including budget/reconciliation fields)
       const incomeEntries = await prisma.income.findMany({
         where: { userId },
         select: {
@@ -784,11 +919,15 @@ export async function GET(
           amount: true,
           frequency: true,
           netAmount: true,
+          propertyId: true,
+          investmentAccountId: true,
+          budgetedAmount: true,
+          lastReconciled: true,
         },
         orderBy: { name: 'asc' },
       });
 
-      // Get all expense entries
+      // Get all expense entries (including budget/reconciliation fields)
       const expenseEntries = await prisma.expense.findMany({
         where: { userId },
         select: {
@@ -798,6 +937,10 @@ export async function GET(
           category: true,
           amount: true,
           frequency: true,
+          propertyId: true,
+          investmentAccountId: true,
+          budgetedAmount: true,
+          lastReconciled: true,
         },
         orderBy: { name: 'asc' },
       });
@@ -862,11 +1005,13 @@ export async function GET(
                 { description: { contains: merchantName, mode: 'insensitive' as const } },
               ]
             : [{ merchantStandardised: merchantName }],
-          // Only uncategorized transactions
+          // Only unlinked transactions (no links to income/expense/loan, not transfer, not investment)
+          // Note: categoryLevel1 may be auto-populated but still unlinked - don't filter by it
           incomeId: null,
           expenseId: null,
           loanId: null,
-          isTransfer: false,
+          isTransfer: { not: true }, // matches false OR null
+          isInvestmentContribution: { not: true }, // matches false OR null
         },
         select: {
           id: true,
@@ -943,20 +1088,181 @@ export async function GET(
         amountMatch: boolean;
         amountDiff: number;
         categoryMatch?: boolean;
+        // Phase 30: Reconciliation fields
+        propertyId?: string | null;
+        propertyName?: string | null;
+        budgetedAmount?: number | null;
+        lastReconciled?: Date | null;
+        reconciliationRecommendation?: 'update_amount' | 'link_only' | 'create_new';
       }
 
       const matches: MatchResult[] = [];
 
+      // Phase 30: Analyze same-vendor transaction pattern
+      let transactionPattern = null;
+      if (sameVendorTransactions.length > 0) {
+        // Include current transaction in pattern analysis
+        const allVendorTxs = [
+          { date: transaction.date, amount: transaction.amount },
+          ...sameVendorTransactions.map(t => ({ date: t.date, amount: t.amount })),
+        ];
+
+        // Filter to last 12 months
+        const twelveMonthsAgo = new Date();
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+        const recentTxs = allVendorTxs.filter(t => new Date(t.date) >= twelveMonthsAgo);
+
+        if (recentTxs.length >= 2) {
+          // Sort by date to detect frequency
+          const sortedTxs = recentTxs
+            .map(t => ({ date: new Date(t.date), amount: Math.abs(t.amount) }))
+            .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+          const sortedDates = sortedTxs.map(t => t.date);
+
+          // Calculate intervals between transactions
+          const intervals: number[] = [];
+          for (let i = 1; i < sortedDates.length; i++) {
+            const days = Math.round((sortedDates[i].getTime() - sortedDates[i - 1].getTime()) / (1000 * 60 * 60 * 24));
+            if (days > 0) intervals.push(days);
+          }
+
+          if (intervals.length > 0) {
+            const avgInterval = intervals.reduce((sum, i) => sum + i, 0) / intervals.length;
+            const amounts = sortedTxs.map(t => t.amount);
+            const avgAmount = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
+
+            // Detect frequency from interval
+            let detectedFrequency = 'MONTHLY';
+            if (avgInterval <= 10) detectedFrequency = 'WEEKLY';
+            else if (avgInterval <= 20) detectedFrequency = 'FORTNIGHTLY';
+            else if (avgInterval <= 45) detectedFrequency = 'MONTHLY';
+            else if (avgInterval <= 120) detectedFrequency = 'QUARTERLY';
+            else detectedFrequency = 'ANNUAL';
+
+            // Calculate TRUE monthly average based on payment timing
+            // ADVANCE payments (rent): exclude last payment (covers future period)
+            // ARREARS payments (salary, utilities): include all payments (all completed)
+            const firstDate = sortedDates[0];
+            const lastDate = sortedDates[sortedDates.length - 1];
+            const daysCovered = Math.round((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+            const monthsCovered = daysCovered / 30.44; // Average days per month
+
+            // Determine payment timing based on category
+            // RENTAL is typically paid in ADVANCE, everything else is ARREARS
+            const isRentalCategory =
+              transaction.categoryLevel1?.toUpperCase() === 'RENTAL' ||
+              transaction.categoryLevel1?.toUpperCase() === 'RENT' ||
+              learnedCategory?.toUpperCase() === 'RENTAL' ||
+              learnedCategory?.toUpperCase() === 'RENT' ||
+              merchantName?.toLowerCase().includes('rent') ||
+              merchantName?.toLowerCase().includes('trust'); // Property trust accounts
+
+            const paymentTiming = isRentalCategory ? 'ADVANCE' : 'ARREARS';
+
+            // Calculate sum based on payment timing
+            let sumForAverage: number;
+            if (paymentTiming === 'ADVANCE') {
+              // Exclude last payment (covers future period)
+              sumForAverage = sortedTxs.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
+            } else {
+              // Include all payments (all cover completed periods)
+              sumForAverage = amounts.reduce((sum, a) => sum + a, 0);
+            }
+
+            const trueMonthlyAverage = monthsCovered > 0 ? sumForAverage / monthsCovered : avgAmount;
+
+            transactionPattern = {
+              count: recentTxs.length,
+              detectedFrequency,
+              averageAmount: avgAmount,
+              averageIntervalDays: avgInterval,
+              // New fields for accurate monthly calculation
+              trueMonthlyAverage: Math.round(trueMonthlyAverage * 100) / 100,
+              totalAmount: amounts.reduce((sum, a) => sum + a, 0),
+              sumForAverage: Math.round(sumForAverage * 100) / 100,
+              monthsCovered: Math.round(monthsCovered * 100) / 100,
+              paymentTiming, // 'ADVANCE' or 'ARREARS'
+              dateRange: {
+                first: sortedDates[0],
+                last: sortedDates[sortedDates.length - 1],
+              },
+            };
+          }
+        }
+      }
+
       // Check income entries (only for IN transactions)
       if (transaction.direction === 'IN') {
+        // Determine if this is a rental/property-related transaction
+        const isRentalTransaction = Boolean(
+          learnedCategory?.toUpperCase() === 'RENTAL' ||
+          learnedCategory?.toUpperCase() === 'RENT' ||
+          transaction.categoryLevel1?.toUpperCase() === 'RENTAL' ||
+          transaction.categoryLevel1?.toUpperCase() === 'RENT' ||
+          merchantName?.toLowerCase().includes('rent') ||
+          merchantName?.toLowerCase().includes('trust') ||
+          merchantName?.toLowerCase().includes('property')
+        );
+
         for (const income of incomeEntries) {
           const nameText = income.name.toLowerCase();
           const similarity = calculateSimilarity(searchText, nameText);
           const effectiveAmount = income.netAmount || income.amount;
           const amountDiff = Math.abs(txAmount - effectiveAmount);
-          const amountMatch = amountDiff < 1 || amountDiff / effectiveAmount < 0.05;
+          const amountDiffPercent = effectiveAmount > 0 ? amountDiff / effectiveAmount : 1;
+          const amountMatch = amountDiff < 1 || amountDiffPercent < 0.05;
 
-          if (similarity > 0.3 || amountMatch) {
+          // Check if the income type matches the predicted/learned category
+          const mappedIncomeCategory = learnedCategory || transaction.categoryLevel1;
+          const categoryMatch = Boolean(
+            mappedIncomeCategory &&
+            (income.type?.toUpperCase() === mappedIncomeCategory.toUpperCase() ||
+             (mappedIncomeCategory.toUpperCase() === 'RENTAL' && income.type?.toUpperCase() === 'RENTAL') ||
+             (mappedIncomeCategory.toUpperCase() === 'RENT' && income.type?.toUpperCase() === 'RENTAL'))
+          );
+
+          // Check if this income entry is property-linked (rental income from a property)
+          const isPropertyLinkedRental = Boolean(
+            income.propertyId && income.type?.toUpperCase() === 'RENTAL'
+          );
+
+          // Get the property name if linked
+          const linkedProperty = income.propertyId
+            ? properties.find((p: { id: string; name: string }) => p.id === income.propertyId)
+            : null;
+
+          // Check if this is any kind of rental income (type RENTAL or property-linked)
+          const isRentalIncome = Boolean(
+            income.type?.toUpperCase() === 'RENTAL' || income.propertyId
+          );
+
+          // Include if:
+          // 1. Name matches (similarity > 0.3)
+          // 2. Amount matches
+          // 3. Category matches
+          // 4. For rental transactions: include ALL rental income entries so user can pick the right property
+          const shouldInclude = similarity > 0.3 || amountMatch || categoryMatch ||
+            (isRentalTransaction && isRentalIncome);
+
+          if (shouldInclude) {
+            // Calculate confidence with strong boosts for property-linked entries
+            let confidence = similarity * (amountMatch ? 1.5 : 1);
+
+            if (categoryMatch) {
+              confidence += 1.0; // Strong boost for matching category
+            }
+
+            // Property-linked rental income gets highest priority for rental transactions
+            if (isRentalTransaction && isPropertyLinkedRental) {
+              confidence += 2.0; // Very strong boost - property-linked rentals should be top suggestions
+            }
+
+            // All rental income entries get a boost for rental transactions
+            if (isRentalTransaction && isRentalIncome) {
+              confidence += 0.5; // Ensure all rental options appear
+            }
+
             matches.push({
               id: income.id,
               name: income.name,
@@ -964,9 +1270,14 @@ export async function GET(
               category: income.type,
               amount: effectiveAmount,
               frequency: income.frequency,
-              confidence: similarity * (amountMatch ? 1.5 : 1),
+              confidence,
               amountMatch,
               amountDiff,
+              propertyId: income.propertyId,
+              propertyName: linkedProperty?.name || null,
+              budgetedAmount: income.budgetedAmount,
+              lastReconciled: income.lastReconciled,
+              categoryMatch,
             });
           }
         }
@@ -978,7 +1289,8 @@ export async function GET(
           const nameText = `${expense.name} ${expense.vendorName || ''}`.toLowerCase();
           const similarity = calculateSimilarity(searchText, nameText);
           const amountDiff = Math.abs(txAmount - expense.amount);
-          const amountMatch = amountDiff < 1 || amountDiff / expense.amount < 0.05;
+          const amountDiffPercent = expense.amount > 0 ? amountDiff / expense.amount : 1;
+          const amountMatch = amountDiff < 1 || amountDiffPercent < 0.05;
 
           // Check if the expense category matches the predicted category
           const categoryMatch = Boolean(mappedCategory && expense.category === mappedCategory);
@@ -989,6 +1301,14 @@ export async function GET(
             let confidence = similarity * (amountMatch ? 1.5 : 1);
             if (categoryMatch) {
               confidence += 0.5; // Boost for matching predicted category
+            }
+
+            // Phase 30: Determine reconciliation recommendation
+            let reconciliationRecommendation: 'update_amount' | 'link_only' | 'create_new' = 'link_only';
+            if (amountDiffPercent > 0.05 && amountDiffPercent <= 0.50) {
+              reconciliationRecommendation = 'update_amount';
+            } else if (amountDiffPercent > 0.50) {
+              reconciliationRecommendation = 'create_new';
             }
 
             matches.push({
@@ -1002,6 +1322,10 @@ export async function GET(
               amountMatch,
               amountDiff,
               categoryMatch,
+              propertyId: expense.propertyId,
+              budgetedAmount: expense.budgetedAmount,
+              lastReconciled: expense.lastReconciled,
+              reconciliationRecommendation,
             });
           }
         }
@@ -1075,13 +1399,15 @@ export async function GET(
           investmentAccountId: transaction.investmentAccountId,
         },
         currentLink,
-        suggestedMatches: matches.slice(0, 5),
+        suggestedMatches: matches.slice(0, 10), // Increased to show all rental property options
         // Suggested category for creating new expenses based on transaction prediction or learned mapping
         suggestedCategory: learnedCategory || mappedCategory,
         // Learned category from previous user categorizations
         learnedCategory,
         // Same-vendor uncategorized transactions for batch categorization
         sameVendorTransactions,
+        // Phase 30: Transaction pattern analysis for reconciliation
+        transactionPattern,
         availableEntries: {
           income: incomeEntries,
           expenses: expenseEntries,
@@ -1102,8 +1428,7 @@ export async function GET(
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // Simple text similarity function
 function calculateSimilarity(text1: string, text2: string): number {

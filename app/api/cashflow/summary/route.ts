@@ -11,9 +11,9 @@
  * 3. No existing summary
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   generateGeminiSummary,
   generateDataHash,
@@ -21,25 +21,10 @@ import {
   GeminiSummary,
 } from '@/lib/cashflow-intelligence';
 import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
+import { toMonthly } from '@/lib/utils/frequencies';
+import { Frequency } from '@/lib/types/prisma-enums';
 
-// =============================================================================
-// HELPERS
-// =============================================================================
-
-function normalizeToMonthly(amount: number, frequency: string): number {
-  switch (frequency) {
-    case 'WEEKLY':
-      return (amount * 52) / 12;
-    case 'FORTNIGHTLY':
-      return (amount * 26) / 12;
-    case 'MONTHLY':
-      return amount;
-    case 'ANNUAL':
-      return amount / 12;
-    default:
-      return amount;
-  }
-}
+// Uses centralized toMonthly from lib/utils/frequencies (Blueprint §5.1)
 
 // =============================================================================
 // DATA GATHERING
@@ -67,7 +52,7 @@ async function buildSummaryInput(userId: string) {
       id: i.id,
       name: i.name,
       type: i.type,
-      monthlyAmount: normalizeToMonthly(Number(i.amount), i.frequency),
+      monthlyAmount: toMonthly(Number(i.amount), i.frequency as Frequency),
       frequency: i.frequency,
       volatility: 0.1,
       salaryType: i.salaryType || null,
@@ -81,7 +66,7 @@ async function buildSummaryInput(userId: string) {
 
   // Calculate monthly expenses
   const monthlyExpenses = expenses.reduce(
-    (sum: number, e: any) => sum + normalizeToMonthly(Number(e.amount), e.frequency),
+    (sum: number, e: any) => sum + toMonthly(Number(e.amount), e.frequency as Frequency),
     0
   );
 
@@ -184,10 +169,9 @@ async function buildSummaryInput(userId: string) {
 // GET - Retrieve cached summary
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Check for cached summary
       const cached = await prisma.cashflowSummary.findFirst({
@@ -260,17 +244,15 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // POST - Force regeneration
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const POST = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Build current input
       const currentInput = await buildSummaryInput(userId);
@@ -309,5 +291,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

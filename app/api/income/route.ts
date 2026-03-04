@@ -1,21 +1,154 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
+import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('income.read', async (request, auth) => {
     try {
-      const income = await prisma.income.findMany({
-        where: { userId: authReq.user!.userId },
-        include: { property: true, investmentAccount: true },
-        orderBy: { createdAt: 'desc' },
-      });
+      const userId = auth.userId;
 
-      // Apply GRDCS wrapper to each income
+      // Fetch income entries and linked transactions in parallel
+      const [income, linkedTransactions] = await Promise.all([
+        prisma.income.findMany({
+          where: { userId },
+          include: { property: true, investmentAccount: true },
+          orderBy: { createdAt: 'desc' },
+        }),
+        // Phase 30: Fetch ALL linked transactions (not just current month) to show actuals
+        prisma.unifiedTransaction.findMany({
+          where: {
+            userId,
+            incomeId: { not: null },
+          },
+          select: {
+            id: true,
+            date: true,
+            amount: true,
+            direction: true,
+            incomeId: true,
+          },
+          orderBy: { date: 'desc' },
+        }),
+      ]);
+
+      // Group transactions by incomeId and calculate totals
+      // Also track current month vs all-time for display
+      const now = new Date();
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const actualsByIncomeId = new Map<string, {
+        totalAmount: number;
+        totalCount: number;
+        currentMonthAmount: number;
+        currentMonthCount: number;
+        transactions: Array<{ date: Date; amount: number }>;
+      }>();
+
+      for (const tx of linkedTransactions) {
+        if (tx.incomeId) {
+          const existing = actualsByIncomeId.get(tx.incomeId) || {
+            totalAmount: 0,
+            totalCount: 0,
+            currentMonthAmount: 0,
+            currentMonthCount: 0,
+            transactions: [],
+          };
+          const txAmount = Math.abs(tx.amount);
+          const txDate = new Date(tx.date);
+
+          existing.totalAmount += txAmount;
+          existing.totalCount += 1;
+          existing.transactions.push({ date: txDate, amount: txAmount });
+
+          // Track current month separately
+          if (txDate >= currentMonthStart) {
+            existing.currentMonthAmount += txAmount;
+            existing.currentMonthCount += 1;
+          }
+
+          actualsByIncomeId.set(tx.incomeId, existing);
+        }
+      }
+
+      // Apply GRDCS wrapper to each income and add actuals
       const incomeWithLinks = income.map((inc: typeof income[number]) => {
         const links = extractIncomeLinks(inc);
-        return wrapWithGRDCS(inc as Record<string, unknown>, 'income', links);
+        const wrapped = wrapWithGRDCS(inc as Record<string, unknown>, 'income', links);
+
+        // Phase 30: Add actual from transactions
+        const actuals = actualsByIncomeId.get(inc.id);
+
+        // Calculate monthly average from transactions using DAYS-BASED approach
+        // This provides accurate averages regardless of how payments fall across calendar months
+        // Formula: (sum / totalDaysCovered) * 30.44 = monthly average
+        //
+        // Payment timing matters:
+        // - ADVANCE (rent): Last payment covers future period, exclude from average
+        // - ARREARS (salary, etc.): All payments cover completed periods, include all
+        let monthlyAverage = null;
+        if (actuals && actuals.transactions.length >= 2) {
+          const sortedTx = actuals.transactions.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+          // Determine payment timing based on income type
+          // RENTAL income is typically paid in ADVANCE
+          const isRentalIncome = inc.type === 'RENTAL' || inc.type === 'RENT' || inc.propertyId;
+          const paymentTiming = isRentalIncome ? 'ADVANCE' : 'ARREARS';
+
+          if (paymentTiming === 'ADVANCE') {
+            // For ADVANCE payments (rent): exclude last payment (covers future period)
+            // Calculate days-based average for accurate monthly figure
+            const completedPayments = sortedTx.slice(0, -1); // Exclude last payment
+            if (completedPayments.length >= 1) {
+              const sumForAverage = completedPayments.reduce((sum, tx) => sum + tx.amount, 0);
+              const firstDate = completedPayments[0].date;
+              const lastCompletedDate = completedPayments[completedPayments.length - 1].date;
+
+              if (completedPayments.length === 1) {
+                // Single completed payment - assume it represents one month
+                monthlyAverage = sumForAverage;
+              } else {
+                // Multiple payments: calculate based on actual days
+                const daysSpan = Math.max(1, (lastCompletedDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                // Calculate average payment interval to account for period covered by last completed payment
+                const avgPaymentInterval = daysSpan / (completedPayments.length - 1);
+
+                // Total days covered = span + one interval (for period the last completed payment covers)
+                const totalDaysCovered = daysSpan + avgPaymentInterval;
+
+                // Monthly average = (sum / days) * 30.44 (average days per month)
+                monthlyAverage = (sumForAverage / totalDaysCovered) * 30.44;
+              }
+            }
+          } else {
+            // For ARREARS payments (salary, etc.): include all payments
+            // Calculate based on actual date range covered
+            const firstDate = sortedTx[0].date;
+            const lastDate = sortedTx[sortedTx.length - 1].date;
+            const daysCovered = Math.max(1, (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+
+            // Monthly average = (sum / days) * 30.44
+            if (daysCovered > 0) {
+              monthlyAverage = (actuals.totalAmount / daysCovered) * 30.44;
+            }
+          }
+        }
+
+        return {
+          ...wrapped,
+          // Budget = entry.amount (what user entered)
+          budgetAmount: inc.amount,
+          // Actual = total from ALL linked transactions
+          actualFromTransactions: actuals ? actuals.totalAmount : null,
+          // Current month actual
+          currentMonthActual: actuals ? actuals.currentMonthAmount : null,
+          // Monthly average calculated from transaction history
+          monthlyAverageActual: monthlyAverage ? Math.round(monthlyAverage * 100) / 100 : null,
+          transactionCount: actuals ? actuals.totalCount : 0,
+          currentMonthTransactionCount: actuals ? actuals.currentMonthCount : 0,
+          hasTransactions: actuals !== undefined && actuals.totalCount > 0,
+        };
       });
 
       return NextResponse.json({
@@ -23,17 +156,16 @@ export async function GET(request: NextRequest) {
         _meta: {
           count: incomeWithLinks.length,
           totalLinkedEntities: incomeWithLinks.reduce((sum: number, i: { _meta: { linkedCount: number } }) => sum + i._meta.linkedCount, 0),
+          currentMonth: new Date().toISOString().slice(0, 7), // YYYY-MM format
         },
       });
     } catch (error) {
       console.error('Get income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('income.write', async (request, auth) => {
     try {
       const body = await request.json();
       const {
@@ -63,19 +195,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
       }
 
-      // Validate ownership of related entities
+      // Validate ownership of related entities using centralized utility
       if (propertyId) {
         const property = await prisma.property.findUnique({ where: { id: propertyId } });
-        if (!property || property.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Property not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(property, auth.userId, 'Property');
+        if (!result.success) return result.response;
       }
 
       if (investmentAccountId) {
         const investmentAccount = await prisma.investmentAccount.findUnique({ where: { id: investmentAccountId } });
-        if (!investmentAccount || investmentAccount.userId !== authReq.user!.userId) {
-          return NextResponse.json({ error: 'Investment account not found or unauthorized' }, { status: 403 });
-        }
+        const result = verifyRelatedOwnership(investmentAccount, auth.userId, 'Investment account');
+        if (!result.success) return result.response;
       }
 
       // Helper to safely convert to number
@@ -105,7 +235,7 @@ export async function POST(request: NextRequest) {
 
       const incomeRecord = await prisma.income.create({
         data: {
-          userId: authReq.user!.userId,
+          userId: auth.userId,
           name,
           type,
           amount: toNumber(amount) ?? 0,
@@ -135,5 +265,4 @@ export async function POST(request: NextRequest) {
       console.error('Create income error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

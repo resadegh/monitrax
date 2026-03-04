@@ -20,6 +20,7 @@ import {
   generateId,
   getLoansFromProperties,
 } from '../types';
+import { formatCurrency } from '@/lib/utils/formatters';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -75,17 +76,6 @@ function createEmptyAccount(type: AccountType = 'TRANSACTIONAL'): AccountInput {
     currentBalance: 0,
     linkedLoanId: undefined,
   };
-}
-
-function formatCurrency(amount: number): string {
-  const absAmount = Math.abs(amount);
-  if (absAmount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(2)}M`;
-  }
-  if (absAmount >= 1000) {
-    return `$${(amount / 1000).toFixed(1)}K`;
-  }
-  return `$${amount.toLocaleString()}`;
 }
 
 // =============================================================================
@@ -385,13 +375,13 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(totalAssets)}
+                {formatCurrency(totalAssets, { abbreviate: true })}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Cash Assets</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {formatCurrency(totalDebt)}
+                {formatCurrency(totalDebt, { abbreviate: true })}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Credit Card Debt</div>
             </div>
@@ -403,7 +393,7 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
                     : 'text-red-600 dark:text-red-400'
                 }`}
               >
-                {formatCurrency(netBalance)}
+                {formatCurrency(netBalance, { abbreviate: true })}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Net Balance</div>
             </div>

@@ -3,10 +3,10 @@ import { disableMFA } from '@/lib/security/mfa';
 import { getAuthContext } from '@/lib/auth/context';
 
 /**
- * POST /api/auth/mfa/totp/disable
+ * DELETE /api/auth/mfa/totp/disable
  * Disable TOTP MFA
  */
-export async function POST(request: NextRequest) {
+export async function DELETE(request: NextRequest) {
   try {
     const auth = await getAuthContext(request);
 

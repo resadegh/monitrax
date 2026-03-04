@@ -37,6 +37,80 @@ import {
   X,
   Car,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
+import {
+  FinancialHealthScore,
+  EmergencyFundTracker,
+  MoneyBleedingCard,
+  SpendingByCategory,
+  ActionableInsights,
+  MonthlyBudgetSummary,
+} from '@/components/dashboard/InsightWidgets';
+import { DebtQualityWidget, calculateDebtQuality } from '@/components/dashboard/DebtQualityWidget';
+import { EntityCashflowSummary, calculateEntityCashflow } from '@/components/dashboard/EntityCashflowSummary';
+import {
+  CalculationTooltip,
+  InvestmentIncomeDisplay,
+  calculateInvestmentIncome,
+  LinkageHealthIndicator,
+  calculateLinkageHealthStatus,
+  EntityComparisonChart,
+  buildEntityComparisonData,
+  QuickActionsBar,
+} from '@/components/dashboard/Phase2Enhancements';
+import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '@/components/dashboard/NetWorthTrend';
+
+interface DashboardInsights {
+  healthScore: {
+    score: number;
+    grade: 'A' | 'B' | 'C' | 'D' | 'F';
+    breakdown: {
+      savingsRate: { score: number; weight: number; value: number };
+      emergencyFund: { score: number; weight: number; value: number };
+      debtToIncome: { score: number; weight: number; value: number };
+      diversification: { score: number; weight: number; value: number };
+    };
+  };
+  emergencyFund: {
+    liquidCash: number;
+    monthlyExpenses: number;
+    monthsCovered: number;
+    target: number;
+    status: 'danger' | 'warning' | 'good' | 'excellent';
+    gap: number;
+  };
+  spendingByCategory: Array<{
+    category: string;
+    monthlyAmount: number;
+    annualAmount: number;
+    percentage: number;
+    items: Array<{ name: string; monthlyAmount: number }>;
+  }>;
+  moneyBleeding: Array<{
+    name: string;
+    category: string;
+    monthlyAmount: number;
+    annualAmount: number;
+    percentageOfIncome: number;
+    suggestion?: string;
+  }>;
+  insights: Array<{
+    type: 'success' | 'warning' | 'danger' | 'info';
+    title: string;
+    message: string;
+    metric?: string;
+    action?: string;
+  }>;
+  monthlyBudget: {
+    income: number;
+    essentialExpenses: number;
+    discretionaryExpenses: number;
+    loanPayments: number;
+    remaining: number;
+    daysInMonth: number;
+    dailyBudget: number;
+  };
+}
 
 interface PortfolioSnapshot {
   generatedAt: string;
@@ -58,10 +132,12 @@ interface PortfolioSnapshot {
   loans?: Array<{
     id: string;
     name: string;
+    type: string;
     principal: number;
     interestRate: number;
     minRepayment?: number;
     repaymentFrequency?: string;
+    propertyId?: string | null;
     propertyName?: string | null;
     annualRepayment?: number;
   }>;
@@ -84,6 +160,7 @@ interface PortfolioSnapshot {
     grossAnnual: number;
     netAnnual: number;
     propertyName?: string | null;
+    investmentAccountId?: string | null;
     isTaxable?: boolean;
   }>;
   assets: {
@@ -108,9 +185,25 @@ interface PortfolioSnapshot {
     lvr: number;
     rentalYield: number;
     cashflow: {
+      annualIncome?: number;
+      annualExpenses?: number;
+      annualLoanRepayments?: number;
       monthlyNet: number;
     };
   }>;
+  personalAssets?: {
+    totalValue: number;
+    items: Array<{
+      id: string;
+      name: string;
+      type: string;
+      currentValue: number;
+      expenses?: {
+        annualTotal: number;
+        monthlyTotal: number;
+      };
+    }>;
+  };
   investments: {
     totalValue: number;
     accounts: Array<{
@@ -124,6 +217,12 @@ interface PortfolioSnapshot {
         currentValue: number;
       }>;
     }>;
+  };
+  // Phase 3: Linkage health for data completeness indicator
+  linkageHealth?: {
+    completenessScore: number;
+    orphanCount: number;
+    warnings: string[];
   };
 }
 
@@ -224,57 +323,50 @@ function ProgressBar({
   );
 }
 
-type DetailTileType = 'netWorth' | 'cashflow' | 'savingsRate' | 'lvr' | null;
+type DetailTileType = 'netWorth' | 'cashflow' | 'savingsRate' | 'lvr' | 'income' | 'outgoings' | null;
 type CashflowPeriod = 'monthly' | 'annual';
 
 export default function DashboardPage() {
   const { token } = useAuth();
   const [snapshot, setSnapshot] = useState<PortfolioSnapshot | null>(null);
+  const [insights, setInsights] = useState<DashboardInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState<DetailTileType>(null);
   const [cashflowPeriod, setCashflowPeriod] = useState<CashflowPeriod>('monthly');
 
   useEffect(() => {
     if (token) {
-      loadPortfolioSnapshot();
+      loadDashboardData();
     }
   }, [token]);
 
-  const loadPortfolioSnapshot = async () => {
+  const loadDashboardData = async () => {
     try {
-      const response = await fetch('/api/portfolio/snapshot', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.ok) {
-        setSnapshot(await response.json());
+      // Load both endpoints in parallel
+      const [snapshotRes, insightsRes] = await Promise.all([
+        fetch('/api/portfolio/snapshot', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch('/api/dashboard/insights', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      if (snapshotRes.ok) {
+        setSnapshot(await snapshotRes.json());
+      }
+      if (insightsRes.ok) {
+        setInsights(await insightsRes.json());
       }
     } catch (error) {
-      console.error('Error loading portfolio snapshot:', error);
+      console.error('Error loading dashboard data:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatCompactCurrency = (amount: number) => {
-    if (Math.abs(amount) >= 1000000) {
-      return new Intl.NumberFormat('en-AU', {
-        style: 'currency',
-        currency: 'AUD',
-        notation: 'compact',
-        maximumFractionDigits: 1,
-      }).format(amount);
-    }
-    return formatCurrency(amount);
-  };
+  // Use centralized formatCurrency utility with abbreviate option for compact display
+  const formatCompactCurrency = (amount: number) => formatCurrency(amount, { abbreviate: true });
 
   // Generate insights based on portfolio data
   const generateInsights = () => {
@@ -386,7 +478,7 @@ export default function DashboardPage() {
     snapshot.liabilities.loans.count === 0
   );
 
-  const insights = generateInsights();
+  const portfolioInsights = generateInsights();
 
   return (
     <DashboardLayout>
@@ -464,34 +556,85 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Primary Metrics Row - Clickable for details */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Phase 3: Linkage Health & Quick Actions Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {snapshot.linkageHealth && (
+                <Link href="/dashboard/properties">
+                  <LinkageHealthIndicator
+                    data={calculateLinkageHealthStatus(
+                      snapshot.linkageHealth.completenessScore,
+                      snapshot.linkageHealth.orphanCount,
+                      snapshot.linkageHealth.warnings?.length || 0
+                    )}
+                    showDetails
+                  />
+                </Link>
+              )}
+            </div>
+            {/* Phase 4: Quick Actions */}
+            <QuickActionsBar
+              actions={[
+                { label: 'Budget Analysis', href: '/dashboard/budget-analysis', icon: <Calculator className="h-3 w-3" /> },
+                { label: 'Debt Planner', href: '/dashboard/debt-planner', icon: <Target className="h-3 w-3" /> },
+              ]}
+            />
+          </div>
+
+          {/* Primary Metrics Row - Clickable for details with calculation tooltips */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <div onClick={() => setSelectedDetail('netWorth')} className="cursor-pointer">
-              <StatCard
-                title="Net Worth"
-                value={formatCompactCurrency(snapshot.netWorth)}
-                description={`${formatCompactCurrency(snapshot.totalAssets)} assets - ${formatCompactCurrency(snapshot.totalLiabilities)} debt`}
-                icon={Wallet}
-                variant="purple"
-              />
+              <CalculationTooltip
+                title="Net Worth Calculation"
+                formula="Total Assets - Total Liabilities"
+                components={[
+                  { label: 'Properties', value: snapshot.assets.properties.totalValue, color: 'blue' },
+                  { label: 'Accounts', value: snapshot.assets.accounts.totalValue, color: 'green', operator: '+' },
+                  { label: 'Investments', value: snapshot.assets.investments.totalValue, color: 'purple', operator: '+' },
+                  { label: 'Personal Assets', value: snapshot.assets.personalAssets?.totalValue || 0, operator: '+' },
+                  { label: 'Loans', value: snapshot.totalLiabilities, color: 'red', operator: '-' },
+                ]}
+                result={snapshot.netWorth}
+                resultLabel="Net Worth"
+              >
+                <StatCard
+                  title="Net Worth"
+                  value={formatCompactCurrency(snapshot.netWorth)}
+                  description={`${formatCompactCurrency(snapshot.totalAssets)} assets - ${formatCompactCurrency(snapshot.totalLiabilities)} debt`}
+                  icon={Wallet}
+                  variant="purple"
+                />
+              </CalculationTooltip>
             </div>
             <div className="relative">
               <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer">
-                <StatCard
-                  title={cashflowPeriod === 'monthly' ? 'Monthly Cash Flow' : 'Annual Cash Flow'}
-                  value={formatCurrency(
-                    cashflowPeriod === 'monthly'
-                      ? snapshot.cashflow.monthlyNetCashflow
-                      : snapshot.cashflow.annualNetCashflow
-                  )}
-                  description={
-                    cashflowPeriod === 'monthly'
-                      ? `${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`
-                      : `${formatCurrency(snapshot.cashflow.monthlyNetCashflow)}/month`
-                  }
-                  icon={snapshot.cashflow.monthlyNetCashflow >= 0 ? ArrowUpRight : ArrowDownRight}
-                  variant={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'green' : 'orange'}
-                />
+                <CalculationTooltip
+                  title="Cash Flow Calculation"
+                  formula="Income - Expenses - Loan Repayments"
+                  components={[
+                    { label: 'Total Income', value: snapshot.cashflow.totalIncome, color: 'green' },
+                    { label: 'Total Expenses', value: snapshot.cashflow.totalExpenses, color: 'red', operator: '-' },
+                    { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '-' },
+                  ]}
+                  result={snapshot.cashflow.annualNetCashflow}
+                  resultLabel="Annual Cash Flow"
+                >
+                  <StatCard
+                    title={cashflowPeriod === 'monthly' ? 'Monthly Cash Flow' : 'Annual Cash Flow'}
+                    value={formatCurrency(
+                      cashflowPeriod === 'monthly'
+                        ? snapshot.cashflow.monthlyNetCashflow
+                        : snapshot.cashflow.annualNetCashflow
+                    )}
+                    description={
+                      cashflowPeriod === 'monthly'
+                        ? `${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`
+                        : `${formatCurrency(snapshot.cashflow.monthlyNetCashflow)}/month`
+                    }
+                    icon={snapshot.cashflow.monthlyNetCashflow >= 0 ? ArrowUpRight : ArrowDownRight}
+                    variant={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'green' : 'orange'}
+                  />
+                </CalculationTooltip>
               </div>
               {/* Period Toggle */}
               <div className="absolute top-2 right-2 z-10">
@@ -506,25 +649,212 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
+            <div onClick={() => setSelectedDetail('income')} className="cursor-pointer">
+              <CalculationTooltip
+                title="Annual Income"
+                formula="All income sources combined"
+                components={[
+                  { label: 'Salary/Wages', value: snapshot.cashflow.totalIncome * 0.7, color: 'green' },
+                  { label: 'Rental Income', value: snapshot.cashflow.totalIncome * 0.2, color: 'blue', operator: '+' },
+                  { label: 'Other Income', value: snapshot.cashflow.totalIncome * 0.1, color: 'purple', operator: '+' },
+                ]}
+                result={snapshot.cashflow.totalIncome}
+                resultLabel="Total Annual Income"
+              >
+                <StatCard
+                  title="Annual Income"
+                  value={formatCompactCurrency(snapshot.cashflow.totalIncome)}
+                  description={`${formatCurrency(snapshot.cashflow.totalIncome / 12)}/month`}
+                  icon={TrendingUp}
+                  variant="green"
+                />
+              </CalculationTooltip>
+            </div>
+            <div onClick={() => setSelectedDetail('outgoings')} className="cursor-pointer">
+              <CalculationTooltip
+                title="Annual Outgoings"
+                formula="Expenses + Loan Repayments"
+                components={[
+                  { label: 'Expenses', value: snapshot.cashflow.totalExpenses, color: 'red' },
+                  { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '+' },
+                ]}
+                result={snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)}
+                resultLabel="Total Annual Outgoings"
+              >
+                <StatCard
+                  title="Annual Outgoings"
+                  value={formatCompactCurrency(snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0))}
+                  description={`${formatCurrency((snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)) / 12)}/month`}
+                  icon={ArrowDownRight}
+                  variant="orange"
+                />
+              </CalculationTooltip>
+            </div>
             <div onClick={() => setSelectedDetail('savingsRate')} className="cursor-pointer">
-              <StatCard
-                title="Savings Rate"
-                value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
-                description={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year saved`}
-                icon={PiggyBank}
-                variant="teal"
-              />
+              <CalculationTooltip
+                title="Savings Rate Calculation"
+                formula="(Net Cashflow ÷ Net Income) × 100%"
+                components={[
+                  { label: 'Annual Net Income', value: snapshot.cashflow.totalIncome, color: 'green' },
+                  { label: 'Annual Expenses', value: snapshot.cashflow.totalExpenses, color: 'red', operator: '-' },
+                  { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '-' },
+                ]}
+                result={snapshot.cashflow.annualNetCashflow}
+                resultLabel="Annual Savings"
+              >
+                <StatCard
+                  title="Savings Rate"
+                  value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
+                  description={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year saved`}
+                  icon={PiggyBank}
+                  variant="teal"
+                />
+              </CalculationTooltip>
             </div>
             <div onClick={() => setSelectedDetail('lvr')} className="cursor-pointer">
-              <StatCard
-                title="Portfolio LVR"
-                value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
-                description={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
-                icon={Percent}
-                variant={snapshot.gearing.portfolioLVR > 80 ? 'orange' : 'blue'}
-              />
+              <CalculationTooltip
+                title="Portfolio LVR Calculation"
+                formula="(Total Debt ÷ Total Assets) × 100%"
+                components={[
+                  { label: 'Total Debt', value: snapshot.totalLiabilities, color: 'red' },
+                  { label: 'Total Assets', value: snapshot.totalAssets, color: 'green', operator: '÷' },
+                ]}
+                result={snapshot.gearing.portfolioLVR}
+                resultLabel="LVR %"
+              >
+                <StatCard
+                  title="Portfolio LVR"
+                  value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
+                  description={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
+                  icon={Percent}
+                  variant={snapshot.gearing.portfolioLVR > 80 ? 'orange' : 'blue'}
+                />
+              </CalculationTooltip>
             </div>
           </div>
+
+          {/* Financial Health & Insights Section */}
+          {insights && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Financial Health Score */}
+              <FinancialHealthScore
+                score={insights.healthScore.score}
+                grade={insights.healthScore.grade}
+                breakdown={insights.healthScore.breakdown}
+              />
+
+              {/* Emergency Fund Tracker */}
+              <EmergencyFundTracker
+                liquidCash={insights.emergencyFund.liquidCash}
+                monthlyExpenses={insights.emergencyFund.monthlyExpenses}
+                monthsCovered={insights.emergencyFund.monthsCovered}
+                target={insights.emergencyFund.target}
+                status={insights.emergencyFund.status}
+                gap={insights.emergencyFund.gap}
+              />
+            </div>
+          )}
+
+          {/* Phase 1: Debt Quality & Entity Cashflow Section */}
+          {snapshot.loans && snapshot.loans.length > 0 && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Debt Quality Widget - Good vs Bad Debt */}
+              <DebtQualityWidget
+                data={calculateDebtQuality(snapshot.loans)}
+              />
+
+              {/* Entity Cashflow Summary */}
+              <EntityCashflowSummary
+                data={calculateEntityCashflow(
+                  snapshot.properties,
+                  snapshot.investments.accounts,
+                  snapshot.loans,
+                  snapshot.personalAssets?.items || [],
+                  snapshot.income || [],
+                  snapshot.expenses || []
+                )}
+              />
+            </div>
+          )}
+
+          {/* Show Entity Cashflow even without loans (for properties/investments) */}
+          {(!snapshot.loans || snapshot.loans.length === 0) && (snapshot.properties.length > 0 || snapshot.investments.accounts.length > 0) && (
+            <EntityCashflowSummary
+              data={calculateEntityCashflow(
+                snapshot.properties,
+                snapshot.investments.accounts,
+                snapshot.loans || [],
+                snapshot.personalAssets?.items || [],
+                snapshot.income || [],
+                snapshot.expenses || []
+              )}
+            />
+          )}
+
+          {/* Phase 3 & 4: Net Worth Trend & Entity Comparison */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Phase 3: Net Worth Trend */}
+            <NetWorthTrend
+              data={generateNetWorthTrendData(
+                snapshot.netWorth,
+                snapshot.cashflow.monthlyNetCashflow
+              )}
+            />
+
+            {/* Phase 4: Entity Comparison Chart */}
+            {(snapshot.properties.length > 0 || (snapshot.loans && snapshot.loans.length > 0)) && (
+              <EntityComparisonChart
+                items={buildEntityComparisonData(
+                  snapshot.properties,
+                  snapshot.investments.accounts.map(acc => ({
+                    name: acc.name,
+                    monthlyIncome: snapshot.income
+                      ? calculateInvestmentIncome(acc.id, snapshot.income).totalMonthlyIncome
+                      : 0,
+                  })),
+                  snapshot.loans?.map(loan => ({
+                    name: loan.name,
+                    netCashflowImpact: (loan.annualRepayment || 0) / 12,
+                    type: loan.type, // Include type to filter out property-linked loans
+                  })) || []
+                )}
+              />
+            )}
+          </div>
+
+          {/* Actionable Insights & Budget Section */}
+          {insights && insights.insights.length > 0 && (
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* What You Should Know - Actionable Insights */}
+              <div className="lg:col-span-2">
+                <ActionableInsights insights={insights.insights} />
+              </div>
+
+              {/* Monthly Budget Summary */}
+              <MonthlyBudgetSummary
+                income={insights.monthlyBudget.income}
+                essentialExpenses={insights.monthlyBudget.essentialExpenses}
+                discretionaryExpenses={insights.monthlyBudget.discretionaryExpenses}
+                loanPayments={insights.monthlyBudget.loanPayments}
+                remaining={insights.monthlyBudget.remaining}
+                dailyBudget={insights.monthlyBudget.dailyBudget}
+              />
+            </div>
+          )}
+
+          {/* Spending Analysis Section */}
+          {insights && insights.moneyBleeding.length > 0 && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Where Your Money Goes */}
+              <MoneyBleedingCard
+                items={insights.moneyBleeding}
+                monthlyIncome={insights.monthlyBudget.income}
+              />
+
+              {/* Spending by Category */}
+              <SpendingByCategory categories={insights.spendingByCategory} />
+            </div>
+          )}
 
           {/* Two Column Layout: Charts & Insights */}
           <div className="grid gap-6 lg:grid-cols-3">
@@ -621,9 +951,9 @@ export default function DashboardPage() {
                 <CardDescription>Key observations about your portfolio</CardDescription>
               </CardHeader>
               <CardContent>
-                {insights.length > 0 ? (
+                {portfolioInsights.length > 0 ? (
                   <div className="space-y-3">
-                    {insights.map((insight, index) => (
+                    {portfolioInsights.map((insight, index) => (
                       <div
                         key={index}
                         className={`flex items-start gap-3 p-3 rounded-lg ${
@@ -652,57 +982,6 @@ export default function DashboardPage() {
                     Add more financial data to receive personalized insights.
                   </p>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Cash Flow Overview */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/50">
-                    <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  </div>
-                  Annual Income
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-700 dark:text-green-400">
-                  {formatCurrency(snapshot.cashflow.totalIncome)}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {formatCurrency(snapshot.cashflow.totalIncome / 12)}/month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-orange-500">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/50">
-                    <ArrowDownRight className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                  </div>
-                  Annual Outgoings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-orange-700 dark:text-orange-400">
-                  {formatCurrency(snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0))}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {formatCurrency((snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)) / 12)}/month
-                </p>
-                <div className="mt-2 pt-2 border-t text-xs text-muted-foreground space-y-1">
-                  <div className="flex justify-between">
-                    <span>Expenses</span>
-                    <span>{formatCurrency(snapshot.cashflow.totalExpenses)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Loan Repayments</span>
-                    <span>{formatCurrency(snapshot.cashflow.totalLoanRepayments || 0)}</span>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -810,7 +1089,16 @@ export default function DashboardPage() {
                       <CardContent>
                         <div className="mb-3">
                           <p className="text-2xl font-bold">{formatCompactCurrency(account.totalValue)}</p>
-                          <p className="text-sm text-muted-foreground">{account.holdings.length} holding{account.holdings.length !== 1 ? 's' : ''}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">{account.holdings.length} holding{account.holdings.length !== 1 ? 's' : ''}</p>
+                            {/* Phase 2: Investment Income Display */}
+                            {snapshot.income && (
+                              <InvestmentIncomeDisplay
+                                data={calculateInvestmentIncome(account.id, snapshot.income)}
+                                compact
+                              />
+                            )}
+                          </div>
                         </div>
                         {account.holdings.length > 0 && (
                           <div className="space-y-2">

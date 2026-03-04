@@ -70,6 +70,7 @@ interface NavGroup {
 // Standalone navigation items (always visible)
 const standaloneItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, tourId: 'nav-dashboard' },
+  { name: 'Household', href: '/dashboard/household-profile', icon: Users, tourId: 'nav-household' },
   { name: 'Personal CFO', href: '/dashboard/cfo', icon: Brain, tourId: 'nav-cfo' },
 ];
 
@@ -103,7 +104,6 @@ const navGroups: NavGroup[] = [
     icon: Lightbulb,
     tourId: 'nav-planning',
     items: [
-      { name: 'Household Profile', href: '/dashboard/household-profile', icon: Users, tourId: 'nav-household' },
       { name: 'Budget Analysis', href: '/dashboard/budget-analysis', icon: Target, tourId: 'nav-budget-analysis' },
       { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator, tourId: 'nav-debt' },
       { name: 'Cashflow', href: '/cashflow', icon: LineChart, tourId: 'nav-cashflow' },
@@ -295,10 +295,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    // Only redirect to signin when there's genuinely no authenticated session.
+    // If token exists but user is null, the profile is still being fetched
+    // from /api/auth/me — wait for it instead of redirecting.
+    if (!isLoading && !user && !token) {
       router.push('/signin');
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, token, router]);
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -316,7 +319,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => document.removeEventListener('keydown', handleEscape);
   }, []);
 
-  if (isLoading) {
+  if (isLoading || (token && !user)) {
+    // Show loading spinner while:
+    // 1. AuthContext is still initializing (isLoading)
+    // 2. Token exists but user profile hasn't loaded yet (fetchUserProfile in progress)
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

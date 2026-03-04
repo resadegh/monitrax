@@ -5,41 +5,42 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-interface AvailableProviders {
-  google: boolean;
-  facebook: boolean;
-  apple: boolean;
-  microsoft: boolean;
-}
-
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showEmailLogin, setShowEmailLogin] = useState(false);
-  const [availableProviders, setAvailableProviders] = useState<AvailableProviders>({
-    google: false,
-    facebook: false,
-    apple: false,
-    microsoft: false,
-  });
-  const { login } = useAuth();
+  const { login, loginWithGoogle, isGCPEnabled, mfaChallenge, token } = useAuth();
   const router = useRouter();
 
-  // Check which OAuth providers are configured
+  // Navigate to dashboard when auth completes (including after MFA resolution)
   useEffect(() => {
-    fetch('/api/auth/providers')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.available) {
-          setAvailableProviders(data.available);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to fetch providers:', err);
-      });
-  }, []);
+    if (token && !mfaChallenge) {
+      router.push('/dashboard');
+    }
+  }, [token, mfaChallenge, router]);
+
+  // Check which OAuth providers are configured (legacy mode only)
+  const [availableProviders, setAvailableProviders] = useState<{
+    google: boolean;
+    facebook: boolean;
+  }>({ google: false, facebook: false });
+
+  useEffect(() => {
+    if (!isGCPEnabled) {
+      fetch('/api/auth/providers')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.available) {
+            setAvailableProviders(data.available);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to fetch providers:', err);
+        });
+    }
+  }, [isGCPEnabled]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,16 +49,52 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push('/dashboard');
+      // If MFA challenge was triggered, don't navigate — the MFA dialog will appear
+      // Navigation happens after MFA is resolved (see useEffect below)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const message = err instanceof Error ? err.message : 'Login failed';
+      // Map Firebase error codes to user-friendly messages
+      if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password')) {
+        setError('Invalid email or password');
+      } else if (message.includes('auth/user-not-found')) {
+        setError('No account found with this email');
+      } else if (message.includes('auth/too-many-requests')) {
+        setError('Too many failed attempts. Please try again later.');
+      } else if (message.includes('auth/user-disabled')) {
+        setError('This account has been disabled');
+      } else {
+        setError(message);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOAuthLogin = (provider: 'google' | 'facebook') => {
-    window.location.href = `/api/auth/oauth/${provider}`;
+  const handleGoogleLogin = async () => {
+    setError('');
+    setIsLoading(true);
+
+    try {
+      if (isGCPEnabled) {
+        await loginWithGoogle();
+        // Navigation happens via useEffect when token is set (after MFA if needed)
+      } else {
+        // Legacy: redirect to server-side OAuth
+        window.location.href = '/api/auth/oauth/google';
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Google sign-in failed';
+      if (message.includes('auth/popup-closed-by-user')) {
+        // User closed the popup — not an error
+        setError('');
+      } else if (message.includes('auth/popup-blocked')) {
+        setError('Pop-up was blocked. Please allow pop-ups for this site.');
+      } else {
+        setError(message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleMagicLinkLogin = async () => {
@@ -90,6 +127,11 @@ export default function LoginPage() {
     }
   };
 
+  // When GCP is enabled, Google sign-in is always available (managed by Firebase)
+  // When GCP is not enabled, show based on legacy provider check
+  const showGoogleButton = isGCPEnabled || availableProviders.google;
+  const showFacebookButton = !isGCPEnabled && availableProviders.facebook;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
@@ -104,10 +146,10 @@ export default function LoginPage() {
 
         {!showEmailLogin ? (
           <div className="space-y-4">
-            {/* Social Login Buttons - Only show if configured */}
-            {availableProviders.google && (
+            {/* Google Sign-In — uses Firebase Auth when GCP is enabled */}
+            {showGoogleButton && (
               <button
-                onClick={() => handleOAuthLogin('google')}
+                onClick={handleGoogleLogin}
                 disabled={isLoading}
                 className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -121,9 +163,9 @@ export default function LoginPage() {
               </button>
             )}
 
-            {availableProviders.facebook && (
+            {showFacebookButton && (
               <button
-                onClick={() => handleOAuthLogin('facebook')}
+                onClick={() => { window.location.href = '/api/auth/oauth/facebook'; }}
                 disabled={isLoading}
                 className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -134,7 +176,7 @@ export default function LoginPage() {
               </button>
             )}
 
-            {(availableProviders.google || availableProviders.facebook) && (
+            {(showGoogleButton || showFacebookButton) && (
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300"></div>
@@ -145,7 +187,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {!availableProviders.google && !availableProviders.facebook && (
+            {!showGoogleButton && !showFacebookButton && (
               <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded text-sm">
                 <p className="font-medium mb-1">OAuth providers not configured</p>
                 <p className="text-xs">To enable social login, configure OAuth environment variables.</p>

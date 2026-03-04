@@ -1,8 +1,23 @@
 'use client';
 
+/**
+ * @deprecated This wizard component is deprecated and no longer used.
+ * Please use WizardContainer from './wizard/WizardContainer' instead.
+ *
+ * The new v2.0 wizard system offers:
+ * - Profile-aware step configuration
+ * - Enhanced AI assistance
+ * - Better type safety with centralized types
+ * - Support for multiple items per category
+ *
+ * This file and its associated /steps/ directory are kept for reference
+ * but should not be used in new code.
+ */
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { useOnboardingState, OnboardingProfileType } from '@/hooks/useOnboardingState';
 
 // Step components
@@ -121,6 +136,7 @@ export function InitialSetupWizard({
   onComplete,
   initialStep = 0,
 }: InitialSetupWizardProps) {
+  const { token } = useAuth();
   // Handle SSR - only render portal after mounting on client
   const [mounted, setMounted] = useState(false);
 
@@ -160,7 +176,7 @@ export function InitialSetupWizard({
       // Complete the wizard
       setIsSubmitting(true);
       try {
-        await submitWizardData(wizardData);
+        await submitWizardData(wizardData, token || '');
         await completeOnboarding();
         onComplete();
       } catch (error) {
@@ -353,12 +369,14 @@ function getCurrentTaxYear(): string {
 }
 
 // Submit wizard data to create entities
-async function submitWizardData(data: WizardData): Promise<void> {
+async function submitWizardData(data: WizardData, token: string): Promise<void> {
+  const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
   // Create account if provided
   if (data.account) {
     await fetch('/api/accounts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({
         name: data.account.name,
         type: data.account.type,
@@ -371,7 +389,7 @@ async function submitWizardData(data: WizardData): Promise<void> {
   if (data.property) {
     const propertyRes = await fetch('/api/properties', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({
         name: data.property.name,
         type: data.property.type,
@@ -387,7 +405,7 @@ async function submitWizardData(data: WizardData): Promise<void> {
       const property = await propertyRes.json();
       await fetch('/api/loans', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           name: data.property.loanDetails.lender,
           type: data.property.type === 'HOME' ? 'HOME' : 'INVESTMENT',
@@ -408,7 +426,7 @@ async function submitWizardData(data: WizardData): Promise<void> {
   if (data.investmentAccount) {
     await fetch('/api/investments/accounts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({
         name: data.investmentAccount.name,
         type: data.investmentAccount.type,
@@ -421,7 +439,7 @@ async function submitWizardData(data: WizardData): Promise<void> {
   if (data.income) {
     await fetch('/api/income', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({
         name: data.income.name,
         type: data.income.type,
@@ -444,7 +462,7 @@ async function submitWizardData(data: WizardData): Promise<void> {
       if (exp.amount > 0) {
         await fetch('/api/expenses', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify({
             name: exp.name,
             category: exp.category,

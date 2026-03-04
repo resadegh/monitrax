@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ import {
   Home,
   RefreshCw,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 // =============================================================================
 // TYPES
@@ -46,6 +48,7 @@ interface Property {
 
 export default function PropertyStrategyPage() {
   const params = useParams();
+  const { token } = useAuth();
   const propertyId = params.id as string;
 
   const [property, setProperty] = useState<Property | null>(null);
@@ -53,15 +56,17 @@ export default function PropertyStrategyPage() {
   const [showAiPanel, setShowAiPanel] = useState(false);
 
   useEffect(() => {
-    if (propertyId) {
+    if (propertyId && token) {
       fetchProperty();
     }
-  }, [propertyId]);
+  }, [propertyId, token]);
 
   async function fetchProperty() {
     try {
       setLoading(true);
-      const response = await fetch(`/api/properties/${propertyId}`);
+      const response = await fetch(`/api/properties/${propertyId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const data = await response.json();
         setProperty(data.data || data);
@@ -73,14 +78,7 @@ export default function PropertyStrategyPage() {
     }
   }
 
-  function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  }
+  // formatCurrency imported from lib/utils/formatters
 
   if (loading) {
     return (
