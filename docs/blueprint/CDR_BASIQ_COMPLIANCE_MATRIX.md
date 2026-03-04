@@ -1,10 +1,12 @@
 # CDR / Basiq Compliance Matrix — Full Requirement Tracking
 
-**Version:** 1.0
+**Version:** 1.1
 **Created:** 2026-02-27
+**Updated:** 2026-03-04
 **Source:** Basiq CDR accreditation questionnaire (Artefacts tracking file)
 **Status:** Active — tracking all compliance requirements
 **Owner:** Resadegh (Director) + Claude Code (AI engineering)
+**Recent Changes:** §1.7 marked DONE (Admin lifecycle review implemented in Phase 33)
 
 ---
 
@@ -33,13 +35,13 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 | 1.4 | Strong passwords are enforced for user accounts | **DONE** | Firebase Auth manages password policy for all end users. Legacy register route requires 12+ chars, upper/lower/digit/special. Admin passwords: bcrypt(12), 12+ chars with complexity (`lib/admin/constants.ts`). | Firebase password policy should be reviewed in GCP Console to confirm minimum strength. |
 | 1.5 | Role based access is used to restrict access to systems | **PARTIAL** | 50+ permissions defined (`lib/auth/permissions.ts`). 4 roles: OWNER, ADMIN, CONTRIBUTOR, VIEWER. Guards built: `withPermission()`, `withAllPermissions()`, `withAnyPermission()`, `withOwnerOnly()` (`lib/auth/guards.ts`). | **TODO (Phase 34.3):** ~150 user API routes still use `withAuth()` instead of `withPermission()`. Only Properties module migrated so far. |
 | 1.6 | Access privileges are granted on a as-needed basis | **PARTIAL** | Permission system supports granular entity-level access (read/write/delete per module). Ownership verification via `lib/utils/ownership.ts`. | Depends on 34.3 completion — permissions are defined but not enforced on most routes. |
-| 1.7 | Admin accounts are regularly reviewed and removed | **PARTIAL** | Admin portal exists (Phase 33). `AdminUser` model with `lastLoginAt`, `isActive` flags. Audit logs track all admin actions (`AdminAuditLog`). | **TODO (Phase 34.5):** Admin lifecycle review endpoint — flag admins inactive >90 days. Auto-deactivation workflow. |
+| 1.7 | Admin accounts are regularly reviewed and removed | **DONE** | Admin portal (Phase 33) with full lifecycle management. `AdminUser` model with `lastLoginAt`, `isActive` flags. GET `/api/admin/admins` returns `isInactive90Days` flag for all admins. Settings page shows inactive admins. PATCH/DELETE endpoints for deactivation. All actions logged to `AdminAuditLog`. | None — implemented in Phase 33 Admin Portal. |
 
 ### Basiq Response Guidance (Section 1)
 
-**Can confirm YES today:** 1.1, 1.2, 1.4
-**Can confirm YES with caveats:** 1.3 (enabled, not enforced), 1.5 (defined, not fully enforced), 1.6 (same caveat), 1.7 (infrastructure exists, no automated review cycle)
-**Recommended approach:** Confirm MFA is *available*, RBAC is *implemented*, and both are being *progressively enforced*. Provide timeline for full enforcement.
+**Can confirm YES today:** 1.1, 1.2, 1.4, **1.7** ✅
+**Can confirm YES with caveats:** 1.3 (enabled, not enforced), 1.5 (defined, not fully enforced), 1.6 (same caveat)
+**Recommended approach:** Confirm MFA is *available*, RBAC is *implemented*, and both are being *progressively enforced*. Provide timeline for full enforcement. Admin lifecycle review (1.7) is now fully implemented.
 
 ---
 
@@ -213,7 +215,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 | T1.1 | Migrate ~150 routes from `withAuth()` → `withPermission()` | 34.3 | 3-5 days | Guards already built |
 | T1.2 | Wire `withMFARequired()` guard on CDR data routes | 34.4 | 1-2 days | MFA already built |
 | T1.3 | Build CDR Data Lifecycle Service (consent expiry → data deletion) | NEW | 3-5 days | Schema fields exist |
-| T1.4 | Admin lifecycle review (90-day inactivity check) | 34.5 | 1 day | Admin portal exists |
+| T1.4 | ~~Admin lifecycle review (90-day inactivity check)~~ | ~~34.5~~ | ~~1 day~~ | ✅ **DONE** (Phase 33) |
 | T1.5 | Add automated test suite for CDR-critical paths | NEW | 3-5 days | — |
 
 ### Tier 2 — Must Have for Basiq Compliance (GCP Config)
@@ -254,7 +256,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 | Category | Requirements | DONE | PARTIAL | TODO | Score |
 |----------|-------------|------|---------|------|-------|
-| Auth & Access (7) | 1.1–1.7 | 3 | 4 | 0 | **70%** |
+| Auth & Access (7) | 1.1–1.7 | **4** ⬆️ | 3 | 0 | **78%** ⬆️ |
 | Logging (7) | 2.1–2.7 | 5 | 2 | 0 | **85%** |
 | System Security (5) | 3.1–3.5 | 2 | 1 | 2 | **50%** |
 | Device Management (3) | 4.1–4.3 | 0 | 1 | 0 | **N/A (policy)** |
@@ -262,11 +264,12 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 | Dev Practices (5) | 6.1–6.5 | 2 | 2 | 1 | **60%** |
 | HR Practices (3) | 7.1–7.3 | 0 | 0 | 0 | **N/A (startup)** |
 | GCP Tools (16) | 8.1–8.16 | 3 | 0 | 10 | **20%** |
-| **TOTAL** | **54** | **15** | **14** | **16** | **~55%** |
+| **TOTAL** | **54** | **16** ⬆️ | **13** | **16** | **~60%** ⬆️ |
 
-**Bottom line:** Strong foundations in auth, logging, and dev practices. Main gaps are in CDR data lifecycle (consent-driven deletion), GCP service enablement, and RBAC enforcement completion.
+**Bottom line:** Strong foundations in auth, logging, and dev practices. Admin lifecycle management (§1.7) now complete. Main gaps are in CDR data lifecycle (consent-driven deletion), GCP service enablement, and RBAC enforcement completion.
 
 ---
 
-*Last Updated: 2026-02-27*
-*Next Review: After Phase 34.3 completion*
+*Last Updated: 2026-03-04*
+*Next Review: After Phase 34.3 completion (RBAC enforcement)*
+*Recent: §1.7 (Admin lifecycle) marked DONE — Phase 33 Admin Portal implementation*

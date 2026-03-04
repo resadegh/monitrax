@@ -43,6 +43,16 @@ interface TaxRecommendation {
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
+interface TaxRecommendation {
+  id: string;
+  type: 'SAVINGS' | 'OPTIMIZATION' | 'WARNING' | 'INFO';
+  title: string;
+  description: string;
+  potentialSavings?: number;
+  action?: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
 interface TaxPositionResponse {
   success: boolean;
   financialYear: string;

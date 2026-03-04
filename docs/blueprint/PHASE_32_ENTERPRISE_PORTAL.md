@@ -812,232 +812,135 @@ POST   /api/portal/clients/:clientId/send-to-xero                 # Send specifi
 
 ### 5.0 Unified Login & Authentication Flow
 
-> **Key Decision**: Centralized user management with separate login entry points for personal and organization portal access
+> **Key Decision**: Single login page with role-based routing
 
-#### 5.0.1 Centralized Architecture
-
-All users, roles, and licenses are stored in a **single source of truth**:
+#### 5.0.1 Login Page Options
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    CENTRALIZED DATABASE                      │
+│                        MONITRAX                             │
+│                         Login                               │
 ├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │                      User Table                       │   │
-│  │  - Single user record per email                       │   │
-│  │  - Used by: Main App, Portal, Admin                   │   │
-│  │  - Fields: id, email, name, password, emailVerified   │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                            │                                 │
-│              ┌─────────────┴─────────────┐                  │
-│              ▼                           ▼                  │
-│  ┌──────────────────────┐    ┌──────────────────────┐      │
-│  │  OrganizationMember  │    │  Personal Settings   │      │
-│  │  - userId            │    │  - userId            │      │
-│  │  - organizationId    │    │  - preferences       │      │
-│  │  - role (Portal)     │    │  - subscriptions     │      │
-│  └──────────────────────┘    └──────────────────────┘      │
-│                                                              │
+│                                                             │
+│  ┌─────────────────┐    ┌─────────────────┐                │
+│  │   Personal      │    │   Organization  │                │
+│  │   Account       │    │   Portal        │                │
+│  │                 │    │                 │                │
+│  │  Track your     │    │  Access your    │                │
+│  │  finances       │    │  client data    │                │
+│  └─────────────────┘    └─────────────────┘                │
+│                                                             │
+│  ─────────────────── OR ───────────────────                │
+│                                                             │
+│  [Email]                                                    │
+│  [Password]                                                 │
+│  [        Login        ]                                    │
+│                                                             │
+│  Forgot password?  |  Sign up                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Key Benefits:**
-- One user account works across all platforms
-- Admin portal can manage all users centrally
-- Role assignments are per-organization
-- No duplicate user records
+#### 5.0.2 Authentication Flow
 
-#### 5.0.2 Login Entry Points
+```
+┌──────────────┐
+│  Login Page  │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Authenticate User   │
+│  (Email/Password,    │
+│   OAuth, SSO, etc.)  │
+└──────────┬───────────┘
+           │
+           ▼
+┌──────────────────────────────────────┐
+│  Check User's Organization Memberships │
+└──────────────────┬───────────────────┘
+                   │
+       ┌───────────┴───────────┐
+       │                       │
+       ▼                       ▼
+┌────────────────┐    ┌────────────────────────┐
+│ No Org Members │    │ Has Org Memberships    │
+│ (Regular User) │    │ (Staff or Multi-Org)   │
+└───────┬────────┘    └──────────┬─────────────┘
+        │                        │
+        ▼                        ▼
+┌────────────────┐    ┌────────────────────────┐
+│ /dashboard     │    │  Context Selector      │
+│ (Personal)     │    │  - Personal Dashboard  │
+└────────────────┘    │  - Org 1 Portal        │
+                      │  - Org 2 Portal        │
+                      └──────────┬─────────────┘
+                                 │
+                    ┌────────────┴────────────┐
+                    │                         │
+                    ▼                         ▼
+           ┌────────────────┐       ┌────────────────┐
+           │ /dashboard     │       │ /portal/:slug  │
+           │ (Personal)     │       │ (Org Portal)   │
+           └────────────────┘       └────────────────┘
+```
+
+#### 5.0.3 Context Switcher (for Multi-Org Users)
+
+Users who belong to multiple organizations or have both personal and org access will see a context switcher in the navigation:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     /portal/login                            │
-│                  (Portal Entry Page)                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌─────────────────────┐    ┌─────────────────────┐         │
-│  │  Personal Account   │    │  Organization       │         │
-│  │  Login              │    │  Portal Login       │         │
-│  │                     │    │                     │         │
-│  │  → /signin          │    │  → /portal/signin   │         │
-│  └─────────────────────┘    └─────────────────────┘         │
-│                                                              │
-│  "Interested in Enterprise Portal? Contact Sales"            │
+│  ┌─────────────────┐                                        │
+│  │  Monitrax  ▼    │   Dashboard   Clients   Settings       │
+│  └─────────────────┘                                        │
+│         │                                                    │
+│         ├── Personal Dashboard                               │
+│         │                                                    │
+│         ├── ABC Accounting (Owner)                           │
+│         │                                                    │
+│         └── XYZ Financial (Admin)                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-| Entry Point | Purpose | Destination |
-|-------------|---------|-------------|
-| `/signin` | Personal account login | `/dashboard` |
-| `/portal/signin` | Organization portal login | `/portal/dashboard` |
-| `/portal/login` | Portal landing with options | Choose personal or org |
-
-#### 5.0.3 Portal Authentication Flow
-
-```
-                    ┌────────────────────┐
-                    │  /portal/signin    │
-                    │  (Dedicated Login) │
-                    └─────────┬──────────┘
-                              │
-                              ▼
-                    ┌────────────────────┐
-                    │  Authenticate via  │
-                    │  /api/auth/login   │
-                    │  (Same auth system)│
-                    └─────────┬──────────┘
-                              │
-                              ▼
-                    ┌────────────────────────────┐
-                    │  Check Organization Access  │
-                    │  GET /api/portal/organizations │
-                    └─────────┬──────────────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              │                               │
-              ▼                               ▼
-    ┌──────────────────┐          ┌──────────────────────┐
-    │ No Orgs Found    │          │ Has Org Memberships  │
-    │                  │          │                      │
-    │ Show "No Access" │          │ If single org:       │
-    │ message with     │          │ → /portal/dashboard  │
-    │ request access   │          │                      │
-    │ option           │          │ If multiple orgs:    │
-    └──────────────────┘          │ → Select organization│
-                                  └──────────────────────┘
-```
-
-#### 5.0.4 Invitation-Based User Creation
-
-New team members are added via invitation, which creates their user account:
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    INVITATION FLOW                            │
-├──────────────────────────────────────────────────────────────┤
-│                                                               │
-│  1. Admin invites user                                        │
-│     POST /api/portal/team/invite                              │
-│     Creates: OrganizationInvitation (status: PENDING)         │
-│                                                               │
-│  2. User receives email with link                             │
-│     /portal/invite/[token]                                    │
-│                                                               │
-│  3. Validate invitation                                       │
-│     GET /api/portal/invitations/[token]/validate              │
-│     Returns: { userExists: boolean, invitation details }      │
-│                                                               │
-│  4a. If user EXISTS:                                          │
-│      - Show login form                                        │
-│      - Authenticate existing user                             │
-│      - Accept invitation (creates OrganizationMember)         │
-│                                                               │
-│  4b. If user is NEW:                                          │
-│      - Show registration form (name, password)                │
-│      - Create User record                                     │
-│      - Accept invitation (creates OrganizationMember)         │
-│      - Return auth token                                      │
-│                                                               │
-│  5. Redirect to /portal/dashboard                             │
-│                                                               │
-└──────────────────────────────────────────────────────────────┘
-```
-
-**Invitation API Endpoints:**
+#### 5.0.4 Post-Login Routing Logic
 
 ```typescript
-// Validate invitation token
-GET /api/portal/invitations/[token]/validate
-Response: {
-  invitation: {
-    email: string;
-    role: PortalUserRole;
-    organization: { name: string; slug: string };
-    userExists: boolean;
-    expiresAt: string;
+// Pseudocode for post-login routing
+function getPostLoginRedirect(user: User): string {
+  const orgMemberships = user.organizationMemberships;
+  const lastContext = user.preferences?.lastContext;
+
+  // If user selected "Organization Portal" on login page
+  if (loginMode === 'organization') {
+    if (orgMemberships.length === 1) {
+      return `/portal/${orgMemberships[0].organization.slug}`;
+    } else if (orgMemberships.length > 1) {
+      return '/select-organization';  // Show org selector
+    } else {
+      return '/portal/create';  // No org? Prompt to create one
+    }
   }
-}
 
-// Accept invitation (creates user if needed)
-POST /api/portal/invitations/[token]/accept
-Body: {
-  createAccount: boolean;      // true for new users
-  name?: string;               // required if createAccount
-  password?: string;           // required if createAccount
-}
-Response: {
-  success: boolean;
-  token?: string;              // Auth token for new users
-  user: { id, email, name };
-  organization: { id, name, slug };
+  // If user selected "Personal Account" or default
+  if (loginMode === 'personal' || !lastContext) {
+    return '/dashboard';
+  }
+
+  // Restore last used context
+  return lastContext;
 }
 ```
 
-#### 5.0.5 Organization Context Switcher
-
-Users with multiple organization memberships see a context switcher in the sidebar:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  ┌──────────────────────────────────────────┐               │
-│  │  ▼ ABC Accounting                        │               │
-│  │    Owner                                 │               │
-│  └──────────────────────────────────────────┘               │
-│         │                                                    │
-│         ├── ABC Accounting (Owner) ✓                        │
-│         │                                                    │
-│         ├── XYZ Financial (Admin)                           │
-│         │                                                    │
-│         └── + Create New Organization                       │
-└─────────────────────────────────────────────────────────────┘
-```
-
-Implemented in: `components/portal/layout/OrganizationSelector.tsx`
-
-#### 5.0.6 Role Hierarchy
-
-Portal roles with permission levels:
-
-| Role | Level | Capabilities |
-|------|-------|--------------|
-| PORTAL_OWNER | 4 | Full control, delete org, transfer ownership |
-| PORTAL_ADMIN | 3 | Manage team, settings, all clients |
-| PORTAL_ADVISOR | 2 | Manage assigned clients, create notes/tasks |
-| PORTAL_VIEWER | 1 | Read-only access to assigned clients |
-
-**Role Assignment Rules:**
-- Users can only assign roles below their own level
-- Owners cannot be removed (must transfer ownership first)
-- Users cannot edit their own role
-
-#### 5.0.7 URL Structure
+#### 5.0.5 URL Structure
 
 | URL Pattern | Access Type | Description |
 |-------------|-------------|-------------|
-| `/signin` | Public | Personal account login |
+| `/login` | Public | Unified login page |
 | `/register` | Public | User registration |
-| `/portal/login` | Public | Portal entry with options |
-| `/portal/signin` | Public | Dedicated portal login |
-| `/portal/invite/[token]` | Public | Invitation acceptance |
-| `/portal/request-access` | Public | Request org access form |
 | `/dashboard/*` | Authenticated | Personal financial dashboard |
-| `/portal/dashboard` | Org Member | Organization portal dashboard |
-| `/portal/team` | Org Member | Team management |
-| `/portal/clients` | Org Member | Client management |
-| `/settings/*` | Authenticated | Personal settings |
-
-#### 5.0.8 Implementation Files
-
-| File | Purpose |
-|------|---------|
-| `app/portal/signin/page.tsx` | Dedicated portal login page |
-| `app/portal/invite/[token]/page.tsx` | Invitation acceptance flow |
-| `app/api/portal/invitations/[token]/validate/route.ts` | Validate invitation |
-| `app/api/portal/invitations/[token]/accept/route.ts` | Accept invitation & create user |
-| `app/portal/PortalLayoutClient.tsx` | Auth guard & redirects |
-| `lib/portal/context/OrganizationContext.tsx` | Organization state management |
-| `components/portal/layout/OrganizationSelector.tsx` | Org switcher component |
+| `/portal/:orgSlug/*` | Org Member | Organization portal |
+| `/settings/*` | Authenticated | Personal settings + org consent |
+| `/select-organization` | Multi-Org User | Organization selector |
 
 ### 5.1 Portal Navigation Structure
 
