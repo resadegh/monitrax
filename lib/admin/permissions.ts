@@ -338,6 +338,7 @@ export interface FeatureAccess {
   featureFlags: { read: boolean; write: boolean };
   support: { logs: boolean; impersonate: boolean };
   admins: { read: boolean; write: boolean };
+  audit: { read: boolean; export: boolean };
 }
 
 export function getFeatureAccess(role: AdminRole): FeatureAccess {
@@ -371,6 +372,10 @@ export function getFeatureAccess(role: AdminRole): FeatureAccess {
     admins: {
       read: hasPermission(role, 'admins:read'),
       write: hasPermission(role, 'admins:create'),
+    },
+    audit: {
+      read: hasPermission(role, 'audit:read'),
+      export: hasPermission(role, 'audit:export'),
     },
   };
 }
