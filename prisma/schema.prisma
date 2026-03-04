@@ -1353,6 +1353,7 @@ model EmailMFACode {
 
 enum TransactionSource {
   BANK        // Bank feed integration
+  BASIQ       // Basiq open banking integration
   CSV         // CSV import
   QIF         // QIF file import (MYOB/Quicken)
   OFX         // OFX/QFX file import
@@ -1941,6 +1942,7 @@ enum ImportFileFormat {
 enum ImportStatus {
   PENDING
   PROCESSING
+  AWAITING_REVIEW  // Import needs user review
   COMPLETED
   FAILED
   PARTIAL
@@ -2665,6 +2667,7 @@ model HouseholdProfile {
 
   // Metadata
   isComplete            Boolean  @default(false)
+  needsMigration        Boolean  @default(false)  // True if existing user needs to add member details
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
