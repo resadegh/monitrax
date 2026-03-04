@@ -42,6 +42,11 @@ NEXT_PUBLIC_ADMIN_PORTAL_ENABLED=true
 | `c47917e` | Fix password hashing format (salt:hash) |
 | `5ace7ee` | Add real dashboard data, fix feature gates |
 | `27a2f5e` | Fix template literal syntax errors |
+| `44ac533` | Fix TypeScript error in feature-usage route (AuditAction enum) |
+| `8ecdaef` | Fix TypeScript errors with AuditAction enum filters |
+| `35673f5` | Use valid AuditAction enum values in queries |
+| `6bdb71b` | Add 'audit' to FeatureAccess interface |
+| `53b16df` | Wrap useSearchParams in Suspense boundary |
 
 ---
 
