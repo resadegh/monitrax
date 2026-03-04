@@ -19,14 +19,13 @@
  * - Financial health score
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '@/lib/middleware';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { getFinancialSnapshot } from '@/lib/services/financialSnapshot';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq: AuthenticatedRequest) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       const snapshot = await getFinancialSnapshot(userId);
 
@@ -44,5 +43,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

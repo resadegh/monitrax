@@ -14,9 +14,9 @@
  * - Actionable recommendations
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import { getFinancialSnapshot } from '@/lib/services/financialSnapshot';
 import { quickHealthCheck, scoreToRiskBand, FinancialHealthInput, PropertyData, LoanData, AccountData, InvestmentData, IncomeData, ExpenseData } from '@/lib/health';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
@@ -93,10 +93,9 @@ interface DashboardInsights {
   };
 }
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Get centralized financial snapshot for consistent totals
       const snapshot = await getFinancialSnapshot(userId);
@@ -331,8 +330,7 @@ export async function GET(request: NextRequest) {
       console.error('Dashboard insights error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-AU', {

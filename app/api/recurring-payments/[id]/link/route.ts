@@ -9,23 +9,20 @@
  * Blueprint reference: PHASE_29_RECURRING_EXPENSE_LINKING.md
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+type RouteContext = { params: Promise<{ id: string }> };
 
 // =============================================================================
 // POST - Link to Expense
 // =============================================================================
 
-export async function POST(request: NextRequest, { params }: RouteParams) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission<RouteContext>('expense.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
       const body = await request.json();
 
       const { expenseId, createExpense } = body;
@@ -146,18 +143,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // DELETE - Unlink from Expense
 // =============================================================================
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  return withAuth(request, async (authReq) => {
+export const DELETE = withPermission<RouteContext>('expense.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
 
       // Verify recurring payment belongs to user
       const recurringPayment = await prisma.recurringPayment.findFirst({
@@ -196,18 +191,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // PATCH - Dismiss Match Suggestion
 // =============================================================================
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  return withAuth(request, async (authReq) => {
+export const PATCH = withPermission<RouteContext>('expense.write', async (request, auth, context) => {
     try {
-      const { id } = await params;
-      const userId = authReq.user!.userId;
+      const { id } = await context!.params;
+      const userId = auth.userId;
 
       // Verify recurring payment belongs to user
       const recurringPayment = await prisma.recurringPayment.findFirst({
@@ -245,8 +238,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         { status: 500 }
       );
     }
-  });
-}
+});
 
 // =============================================================================
 // HELPERS

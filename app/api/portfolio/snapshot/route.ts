@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   GRDCSLinkedEntity,
   GRDCSMissingLink,
@@ -516,10 +516,9 @@ function calculateLinkageHealth(
 // SNAPSHOT ROUTE HANDLER
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch all user data in parallel with full relational includes
       const [properties, loans, accounts, income, expenses, investmentAccounts, holdings, transactions, assets] = await Promise.all([
@@ -1048,5 +1047,4 @@ export async function GET(request: NextRequest) {
       console.error('Portfolio snapshot error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-  });
-}
+});

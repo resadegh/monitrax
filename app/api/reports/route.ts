@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/middleware';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import {
   buildReportContext,
   generateReport,
@@ -12,8 +12,7 @@ import type { ReportType, ExportFormat, ReportConfig } from '@/lib/reports';
  * GET /api/reports
  * List available report types
  */
-export async function GET(request: NextRequest) {
-  return withAuth(request, async () => {
+export const GET = withPermission('report.read', async (request, auth) => {
     const reportTypes = [
       {
         id: 'financial-overview',
@@ -58,15 +57,13 @@ export async function GET(request: NextRequest) {
       reportTypes,
       exportFormats,
     });
-  });
-}
+});
 
 /**
  * POST /api/reports
  * Generate and export a report
  */
-export async function POST(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const POST = withPermission('report.write', async (request, auth) => {
     try {
       const body = await request.json();
       const {
@@ -108,7 +105,7 @@ export async function POST(request: NextRequest) {
 
       // Build report context
       const context = await buildReportContext(
-        authReq.user!.userId,
+        auth.userId,
         type as ReportType,
         startDate,
         endDate
@@ -162,5 +159,4 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

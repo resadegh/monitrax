@@ -134,7 +134,7 @@ function calculatePropertyROI(
 // ROUTE HANDLER
 // =============================================================================
 
-export const POST = withPermission('report.write', async (request, auth) => {
+export const POST = withPermission('report.read', async (request, auth) => {
     try {
       const body = await request.json();
 

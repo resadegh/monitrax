@@ -5,9 +5,9 @@
  * DO NOT expose in production without proper authentication.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   generatePortfolioIntelligence,
   PortfolioInput,
@@ -19,10 +19,9 @@ import {
   InvestmentInput
 } from '@/lib/intelligence/portfolioEngine';
 
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
 
       // Fetch all user data
       const [
@@ -138,5 +137,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});

@@ -10,9 +10,9 @@
  * - Evidence pack for explainability
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { withAuth } from '@/lib/middleware';
+import { withPermission } from '@/lib/auth/guards';
 import {
   generateHealthReport,
   quickHealthCheck,
@@ -250,10 +250,9 @@ async function buildHealthInput(userId: string): Promise<FinancialHealthInput> {
  * Returns:
  * - Full FinancialHealthReport or quick score summary
  */
-export async function GET(request: NextRequest) {
-  return withAuth(request, async (authReq) => {
+export const GET = withPermission('report.read', async (request, auth) => {
     try {
-      const userId = authReq.user!.userId;
+      const userId = auth.userId;
       const { searchParams } = new URL(request.url);
       const quickMode = searchParams.get('quick') === 'true';
 
@@ -350,5 +349,4 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
-  });
-}
+});
