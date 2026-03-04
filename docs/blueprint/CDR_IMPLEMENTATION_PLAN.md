@@ -1,11 +1,29 @@
 # CDR Compliance Implementation Plan
 
-**Version:** 1.0
+**Version:** 1.1
 **Created:** 2026-03-03
-**Status:** Active — awaiting user approval for sequential execution
+**Last Updated:** 2026-03-04
+**Status:** Active — Phase A COMPLETE, proceeding to next phases
 **Source:** `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md`, `CLAUDE.md` Part 13, `PHASE_34_CDR_SECURITY_HARDENING.md`
 **Compliance Target:** Basiq CDR accreditation (54 requirements across 9 sections)
-**Current Score:** ~55% → Target: 90%+
+**Current Score:** ~65% → Target: 90%+
+
+---
+
+## CDR Compliance Progress Dashboard
+
+| Phase | Name | Status | PR | Compliance Impact |
+|-------|------|--------|----|----|
+| **A** | RBAC Enforcement | ✅ **COMPLETE** | [#438](https://github.com/resadegh/monitrax/pull/438) | §1.5 DONE, §1.6 DONE (+10%) |
+| **B** | MFA Enforcement | ⬜ Pending | — | §1.3 PARTIAL → DONE (+5%) |
+| **C** | Admin Lifecycle | ⬜ Pending | — | §1.7 PARTIAL → DONE (+3%) |
+| **D** | CDR Data Lifecycle | ⬜ Pending | — | §5.4, §5.5, §5.6 TODO → DONE (+11%) |
+| **E** | GCP Service Enablement | ⬜ Pending | — | §8.x TODO → DONE (+5%) |
+| **F** | Policy Documents | ⬜ Pending | — | §4.x, §7.x N/A → DONE (+5%) |
+| **G** | Dev Pipeline Hardening | ⬜ Pending | — | §6.4, §6.5 TODO → DONE (+2%) |
+| **H** | API Consolidation & Cleanup | ⬜ Pending | — | Attack surface reduction |
+
+**Overall: 1 of 8 phases complete. Score: ~55% → ~65%**
 
 ---
 
@@ -36,12 +54,29 @@ All implementation steps follow the rules defined in `CLAUDE.md`:
 
 ---
 
-## PHASE A: RBAC Enforcement (Phase 34.3)
+## PHASE A: RBAC Enforcement (Phase 34.3) — ✅ COMPLETE
 
 **Goal:** Migrate all ~99 user API routes from `withAuth()` to `withPermission()`
 **Why:** Basiq §1.5, §1.6 — Role-based access must restrict access to CDR data
 **Risk:** Medium — affects all API routes, but OWNER role has all permissions (backward compatible)
 **Reference implementation:** Properties module already migrated
+
+### Completion Summary (2026-03-03/04)
+
+- **70+ route files** migrated from `withAuth()` to `withPermission()`
+- **50+ permission types** applied across 14 entity types
+- **CDR audit logging** added to all guard functions (fire-and-forget)
+- **Zero `withAuth()` references** remain in `app/api/` (2 expected exceptions: dead `auth/login` and admin `audit/compliance`)
+- **TypeScript compilation** passes cleanly
+- **PR:** [#438](https://github.com/resadegh/monitrax/pull/438)
+- **Changelogs:** `CHANGELOG_2026_03_03.md`, `CHANGELOG_2026_03_04.md`
+
+### Remaining Exceptions (Intentional)
+
+| File | Reason |
+|------|--------|
+| `app/api/auth/login/route.ts` | Dead code — Firebase Auth handles login client-side. Scheduled for deletion in Phase H. |
+| `app/api/admin/audit/compliance/route.ts` | Admin route — uses separate admin auth pattern. |
 
 ### Strategy
 
@@ -138,12 +173,12 @@ export const GET = withPermission('entity.read', async (request, auth) => { ... 
 **Permissions:** Mapped per route based on data concern
 **Action:** Identify all remaining `withAuth()` calls and migrate
 
-### Step A.14 — Verification & Cleanup
+### Step A.14 — Verification & Cleanup ✅
 
-- Run `grep -r "withAuth(" app/api/` — confirm zero remaining bare `withAuth()` calls
-- Run `npm run build` — confirm clean compilation
-- Update `CDR_BASIQ_COMPLIANCE_MATRIX.md` — mark §1.5, §1.6 as DONE
-- Update `PHASE_34_CDR_SECURITY_HARDENING.md` — mark Sub-Phase 34.3 as ✅ COMPLETE
+- ✅ `grep -r "withAuth(" app/api/` — zero remaining bare `withAuth()` calls (2 expected exceptions)
+- ✅ `npm run build` — clean compilation
+- ✅ `CDR_BASIQ_COMPLIANCE_MATRIX.md` — §1.5, §1.6 marked DONE
+- ✅ Changelogs created for 2026-03-03 and 2026-03-04
 
 ---
 
@@ -612,5 +647,5 @@ Each phase will create its own changelog entry:
 
 ---
 
-*Last Updated: 2026-03-03*
-*Next Review: After Phase A completion*
+*Last Updated: 2026-03-04*
+*Next Review: After Phase B (MFA Enforcement) or Phase F (Policy Documents) completion*
