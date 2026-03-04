@@ -59,3 +59,26 @@ Basiq CDR accreditation requirements §1.5 and §1.6 mandate role-based access c
 - **Basiq §1.5 (RBAC)**: DONE — All routes enforce role-based permissions
 - **Basiq §1.6 (Least privilege)**: DONE — Granular permissions per entity type
 - **CDR Audit Logging**: DONE — Every API request logged with sanitized metadata
+
+---
+
+## Session: withPermission verification pass
+
+### Changes Made
+- **Type**: Fix (Permission correction and indentation cleanup)
+- **Scope**: AI routes (7 files), Strategy routes (8 files), Reports route (1 file)
+- **Description**: Verified and corrected permission mappings and indentation across all 16 migrated route files. Fixed linter-reverted `report.write` back to correct `report.read` for AI POST routes (AI analysis is read-derived). Ensured strategy POST/PUT/DELETE use `settings.write`, reports POST uses `report.export`.
+
+### Permission Mapping Applied
+| Route Group | HTTP Method | Permission |
+|-------------|-------------|------------|
+| AI routes (advisor, ask, debt-analysis, goal, scenario, status) | GET/POST | `report.read` |
+| Strategy routes (list, stats, conflicts, alternatives, forecast GET, preferences GET) | GET | `report.read` |
+| Strategy routes (generate, forecast POST, preferences PUT, [id] PATCH/DELETE) | POST/PUT/PATCH/DELETE | `settings.write` |
+| Reports route | GET | `report.read` |
+| Reports route | POST (export) | `report.export` |
+
+### Build Status
+- [x] Build passes (`npm run build`)
+- [x] Zero `withAuth` / `@/lib/middleware` references remain
+- [x] Zero invalid `report.write` or `report.delete` permission strings remain
