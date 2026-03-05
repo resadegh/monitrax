@@ -7,13 +7,13 @@
  */
 
 import { NextResponse } from 'next/server';
-import { withPermission } from '@/lib/auth/guards';
+import { withMFARequired } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { deleteConnection as deleteBasiqConnection } from '@/lib/basiq';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export const GET = withPermission<RouteContext>('account.read', async (request, auth, context) => {
+export const GET = withMFARequired<RouteContext>('account.read', async (request, auth, context) => {
   try {
     const userId = auth.userId;
     const { id } = await context!.params;
@@ -67,7 +67,7 @@ export const GET = withPermission<RouteContext>('account.read', async (request, 
   }
 });
 
-export const DELETE = withPermission<RouteContext>('account.delete', async (request, auth, context) => {
+export const DELETE = withMFARequired<RouteContext>('account.delete', async (request, auth, context) => {
   try {
     const userId = auth.userId;
     const { id } = await context!.params;

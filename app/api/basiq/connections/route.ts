@@ -7,11 +7,11 @@
  */
 
 import { NextResponse } from 'next/server';
-import { withPermission } from '@/lib/auth/guards';
+import { withMFARequired } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getConnections } from '@/lib/basiq';
 
-export const GET = withPermission('account.read', async (request, auth) => {
+export const GET = withMFARequired('account.read', async (request, auth) => {
   try {
     const userId = auth.userId;
 

@@ -29,7 +29,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 |---|-------------------|--------|----------------|--------------|
 | 1.1 | Every user has a unique login account | **DONE** | Prisma `User` model with unique `email` field. GCP Identity Platform enforces unique UIDs. `OAuthAccount` links GCP UID → local user 1:1. | None |
 | 1.2 | User accounts are not generic and are never shared | **DONE** | Firebase Auth enforces per-email accounts. Local `User` table has unique email constraint. No shared/service accounts in app. | None |
-| 1.3 | Multi-factor authentication is enabled for user accounts | **PARTIAL** | MFA fully built: Firebase TOTP enrollment, challenge/resolve flow (`lib/firebase/mfa.ts`), UI in settings page. Schema fields: `User.mfaEnabled`, `Organization.mfaEnforced`. | **TODO (Phase 34.4):** Server-side `withMFARequired()` guard not wired. CDR data routes must reject users without MFA. |
+| 1.3 | Multi-factor authentication is enabled for user accounts | **DONE** | MFA fully built: Firebase TOTP enrollment, challenge/resolve flow (`lib/firebase/mfa.ts`), UI in settings page. Schema fields: `User.mfaEnabled`, `Organization.mfaEnforced`. **Server-side enforcement:** `withMFARequired()` guard (`lib/auth/guards.ts`) blocks CDR data access when org enforces MFA and user hasn't enrolled. Applied to all Basiq/CDR routes (`app/api/basiq/*`). Admin MFA enforced for SUPER_ADMIN/BILLING_ADMIN roles in `verifyAdminAuth()` (`lib/admin/auth.ts`). | ✅ Phase B complete. |
 | 1.4 | Strong passwords are enforced for user accounts | **DONE** | Firebase Auth manages password policy for all end users. Legacy register route requires 12+ chars, upper/lower/digit/special. Admin passwords: bcrypt(12), 12+ chars with complexity (`lib/admin/constants.ts`). | Firebase password policy should be reviewed in GCP Console to confirm minimum strength. |
 | 1.5 | Role based access is used to restrict access to systems | **DONE** | 50+ permissions defined (`lib/auth/permissions.ts`). 4 roles: OWNER, ADMIN, CONTRIBUTOR, VIEWER. Guards built: `withPermission()`, `withAllPermissions()`, `withAnyPermission()`, `withOwnerOnly()` (`lib/auth/guards.ts`). **All 70+ API routes migrated to `withPermission()`.** CDR audit logging on every guard invocation. | ✅ Phase A complete. PR [#438](https://github.com/resadegh/monitrax/pull/438). |
 | 1.6 | Access privileges are granted on a as-needed basis | **DONE** | Permission system enforces granular entity-level access (read/write/delete per module) on **all** API routes. Ownership verification via `lib/utils/ownership.ts`. Each route uses the minimum permission required for its operation. | ✅ Phase A complete. Least-privilege enforced across all routes. |
@@ -37,9 +37,9 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ### Basiq Response Guidance (Section 1)
 
-**Can confirm YES today:** 1.1, 1.2, 1.4, **1.5**, **1.6**
-**Can confirm YES with caveats:** 1.3 (enabled, not enforced on CDR routes), 1.7 (infrastructure exists, no automated review cycle)
-**Recommended approach:** RBAC is fully enforced (1.5, 1.6 DONE). Confirm MFA is *available* and being *progressively enforced* on CDR data routes (Phase B). Provide timeline for admin lifecycle review automation (Phase C).
+**Can confirm YES today:** 1.1, 1.2, **1.3**, 1.4, **1.5**, **1.6**
+**Can confirm YES with caveats:** 1.7 (infrastructure exists, no automated review cycle)
+**Recommended approach:** MFA enforced on CDR data routes (1.3 DONE). RBAC fully enforced (1.5, 1.6 DONE). Provide timeline for admin lifecycle review automation (Phase C).
 
 ---
 

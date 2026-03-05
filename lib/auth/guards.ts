@@ -14,6 +14,7 @@ import { errors, formatErrorResponse } from '@/lib/utils/errors';
 import { log } from '@/lib/utils/logger';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
+import { prisma } from '@/lib/db';
 
 // ============================================
 // TYPES
@@ -310,6 +311,81 @@ export function withOwnerOnly<T = unknown>(
     if (options?.logAccess) {
       log.info('Owner access granted', {
         userId: auth.userId,
+        path: request.nextUrl.pathname,
+        method: request.method,
+      });
+    }
+
+    const response = await handler(request, auth, params);
+    logApiRequest(auth.userId, request, response.status, Date.now() - start);
+    return response;
+  };
+}
+
+// ============================================
+// MFA ENFORCEMENT GUARD (Phase 34.4 — CDR §1.3)
+// ============================================
+
+/**
+ * Wrap a handler to require both a permission AND MFA enrollment.
+ *
+ * MFA enforcement logic:
+ *   - If the user's organization enforces MFA (user.mfaEnforcedByOrg === true)
+ *     and the user has NOT enrolled in MFA (user.mfaEnabled === false),
+ *     the request is rejected with 403.
+ *   - If MFA is not enforced by the org, the request proceeds normally.
+ *   - Firebase handles the actual MFA challenge/verification (GCP-First — no custom MFA logic).
+ *
+ * CDR: logs every request to audit trail (fire-and-forget).
+ * Basiq §1.3 — MFA must be enforced, not just available.
+ */
+export function withMFARequired<T = unknown>(
+  permission: Permission,
+  handler: AuthenticatedHandler<T>,
+  options?: GuardOptions
+): (request: NextRequest, params: T) => Promise<Response> {
+  return async (request: NextRequest, params: T) => {
+    const start = Date.now();
+    const auth = await getAuthContext(request);
+
+    if (!auth) {
+      logApiRequest(undefined, request, 401, Date.now() - start);
+      return formatErrorResponse(errors.unauthorized());
+    }
+
+    if (!hasPermission(auth.role, permission)) {
+      log.warn('Permission denied', {
+        userId: auth.userId,
+        permission,
+        role: auth.role,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 403, Date.now() - start);
+      return formatErrorResponse(errors.forbidden(`Permission '${permission}' required`));
+    }
+
+    // MFA enforcement check: query user's MFA status from database
+    const user = await prisma.user.findUnique({
+      where: { id: auth.userId },
+      select: { mfaEnabled: true, mfaEnforcedByOrg: true },
+    });
+
+    if (user?.mfaEnforcedByOrg && !user?.mfaEnabled) {
+      log.warn('MFA required but not enabled', {
+        userId: auth.userId,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 403, Date.now() - start);
+      return formatErrorResponse(
+        errors.forbidden('MFA is required by your organization to access this resource')
+      );
+    }
+
+    if (options?.logAccess) {
+      log.info('MFA-protected access granted', {
+        userId: auth.userId,
+        permission,
+        mfaEnabled: user?.mfaEnabled ?? false,
         path: request.nextUrl.pathname,
         method: request.method,
       });

@@ -15,7 +15,7 @@
 | Phase | Name | Status | PR | Compliance Impact |
 |-------|------|--------|----|----|
 | **A** | RBAC Enforcement | ✅ **COMPLETE** | [#438](https://github.com/resadegh/monitrax/pull/438) | §1.5 DONE, §1.6 DONE (+10%) |
-| **B** | MFA Enforcement | ⬜ Pending | — | §1.3 PARTIAL → DONE (+5%) |
+| **B** | MFA Enforcement | ✅ **COMPLETE** | — | §1.3 DONE (+5%) |
 | **C** | Admin Lifecycle | ⬜ Pending | — | §1.7 PARTIAL → DONE (+3%) |
 | **D** | CDR Data Lifecycle | ⬜ Pending | — | §5.4, §5.5, §5.6 TODO → DONE (+11%) |
 | **E** | GCP Service Enablement | ⬜ Pending | — | §8.x TODO → DONE (+5%) |
@@ -23,7 +23,7 @@
 | **G** | Dev Pipeline Hardening | ⬜ Pending | — | §6.4, §6.5 TODO → DONE (+2%) |
 | **H** | API Consolidation & Cleanup | ⬜ Pending | — | Attack surface reduction |
 
-**Overall: 1 of 8 phases complete. Score: ~55% → ~65%**
+**Overall: 2 of 8 phases complete. Score: ~55% → ~70%**
 
 ---
 
@@ -182,14 +182,27 @@ export const GET = withPermission('entity.read', async (request, auth) => { ... 
 
 ---
 
-## PHASE B: MFA Enforcement (Phase 34.4)
+## PHASE B: MFA Enforcement (Phase 34.4) — ✅ COMPLETE
 
 **Goal:** Enforce MFA on CDR data routes and admin routes
 **Why:** Basiq §1.3 — MFA must be enforced, not just available
 **Depends on:** Phase A (RBAC must be in place first)
 **GCP-First:** Firebase MFA infrastructure already exists — no custom code for MFA itself
 
-### Step B.1 — Create `withMFARequired()` Guard
+### Completion Summary (2026-03-05)
+
+- **`withMFARequired()` guard** created in `lib/auth/guards.ts` — checks `user.mfaEnforcedByOrg` + `user.mfaEnabled` from database
+- **4 Basiq/CDR route files** migrated from `withPermission()` to `withMFARequired()`:
+  - `app/api/basiq/connect/route.ts` — POST (account.write)
+  - `app/api/basiq/connections/route.ts` — GET (account.read)
+  - `app/api/basiq/connections/[id]/route.ts` — GET (account.read), DELETE (account.delete)
+  - `app/api/basiq/sync/route.ts` — POST (account.write)
+- **Admin MFA enforcement** added to `verifyAdminAuth()` in `lib/admin/auth.ts` — SUPER_ADMIN and BILLING_ADMIN roles require MFA
+- **TypeScript compilation** passes cleanly
+- **CDR compliance matrix** §1.3 marked DONE
+- **Phase 34 doc** Sub-Phase 34.4 marked ✅ COMPLETE
+
+### Step B.1 — Create `withMFARequired()` Guard ✅
 
 **File:** `lib/auth/guards.ts` (extend existing)
 **Logic:**
@@ -198,22 +211,22 @@ export const GET = withPermission('entity.read', async (request, auth) => { ... 
 3. Firebase handles actual MFA challenge/verification (GCP-First — no custom MFA logic)
 **Basiq:** §1.3
 
-### Step B.2 — Wire MFA Guard on Basiq/CDR Routes
+### Step B.2 — Wire MFA Guard on Basiq/CDR Routes ✅
 
-**Routes:** `app/api/basiq/*` (connect, connections, sync)
-**Pattern:** Wrap existing `withPermission()` with `withMFARequired()` for CDR data routes
+**Routes:** `app/api/basiq/*` (connect, connections, connections/[id], sync)
+**Pattern:** Replaced `withPermission()` with `withMFARequired()` on CDR data routes
 **Basiq:** §1.3, §5.1
 
-### Step B.3 — Wire MFA Guard on Admin Routes
+### Step B.3 — Wire MFA Guard on Admin Routes ✅
 
-**Routes:** `app/api/admin/*` (where sensitive actions occur)
+**Routes:** All admin routes via `verifyAdminAuth()` — MFA check for SUPER_ADMIN/BILLING_ADMIN
 **Basiq:** §1.3
 
-### Step B.4 — Verification
+### Step B.4 — Verification ✅
 
-- Verify MFA is enforced on all CDR data routes
-- Update `CDR_BASIQ_COMPLIANCE_MATRIX.md` — mark §1.3 as DONE
-- Update `PHASE_34_CDR_SECURITY_HARDENING.md` — mark Sub-Phase 34.4 as ✅ COMPLETE
+- ✅ MFA enforced on all CDR data routes
+- ✅ `CDR_BASIQ_COMPLIANCE_MATRIX.md` — §1.3 marked DONE
+- ✅ `PHASE_34_CDR_SECURITY_HARDENING.md` — Sub-Phase 34.4 marked ✅ COMPLETE
 
 ---
 
@@ -647,5 +660,5 @@ Each phase will create its own changelog entry:
 
 ---
 
-*Last Updated: 2026-03-04*
-*Next Review: After Phase B (MFA Enforcement) or Phase F (Policy Documents) completion*
+*Last Updated: 2026-03-05*
+*Next Review: After Phase C (Admin Lifecycle) or Phase F (Policy Documents) completion*

@@ -7,11 +7,11 @@
  */
 
 import { NextResponse } from 'next/server';
-import { withPermission } from '@/lib/auth/guards';
+import { withMFARequired } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getOrCreateBasiqUser, createConsentLink } from '@/lib/basiq';
 
-export const POST = withPermission('account.write', async (request, auth) => {
+export const POST = withMFARequired('account.write', async (request, auth) => {
   try {
     const userId = auth.userId;
 
