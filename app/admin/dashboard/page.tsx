@@ -7,7 +7,6 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/context/AuthContext';
 import { AdminHeader } from '@/components/admin/layout/AdminHeader';
 import { AdminCard, StatsCard, AdminCardHeader } from '@/components/admin/ui/AdminCard';
 import { AdminTable } from '@/components/admin/ui/AdminTable';
@@ -44,7 +43,6 @@ interface RecentActivity {
 }
 
 export default function AdminDashboardPage() {
-  const { token } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
@@ -54,9 +52,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        const response = await fetch('/api/admin/dashboard', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
+        const response = await fetch('/api/admin/dashboard');
         if (!response.ok) {
           throw new Error('Failed to fetch dashboard data');
         }

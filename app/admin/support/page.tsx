@@ -4,15 +4,29 @@
  * Phase 33: Support Tools Page
  *
  * User impersonation, access logs, and error tracking.
+ * Uses real data from /api/admin/users for user lookup.
  */
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AdminHeader } from '@/components/admin/layout/AdminHeader';
 import { AdminCard, AdminCardHeader } from '@/components/admin/ui/AdminCard';
 import { AdminButton } from '@/components/admin/ui/AdminButton';
+import { AdminBadge, TierBadge } from '@/components/admin/ui/AdminBadge';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
 import { ADMIN_ROUTES } from '@/lib/admin/constants';
+
+interface UserSearchResult {
+  id: string;
+  email: string;
+  name: string | null;
+  createdAt: string;
+  subscription: {
+    tier: string;
+    status: string;
+  };
+}
 
 const supportTools = [
   {
@@ -69,12 +83,111 @@ const colorClasses: Record<string, string> = {
 };
 
 export default function SupportPage() {
+  const router = useRouter();
+  const [searchEmail, setSearchEmail] = useState('');
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const handleSearch = useCallback(async () => {
+    if (!searchEmail.trim()) {
+      setSearchError('Please enter an email address');
+      return;
+    }
+
+    setSearching(true);
+    setSearchError(null);
+    setHasSearched(true);
+
+    try {
+      const response = await fetch(`/api/admin/users?search=${encodeURIComponent(searchEmail)}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to search users');
+      }
+
+      const data = await response.json();
+      setSearchResults(data.data || []);
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : 'Search failed');
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [searchEmail]);
+
   return (
     <AdminFeatureGate feature="adminPortalEnabled">
       <AdminHeader
         title="Support Tools"
         description="Debugging and troubleshooting tools for customer support"
       />
+
+      {/* Quick User Lookup - moved to top for visibility */}
+      <AdminCard className="mb-6">
+        <AdminCardHeader
+          title="Quick User Lookup"
+          description="Search for a user by email to view their account"
+        />
+        <div className="flex gap-4 mb-4">
+          <input
+            type="email"
+            value={searchEmail}
+            onChange={(e) => setSearchEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="Enter user email..."
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+          />
+          <AdminButton onClick={handleSearch} disabled={searching}>
+            {searching ? 'Searching...' : 'Look Up'}
+          </AdminButton>
+        </div>
+
+        {searchError && (
+          <p className="text-red-600 dark:text-red-400 text-sm mb-4">{searchError}</p>
+        )}
+
+        {hasSearched && searchResults.length === 0 && !searching && !searchError && (
+          <p className="text-gray-500 text-sm">No users found matching that email.</p>
+        )}
+
+        {searchResults.length > 0 && (
+          <div className="space-y-2">
+            {searchResults.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+              >
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {user.name || 'Unnamed User'}
+                  </p>
+                  <p className="text-sm text-gray-500">{user.email}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <TierBadge tier={user.subscription.tier} size="sm" />
+                  <AdminBadge
+                    variant={user.subscription.status === 'active' ? 'success' : 'error'}
+                    size="sm"
+                  >
+                    {user.subscription.status}
+                  </AdminBadge>
+                  <AdminButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push(ADMIN_ROUTES.USER_DETAIL(user.id))}
+                  >
+                    View
+                  </AdminButton>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </AdminCard>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {supportTools.map((tool) => (
@@ -110,22 +223,6 @@ export default function SupportPage() {
           </Link>
         ))}
       </div>
-
-      {/* Quick Actions */}
-      <AdminCard className="mt-6">
-        <AdminCardHeader
-          title="Quick User Lookup"
-          description="Search for a user by email to view their account"
-        />
-        <div className="flex gap-4">
-          <input
-            type="email"
-            placeholder="Enter user email..."
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          />
-          <AdminButton>Look Up</AdminButton>
-        </div>
-      </AdminCard>
     </AdminFeatureGate>
   );
 }
