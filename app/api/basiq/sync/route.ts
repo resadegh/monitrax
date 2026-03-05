@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { withPermission } from '@/lib/auth/guards';
+import { withMFARequired } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import {
   getAccounts,
@@ -19,7 +19,7 @@ import {
   type BasiqTransaction,
 } from '@/lib/basiq';
 
-export const POST = withPermission('account.write', async (request, auth) => {
+export const POST = withMFARequired('account.write', async (request, auth) => {
   try {
     const userId = auth.userId;
     const body = await request.json().catch(() => ({}));

@@ -31,17 +31,17 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 |---|-------------------|--------|----------------|--------------|
 | 1.1 | Every user has a unique login account | **DONE** | Prisma `User` model with unique `email` field. GCP Identity Platform enforces unique UIDs. `OAuthAccount` links GCP UID → local user 1:1. | None |
 | 1.2 | User accounts are not generic and are never shared | **DONE** | Firebase Auth enforces per-email accounts. Local `User` table has unique email constraint. No shared/service accounts in app. | None |
-| 1.3 | Multi-factor authentication is enabled for user accounts | **PARTIAL** | MFA fully built: Firebase TOTP enrollment, challenge/resolve flow (`lib/firebase/mfa.ts`), UI in settings page. Schema fields: `User.mfaEnabled`, `Organization.mfaEnforced`. | **TODO (Phase 34.4):** Server-side `withMFARequired()` guard not wired. CDR data routes must reject users without MFA. |
+| 1.3 | Multi-factor authentication is enabled for user accounts | **DONE** | MFA fully built: Firebase TOTP enrollment, challenge/resolve flow (`lib/firebase/mfa.ts`), UI in settings page. Schema fields: `User.mfaEnabled`, `Organization.mfaEnforced`. **Server-side enforcement:** `withMFARequired()` guard (`lib/auth/guards.ts`) blocks CDR data access when org enforces MFA and user hasn't enrolled. Applied to all Basiq/CDR routes (`app/api/basiq/*`). Admin MFA enforced for SUPER_ADMIN/BILLING_ADMIN roles in `verifyAdminAuth()` (`lib/admin/auth.ts`). | ✅ Phase B complete. |
 | 1.4 | Strong passwords are enforced for user accounts | **DONE** | Firebase Auth manages password policy for all end users. Legacy register route requires 12+ chars, upper/lower/digit/special. Admin passwords: bcrypt(12), 12+ chars with complexity (`lib/admin/constants.ts`). | Firebase password policy should be reviewed in GCP Console to confirm minimum strength. |
-| 1.5 | Role based access is used to restrict access to systems | **PARTIAL** | 50+ permissions defined (`lib/auth/permissions.ts`). 4 roles: OWNER, ADMIN, CONTRIBUTOR, VIEWER. Guards built: `withPermission()`, `withAllPermissions()`, `withAnyPermission()`, `withOwnerOnly()` (`lib/auth/guards.ts`). | **TODO (Phase 34.3):** ~150 user API routes still use `withAuth()` instead of `withPermission()`. Only Properties module migrated so far. |
-| 1.6 | Access privileges are granted on a as-needed basis | **PARTIAL** | Permission system supports granular entity-level access (read/write/delete per module). Ownership verification via `lib/utils/ownership.ts`. | Depends on 34.3 completion — permissions are defined but not enforced on most routes. |
+| 1.5 | Role based access is used to restrict access to systems | **DONE** | 50+ permissions defined (`lib/auth/permissions.ts`). 4 roles: OWNER, ADMIN, CONTRIBUTOR, VIEWER. Guards built: `withPermission()`, `withAllPermissions()`, `withAnyPermission()`, `withOwnerOnly()` (`lib/auth/guards.ts`). **All 70+ API routes migrated to `withPermission()`.** CDR audit logging on every guard invocation. | ✅ Phase A complete. PR [#438](https://github.com/resadegh/monitrax/pull/438). |
+| 1.6 | Access privileges are granted on a as-needed basis | **DONE** | Permission system enforces granular entity-level access (read/write/delete per module) on **all** API routes. Ownership verification via `lib/utils/ownership.ts`. Each route uses the minimum permission required for its operation. | ✅ Phase A complete. Least-privilege enforced across all routes. |
 | 1.7 | Admin accounts are regularly reviewed and removed | **DONE** | Admin portal (Phase 33) with full lifecycle management. `AdminUser` model with `lastLoginAt`, `isActive` flags. GET `/api/admin/admins` returns `isInactive90Days` flag for all admins. Settings page shows inactive admins. PATCH/DELETE endpoints for deactivation. All actions logged to `AdminAuditLog`. | None — implemented in Phase 33 Admin Portal. |
 
 ### Basiq Response Guidance (Section 1)
 
-**Can confirm YES today:** 1.1, 1.2, 1.4, **1.7** ✅
-**Can confirm YES with caveats:** 1.3 (enabled, not enforced), 1.5 (defined, not fully enforced), 1.6 (same caveat)
-**Recommended approach:** Confirm MFA is *available*, RBAC is *implemented*, and both are being *progressively enforced*. Provide timeline for full enforcement. Admin lifecycle review (1.7) is now fully implemented.
+**Can confirm YES today:** 1.1, 1.2, **1.3**, 1.4, **1.5**, **1.6**, **1.7** ✅
+**Can confirm YES with caveats:** None
+**Recommended approach:** MFA enforced on CDR data routes (1.3 DONE). RBAC fully enforced (1.5, 1.6 DONE). Admin lifecycle review fully implemented (1.7 DONE).
 
 ---
 
@@ -256,7 +256,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 | Category | Requirements | DONE | PARTIAL | TODO | Score |
 |----------|-------------|------|---------|------|-------|
-| Auth & Access (7) | 1.1–1.7 | **4** ⬆️ | 3 | 0 | **78%** ⬆️ |
+| Auth & Access (7) | 1.1–1.7 | **7** | 0 | 0 | **100%** |
 | Logging (7) | 2.1–2.7 | 5 | 2 | 0 | **85%** |
 | System Security (5) | 3.1–3.5 | 2 | 1 | 2 | **50%** |
 | Device Management (3) | 4.1–4.3 | 0 | 1 | 0 | **N/A (policy)** |
@@ -264,12 +264,20 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 | Dev Practices (5) | 6.1–6.5 | 2 | 2 | 1 | **60%** |
 | HR Practices (3) | 7.1–7.3 | 0 | 0 | 0 | **N/A (startup)** |
 | GCP Tools (16) | 8.1–8.16 | 3 | 0 | 10 | **20%** |
-| **TOTAL** | **54** | **16** ⬆️ | **13** | **16** | **~60%** ⬆️ |
+| **TOTAL** | **54** | **19** | **10** | **16** | **~70%** |
 
-**Bottom line:** Strong foundations in auth, logging, and dev practices. Admin lifecycle management (§1.7) now complete. Main gaps are in CDR data lifecycle (consent-driven deletion), GCP service enablement, and RBAC enforcement completion.
+**Bottom line:** Auth & access now at 100% — all 7 requirements DONE (Phase A RBAC + Phase B MFA + Phase 33 Admin Lifecycle). Main remaining gaps: CDR data lifecycle (consent-driven deletion at 30%), GCP service enablement (20%).
+
+### Recent Progress
+
+| Date | Phase | Change | Score Impact |
+|------|-------|--------|-------------|
+| 2026-03-05 | Phase B (MFA) | `withMFARequired()` guard on all Basiq/CDR routes + admin MFA enforcement | §1.3: PARTIAL → DONE (+5%) |
+| 2026-03-03/04 | Phase A (RBAC) | All 70+ API routes migrated to `withPermission()` | §1.5, §1.6: PARTIAL → DONE (+10%) |
+| 2026-03-04 | Phase 33 (Admin) | Admin lifecycle management with inactive detection | §1.7: PARTIAL → DONE (+3%) |
 
 ---
 
-*Last Updated: 2026-03-04*
-*Next Review: After Phase 34.3 completion (RBAC enforcement)*
-*Recent: §1.7 (Admin lifecycle) marked DONE — Phase 33 Admin Portal implementation*
+*Last Updated: 2026-03-05*
+*Next Review: After Phase D (CDR Data Lifecycle) or Phase F (Policy Documents) completion*
+*Recent: §1.3 (MFA enforcement) marked DONE — Phase B complete*

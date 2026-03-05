@@ -559,6 +559,22 @@ export async function verifyAdminAuth(request: Request): Promise<AdminAuthResult
     return result;
   }
 
+  // MFA enforcement for SUPER_ADMIN and BILLING_ADMIN roles (Phase 34.4 — CDR §1.3)
+  // These privileged roles have access to sensitive CDR data and admin operations.
+  const mfaRequiredRoles: AdminRole[] = ['SUPER_ADMIN', 'BILLING_ADMIN'];
+  if (mfaRequiredRoles.includes(result.context.role)) {
+    const mfaAdmin = await getAdminById(result.context.adminId);
+    if (mfaAdmin && !mfaAdmin.mfaEnabled) {
+      return {
+        success: false,
+        error: {
+          code: ADMIN_ERROR_CODES.MFA_REQUIRED,
+          message: 'MFA is required for admin accounts with elevated privileges',
+        },
+      };
+    }
+  }
+
   // Check IP whitelist if enabled
   if (isAdminFeatureEnabled('ipWhitelist')) {
     const clientIp = extractClientIp(request);
