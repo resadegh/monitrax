@@ -7,11 +7,12 @@
  */
 
 import { NextResponse } from 'next/server';
-import { withMFARequired } from '@/lib/auth/guards';
+import { withActiveConsent } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getConnections } from '@/lib/basiq';
 
-export const GET = withMFARequired('account.read', async (request, auth) => {
+// CDR consent verification: reading CDR data requires active consent (Phase 35 — Basiq §5.5)
+export const GET = withActiveConsent('account.read', async (request, auth) => {
   try {
     const userId = auth.userId;
 

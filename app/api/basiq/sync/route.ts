@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { withMFARequired } from '@/lib/auth/guards';
+import { withActiveConsent } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import {
   getAccounts,
@@ -19,7 +19,8 @@ import {
   type BasiqTransaction,
 } from '@/lib/basiq';
 
-export const POST = withMFARequired('account.write', async (request, auth) => {
+// CDR consent verification: syncing CDR data requires active consent (Phase 35 — Basiq §5.5)
+export const POST = withActiveConsent('account.write', async (request, auth) => {
   try {
     const userId = auth.userId;
     const body = await request.json().catch(() => ({}));

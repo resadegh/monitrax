@@ -15,6 +15,7 @@ import { log } from '@/lib/utils/logger';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { prisma } from '@/lib/db';
+import { hasActiveCDRConsent } from '@/lib/services/cdrDataLifecycle';
 
 // ============================================
 // TYPES
@@ -386,6 +387,92 @@ export function withMFARequired<T = unknown>(
         userId: auth.userId,
         permission,
         mfaEnabled: user?.mfaEnabled ?? false,
+        path: request.nextUrl.pathname,
+        method: request.method,
+      });
+    }
+
+    const response = await handler(request, auth, params);
+    logApiRequest(auth.userId, request, response.status, Date.now() - start);
+    return response;
+  };
+}
+
+// ============================================
+// CDR CONSENT VERIFICATION GUARD (Phase 35 — CDR §5.5, §5.6)
+// ============================================
+
+/**
+ * Wrap a handler to require permission, MFA enrollment, AND active CDR consent.
+ *
+ * Consent verification logic:
+ *   - Checks user has active Basiq connections OR active org client consent
+ *   - If no active consent found, returns 403 with consent-required message
+ *   - Combines permission check + MFA check + consent check
+ *
+ * CDR: logs every request to audit trail (fire-and-forget).
+ * Basiq §5.5, §5.6 — CDR data only accessible with active consent.
+ * CLAUDE.md §13.2 — No consent = no data access.
+ */
+export function withActiveConsent<T = unknown>(
+  permission: Permission,
+  handler: AuthenticatedHandler<T>,
+  options?: GuardOptions
+): (request: NextRequest, params: T) => Promise<Response> {
+  return async (request: NextRequest, params: T) => {
+    const start = Date.now();
+    const auth = await getAuthContext(request);
+
+    if (!auth) {
+      logApiRequest(undefined, request, 401, Date.now() - start);
+      return formatErrorResponse(errors.unauthorized());
+    }
+
+    if (!hasPermission(auth.role, permission)) {
+      log.warn('Permission denied', {
+        userId: auth.userId,
+        permission,
+        role: auth.role,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 403, Date.now() - start);
+      return formatErrorResponse(errors.forbidden(`Permission '${permission}' required`));
+    }
+
+    // MFA enforcement check
+    const mfaUser = await prisma.user.findUnique({
+      where: { id: auth.userId },
+      select: { mfaEnabled: true, mfaEnforcedByOrg: true },
+    });
+
+    if (mfaUser?.mfaEnforcedByOrg && !mfaUser?.mfaEnabled) {
+      log.warn('MFA required but not enabled', {
+        userId: auth.userId,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 403, Date.now() - start);
+      return formatErrorResponse(
+        errors.forbidden('MFA is required by your organization to access this resource')
+      );
+    }
+
+    // CDR consent verification (CLAUDE.md §13.2)
+    const consentActive = await hasActiveCDRConsent(auth.userId);
+    if (!consentActive) {
+      log.warn('CDR consent not active', {
+        userId: auth.userId,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 403, Date.now() - start);
+      return formatErrorResponse(
+        errors.forbidden('Active CDR consent is required to access this data. Please connect a bank account or renew your consent.')
+      );
+    }
+
+    if (options?.logAccess) {
+      log.info('CDR consent-verified access granted', {
+        userId: auth.userId,
+        permission,
         path: request.nextUrl.pathname,
         method: request.method,
       });
