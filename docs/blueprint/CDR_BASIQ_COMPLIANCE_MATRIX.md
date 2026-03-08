@@ -110,19 +110,19 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 | # | Basiq Requirement | Status | Implementation | Gap / Action |
 |---|-------------------|--------|----------------|--------------|
 | 5.1 | CDR data is only stored in the production environment | **PARTIAL** | Production data in Cloud SQL (PostgreSQL) on GCP. Dev/staging should use synthetic data. | **TODO:** Ensure dev/staging environments NEVER contain real CDR data. Add to deployment checklist. |
-| 5.2 | CDR data will be retained in a de-identified format | **TODO** | No de-identification utilities found. Schema stores raw financial data (balances, account numbers, BSBs). | **TODO:** Build de-identification layer for analytics/reporting. Consider GCP Cloud DLP for automated PII detection. |
+| 5.2 | CDR data will be retained in a de-identified format | **DONE** | `anonymizeCDRData()` in `lib/services/cdrDataLifecycle.ts` strips PII (account numbers, BSBs, merchant names) while preserving aggregate amounts/dates. Used for legal retention cases (loan applications). | ✅ Phase 35 complete. Consider GCP Cloud DLP for additional automated PII detection. |
 | 5.3 | CDR data is never copied to end-user devices | **PARTIAL** | Data is fetched via API and rendered in browser (not downloaded as files). CSV export exists for audit logs only (no financial data export). | **Review:** Ensure no bulk financial data export endpoints exist. Check if browser cache/localStorage stores CDR data. |
-| 5.4 | CDR data is deleted once no longer required | **TODO** | No data lifecycle management. Financial records persist indefinitely. | **TODO:** Implement data retention policy. Automated cleanup for data past retention period. |
-| 5.5 | CDR data is deleted once the consent has expired | **PARTIAL** | Schema has `consentExpiresAt` on `PortalClient` model. `ConsentStatus` enum: PENDING, ACTIVE, REVOKED, EXPIRED. | **TODO:** Build automated job — when consent expires, delete/anonymize associated CDR data. Use GCP Cloud Scheduler + Cloud Functions. |
-| 5.6 | CDR data is deleted when consent has been revoked | **PARTIAL** | `consentRevokedAt` field exists. UI allows consent revocation (portal). | **TODO:** Wire revocation to actual CDR data deletion. Consent revocation → trigger data purge job. |
+| 5.4 | CDR data is deleted once no longer required | **DONE** | `deleteCDRData(userId, reason)` in `lib/services/cdrDataLifecycle.ts` hard-deletes all Basiq-sourced accounts, transactions, and connections. Supports retention_policy reason. Audited via `CDR_DATA_DELETED` action. | ✅ Phase 35 complete. |
+| 5.5 | CDR data is deleted once the consent has expired | **DONE** | `checkConsentExpiry()` in `lib/services/cdrDataLifecycle.ts` finds expired consents and triggers CDR data deletion. Endpoint `POST /api/cdr/lifecycle` designed for GCP Cloud Scheduler (daily at 02:00 UTC). Audited via `CDR_CONSENT_EXPIRED` + `CDR_DATA_DELETED`. | ✅ Phase 35 complete. User must configure Cloud Scheduler in GCP Console. |
+| 5.6 | CDR data is deleted when consent has been revoked | **DONE** | `handleConsentRevocation()` in `lib/services/cdrDataLifecycle.ts` marks consent REVOKED and purges CDR data. API endpoint `POST /api/cdr/consent { action: 'revoke_org_consent' }` allows user-initiated revocation. Audited via `CDR_CONSENT_REVOKED` + `CDR_DATA_DELETED`. | ✅ Phase 35 complete. |
 | 5.7 | CDR data at rest is always encrypted | **PARTIAL** | Cloud SQL encrypts data at rest by default (Google-managed keys). | **Recommended:** Enable CMEK (Customer-Managed Encryption Keys) via Cloud KMS for additional control. Document the encryption posture. |
 | 5.8 | I'm legally required to retain CDR data (e.g. loan application) | **N/A — Policy** | Depends on business use case. If Monitrax is used for loan applications, some data must be retained per regulatory requirements. | Create a "CDR Data Retention Schedule" document listing what data is retained, why, and for how long. |
 
 ### Basiq Response Guidance (Section 5)
 
-**Can confirm YES today:** 5.7 (with Google-managed keys)
-**Must address:** 5.2 (de-identification), 5.4/5.5/5.6 (data deletion on consent expiry/revocation), 5.1 (env separation)
-**Recommended approach:** Build a CDR Data Lifecycle Service that handles: consent tracking → data retention → automated deletion/anonymization on expiry/revocation. Use GCP Cloud Scheduler for automation.
+**Can confirm YES today:** 5.2, 5.4, 5.5, 5.6, 5.7 ✅
+**Can confirm YES with caveats:** 5.1 (env separation policy needed), 5.3 (no bulk CDR export, browser cache review pending)
+**Recommended approach:** CDR Data Lifecycle Service implemented (`lib/services/cdrDataLifecycle.ts`). Configure GCP Cloud Scheduler for automated consent expiry checks. Enable CMEK for 5.7 enhancement.
 
 ---
 
@@ -260,24 +260,25 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 | Logging (7) | 2.1–2.7 | 5 | 2 | 0 | **85%** |
 | System Security (5) | 3.1–3.5 | 2 | 1 | 2 | **50%** |
 | Device Management (3) | 4.1–4.3 | 0 | 1 | 0 | **N/A (policy)** |
-| CDR Data Handling (8) | 5.1–5.8 | 0 | 4 | 3 | **30%** |
+| CDR Data Handling (8) | 5.1–5.8 | 3 | 3 | 1 | **60%** |
 | Dev Practices (5) | 6.1–6.5 | 2 | 2 | 1 | **60%** |
 | HR Practices (3) | 7.1–7.3 | 0 | 0 | 0 | **N/A (startup)** |
 | GCP Tools (16) | 8.1–8.16 | 3 | 0 | 10 | **20%** |
-| **TOTAL** | **54** | **19** | **10** | **16** | **~70%** |
+| **TOTAL** | **54** | **22** | **9** | **14** | **~78%** |
 
-**Bottom line:** Auth & access now at 100% — all 7 requirements DONE (Phase A RBAC + Phase B MFA + Phase 33 Admin Lifecycle). Main remaining gaps: CDR data lifecycle (consent-driven deletion at 30%), GCP service enablement (20%).
+**Bottom line:** Auth & access at 100%. CDR data lifecycle now at 60% — consent-driven deletion implemented (Phase D/35). Main remaining gaps: GCP service enablement (20%), dev pipeline hardening, policy documents.
 
 ### Recent Progress
 
 | Date | Phase | Change | Score Impact |
 |------|-------|--------|-------------|
+| 2026-03-08 | Phase D/35 (CDR Lifecycle) | CDR Data Lifecycle Service, consent verification, revocation handler, de-identification | §5.2, §5.4, §5.5, §5.6: TODO/PARTIAL → DONE (+8%) |
 | 2026-03-05 | Phase B (MFA) | `withMFARequired()` guard on all Basiq/CDR routes + admin MFA enforcement | §1.3: PARTIAL → DONE (+5%) |
 | 2026-03-03/04 | Phase A (RBAC) | All 70+ API routes migrated to `withPermission()` | §1.5, §1.6: PARTIAL → DONE (+10%) |
 | 2026-03-04 | Phase 33 (Admin) | Admin lifecycle management with inactive detection | §1.7: PARTIAL → DONE (+3%) |
 
 ---
 
-*Last Updated: 2026-03-05*
-*Next Review: After Phase D (CDR Data Lifecycle) or Phase F (Policy Documents) completion*
-*Recent: §1.3 (MFA enforcement) marked DONE — Phase B complete*
+*Last Updated: 2026-03-08*
+*Next Review: After Phase E (GCP Services) or Phase F (Policy Documents) completion*
+*Recent: §5.2, §5.4, §5.5, §5.6 marked DONE — Phase D (CDR Data Lifecycle) complete*

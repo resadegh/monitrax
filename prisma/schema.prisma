@@ -205,6 +205,12 @@ enum AuditAction {
   RATE_LIMIT_HIT
   UNAUTHORIZED_ACCESS
   FORBIDDEN_ACCESS
+
+  // CDR Data Lifecycle (Phase 35 — Basiq §5.4, §5.5, §5.6)
+  CDR_DATA_DELETED
+  CDR_CONSENT_EXPIRED
+  CDR_CONSENT_REVOKED
+  CDR_DATA_ANONYMIZED
 }
 
 enum AuditStatus {
