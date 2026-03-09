@@ -198,7 +198,8 @@ Every API response follows a standardised format:
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
 | **22** | Marketing Site & Auth Shell | 📋 Planned | Landing page, sign-in experience, public marketing routes |
 | **28** | Advanced Analytics | 📋 Planned | Enhanced reporting, visualization, export improvements |
-| **34** | CDR Security Hardening | 📋 Planned | RBAC enforcement on ~150 routes, MFA enforcement, audit persistence, password hardening |
+| **34** | CDR Security Hardening | ✅ Complete | RBAC on 70+ routes, MFA enforcement, audit persistence, password hardening. PRs [#438](https://github.com/resadegh/monitrax/pull/438), [#440](https://github.com/resadegh/monitrax/pull/440) |
+| **35** | CDR Data Lifecycle | ✅ Complete | Consent-driven CDR data deletion, de-identification, Cloud Scheduler endpoint |
 
 ---
 
