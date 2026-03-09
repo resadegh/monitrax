@@ -2,11 +2,11 @@
 
 **Version:** 1.1
 **Created:** 2026-03-03
-**Last Updated:** 2026-03-05
-**Status:** Active — Phases A, B, C, D COMPLETE, proceeding to next phases
+**Last Updated:** 2026-03-08
+**Status:** Active — Phases A, B, C, D, F, G COMPLETE, proceeding to Phase E
 **Source:** `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md`, `CLAUDE.md` Part 13, `PHASE_34_CDR_SECURITY_HARDENING.md`
 **Compliance Target:** Basiq CDR accreditation (54 requirements across 9 sections)
-**Current Score:** ~55% → ~70% (after A+B+C) → **~78%** (after A+B+C+D) → Target: 90%+
+**Current Score:** ~55% → ~70% (after A+B+C) → ~78% (after A+B+C+D) → **~87%** (after A+B+C+D+F+G) → Target: 90%+
 
 ---
 
@@ -19,11 +19,11 @@
 | **C** | Admin Lifecycle Management | ✅ **COMPLETE** | — | §1.7 DONE (+3%) |
 | **D** | CDR Data Lifecycle | ✅ **COMPLETE** | — | §5.2, §5.4, §5.5, §5.6 TODO → DONE (+8%) |
 | **E** | GCP Service Enablement | ⬜ Pending | — | §8.x TODO → DONE (+5%) |
-| **F** | Policy Documents | ⬜ Pending | — | §4.x, §7.x N/A → DONE (+5%) |
-| **G** | Dev Pipeline Hardening | ⬜ Pending | — | §6.4, §6.5 TODO → DONE (+2%) |
+| **F** | Policy Documents | ✅ **COMPLETE** | — | §4.x, §5.8, §6.4, §6.5, §7.x N/A/TODO → DONE (+9%) |
+| **G** | Dev Pipeline Hardening | ✅ **COMPLETE** | — | §6.4, §6.5 TODO → DONE (included in F) |
 | **H** | API Consolidation & Cleanup | ⬜ Pending | — | Attack surface reduction |
 
-**Overall: 4 of 8 phases complete. Score: ~55% → ~78%**
+**Overall: 6 of 8 phases complete. Score: ~55% → ~87%**
 
 ---
 
@@ -419,11 +419,23 @@ export const GET = withPermission('entity.read', async (request, auth) => { ... 
 
 ---
 
-## PHASE F: Policy Documents
+## PHASE F: Policy Documents — ✅ COMPLETE
 
 **Goal:** Create all required policy documents for Basiq accreditation
 **Why:** Basiq §4, §5.8, §7 — policy/procedural requirements for accreditation
 **Note:** These are documentation-only — no code changes
+**Completed:** 2026-03-08
+
+### Completion Summary (2026-03-08)
+
+- **5 policy documents** created in `docs/policy/`:
+  - `CDR_DATA_RETENTION_SCHEDULE.md` — CDR data types, retention periods, legal basis, deletion process (§5.4, §5.8)
+  - `DEVICE_SECURITY_POLICY.md` — Device patching, network isolation, endpoint protection (§4.1, §4.2, §4.3)
+  - `INCIDENT_RESPONSE_PLAN.md` — Breach classification, containment, OAIC notification, recovery (CDR requirement)
+  - `SECURITY_AWARENESS_POLICY.md` — Training requirements, onboarding plan, CDR handling awareness (§7.1, §7.3)
+  - `APPROVED_DEPENDENCIES.md` — 40+ packages documented with version, purpose, license, review date (§6.4)
+- **Compliance matrix updated** — §4.1-4.3, §5.8, §6.4, §7.1-7.3 marked DONE
+- **Score impact** — ~78% → ~85% (+7%)
 
 ### Step F.1 — CDR Data Retention Schedule
 
@@ -483,11 +495,19 @@ export const GET = withPermission('entity.read', async (request, auth) => { ... 
 
 ---
 
-## PHASE G: Development Pipeline Hardening
+## PHASE G: Development Pipeline Hardening — ✅ COMPLETE
 
 **Goal:** Automated security scanning and dependency management
 **Why:** Basiq §3.4, §3.5, §6.4, §6.5
 **GCP-First:** Use GitHub-native tools (Dependabot, Actions) — not custom scripts
+**Completed:** 2026-03-08
+
+### Completion Summary (2026-03-08)
+
+- **Dependabot** configured (`.github/dependabot.yml`) — weekly npm dependency update PRs, grouped by package family (Radix UI, Google Cloud, types, testing)
+- **Security audit CI pipeline** created (`.github/workflows/security-audit.yml`) — `npm audit` runs on every push/PR to main, weekly schedule. Build verification included.
+- **Compliance matrix updated** — §6.4, §6.5 marked DONE
+- **Score impact** — ~85% → ~87% (+2%)
 
 ### Step G.1 — Enable Dependabot
 
@@ -642,17 +662,17 @@ Phase H (API Cleanup) ← can run in parallel ─────┘
 
 ## Expected Compliance Score After Each Phase
 
-| After Phase | Score | Key Improvements |
-|-------------|-------|------------------|
-| Baseline | ~55% | Initial state |
-| **C (Admin) ✅** | **~60%** | **§1.7 DONE** — Admin lifecycle review (COMPLETE 2026-03-04) |
-| A (RBAC) | ~68% | §1.5, §1.6 move from PARTIAL → DONE |
-| A + F (Policy) | ~73% | §4.x, §7.x move from N/A → DONE |
-| A + F + B (MFA) | ~78% | §1.3 moves from PARTIAL → DONE |
-| + H (API Cleanup) | ~80% | Architecture quality, reduced attack surface |
-| + D (CDR Lifecycle) | ~88% | §5.4, §5.5, §5.6 move from TODO → DONE |
-| + E (GCP) | ~93% | §8.x items move from TODO → DONE |
-| + G (Dev Pipeline) | ~95% | §6.4, §6.5 move from TODO → DONE |
+| After Phase | Score | Key Improvements | Status |
+|-------------|-------|------------------|--------|
+| Baseline | ~55% | Initial state | — |
+| **C (Admin)** | **~60%** | §1.7 DONE — Admin lifecycle review | ✅ COMPLETE 2026-03-04 |
+| **A (RBAC)** | **~68%** | §1.5, §1.6 PARTIAL → DONE | ✅ COMPLETE 2026-03-03 |
+| **B (MFA)** | **~73%** | §1.3 PARTIAL → DONE | ✅ COMPLETE 2026-03-05 |
+| **D (CDR Lifecycle)** | **~78%** | §5.2, §5.4, §5.5, §5.6 TODO → DONE | ✅ COMPLETE 2026-03-08 |
+| **F (Policy Docs)** | **~85%** | §4.x, §5.8, §7.x N/A → DONE | ✅ COMPLETE 2026-03-08 |
+| **G (Dev Pipeline)** | **~87%** | §6.4, §6.5 TODO → DONE | ✅ COMPLETE 2026-03-08 |
+| E (GCP) | ~93% | §8.x items TODO → DONE | ⬜ Pending |
+| H (API Cleanup) | ~95% | Architecture quality, reduced attack surface | ⬜ Pending |
 
 ---
 
@@ -678,5 +698,6 @@ Each phase will create its own changelog entry:
 ---
 
 *Last Updated: 2026-03-08*
-*Phases A, B, C, D Complete*
-*Next Review: After Phase E (GCP Services) or Phase F (Policy Documents) completion*
+*Phases A, B, C, D, F, G Complete (6 of 8)*
+*Next Review: After Phase E (GCP Services) completion*
+*Score: ~55% → ~87%*
