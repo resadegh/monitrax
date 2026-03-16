@@ -21,7 +21,7 @@
     "generate:report": "npx ts-node tests/validation/generate-report.ts"
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.18.0",
+    "@google-cloud/storage": "^7.19.0",
     "@google-cloud/vision": "^5.3.4",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.22.0",
@@ -45,8 +45,8 @@
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "firebase": "^12.9.0",
-    "google-auth-library": "^10.6.1",
+    "firebase": "^12.10.0",
+    "google-auth-library": "^10.6.2",
     "jsonwebtoken": "^9.0.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.553.0",
