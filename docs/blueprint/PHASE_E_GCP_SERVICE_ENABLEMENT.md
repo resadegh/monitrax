@@ -241,10 +241,13 @@ CMEK for Cloud SQL requires the database to be on **GCP Cloud SQL** (not Render 
    - Select the key created above
    - Click **Save**
 
+### Current Status
+**Not completed** — Database is currently hosted on Render, not GCP Cloud SQL. CMEK cannot be applied until the database is migrated to Cloud SQL. Render provides its own encryption at rest.
+
 ### Verification
-- [x] Cloud KMS API enabled (or documented for future migration)
-- [x] Encryption posture documented in compliance response
-- [x] Key rotation configured (90 days) if on Cloud SQL
+- [ ] Cloud KMS API enabled — **Blocked: DB on Render, not Cloud SQL**
+- [x] Encryption posture documented in compliance response (Render encryption at rest)
+- [ ] Key rotation configured (90 days) — **Pending Cloud SQL migration**
 
 ---
 
@@ -376,7 +379,7 @@ For the Basiq compliance response, document:
 | E.2 | Cloud Audit Logs | P1 | [x] Done ✅ |
 | E.3 | Cloud Logging + Monitoring | P1 | [x] Done ✅ |
 | E.4 | Error Reporting | P1 | [x] Done ✅ |
-| E.5 | Cloud KMS (CMEK) | P1 | [x] Documented / Done ✅ |
+| E.5 | Cloud KMS (CMEK) | P1 | [ ] Blocked — DB on Render, pending Cloud SQL migration |
 | E.6 | Firebase Password Policy | Quick | [ ] Done |
 | E.7 | SSL on Database | Quick | [ ] Verified |
 | E.8 | Cloud Armor / WAF | P0 | [ ] Documented |
