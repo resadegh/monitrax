@@ -49,11 +49,11 @@
    - Review and address any CRITICAL findings
 
 ### Verification
-- [ ] Security Command Center enabled
-- [ ] Standard tier active
-- [ ] Email notifications configured
-- [ ] Initial scan completed
-- [ ] No CRITICAL findings unaddressed
+- [x] Security Command Center enabled
+- [x] Standard tier active
+- [x] Email notifications configured
+- [x] Initial scan completed
+- [x] No CRITICAL findings unaddressed
 
 ---
 
@@ -85,10 +85,10 @@
    - Confirm entries appear within 5-10 minutes
 
 ### Verification
-- [ ] Data Access logs enabled for Cloud SQL
-- [ ] Data Access logs enabled for Identity Platform
-- [ ] Data Access logs enabled for Cloud Storage
-- [ ] Logs visible in Logs Explorer
+- [x] Data Access logs enabled for Cloud SQL
+- [x] Data Access logs enabled for Identity Platform
+- [x] Data Access logs enabled for Cloud Storage
+- [x] Logs visible in Logs Explorer
 
 ---
 
@@ -157,12 +157,12 @@
      - Uptime check status
 
 ### Verification
-- [ ] Log retention set to 365 days
-- [ ] Log sink created for CDR audit archive
-- [ ] Uptime check active
-- [ ] Error rate alert configured
-- [ ] Auth failure alert configured
-- [ ] Dashboard created
+- [x] Log retention set to 365 days
+- [x] Log sink created for CDR audit archive
+- [x] Uptime check active
+- [x] Error rate alert configured
+- [x] Auth failure alert configured
+- [x] Dashboard created
 
 ---
 
@@ -189,9 +189,9 @@
    - Option B: Error Reporting will capture errors from Cloud Audit Logs automatically for GCP services (Identity Platform, Cloud SQL)
 
 ### Verification
-- [ ] Error Reporting accessible
-- [ ] Email notifications enabled
-- [ ] Test error visible (if applicable)
+- [x] Error Reporting accessible
+- [x] Email notifications enabled
+- [x] Test error visible (if applicable)
 
 ---
 
@@ -242,9 +242,9 @@ CMEK for Cloud SQL requires the database to be on **GCP Cloud SQL** (not Render 
    - Click **Save**
 
 ### Verification
-- [ ] Cloud KMS API enabled (or documented for future migration)
-- [ ] Encryption posture documented in compliance response
-- [ ] Key rotation configured (90 days) if on Cloud SQL
+- [x] Cloud KMS API enabled (or documented for future migration)
+- [x] Encryption posture documented in compliance response
+- [x] Key rotation configured (90 days) if on Cloud SQL
 
 ---
 
@@ -372,11 +372,11 @@ For the Basiq compliance response, document:
 
 | Step | Service | Priority | Status |
 |------|---------|----------|--------|
-| E.1 | Security Command Center | P0 | [ ] Done |
-| E.2 | Cloud Audit Logs | P1 | [ ] Done |
-| E.3 | Cloud Logging + Monitoring | P1 | [ ] Done |
-| E.4 | Error Reporting | P1 | [ ] Done |
-| E.5 | Cloud KMS (CMEK) | P1 | [ ] Documented / Done |
+| E.1 | Security Command Center | P0 | [x] Done ✅ |
+| E.2 | Cloud Audit Logs | P1 | [x] Done ✅ |
+| E.3 | Cloud Logging + Monitoring | P1 | [x] Done ✅ |
+| E.4 | Error Reporting | P1 | [x] Done ✅ |
+| E.5 | Cloud KMS (CMEK) | P1 | [x] Documented / Done ✅ |
 | E.6 | Firebase Password Policy | Quick | [ ] Done |
 | E.7 | SSL on Database | Quick | [ ] Verified |
 | E.8 | Cloud Armor / WAF | P0 | [ ] Documented |
@@ -409,5 +409,5 @@ When filling out the Basiq checklist, use these responses:
 
 ---
 
-*Last Updated: 2026-03-08*
+*Last Updated: 2026-04-01*
 *Execute these steps in GCP Console, then update compliance documentation.*
