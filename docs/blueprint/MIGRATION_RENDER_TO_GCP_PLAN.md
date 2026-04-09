@@ -171,7 +171,8 @@ services:
    ┌────────▼──────────┐         ┌─────────▼────────────┐
    │ Cloud SQL PROD     │         │ Cloud SQL DEV/UAT     │
    │ monitrax-db-prod   │         │ monitrax-db-dev       │
-   │ us-west1 (Oregon)  │         │ us-west1 (Oregon)     │
+   │ australia-southeast1│         │ australia-southeast1  │
+   │ (Sydney)           │         │ (Sydney)              │
    │ Real user data     │         │ Synthetic/test data   │
    │ CDR-protected      │         │ NO real CDR data      │
    │ HA + backups       │         │ Minimal (db-f1-micro) │
@@ -250,7 +251,7 @@ Merge PR to main ──▶ Vercel auto-deploys PRODUCTION
 | Monitoring | Integrated with Cloud Monitoring |
 | Audit logging | Cloud Audit Logs for admin activity |
 | Scaling | Vertical scaling, read replicas |
-| Region matching | us-west1 (Oregon) matches current Render region |
+| Region | australia-southeast1 (Sydney) — CDR data residency compliance |
 | IAM integration | Cloud SQL IAM authentication option |
 
 ### 3.6 Connection Strategy

@@ -16,9 +16,9 @@
    - Instance ID: `monitrax-db-prod`
    - Password: Generate a strong password, save securely
    - PostgreSQL version: Match your Render version (run `SELECT version();` on Render to check)
-   - Region: `us-west1` (Oregon) — matches Render's Oregon region
+   - Region: `australia-southeast1` (Sydney) — CDR data residency requirement
    - Zone availability: **High Availability** recommended for production
-3. **Machine type:** `db-custom-1-3840` (1 vCPU, 3.75GB RAM) — scale up later if needed
+3. **Machine type:** `db-f1-micro` (shared core, 614MB RAM) — cheapest option, scale up later if needed
 4. **Storage:** SSD, 10GB minimum (auto-resize enabled)
 5. **Connections:**
    - Enable **Public IP** (required for Vercel connectivity)
@@ -36,7 +36,7 @@
    - Instance ID: `monitrax-db-dev`
    - Password: Different password from PROD, save securely
    - PostgreSQL version: **Same version as PROD**
-   - Region: `us-west1` (Oregon) — same as PROD
+   - Region: `australia-southeast1` (Sydney) — same as PROD
    - Zone availability: **Single zone** (cost saving, no HA needed)
 3. **Machine type:** `db-f1-micro` (shared core, cheapest — ~$7-10/month)
 4. **Storage:** SSD, 10GB (auto-resize enabled)
@@ -117,11 +117,11 @@ DATABASE_URL="postgresql://monitrax_user:DEV_PASSWORD@DEV_PUBLIC_IP:5432/monitra
 # Format: postgresql://monitrax_user:PASSWORD@HOST:PORT/monitrax
 
 # Full database dump (custom format, includes all tables + legacy tables)
-pg_dump -Fc -v -h RENDER_HOST -p RENDER_PORT -U monitrax_user -d monitrax \
+pg_dump -Fc -v -h RENDER_HOST -p RENDER_PORT -U monitrax_user -d monitrax_i65x_y7ho \
   -f monitrax_full_backup.dump
 
 # Also create a plain SQL backup as safety net
-pg_dump -h RENDER_HOST -p RENDER_PORT -U monitrax_user -d monitrax \
+pg_dump -h RENDER_HOST -p RENDER_PORT -U monitrax_user -d monitrax_i65x_y7ho \
   --no-owner --no-privileges \
   -f monitrax_full_backup.sql
 ```
@@ -385,7 +385,8 @@ These are not required for the migration but recommended:
 
 | Phase | Status | Date Started | Date Completed | Notes |
 |-------|--------|-------------|----------------|-------|
-| 1. Cloud SQL Setup | NOT STARTED | | | |
+| 0. Pre-Migration | COMPLETE | 2026-04-09 | 2026-04-09 | GCP project confirmed, APIs enabled, DB assessed |
+| 1. Cloud SQL Setup | IN PROGRESS | 2026-04-09 | | PROD instance created (db-f1-micro, Sydney). DEV pending. |
 | 2. DB & User Setup | NOT STARTED | | | |
 | 3. Data Migration | NOT STARTED | | | |
 | 4. Connection Update | NOT STARTED | | | |
@@ -398,23 +399,21 @@ These are not required for the migration but recommended:
 
 ### Pre-Migration Data Snapshot
 
-Fill this in during Phase 0 (Pre-Migration Checklist):
-
 | Metric | Render Value | Cloud SQL Value | Match? |
 |--------|-------------|-----------------|--------|
-| PostgreSQL version | | | |
-| Database size | | | |
-| Total table count | | | |
-| User count | | | |
-| Property count | | | |
-| Loan count | | | |
-| Account count | | | |
-| Expense count | | | |
-| Income count | | | |
-| AuditLog count | | | |
-| UnifiedTransaction count | | | |
-| Document count | | | |
-| Legacy table count | | | |
+| PostgreSQL version | 18.3 (Debian) | | |
+| Database size | 24 MB | | |
+| Total table count | 83 | | |
+| User count | 16 | | |
+| Property count | 29 | | |
+| Loan count | 30 | | |
+| Account count | 34 | | |
+| Expense count | 186 | | |
+| Income count | 39 | | |
+| AuditLog count | 54 | | |
+| UnifiedTransaction count | 423 | | |
+| Document count | 36 | | |
+| Legacy table count | TBD | | |
 
 ---
 

@@ -23,10 +23,28 @@
 ### Documentation Updated
 - `docs/blueprint/CHANGELOG_2026_04_09.md` — This file
 
+### Migration Progress (Updated Live)
+
+| Phase | Status | Details |
+|-------|--------|---------|
+| 0. Pre-Migration | COMPLETE | GCP project: monitrax-479700, billing active, 4 APIs enabled |
+| 0. DB Assessment | COMPLETE | PG 18.3, 24MB, 83 tables, 16 users, 423 transactions |
+| 1. PROD Instance | CREATED | monitrax-db-prod, db-f1-micro, australia-southeast1 (Sydney), PG 18 |
+| 1. DEV Instance | PENDING | Next step |
+| 2-9 | PENDING | |
+
+### Key Decisions Made During Migration
+- **Region changed:** Oregon → Sydney (australia-southeast1) for CDR data residency
+- **Machine type:** db-f1-micro (cheapest, ~$15/month) — sufficient for 24MB database
+- **Render DB name:** `monitrax_i65x_y7ho` (not just `monitrax`)
+- **2-tier environment:** PROD + DEV/UAT via Vercel env scoping
+
 ### Build Status
-- N/A — Documentation only, no code changes
+- N/A — Documentation and infrastructure only, no code changes
 
 ### Commit History
 | Hash | Message |
 |------|---------|
-| TBD | docs: create Render-to-GCP Cloud SQL migration plan |
+| d5089a5 | docs: create Render-to-GCP Cloud SQL migration plan |
+| c0609ad | docs: update migration plan for 2-tier DEV/UAT + PROD |
+| 3085780 | docs: update migration tracker with Phase 0 results |
