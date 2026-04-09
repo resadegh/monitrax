@@ -5,20 +5,20 @@
 
 ---
 
-## Phase 1: GCP Cloud SQL Instance Setup (YOU DO)
+## Phase 1: GCP Cloud SQL Instance Setup — TWO INSTANCES (YOU DO)
 
-**Goal:** Create a Cloud SQL PostgreSQL instance matching your current Render setup.
+**Goal:** Create TWO Cloud SQL PostgreSQL instances: one for PROD, one for DEV/UAT.
 
-### Steps:
+### Step 1a: Create PRODUCTION Instance
 
 1. **Go to GCP Console** → SQL → Create Instance → PostgreSQL
 2. **Configuration:**
-   - Instance ID: `monitrax-db`
+   - Instance ID: `monitrax-db-prod`
    - Password: Generate a strong password, save securely
    - PostgreSQL version: Match your Render version (run `SELECT version();` on Render to check)
-   - Region: `us-west1` (Oregon) — matches Render's Oregon region for latency parity
-   - Zone availability: Single zone for cost savings, or HA for production resilience
-3. **Machine type:** Start with `db-f1-micro` (shared core) or `db-custom-1-3840` (1 vCPU, 3.75GB) depending on your load
+   - Region: `us-west1` (Oregon) — matches Render's Oregon region
+   - Zone availability: **High Availability** recommended for production
+3. **Machine type:** `db-custom-1-3840` (1 vCPU, 3.75GB RAM) — scale up later if needed
 4. **Storage:** SSD, 10GB minimum (auto-resize enabled)
 5. **Connections:**
    - Enable **Public IP** (required for Vercel connectivity)
@@ -29,37 +29,80 @@
    - Backup retention: 7 days minimum
 7. **Maintenance:** Set a preferred window (low-traffic time in your timezone)
 
+### Step 1b: Create DEV/UAT Instance
+
+1. **GCP Console** → SQL → Create Instance → PostgreSQL
+2. **Configuration:**
+   - Instance ID: `monitrax-db-dev`
+   - Password: Different password from PROD, save securely
+   - PostgreSQL version: **Same version as PROD**
+   - Region: `us-west1` (Oregon) — same as PROD
+   - Zone availability: **Single zone** (cost saving, no HA needed)
+3. **Machine type:** `db-f1-micro` (shared core, cheapest — ~$7-10/month)
+4. **Storage:** SSD, 10GB (auto-resize enabled)
+5. **Connections:**
+   - Enable **Public IP**
+   - Require **SSL**
+6. **Backups:** Weekly or manual only (not critical for dev)
+7. **Maintenance:** Any window
+
 ### What I need from you after this step:
-- Cloud SQL instance connection name (format: `project:region:instance`)
-- Public IP address of the instance
-- PostgreSQL version you selected
-- Database user and password you created
+- PROD instance: connection name, public IP, PostgreSQL version
+- DEV instance: connection name, public IP
+- Database users and passwords for both instances
 
 ---
 
 ## Phase 2: Database & User Setup on Cloud SQL (YOU DO)
 
-### Steps:
+### Step 2a: Setup PROD Instance
 
 1. **Create the database:**
    ```bash
-   gcloud sql databases create monitrax --instance=monitrax-db
+   gcloud sql databases create monitrax --instance=monitrax-db-prod
    ```
 
 2. **Create the application user:**
    ```bash
-   gcloud sql users create monitrax_user --instance=monitrax-db --password=YOUR_SECURE_PASSWORD
+   gcloud sql users create monitrax_user --instance=monitrax-db-prod --password=YOUR_PROD_PASSWORD
    ```
 
 3. **Authorize your IP for migration** (temporary — remove after migration):
    ```bash
-   # Your current IP for running pg_dump/pg_restore
-   gcloud sql instances patch monitrax-db --authorized-networks=YOUR_IP/32
+   gcloud sql instances patch monitrax-db-prod --authorized-networks=YOUR_IP/32
    ```
 
-4. **Download the SSL certificates** (from GCP Console → SQL → Instance → Connections → Security):
-   - Server CA certificate
-   - Client certificate and key (if using client cert auth)
+### Step 2b: Setup DEV/UAT Instance
+
+1. **Create the database:**
+   ```bash
+   gcloud sql databases create monitrax --instance=monitrax-db-dev
+   ```
+
+2. **Create the application user:**
+   ```bash
+   gcloud sql users create monitrax_user --instance=monitrax-db-dev --password=YOUR_DEV_PASSWORD
+   ```
+
+3. **Authorize your IP:**
+   ```bash
+   gcloud sql instances patch monitrax-db-dev --authorized-networks=YOUR_IP/32
+   ```
+
+### Step 2c: Setup DEV Schema (Empty — No Data Migration)
+
+After creating the DEV database, apply the Prisma schema to create empty tables:
+```bash
+# From your local machine, temporarily set DATABASE_URL to DEV instance
+DATABASE_URL="postgresql://monitrax_user:DEV_PASSWORD@DEV_PUBLIC_IP:5432/monitrax?sslmode=require" \
+  npx prisma migrate deploy
+```
+
+Optionally seed with test data:
+```bash
+DATABASE_URL="postgresql://monitrax_user:DEV_PASSWORD@DEV_PUBLIC_IP:5432/monitrax?sslmode=require" \
+  npx ts-node prisma/seed-admin.ts
+```
 
 ---
 
@@ -85,14 +128,16 @@ pg_dump -h RENDER_HOST -p RENDER_PORT -U monitrax_user -d monitrax \
 
 **Important:** The `-Fc` (custom format) dump preserves everything: tables, indexes, constraints, sequences, extensions, legacy tables, and data types including JSON, Bytes, and Decimal fields.
 
-### Step 3b: Import to Cloud SQL
+### Step 3b: Import to Cloud SQL PROD (NOT DEV)
 
 ```bash
-# Restore to Cloud SQL using the public IP
-pg_restore -v -h CLOUD_SQL_PUBLIC_IP -p 5432 -U monitrax_user -d monitrax \
+# Restore to PROD Cloud SQL instance only
+pg_restore -v -h PROD_CLOUD_SQL_PUBLIC_IP -p 5432 -U monitrax_user -d monitrax \
   --no-owner --no-privileges \
   monitrax_full_backup.dump
 ```
+
+**Note:** Do NOT restore production data to DEV/UAT. DEV gets an empty schema (Phase 2c) with synthetic seed data only. This is a CDR compliance requirement (§13.6).
 
 If you get extension errors (e.g., `uuid-ossp`), create them first:
 ```bash
@@ -132,11 +177,11 @@ SELECT count(*) as transactions FROM "UnifiedTransaction";
 
 ---
 
-## Phase 4: Connection String Update (YOU DO, I VERIFY CODE)
+## Phase 4: Connection String Update — 2-Tier Setup (YOU DO, I VERIFY CODE)
 
-**Goal:** Point Monitrax to the new Cloud SQL database.
+**Goal:** Configure Vercel to use PROD Cloud SQL for production and DEV Cloud SQL for preview deployments.
 
-### New DATABASE_URL format:
+### Connection string format:
 
 ```
 postgresql://monitrax_user:PASSWORD@CLOUD_SQL_PUBLIC_IP:5432/monitrax?schema=public&sslmode=require
@@ -144,24 +189,36 @@ postgresql://monitrax_user:PASSWORD@CLOUD_SQL_PUBLIC_IP:5432/monitrax?schema=pub
 
 Note the `&sslmode=require` — this enforces SSL which Cloud SQL expects.
 
-### Where to update:
+### Step 4a: Set Vercel Environment Variables (SCOPED)
 
-1. **Vercel Environment Variables:**
-   - Go to Vercel Dashboard → Project → Settings → Environment Variables
-   - Update `DATABASE_URL` with the new Cloud SQL connection string
-   - Apply to: Production, Preview, Development (as needed)
+Go to **Vercel Dashboard → Project → Settings → Environment Variables**.
 
-2. **Render Environment Variables** (if still running backend on Render):
-   - Update `DATABASE_URL` in Render service settings
-   - Or if fully migrating away from Render backend, this step is N/A
+For `DATABASE_URL`, create **two entries** with different scopes:
 
-3. **Local development** (`.env.local`):
-   - Update your local `DATABASE_URL` if you want to test against Cloud SQL
-   - Or keep it pointing to a local PostgreSQL for dev
+| Variable | Value | Environments |
+|----------|-------|-------------|
+| `DATABASE_URL` | `postgresql://monitrax_user:PROD_PASS@PROD_IP:5432/monitrax?schema=public&sslmode=require` | **Production** only |
+| `DATABASE_URL` | `postgresql://monitrax_user:DEV_PASS@DEV_IP:5432/monitrax?schema=public&sslmode=require` | **Preview** only |
 
-### Code changes required (MINIMAL — I will do these):
+For other variables that should differ between environments:
 
-The only code change is in `lib/db.ts` — and it's **optional**. The current Prisma client setup works as-is with Cloud SQL because:
+| Variable | Production | Preview |
+|----------|-----------|---------|
+| `BASIQ_API_KEY` | Real key | Sandbox key or empty |
+| `NODE_ENV` | `production` | `production` |
+| All Firebase/GCP vars | Same | Same |
+| All Google Maps/Gemini vars | Same | Same |
+
+### Step 4b: Local Development
+
+Update `.env.local` to point to DEV Cloud SQL (or keep using local PostgreSQL):
+```
+DATABASE_URL="postgresql://monitrax_user:DEV_PASS@DEV_IP:5432/monitrax?schema=public&sslmode=require"
+```
+
+### Code changes required: NONE
+
+The current Prisma client setup works as-is with Cloud SQL because:
 - Prisma reads `DATABASE_URL` from env (no hardcoded connection strings)
 - PostgreSQL provider is already configured in `prisma/schema.prisma`
 - No connection pooling config changes needed initially
@@ -170,27 +227,29 @@ The only code change is in `lib/db.ts` — and it's **optional**. The current Pr
 
 ---
 
-## Phase 5: Vercel Network Configuration (YOU DO)
+## Phase 5: Vercel Network Configuration — Both Instances (YOU DO)
 
-**Goal:** Ensure Vercel can reach Cloud SQL.
+**Goal:** Ensure Vercel can reach both Cloud SQL instances.
 
-### Option A: Authorize Vercel IPs (Simplest)
+### Option A: Authorize All IPs (Simplest — Recommended for Vercel)
 
-Vercel serverless functions use dynamic IPs. Options:
-1. **Allow all IPs** (less secure but simplest for serverless):
-   ```bash
-   gcloud sql instances patch monitrax-db --authorized-networks=0.0.0.0/0
-   ```
-   Acceptable because SSL is enforced + strong password + Cloud SQL's own firewall.
+Vercel serverless functions use dynamic IPs. Apply to **both** instances:
 
-2. **Use Vercel's static IP ranges** (if on Vercel Enterprise with dedicated IPs)
+```bash
+# PROD instance
+gcloud sql instances patch monitrax-db-prod --authorized-networks=0.0.0.0/0
 
-### Option B: Use a Connection Proxy (More Secure)
+# DEV instance
+gcloud sql instances patch monitrax-db-dev --authorized-networks=0.0.0.0/0
+```
 
-If you want tighter network security:
+This is acceptable because: SSL is enforced + strong passwords + Cloud SQL's own firewall.
+
+### Option B: Use a Connection Proxy (More Secure — Future Enhancement)
+
+If you want tighter network security later:
 - Deploy a lightweight Cloud Run service as a proxy
 - Or use Prisma Accelerate (managed connection pooling + proxy)
-- Or use `@prisma/pg-worker` for edge-compatible connections
 
 **Recommendation for now:** Option A with SSL enforcement. Tighten later if needed.
 
@@ -246,9 +305,10 @@ If you want tighter network security:
 
 1. **Cloud SQL SSL enforcement** (should already be done in Phase 1)
 2. **Remove temporary authorized networks** used during migration
-3. **Enable Cloud SQL audit logging:**
+3. **Enable Cloud SQL audit logging (both instances):**
    ```bash
-   gcloud sql instances patch monitrax-db --database-flags=log_connections=on,log_disconnections=on,log_statement=ddl
+   gcloud sql instances patch monitrax-db-prod --database-flags=log_connections=on,log_disconnections=on,log_statement=ddl
+   gcloud sql instances patch monitrax-db-dev --database-flags=log_connections=on,log_disconnections=on,log_statement=ddl
    ```
 
 ### Priority 1 (Do within 1 week):
