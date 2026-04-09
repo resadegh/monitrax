@@ -1,6 +1,6 @@
 # Monitrax Database Migration Plan: Render PostgreSQL to GCP Cloud SQL
 
-> **Document Version:** 1.0
+> **Document Version:** 1.1
 > **Created:** 2026-04-09
 > **Status:** PLANNING
 > **Author:** Claude Code Session
@@ -47,6 +47,7 @@
 - Connection method (direct → Cloud SQL Auth Proxy or public IP with SSL)
 - Backup strategy (Render managed → Cloud SQL automated backups)
 - Monitoring (none → Cloud Monitoring + Cloud Logging)
+- **Environment strategy: 2-tier (DEV/UAT + PROD) using Vercel environment scoping**
 
 **Risk Level:** MEDIUM — The migration is a standard PostgreSQL-to-PostgreSQL move. The primary risks are downtime during cutover and data integrity verification.
 
@@ -154,34 +155,91 @@ services:
 
 ## 3. Target Architecture
 
-### 3.1 Target Layout
+### 3.1 Target Layout (2-Tier: DEV/UAT + PROD)
 
 ```
-┌─────────────────────┐     ┌──────────────────────────────┐
-│   Vercel (Frontend)  │────▶│   Vercel (API Routes)         │
-│   Next.js 15.2.6     │     │   Connects to Cloud SQL via   │
-│   NO CHANGE          │     │   public IP + SSL or Proxy    │
-└─────────────────────┘     └──────────┬───────────────────┘
-                                        │
-                             ┌──────────▼──────────────────┐
-                             │   GCP Cloud SQL (PostgreSQL)  │
-                             │   Region: us-west1 (Oregon)   │
-                             │   Instance: monitrax-db       │
-                             │   High Availability: Optional │
-                             │   Automated Backups: Enabled  │
-                             │   SSL: Required               │
-                             └──────────┬──────────────────┘
-                                        │
-                             ┌──────────┴──────────┐
-                             │                      │
-                     ┌───────▼───────┐  ┌──────────▼─────────┐
-                     │ GCP Identity   │  │ Google Cloud Storage│
-                     │ Platform       │  │ (Documents)         │
-                     │ (NO CHANGE)    │  │ (NO CHANGE)         │
-                     └───────────────┘  └────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                        VERCEL                             │
+│                                                           │
+│  ┌───────────────────┐       ┌──────────────────────────┐│
+│  │  PRODUCTION        │       │  PREVIEW (DEV/UAT)        ││
+│  │  main branch only  │       │  All other branches       ││
+│  │  monitrax.com.au   │       │  branch-name.vercel.app   ││
+│  └────────┬──────────┘       └────────────┬─────────────┘│
+└───────────┼───────────────────────────────┼──────────────┘
+            │                               │
+   ┌────────▼──────────┐         ┌─────────▼────────────┐
+   │ Cloud SQL PROD     │         │ Cloud SQL DEV/UAT     │
+   │ monitrax-db-prod   │         │ monitrax-db-dev       │
+   │ us-west1 (Oregon)  │         │ us-west1 (Oregon)     │
+   │ Real user data     │         │ Synthetic/test data   │
+   │ CDR-protected      │         │ NO real CDR data      │
+   │ HA + backups       │         │ Minimal (db-f1-micro) │
+   └────────┬──────────┘         └─────────┬────────────┘
+            │                               │
+            └───────────┬───────────────────┘
+                        │ (shared services)
+            ┌───────────▼───────────┐
+            │ GCP Identity Platform  │
+            │ (Firebase Auth)        │
+            │ NO CHANGE              │
+            ├────────────────────────┤
+            │ Google Cloud Storage   │
+            │ (Documents)            │
+            │ NO CHANGE              │
+            └────────────────────────┘
 ```
 
-### 3.2 Why Cloud SQL
+### 3.2 Two-Tier Environment Strategy
+
+| Aspect | PRODUCTION | DEV/UAT (Preview) |
+|--------|-----------|-------------------|
+| **Vercel scope** | Production | Preview |
+| **Branch** | `main` only | All non-main branches |
+| **URL** | monitrax.com.au | branch-name.vercel.app |
+| **Cloud SQL instance** | `monitrax-db-prod` | `monitrax-db-dev` |
+| **Instance size** | `db-custom-1-3840` (1 vCPU, 3.75GB) | `db-f1-micro` (shared, cheapest) |
+| **Data** | Real user data (migrated from Render) | Synthetic/seed data only |
+| **CDR data** | Yes — CDR-protected, CMEK encrypted | NO — synthetic only (CDR §13.6) |
+| **Backups** | Daily automated + point-in-time recovery | Weekly or manual only |
+| **HA** | Recommended | Not needed |
+| **Firebase Auth** | Shared project | Shared project |
+| **GCS bucket** | Shared (or separate if needed) | Shared (or separate if needed) |
+
+### 3.3 Vercel Environment Variable Scoping
+
+Each env var is set with a **different value per Vercel scope**:
+
+| Variable | Production Scope | Preview Scope |
+|----------|-----------------|---------------|
+| `DATABASE_URL` | `postgresql://...@PROD_IP/monitrax?sslmode=require` | `postgresql://...@DEV_IP/monitrax?sslmode=require` |
+| `NODE_ENV` | `production` | `production` |
+| `BASIQ_API_KEY` | Real API key | Sandbox/test key (or empty) |
+| `GCP_PROJECT_ID` | Same | Same |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Same | Same |
+| All other vars | Same or scoped as needed | Same or scoped as needed |
+
+### 3.4 Change Transport Flow
+
+```
+Developer creates feature branch
+        │
+        ▼
+Push to GitHub ──▶ Vercel auto-deploys PREVIEW
+        │                    │
+        │                    ▼
+        │              Hits DEV/UAT database
+        │              Test on preview URL
+        │
+        ▼
+Merge PR to main ──▶ Vercel auto-deploys PRODUCTION
+                             │
+                             ▼
+                       Hits PROD database
+                       Live for users
+```
+
+### 3.5 Why Cloud SQL
 
 | Requirement | Cloud SQL Capability |
 |-------------|---------------------|
@@ -195,7 +253,7 @@ services:
 | Region matching | us-west1 (Oregon) matches current Render region |
 | IAM integration | Cloud SQL IAM authentication option |
 
-### 3.3 Connection Strategy
+### 3.6 Connection Strategy
 
 **Option A: Public IP + SSL (Recommended for Vercel)**
 - Cloud SQL instance with public IP
