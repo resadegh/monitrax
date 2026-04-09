@@ -11,13 +11,15 @@
 | System overview / "how does it work?" | [System Overview](architecture/01_SYSTEM_OVERVIEW.md) |
 | Which environment am I looking at? | [Environment Strategy](architecture/02_ENVIRONMENT_STRATEGY.md) |
 | What technologies are we running? | [Technology Stack](architecture/03_TECHNOLOGY_STACK.md) |
+| How does code get to production? | [Change Transport](deployment/01_CHANGE_TRANSPORT.md) |
+| Vercel build/deploy details | [Vercel Deployment](deployment/02_VERCEL_DEPLOYMENT.md) |
 | Database is down / slow | [Cloud SQL Operations](database/01_CLOUD_SQL_OPERATIONS.md) |
 | Need to restore a backup | [Backup and Restore](database/02_BACKUP_AND_RESTORE.md) |
-| Deployment failed / need rollback | [Change Transport Process](deployment/01_CHANGE_TRANSPORT.md) |
-| How does Vercel deployment work? | [Vercel Deployment](deployment/02_VERCEL_DEPLOYMENT.md) |
-| Schema migration needed | [Database Migrations](deployment/03_DATABASE_MIGRATIONS.md) |
+| Database monitoring | [Monitoring and Alerts](database/03_MONITORING_AND_ALERTS.md) |
 | Auth / login issues | [Authentication Operations](security/01_AUTHENTICATION.md) |
 | Who has access to what? | [IAM and Permissions](security/02_IAM_AND_PERMISSIONS.md) |
+| CDR compliance questions | [CDR Compliance](security/03_CDR_COMPLIANCE.md) |
+| Security incident | [Incident Response Runbook](runbooks/01_INCIDENT_RESPONSE.md) |
 
 ---
 
@@ -39,18 +41,19 @@ How code moves from development to production.
 
 | # | Document | Description |
 |---|----------|-------------|
-| 01 | [Change Transport Process](deployment/01_CHANGE_TRANSPORT.md) | Branch-based workflow, PR process, how code reaches production |
+| 01 | [Change Transport](deployment/01_CHANGE_TRANSPORT.md) | Branch-based workflow, PR process, how code reaches production |
 | 02 | [Vercel Deployment](deployment/02_VERCEL_DEPLOYMENT.md) | Vercel build pipeline, environment scoping, preview deployments |
 | 03 | [Database Migrations](deployment/03_DATABASE_MIGRATIONS.md) | Manual schema sync workflow, safety rules, legacy table handling |
 
 ### Database
 
-Cloud SQL administration, backups, and schema management.
+Cloud SQL administration, backups, and monitoring.
 
 | # | Document | Description |
 |---|----------|-------------|
-| 01 | [Cloud SQL Operations](database/01_CLOUD_SQL_OPERATIONS.md) | Instance details, status checks, connection management, monitoring |
+| 01 | [Cloud SQL Operations](database/01_CLOUD_SQL_OPERATIONS.md) | Instance details, status checks, connection management |
 | 02 | [Backup and Restore](database/02_BACKUP_AND_RESTORE.md) | Automated backups, point-in-time recovery, manual backup procedures |
+| 03 | [Monitoring and Alerts](database/03_MONITORING_AND_ALERTS.md) | Cloud SQL monitoring, alerting, performance checks |
 
 ### Security
 
@@ -60,17 +63,15 @@ Authentication, access control, and compliance operations.
 |---|----------|-------------|
 | 01 | [Authentication Operations](security/01_AUTHENTICATION.md) | Firebase Auth operations, sign-in methods, token flow, MFA |
 | 02 | [IAM and Permissions](security/02_IAM_AND_PERMISSIONS.md) | RBAC roles (Owner/Admin/Contributor/Viewer), GCP IAM, permission model |
+| 03 | [CDR Compliance](security/03_CDR_COMPLIANCE.md) | CDR obligations, consent lifecycle, data deletion, audit requirements |
 
 ### Runbooks
 
-Step-by-step procedures for common support scenarios. (Planned -- not yet written.)
+Step-by-step procedures for incident response and common support scenarios.
 
 | # | Document | Description |
 |---|----------|-------------|
-| 01 | Database Runbook | Common database issues and resolutions |
-| 02 | Deployment Runbook | Build failures, rollbacks, environment variable issues |
-| 03 | Auth Troubleshooting | Login failures, token issues, MFA problems |
-| 04 | Basiq Open Banking Runbook | Bank connection issues, sync failures, CDR data problems |
+| 01 | [Incident Response](runbooks/01_INCIDENT_RESPONSE.md) | Incident classification, escalation paths, response procedures |
 
 ---
 
@@ -80,9 +81,9 @@ Step-by-step procedures for common support scenarios. (Planned -- not yet writte
 |---------|-------|--------|
 | Architecture (01-03) | 3 | Current |
 | Deployment (01-03) | 3 | Current |
-| Database (01-02) | 2 | Current |
-| Security (01-02) | 2 | Current |
-| Runbooks | 0 | Planned |
+| Database (01-03) | 3 | Current |
+| Security (01-03) | 3 | Current |
+| Runbooks (01) | 1 | Current |
 
 ---
 
