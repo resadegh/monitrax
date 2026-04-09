@@ -16,9 +16,9 @@
    - Instance ID: `monitrax-db-prod`
    - Password: Generate a strong password, save securely
    - PostgreSQL version: Match your Render version (run `SELECT version();` on Render to check)
-   - Region: `us-west1` (Oregon) — matches Render's Oregon region
+   - Region: `australia-southeast1` (Sydney) — CDR data residency requirement
    - Zone availability: **High Availability** recommended for production
-3. **Machine type:** `db-custom-1-3840` (1 vCPU, 3.75GB RAM) — scale up later if needed
+3. **Machine type:** `db-f1-micro` (shared core, 614MB RAM) — cheapest option, scale up later if needed
 4. **Storage:** SSD, 10GB minimum (auto-resize enabled)
 5. **Connections:**
    - Enable **Public IP** (required for Vercel connectivity)
@@ -36,7 +36,7 @@
    - Instance ID: `monitrax-db-dev`
    - Password: Different password from PROD, save securely
    - PostgreSQL version: **Same version as PROD**
-   - Region: `us-west1` (Oregon) — same as PROD
+   - Region: `australia-southeast1` (Sydney) — same as PROD
    - Zone availability: **Single zone** (cost saving, no HA needed)
 3. **Machine type:** `db-f1-micro` (shared core, cheapest — ~$7-10/month)
 4. **Storage:** SSD, 10GB (auto-resize enabled)
@@ -117,11 +117,11 @@ DATABASE_URL="postgresql://monitrax_user:DEV_PASSWORD@DEV_PUBLIC_IP:5432/monitra
 # Format: postgresql://monitrax_user:PASSWORD@HOST:PORT/monitrax
 
 # Full database dump (custom format, includes all tables + legacy tables)
-pg_dump -Fc -v -h RENDER_HOST -p RENDER_PORT -U monitrax_user -d monitrax \
+pg_dump -Fc -v -h RENDER_HOST -p RENDER_PORT -U monitrax_user -d monitrax_i65x_y7ho \
   -f monitrax_full_backup.dump
 
 # Also create a plain SQL backup as safety net
-pg_dump -h RENDER_HOST -p RENDER_PORT -U monitrax_user -d monitrax \
+pg_dump -h RENDER_HOST -p RENDER_PORT -U monitrax_user -d monitrax_i65x_y7ho \
   --no-owner --no-privileges \
   -f monitrax_full_backup.sql
 ```
@@ -386,7 +386,7 @@ These are not required for the migration but recommended:
 | Phase | Status | Date Started | Date Completed | Notes |
 |-------|--------|-------------|----------------|-------|
 | 0. Pre-Migration | COMPLETE | 2026-04-09 | 2026-04-09 | GCP project confirmed, APIs enabled, DB assessed |
-| 1. Cloud SQL Setup | IN PROGRESS | 2026-04-09 | | Creating PROD + DEV instances |
+| 1. Cloud SQL Setup | IN PROGRESS | 2026-04-09 | | PROD instance created (db-f1-micro, Sydney). DEV pending. |
 | 2. DB & User Setup | NOT STARTED | | | |
 | 3. Data Migration | NOT STARTED | | | |
 | 4. Connection Update | NOT STARTED | | | |
