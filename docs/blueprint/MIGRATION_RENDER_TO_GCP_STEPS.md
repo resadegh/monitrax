@@ -385,7 +385,8 @@ These are not required for the migration but recommended:
 
 | Phase | Status | Date Started | Date Completed | Notes |
 |-------|--------|-------------|----------------|-------|
-| 1. Cloud SQL Setup | NOT STARTED | | | |
+| 0. Pre-Migration | COMPLETE | 2026-04-09 | 2026-04-09 | GCP project confirmed, APIs enabled, DB assessed |
+| 1. Cloud SQL Setup | IN PROGRESS | 2026-04-09 | | Creating PROD + DEV instances |
 | 2. DB & User Setup | NOT STARTED | | | |
 | 3. Data Migration | NOT STARTED | | | |
 | 4. Connection Update | NOT STARTED | | | |
@@ -398,23 +399,21 @@ These are not required for the migration but recommended:
 
 ### Pre-Migration Data Snapshot
 
-Fill this in during Phase 0 (Pre-Migration Checklist):
-
 | Metric | Render Value | Cloud SQL Value | Match? |
 |--------|-------------|-----------------|--------|
-| PostgreSQL version | | | |
-| Database size | | | |
-| Total table count | | | |
-| User count | | | |
-| Property count | | | |
-| Loan count | | | |
-| Account count | | | |
-| Expense count | | | |
-| Income count | | | |
-| AuditLog count | | | |
-| UnifiedTransaction count | | | |
-| Document count | | | |
-| Legacy table count | | | |
+| PostgreSQL version | 18.3 (Debian) | | |
+| Database size | 24 MB | | |
+| Total table count | 83 | | |
+| User count | 16 | | |
+| Property count | 29 | | |
+| Loan count | 30 | | |
+| Account count | 34 | | |
+| Expense count | 186 | | |
+| Income count | 39 | | |
+| AuditLog count | 54 | | |
+| UnifiedTransaction count | 423 | | |
+| Document count | 36 | | |
+| Legacy table count | TBD | | |
 
 ---
 
