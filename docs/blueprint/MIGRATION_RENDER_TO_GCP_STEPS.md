@@ -1,7 +1,7 @@
 # Migration Steps: Render PostgreSQL → GCP Cloud SQL
 
 > **Parent Doc:** [MIGRATION_RENDER_TO_GCP_PLAN.md](./MIGRATION_RENDER_TO_GCP_PLAN.md)
-> **Status:** PLANNING | Created: 2026-04-09
+> **Status:** MIGRATION COMPLETE (Phases 0-7, 9). Phase 8 deferred. | Created: 2026-04-09 | Migration Live: 2026-04-10
 
 ---
 
@@ -370,14 +370,26 @@ After migration is complete, I will update:
 
 These are not required for the migration but recommended:
 
-| Improvement | Why | When |
-|-------------|-----|------|
-| Prisma Accelerate | Connection pooling for serverless (Vercel) | If connection limits hit |
-| Cloud SQL HA | Automatic failover for production | When traffic grows |
-| Read replicas | Separate read traffic from writes | When query volume grows |
-| Cloud SQL IAM auth | Replace password auth with IAM | When tightening security |
-| Migrate backend to Cloud Run | Full GCP stack, no Render dependency | If you want to leave Render entirely |
-| Cloud Scheduler for CDR lifecycle | Automated consent expiry checks | CDR compliance (§13.2) |
+| Priority | Improvement | Why | When |
+|----------|-------------|-----|------|
+| **P1** | **Cloud SQL Auth Proxy on Cloud Run** | Replace 0.0.0.0/0 with private VPC connection. Proxy runs on Cloud Run, Vercel connects via proxy's static IP. Eliminates public DB exposure. All-GCP solution. | Before go-live with real users/CDR data |
+| **P1** | **Cloud SQL HA** | Automatic failover for production | Before go-live |
+| P2 | Cloud Scheduler for CDR lifecycle | Automated consent expiry checks | CDR compliance (§13.2) |
+| P2 | Cloud KMS (CMEK) | Customer-managed encryption keys for CDR data at rest | CDR compliance |
+| P2 | Cloud Armor | WAF/DDoS protection for API endpoints | CDR compliance |
+| P3 | Read replicas | Separate read traffic from writes | When query volume grows |
+| P3 | Migrate frontend to Cloud Run | Full GCP stack, no Vercel dependency | If you want full GCP |
+
+### Current Security Posture (Documented)
+
+| Aspect | Current State | Risk | Mitigation |
+|--------|--------------|------|------------|
+| Network access | `0.0.0.0/0` (all IPs) | Medium — any IP can attempt connection | SSL enforced + strong password |
+| Why 0.0.0.0/0 | Vercel serverless has no fixed IPs | Cannot whitelist Vercel | Future: Cloud SQL Auth Proxy on Cloud Run |
+| Authentication | Built-in (username + password) | Low | Strong passwords, rotate quarterly |
+| Encryption in transit | SSL/TLS required | None | Enforced by Cloud SQL |
+| Encryption at rest | Google-managed keys | Low | Future: CMEK via Cloud KMS |
+| Data sensitivity | Test data only (no real CDR data yet) | Low | Upgrade security before go-live |
 
 ---
 
@@ -386,34 +398,38 @@ These are not required for the migration but recommended:
 | Phase | Status | Date Started | Date Completed | Notes |
 |-------|--------|-------------|----------------|-------|
 | 0. Pre-Migration | COMPLETE | 2026-04-09 | 2026-04-09 | GCP project confirmed, APIs enabled, DB assessed |
-| 1. Cloud SQL Setup | IN PROGRESS | 2026-04-09 | | PROD instance created (db-f1-micro, Sydney). DEV pending. |
+| 1. Cloud SQL Setup | COMPLETE | 2026-04-09 | 2026-04-10 | PROD: db-f1-micro, 35.197.180.137. DEV: db-f1-micro, 35.189.31.209. Both in Sydney. |
+| 2. DB & User Setup | COMPLETE | 2026-04-10 | 2026-04-10 | Database `monitrax` + user `monitrax_user` created on both. IPs authorized. |
+| 3. Data Migration | COMPLETE | 2026-04-10 | 2026-04-10 | All data verified: PROD + DEV match Render (16 users, 423 txns, etc.) |
+| 4. Connection Update | COMPLETE | 2026-04-10 | 2026-04-10 | Vercel env vars scoped: PROD + Preview. Redeployed. |
+| 5. Vercel Network Config | COMPLETE | 2026-04-10 | 2026-04-10 | 0.0.0.0/0 on both instances (SSL enforced) |
+| 6. Smoke Testing | COMPLETE | 2026-04-10 | 2026-04-10 | Health check passed, sign-in works, all data visible |
 | 2. DB & User Setup | NOT STARTED | | | |
 | 3. Data Migration | NOT STARTED | | | |
 | 4. Connection Update | NOT STARTED | | | |
 | 5. Vercel Network Config | NOT STARTED | | | |
 | 6. Smoke Testing | NOT STARTED | | | |
-| 7. Security Hardening | NOT STARTED | | | |
-| 8. Decommission Render | NOT STARTED | | | |
-| 9. Doc Updates | NOT STARTED | | | |
-| 10. Future Improvements | OPTIONAL | | | |
+| 7. Security Hardening | COMPLETE (P0) | 2026-04-10 | 2026-04-10 | Audit logging enabled (log_connections, log_disconnections, log_statement=ddl). Old IP entries removed. 0.0.0.0/0 documented as Vercel requirement. P1/P2 items tracked in Future Improvements. |
+| 8. Decommission Render | DEFERRED | 2026-04-10 | | Keep Render running as backup until ~2026-04-24. Delete after 14 days if no issues. |
+| 9. Doc Updates | COMPLETE | 2026-04-10 | 2026-04-10 | All migration docs, changelog, and progress tracker updated |
+| 10. Future Improvements | TRACKED | | | See Future Improvements section above |
 
 ### Pre-Migration Data Snapshot
 
 | Metric | Render Value | Cloud SQL Value | Match? |
 |--------|-------------|-----------------|--------|
-| PostgreSQL version | 18.3 (Debian) | | |
-| Database size | 24 MB | | |
-| Total table count | 83 | | |
-| User count | 16 | | |
-| Property count | 29 | | |
-| Loan count | 30 | | |
-| Account count | 34 | | |
-| Expense count | 186 | | |
-| Income count | 39 | | |
-| AuditLog count | 54 | | |
-| UnifiedTransaction count | 423 | | |
-| Document count | 36 | | |
-| Legacy table count | TBD | | |
+| PostgreSQL version | 18.3 (Debian) | 18 (Cloud SQL) | Compatible |
+| Database size | 24 MB | ~24 MB | Yes |
+| Total table count | 83 | 83 | Yes |
+| User count | 16 | 16 | Yes |
+| Property count | 29 | 29 | Yes |
+| Loan count | 30 | 30 | Yes |
+| Account count | 34 | 34 | Yes |
+| Expense count | 186 | 186 | Yes |
+| Income count | 39 | 39 | Yes |
+| AuditLog count | 54 | 54 | Yes |
+| UnifiedTransaction count | 423 | 423 | Yes |
+| Document count | 36 | 36 | Yes |
 
 ---
 

@@ -1,12 +1,12 @@
 # CDR / Basiq Compliance Matrix — Full Requirement Tracking
 
-**Version:** 1.1
+**Version:** 1.2
 **Created:** 2026-02-27
-**Updated:** 2026-03-04
+**Updated:** 2026-04-10
 **Source:** Basiq CDR accreditation questionnaire (Artefacts tracking file)
 **Status:** Active — tracking all compliance requirements
 **Owner:** Resadegh (Director) + Claude Code (AI engineering)
-**Recent Changes:** §1.7 marked DONE (Admin lifecycle review implemented in Phase 33)
+**Recent Changes:** Database migrated from Render (Oregon) to GCP Cloud SQL (Sydney). §3.1, §3.2, §3.3, §5.1, §5.7, §8.1 updated. SSL verified. Audit logging enabled.
 
 ---
 
@@ -73,9 +73,9 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 | # | Basiq Requirement | Status | Implementation | Gap / Action |
 |---|-------------------|--------|----------------|--------------|
-| 3.1 | Systems are hosted in a secure cloud environment (GCP) | **DONE** | **Frontend:** Vercel (Next.js CDN + edge). **Backend:** Render.com (Node runtime). **Database:** Render PostgreSQL. **Identity:** GCP Identity Platform (Firebase Auth). **Storage:** Google Cloud Storage. **AI:** Google Vision API, Generative AI. | None — all production on managed cloud platforms. |
-| 3.2 | Network rules are enforced to limit external access | **PARTIAL** | Render provides basic DDoS protection. Rate limiting middleware exists (`lib/middleware/apiSecurity.ts`). No Cloud Armor/WAF configured. | **TODO:** Enable Cloud Armor or Render-level WAF. Restrict database to private networking. |
-| 3.3 | Data in transit is always encrypted | **DONE** | Vercel enforces HTTPS. Render enforces HTTPS. All Firebase/GCP API calls over TLS. PostgreSQL connection via SSL. | Verify `?sslmode=require` in DATABASE_URL. |
+| 3.1 | Systems are hosted in a secure cloud environment (GCP) | **DONE** | **Frontend:** Vercel (Next.js CDN + edge). **Database:** GCP Cloud SQL PostgreSQL (australia-southeast1, Sydney). **Identity:** GCP Identity Platform (Firebase Auth). **Storage:** Google Cloud Storage. **AI:** Google Vision API, Generative AI. **Migration from Render completed 2026-04-10.** | None — all production on managed cloud platforms. Database now in Australia for CDR data residency. |
+| 3.2 | Network rules are enforced to limit external access | **PARTIAL** | Cloud SQL configured with SSL enforcement. Network: 0.0.0.0/0 (required for Vercel serverless — no fixed IPs). Rate limiting middleware exists (`lib/middleware/apiSecurity.ts`). No Cloud Armor/WAF configured. | **TODO:** Enable Cloud Armor WAF. **Future:** Cloud SQL Auth Proxy on Cloud Run to replace 0.0.0.0/0 with private VPC connection. |
+| 3.3 | Data in transit is always encrypted | **DONE** | Vercel enforces HTTPS. All Firebase/GCP API calls over TLS. Cloud SQL connection via SSL (`sslmode=require` in DATABASE_URL). Database audit logging enabled (log_connections, log_disconnections, log_statement=ddl). | ✅ Verified during migration 2026-04-10. |
 | 3.4 | Systems are regularly patched for security updates | **PARTIAL** | Modern dependencies (Next.js 15.2.6, Prisma 5.22, Firebase 12.9). Managed services auto-patched by vendors. | **TODO:** Enable Dependabot or `npm audit` in CI. Monthly dependency review. |
 | 3.5 | Systems are regularly tested for security vulnerabilities | **PARTIAL** | Vitest framework with test scripts (`test`, `test:watch`, `test:coverage`, `test:validation`, `test:regression`). No automated security scanning (OWASP, Snyk). | **TODO:** Add `npm audit` to CI. Enable Security Command Center in GCP. Schedule annual pen test. |
 
@@ -110,13 +110,13 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 | # | Basiq Requirement | Status | Implementation | Gap / Action |
 |---|-------------------|--------|----------------|--------------|
-| 5.1 | CDR data is only stored in the production environment | **PARTIAL** | Production data in Cloud SQL (PostgreSQL) on GCP. Dev/staging should use synthetic data. | **TODO:** Ensure dev/staging environments NEVER contain real CDR data. Add to deployment checklist. |
+| 5.1 | CDR data is only stored in the production environment | **PARTIAL** | Production data in GCP Cloud SQL (australia-southeast1, Sydney). DEV/UAT instance (`monitrax-db-dev`) exists separately. Currently both have test data (no real CDR data yet). **2-tier environment strategy documented in `docs/operational/architecture/02_ENVIRONMENT_STRATEGY.md`.** | **TODO:** When real CDR data flows, ensure DEV/UAT uses synthetic data only. |
 | 5.2 | CDR data will be retained in a de-identified format | **DONE** | `anonymizeCDRData()` in `lib/services/cdrDataLifecycle.ts` strips PII (account numbers, BSBs, merchant names) while preserving aggregate amounts/dates. Used for legal retention cases (loan applications). | ✅ Phase 35 complete. Consider GCP Cloud DLP for additional automated PII detection. |
 | 5.3 | CDR data is never copied to end-user devices | **PARTIAL** | Data is fetched via API and rendered in browser (not downloaded as files). CSV export exists for audit logs only (no financial data export). | **Review:** Ensure no bulk financial data export endpoints exist. Check if browser cache/localStorage stores CDR data. |
 | 5.4 | CDR data is deleted once no longer required | **DONE** | `deleteCDRData(userId, reason)` in `lib/services/cdrDataLifecycle.ts` hard-deletes all Basiq-sourced accounts, transactions, and connections. Supports retention_policy reason. Audited via `CDR_DATA_DELETED` action. | ✅ Phase 35 complete. |
 | 5.5 | CDR data is deleted once the consent has expired | **DONE** | `checkConsentExpiry()` in `lib/services/cdrDataLifecycle.ts` finds expired consents and triggers CDR data deletion. Endpoint `POST /api/cdr/lifecycle` designed for GCP Cloud Scheduler (daily at 02:00 UTC). Audited via `CDR_CONSENT_EXPIRED` + `CDR_DATA_DELETED`. | ✅ Phase 35 complete. User must configure Cloud Scheduler in GCP Console. |
 | 5.6 | CDR data is deleted when consent has been revoked | **DONE** | `handleConsentRevocation()` in `lib/services/cdrDataLifecycle.ts` marks consent REVOKED and purges CDR data. API endpoint `POST /api/cdr/consent { action: 'revoke_org_consent' }` allows user-initiated revocation. Audited via `CDR_CONSENT_REVOKED` + `CDR_DATA_DELETED`. | ✅ Phase 35 complete. |
-| 5.7 | CDR data at rest is always encrypted | **PARTIAL** | Cloud SQL encrypts data at rest by default (Google-managed keys). | **Recommended:** Enable CMEK (Customer-Managed Encryption Keys) via Cloud KMS for additional control. Document the encryption posture. |
+| 5.7 | CDR data at rest is always encrypted | **PARTIAL** | GCP Cloud SQL encrypts data at rest by default (Google-managed keys). Database in australia-southeast1 (Sydney) for CDR data residency. | **Recommended:** Enable CMEK (Customer-Managed Encryption Keys) via Cloud KMS for additional control before go-live with real CDR data. |
 | 5.8 | I'm legally required to retain CDR data (e.g. loan application) | **DONE** | CDR Data Retention Schedule created (`docs/policy/CDR_DATA_RETENTION_SCHEDULE.md`). Defines retention periods per data type, legal basis, deletion triggers. Anonymization via `anonymizeCDRData()` for legal retention cases. | None |
 
 ### Basiq Response Guidance (Section 5)
@@ -170,7 +170,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 | # | GCP Service | Status | Usage in Monitrax | Action Required |
 |---|------------|--------|-------------------|-----------------|
-| 8.1 | Cloud Audit Logs | **SHOULD ENABLE** | GCP auto-generates audit logs for all API calls. Not explicitly configured. | Enable Data Access audit logs in GCP Console. |
+| 8.1 | Cloud Audit Logs | **DONE** | Cloud SQL audit logging enabled: `log_connections=on`, `log_disconnections=on`, `log_statement=ddl`. GCP auto-generates Admin Activity logs. | ✅ Enabled during migration 2026-04-10. Consider enabling Data Access logs for full CDR audit trail. |
 | 8.2 | Cloud Data Loss Prevention (DLP) | **TODO** | Not configured. CDR data contains PII (account numbers, BSBs, balances). | **Recommended:** Enable DLP scanning on Cloud SQL or data exports to detect/redact PII. |
 | 8.3 | Identity and Access Management (IAM) | **DONE** | GCP IAM controls access to cloud resources. Firebase Auth (Identity Platform) for end users. | Review IAM roles — principle of least privilege for service accounts. |
 | 8.4 | Cloud Identity-Aware Proxy (IAP) | **TODO** | Not configured. Could protect admin routes with Google-level auth. | **Consider:** Enable IAP for admin portal access as additional layer. |
@@ -229,7 +229,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 | T2.4 | Enable Cloud Logging + Monitoring with alerts | GCP Console | 1 day |
 | T2.5 | Enable Error Reporting | GCP Console | 1 hour |
 | T2.6 | Review Firebase password policy in GCP Console | GCP Console | 30 min |
-| T2.7 | Verify SSL on database connection | Env config | 30 min |
+| T2.7 | ~~Verify SSL on database connection~~ | ~~Env config~~ | ✅ **DONE** — `sslmode=require` in DATABASE_URL, verified 2026-04-10 |
 
 ### Tier 3 — ~~Should Have (Policy Documents)~~ ✅ COMPLETE (Phase F, 2026-03-08)
 

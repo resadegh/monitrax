@@ -29,9 +29,17 @@
 |-------|--------|---------|
 | 0. Pre-Migration | COMPLETE | GCP project: monitrax-479700, billing active, 4 APIs enabled |
 | 0. DB Assessment | COMPLETE | PG 18.3, 24MB, 83 tables, 16 users, 423 transactions |
-| 1. PROD Instance | CREATED | monitrax-db-prod, db-f1-micro, australia-southeast1 (Sydney), PG 18 |
-| 1. DEV Instance | PENDING | Next step |
-| 2-9 | PENDING | |
+| 1. PROD Instance | COMPLETE | monitrax-db-prod, db-f1-micro, Sydney, PG 18, IP: 35.197.180.137 |
+| 1. DEV Instance | COMPLETE | monitrax-db-dev, db-f1-micro, Sydney, PG 18, IP: 35.189.31.209 |
+| 2. DB & User Setup | COMPLETE | `monitrax` DB + `monitrax_user` created on both instances |
+| 2. IP Authorization | COMPLETE | 103.47.122.78/32 authorized on both instances (temporary) |
+| 3. Data Migration | COMPLETE | pg_dump from Render → pg_restore to PROD + DEV. All counts verified. |
+| 4. Connection Update | COMPLETE | Vercel env vars scoped: Production → PROD DB, Preview → DEV DB |
+| 5. Network Config | COMPLETE | 0.0.0.0/0 on both instances (SSL enforced) |
+| 6. Smoke Testing | COMPLETE | /api/health → connected. Sign-in + data verified. |
+| 7. Security Hardening | COMPLETE (P0) | Audit logging enabled, network cleaned, future enhancements documented |
+| 8. Decommission Render | DEFERRED | Keep running as backup until ~2026-04-24 |
+| 9. Doc Updates | COMPLETE | All docs updated |
 
 ### Key Decisions Made During Migration
 - **Region changed:** Oregon → Sydney (australia-southeast1) for CDR data residency
