@@ -1,7 +1,7 @@
 # Migration Steps: Render PostgreSQL → GCP Cloud SQL
 
 > **Parent Doc:** [MIGRATION_RENDER_TO_GCP_PLAN.md](./MIGRATION_RENDER_TO_GCP_PLAN.md)
-> **Status:** PHASES 0-6 COMPLETE | Created: 2026-04-09 | Migration Live: 2026-04-10
+> **Status:** MIGRATION COMPLETE (Phases 0-7, 9). Phase 8 deferred. | Created: 2026-04-09 | Migration Live: 2026-04-10
 
 ---
 
@@ -410,9 +410,9 @@ These are not required for the migration but recommended:
 | 5. Vercel Network Config | NOT STARTED | | | |
 | 6. Smoke Testing | NOT STARTED | | | |
 | 7. Security Hardening | COMPLETE (P0) | 2026-04-10 | 2026-04-10 | Audit logging enabled (log_connections, log_disconnections, log_statement=ddl). Old IP entries removed. 0.0.0.0/0 documented as Vercel requirement. P1/P2 items tracked in Future Improvements. |
-| 8. Decommission Render | IN PROGRESS | 2026-04-10 | | |
-| 9. Doc Updates | NOT STARTED | | | |
-| 10. Future Improvements | OPTIONAL | | | |
+| 8. Decommission Render | DEFERRED | 2026-04-10 | | Keep Render running as backup until ~2026-04-24. Delete after 14 days if no issues. |
+| 9. Doc Updates | COMPLETE | 2026-04-10 | 2026-04-10 | All migration docs, changelog, and progress tracker updated |
+| 10. Future Improvements | TRACKED | | | See Future Improvements section above |
 
 ### Pre-Migration Data Snapshot
 

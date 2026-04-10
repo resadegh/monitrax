@@ -37,7 +37,9 @@
 | 4. Connection Update | COMPLETE | Vercel env vars scoped: Production → PROD DB, Preview → DEV DB |
 | 5. Network Config | COMPLETE | 0.0.0.0/0 on both instances (SSL enforced) |
 | 6. Smoke Testing | COMPLETE | /api/health → connected. Sign-in + data verified. |
-| 7-8 | PENDING | Security hardening + Render decommission (can be done later) |
+| 7. Security Hardening | COMPLETE (P0) | Audit logging enabled, network cleaned, future enhancements documented |
+| 8. Decommission Render | DEFERRED | Keep running as backup until ~2026-04-24 |
+| 9. Doc Updates | COMPLETE | All docs updated |
 
 ### Key Decisions Made During Migration
 - **Region changed:** Oregon → Sydney (australia-southeast1) for CDR data residency
