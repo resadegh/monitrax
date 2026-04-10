@@ -33,7 +33,8 @@
 | 1. DEV Instance | COMPLETE | monitrax-db-dev, db-f1-micro, Sydney, PG 18, IP: 35.189.31.209 |
 | 2. DB & User Setup | COMPLETE | `monitrax` DB + `monitrax_user` created on both instances |
 | 2. IP Authorization | COMPLETE | 103.47.122.78/32 authorized on both instances (temporary) |
-| 3. Data Migration | IN PROGRESS | Next: pg_dump from Render, pg_restore to PROD |
+| 3. Data Migration | COMPLETE | pg_dump from Render → pg_restore to PROD + DEV. All counts verified. |
+| 4. Connection Update | IN PROGRESS | Vercel scoped env vars next |
 
 ### Key Decisions Made During Migration
 - **Region changed:** Oregon → Sydney (australia-southeast1) for CDR data residency

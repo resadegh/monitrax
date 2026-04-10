@@ -388,7 +388,8 @@ These are not required for the migration but recommended:
 | 0. Pre-Migration | COMPLETE | 2026-04-09 | 2026-04-09 | GCP project confirmed, APIs enabled, DB assessed |
 | 1. Cloud SQL Setup | COMPLETE | 2026-04-09 | 2026-04-10 | PROD: db-f1-micro, 35.197.180.137. DEV: db-f1-micro, 35.189.31.209. Both in Sydney. |
 | 2. DB & User Setup | COMPLETE | 2026-04-10 | 2026-04-10 | Database `monitrax` + user `monitrax_user` created on both. IPs authorized. |
-| 3. Data Migration | IN PROGRESS | 2026-04-10 | | pg_dump from Render → pg_restore to PROD |
+| 3. Data Migration | COMPLETE | 2026-04-10 | 2026-04-10 | All data verified: PROD + DEV match Render (16 users, 423 txns, etc.) |
+| 4. Connection Update | IN PROGRESS | 2026-04-10 | | Vercel scoped env vars next |
 | 2. DB & User Setup | NOT STARTED | | | |
 | 3. Data Migration | NOT STARTED | | | |
 | 4. Connection Update | NOT STARTED | | | |
@@ -403,19 +404,18 @@ These are not required for the migration but recommended:
 
 | Metric | Render Value | Cloud SQL Value | Match? |
 |--------|-------------|-----------------|--------|
-| PostgreSQL version | 18.3 (Debian) | | |
-| Database size | 24 MB | | |
-| Total table count | 83 | | |
-| User count | 16 | | |
-| Property count | 29 | | |
-| Loan count | 30 | | |
-| Account count | 34 | | |
-| Expense count | 186 | | |
-| Income count | 39 | | |
-| AuditLog count | 54 | | |
-| UnifiedTransaction count | 423 | | |
-| Document count | 36 | | |
-| Legacy table count | TBD | | |
+| PostgreSQL version | 18.3 (Debian) | 18 (Cloud SQL) | Compatible |
+| Database size | 24 MB | ~24 MB | Yes |
+| Total table count | 83 | 83 | Yes |
+| User count | 16 | 16 | Yes |
+| Property count | 29 | 29 | Yes |
+| Loan count | 30 | 30 | Yes |
+| Account count | 34 | 34 | Yes |
+| Expense count | 186 | 186 | Yes |
+| Income count | 39 | 39 | Yes |
+| AuditLog count | 54 | 54 | Yes |
+| UnifiedTransaction count | 423 | 423 | Yes |
+| Document count | 36 | 36 | Yes |
 
 ---
 
