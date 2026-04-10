@@ -386,7 +386,9 @@ These are not required for the migration but recommended:
 | Phase | Status | Date Started | Date Completed | Notes |
 |-------|--------|-------------|----------------|-------|
 | 0. Pre-Migration | COMPLETE | 2026-04-09 | 2026-04-09 | GCP project confirmed, APIs enabled, DB assessed |
-| 1. Cloud SQL Setup | IN PROGRESS | 2026-04-09 | | PROD instance created (db-f1-micro, Sydney). DEV pending. |
+| 1. Cloud SQL Setup | COMPLETE | 2026-04-09 | 2026-04-10 | PROD: db-f1-micro, 35.197.180.137. DEV: db-f1-micro, 35.189.31.209. Both in Sydney. |
+| 2. DB & User Setup | COMPLETE | 2026-04-10 | 2026-04-10 | Database `monitrax` + user `monitrax_user` created on both. IPs authorized. |
+| 3. Data Migration | IN PROGRESS | 2026-04-10 | | pg_dump from Render → pg_restore to PROD |
 | 2. DB & User Setup | NOT STARTED | | | |
 | 3. Data Migration | NOT STARTED | | | |
 | 4. Connection Update | NOT STARTED | | | |
