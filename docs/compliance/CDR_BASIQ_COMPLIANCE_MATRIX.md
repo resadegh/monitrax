@@ -1,12 +1,12 @@
 # CDR / Basiq Compliance Matrix — Full Requirement Tracking
 
-**Version:** 1.2
+**Version:** 1.3
 **Created:** 2026-02-27
 **Updated:** 2026-04-10
 **Source:** Basiq CDR accreditation questionnaire (Artefacts tracking file)
 **Status:** Active — tracking all compliance requirements
 **Owner:** Resadegh (Director) + Claude Code (AI engineering)
-**Recent Changes:** Database migrated from Render (Oregon) to GCP Cloud SQL (Sydney). §3.1, §3.2, §3.3, §5.1, §5.7, §8.1 updated. SSL verified. Audit logging enabled.
+**Recent Changes:** Updated to align with full Basiq CDR Compliance spreadsheet (Steps 1-6, v2.0). Added Step 1 (Organisation), Step 2 (CDR Data Use), Step 5 (Policies & Procedures), Step 6 (Backend Implementation Evidence). Overall compliance score recalculated across all steps.
 
 ---
 
@@ -23,7 +23,53 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ---
 
-## SECTION 1: User Authentication and Access Management
+## STEP 1: Your Organisation
+
+*"Tell us about your organisation and who is responsible for security."*
+
+| # | Requirement | Status | Current Value | Action |
+|---|------------|--------|---------------|--------|
+| 1.1 | Organisation Name (ASIC/ABN register) | **DONE** | Renew Group Holding Pty Ltd | None |
+| 1.2 | ABN or ACN | **DONE** | 89 668 548 785 | None |
+| 1.3 | Website URL | **DONE** | Monitrax.com.au | None |
+| 1.4 | Company Description | **DONE** | Financial tracking startup | None |
+| 1.5 | Services Description (CDR data use) | **DONE** | Financial portfolio tracker and categorisation web app | None |
+| 1.6 | Company Logo URL (200x39px) | **TODO** | Placeholder URL — needs real logo | Create correct-size logo and host |
+| 1.7 | Security Responsibility | **DONE** | Director (sole operator) | None |
+| 1.8 | Production Environment Security | **DONE** | Director | None |
+| 1.9 | Risk Management | **DONE** | Director | None |
+| 1.10 | Compliance | **DONE** | Director | None |
+| 1.11 | Legal/Ethics | **DONE** | Director | None |
+| 1.12 | Training & Awareness | **DONE** | Director | None |
+
+### Step 1 Response Guidance
+
+**Can confirm YES today:** 1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.8, 1.9, 1.10, 1.11, 1.12 (11/12 ✅)
+**Action required:** 1.6 — Create 200x39px company logo and host at a public URL.
+
+---
+
+## STEP 2: CDR Data Use
+
+*"Tell us how you intend to use CDR data."*
+
+| # | Question | Answer | Rationale |
+|---|----------|--------|-----------|
+| 2.1 | Will your org know consumer identity? | **True** | Monitrax requires user login — consumers are identified |
+| 2.2 | Use CDR data for direct marketing? | **False** | No direct marketing with CDR data planned |
+| 2.3 | Disclose CDR data overseas? | **False** | Data stays in Australia (GCP Cloud SQL Sydney) |
+| 2.4 | Read CDR compliance obligations doc | **True** | Reviewed |
+| 2.5 | Read CDR Representatives fact sheet | **True** | Reviewed — ACCC Version 3, July 2024 |
+| 2.6 | Public consent management webpage | **True** | Needs to be built — consumer must manage consent on our platform |
+
+### Step 2 Response Guidance
+
+**Can confirm YES today:** 2.1, 2.2, 2.3, 2.4, 2.5 (5/6 ✅)
+**Action required:** 2.6 — **TODO: Build public-facing consent management page** where consumers can view, manage, and revoke their CDR data consent.
+
+---
+
+## SECTION 1: User Authentication and Access Management (Step 3: 3.1–3.7)
 
 *"How are users authenticated and authorised to access systems that store CDR data?"*
 
@@ -45,7 +91,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ---
 
-## SECTION 2: Logging ("Tell us about your logs")
+## SECTION 2: Logging (Step 3: 3.8–3.14)
 
 *"Identify which events are recorded for systems that have access to CDR data."*
 
@@ -67,7 +113,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ---
 
-## SECTION 3: System Security
+## SECTION 3: System Security (Step 3: 3.15–3.19)
 
 *"Specify the security measures for systems that have access to CDR data."*
 
@@ -87,7 +133,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ---
 
-## SECTION 4: Device Management
+## SECTION 4: Device Management (Step 3: 3.20–3.22)
 
 *"Please select all items that apply to user devices e.g. staff laptops"*
 
@@ -104,7 +150,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ---
 
-## SECTION 5: Handling of CDR Data
+## SECTION 5: Handling of CDR Data (Step 3: 3.23–3.30)
 
 *"Tell us how CDR data is handled within your environment"*
 
@@ -127,7 +173,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ---
 
-## SECTION 6: Development Practices
+## SECTION 6: Development Practices (Step 3: 3.31–3.35)
 
 *"Specify your coding practices for code that accesses CDR data"*
 
@@ -147,7 +193,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ---
 
-## SECTION 7: HR Practices
+## SECTION 7: HR Practices (Step 3: 3.36–3.38)
 
 *"Specify the HR practices you have implemented to address data security"*
 
@@ -164,7 +210,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ---
 
-## SECTION 8: Technology — GCP Tools
+## SECTION 8: Technology — GCP Tools (Step 4: 4.1–4.16)
 
 *"Please choose the tools that you utilize within your GCP production environment."*
 
@@ -204,6 +250,85 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 | **P2** | Cloud DLP | PII detection in CDR data | GCP Console config |
 | **P2** | Cloud IAP | Admin portal protection | GCP Console config |
 | **P3** | Terraform | Infrastructure as Code | Migration project |
+
+---
+
+## STEP 5: Policies & Procedures
+
+*"Demonstrate your organisation's compliance certifications and documented security policies."*
+
+### 5A: Compliance Certifications
+
+| # | Certification | Status | Notes |
+|---|-------------|--------|-------|
+| 5.1 | ISO 27001 | **N/A** | Not required for CDR Representative — future goal |
+| 5.2 | SOC 2 Type 2 | **N/A** | Not required for CDR Representative |
+| 5.3 | PCI DSS | **N/A** | Not applicable |
+| 5.4 | Australian Credit Licence | **N/A** | Not providing credit |
+| 5.5 | AFSL | **N/A** | Not providing financial advice |
+| 5.6 | Registered ADI | **N/A** | Not a deposit-taking institution |
+
+### 5B: Documented Policies (25 Required)
+
+| # | Policy Required | Status | Monitrax Document | Basiq Template Section |
+|---|----------------|--------|-------------------|----------------------|
+| P1 | Acceptable Use Policy | **TODO** | None — needs creation | Use Basiq template |
+| P2 | Access Control | **DONE** | `docs/operational/security/02_IAM_AND_PERMISSIONS.md` | Map to template |
+| P3 | Administrative Access Control | **DONE** | `docs/operational/security/02_IAM_AND_PERMISSIONS.md` (admin section) | Map to template |
+| P4 | Antivirus and Malware Protection | **DONE** | `docs/policy/DEVICE_SECURITY_POLICY.md` §3.3 | Map to template |
+| P5 | Audit Logging and Monitoring | **DONE** | `docs/operational/database/03_MONITORING_AND_ALERTS.md` | Map to template |
+| P6 | Background Checks | **DONE** | `docs/policy/SECURITY_AWARENESS_POLICY.md` §5 | Map to template |
+| P7 | CDR Data Handling | **DONE** | `docs/compliance/CDR_DATA_RETENTION_SCHEDULE.md` + `docs/operational/security/03_CDR_COMPLIANCE.md` | Map to template |
+| P8 | Data Breach Response | **DONE** | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Map to template |
+| P9 | Data Loss Prevention | **TODO** | None — needs creation | Use Basiq template |
+| P10 | End-User Device Hardening | **DONE** | `docs/policy/DEVICE_SECURITY_POLICY.md` | Map to template |
+| P11 | Firewall Protection | **TODO** | None — Cloud Armor not yet configured | Use Basiq template + GCP Cloud Armor |
+| P12 | Information Asset Lifecycle | **TODO** | None — needs creation | Use Basiq template |
+| P13 | Information Security Boundary Review | **TODO** | None — needs creation | Use Basiq template |
+| P14 | Information Security Governance Framework | **PARTIAL** | CLAUDE.md + BAU framework covers some | Use Basiq template, reference existing |
+| P15 | Information Security Incident Management | **DONE** | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Map to template |
+| P16 | Information Security Policy | **PARTIAL** | Basiq template available | Customize Basiq template |
+| P17 | Information Security Risk Management | **TODO** | None — needs creation | Use Basiq template |
+| P18 | Monitoring of Application Services | **PARTIAL** | `docs/operational/runbooks/03_HEALTH_CHECKS.md` | Map to template |
+| P19 | Multi-Factor Authentication | **DONE** | Code: `lib/auth/guards.ts` + `docs/operational/security/01_AUTHENTICATION.md` | Map to template |
+| P20 | OS and Application Patches | **PARTIAL** | `docs/policy/APPROVED_DEPENDENCIES.md` covers libs | Use Basiq template |
+| P21 | Protecting Data at Rest | **PARTIAL** | GCP auto-encryption — no formal policy doc | Use Basiq template |
+| P22 | Protecting Data in Transit | **DONE** | SSL/TLS everywhere — documented | Map to template |
+| P23 | Secure Authentication | **DONE** | `docs/operational/security/01_AUTHENTICATION.md` | Map to template |
+| P24 | Secure Coding Practices | **PARTIAL** | CLAUDE.md covers extensively | Use Basiq template |
+| P25 | Server Hardening | **TODO** | None — managed services, needs documentation | Use Basiq template |
+| P26 | Vulnerability Management | **TODO** | None — needs creation | Use Basiq template |
+
+### Step 5 Summary
+
+**10/25 DONE, 7/25 PARTIAL, 8/25 TODO.** Action: Customize Basiq Security Policies Template (.docx) to create unified security policies document covering all 25 areas.
+
+---
+
+## STEP 6: Backend Implementation Evidence
+
+*"Provide evidence (screenshots/videos) demonstrating your security controls are operational."*
+
+| # | Evidence Required | Can Provide? | Source/How | Status |
+|---|-----------------|-------------|-----------|--------|
+| 6.1 | MFA setup for user accounts | **YES** | Screenshot: Firebase MFA config + Monitrax settings UI | **TODO** — capture screenshot |
+| 6.2 | Users with admin access list | **YES** | Screenshot: Admin Portal user list + GCP IAM roles | **TODO** — capture screenshot |
+| 6.3 | Role-based access control | **YES** | Screenshot: permissions code + `withPermission()` usage | **TODO** — capture screenshot |
+| 6.4 | Strong password controls | **YES** | Screenshot: Firebase Auth password policy | **TODO** — capture screenshot |
+| 6.5 | Logging configuration evidence | **YES** | Screenshot: audit log entries + `sanitizeCdrMetadata()` | **TODO** — capture screenshot |
+| 6.6 | Network protection | **PARTIAL** | Cloud SQL authorized networks + SSL config | **TODO** — needs Cloud Armor first |
+| 6.7 | Encryption in transit (SSL) | **YES** | Screenshot: SSL certificates + Cloud SQL SSL config | **TODO** — capture screenshot |
+| 6.8 | Encryption at rest | **PARTIAL** | GCP Cloud SQL encryption page (no CMEK yet) | **TODO** — capture screenshot |
+| 6.9 | Patching of services/libraries | **YES** | Dependabot config + `npm audit` output | **TODO** — capture screenshot |
+| 6.10 | Secure coding practices | **YES** | GitHub PR review example + CI pipeline | **TODO** — capture screenshot |
+| 6.11 | Vulnerability scanning | **NO** | Needs pen test or OWASP scan | **BLOCKER** — must commission |
+| 6.12 | Anti-virus on devices | **YES** | Screenshot: macOS XProtect/Gatekeeper status | **TODO** — capture screenshot |
+| 6.13 | System architecture diagram | **PARTIAL** | Exists in docs but needs CDR-specific version | **TODO** — create CDR data flow diagram |
+| 6.14 | Cyber + professional liability insurance | **UNKNOWN** | Needs insurance policies | **BLOCKER** — business action |
+
+### Step 6 Summary
+
+**10/14 YES, 2/14 PARTIAL, 2/14 BLOCKERS.** Critical: Pen test (6.11) and insurance (6.14) must be addressed before submission.
 
 ---
 
@@ -257,17 +382,22 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 | Category | Requirements | DONE | PARTIAL | TODO | Score |
 |----------|-------------|------|---------|------|-------|
-| Auth & Access (7) | 1.1–1.7 | **7** | 0 | 0 | **100%** |
-| Logging (7) | 2.1–2.7 | 5 | 2 | 0 | **85%** |
-| System Security (5) | 3.1–3.5 | 2 | 1 | 2 | **50%** |
-| Device Management (3) | 4.1–4.3 | **3** | 0 | 0 | **100%** |
-| CDR Data Handling (8) | 5.1–5.8 | **5** | 2 | 0 | **75%** |
-| Dev Practices (5) | 6.1–6.5 | **4** | 1 | 0 | **90%** |
-| HR Practices (3) | 7.1–7.3 | **3** | 0 | 0 | **100%** |
-| GCP Tools (16) | 8.1–8.16 | 3 | 0 | 10 | **20%** |
-| **TOTAL** | **54** | **32** | **6** | **12** | **~87%** |
+| Step 1: Organisation (12) | 1.1–1.12 | **11** | 0 | 1 | **92%** |
+| Step 2: CDR Data Use (6) | 2.1–2.6 | **5** | 0 | 1 | **83%** |
+| Step 3: Auth & Access (7) | 3.1–3.7 | **7** | 0 | 0 | **100%** |
+| Step 3: Logging (7) | 3.8–3.14 | **5** | 2 | 0 | **85%** |
+| Step 3: System Security (5) | 3.15–3.19 | 2 | 2 | 1 | **50%** |
+| Step 3: Device Management (3) | 3.20–3.22 | **3** | 0 | 0 | **100%** |
+| Step 3: CDR Data Handling (8) | 3.23–3.30 | **5** | 3 | 0 | **81%** |
+| Step 3: Dev Practices (5) | 3.31–3.35 | **4** | 1 | 0 | **90%** |
+| Step 3: HR Practices (3) | 3.36–3.38 | **3** | 0 | 0 | **100%** |
+| Step 4: GCP Tools (16) | 4.1–4.16 | 4 | 0 | 12 | **25%** |
+| Step 5: Certifications (6) | 5.1–5.6 | 0 | 0 | 0 | **N/A** |
+| Step 5: Policies (25) | P1–P26 | 10 | 7 | 8 | **54%** |
+| Step 6: Evidence (14) | 6.1–6.14 | 0 | 0 | 14 | **0%** |
+| **TOTAL** | **117+** | **59** | **15** | **37** | **~65%** |
 
-**Bottom line:** Auth & access, Device Management, and HR at 100%. CDR data handling at 75%. Dev practices at 90%. Main remaining gap: GCP service enablement (20%) and System Security hardening (50%). Phase F (Policy Documents) and Phase G (Dev Pipeline) complete.
+**Bottom line:** Overall spreadsheet readiness: ~65%. Main gaps: GCP tools (25%), Documented Policies (54%), Evidence collection (0%). All evidence items need screenshots/videos captured. Two critical blockers: vulnerability scan and insurance.
 
 ### Recent Progress
 
@@ -282,6 +412,6 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 ---
 
-*Last Updated: 2026-03-08*
+*Last Updated: 2026-04-10*
 *Next Review: After Phase E (GCP Services) completion*
-*Recent: Phase F (Policy Documents) and Phase G (Dev Pipeline) complete. Score: ~78% → ~87%*
+*Recent: Full Basiq spreadsheet alignment (Steps 1-6). Score recalculated: ~65% across all 117+ requirements. Key gaps: GCP tools, policies, evidence collection.*

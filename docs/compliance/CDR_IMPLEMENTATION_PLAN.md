@@ -1,12 +1,12 @@
 # CDR Compliance Implementation Plan
 
-**Version:** 1.1
+**Version:** 1.2
 **Created:** 2026-03-03
-**Last Updated:** 2026-03-08
-**Status:** Active — Phases A, B, C, D, F, G COMPLETE, proceeding to Phase E
+**Last Updated:** 2026-04-10
+**Status:** Active — Phases A-G COMPLETE, E & H pending. NEW: Phases I, J, K added for Basiq submission
 **Source:** `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md`, `CLAUDE.md` Part 13, `PHASE_34_CDR_SECURITY_HARDENING.md`
-**Compliance Target:** Basiq CDR accreditation (54 requirements across 9 sections)
-**Current Score:** ~55% → ~70% (after A+B+C) → ~78% (after A+B+C+D) → **~87%** (after A+B+C+D+F+G) → Target: 90%+
+**Compliance Target:** Basiq CDR Representative onboarding (6-step compliance form + 25 policy documents + 14 evidence items)
+**Current Score:** ~65% (against full Basiq spreadsheet including policies and evidence)
 
 ---
 
@@ -22,8 +22,11 @@
 | **F** | Policy Documents | ✅ **COMPLETE** | — | §4.x, §5.8, §6.4, §6.5, §7.x N/A/TODO → DONE (+9%) |
 | **G** | Dev Pipeline Hardening | ✅ **COMPLETE** | — | §6.4, §6.5 TODO → DONE (included in F) |
 | **H** | API Consolidation & Cleanup | ⬜ Pending | — | Attack surface reduction |
+| **I** | Security Policies Document | ⬜ Pending | — | Step 5: 25 documented policies (+15%) |
+| **J** | Evidence Collection & Submission | ⬜ Pending | — | Step 6: 14 evidence items (+10%) |
+| **K** | Spreadsheet Completion & Submission | ⬜ Pending | — | All steps filled, submitted to Basiq |
 
-**Overall: 6 of 8 phases complete. Score: ~55% → ~87%**
+**Overall: 6 of 11 phases complete.**
 
 ---
 
@@ -587,6 +590,178 @@ export const GET = withPermission('entity.read', async (request, auth) => { ... 
 
 ---
 
+## PHASE I: Security Policies Document (Basiq Step 5) — NEW
+
+**Goal:** Create unified Security Policies document covering all 25 Basiq-required policies
+**Why:** Basiq Step 5 requires documented policies for 25 security areas. Currently 10/25 done, 8/25 missing.
+**Approach:** Customize the Basiq-provided Security Policies Template (.docx) with Monitrax-specific details
+**Input:** `docs/BASIQ FILES/Security Policies Template.docx` (Basiq template)
+**Output:** `docs/policy/MONITRAX_SECURITY_POLICIES.md` (comprehensive document)
+**Effort:** 2-3 days
+
+### What Basiq Provided
+
+Basiq has provided a Security Policies Template covering 25 policy areas. Each section contains:
+- Policy introduction and purpose
+- Policy requirements
+- Implementation guidance
+- Review schedule
+
+### Mapping: Basiq Template → Existing Monitrax Docs
+
+| # | Policy Area | Existing Monitrax Coverage | Action |
+|---|------------|---------------------------|--------|
+| 1 | Information Security Policy | None | Create from Basiq template |
+| 2 | Acceptable Use Policy | None | Create from Basiq template |
+| 3 | Access Control | `docs/operational/security/02_IAM_AND_PERMISSIONS.md` | Extract and adapt |
+| 4 | Administrative Access Control | `docs/operational/security/02_IAM_AND_PERMISSIONS.md` | Extract and adapt |
+| 5 | Antivirus and Malware Protection | `docs/policy/DEVICE_SECURITY_POLICY.md` | Extract and adapt |
+| 6 | Audit Logging and Monitoring | `docs/operational/database/03_MONITORING_AND_ALERTS.md` | Extract and adapt |
+| 7 | Background Checks | `docs/policy/SECURITY_AWARENESS_POLICY.md` | Extract and adapt |
+| 8 | CDR Data Handling | `docs/compliance/CDR_DATA_RETENTION_SCHEDULE.md` + `docs/operational/security/03_CDR_COMPLIANCE.md` | Extract and adapt |
+| 9 | Data Breach Response | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Extract and adapt |
+| 10 | Data Loss Prevention | None — needs GCP Cloud DLP | Create from Basiq template + GCP DLP plan |
+| 11 | End-User Device Hardening | `docs/policy/DEVICE_SECURITY_POLICY.md` | Extract and adapt |
+| 12 | Firewall Protection | None — Cloud Armor not configured | Create from Basiq template + GCP Armor plan |
+| 13 | Information Asset Lifecycle | None | Create from Basiq template |
+| 14 | Information Security Boundary Review | None | Create from Basiq template |
+| 15 | Information Security Governance Framework | CLAUDE.md + BAU framework partial | Create from Basiq template |
+| 16 | Information Security Incident Management | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Extract and adapt |
+| 17 | Information Security Risk Management | None | Create from Basiq template |
+| 18 | Monitoring of Application Services | `docs/operational/runbooks/03_HEALTH_CHECKS.md` | Extract and adapt |
+| 19 | Multi-Factor Authentication | `docs/operational/security/01_AUTHENTICATION.md` + code | Extract and adapt |
+| 20 | OS and Application Patches | `docs/policy/APPROVED_DEPENDENCIES.md` partial | Create from Basiq template |
+| 21 | Protecting Data at Rest | GCP auto-encryption — no doc | Create from Basiq template + GCP details |
+| 22 | Protecting Data in Transit | SSL/TLS documented | Extract and adapt |
+| 23 | Secure Authentication | `docs/operational/security/01_AUTHENTICATION.md` | Extract and adapt |
+| 24 | Secure Coding Practices | CLAUDE.md covers extensively | Extract and adapt |
+| 25 | Server Hardening | None — managed services | Create from Basiq template |
+| 26 | Vulnerability Management | None | Create from Basiq template |
+
+### Steps
+
+#### Step I.1 — Read and parse Basiq Security Policies Template
+- Read full .docx content
+- Extract 25 policy section structures
+- Note template placeholders to fill
+
+#### Step I.2 — Create comprehensive Security Policies document
+- For each of 25 policies:
+  - If existing Monitrax doc covers it: adapt content to Basiq format
+  - If no existing doc: customize Basiq template with Monitrax specifics (GCP, Firebase, Vercel, Prisma)
+- Output: Single markdown document or set of policy documents
+
+#### Step I.3 — Verification
+- All 25 policy areas covered
+- Each policy references Monitrax-specific implementation
+- Upload to Basiq evidence folder or link in spreadsheet
+
+### Effort Estimate
+- Policies with existing coverage (10): 1-2 hours each = 10-20 hours
+- Policies needing creation (8): 2-3 hours each = 16-24 hours
+- Policies with partial coverage (7): 1-2 hours each = 7-14 hours
+- Total: ~33-58 hours (3-5 working days)
+
+---
+
+## PHASE J: Evidence Collection & Submission (Basiq Step 6) — NEW
+
+**Goal:** Capture and organize all 14 evidence items required by Basiq
+**Why:** Basiq Step 6 requires visual proof (screenshots, videos, documents) of security controls
+**Output:** Evidence files uploaded to Basiq's shared Google Drive "Evidence" folder
+**Effort:** 1-2 days
+
+### Evidence Items
+
+| # | Evidence Required | How to Capture | Source | Status |
+|---|-----------------|----------------|--------|--------|
+| 1 | MFA setup for user accounts | Screenshot: Firebase Console → Authentication → Sign-in method → MFA | GCP Console | TODO |
+| 2 | Users with admin access | Screenshot: GCP IAM page + Admin Portal user list | GCP Console + App | TODO |
+| 3 | Role-based access control | Screenshot: permissions.ts code + withPermission() guard usage | GitHub / IDE | TODO |
+| 4 | Strong password controls | Screenshot: Firebase Auth password policy settings | GCP Console | TODO |
+| 5 | Logging configuration | Screenshot: AuditLog table entries + sanitizeCdrMetadata() code | DB + Code | TODO |
+| 6 | Network protection | Screenshot: Cloud SQL authorized networks + SSL config | GCP Console | TODO — needs Cloud Armor |
+| 7 | Encryption in transit (SSL) | Screenshot: Cloud SQL SSL certificate + Vercel HTTPS | GCP Console + Vercel | TODO |
+| 8 | Encryption at rest | Screenshot: Cloud SQL encryption settings page | GCP Console | TODO |
+| 9 | Patching of services/libraries | Screenshot: Dependabot PRs + npm audit CI output | GitHub | TODO |
+| 10 | Secure coding practices | Screenshot: GitHub PR review + CI pipeline run | GitHub | TODO |
+| 11 | Vulnerability scanning | Report: External pen test or OWASP ZAP scan | External vendor | BLOCKER |
+| 12 | Anti-virus on devices | Screenshot: macOS System Settings → Privacy & Security | macOS | TODO |
+| 13 | System architecture diagram | Document: CDR data flow diagram showing boundaries | Create new | TODO |
+| 14 | Cyber + professional liability insurance | Document: Certificate of currency | Insurance broker | BLOCKER |
+
+### Blockers
+1. **Evidence 11 (Vulnerability scanning):** Must commission external pen test or run OWASP ZAP. Estimated cost: $2,000-$5,000 for external, free for OWASP ZAP self-service.
+2. **Evidence 14 (Insurance):** Must obtain cyber liability and professional liability insurance policies. Business action — contact insurance broker.
+
+### Steps
+
+#### Step J.1 — Capture screenshots (items 1-5, 7-10, 12)
+- User captures screenshots from GCP Console, GitHub, macOS
+- Label files clearly: "1.0_MFA_Setup.png", "2.0_Admin_Access.png", etc.
+
+#### Step J.2 — Create architecture diagram (item 13)
+- Create CDR-specific system architecture diagram
+- Show: Consumer → Monitrax App → Basiq API → Data Holders
+- Show: Data storage boundaries (GCP Cloud SQL Sydney)
+- Show: Encryption layers (TLS in transit, AES at rest)
+
+#### Step J.3 — Commission pen test (item 11)
+- Options: External pen test vendor or self-service OWASP ZAP
+- Must include: CDR data endpoints, auth system, API surface
+
+#### Step J.4 — Obtain insurance (item 14)
+- Cyber liability insurance
+- Professional liability (PI) insurance
+- Request certificates of currency
+
+#### Step J.5 — Upload to Basiq Evidence folder
+- Upload all evidence files to shared Google Drive folder
+- Name files per Basiq numbering: "1.0_MFA_Setup.png", etc.
+
+---
+
+## PHASE K: Spreadsheet Completion & Submission — NEW
+
+**Goal:** Fill the Basiq CDR Compliance spreadsheet and submit for review
+**Why:** This is the final deliverable — Basiq reviews this for CDR Representative approval
+**Depends on:** Phases I (policies) and J (evidence) must be complete
+**Effort:** 2-4 hours
+
+### Steps
+
+#### Step K.1 — Fill Step 1 (Organisation)
+- Verify company details are correct
+- Upload real company logo (200x39px)
+- Confirm all role assignments
+
+#### Step K.2 — Fill Step 2 (CDR Data Use)
+- Answer all CDR data use questions
+- Mark confirmations as True
+
+#### Step K.3 — Fill Step 3 (Security Practices)
+- Mark all 38 implemented items as True
+- Add notes for partial items
+
+#### Step K.4 — Fill Step 4 (Technology)
+- Mark all enabled GCP services
+- Note: depends on Phase E completion
+
+#### Step K.5 — Fill Step 5 (Policies)
+- Link each policy document in the spreadsheet
+- Upload policies to Evidence folder
+
+#### Step K.6 — Fill Step 6 (Evidence)
+- Link each evidence item in the spreadsheet
+- Reference uploaded files in Evidence folder
+
+#### Step K.7 — Review and Submit
+- Final review of all answers
+- Email Jad + cc compliance@basiq.io
+- Include: completed spreadsheet, summary of Monitrax security posture
+
+---
+
 ## Execution Sequence & Dependencies
 
 ```
@@ -640,9 +815,18 @@ Phase G (Dev Pipeline) ← independent ────────────┤
   G.1-G.3 Dependabot, npm audit, scanning        │
   G.4 Verification                               │
                                                  │
-Phase H (API Cleanup) ← can run in parallel ─────┘
-  H.1-H.4 Dead code removal, consolidation
-  H.5 Verification
+Phase H (API Cleanup) ← can run in parallel ─────┤
+  H.1-H.4 Dead code removal, consolidation       │
+  H.5 Verification                               │
+                                                  │
+Phase I (Security Policies) ← independent ────────┤
+  I.1-I.3 Customize Basiq template                │
+                                                  │
+Phase J (Evidence) ← depends on E, I ─────────────┤
+  J.1-J.5 Capture, create, upload                 │
+                                                  │
+Phase K (Submission) ← depends on I, J ────────────┘
+  K.1-K.7 Fill spreadsheet, submit
 ```
 
 ### Recommended Order
@@ -673,6 +857,9 @@ Phase H (API Cleanup) ← can run in parallel ─────┘
 | **G (Dev Pipeline)** | **~87%** | §6.4, §6.5 TODO → DONE | ✅ COMPLETE 2026-03-08 |
 | E (GCP) | ~93% | §8.x items TODO → DONE | ⬜ Pending |
 | H (API Cleanup) | ~95% | Architecture quality, reduced attack surface | ⬜ Pending |
+| I (Policies) | ~80% | 25 policies documented | ⬜ Pending |
+| J (Evidence) | ~90% | 14 evidence items captured | ⬜ Pending |
+| K (Submission) | ~100% | Spreadsheet complete and submitted | ⬜ Pending |
 
 ---
 
@@ -691,13 +878,14 @@ Phase H (API Cleanup) ← can run in parallel ─────┘
 ## Session Tracking
 
 Each phase will create its own changelog entry:
-- `docs/blueprint/CHANGELOG_YYYY_MM_DD.md` — per session
-- `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md` — updated after each phase
+- `docs/changelog/CHANGELOG_YYYY_MM_DD.md` — per session
+- `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` — updated after each phase
 - `docs/blueprint/MASTER_BLUEPRINT.md` — updated when phase status changes
 
 ---
 
-*Last Updated: 2026-03-08*
-*Phases A, B, C, D, F, G Complete (6 of 8)*
-*Next Review: After Phase E (GCP Services) completion*
-*Score: ~55% → ~87%*
+*Last Updated: 2026-04-10*
+*Phases A, B, C, D, F, G Complete (6 of 11)*
+*New Phases I, J, K added for Basiq submission*
+*Next: Phase I (Security Policies Template customization)*
+*Score: ~55% → ~87% (against original 54 items) → ~65% (against full Basiq spreadsheet incl. policies & evidence)*
