@@ -34,7 +34,10 @@
 | 2. DB & User Setup | COMPLETE | `monitrax` DB + `monitrax_user` created on both instances |
 | 2. IP Authorization | COMPLETE | 103.47.122.78/32 authorized on both instances (temporary) |
 | 3. Data Migration | COMPLETE | pg_dump from Render → pg_restore to PROD + DEV. All counts verified. |
-| 4. Connection Update | IN PROGRESS | Vercel scoped env vars next |
+| 4. Connection Update | COMPLETE | Vercel env vars scoped: Production → PROD DB, Preview → DEV DB |
+| 5. Network Config | COMPLETE | 0.0.0.0/0 on both instances (SSL enforced) |
+| 6. Smoke Testing | COMPLETE | /api/health → connected. Sign-in + data verified. |
+| 7-8 | PENDING | Security hardening + Render decommission (can be done later) |
 
 ### Key Decisions Made During Migration
 - **Region changed:** Oregon → Sydney (australia-southeast1) for CDR data residency

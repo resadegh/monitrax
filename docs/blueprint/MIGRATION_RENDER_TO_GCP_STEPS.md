@@ -1,7 +1,7 @@
 # Migration Steps: Render PostgreSQL → GCP Cloud SQL
 
 > **Parent Doc:** [MIGRATION_RENDER_TO_GCP_PLAN.md](./MIGRATION_RENDER_TO_GCP_PLAN.md)
-> **Status:** PLANNING | Created: 2026-04-09
+> **Status:** PHASES 0-6 COMPLETE | Created: 2026-04-09 | Migration Live: 2026-04-10
 
 ---
 
@@ -389,7 +389,9 @@ These are not required for the migration but recommended:
 | 1. Cloud SQL Setup | COMPLETE | 2026-04-09 | 2026-04-10 | PROD: db-f1-micro, 35.197.180.137. DEV: db-f1-micro, 35.189.31.209. Both in Sydney. |
 | 2. DB & User Setup | COMPLETE | 2026-04-10 | 2026-04-10 | Database `monitrax` + user `monitrax_user` created on both. IPs authorized. |
 | 3. Data Migration | COMPLETE | 2026-04-10 | 2026-04-10 | All data verified: PROD + DEV match Render (16 users, 423 txns, etc.) |
-| 4. Connection Update | IN PROGRESS | 2026-04-10 | | Vercel scoped env vars next |
+| 4. Connection Update | COMPLETE | 2026-04-10 | 2026-04-10 | Vercel env vars scoped: PROD + Preview. Redeployed. |
+| 5. Vercel Network Config | COMPLETE | 2026-04-10 | 2026-04-10 | 0.0.0.0/0 on both instances (SSL enforced) |
+| 6. Smoke Testing | COMPLETE | 2026-04-10 | 2026-04-10 | Health check passed, sign-in works, all data visible |
 | 2. DB & User Setup | NOT STARTED | | | |
 | 3. Data Migration | NOT STARTED | | | |
 | 4. Connection Update | NOT STARTED | | | |
