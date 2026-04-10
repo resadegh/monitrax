@@ -370,14 +370,26 @@ After migration is complete, I will update:
 
 These are not required for the migration but recommended:
 
-| Improvement | Why | When |
-|-------------|-----|------|
-| Prisma Accelerate | Connection pooling for serverless (Vercel) | If connection limits hit |
-| Cloud SQL HA | Automatic failover for production | When traffic grows |
-| Read replicas | Separate read traffic from writes | When query volume grows |
-| Cloud SQL IAM auth | Replace password auth with IAM | When tightening security |
-| Migrate backend to Cloud Run | Full GCP stack, no Render dependency | If you want to leave Render entirely |
-| Cloud Scheduler for CDR lifecycle | Automated consent expiry checks | CDR compliance (§13.2) |
+| Priority | Improvement | Why | When |
+|----------|-------------|-----|------|
+| **P1** | **Cloud SQL Auth Proxy on Cloud Run** | Replace 0.0.0.0/0 with private VPC connection. Proxy runs on Cloud Run, Vercel connects via proxy's static IP. Eliminates public DB exposure. All-GCP solution. | Before go-live with real users/CDR data |
+| **P1** | **Cloud SQL HA** | Automatic failover for production | Before go-live |
+| P2 | Cloud Scheduler for CDR lifecycle | Automated consent expiry checks | CDR compliance (§13.2) |
+| P2 | Cloud KMS (CMEK) | Customer-managed encryption keys for CDR data at rest | CDR compliance |
+| P2 | Cloud Armor | WAF/DDoS protection for API endpoints | CDR compliance |
+| P3 | Read replicas | Separate read traffic from writes | When query volume grows |
+| P3 | Migrate frontend to Cloud Run | Full GCP stack, no Vercel dependency | If you want full GCP |
+
+### Current Security Posture (Documented)
+
+| Aspect | Current State | Risk | Mitigation |
+|--------|--------------|------|------------|
+| Network access | `0.0.0.0/0` (all IPs) | Medium — any IP can attempt connection | SSL enforced + strong password |
+| Why 0.0.0.0/0 | Vercel serverless has no fixed IPs | Cannot whitelist Vercel | Future: Cloud SQL Auth Proxy on Cloud Run |
+| Authentication | Built-in (username + password) | Low | Strong passwords, rotate quarterly |
+| Encryption in transit | SSL/TLS required | None | Enforced by Cloud SQL |
+| Encryption at rest | Google-managed keys | Low | Future: CMEK via Cloud KMS |
+| Data sensitivity | Test data only (no real CDR data yet) | Low | Upgrade security before go-live |
 
 ---
 
