@@ -1,3 +1,5 @@
+> **ARCHIVED** - This early-stage build summary references Render deployment infrastructure which has been migrated to GCP. See `docs/blueprint/MASTER_BLUEPRINT.md` for current system status. Archived on 2026-04-10.
+
 # Monitrax - Build Summary
 
 ## What Has Been Built

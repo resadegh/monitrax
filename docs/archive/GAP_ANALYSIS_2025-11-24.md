@@ -1,3 +1,5 @@
+> **ARCHIVED** - This gap analysis reported 63% completion as of Nov 2025. Most gaps identified here have been closed in subsequent phases. See `docs/bau-framework/03_GAP_ANALYSIS_REPORT.md` for the current gap analysis. Archived on 2026-04-10.
+
 # MONITRAX GAP ANALYSIS REPORT
 
 **Date:** 2025-11-24

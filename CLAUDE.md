@@ -22,15 +22,15 @@ established rules and wastes time on approaches that are already documented as i
 Read these documents IN ORDER to understand the current system state:
 
 ```
-docs/blueprint/00_OVERVIEW.md
-docs/blueprint/01_ARCHITECTURE_OVERVIEW.md
-docs/blueprint/02_DESIGN_PRINCIPLES.md
-docs/blueprint/03_DATA_MODEL.md
-docs/blueprint/04_GRDCS_SPECIFICATION.md
-docs/blueprint/06_UI_UX_FOUNDATION.md
-docs/blueprint/07_API_STANDARDS.md
+docs/architecture/00_OVERVIEW.md
+docs/architecture/01_ARCHITECTURE_OVERVIEW.md
+docs/architecture/02_DESIGN_PRINCIPLES.md
+docs/architecture/03_DATA_MODEL.md
+docs/architecture/04_GRDCS_SPECIFICATION.md
+docs/architecture/06_UI_UX_FOUNDATION.md
+docs/architecture/07_API_STANDARDS.md
 docs/blueprint/MASTER_BLUEPRINT.md
-docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md
+docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md
 ```
 
 ### Step 2: Read Relevant Phase Documents
@@ -48,7 +48,7 @@ Before making changes, explore and understand:
 1. **Schema**: Read `prisma/schema.prisma` to understand data models
 2. **Affected Files**: Identify and read all files that will be modified
 3. **Related Components**: Review connected components/APIs
-4. **Recent Changes**: Check `docs/blueprint/CHANGELOG_*.md` for recent updates
+4. **Recent Changes**: Check `docs/changelog/IMPLEMENTATION_CHANGELOG.md` for recent updates
 
 ### Step 4: Create Session Todo List
 
@@ -117,7 +117,7 @@ After EVERY change, update the relevant documentation:
 
 ### 3.2 Changelog Entry Format
 
-Create or update `docs/blueprint/CHANGELOG_YYYY_MM_DD.md`:
+Create or update `docs/changelog/CHANGELOG_YYYY_MM_DD.md`:
 
 ```markdown
 # Changelog - YYYY-MM-DD
@@ -361,10 +361,14 @@ If work is incomplete, document:
 | Dashboard Pages | `app/dashboard/` |
 | Shared Components | `components/` |
 | Business Logic | `lib/` |
-| Blueprint Docs | `docs/blueprint/` |
-| Changelogs | `docs/blueprint/CHANGELOG_*.md` |
+| Architecture Docs | `docs/architecture/` |
 | Phase Docs | `docs/blueprint/PHASE_*.md` |
 | Master Blueprint | `docs/blueprint/MASTER_BLUEPRINT.md` |
+| Changelog | `docs/changelog/IMPLEMENTATION_CHANGELOG.md` |
+| Compliance | `docs/compliance/` |
+| Operational | `docs/operational/` |
+| BAU Framework | `docs/bau-framework/` |
+| Doc Index | `docs/00_INDEX.md` |
 
 ---
 
@@ -462,7 +466,7 @@ and source files, **STOP and read them first**. No exceptions.
 
 For EVERY session that produces code changes, you MUST create or update a changelog:
 
-**File**: `docs/blueprint/CHANGELOG_YYYY_MM_DD.md` (one per day, append if exists)
+**File**: `docs/changelog/CHANGELOG_YYYY_MM_DD.md` (one per day, append if exists)
 
 **Required content for each change:**
 
@@ -522,7 +526,7 @@ When fixing bugs, always add a brief comment explaining the fix in the code itse
 
 ```typescript
 // Fix: [description of what was wrong and why this is correct]
-// See: docs/blueprint/CHANGELOG_YYYY_MM_DD.md
+// See: docs/changelog/CHANGELOG_YYYY_MM_DD.md
 ```
 
 ### 11.5 Enforcement
@@ -651,7 +655,7 @@ export async function GET(request: NextRequest) {
 | **Build before commit** | `npm run build` MUST pass before any commit |
 | **Lint before push** | `npm run lint` should pass (document pre-existing failures) |
 | **PR for every deployment** | No direct deployments. All changes via pull request |
-| **Changelog per session** | Every session with code changes gets a `docs/blueprint/CHANGELOG_*.md` entry |
+| **Changelog per session** | Every session with code changes gets a `docs/changelog/CHANGELOG_*.md` entry |
 | **Phase doc updates** | Mark completed items ✅ in the relevant `PHASE_*.md` |
 | **Master Blueprint sync** | Update `MASTER_BLUEPRINT.md` when phase status changes |
 

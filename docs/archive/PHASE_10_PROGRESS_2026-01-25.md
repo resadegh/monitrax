@@ -1,3 +1,5 @@
+> **ARCHIVED** - This progress report is frozen at 45% but Phase 10 is actually 100% complete (GCP Identity Platform migration completed Feb 2026). See `docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md` for the authoritative specification. Archived on 2026-04-10.
+
 # Phase 10: Authentication & Security - Progress Report
 
 **Status:** 45% Complete (Paused)
