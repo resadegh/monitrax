@@ -409,8 +409,8 @@ These are not required for the migration but recommended:
 | 4. Connection Update | NOT STARTED | | | |
 | 5. Vercel Network Config | NOT STARTED | | | |
 | 6. Smoke Testing | NOT STARTED | | | |
-| 7. Security Hardening | NOT STARTED | | | |
-| 8. Decommission Render | NOT STARTED | | | |
+| 7. Security Hardening | COMPLETE (P0) | 2026-04-10 | 2026-04-10 | Audit logging enabled (log_connections, log_disconnections, log_statement=ddl). Old IP entries removed. 0.0.0.0/0 documented as Vercel requirement. P1/P2 items tracked in Future Improvements. |
+| 8. Decommission Render | IN PROGRESS | 2026-04-10 | | |
 | 9. Doc Updates | NOT STARTED | | | |
 | 10. Future Improvements | OPTIONAL | | | |
 
