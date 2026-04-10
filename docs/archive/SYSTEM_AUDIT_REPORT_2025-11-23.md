@@ -1,3 +1,5 @@
+> **ARCHIVED** - This document is a historical snapshot from Nov 2025. Many findings (e.g., Phase 9.5 components "NOT integrated") have been resolved in subsequent phases. See `docs/AUDIT_REPORT_ALIGNED.md` for current audit status. Archived on 2026-04-10.
+
 # Monitrax System-Wide Audit Report
 
 **Date:** 2025-11-23

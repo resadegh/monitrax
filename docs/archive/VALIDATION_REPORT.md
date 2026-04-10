@@ -1,3 +1,5 @@
+> **ARCHIVED** - This is a point-in-time validation report from Nov 2024. The system has evolved significantly since then. See `docs/operational/runbooks/03_HEALTH_CHECKS.md` for current validation procedures. Archived on 2026-04-10.
+
 # Monitrax Validation Report
 
 Generated: 2024-11-28T00:00:00.000Z

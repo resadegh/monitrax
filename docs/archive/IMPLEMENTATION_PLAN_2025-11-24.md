@@ -1,3 +1,5 @@
+> **ARCHIVED** - This 8-build implementation plan from Nov 2025 has been largely completed. See `docs/blueprint/MASTER_BLUEPRINT.md` for current phase status and `docs/IMPLEMENTATION_CHANGELOG.md` for change history. Archived on 2026-04-10.
+
 # MONITRAX IMPLEMENTATION PLAN
 
 **Created:** 2025-11-24

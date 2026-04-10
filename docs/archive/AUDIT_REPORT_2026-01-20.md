@@ -1,3 +1,5 @@
+> **ARCHIVED** - This document has been superseded by `docs/AUDIT_REPORT_ALIGNED.md` (which includes blueprint alignment and remediation tracking). Archived on 2026-04-10.
+
 # Monitrax Application Audit Report
 
 **Date:** January 20, 2026

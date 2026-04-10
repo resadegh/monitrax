@@ -1,3 +1,5 @@
+> **ARCHIVED** - This is a point-in-time deployment validation for Phase 11 from Nov 2025. See `docs/operational/deployment/` for current deployment procedures. Archived on 2026-04-10.
+
 # Phase 11 Deployment Validation Report
 
 **Date:** 2025-11-26
