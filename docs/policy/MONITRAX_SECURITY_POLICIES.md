@@ -252,3 +252,234 @@ Audit logging ensures traceability and accountability of all actions within Moni
 - **Access:** Admin portal audit logs page with date/action/status filtering and CSV export.
 - **Anomaly detection:** `detectBruteForce()`, `detectBulkExport()`, `detectMfaFailures()` in `lib/security/cdrAuditCompliance.ts`.
 - **Review:** Monthly log review by Director. Automated alerts planned via GCP Cloud Monitoring.
+
+---
+
+## 10. Access Control
+
+### Introduction
+
+Access to Monitrax systems and CDR data is controlled through GCP Identity Platform (Firebase Auth) as the sole identity provider, combined with application-level RBAC enforced on every API route.
+
+### Policy Requirements
+
+- Access granted on least-privilege principle — users receive minimum permissions for their role.
+- Unique accounts per user — Firebase Auth enforces per-email uniqueness. No shared or generic accounts.
+- MFA required for CDR data access (see Policy 7).
+- Entity-level ownership verification — users can only access their own financial data.
+- Rate limiting enforced per endpoint to prevent abuse.
+- Account lockout after repeated failed authentication attempts.
+- 30-minute inactivity auto-logout with 2-minute warning dialog.
+
+### Implementation
+
+- **Identity provider:** GCP Identity Platform (Firebase Auth) — sole auth system, no custom JWT issuance.
+- **RBAC:** `lib/auth/permissions.ts` defines 50+ permissions. `lib/auth/guards.ts` enforces via `withPermission()` on all 70+ routes.
+- **Ownership:** `lib/utils/ownership.ts` verifies `userId` match on every data query.
+- **Rate limiting:** `lib/middleware/apiSecurity.ts` — per-endpoint throttling.
+- **Session:** Firebase SDK handles token refresh (1-hour expiry). Client-side inactivity timer (30 minutes).
+- **Audit:** Every access attempt logged via `createAuditLog()` (success and failure).
+
+---
+
+## 11. Monitoring of Application Services
+
+### Introduction
+
+Monitrax monitors application services to ensure availability, performance, and security of systems that handle CDR data. Monitoring covers the frontend (Vercel), database (GCP Cloud SQL), authentication (Firebase Auth), and API endpoints.
+
+### Policy Requirements
+
+- All services accessing CDR data must have their actions logged and retained.
+- Logs must be reviewed regularly for irregular or unauthorised access.
+- Health check endpoints must be available for automated monitoring.
+- Access to monitoring logs restricted to authorised personnel only.
+
+### Implementation
+
+- **Health endpoint:** `GET /api/health` — verifies database connectivity, returns system status.
+- **Database monitoring:** GCP Cloud SQL Console — CPU, memory, disk, connections, replication lag metrics.
+- **Frontend monitoring:** Vercel Analytics — deployment status, build logs, runtime errors.
+- **Application logs:** Audit log table with 40+ event types — queryable via admin portal.
+- **Uptime:** GCP Cloud Monitoring uptime checks (planned) — 5-minute intervals on `/api/health`.
+- **Alerts:** GCP Cloud Monitoring alert policies (planned) — CPU >80%, disk >90%, error rate >5%.
+- **Review:** Weekly monitoring review by Director.
+
+---
+
+## 12. Secure Authentication
+
+### Introduction
+
+Monitrax enforces strong authentication for all users through Firebase Auth, supporting multiple authentication methods while maintaining security standards appropriate for CDR data protection.
+
+### Policy Requirements
+
+- Passwords must meet minimum complexity: 12+ characters, mixed case, numbers, and symbols.
+- Password history enforced by Firebase Auth — prevents reuse of recent passwords.
+- Account lockout after specified failed login attempts.
+- Multi-factor authentication available for all users, mandatory for CDR data routes.
+- Password managers encouraged for unique, complex credentials.
+- Credentials must never be shared. All actions performed under individual accounts.
+
+### Implementation
+
+- **Provider:** Firebase Auth manages all password policies, lockout, and credential storage.
+- **Methods:** Email/password, Google OAuth, Apple OAuth, Microsoft OAuth, Facebook OAuth, Magic Links (passwordless), Passkeys (WebAuthn/FIDO2).
+- **MFA:** Firebase TOTP — enrollable via settings page, enforced on CDR routes.
+- **Token lifecycle:** 1-hour expiry, automatic refresh by Firebase SDK. 30-minute inactivity timeout client-side.
+- **Admin passwords:** bcrypt(12), 12+ chars with complexity enforced (`lib/admin/constants.ts`).
+- **Password policy review:** Firebase Auth password settings reviewed quarterly in GCP Console.
+
+---
+
+## 13. Protecting Data in Transit
+
+### Introduction
+
+All data transmitted to, from, and within Monitrax is encrypted in transit to prevent interception by unauthorised parties. This is critical for CDR data which includes account balances, transaction histories, and account identifiers.
+
+### Policy Requirements
+
+- All data in transit must be encrypted using TLS 1.2 or higher.
+- All API communications must use HTTPS — no unencrypted HTTP channels.
+- Database connections must use SSL with certificate verification.
+- Third-party API calls (Basiq, Firebase, Google APIs) must use TLS.
+- No CDR data transmitted via unencrypted channels (email, SMS, HTTP).
+
+### Implementation
+
+- **Frontend:** Vercel enforces HTTPS with automatic SSL certificate provisioning and renewal.
+- **Database:** GCP Cloud SQL configured with `sslmode=require` in DATABASE_URL. SSL certificate verified during migration (2026-04-10).
+- **Firebase:** All Firebase Auth API calls over TLS (enforced by Firebase SDK).
+- **Basiq API:** HTTPS-only API endpoints for CDR data collection and sync.
+- **Internal:** All inter-service communication within GCP uses Google's encrypted internal network.
+- **Verification:** SSL configuration verified quarterly. Certificate expiry monitored.
+
+---
+
+## 14. Protecting Data at Rest
+
+### Introduction
+
+CDR data stored in Monitrax's database is encrypted at rest to prevent unauthorised access in the event of physical media compromise. Data residency requirements are met by hosting in the australia-southeast1 (Sydney) GCP region.
+
+### Policy Requirements
+
+- All CDR data must be encrypted at rest using AES-256 or equivalent.
+- Encryption keys must be securely managed, backed up, and rotated.
+- Access to CDR data restricted to authorised personnel and application services only.
+- CDR data must reside in Australian jurisdiction (GCP Sydney region).
+- End-user devices must use full-disk encryption (FileVault on macOS).
+
+### Implementation
+
+- **Database:** GCP Cloud SQL provides AES-256 encryption at rest using Google-managed keys (default). Future: CMEK via Cloud KMS for customer-managed key rotation.
+- **Data residency:** Cloud SQL instance in australia-southeast1 (Sydney). Verified during migration 2026-04-10.
+- **Device encryption:** macOS FileVault enabled on all development devices.
+- **Backup encryption:** GCP Cloud SQL automated backups are encrypted at rest (same key).
+- **Key management:** Currently Google-managed. Planned: Cloud KMS CMEK for key rotation control.
+
+---
+
+## 15. Firewall Protection
+
+### Introduction
+
+Monitrax protects its network boundaries through cloud-native security controls, restricting access to CDR data from untrusted networks and preventing unauthorised inbound connections.
+
+### Policy Requirements
+
+- All incoming traffic must pass through security controls before reaching CDR data.
+- Access from untrusted networks must be restricted.
+- Only necessary protocols (HTTPS) permitted for external access.
+- Firewall configuration reviewed regularly.
+- Rate limiting applied to prevent API abuse and DDoS.
+
+### Implementation
+
+- **Frontend:** Vercel edge network provides DDoS protection and request filtering.
+- **Database:** GCP Cloud SQL configured with authorized networks list. SSL enforcement blocks unencrypted connections.
+- **API rate limiting:** `lib/middleware/apiSecurity.ts` — per-endpoint throttling.
+- **Application firewall:** macOS Application Firewall enabled on development devices.
+- **Planned:** GCP Cloud Armor WAF with OWASP Top 10 rules for CDR data endpoint protection.
+- **Review:** Network access rules reviewed quarterly in GCP Console.
+
+---
+
+## 16. Server Hardening
+
+### Introduction
+
+Monitrax uses managed cloud services (Vercel, GCP Cloud SQL, Firebase Auth) — server hardening is primarily the responsibility of the cloud vendors. This policy documents the additional hardening measures applied at the application level.
+
+### Policy Requirements
+
+- All servers running CDR data services must be configured per industry standards.
+- Latest security patches must be installed (managed by cloud vendors).
+- Strong authentication required for all administrative access (MFA for admin roles).
+- Encrypted protocols (SSL/TLS) for all remote access.
+- Unnecessary services and ports disabled.
+- System logs regularly reviewed and monitored.
+
+### Implementation
+
+- **Infrastructure:** No self-managed servers. Vercel (serverless), GCP Cloud SQL (managed PostgreSQL), Firebase Auth (managed identity). All vendor-hardened.
+- **Database flags:** `log_connections=on`, `log_disconnections=on`, `log_statement=ddl` — audit trail for all database access.
+- **SSL:** Enforced on Cloud SQL (`sslmode=require`). No unencrypted database connections permitted.
+- **Admin access:** GCP Console via IAM (Google account + MFA). No SSH access to production systems.
+- **Patching:** Automatic — vendors handle OS-level patching for managed services.
+
+---
+
+## 17. End-User Device Hardening
+
+### Introduction
+
+This policy ensures all devices used to access Monitrax systems and CDR data are secured against threats. Currently applies to the Director's development device; will extend to all staff devices upon team expansion.
+
+### Policy Requirements
+
+- All devices must be updated with latest security patches (within 7 days of release).
+- Anti-malware software must be installed and active.
+- Full-disk encryption must be enabled.
+- Devices must auto-lock after period of inactivity.
+- CDR data must never be stored on end-user devices — accessed via API only.
+- Remote wipe capability must be available.
+
+### Implementation
+
+- **OS:** macOS with automatic updates enabled. Security patches applied within 7 days.
+- **Anti-malware:** XProtect (built-in, auto-updated), Gatekeeper (prevents unsigned apps).
+- **Encryption:** FileVault full-disk encryption enabled.
+- **Firewall:** macOS Application Firewall enabled.
+- **Auto-lock:** Screen lock after 5 minutes of inactivity.
+- **CDR data:** Never stored locally — accessed via HTTPS API, rendered in browser only.
+- **Production access:** Cloud-only via GCP Console (no direct database connections from devices).
+- **Full policy:** `docs/policy/DEVICE_SECURITY_POLICY.md`
+
+---
+
+## 18. Data Loss Prevention
+
+### Introduction
+
+Monitrax implements controls to prevent unauthorised disclosure or leakage of CDR data. CDR data is accessed exclusively via API and is never exported in bulk, cached in browser storage, or included in log files.
+
+### Policy Requirements
+
+- Least privilege for all CDR data access — RBAC enforced on every route.
+- No bulk export of CDR financial data. CSV export exists only for audit logs (no financial data).
+- CDR data must not be stored in browser localStorage or sessionStorage.
+- Email attachments containing CDR data must be encrypted (N/A — CDR data never sent via email).
+- CDR data must not be placed on removable storage devices.
+- All CDR data access must be monitored and audited. Suspicious activity reported immediately.
+
+### Implementation
+
+- **API-only access:** CDR data fetched via authenticated API calls, rendered in browser DOM only.
+- **No bulk export:** No endpoint exports raw CDR financial data. Reports use aggregated/derived data.
+- **Log sanitization:** `sanitizeCdrMetadata()` strips CDR data from all audit log entries.
+- **Browser storage:** CDR data kept in React state only — not persisted to localStorage/sessionStorage.
+- **Planned:** GCP Cloud DLP for automated PII detection and redaction in CDR data flows.
+- **Monitoring:** Audit logs track all data access. `detectBulkExport()` flags unusual export patterns.
