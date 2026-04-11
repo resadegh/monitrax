@@ -30,6 +30,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 1.0 — MFA Setup for User Accounts
 
+**Covers spreadsheet requirements:** Step 3.1 → **3.3 MFA enabled**, 3.4 Strong passwords
 **What Basiq wants to see:** Proof that MFA is enabled and enforced for accounts accessing CDR data.
 
 ### Screenshots needed:
@@ -57,6 +58,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 2.0 — Users with Admin Access
 
+**Covers spreadsheet requirements:** Step 3.1 → **3.5 Role-based access**, **3.6 As-needed access**, **3.7 Admin accounts reviewed**
 **What Basiq wants to see:** A list of users who have privileged access to CDR-relevant systems.
 
 ### Screenshots needed:
@@ -82,6 +84,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 3.0 — Role-Based Access Control
 
+**Covers spreadsheet requirements:** Step 3.1 → **3.5 Role-based access**, **3.6 As-needed access**
 **What Basiq wants to see:** Proof that RBAC restricts access to CDR data based on roles and permissions.
 
 ### Screenshots needed:
@@ -105,6 +108,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 4.0 — Strong Password Controls
 
+**Covers spreadsheet requirements:** Step 3.1 → **3.4 Strong passwords**
 **What Basiq wants to see:** Configuration showing password complexity requirements.
 
 ### Screenshots needed:
@@ -124,6 +128,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 5.0 — Logging Configuration
 
+**Covers spreadsheet requirements:** Step 3.2 → **3.8 Critical events logged**, **3.9 Security events logged**, **3.10 Auth logged**, **3.11 API requests logged**, **3.13 Logs exclude CDR data**, **3.14 Logs retained >90 days**
 **What Basiq wants to see:** Proof that critical events are logged and CDR data is excluded from logs.
 
 ### Screenshots needed:
@@ -148,6 +153,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 6.0 — Network Protection
 
+**Covers spreadsheet requirements:** Step 3.3 → **3.16 Network rules enforced**
 **What Basiq wants to see:** Proof that the network hosting CDR data is protected from unnecessary external access.
 
 ### Screenshots needed:
@@ -172,6 +178,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 7.0 — Encryption in Transit (SSL)
 
+**Covers spreadsheet requirements:** Step 3.3 → **3.17 Data in transit encrypted**
 **What Basiq wants to see:** Proof that CDR data is encrypted in transit.
 
 ### Screenshots needed:
@@ -198,6 +205,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 8.0 — Encryption at Rest
 
+**Covers spreadsheet requirements:** Step 3.5 → **3.29 CDR data at rest encrypted**
 **What Basiq wants to see:** Proof that CDR data is encrypted when stored.
 
 ### Screenshots needed:
@@ -217,6 +225,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 9.0 — Patching of Services and Libraries
 
+**Covers spreadsheet requirements:** Step 3.3 → **3.18 Regularly patched**, Step 3.6 → **3.34 Libraries updated**
 **What Basiq wants to see:** Proof that dependencies and services are kept up to date.
 
 ### Screenshots needed:
@@ -241,6 +250,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 10.0 — Secure Coding Practices
 
+**Covers spreadsheet requirements:** Step 3.6 → **3.31 Code peer reviewed**, **3.32 Version control**, **3.33 Code tested**
 **What Basiq wants to see:** Proof of code review process and CI/CD pipeline.
 
 ### Screenshots needed:
@@ -264,6 +274,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 11.0 — Vulnerability Scanning
 
+**Covers spreadsheet requirements:** Step 3.3 → **3.19 Tested for security vulnerabilities**
 **What Basiq wants to see:** A vulnerability scan or penetration test report.
 
 ### BLOCKER — This requires action before you can provide evidence.
@@ -299,6 +310,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 12.0 — Anti-Virus on End Devices
 
+**Covers spreadsheet requirements:** Step 3.4 → **3.22 Anti-malware/anti-virus installed**
 **What Basiq wants to see:** Proof that anti-virus/anti-malware is active on devices.
 
 ### Screenshots needed:
@@ -329,6 +341,7 @@ Upload all evidence files to the **"Evidence" folder** in the shared Google Driv
 
 ## Evidence 13.0 — System Architecture Diagram
 
+**Covers spreadsheet requirements:** Step 6 general requirement — CDR data boundary diagram
 **What Basiq wants to see:** A diagram showing where CDR data is held and the service boundaries.
 
 ### Already Prepared!
@@ -356,6 +369,7 @@ The architecture diagram has been created at `docs/compliance/CDR_SYSTEM_ARCHITE
 
 ## Evidence 14.0 — Insurance Certificates
 
+**Covers spreadsheet requirements:** Step 6 general requirement — business insurance
 **What Basiq wants to see:** Certificates of currency for cyber liability and professional liability insurance.
 
 ### BLOCKER — This requires action before you can provide evidence.
@@ -389,22 +403,22 @@ The architecture diagram has been created at `docs/compliance/CDR_SYSTEM_ARCHITE
 
 ## Quick Reference Checklist
 
-| # | Evidence | Files to Upload | Status |
-|---|----------|----------------|--------|
-| 1.0 | MFA Setup | `1.0_MFA_Setup_Firebase.png`, `1.0_MFA_Setup_App.png`, `1.0_MFA_Enforcement_Code.png` | TODO |
-| 2.0 | Admin Access | `2.0_Admin_Access_GCP_IAM.png`, `2.0_Admin_Access_Portal.png`, `2.0_Admin_Access_Firebase.png` | TODO |
-| 3.0 | RBAC | `3.0_RBAC_Permissions.png`, `3.0_RBAC_Guard_Usage.png`, `3.0_RBAC_Schema.png` | TODO |
-| 4.0 | Passwords | `4.0_Password_Policy_Firebase.png`, `4.0_Password_Policy_Admin.png` | TODO |
-| 5.0 | Logging | `5.0_Logging_AuditLog.png`, `5.0_Logging_Sanitization.png`, `5.0_Logging_CloudSQL_Flags.png` | TODO |
-| 6.0 | Network | `6.0_Network_AuthorizedNetworks.png`, `6.0_Network_SSL.png` | TODO |
-| 7.0 | SSL/TLS | `7.0_SSL_CloudSQL.png`, `7.0_SSL_Vercel.png`, `7.0_SSL_DatabaseURL.png` | TODO |
-| 8.0 | Encryption | `8.0_Encryption_CloudSQL.png`, `8.0_Encryption_Region.png` | TODO |
-| 9.0 | Patching | `9.0_Patching_Dependabot_Config.png`, `9.0_Patching_Dependabot_PRs.png`, `9.0_Patching_npm_audit.png` | TODO |
-| 10.0 | Secure Coding | `10.0_Coding_PR_Review.png`, `10.0_Coding_CI_Pipeline.png`, `10.0_Coding_Branch_Protection.png` | TODO |
-| 11.0 | Vuln Scan | `11.0_Vuln_Scan_*.pdf` | **BLOCKER** |
-| 12.0 | Anti-virus | `12.0_Antivirus_Gatekeeper.png`, `12.0_Antivirus_FileVault.png`, `12.0_Antivirus_Firewall.png` | TODO |
-| 13.0 | Architecture | `13.0_Architecture_Diagram.pdf` | **READY** |
-| 14.0 | Insurance | `14.0_Insurance_*.pdf` | **BLOCKER** |
+| Evidence # | Spreadsheet Req # | Evidence Description | Files to Upload | Status |
+|------------|-------------------|---------------------|----------------|--------|
+| 1.0 | 3.3, 3.4 | MFA Setup + Password Controls | `1.0_MFA_Setup_Firebase.png`, `1.0_MFA_Setup_App.png`, `1.0_MFA_Enforcement_Code.png` | TODO |
+| 2.0 | 3.5, 3.6, 3.7 | Admin Access + RBAC + Review | `2.0_Admin_Access_GCP_IAM.png`, `2.0_Admin_Access_Portal.png`, `2.0_Admin_Access_Firebase.png` | TODO |
+| 3.0 | 3.5, 3.6 | Role-Based Access Control | `3.0_RBAC_Permissions.png`, `3.0_RBAC_Guard_Usage.png`, `3.0_RBAC_Schema.png` | TODO |
+| 4.0 | 3.4 | Strong Password Controls | `4.0_Password_Policy_Firebase.png`, `4.0_Password_Policy_Admin.png` | TODO |
+| 5.0 | 3.8-3.11, 3.13, 3.14 | Logging Configuration | `5.0_Logging_AuditLog.png`, `5.0_Logging_Sanitization.png`, `5.0_Logging_CloudSQL_Flags.png` | TODO |
+| 6.0 | 3.16 | Network Protection | `6.0_Network_AuthorizedNetworks.png`, `6.0_Network_SSL.png` | TODO |
+| 7.0 | 3.17 | Encryption in Transit | `7.0_SSL_CloudSQL.png`, `7.0_SSL_Vercel.png`, `7.0_SSL_DatabaseURL.png` | TODO |
+| 8.0 | 3.29 | Encryption at Rest | `8.0_Encryption_CloudSQL.png`, `8.0_Encryption_Region.png` | TODO |
+| 9.0 | 3.18, 3.34 | Patching + Library Updates | `9.0_Patching_Dependabot_Config.png`, `9.0_Patching_Dependabot_PRs.png`, `9.0_Patching_npm_audit.png` | TODO |
+| 10.0 | 3.31, 3.32, 3.33 | Secure Coding Practices | `10.0_Coding_PR_Review.png`, `10.0_Coding_CI_Pipeline.png`, `10.0_Coding_Branch_Protection.png` | TODO |
+| 11.0 | 3.19 | Vulnerability Scanning | `11.0_Vuln_Scan_*.pdf` | **BLOCKER** |
+| 12.0 | 3.22 | Anti-virus on Devices | `12.0_Antivirus_Gatekeeper.png`, `12.0_Antivirus_FileVault.png`, `12.0_Antivirus_Firewall.png` | TODO |
+| 13.0 | Step 6 general | System Architecture Diagram | `13.0_Architecture_Diagram.pdf` | **READY** |
+| 14.0 | Step 6 general | Insurance Certificates | `14.0_Insurance_*.pdf` | **BLOCKER** |
 
 **Total files to upload: ~35 screenshots/documents**
 **Estimated time to capture all screenshots: 2-3 hours**
