@@ -322,82 +322,144 @@
 
 ## REMEDIATION ACTION PLAN
 
-> **Updated:** 2026-04-11 after deep code-level audit. **34 total gaps** (was 12).
+> **Updated:** 2026-04-11 after deep code-level audit. **46 total gaps** (was 12).
+> Each gap includes a **Verification Check** — a command or procedure to confirm the fix is in place.
+> If the check passes but the gap is still marked open, the fix was applied but this document was not updated.
 
 ### Priority 0 — Must Complete Before Submission
 
-| # | Gap | Action | Owner | Timeline | Cost |
-|---|-----|--------|-------|----------|------|
-| G1 | Vulnerability scan | Option A: Commission external pen test. Option B: Run OWASP ZAP self-service scan against production | Director | 1-2 weeks | $2K-$5K (external) or Free (ZAP) |
-| G2 | Insurance | Contact insurance broker for: (a) Cyber liability insurance, (b) Professional indemnity insurance. Request certificates of currency. | Director | 1-2 weeks | $2K-$5K/year |
-| G29 | Cloud Scheduler | Configure GCP Cloud Scheduler: daily 02:00 UTC, `POST /api/cdr/lifecycle`, CRON_SECRET auth. **Without this, consent expiry automation never runs.** | Director | 1 hour | ~$0.10/month |
+| # | Gap | Action | Owner | Verification Check |
+|---|-----|--------|-------|--------------------|
+| G1 | Vulnerability scan | Run OWASP ZAP or commission external pen test | Director | Check: vulnerability scan report file exists in Evidence folder |
+| G2 | Insurance certificates | Contact broker for cyber liability + PI insurance | Director | Check: insurance certificate files exist in Evidence folder |
+| G29 | GCP Cloud Scheduler not configured | GCP Console → Cloud Scheduler → Create job: daily 02:00 UTC, POST /api/cdr/lifecycle, Bearer CRON_SECRET | Director | Check: `gcloud scheduler jobs list --project=monitrax-prod` shows CDR lifecycle job |
+| G35 | Admin dashboard NO auth | Add `verifyAdminAuth()` to `app/api/admin/dashboard/route.ts` | Developer | Check: `grep -c "verifyAdminAuth\|withPermission" app/api/admin/dashboard/route.ts` returns ≥1 |
 
 ### Priority 1 — Must Complete Before Go-Live (CDR Data Flows)
 
 **Consumer-Facing (CDR Rules mandate):**
 
-| # | Gap | Action | Owner | Timeline | Cost |
-|---|-----|--------|-------|----------|------|
-| G13/G14 | Consumer consent management UI + CDR data dashboard | Build `/dashboard/settings/privacy` page: view active consents, connected banks, data scope, revoke consent, request data deletion. Combines G4, G12, G13, G14. | Developer | 5-7 days | Dev time |
+| # | Gap | Action | Owner | Verification Check |
+|---|-----|--------|-------|--------------------|
+| G4/G12/G13/G14 | Consumer consent management UI + CDR data dashboard | Build `/dashboard/settings/privacy` page: view consents, banks, scope, revoke, delete | Developer | Check: `find app -path "*/privacy/page.tsx" -o -path "*/data-sharing/page.tsx"` returns a file |
+| G36 | Portal consent page uses demo data | Replace hardcoded data with real Basiq consent flow | Developer | Check: `grep -c "demo\|Demo\|DEMO\|hardcoded" app/portal/consent/*/page.tsx` returns 0 |
 
 **Code Fixes (CDR compliance):**
 
-| # | Gap | Action | Owner | Timeline | Cost |
-|---|-----|--------|-------|----------|------|
-| G15 | deleteCDRData() doesn't call Basiq API | Add `deleteConnection()` from `lib/basiq.ts` before local deletion in `deleteCDRData()` | Developer | 0.5 day | Dev time |
-| G16 | No Basiq Events/Webhooks | Create `/api/basiq/webhook` endpoint. Subscribe via Basiq dashboard. Handle consent revocation/expiry events. | Developer | 2-3 days | Dev time |
-| G18 | No CDRConsent model | Create `CDRConsent` Prisma model: userId, status, scope, grantedAt, expiresAt, revokedAt, legalBasis. Migrate consent tracking. | Developer | 2-3 days | Dev time |
-| G19 | BasiqConnection missing consent fields | Add `consentExpiresAt`, `consentScope` to BasiqConnection schema. Populate from Basiq API response. | Developer | 1 day | Dev time |
-| G20 | revoke_all doesn't revoke Basiq-side | Update `/api/cdr/consent` to call `deleteConnection()` for each active BasiqConnection. | Developer | 0.5 day | Dev time |
-| G21 | cdr_data.* permissions missing | Add `cdr_data.read`, `cdr_data.write`, `cdr_data.delete` to permissions.ts. Migrate CDR routes from `account.*`. | Developer | 1 day | Dev time |
-| G22 | deleteCDRData() no $transaction | Wrap all deletion operations in `prisma.$transaction()` for atomicity. | Developer | 0.5 day | Dev time |
-| G25 | checkConsentExpiry() ignores direct users | Add BasiqConnection expiry check to scheduled job (requires G19). | Developer | 0.5 day | Dev time |
-| G28 | DELETE connection soft-disables | Change to hard-delete `BasiqConnection` record after Basiq API call. | Developer | 0.5 day | Dev time |
+| # | Gap | Action | Owner | Verification Check |
+|---|-----|--------|-------|--------------------|
+| G15 | deleteCDRData() doesn't call Basiq API | Add `deleteConnection()` before local deletion | Developer | Check: `grep -c "deleteConnection" lib/services/cdrDataLifecycle.ts` returns ≥1 |
+| G16 | No Basiq Events/Webhooks | Create `/api/basiq/webhook` endpoint. Subscribe via Basiq dashboard. | Developer | Check: `ls app/api/basiq/webhook/route.ts` — file exists |
+| G18 | No CDRConsent model | Create Prisma model: userId, status, scope, grantedAt, expiresAt, revokedAt | Developer | Check: `grep -c "model CDRConsent" prisma/schema.prisma` returns 1 |
+| G19 | BasiqConnection missing consent fields | Add `consentExpiresAt`, `consentScope` to schema | Developer | Check: `grep "consentExpiresAt" prisma/schema.prisma` appears in BasiqConnection block |
+| G20 | revoke_all doesn't revoke Basiq-side | Call `deleteConnection()` for each active BasiqConnection | Developer | Check: `grep -c "deleteConnection" app/api/cdr/consent/route.ts` returns ≥1 |
+| G21 | cdr_data.* permissions don't exist | Add `cdr_data.read/write/delete` to permissions.ts. Migrate CDR routes. | Developer | Check: `grep -c "cdr_data" lib/auth/permissions.ts` returns ≥3 |
+| G22 | deleteCDRData() no $transaction | Wrap all operations in `prisma.$transaction()` | Developer | Check: `grep -c "\\$transaction" lib/services/cdrDataLifecycle.ts` returns ≥1 |
+| G25 | checkConsentExpiry() ignores direct users | Add BasiqConnection expiry check (requires G19) | Developer | Check: `grep -c "basiqConnection.*expire\|BasiqConnection.*expired" lib/services/cdrDataLifecycle.ts` returns ≥1 |
+| G28 | DELETE connection soft-disables | Hard-delete BasiqConnection after Basiq API call | Developer | Check: `grep -c "delete.*basiqConnection" app/api/basiq/connections/*/route.ts` returns ≥1 |
+
+**Auth & Permissions:**
+
+| # | Gap | Action | Owner | Verification Check |
+|---|-----|--------|-------|--------------------|
+| G37 | ~40 routes on legacy auth | Migrate ALL non-public routes to `withPermission()` | Developer | Check: `grep -rl "verifyToken\|getCurrentUser" app/api/ \| wc -l` returns 0 |
+| G38 | Storage settings routes no auth | Add `withPermission('settings.write')` | Developer | Check: `grep -c "withPermission" app/api/settings/storage/*/route.ts` returns ≥1 per file |
+| G39 | Document routes legacy auth | Migrate from `getCurrentUser()` to `withPermission()` | Developer | Check: `grep -c "getCurrentUser" app/api/documents/*/route.ts` returns 0 |
+| G41 | Legacy routes bypass audit trail | Fixed by G37 — guarded routes get automatic audit logging | Developer | Same check as G37 |
+
+**Basiq Integration:**
+
+| # | Gap | Action | Owner | Verification Check |
+|---|-----|--------|-------|--------------------|
+| G16 | Basiq Events webhook (same as above) | Subscribe via Basiq dashboard after endpoint created | Director | Check: Basiq dashboard shows webhook subscription |
 
 **GCP Services:**
 
-| # | Gap | Action | Owner | Timeline | Cost |
-|---|-----|--------|-------|----------|------|
-| G5 | Cloud Armor WAF | GCP Console → Security → Cloud Armor → Create policy. Enable OWASP Top 10 rules. | Director | 1 day | ~$5/month |
-| G6 | Security Command Center | GCP Console → Enable Standard tier. Configure vulnerability scanning. | Director | 1 hour | Free |
+| # | Gap | Action | Owner | Verification Check |
+|---|-----|--------|-------|--------------------|
+| G5 | Cloud Armor WAF | GCP Console → Cloud Armor → Create policy with OWASP rules | Director | Check: `gcloud compute security-policies list` shows policy |
+| G6 | Security Command Center | GCP Console → Enable Standard tier | Director | Check: GCP Console → SCC shows enabled |
+
+**Policy & Documentation:**
+
+| # | Gap | Action | Owner | Verification Check |
+|---|-----|--------|-------|--------------------|
+| G40 | No CDR complaints process | Create `docs/policy/CDR_COMPLAINTS_POLICY.md` | Developer | Check: `ls docs/policy/CDR_COMPLAINTS_POLICY.md` — file exists |
+| G43 | Complaints/disclosures not tracked in DB | Create `CDRComplaint` and `CDRDisclosure` Prisma models | Developer | Check: `grep -c "model CDRComplaint" prisma/schema.prisma` returns 1 |
+| G46 | Data minimisation not enforced | Document approach + implement scope-based filtering on CDR routes | Developer | Check: `grep -c "accessScopes\|dataMinimisation" app/api/basiq/*/route.ts` returns ≥1 |
 
 ### Priority 2 — Complete Within 30 Days of Go-Live
 
-| # | Gap | Action | Owner | Timeline | Cost |
-|---|-----|--------|-------|----------|------|
-| G7 | Cloud KMS (CMEK) | Configure Cloud SQL CMEK for CDR data encryption with customer-managed keys | Director | 1 day | ~$1/key/month |
-| G8 | Cloud Logging | Configure log sinks. Set 90-day minimum retention. | Director | 1 day | ~$0.50/GB/month |
-| G9 | Cloud Monitoring | Create uptime checks, alert policies (CPU, disk, error rate). | Director | 1 day | Free (basic) |
-| G10 | Error Reporting | Enable. Configure notification channels. | Director | 1 hour | Free |
-| G17 | MFA guard checks enrollment not session | Verify Firebase token's `sign_in_second_factor` claim in `withMFARequired()`. | Developer | 1 day | Dev time |
-| G23 | Sanitizer doesn't recurse arrays | Add array recursion to `sanitizeCdrMetadata()`. | Developer | 0.5 day | Dev time |
-| G24 | Anonymizer leaves amounts | Strip or aggregate `amount` field in `anonymizeCDRData()`. | Developer | 0.5 day | Dev time |
-| G26 | deleteCDRData() misses RecurringPayment | Add `RecurringPayment` deletion where source is BANK transactions. | Developer | 0.5 day | Dev time |
-| G27 | CRON_SECRET timing-unsafe | Use `crypto.timingSafeEqual()` instead of `!==`. | Developer | 15 min | Dev time |
+| # | Gap | Action | Owner | Verification Check |
+|---|-----|--------|-------|--------------------|
+| G7 | Cloud KMS (CMEK) | Configure Cloud SQL CMEK | Director | Check: `gcloud sql instances describe monitrax-db-prod --format="value(diskEncryptionConfiguration.kmsKeyName)"` returns key |
+| G8 | Cloud Logging | Configure log sinks, 90-day retention | Director | Check: `gcloud logging sinks list --project=monitrax-prod` shows sink |
+| G9 | Cloud Monitoring | Create uptime checks, alert policies | Director | Check: `gcloud monitoring uptime-check-configs list` shows checks |
+| G10 | Error Reporting | Enable via GCP Console | Director | Check: GCP Console → Error Reporting shows enabled |
+| G17 | MFA guard checks enrollment not session | Verify Firebase `sign_in_second_factor` claim in guard | Developer | Check: `grep -c "sign_in_second_factor\|secondFactor" lib/auth/guards.ts` returns ≥1 |
+| G23 | Sanitizer doesn't recurse arrays | Add array recursion to `sanitizeCdrMetadata()` | Developer | Check: sanitizer recurses into arrays (grep for array handling logic) |
+| G24 | Anonymizer leaves amounts | Strip or aggregate `amount` field | Developer | Check: `grep -c "amount.*REDACTED\|amount.*null" lib/services/cdrDataLifecycle.ts` returns ≥1 |
+| G26 | deleteCDRData() misses RecurringPayment | Delete BANK-sourced RecurringPayment records | Developer | Check: `grep -c "recurringPayment\|RecurringPayment" lib/services/cdrDataLifecycle.ts` returns ≥1 |
+| G27 | CRON_SECRET timing-unsafe | Use `crypto.timingSafeEqual()` | Developer | Check: `grep -c "timingSafeEqual" app/api/cdr/lifecycle/route.ts` returns ≥1 |
+| G42 | Testing routes in production | Block in production env or remove | Developer | Check: `ls app/api/testing/ 2>/dev/null` returns nothing, OR files check NODE_ENV |
+| G44 | enforceAuditLogRetention() never scheduled | Add to CDR lifecycle CRON job | Developer | Check: `grep -c "enforceAuditLogRetention" app/api/cdr/lifecycle/route.ts` returns ≥1 |
+| G45 | runAnomalyDetection() never scheduled | Schedule via Cloud Scheduler or lifecycle job | Developer | Check: `grep -c "runAnomalyDetection" app/api/cdr/lifecycle/route.ts` returns ≥1 |
 
 ### Priority 3 — Nice to Have
 
-| # | Gap | Action | Owner | Timeline | Cost |
-|---|-----|--------|-------|----------|------|
-| G3 | Company logo | Create correct-size logo (200x39px). Host on CDN. | Director | 1 hour | Minimal |
-| G11 | Evidence screenshots | Capture all per guide. Upload to Evidence folder. | Director | 2-4 hours | None |
-| G30 | Anonymizer doesn't strip categories | Strip Basiq `categoryLevel1`/`categoryLevel2` fields. | Developer | 15 min | Dev time |
-| G31 | Sanitizer missing merchant fields | Add `merchantRaw`, `merchantStandardised`, `description` to redacted set. | Developer | 15 min | Dev time |
-| G32 | Auth token in localStorage (portal) | Migrate portal auth to httpOnly cookies. | Developer | 1 day | Dev time |
-| G33 | withActiveConsent() 5 DB queries | Optimize to single query or cache auth context. | Developer | 1 day | Dev time |
-| G34 | getTransactions() ignores dates | Add `fromDate`/`toDate` params to Basiq API URL. | Developer | 15 min | Dev time |
+| # | Gap | Action | Owner | Verification Check |
+|---|-----|--------|-------|--------------------|
+| G3 | Company logo | Create 200x39px logo, host on CDN | Director | Check: Logo URL in spreadsheet is not `acme.com` |
+| G11 | Evidence screenshots | Capture all per guide, upload to Evidence folder | Director | Check: Evidence folder contains ≥12 screenshot files |
+| G30 | Anonymizer doesn't strip categories | Strip `categoryLevel1`/`categoryLevel2` | Developer | Check: `grep -c "categoryLevel" lib/services/cdrDataLifecycle.ts` returns ≥1 |
+| G31 | Sanitizer missing merchant fields | Add `merchantRaw`, `merchantStandardised`, `description` | Developer | Check: `grep -c "merchantRaw" lib/security/cdrAuditCompliance.ts` returns ≥1 |
+| G32 | Auth token in localStorage (portal) | Migrate to httpOnly cookies | Developer | Check: `grep -c "localStorage.*token" app/portal/*/page.tsx` returns 0 |
+| G33 | withActiveConsent() 5 DB queries | Optimize to single query or cache | Developer | Check: CDR route response time < 200ms |
+| G34 | getTransactions() ignores dates | Add `fromDate`/`toDate` to Basiq API URL | Developer | Check: `grep -c "fromDate\|from_date" lib/basiq.ts` returns ≥1 in URL params |
 
 ### Effort Summary
 
 | Priority | Gaps | Dev Days | GCP Config | Business Actions |
 |----------|------|----------|------------|-----------------|
 | P0 (Before Submission) | G1, G2, G29, G35 | 0.5 | 1 hour | Pen test + insurance |
-| P1 (Before Go-Live) | G5, G6, G13-G22, G25, G28, G36-G41 | ~20 days | 1.5 days | None |
-| P2 (Within 30 Days) | G7-G10, G17, G23-G24, G26-G27, G42-G46 | ~6 days | 3 days | None |
+| P1 (Before Go-Live) | G4-G6, G12-G22, G25, G28, G36-G41, G43, G46 | ~20 days | 1.5 days | None |
+| P2 (Within 30 Days) | G7-G10, G17, G23-G24, G26-G27, G42, G44-G45 | ~6 days | 3 days | None |
 | P3 (Nice to Have) | G3, G11, G30-G34 | ~3 days | 0 | Logo + screenshots |
 | **TOTAL** | **46 gaps** | **~30 dev days** | **~4.5 days** | **Pen test + insurance** |
 
-> **Note:** Many P1 code gaps (G37-G41) overlap — fixing the legacy auth migration (G37) simultaneously resolves G38, G39, G41. Realistic effort is ~20 dev days, not additive.
+> **Note:** Many P1 code gaps overlap — fixing the legacy auth migration (G37) simultaneously resolves G38, G39, G41. Realistic effort is ~20 dev days, not additive.
+
+### Quick Verification Script
+
+Run this script to check which gaps have already been fixed:
+
+```bash
+#!/bin/bash
+echo "=== P0 CHECKS ==="
+echo -n "G35 Admin auth: "; grep -c "verifyAdminAuth\|withPermission" app/api/admin/dashboard/route.ts 2>/dev/null || echo "MISSING"
+
+echo "=== P1 CODE CHECKS ==="
+echo -n "G15 Basiq API in delete: "; grep -c "deleteConnection" lib/services/cdrDataLifecycle.ts 2>/dev/null || echo "MISSING"
+echo -n "G18 CDRConsent model: "; grep -c "model CDRConsent" prisma/schema.prisma 2>/dev/null || echo "MISSING"
+echo -n "G19 BasiqConnection expiry: "; grep -c "consentExpiresAt" prisma/schema.prisma 2>/dev/null || echo "CHECK COUNT (need ≥2)"
+echo -n "G21 cdr_data perms: "; grep -c "cdr_data" lib/auth/permissions.ts 2>/dev/null || echo "MISSING"
+echo -n "G22 \$transaction: "; grep -c '\$transaction' lib/services/cdrDataLifecycle.ts 2>/dev/null || echo "MISSING"
+echo -n "G37 Legacy auth routes: "; grep -rl "verifyToken\|getCurrentUser" app/api/ 2>/dev/null | grep -v node_modules | wc -l
+echo -n "G16 Basiq webhook: "; ls app/api/basiq/webhook/route.ts 2>/dev/null && echo "EXISTS" || echo "MISSING"
+echo -n "G43 CDRComplaint model: "; grep -c "model CDRComplaint" prisma/schema.prisma 2>/dev/null || echo "MISSING"
+
+echo "=== P1 UI CHECKS ==="
+echo -n "G13 Consent UI: "; find app -path "*privacy*page.tsx" -o -path "*data-sharing*page.tsx" 2>/dev/null | head -1; echo ""
+echo -n "G36 Demo data: "; grep -c "demo\|Demo\|DEMO" app/portal/consent/*/page.tsx 2>/dev/null || echo "CHECK"
+echo -n "G40 Complaints policy: "; ls docs/policy/CDR_COMPLAINTS_POLICY.md 2>/dev/null && echo "EXISTS" || echo "MISSING"
+
+echo "=== P2 CHECKS ==="
+echo -n "G17 MFA session check: "; grep -c "sign_in_second_factor\|secondFactor" lib/auth/guards.ts 2>/dev/null || echo "MISSING"
+echo -n "G27 timingSafeEqual: "; grep -c "timingSafeEqual" app/api/cdr/lifecycle/route.ts 2>/dev/null || echo "MISSING"
+echo -n "G42 Testing routes: "; ls app/api/testing/ 2>/dev/null && echo "EXIST (should remove)" || echo "OK (removed)"
+echo -n "G44 Retention scheduled: "; grep -c "enforceAuditLogRetention" app/api/cdr/lifecycle/route.ts 2>/dev/null || echo "MISSING"
+echo -n "G45 Anomaly scheduled: "; grep -c "runAnomalyDetection" app/api/cdr/lifecycle/route.ts 2>/dev/null || echo "MISSING"
+```
 
 ---
 
