@@ -197,6 +197,7 @@ Every API response follows a standardised format:
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
 | **22** | Marketing Site & Auth Shell | 📋 Planned | Landing page, sign-in experience, public marketing routes |
+| **24B** | Basiq Advanced Integration | 📋 Planned (Pending BASIQ Approval) | Webhooks, scheduled sync, enrichment, account matching |
 | **28** | Advanced Analytics | 📋 Planned | Enhanced reporting, visualization, export improvements |
 | **34** | CDR Security Hardening | ✅ Complete | RBAC on 70+ routes, MFA enforcement, audit persistence, password hardening. PRs [#438](https://github.com/resadegh/monitrax/pull/438), [#440](https://github.com/resadegh/monitrax/pull/440) |
 | **35** | CDR Data Lifecycle | ✅ Complete | Consent-driven CDR data deletion, de-identification, Cloud Scheduler endpoint |
@@ -250,6 +251,13 @@ Every API response follows a standardised format:
 - Connect Australian banks via Basiq
 - Automatic account import from connected banks
 - Real-time balance sync
+
+**Advanced Open Banking (Phase 24B - Pending BASIQ Approval):**
+- Webhook-driven real-time sync
+- Scheduled background synchronisation
+- BASIQ enrichment for transaction categorisation
+- Intelligent account matching and merging
+- Connection health monitoring and auto-recovery
 - Transaction import to UnifiedTransaction
 - Connection status tracking (ACTIVE, PENDING, RECONNECT, ERROR)
 
