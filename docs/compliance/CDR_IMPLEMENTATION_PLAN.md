@@ -25,8 +25,9 @@
 | **I** | Security Policies Document | ✅ **COMPLETE** | [#462](https://github.com/resadegh/monitrax/pull/462) | Step 5: 26 documented policies — `docs/policy/MONITRAX_SECURITY_POLICIES.md` (699 lines) |
 | **J** | Evidence Collection & Submission | 🔶 **IN PROGRESS** | — | Step 6: Evidence guide created. Screenshots + 2 blockers (pen test, insurance) remain. |
 | **K** | Spreadsheet Completion & Submission | 🔶 **IN PROGRESS** | — | Spreadsheet answers documented. Fill + submit pending user action. |
+| **L** | CDR Code-Level Remediation | ⬜ Pending | — | 46 gaps from deep audit. ~20-30 dev days. Critical fixes before go-live. |
 
-**Overall: 7 of 11 phases complete. 2 in progress (user actions). 2 pending (GCP config + API cleanup).**
+**Overall: 7 of 12 phases complete. 2 in progress (user actions). 3 pending (GCP config, API cleanup, code remediation).**
 
 ---
 
@@ -770,6 +771,84 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 
 ---
 
+## PHASE L: CDR Code-Level Remediation — NEW (Deep Audit 2026-04-11)
+
+**Goal:** Fix all code-level CDR compliance gaps identified in deep audit
+**Why:** Deep audit found 46 gaps (was 12). Critical issues include unauthenticated admin route, non-functional consent page, incomplete route migration, missing Basiq webhook integration.
+**Source:** `docs/compliance/CDR_SPREADSHEET_ANSWERS_AND_GAPS.md` — Gap Analysis Summary
+**Effort:** ~20-30 dev days (many gaps overlap)
+**Depends on:** Phase E (GCP services) for some items
+
+### L.1 — Critical Fixes (Before Submission)
+
+| Step | Gap | Action | Effort |
+|------|-----|--------|--------|
+| L.1.1 | G35 | Add auth to `/api/admin/dashboard` — currently returns stats with NO auth | 15 min |
+| L.1.2 | G29 | Configure GCP Cloud Scheduler for consent expiry automation | 1 hour (GCP Console) |
+
+### L.2 — CDR Data Lifecycle Fixes (Before Go-Live)
+
+| Step | Gap | Action | Effort |
+|------|-----|--------|--------|
+| L.2.1 | G15 | `deleteCDRData()` — add Basiq API `deleteConnection()` call before local deletion | 0.5 day |
+| L.2.2 | G22 | `deleteCDRData()` — wrap all operations in `prisma.$transaction()` | 0.5 day |
+| L.2.3 | G26 | `deleteCDRData()` — add RecurringPayment deletion for BANK-sourced records | 0.5 day |
+| L.2.4 | G28 | DELETE connection route — hard-delete instead of soft-disable | 0.5 day |
+| L.2.5 | G20 | `revoke_all` — add Basiq API revocation for direct connections | 0.5 day |
+| L.2.6 | G25 | `checkConsentExpiry()` — add BasiqConnection expiry check (after G19) | 0.5 day |
+
+### L.3 — Schema & Consent Model (Before Go-Live)
+
+| Step | Gap | Action | Effort |
+|------|-----|--------|--------|
+| L.3.1 | G18 | Create `CDRConsent` Prisma model with full lifecycle fields | 1 day |
+| L.3.2 | G19 | Add `consentExpiresAt`, `consentScope` to `BasiqConnection` | 0.5 day |
+| L.3.3 | G43 | Create `CDRComplaint` and `CDRDisclosure` models for record-keeping | 1 day |
+
+### L.4 — Consumer UI (Before Go-Live)
+
+| Step | Gap | Action | Effort |
+|------|-----|--------|--------|
+| L.4.1 | G13/G14 | Build `/dashboard/settings/privacy` — consent management + CDR data dashboard | 5-7 days |
+| L.4.2 | G36 | Replace demo data in portal consent page with real Basiq consent flow | 2-3 days |
+
+### L.5 — Auth & Permissions (Before Go-Live)
+
+| Step | Gap | Action | Effort |
+|------|-----|--------|--------|
+| L.5.1 | G21 | Add `cdr_data.read`, `cdr_data.write`, `cdr_data.delete` permissions | 1 day |
+| L.5.2 | G37 | Complete route migration — ~40 routes still on legacy auth | 3-5 days |
+| L.5.3 | G38 | Add auth to storage settings routes | 0.5 day |
+| L.5.4 | G39 | Migrate document routes from `getCurrentUser()` to `withPermission()` | 1 day |
+| L.5.5 | G17 | `withMFARequired()` — verify Firebase `sign_in_second_factor` token claim | 1 day |
+
+### L.6 — Basiq Integration (Before Go-Live)
+
+| Step | Gap | Action | Effort |
+|------|-----|--------|--------|
+| L.6.1 | G16 | Create `/api/basiq/webhook` endpoint for Basiq Events | 2-3 days |
+| L.6.2 | G16 | Subscribe to Basiq Events via Basiq dashboard | 1 hour (Basiq Console) |
+
+### L.7 — Security Hardening (Within 30 Days)
+
+| Step | Gap | Action | Effort |
+|------|-----|--------|--------|
+| L.7.1 | G23 | `sanitizeCdrMetadata()` — add array recursion | 0.5 day |
+| L.7.2 | G24 | `anonymizeCDRData()` — strip/aggregate amount field | 0.5 day |
+| L.7.3 | G27 | CRON_SECRET — use `crypto.timingSafeEqual()` | 15 min |
+| L.7.4 | G42 | Testing routes — block in production or remove | 0.5 day |
+| L.7.5 | G44 | Schedule `enforceAuditLogRetention()` via Cloud Scheduler | 1 hour |
+| L.7.6 | G45 | Schedule `runAnomalyDetection()` via Cloud Scheduler | 1 hour |
+
+### L.8 — Policy & Documentation (Before Go-Live)
+
+| Step | Gap | Action | Effort |
+|------|-----|--------|--------|
+| L.8.1 | G40 | Create CDR Complaints Policy — internal dispute resolution process | 1 day |
+| L.8.2 | G46 | Document data minimisation enforcement approach | 0.5 day |
+
+---
+
 ## Execution Sequence & Dependencies
 
 ```
@@ -893,8 +972,9 @@ Each phase will create its own changelog entry:
 ---
 
 *Last Updated: 2026-04-11*
-*Phases A, B, C, D, F, G, I Complete (7 of 11)*
+*Phases A, B, C, D, F, G, I Complete (7 of 12)*
 *Phases J, K in progress (user actions: screenshots, pen test, insurance, fill spreadsheet)*
-*Phases E, H pending (GCP service enablement, API cleanup)*
-*Next: User captures evidence screenshots (Phase J), then fills Basiq spreadsheet (Phase K)*
-*Score: ~55% → ~87% (original 54 items) → ~75% (full Basiq spreadsheet incl. policies & evidence)*
+*Phases E, H, L pending (GCP services, API cleanup, code-level CDR remediation)*
+*Deep audit 2026-04-11: 46 gaps found (was 12). Phase L created for code remediation (~20-30 dev days)*
+*Critical before submission: G1 (pen test), G2 (insurance), G29 (Cloud Scheduler), G35 (admin auth)*
+*Critical before go-live: G13/G14 (consent UI), G16 (Basiq webhooks), G18 (CDR consent model), G37 (route migration)*
