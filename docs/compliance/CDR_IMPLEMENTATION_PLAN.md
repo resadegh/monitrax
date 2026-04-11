@@ -1,12 +1,12 @@
 # CDR Compliance Implementation Plan
 
-**Version:** 1.2
+**Version:** 1.3
 **Created:** 2026-03-03
-**Last Updated:** 2026-04-10
-**Status:** Active — Phases A-G COMPLETE, E & H pending. NEW: Phases I, J, K added for Basiq submission
-**Source:** `docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md`, `CLAUDE.md` Part 13, `PHASE_34_CDR_SECURITY_HARDENING.md`
+**Last Updated:** 2026-04-11
+**Status:** Active — Phases A-G, I COMPLETE. E, H pending (GCP config + API cleanup). J, K in progress (user actions).
+**Source:** `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`, `CLAUDE.md` Part 13, `PHASE_34_CDR_SECURITY_HARDENING.md`
 **Compliance Target:** Basiq CDR Representative onboarding (6-step compliance form + 25 policy documents + 14 evidence items)
-**Current Score:** ~65% (against full Basiq spreadsheet including policies and evidence)
+**Current Score:** ~75% (against full Basiq spreadsheet including policies and evidence)
 
 ---
 
@@ -22,11 +22,11 @@
 | **F** | Policy Documents | ✅ **COMPLETE** | — | §4.x, §5.8, §6.4, §6.5, §7.x N/A/TODO → DONE (+9%) |
 | **G** | Dev Pipeline Hardening | ✅ **COMPLETE** | — | §6.4, §6.5 TODO → DONE (included in F) |
 | **H** | API Consolidation & Cleanup | ⬜ Pending | — | Attack surface reduction |
-| **I** | Security Policies Document | ⬜ Pending | — | Step 5: 25 documented policies (+15%) |
-| **J** | Evidence Collection & Submission | ⬜ Pending | — | Step 6: 14 evidence items (+10%) |
-| **K** | Spreadsheet Completion & Submission | ⬜ Pending | — | All steps filled, submitted to Basiq |
+| **I** | Security Policies Document | ✅ **COMPLETE** | [#462](https://github.com/resadegh/monitrax/pull/462) | Step 5: 26 documented policies — `docs/policy/MONITRAX_SECURITY_POLICIES.md` (699 lines) |
+| **J** | Evidence Collection & Submission | 🔶 **IN PROGRESS** | — | Step 6: Evidence guide created. Screenshots + 2 blockers (pen test, insurance) remain. |
+| **K** | Spreadsheet Completion & Submission | 🔶 **IN PROGRESS** | — | Spreadsheet answers documented. Fill + submit pending user action. |
 
-**Overall: 6 of 11 phases complete.**
+**Overall: 7 of 11 phases complete. 2 in progress (user actions). 2 pending (GCP config + API cleanup).**
 
 ---
 
@@ -590,14 +590,21 @@ export const GET = withPermission('entity.read', async (request, auth) => { ... 
 
 ---
 
-## PHASE I: Security Policies Document (Basiq Step 5) — NEW
+## PHASE I: Security Policies Document (Basiq Step 5) — ✅ COMPLETE
 
-**Goal:** Create unified Security Policies document covering all 25 Basiq-required policies
-**Why:** Basiq Step 5 requires documented policies for 25 security areas. Currently 10/25 done, 8/25 missing.
-**Approach:** Customize the Basiq-provided Security Policies Template (.docx) with Monitrax-specific details
+**Goal:** Create unified Security Policies document covering all 26 Basiq-required policies
+**Why:** Basiq Step 5 requires documented policies for 25+ security areas.
+**Approach:** Customized Basiq-provided Security Policies Template (.docx) with Monitrax-specific details
 **Input:** `docs/BASIQ FILES/Security Policies Template.docx` (Basiq template)
-**Output:** `docs/policy/MONITRAX_SECURITY_POLICIES.md` (comprehensive document)
-**Effort:** 2-3 days
+**Output:** `docs/policy/MONITRAX_SECURITY_POLICIES.md` (699 lines, 26 policies)
+**Completed:** 2026-04-11 — PR [#462](https://github.com/resadegh/monitrax/pull/462)
+
+### Completion Summary
+
+- **26 security policies** customized for Monitrax (GCP, Firebase, Vercel, Prisma, Cloud SQL Sydney)
+- Each policy includes: Introduction, Policy Requirements, Implementation, Review Schedule
+- All policies reference Monitrax-specific tools, code paths, and infrastructure
+- Document ready for upload to Basiq Evidence folder
 
 ### What Basiq Provided
 
@@ -664,9 +671,10 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 
 ---
 
-## PHASE J: Evidence Collection & Submission (Basiq Step 6) — NEW
+## PHASE J: Evidence Collection & Submission (Basiq Step 6) — 🔶 IN PROGRESS
 
 **Goal:** Capture and organize all 14 evidence items required by Basiq
+**Progress:** Evidence guide created (`docs/compliance/CDR_EVIDENCE_SCREENSHOT_GUIDE.md`). Architecture diagram created (`docs/compliance/CDR_SYSTEM_ARCHITECTURE.md`). Screenshots and 2 blockers remain.
 **Why:** Basiq Step 6 requires visual proof (screenshots, videos, documents) of security controls
 **Output:** Evidence files uploaded to Basiq's shared Google Drive "Evidence" folder
 **Effort:** 1-2 days
@@ -857,9 +865,9 @@ Phase K (Submission) ← depends on I, J ────────────┘
 | **G (Dev Pipeline)** | **~87%** | §6.4, §6.5 TODO → DONE | ✅ COMPLETE 2026-03-08 |
 | E (GCP) | ~93% | §8.x items TODO → DONE | ⬜ Pending |
 | H (API Cleanup) | ~95% | Architecture quality, reduced attack surface | ⬜ Pending |
-| I (Policies) | ~80% | 25 policies documented | ⬜ Pending |
-| J (Evidence) | ~90% | 14 evidence items captured | ⬜ Pending |
-| K (Submission) | ~100% | Spreadsheet complete and submitted | ⬜ Pending |
+| **I (Policies)** | **~75%** | 26 policies documented (699 lines) | ✅ COMPLETE 2026-04-11 |
+| J (Evidence) | ~90% | Guide created. Screenshots + blockers remain | 🔶 IN PROGRESS |
+| K (Submission) | ~100% | Answers documented. Fill spreadsheet + submit | 🔶 IN PROGRESS |
 
 ---
 
@@ -884,8 +892,9 @@ Each phase will create its own changelog entry:
 
 ---
 
-*Last Updated: 2026-04-10*
-*Phases A, B, C, D, F, G Complete (6 of 11)*
-*New Phases I, J, K added for Basiq submission*
-*Next: Phase I (Security Policies Template customization)*
-*Score: ~55% → ~87% (against original 54 items) → ~65% (against full Basiq spreadsheet incl. policies & evidence)*
+*Last Updated: 2026-04-11*
+*Phases A, B, C, D, F, G, I Complete (7 of 11)*
+*Phases J, K in progress (user actions: screenshots, pen test, insurance, fill spreadsheet)*
+*Phases E, H pending (GCP service enablement, API cleanup)*
+*Next: User captures evidence screenshots (Phase J), then fills Basiq spreadsheet (Phase K)*
+*Score: ~55% → ~87% (original 54 items) → ~75% (full Basiq spreadsheet incl. policies & evidence)*
