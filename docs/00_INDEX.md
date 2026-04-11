@@ -12,6 +12,7 @@
 |------|-------|
 | System architecture & design | [docs/architecture/](#architecture) |
 | Phase specifications & roadmap | [docs/blueprint/](#blueprint-phases) |
+| **Mobile companion app** | [docs/mobile/](#mobile-companion-app) |
 | How to operate the system (BAU) | [docs/operational/](#operational) |
 | CDR compliance & regulatory | [docs/compliance/](#compliance) |
 | Organizational policies | [docs/policy/](#policy) |
@@ -58,6 +59,27 @@
 | PHASE_E_GCP_SERVICE_ENABLEMENT.md | GCP service enablement plan | ACTIVE |
 
 > For individual phase status, see [MASTER_BLUEPRINT.md](blueprint/MASTER_BLUEPRINT.md)
+
+---
+
+## Mobile Companion App
+
+> **Purpose:** All documentation for the iOS/Android mobile companion app (Phase 15)
+> **Master Index:** [mobile/00_INDEX.md](mobile/00_INDEX.md)
+> **Shared Doc Map:** [mobile/00_CROSS_REFERENCES.md](mobile/00_CROSS_REFERENCES.md) — no duplication; shared docs stay in original locations
+
+| Category | Document | Description |
+|----------|----------|-------------|
+| **Blueprint** | [PHASE_15_MOBILE_COMPANION_APP.md](mobile/blueprint/PHASE_15_MOBILE_COMPANION_APP.md) | Master 20-section spec v2.0 |
+| **Architecture** | [01_MOBILE_ARCHITECTURE.md](mobile/architecture/01_MOBILE_ARCHITECTURE.md) | Tech stack, system design, data flows |
+| **Design** | [01_DESIGN_SYSTEM.md](mobile/design/01_DESIGN_SYSTEM.md) | Mobile design system, components, patterns |
+| **API** | [01_MOBILE_API_CONTRACT.md](mobile/api/01_MOBILE_API_CONTRACT.md) | All `/api/v1/mobile/*` endpoint contracts |
+| **Implementation** | [01_IMPLEMENTATION_PLAN.md](mobile/implementation/01_IMPLEMENTATION_PLAN.md) | 7-sprint phased build plan |
+| **Implementation** | [02_PRE_IMPLEMENTATION_CHECKLIST.md](mobile/implementation/02_PRE_IMPLEMENTATION_CHECKLIST.md) | Pre-requisites before Sprint 0 |
+| **Operations** | [01_BUILD_AND_DEPLOY.md](mobile/operations/01_BUILD_AND_DEPLOY.md) | EAS Build, App Store, OTA updates |
+| **Operations** | [02_RUNBOOK.md](mobile/operations/02_RUNBOOK.md) | Mobile-specific incident response |
+| **Testing** | [01_TESTING_STRATEGY.md](mobile/testing/01_TESTING_STRATEGY.md) | Device matrix, test scenarios, benchmarks |
+| **Compliance** | [01_CDR_MOBILE_COMPLIANCE.md](mobile/compliance/01_CDR_MOBILE_COMPLIANCE.md) | CDR mobile data handling rules |
 
 ---
 
