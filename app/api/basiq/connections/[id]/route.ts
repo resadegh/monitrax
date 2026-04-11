@@ -103,19 +103,21 @@ export const DELETE = withMFARequired<RouteContext>('account.delete', async (req
       }
     }
 
-    // Update status to disabled (keep accounts but mark connection as removed)
-    await prisma.basiqConnection.update({
-      where: { id },
-      data: { status: 'DISABLED' },
-    });
+    // Fix: G28 — Hard-delete BasiqConnection instead of soft-disable.
+    // CDR rules require hard deletion of connection records when user disconnects.
 
-    // Optionally: Remove Basiq reference from linked accounts
+    // Remove Basiq references from linked accounts first (FK constraint)
     await prisma.account.updateMany({
       where: { basiqConnectionId: id },
       data: {
         basiqConnectionId: null,
         basiqAccountId: null,
       },
+    });
+
+    // Hard-delete the connection record
+    await prisma.basiqConnection.delete({
+      where: { id },
     });
 
     return NextResponse.json({

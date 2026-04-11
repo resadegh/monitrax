@@ -150,7 +150,7 @@ export async function verifyGCPIdToken(idToken: string): Promise<GCPTokenClaims 
 
     // Extract Firebase-specific claims
     const firebaseClaims = payload.firebase as
-      | { sign_in_provider?: string }
+      | { sign_in_provider?: string; sign_in_second_factor?: string }
       | undefined;
 
     const claims: GCPTokenClaims = {
@@ -161,6 +161,8 @@ export async function verifyGCPIdToken(idToken: string): Promise<GCPTokenClaims 
       phoneNumber: (payload.phone_number as string) || undefined,
       photoURL: (payload.picture as string) || undefined,
       signInProvider: firebaseClaims?.sign_in_provider,
+      // Fix: G17 — Extract MFA second factor claim for session-level MFA verification
+      signInSecondFactor: firebaseClaims?.sign_in_second_factor,
       iat: (payload.iat as number) ?? 0,
       exp: (payload.exp as number) ?? 0,
       aud: typeof payload.aud === 'string' ? payload.aud : GCP_PROJECT_ID,

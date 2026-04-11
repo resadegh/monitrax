@@ -17,6 +17,8 @@ import {
   deleteCDRData,
   getCDRDataSummary,
 } from '@/lib/services/cdrDataLifecycle';
+import { deleteConnection as deleteBasiqConnection } from '@/lib/basiq';
+import { log } from '@/lib/utils/logger';
 
 /**
  * GET /api/cdr/consent
@@ -132,7 +134,7 @@ export const POST = withPermission('account.write', async (request, auth) => {
       }
 
       case 'revoke_all': {
-        // Revoke all org consents for this user
+        // Revoke all org consents AND Basiq connections for this user
         if (!body.confirm) {
           return NextResponse.json(
             { success: false, error: { code: 'VALIDATION_ERROR', message: 'Confirmation required: { confirm: true }' } },
@@ -140,7 +142,7 @@ export const POST = withPermission('account.write', async (request, auth) => {
           );
         }
 
-        // Find and revoke all active consents
+        // Find and revoke all active org consents
         const activeConsents = await prisma.organizationClient.findMany({
           where: { userId, consentStatus: 'GRANTED' },
           select: { id: true },
@@ -150,11 +152,41 @@ export const POST = withPermission('account.write', async (request, auth) => {
           await handleConsentRevocation(userId, consent.id);
         }
 
+        // Fix: G20 — Also revoke direct Basiq connections via Basiq API
+        const basiqUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { basiqUserId: true },
+        });
+
+        let basiqRevokedCount = 0;
+        if (basiqUser?.basiqUserId) {
+          const activeConnections = await prisma.basiqConnection.findMany({
+            where: { userId, status: 'ACTIVE' },
+            select: { basiqConnectionId: true },
+          });
+
+          for (const conn of activeConnections) {
+            try {
+              await deleteBasiqConnection(basiqUser.basiqUserId, conn.basiqConnectionId);
+              basiqRevokedCount++;
+            } catch (basiqError) {
+              log.warn('Failed to revoke Basiq connection during revoke_all', {
+                connectionId: conn.basiqConnectionId,
+                error: basiqError instanceof Error ? basiqError.message : 'Unknown',
+              });
+            }
+          }
+        }
+
+        // Trigger full CDR data deletion
+        await deleteCDRData(userId, 'consent_revoked');
+
         return NextResponse.json({
           success: true,
           data: {
-            message: `${activeConsents.length} consent(s) revoked. CDR data purged.`,
-            revokedCount: activeConsents.length,
+            message: `${activeConsents.length} org consent(s) and ${basiqRevokedCount} bank connection(s) revoked. CDR data purged.`,
+            revokedOrgConsents: activeConsents.length,
+            revokedBasiqConnections: basiqRevokedCount,
           },
           meta: { timestamp: new Date().toISOString() },
         });

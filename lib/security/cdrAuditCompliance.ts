@@ -51,6 +51,9 @@ const CDR_REDACTED_FIELDS = new Set([
   // Personal financial details
   'stripeCustomerId', 'stripeSubscriptionId', 'stripePaymentId',
   'stripeInvoiceId',
+
+  // Fix: G31 — Merchant/transaction description fields (CDR-protected)
+  'merchantRaw', 'merchantStandardised', 'description',
 ]);
 
 /**
@@ -91,9 +94,19 @@ export function sanitizeCdrMetadata(
       continue;
     }
 
-    // Recurse into nested objects
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      clean[key] = sanitizeCdrMetadata(value as Record<string, unknown>);
+    // Fix: G23 — Recurse into nested objects AND arrays
+    if (value && typeof value === 'object') {
+      if (Array.isArray(value)) {
+        // Recurse into array elements — sanitize objects within arrays
+        clean[key] = value.map((item) => {
+          if (item && typeof item === 'object' && !Array.isArray(item)) {
+            return sanitizeCdrMetadata(item as Record<string, unknown>);
+          }
+          return item;
+        });
+      } else {
+        clean[key] = sanitizeCdrMetadata(value as Record<string, unknown>);
+      }
     } else {
       clean[key] = value;
     }

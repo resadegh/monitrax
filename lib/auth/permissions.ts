@@ -108,6 +108,12 @@ export const PERMISSIONS = {
   // Account Lockout Management
   'lockout.view': ['OWNER', 'ADMIN'], // View locked accounts
   'lockout.manage': ['OWNER', 'ADMIN'], // Lock/unlock accounts
+
+  // CDR Data Access (CLAUDE.md §13.4 — granular CDR access control)
+  // Fix: G21 — CDR-specific permissions for Basiq/CDR data routes
+  'cdr_data.read': ['OWNER', 'ADMIN'], // Read CDR-protected data (bank accounts, transactions)
+  'cdr_data.write': ['OWNER', 'ADMIN'], // Connect/sync bank accounts via Basiq
+  'cdr_data.delete': ['OWNER'], // Delete CDR data, revoke consent
 } as const;
 
 // ============================================
@@ -180,7 +186,8 @@ export type EntityType =
   | 'audit'
   | 'security'
   | 'session'
-  | 'lockout';
+  | 'lockout'
+  | 'cdr_data';
 
 export type ActionType = 'read' | 'write' | 'delete' | 'export' | 'update' | 'invite' | 'manage' | 'enforce' | 'revoke' | 'revokeAll' | 'billing' | 'view';
 

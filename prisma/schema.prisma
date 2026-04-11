@@ -383,6 +383,11 @@ model User {
   importBatches             ImportBatch[]              @relation("ImportBatches")
   transactionReviewQueue    TransactionReviewQueue[]   @relation("TransactionReviewQueue")
 
+  // Phase L: CDR Compliance Models
+  cdrConsents               CDRConsent[]
+  cdrComplaints             CDRComplaint[]
+  cdrDisclosures            CDRDisclosure[]
+
   @@map("users")
 }
 
@@ -613,6 +618,11 @@ model BasiqConnection {
   status            BasiqConnectionStatus  @default(PENDING)
   lastSyncedAt      DateTime?
   lastSyncError     String?
+
+  // Fix: G19 — CDR consent tracking fields (Basiq provides consent metadata)
+  consentExpiresAt  DateTime?                       // When CDR consent for this connection expires
+  consentScope      String?                         // CDR data scope granted (e.g., "accounts,transactions")
+
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
 
@@ -622,7 +632,117 @@ model BasiqConnection {
 
   @@index([userId])
   @@index([status])
+  @@index([consentExpiresAt])
   @@map("basiq_connections")
+}
+
+// =============================================================================
+// CDR COMPLIANCE MODELS (Phase L — CDR Code-Level Remediation)
+// =============================================================================
+
+// Fix: G18 — Explicit CDR consent record for CDR Rules compliance.
+// CDR requires tracking of informed, explicit consent with scope, duration, and legal basis.
+model CDRConsent {
+  id              String           @id @default(uuid())
+  userId          String
+  consentStatus   CDRConsentStatus @default(PENDING)
+  scope           String[]         // CDR data scopes granted (e.g., ["accounts", "transactions", "balances"])
+  legalBasis      String?          // Legal basis for data collection (e.g., "consumer_consent")
+  grantedAt       DateTime?
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  revokedReason   String?
+  basiqConnectionId String?        // Link to Basiq connection if applicable
+  organizationId  String?          // Link to org if consent is via organization
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relationships
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([consentStatus])
+  @@index([expiresAt])
+  @@map("cdr_consents")
+}
+
+enum CDRConsentStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  REVOKED
+  WITHDRAWN
+}
+
+// Fix: G43 — CDR complaint tracking model for CDR record-keeping requirements.
+// CDR compliance requires tracking all consumer complaints about CDR data handling.
+model CDRComplaint {
+  id              String               @id @default(uuid())
+  userId          String?              // Complainant (null if external)
+  complainantName String?
+  complainantEmail String?
+  category        CDRComplaintCategory
+  description     String
+  status          CDRComplaintStatus   @default(OPEN)
+  resolution      String?
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  escalatedToOAIC Boolean             @default(false)
+  oaicReferenceId String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  // Relationships
+  user            User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@map("cdr_complaints")
+}
+
+enum CDRComplaintCategory {
+  DATA_ACCESS          // Complaint about CDR data access
+  DATA_DELETION        // Complaint about CDR data not being deleted
+  CONSENT_MANAGEMENT   // Complaint about consent handling
+  DATA_ACCURACY        // Complaint about CDR data accuracy
+  PRIVACY              // General privacy complaint
+  SERVICE              // Service-related complaint
+  OTHER
+}
+
+enum CDRComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  ESCALATED
+  CLOSED
+}
+
+// Fix: G43 — CDR disclosure tracking model.
+// CDR record-keeping requires logging all instances where CDR data was disclosed.
+model CDRDisclosure {
+  id              String              @id @default(uuid())
+  userId          String
+  disclosedTo     String              // Entity CDR data was disclosed to
+  disclosureType  CDRDisclosureType
+  dataScope       String[]            // What CDR data was disclosed
+  legalBasis      String              // Legal basis for disclosure
+  consentId       String?             // Link to CDR consent if applicable
+  createdAt       DateTime            @default(now())
+
+  // Relationships
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("cdr_disclosures")
+}
+
+enum CDRDisclosureType {
+  CONSUMER_REQUESTED   // Consumer requested their data be shared
+  REGULATORY           // Required by regulation (e.g., OAIC request)
+  LEGAL                // Legal proceedings
+  INTERNAL             // Internal use within organization
 }
 
 // =============================================================================

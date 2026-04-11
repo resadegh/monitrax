@@ -51,6 +51,8 @@ export interface GCPTokenClaims {
   photoURL?: string;
   /** Sign-in provider (e.g., 'google.com', 'password', 'phone') */
   signInProvider?: string;
+  /** MFA second factor method (e.g., 'phone', 'totp') — present when MFA was completed */
+  signInSecondFactor?: string;
   /** Token issued-at timestamp (seconds) */
   iat: number;
   /** Token expiry timestamp (seconds) */

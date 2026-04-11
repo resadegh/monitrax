@@ -382,11 +382,26 @@ export function withMFARequired<T = unknown>(
       );
     }
 
+    // Fix: G17 — Verify Firebase sign_in_second_factor token claim.
+    // Checks that MFA was actually completed in this session, not just enrolled.
+    // Firebase sets firebase.sign_in_second_factor when MFA challenge was passed.
+    if (user?.mfaEnabled && !auth.signInSecondFactor) {
+      log.warn('MFA enrolled but session lacks second factor verification', {
+        userId: auth.userId,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 403, Date.now() - start);
+      return formatErrorResponse(
+        errors.forbidden('MFA verification required for this resource. Please re-authenticate with MFA.')
+      );
+    }
+
     if (options?.logAccess) {
       log.info('MFA-protected access granted', {
         userId: auth.userId,
         permission,
         mfaEnabled: user?.mfaEnabled ?? false,
+        secondFactor: auth.signInSecondFactor ?? 'none',
         path: request.nextUrl.pathname,
         method: request.method,
       });
@@ -453,6 +468,18 @@ export function withActiveConsent<T = unknown>(
       logApiRequest(auth.userId, request, 403, Date.now() - start);
       return formatErrorResponse(
         errors.forbidden('MFA is required by your organization to access this resource')
+      );
+    }
+
+    // Fix: G17 — Verify Firebase sign_in_second_factor for CDR consent guard too
+    if (mfaUser?.mfaEnabled && !auth.signInSecondFactor) {
+      log.warn('MFA enrolled but session lacks second factor verification (consent guard)', {
+        userId: auth.userId,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 403, Date.now() - start);
+      return formatErrorResponse(
+        errors.forbidden('MFA verification required for CDR data access. Please re-authenticate with MFA.')
       );
     }
 

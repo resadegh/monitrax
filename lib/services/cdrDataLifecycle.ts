@@ -15,6 +15,7 @@ import { prisma } from '@/lib/db';
 import { log } from '@/lib/utils/logger';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
+import { deleteConnection as deleteBasiqConnection } from '@/lib/basiq';
 
 // ============================================
 // TYPES
@@ -65,26 +66,60 @@ export async function deleteCDRData(
 
   log.info('CDR data deletion started', { userId, reason });
 
-  // 1. Delete Basiq-sourced transactions (UnifiedTransaction with source=BANK)
-  const deletedTransactions = await prisma.unifiedTransaction.deleteMany({
-    where: {
-      userId,
-      source: 'BANK',
-    },
+  // Fix: G15 — Call Basiq API to delete connections before local deletion.
+  // This ensures CDR data is purged from Basiq's systems too.
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { basiqUserId: true },
   });
 
-  // 2. Delete Basiq-linked accounts (accounts with a basiqAccountId)
-  const deletedAccounts = await prisma.account.deleteMany({
-    where: {
-      userId,
-      basiqAccountId: { not: null },
-    },
-  });
+  if (user?.basiqUserId) {
+    const connections = await prisma.basiqConnection.findMany({
+      where: { userId, status: 'ACTIVE' },
+      select: { basiqConnectionId: true },
+    });
 
-  // 3. Delete Basiq connections
-  const deletedConnections = await prisma.basiqConnection.deleteMany({
-    where: { userId },
-  });
+    for (const conn of connections) {
+      try {
+        await deleteBasiqConnection(user.basiqUserId, conn.basiqConnectionId);
+      } catch (basiqError) {
+        // Log but continue — local deletion must proceed even if Basiq API fails
+        log.warn('Failed to delete Basiq connection via API', {
+          userId,
+          connectionId: conn.basiqConnectionId,
+          error: basiqError instanceof Error ? basiqError.message : 'Unknown',
+        });
+      }
+    }
+  }
+
+  // Fix: G26 — Find Basiq-linked account IDs to delete associated RecurringPayments
+  const basiqAccountIds = (await prisma.account.findMany({
+    where: { userId, basiqAccountId: { not: null } },
+    select: { id: true },
+  })).map(a => a.id);
+
+  // Fix: G22 — Wrap all delete operations in prisma.$transaction for atomicity.
+  // Prevents partial deletion leaving CDR data in an inconsistent state.
+  const [deletedRecurringPayments, deletedTransactions, deletedAccounts, deletedConnections] =
+    await prisma.$transaction([
+      // Fix: G26 — Delete RecurringPayments linked to Basiq-sourced accounts (CDR-derived data)
+      prisma.recurringPayment.deleteMany({
+        where: { userId, accountId: { in: basiqAccountIds } },
+      }),
+      // 1. Delete Basiq-sourced transactions (UnifiedTransaction with source=BANK)
+      prisma.unifiedTransaction.deleteMany({
+        where: { userId, source: 'BANK' },
+      }),
+      // 2. Delete Basiq-linked accounts (accounts with a basiqAccountId)
+      prisma.account.deleteMany({
+        where: { userId, basiqAccountId: { not: null } },
+      }),
+      // 3. Delete Basiq connections
+      prisma.basiqConnection.deleteMany({
+        where: { userId },
+      }),
+    ]);
 
   // 4. Clear Basiq user reference from user profile
   await prisma.user.update({
@@ -102,7 +137,6 @@ export async function deleteCDRData(
   };
 
   // 5. Audit the deletion (fire-and-forget, CDR metadata sanitized)
-  // Fix: Log deletion counts but NOT CDR data content
   createAuditLog({
     userId,
     action: 'CDR_DATA_DELETED',
@@ -112,6 +146,7 @@ export async function deleteCDRData(
       reason,
       deletedAccounts: deletedAccounts.count,
       deletedTransactions: deletedTransactions.count,
+      deletedRecurringPayments: deletedRecurringPayments.count,
       deletedConnections: deletedConnections.count,
     }),
   }).catch(() => {});
@@ -121,6 +156,7 @@ export async function deleteCDRData(
     reason,
     accounts: deletedAccounts.count,
     transactions: deletedTransactions.count,
+    recurringPayments: deletedRecurringPayments.count,
     connections: deletedConnections.count,
   });
 
@@ -205,15 +241,83 @@ export async function checkConsentExpiry(): Promise<ConsentExpiryResult> {
     }
   }
 
+  // Fix: G25 — Also check direct BasiqConnection expiry for non-org users.
+  // Direct users (not org clients) have consent tracked via BasiqConnection.consentExpiresAt.
+  const expiredConnections = await prisma.basiqConnection.findMany({
+    where: {
+      status: 'ACTIVE',
+      consentExpiresAt: {
+        lte: now,
+        not: null,
+      },
+    },
+    select: {
+      id: true,
+      userId: true,
+      basiqConnectionId: true,
+      consentExpiresAt: true,
+    },
+  });
+
+  // Group by userId to avoid deleting data for users who still have other active connections
+  const expiredByUser = new Map<string, string[]>();
+  for (const conn of expiredConnections) {
+    const list = expiredByUser.get(conn.userId) || [];
+    list.push(conn.id);
+    expiredByUser.set(conn.userId, list);
+  }
+
+  for (const [expiredUserId, connectionIds] of expiredByUser) {
+    try {
+      // Mark expired connections as DISABLED
+      await prisma.basiqConnection.updateMany({
+        where: { id: { in: connectionIds } },
+        data: { status: 'DISABLED' },
+      });
+
+      // Audit each expired connection
+      for (const connId of connectionIds) {
+        createAuditLog({
+          userId: expiredUserId,
+          action: 'CDR_CONSENT_EXPIRED',
+          status: 'SUCCESS',
+          entityType: 'BasiqConnection',
+          entityId: connId,
+          metadata: sanitizeCdrMetadata({ processedAt: now.toISOString() }),
+        }).catch(() => {});
+      }
+
+      // Check if user has ANY remaining active connections or org consents
+      const [remainingConnections, remainingOrgConsents] = await Promise.all([
+        prisma.basiqConnection.count({
+          where: { userId: expiredUserId, status: 'ACTIVE' },
+        }),
+        prisma.organizationClient.count({
+          where: { userId: expiredUserId, consentStatus: 'GRANTED' },
+        }),
+      ]);
+
+      if (remainingConnections === 0 && remainingOrgConsents === 0) {
+        await deleteCDRData(expiredUserId, 'consent_expired');
+        deletionsTriggered++;
+      }
+    } catch (error) {
+      const msg = `Failed to process expired BasiqConnection for user ${expiredUserId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      log.error(msg);
+      errors.push(msg);
+    }
+  }
+
   const result: ConsentExpiryResult = {
-    processedClients: expiredClients.length,
+    processedClients: expiredClients.length + expiredConnections.length,
     deletionsTriggered,
     errors,
     timestamp: now.toISOString(),
   };
 
   log.info('Consent expiry check completed', {
-    processed: expiredClients.length,
+    orgClientsProcessed: expiredClients.length,
+    connectionsProcessed: expiredConnections.length,
     deletions: deletionsTriggered,
     errors: errors.length,
   });
@@ -327,6 +431,8 @@ export async function anonymizeCDRData(userId: string): Promise<AnonymizationRes
   }
 
   // 2. Anonymize Basiq-sourced transactions — strip merchant/description PII
+  // Fix: G24 — Also strip amount field (combined with dates, could be re-identifying)
+  // Fix: G30 — Strip Basiq-enriched category fields (reveal spending patterns)
   const anonymizedTransactions = await prisma.unifiedTransaction.updateMany({
     where: {
       userId,
@@ -336,6 +442,9 @@ export async function anonymizeCDRData(userId: string): Promise<AnonymizationRes
       merchantRaw: 'ANONYMIZED',
       merchantStandardised: null,
       description: 'ANONYMIZED',
+      amount: 0, // G24: Strip financial amount to prevent re-identification
+      categoryLevel1: null, // G30: Strip Basiq-enriched categories
+      categoryLevel2: null, // G30: Strip Basiq-enriched categories
       externalId: null,
       basiqTransactionId: null,
     },
