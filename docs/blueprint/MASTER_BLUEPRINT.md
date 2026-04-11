@@ -191,8 +191,8 @@ Every API response follows a standardised format:
 
 | Phase | Name | Status | Scope |
 |-------|------|--------|-------|
-| **14.5** | Mobile Web UI | 📋 Planned | Responsive optimisations |
-| **15** | Mobile Companion App | 📋 Planned | Native mobile experience |
+| **14.5** | Mobile Web UI | ✅ Complete | Responsive sidebar, touch targets, form dialogs (Nov-Dec 2025) |
+| **15** | Mobile Companion App | 📐 Blueprint v2.0 Complete | React Native + Expo; 20-section spec; CDR-compliant; ~16 weeks to ship |
 | **18** | Bank Transactions (Legacy) | ✅ Superseded | Replaced by Phase 24 (Basiq Open Banking) |
 | **19B** | Cloud Storage Integration | 📋 Planned | Google Drive, OneDrive, iCloud |
 | **20** | Australian Tax Intelligence Engine | 📋 Planned | Gross/net salary, auto-taxability, super tracking, AI tax optimizer |
@@ -638,7 +638,7 @@ return withAuth(request, handler);
 
 | Priority | Feature |
 |----------|---------|
-| High | Native mobile app |
+| High | Native mobile app (Phase 15 — Blueprint v2.0 complete, ready for implementation) |
 | Medium | Accountant/advisor portal |
 | Medium | Multi-user portfolio sharing |
 
