@@ -483,3 +483,217 @@ Monitrax implements controls to prevent unauthorised disclosure or leakage of CD
 - **Browser storage:** CDR data kept in React state only — not persisted to localStorage/sessionStorage.
 - **Planned:** GCP Cloud DLP for automated PII detection and redaction in CDR data flows.
 - **Monitoring:** Audit logs track all data access. `detectBulkExport()` flags unusual export patterns.
+
+---
+
+## 19. CDR Data Handling
+
+### Introduction
+
+This policy governs the handling of Consumer Data Right (CDR) data received from Basiq (CDR Representative Principal). CDR data includes account balances, transaction histories, account numbers, BSBs, and any derived data. Monitrax must comply with the CDR Rules and Privacy Safeguards as a CDR Representative.
+
+### Policy Requirements
+
+- **Consent capture:** The Basiq consent UI must be used for all consumer consent operations. The consent UI must not be modified outside Basiq dashboard configuration.
+- **Data collection:** Comply with Australian Privacy Principles. Collect only what is reasonably needed (data minimisation).
+- **Data storage:** CDR data stored ONLY in production environment (GCP Cloud SQL, Sydney). Never in dev/UAT, staging, or local environments.
+- **Data access:** Restricted to authorised users with active consent. Access logged and monitored.
+- **Data retention:** Deleted when no longer needed, when consent expires, or when consent is revoked.
+- **Data de-identification:** CDR data may be de-identified via `anonymizeCDRData()` for legal retention (e.g., loan applications). De-identified data must not be re-identifiable.
+- **Data deletion requests:** CDR data deleted on request except where required by Australian law or court order.
+- **Basiq Events endpoint:** Monitored for consent revocation and data holder notifications.
+
+### Implementation
+
+- **Lifecycle service:** `lib/services/cdrDataLifecycle.ts` — `deleteCDRData()`, `checkConsentExpiry()`, `handleConsentRevocation()`, `anonymizeCDRData()`, `hasActiveCDRConsent()`.
+- **Guards:** `withActiveConsent()` verifies permission + MFA + active consent before CDR data access.
+- **Automated checks:** `POST /api/cdr/lifecycle` endpoint for GCP Cloud Scheduler (daily 02:00 UTC).
+- **Audit:** CDR_DATA_DELETED, CDR_CONSENT_EXPIRED, CDR_CONSENT_REVOKED, CDR_DATA_ANONYMIZED events logged.
+- **Full policy:** `docs/compliance/CDR_DATA_RETENTION_SCHEDULE.md`, `docs/operational/security/03_CDR_COMPLIANCE.md`.
+
+---
+
+## 20. Information Asset Lifecycle
+
+### Introduction
+
+This policy outlines the management of data throughout its lifecycle — from classification and creation through storage, use, retention, and deletion — with particular focus on CDR data which has strict lifecycle requirements.
+
+### Policy Requirements
+
+- **Classification:** All data classified as CDR-Protected, CDR-Derived, or Non-CDR. CDR data receives highest protection.
+- **Backup:** GCP Cloud SQL automated backups with 30-day retention (production), 7-day (dev). All backups encrypted.
+- **Retention:** CDR data retained while consent is ACTIVE. Deleted on consent expiry/revocation. Non-CDR financial data retained while user account is active.
+- **Deletion:** CDR data hard-deleted (irreversible). Non-CDR data cascade-deleted on user account removal.
+- **De-identification:** `anonymizeCDRData()` for legal retention cases — strips PII while preserving aggregate data.
+- **Access control:** Entity-level ownership — users access only their own data.
+
+### Implementation
+
+- **Classification:** Data type determined by source — Basiq-sourced = CDR-Protected. User-entered = Non-CDR.
+- **Backup schedule:** Automated by GCP Cloud SQL. On-demand backups available via GCP Console.
+- **Retention schedule:** `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md` — comprehensive retention periods per data type.
+- **Deletion service:** `lib/services/cdrDataLifecycle.ts` handles CDR deletion. Prisma cascade rules handle non-CDR.
+- **Review:** Retention schedule reviewed annually.
+
+---
+
+## 21. Operating System and Application Patches
+
+### Introduction
+
+Timely patching of operating systems and application dependencies is critical for preventing exploitation of known vulnerabilities. Monitrax uses managed cloud services (auto-patched by vendors) supplemented by automated dependency scanning for application-level libraries.
+
+### Policy Requirements
+
+- All production services must have latest security patches installed.
+- Regular scans for missing patches — Dependabot (weekly), npm audit (per commit).
+- Patches tested in non-production before production deployment (Vercel preview deployments).
+- Emergency patch process for critical vulnerabilities (Critical: <24h, High: <7d).
+
+### Implementation
+
+- **Cloud services:** Vercel, GCP Cloud SQL, Firebase Auth — auto-patched by vendors. No manual OS patching required.
+- **Dependencies:** Dependabot configured (`.github/dependabot.yml`) — weekly automated PRs for npm dependency updates. Grouped by package family.
+- **CI scanning:** `npm audit` runs on every push and PR via GitHub Actions (`.github/workflows/security-audit.yml`).
+- **Vulnerability response SLAs:** Critical <24h, High <7d, Medium <30d, Low at next review.
+- **Approved list:** `docs/policy/APPROVED_DEPENDENCIES.md` — 40+ packages documented with version, license, review date.
+
+---
+
+## 22. Secure Coding Practices
+
+### Introduction
+
+Monitrax follows secure coding practices to prevent vulnerabilities in application code, particularly for code handling CDR data. All development follows documented build rules (CLAUDE.md) with mandatory code review.
+
+### Policy Requirements
+
+- All code must be reviewed via Pull Request before production deployment.
+- Code must follow OWASP Top 10 awareness — prevent injection, XSS, broken auth, etc.
+- All API inputs validated with Zod schemas before processing.
+- No business logic in API route handlers — thin wrappers calling canonical services.
+- All third-party libraries reviewed and approved before use.
+- CDR data must never appear in error messages, logs, URLs, or browser storage.
+
+### Implementation
+
+- **Code review:** All changes via GitHub Pull Request. Feature branches → PR → review → merge.
+- **Validation:** Zod schemas for all API inputs (`lib/validation/*.ts`).
+- **Architecture:** API routes are thin wrappers (`withPermission()` → canonical service → response). No inline calculations.
+- **Type safety:** TypeScript strict mode. Prisma generates typed database queries.
+- **CDR protection:** `sanitizeCdrMetadata()` strips CDR data from all logged metadata.
+- **Build rules:** CLAUDE.md defines 50+ coding rules enforced across all development sessions.
+- **Testing:** `npm run build` (TypeScript compilation) and `npm run lint` before every commit.
+
+---
+
+## 23. Vulnerability Management
+
+### Introduction
+
+Monitrax identifies, assesses, and remediates security vulnerabilities through automated scanning, dependency management, and planned penetration testing.
+
+### Policy Requirements
+
+- Regular vulnerability scanning on all production systems.
+- Penetration testing conducted periodically to validate security measures.
+- Vulnerabilities prioritised by severity, impact, and likelihood of exploitation.
+- All scans, tests, and remediation actions documented.
+
+### Implementation
+
+- **Dependency scanning:** Dependabot (weekly automated PRs), npm audit (per push CI pipeline).
+- **Infrastructure scanning:** GCP Security Command Center (planned — P0 priority for enablement).
+- **Penetration testing:** External pen test planned before Basiq CDR go-live. Annual thereafter.
+- **Remediation SLAs:** Critical <24h, High <7d, Medium <30d, Low at next quarterly review.
+- **Documentation:** All vulnerabilities tracked in GitHub Issues. Remediation logged in changelogs.
+- **Self-service scanning:** OWASP ZAP available for self-service application scanning.
+
+---
+
+## 24. Antivirus and Malware Protection
+
+### Introduction
+
+All devices used to access Monitrax systems must have anti-malware protection to prevent compromise of development environments and potential lateral movement to production systems.
+
+### Policy Requirements
+
+- All end-user devices must have anti-virus/anti-malware software installed and active.
+- Anti-virus definitions must be kept up to date automatically.
+- Firewall must be enabled on all devices.
+- Suspicious or infected files must be reported immediately.
+- Safe computing practices enforced — no opening untrusted attachments, no accessing risky sites.
+
+### Implementation
+
+- **macOS built-in protection:** XProtect (auto-updated malware signatures), Gatekeeper (blocks unsigned apps), MRT (Malware Removal Tool).
+- **Firewall:** macOS Application Firewall enabled — blocks unauthorised incoming connections.
+- **Disk encryption:** FileVault full-disk encryption active on all development devices.
+- **Software control:** Only App Store and identified developer apps permitted (Gatekeeper setting).
+- **No third-party AV required:** macOS built-in protection is sufficient per Apple security guidance and industry best practice for managed environments.
+- **Full policy:** `docs/policy/DEVICE_SECURITY_POLICY.md`
+
+---
+
+## 25. Acceptable Use Policy
+
+### Introduction
+
+This policy defines the required security practices, behaviours, and prohibited activities for all personnel when handling CDR data and accessing Monitrax production systems.
+
+### Policy Requirements
+
+- **Confidentiality:** All CDR data and sensitive information must be kept confidential during and after engagement.
+- **Permitted use only:** CDR data used only for providing financial tracking services to consumers. No personal use, no sale, no unauthorised disclosure.
+- **Credential security:** Strong passwords enforced by Firebase Auth. Credentials never shared or written down.
+- **Physical security:** Devices secured when unattended. Auto-lock enabled.
+- **No removable storage:** CDR data must never be placed on USB drives or external storage.
+- **No unauthorised software:** Only approved software installed on devices accessing production systems.
+- **Email caution:** Suspicious emails and attachments reported immediately. No CDR data sent via email.
+
+### Implementation
+
+- **Enforcement:** Technical controls enforce most requirements — Firebase Auth for passwords, RBAC for access, audit logging for accountability.
+- **Training:** Security Awareness Policy (`docs/policy/SECURITY_AWARENESS_POLICY.md`) covers acceptable use for current and future personnel.
+- **Monitoring:** Audit logs track all system access. Anomaly detection flags unusual patterns.
+- **Violations:** Documented in Incident Response Plan. May result in access revocation and further action.
+
+---
+
+## 26. Background Checks
+
+### Introduction
+
+All personnel who access CDR data environments must undergo appropriate background checks to mitigate the risk of unauthorised access by unsuitable individuals. This is a requirement for CDR data protection.
+
+### Policy Requirements
+
+- All personnel requiring CDR data access must undergo background checks before access is granted.
+- Background checks must include criminal history, education verification, and employment history verification.
+- Personnel with convictions related to fraud, theft, or data misuse may be prohibited from CDR data access.
+- Background checks repeated periodically (every 3 years) and when role changes involve increased CDR data access.
+
+### Implementation
+
+- **Current state:** N/A — sole director/operator. No employees.
+- **Future staff:** Background check process documented in `docs/policy/SECURITY_AWARENESS_POLICY.md` §5.
+- **Onboarding process:** Week 1: background check initiated. Access to CDR data granted only after check completion.
+- **Vendor:** Background check provider to be selected when first hire is planned.
+- **Records:** Background check results retained per HR requirements. Access to records restricted to Director/HR.
+- **Review:** Process reviewed annually and updated when hiring requirements change.
+
+---
+
+## Document Review History
+
+| Date | Version | Reviewer | Changes |
+|------|---------|----------|---------|
+| 2026-04-10 | 1.0 | Director | Initial creation — 26 policies customised from Basiq template |
+
+---
+
+*This document is the single authoritative source for Monitrax security policies.*
+*Based on: Basiq CDR Compliance Security Policies Template v2.0*
+*Next review: 2026-10-10*
