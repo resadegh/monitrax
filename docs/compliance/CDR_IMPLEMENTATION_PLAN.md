@@ -964,8 +964,8 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
 | M.4.1 | Admin CDR dashboard: real consent metrics from CDRConsent model (not just OrganizationClient) | 1 day | ✅ DONE (2026-04-12) — includes CDRConsent, BasiqConnection, CDRComplaint, CDRDisclosure |
-| M.4.2 | Admin consent management: view/revoke/delete CDR data on behalf of users (with audit trail) | 1 day | ⬜ |
-| M.4.3 | CDR complaint management UI: view/resolve/escalate complaints from CDRComplaint model | 0.5 day | ⬜ |
+| M.4.2 | Admin consent management: view/revoke/delete CDR data on behalf of users (with audit trail) | 1 day | ✅ DONE (2026-04-12) — `/api/admin/cdr/consent` GET + POST |
+| M.4.3 | CDR complaint management: create/resolve/escalate complaints from CDRComplaint model | 0.5 day | ✅ DONE (2026-04-12) — `/api/admin/cdr/complaints` CRUD + `/[id]` PATCH |
 
 ### Sub-Phase M.5 — Operational & BAU Support Documentation (~2 dev days)
 
