@@ -5,25 +5,14 @@
  */
 
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { withPermission } from '@/lib/auth/guards';
 import {
   getStorageProviderFactory,
   isGoogleCloudStorageConfigured,
 } from '@/lib/documents/storage';
 
-export async function GET(request: Request) {
+export const GET = withPermission('settings.read', async () => {
   try {
-    // Verify authentication
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const factory = getStorageProviderFactory();
 
     // Track initialization errors
@@ -99,4 +88,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+});

@@ -4,8 +4,8 @@
  * POST /api/documents - Upload a new document (with optional AI analysis)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import {
   uploadDocument,
@@ -37,21 +37,9 @@ interface DocumentAnalysisData {
 // GET /api/documents - List documents
 // ============================================================================
 
-export async function GET(request: NextRequest) {
+export const GET = withPermission('report.read', async (request, auth) => {
   try {
-    // Authenticate
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    const payload = await verifyToken(token);
-    if (!payload?.userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = payload.userId;
+    const userId = auth.userId;
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -166,29 +154,17 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // POST /api/documents - Upload document
 // ============================================================================
 
-export async function POST(request: NextRequest) {
+export const POST = withPermission('report.export', async (request, auth) => {
   console.log('[API/documents POST] Request received');
   console.error('[API/documents POST] Request received (stderr)');
   try {
-    // Authenticate
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    const payload = await verifyToken(token);
-    if (!payload?.userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = payload.userId;
+    const userId = auth.userId;
 
     // Parse multipart form data
     const formData = await request.formData();
@@ -324,4 +300,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

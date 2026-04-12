@@ -8,8 +8,8 @@
  * Removes a link between a document and an entity
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { LinkedEntityType } from '@/lib/documents/types';
 
@@ -18,30 +18,22 @@ interface LinkRequest {
   entityId: string;
 }
 
+type RouteContext = { params: Promise<{ id: string }> };
+
 // ============================================================================
 // POST /api/documents/[id]/link
 // ============================================================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const POST = withPermission<RouteContext>('report.export', async (request, auth, context) => {
   try {
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const { id: documentId } = await params;
+    const userId = auth.userId;
+    const { id: documentId } = await context!.params;
 
     // Verify document exists and belongs to user
     const document = await prisma.document.findFirst({
       where: {
         id: documentId,
-        userId: user.id,
+        userId,
       },
     });
 
@@ -113,32 +105,22 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // DELETE /api/documents/[id]/link
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withPermission<RouteContext>('report.export', async (request, auth, context) => {
   try {
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const { id: documentId } = await params;
+    const userId = auth.userId;
+    const { id: documentId } = await context!.params;
 
     // Verify document exists and belongs to user
     const document = await prisma.document.findFirst({
       where: {
         id: documentId,
-        userId: user.id,
+        userId,
       },
     });
 
@@ -190,4 +172,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});

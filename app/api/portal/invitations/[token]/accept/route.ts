@@ -4,13 +4,18 @@
  * POST /api/portal/invitations/[token]/accept
  *
  * Accepts an invitation and adds user to the organization.
- * - For existing users: requires authentication
+ * - For existing users: requires authentication (via GCP Identity Platform)
  * - For new users: creates account with provided credentials
+ *
+ * Phase N.2: Migrated from verifyToken (legacy JWT) to getAuthContext (GCP).
+ * This route cannot use withPermission() because it has a dual-path flow:
+ * unauthenticated (new user registration) vs authenticated (existing user).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyToken, generateToken, hashPassword } from '@/lib/auth';
+import { generateToken, hashPassword } from '@/lib/auth';
+import { getAuthContext } from '@/lib/auth/context';
 
 export async function POST(
   request: NextRequest,
@@ -105,48 +110,31 @@ export async function POST(
         },
       });
     } else {
-      // Existing user - verify authentication
-      const authHeader = request.headers.get('authorization');
-      if (!authHeader?.startsWith('Bearer ')) {
+      // Existing user - verify authentication via GCP Identity Platform
+      const authContext = await getAuthContext(request);
+      if (!authContext) {
         return NextResponse.json(
           { error: 'UNAUTHORIZED', message: 'Authentication required' },
           { status: 401 }
         );
       }
 
-      try {
-        const authToken = authHeader.substring(7);
-        const payload = await verifyToken(authToken);
+      user = await prisma.user.findUnique({
+        where: { id: authContext.userId },
+      });
 
-        if (!payload?.userId) {
-          return NextResponse.json(
-            { error: 'UNAUTHORIZED', message: 'Invalid authentication token' },
-            { status: 401 }
-          );
-        }
-
-        user = await prisma.user.findUnique({
-          where: { id: payload.userId },
-        });
-
-        if (!user) {
-          return NextResponse.json(
-            { error: 'USER_NOT_FOUND', message: 'User not found' },
-            { status: 404 }
-          );
-        }
-
-        // Verify email matches invitation
-        if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
-          return NextResponse.json(
-            { error: 'EMAIL_MISMATCH', message: 'This invitation is for a different email address' },
-            { status: 403 }
-          );
-        }
-      } catch (err) {
+      if (!user) {
         return NextResponse.json(
-          { error: 'UNAUTHORIZED', message: 'Invalid authentication token' },
-          { status: 401 }
+          { error: 'USER_NOT_FOUND', message: 'User not found' },
+          { status: 404 }
+        );
+      }
+
+      // Verify email matches invitation
+      if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
+        return NextResponse.json(
+          { error: 'EMAIL_MISMATCH', message: 'This invitation is for a different email address' },
+          { status: 403 }
         );
       }
     }

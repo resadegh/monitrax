@@ -412,8 +412,21 @@ export async function getTransactions(
 
   const params = new URLSearchParams();
 
+  // Fix G34: Build filter expression with date range and account filter.
+  // Basiq supports multiple filter criteria using .and() syntax.
+  const filters: string[] = [];
+
   if (options?.accountId) {
-    params.append('filter', `account.id.eq('${options.accountId}')`);
+    filters.push(`account.id.eq('${options.accountId}')`);
+  }
+  if (options?.fromDate) {
+    filters.push(`transaction.postDate.gteq('${options.fromDate}')`);
+  }
+  if (options?.toDate) {
+    filters.push(`transaction.postDate.lteq('${options.toDate}')`);
+  }
+  if (filters.length > 0) {
+    params.append('filter', filters.join(','));
   }
 
   if (options?.limit) {

@@ -4,8 +4,8 @@
  * POST /api/tax/super - Create a new super account
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { TaxEngine } from '@/lib/tax-engine';
 import { getCurrentFinancialYear, SuperContributionType } from '@/lib/tax-engine/types';
@@ -34,23 +34,15 @@ interface SuperAccountWithContributions {
 /**
  * GET /api/tax/super - Get user's superannuation position
  */
-export async function GET(request: NextRequest) {
+export const GET = withPermission('report.read', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const currentFY = getCurrentFinancialYear();
 
     // Get all super accounts with contributions
     const superAccounts = await prisma.superannuationAccount.findMany({
-      where: { userId: user.userId },
+      where: { userId },
       include: {
         contributions: {
           where: { financialYear: currentFY.year },
@@ -154,7 +146,7 @@ export async function GET(request: NextRequest) {
     // Get salary income to calculate potential optimization
     const salaryIncome = await prisma.income.findFirst({
       where: {
-        userId: user.userId,
+        userId,
         type: 'SALARY',
       },
     });
@@ -228,22 +220,14 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/tax/super - Create a new superannuation account
  */
-export async function POST(request: NextRequest) {
+export const POST = withPermission('income.write', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const body = await request.json();
     const {
@@ -269,7 +253,7 @@ export async function POST(request: NextRequest) {
 
     const superAccount = await prisma.superannuationAccount.create({
       data: {
-        userId: user.userId,
+        userId,
         name,
         fundName,
         memberNumber,
@@ -295,4 +279,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

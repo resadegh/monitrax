@@ -4,8 +4,8 @@
  * POST /api/tax/super/optimize - Calculate custom scenario
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { TaxEngine, calculateCoContribution } from '@/lib/tax-engine';
 import { getCurrentFinancialYear } from '@/lib/tax-engine/types';
@@ -20,17 +20,9 @@ interface SuperAccountRecord {
 /**
  * GET /api/tax/super/optimize - Get optimization recommendations based on user's data
  */
-export async function GET(request: NextRequest) {
+export const GET = withPermission('report.read', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const currentFY = getCurrentFinancialYear();
     const config = TaxEngine.getCurrentConfig();
@@ -38,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Get user's salary income
     const salaryIncome = await prisma.income.findFirst({
       where: {
-        userId: user.userId,
+        userId: userId,
         type: 'SALARY',
       },
     });
@@ -55,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     // Get super accounts and current contributions
     const superAccounts = await prisma.superannuationAccount.findMany({
-      where: { userId: user.userId },
+      where: { userId: userId },
       include: {
         contributions: {
           where: { financialYear: currentFY.year },
@@ -235,23 +227,13 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/tax/super/optimize - Calculate a custom salary sacrifice scenario
  */
-export async function POST(request: NextRequest) {
+export const POST = withPermission('report.read', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const body = await request.json();
     const {
       grossSalary,
@@ -356,4 +338,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

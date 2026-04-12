@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { withPermission } from '@/lib/auth/guards';
 
 // Local enum to avoid Prisma generation issues
 const StorageProviderType = {
@@ -15,22 +15,19 @@ const StorageProviderType = {
 } as const;
 type StorageProviderTypeValue = (typeof StorageProviderType)[keyof typeof StorageProviderType];
 
-export async function GET(request: Request) {
+export const GET = withPermission('settings.read', async (request, auth) => {
   try {
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     // Get user's storage provider configuration
     const config = await prisma.storageProviderConfig.findUnique({
-      where: { userId: user.id },
+      where: { userId },
     });
 
     // Get document stats
     const documentStats = await prisma.document.aggregate({
       where: {
-        userId: user.id,
+        userId,
         deletedAt: null,
       },
       _count: true,
@@ -80,14 +77,11 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withPermission('settings.write', async (request, auth) => {
   try {
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const body = await request.json();
     const { autoOrganize, includeDatesInFilenames } = body;
@@ -95,12 +89,12 @@ export async function POST(request: Request) {
     // Update user preferences (could be stored in a separate table)
     // For now, we'll store in the user's storage config
     const existingConfig = await prisma.storageProviderConfig.findUnique({
-      where: { userId: user.id },
+      where: { userId },
     });
 
     if (existingConfig) {
       await prisma.storageProviderConfig.update({
-        where: { userId: user.id },
+        where: { userId },
         data: {
           config: {
             ...(existingConfig.config as object || {}),
@@ -122,4 +116,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});

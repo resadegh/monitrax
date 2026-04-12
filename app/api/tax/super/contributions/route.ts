@@ -4,8 +4,8 @@
  * POST /api/tax/super/contributions - Add a contribution
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getCurrentFinancialYear, SuperContributionType } from '@/lib/tax-engine/types';
 
@@ -46,17 +46,9 @@ interface TotalsAccumulator {
 /**
  * GET /api/tax/super/contributions - List contributions
  */
-export async function GET(request: NextRequest) {
+export const GET = withPermission('report.read', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('accountId');
@@ -66,7 +58,7 @@ export async function GET(request: NextRequest) {
     const whereClause: Record<string, unknown> = {
       financialYear,
       superAccount: {
-        userId: user.userId,
+        userId,
       },
     };
 
@@ -167,22 +159,14 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/tax/super/contributions - Add a contribution
  */
-export async function POST(request: NextRequest) {
+export const POST = withPermission('income.write', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const body = await request.json();
     const {
@@ -222,7 +206,7 @@ export async function POST(request: NextRequest) {
     const superAccount = await prisma.superannuationAccount.findFirst({
       where: {
         id: superAccountId,
-        userId: user.userId,
+        userId,
       },
     });
 
@@ -310,4 +294,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -8,25 +8,18 @@
  * which builds on the Document Management Engine (Phase 25).
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { getDocumentIntelligenceEngine } from '@/lib/documents/intelligence';
 import { prisma } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
 
 // ============================================================================
 // POST /api/documents/analyze
 // ============================================================================
 
-export async function POST(request: NextRequest) {
+export const POST = withPermission('report.export', async (request, auth) => {
   try {
-    // Authenticate user
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const userId = auth.userId;
 
     // Parse request body
     const body = await request.json();
@@ -43,7 +36,7 @@ export async function POST(request: NextRequest) {
     const document = await prisma.document.findFirst({
       where: {
         id: documentId,
-        userId: user.id,
+        userId,
       },
     });
 
@@ -97,23 +90,16 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // GET /api/documents/analyze?documentId=xxx
 // Get existing analysis for a document
 // ============================================================================
 
-export async function GET(request: NextRequest) {
+export const GET = withPermission('report.read', async (request, auth) => {
   try {
-    // Authenticate user
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const userId = auth.userId;
 
     // Get documentId from query params
     const { searchParams } = new URL(request.url);
@@ -130,7 +116,7 @@ export async function GET(request: NextRequest) {
     const document = await prisma.document.findFirst({
       where: {
         id: documentId,
-        userId: user.id,
+        userId,
       },
       include: {
         analysis: true,
@@ -183,4 +169,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

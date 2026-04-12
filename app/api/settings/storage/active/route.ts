@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { withPermission } from '@/lib/auth/guards';
 
 // Local enum to avoid Prisma generation issues
 const StorageProviderType = {
@@ -19,12 +19,9 @@ const PROVIDER_MAP: Record<string, StorageProviderTypeValue> = {
   local_drive: StorageProviderType.LOCAL_DRIVE,
 };
 
-export async function POST(request: Request) {
+export const POST = withPermission('settings.write', async (request, auth) => {
   try {
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const body = await request.json();
     const { providerId } = body;
@@ -48,12 +45,12 @@ export async function POST(request: Request) {
     // If switching to Monitrax, just deactivate any external provider
     if (providerType === StorageProviderType.MONITRAX) {
       const existingConfig = await prisma.storageProviderConfig.findUnique({
-        where: { userId: user.id },
+        where: { userId },
       });
 
       if (existingConfig) {
         await prisma.storageProviderConfig.update({
-          where: { userId: user.id },
+          where: { userId },
           data: { isActive: false },
         });
       }
@@ -66,7 +63,7 @@ export async function POST(request: Request) {
 
     // Check if the provider is connected
     const config = await prisma.storageProviderConfig.findUnique({
-      where: { userId: user.id },
+      where: { userId },
     });
 
     if (!config || config.provider !== providerType) {
@@ -78,7 +75,7 @@ export async function POST(request: Request) {
 
     // Set as active
     await prisma.storageProviderConfig.update({
-      where: { userId: user.id },
+      where: { userId },
       data: { isActive: true },
     });
 
@@ -93,4 +90,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});

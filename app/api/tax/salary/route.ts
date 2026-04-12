@@ -3,23 +3,12 @@
  * POST /api/tax/salary - Calculate salary breakdown with tax, super, and net
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { TaxEngine } from '@/lib/tax-engine';
 
-export async function POST(request: NextRequest) {
+export const POST = withPermission('income.write', async (request, auth) => {
   try {
-    // Verify authentication
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     // Parse request body
     const body = await request.json();
     const {
@@ -125,23 +114,13 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * GET /api/tax/salary - Get PAYG withholding tables info
  */
-export async function GET(request: NextRequest) {
+export const GET = withPermission('report.read', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const config = TaxEngine.getCurrentConfig();
 
     return NextResponse.json({
@@ -167,4 +146,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

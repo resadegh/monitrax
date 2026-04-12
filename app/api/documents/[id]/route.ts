@@ -4,8 +4,8 @@
  * DELETE /api/documents/[id] - Delete a document
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import {
   getDocumentWithSignedUrl,
   deleteDocument,
@@ -14,29 +14,16 @@ import {
   LinkedEntityType,
 } from '@/lib/documents';
 
+type RouteContext = { params: Promise<{ id: string }> };
+
 // ============================================================================
 // GET /api/documents/[id] - Get document with signed URL
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withPermission<RouteContext>('report.read', async (request, auth, context) => {
   try {
-    // Authenticate
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    const payload = await verifyToken(token);
-    if (!payload?.userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = payload.userId;
-    const { id: documentId } = await params;
+    const userId = auth.userId;
+    const { id: documentId } = await context!.params;
 
     const result = await getDocumentWithSignedUrl(documentId, userId);
 
@@ -68,31 +55,16 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // DELETE /api/documents/[id] - Delete document
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withPermission<RouteContext>('report.export', async (request, auth, context) => {
   try {
-    // Authenticate
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    const payload = await verifyToken(token);
-    if (!payload?.userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = payload.userId;
-    const { id: documentId } = await params;
+    const userId = auth.userId;
+    const { id: documentId } = await context!.params;
 
     // Check for hard delete query param
     const { searchParams } = new URL(request.url);
@@ -112,31 +84,16 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // PATCH /api/documents/[id] - Update document links
 // ============================================================================
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const PATCH = withPermission<RouteContext>('report.export', async (request, auth, context) => {
   try {
-    // Authenticate
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    const payload = await verifyToken(token);
-    if (!payload?.userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = payload.userId;
-    const { id: documentId } = await params;
+    const userId = auth.userId;
+    const { id: documentId } = await context!.params;
 
     const body = await request.json();
     const { action, entityType, entityId } = body;
@@ -181,4 +138,4 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+});

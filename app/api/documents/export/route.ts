@@ -3,8 +3,8 @@
  * POST /api/documents/export - Export documents as ZIP
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { lookupEntities } from '@/lib/documents/entityLookup';
 import { getStorageProvider } from '@/lib/documents/storage';
@@ -56,21 +56,9 @@ const CATEGORY_NAMES: Record<string, string> = {
   OTHER: 'Other',
 };
 
-export async function POST(request: NextRequest) {
+export const POST = withPermission('report.export', async (request, auth) => {
   try {
-    // Authenticate
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    const payload = await verifyToken(token);
-    if (!payload?.userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = payload.userId;
+    const userId = auth.userId;
     const body: ExportRequest = await request.json();
     const { path, documentIds, structure = 'financial-year-first' } = body;
 
@@ -222,7 +210,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * Generate export path based on selected structure
