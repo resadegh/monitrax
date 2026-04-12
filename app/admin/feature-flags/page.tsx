@@ -44,7 +44,7 @@ export default function FeatureFlagsPage() {
 
     try {
       const response = await fetch('/api/admin/feature-flags', {
-        credentials: 'include',
+        
       });
 
       if (!response.ok) {
@@ -77,7 +77,7 @@ export default function FeatureFlagsPage() {
       const response = await fetch(`/api/admin/feature-flags/${flagKey}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify({ enabled: !currentEnabled }),
       });
 

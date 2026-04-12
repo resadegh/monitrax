@@ -17,6 +17,7 @@ import { AdminTable } from '@/components/admin/ui/AdminTable';
 import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { AdminBadge } from '@/components/admin/ui/AdminBadge';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
+import { useAdminFetch } from '@/lib/admin/hooks/useAdminFetch';
 
 interface AuthEvents {
   loginSuccess24h: number;
@@ -86,15 +87,14 @@ export default function SecurityPage() {
   const [data, setData] = useState<SecurityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const fetchAdmin = useAdminFetch();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/admin/security', {
-        credentials: 'include',
-      });
+      const response = await fetchAdmin('/api/admin/security');
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -108,7 +108,7 @@ export default function SecurityPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchAdmin]);
 
   useEffect(() => {
     fetchData();

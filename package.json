@@ -21,7 +21,11 @@
     "generate:report": "npx ts-node tests/validation/generate-report.ts"
   },
   "dependencies": {
+    "@google-cloud/error-reporting": "^3.0.5",
     "@google-cloud/logging": "^11.2.1",
+    "@google-cloud/monitoring": "^5.3.1",
+    "@google-cloud/scheduler": "^5.3.1",
+    "@google-cloud/security-center": "^9.3.0",
     "@google-cloud/storage": "^7.18.0",
     "@google-cloud/vision": "^5.3.4",
     "@google/generative-ai": "^0.24.1",

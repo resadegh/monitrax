@@ -102,7 +102,7 @@ export default function SupportPage() {
 
     try {
       const response = await fetch(`/api/admin/users?search=${encodeURIComponent(searchEmail)}`, {
-        credentials: 'include',
+        
       });
 
       if (!response.ok) {

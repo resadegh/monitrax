@@ -51,7 +51,7 @@ export default function ImpersonatePage() {
   const fetchRecentSessions = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/audit?action=USER_IMPERSONATED&limit=20', {
-        credentials: 'include',
+        
       });
 
       if (response.ok) {
@@ -86,7 +86,7 @@ export default function ImpersonatePage() {
     setSearching(true);
     try {
       const response = await fetch(`/api/admin/users?search=${encodeURIComponent(searchEmail)}`, {
-        credentials: 'include',
+        
       });
 
       if (response.ok) {
@@ -113,7 +113,7 @@ export default function ImpersonatePage() {
       const response = await fetch(`/api/admin/users/${selectedUser.id}/impersonate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify({ reason }),
       });
 

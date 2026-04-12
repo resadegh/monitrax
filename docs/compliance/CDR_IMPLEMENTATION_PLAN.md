@@ -945,19 +945,20 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
 | M.2.1 | Audit log dual-write: existing `createAuditLog()` also writes to Cloud Logging | 1 day | ✅ DONE (2026-04-12) |
-| M.2.2 | Admin audit log page: query Cloud Logging API instead of (or alongside) PostgreSQL | 1 day | ⬜ |
+| M.2.2 | Admin audit log page: query Cloud Logging API instead of (or alongside) PostgreSQL | 1 day | ✅ DONE (2026-04-12) — `lib/gcp/cloudLogging.ts` + `/api/admin/audit/cloud-logging` |
 | M.2.3 | CDR compliance dashboard: replace "unknown" GCP health placeholders with real status | 1 day | ✅ DONE (2026-04-12) — 5 services enabled, 4 planned |
-| M.2.4 | Security monitoring page: read from Cloud Monitoring API for auth events, rate limits | 0.5 day | ⬜ |
-| M.2.5 | Error tracking: integrate GCP Error Reporting API for error logs page | 0.5 day | ⬜ |
+| M.2.4 | Security monitoring page: read from Cloud Monitoring API for auth events, rate limits | 0.5 day | ✅ DONE (2026-04-12) — `lib/gcp/cloudMonitoring.ts` + `/api/admin/gcp/uptime` |
+| M.2.5 | Error tracking: integrate GCP Error Reporting API for error logs page | 0.5 day | ✅ DONE (2026-04-12) — `lib/gcp/errorReporting.ts` + `/api/admin/gcp/errors` |
 
 ### Sub-Phase M.3 — GCP Security Integration (~2-3 dev days)
 
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
-| M.3.1 | Security page: show SCC findings via Security Command Center API | 1 day | ⬜ |
-| M.3.2 | Encryption status: show Cloud KMS key rotation status via KMS API | 0.5 day | ⬜ |
-| M.3.3 | CDR compliance: show Cloud Armor WAF status (when enabled) | 0.5 day | ⬜ |
-| M.3.4 | GCP IAM roles: document and enforce admin IAM role mapping | 0.5 day | ⬜ |
+| M.3.1 | Security page: show SCC findings via Security Command Center API | 1 day | ✅ DONE (2026-04-12) — `lib/gcp/securityCommandCenter.ts` + `/api/admin/gcp/security-findings` |
+| M.3.2 | Cloud Scheduler management: view/pause/resume/run CDR lifecycle job from admin | 0.5 day | ✅ DONE (2026-04-12) — `lib/gcp/cloudScheduler.ts` + `/api/admin/gcp/scheduler` |
+| M.3.3 | Encryption status: show Cloud KMS key rotation status via KMS API | 0.5 day | ⬜ (requires CMEK setup) |
+| M.3.4 | CDR compliance: show Cloud Armor WAF status (when enabled) | 0.5 day | ⬜ (requires Cloud Armor setup) |
+| M.3.5 | GCP IAM roles: document and enforce admin IAM role mapping | 0.5 day | ⬜ |
 
 ### Sub-Phase M.4 — Admin Portal CDR Consent Management (~2 dev days)
 

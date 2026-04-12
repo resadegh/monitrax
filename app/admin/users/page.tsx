@@ -81,7 +81,7 @@ export default function UsersPage() {
       if (statusFilter) params.set('status', statusFilter);
 
       const response = await fetch(`/api/admin/users?${params.toString()}`, {
-        credentials: 'include',
+        
       });
 
       if (!response.ok) {
