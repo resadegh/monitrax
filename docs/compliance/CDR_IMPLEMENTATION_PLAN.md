@@ -26,7 +26,7 @@
 | **J** | Evidence Collection & Submission | 🔶 **IN PROGRESS** | — | Step 6: Evidence guide created. Screenshots + 2 blockers (pen test, insurance) remain. |
 | **K** | Spreadsheet Completion & Submission | 🔶 **IN PROGRESS** | — | Spreadsheet answers documented. Fill + submit pending user action. |
 | **L** | CDR Code-Level Remediation | 🔶 **IN PROGRESS** | — | 20/46 gaps fixed (2026-04-11). Schema, auth, lifecycle, security hardening done. UI + route migration remaining. |
-| **M** | Admin Portal — GCP-First Migration | 🔶 **IN PROGRESS** | [#470](https://github.com/resadegh/monitrax/pull/470), [#471](https://github.com/resadegh/monitrax/pull/471), [#472](https://github.com/resadegh/monitrax/pull/472), [#473](https://github.com/resadegh/monitrax/pull/473) | M.1 DONE, M.2.1/M.2.3 DONE, M.4 DONE. GCP config done (Logging, SCC, Scheduler, Monitoring). M.2.2/M.2.4/M.2.5/M.3/M.5 pending. |
+| **M** | Admin Portal — GCP-First Migration | ✅ **COMPLETE** | [#470](https://github.com/resadegh/monitrax/pull/470)-[#477](https://github.com/resadegh/monitrax/pull/477) | M.1-M.5 all DONE (2026-04-12). Admin auth on Firebase, 5 GCP API integrations, modernized UI, 6 operational docs. |
 | **N** | Consumer Consent UI & Route Migration | 🔶 **IN PROGRESS** | — | N.1 Consumer consent UI DONE. N.3 Basiq webhook DONE. N.4 small fixes DONE. N.2 legacy route migration in progress. |
 
 **Overall: 7 of 14 phases complete. 3 in progress (evidence, spreadsheet, code remediation). 4 pending (GCP config, API cleanup, admin portal migration, consent UI).**
@@ -974,12 +974,12 @@ Created AFTER Phase M implementation is complete — to train admin portal suppo
 
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
-| M.5.1 | Create Admin Portal Operations Guide (`docs/operational/admin/01_ADMIN_PORTAL_OPERATIONS.md`) | 0.5 day | ⬜ |
-| M.5.2 | Create Admin Troubleshooting Runbook (`docs/operational/admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md`) | 0.5 day | ⬜ |
-| M.5.3 | Create GCP Service Operations for Admins (`docs/operational/admin/03_GCP_SERVICE_OPERATIONS.md`) | 0.5 day | ⬜ |
-| M.5.4 | Create Admin Onboarding & Training Guide (`docs/operational/admin/04_ADMIN_ONBOARDING_TRAINING.md`) | 0.5 day | ⬜ |
-| M.5.5 | Create CDR Compliance Admin Procedures (`docs/operational/admin/05_CDR_COMPLIANCE_PROCEDURES.md`) | 0.5 day | ⬜ |
-| M.5.6 | Create Admin Portal BAU Playbook (`docs/bau-framework/ADMIN_PORTAL_BAU_PLAYBOOK.md`) | 0.5 day | ⬜ |
+| M.5.1 | Create Admin Portal Operations Guide (`docs/operational/admin/01_ADMIN_PORTAL_OPERATIONS.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.2 | Create Admin Troubleshooting Runbook (`docs/operational/admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.3 | Create GCP Service Operations for Admins (`docs/operational/admin/03_GCP_SERVICE_OPERATIONS.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.4 | Create Admin Onboarding & Training Guide (`docs/operational/admin/04_ADMIN_ONBOARDING_TRAINING.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.5 | Create CDR Compliance Admin Procedures (`docs/operational/admin/05_CDR_COMPLIANCE_PROCEDURES.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.6 | Create Admin Portal BAU Playbook (`docs/bau-framework/ADMIN_PORTAL_BAU_PLAYBOOK.md`) | 0.5 day | ✅ DONE (2026-04-12) |
 
 ### GCP IAM Role Mapping for Admin Portal
 
