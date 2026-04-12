@@ -944,9 +944,9 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
-| M.2.1 | Audit log dual-write: existing `createAuditLog()` also writes to Cloud Logging | 1 day | ⬜ |
+| M.2.1 | Audit log dual-write: existing `createAuditLog()` also writes to Cloud Logging | 1 day | ✅ DONE (2026-04-12) |
 | M.2.2 | Admin audit log page: query Cloud Logging API instead of (or alongside) PostgreSQL | 1 day | ⬜ |
-| M.2.3 | CDR compliance dashboard: replace "unknown" GCP health placeholders with real API calls | 1 day | ⬜ |
+| M.2.3 | CDR compliance dashboard: replace "unknown" GCP health placeholders with real status | 1 day | ✅ DONE (2026-04-12) — 5 services enabled, 4 planned |
 | M.2.4 | Security monitoring page: read from Cloud Monitoring API for auth events, rate limits | 0.5 day | ⬜ |
 | M.2.5 | Error tracking: integrate GCP Error Reporting API for error logs page | 0.5 day | ⬜ |
 
@@ -963,7 +963,7 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
-| M.4.1 | Admin CDR dashboard: real consent metrics from CDRConsent model (not just OrganizationClient) | 1 day | ⬜ |
+| M.4.1 | Admin CDR dashboard: real consent metrics from CDRConsent model (not just OrganizationClient) | 1 day | ✅ DONE (2026-04-12) — includes CDRConsent, BasiqConnection, CDRComplaint, CDRDisclosure |
 | M.4.2 | Admin consent management: view/revoke/delete CDR data on behalf of users (with audit trail) | 1 day | ⬜ |
 | M.4.3 | CDR complaint management UI: view/resolve/escalate complaints from CDRComplaint model | 0.5 day | ⬜ |
 
