@@ -15,6 +15,7 @@ let cloudLoggingInitFailed = false;
 /**
  * Get or initialize the Cloud Logging client.
  * Returns null if Cloud Logging is not configured (development environments).
+ * Uses the shared GCP credentials helper so all services share one service account.
  */
 function getCloudLogging() {
   if (cloudLoggingInitFailed) return null;
@@ -23,12 +24,14 @@ function getCloudLogging() {
   try {
     // Dynamic import to avoid build failures when credentials aren't available
     const { Logging } = require('@google-cloud/logging');
-    const projectId = process.env.GCP_PROJECT_ID;
-    if (!projectId) {
+    // Lazy import of credentials helper to avoid circular deps
+    const { getGCPClientOptions } = require('@/lib/gcp/credentials');
+    const options = getGCPClientOptions();
+    if (!options) {
       cloudLoggingInitFailed = true;
       return null;
     }
-    cloudLoggingClient = new Logging({ projectId });
+    cloudLoggingClient = new Logging(options);
     return cloudLoggingClient;
   } catch {
     cloudLoggingInitFailed = true;

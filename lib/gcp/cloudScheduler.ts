@@ -11,20 +11,17 @@
  */
 
 import { log } from '@/lib/utils/logger';
+import { getGCPClientOptions, getGCPProjectId } from './credentials';
 
 let schedulerClient: any = null;
 let schedulerInitFailed = false;
-
-function getProjectId(): string | null {
-  return process.env.GCP_PROJECT_ID || null;
-}
 
 function getLocation(): string {
   return process.env.GCP_SCHEDULER_LOCATION || 'australia-southeast1';
 }
 
 function getParent(): string | null {
-  const projectId = getProjectId();
+  const projectId = getGCPProjectId();
   return projectId ? `projects/${projectId}/locations/${getLocation()}` : null;
 }
 
@@ -32,8 +29,13 @@ function getSchedulerClient(): any {
   if (schedulerInitFailed) return null;
   if (schedulerClient) return schedulerClient;
   try {
+    const options = getGCPClientOptions();
+    if (!options) {
+      schedulerInitFailed = true;
+      return null;
+    }
     const { CloudSchedulerClient } = require('@google-cloud/scheduler');
-    schedulerClient = new CloudSchedulerClient();
+    schedulerClient = new CloudSchedulerClient(options);
     return schedulerClient;
   } catch (error) {
     schedulerInitFailed = true;
@@ -143,6 +145,6 @@ export function isCloudSchedulerAvailable(): boolean {
 }
 
 export function getSchedulerConsoleUrl(): string {
-  const projectId = getProjectId() || '';
+  const projectId = getGCPProjectId() || '';
   return `https://console.cloud.google.com/cloudscheduler?project=${projectId}`;
 }

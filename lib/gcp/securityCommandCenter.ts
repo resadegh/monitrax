@@ -13,13 +13,10 @@
  */
 
 import { log } from '@/lib/utils/logger';
+import { getGCPClientOptions, getGCPProjectId } from './credentials';
 
 let sccClient: any = null;
 let sccInitFailed = false;
-
-function getProjectId(): string | null {
-  return process.env.GCP_PROJECT_ID || null;
-}
 
 function getOrganizationId(): string | null {
   return process.env.GCP_ORGANIZATION_ID || null;
@@ -29,8 +26,13 @@ function getSCCClient(): any {
   if (sccInitFailed) return null;
   if (sccClient) return sccClient;
   try {
+    const options = getGCPClientOptions();
+    if (!options) {
+      sccInitFailed = true;
+      return null;
+    }
     const { SecurityCenterClient } = require('@google-cloud/security-center');
-    sccClient = new SecurityCenterClient();
+    sccClient = new SecurityCenterClient(options);
     return sccClient;
   } catch (error) {
     sccInitFailed = true;
@@ -130,6 +132,6 @@ export function isSCCAvailable(): boolean {
 }
 
 export function getSCCConsoleUrl(): string {
-  const projectId = getProjectId() || '';
+  const projectId = getGCPProjectId() || '';
   return `https://console.cloud.google.com/security/command-center?project=${projectId}`;
 }

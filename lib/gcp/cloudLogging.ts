@@ -16,6 +16,7 @@
  */
 
 import { log } from '@/lib/utils/logger';
+import { getGCPClientOptions, getGCPProjectId } from './credentials';
 
 // Lazy-initialized Cloud Logging client
 let cloudLoggingClient: any = null;
@@ -31,13 +32,13 @@ function getCloudLoggingClient(): any {
 
   try {
     const { Logging } = require('@google-cloud/logging');
-    const projectId = process.env.GCP_PROJECT_ID;
-    if (!projectId) {
+    const options = getGCPClientOptions();
+    if (!options) {
       cloudLoggingInitFailed = true;
-      log.warn('[Cloud Logging] GCP_PROJECT_ID not set — Cloud Logging API unavailable');
+      log.warn('[Cloud Logging] GCP credentials not configured');
       return null;
     }
-    cloudLoggingClient = new Logging({ projectId });
+    cloudLoggingClient = new Logging(options);
     return cloudLoggingClient;
   } catch (error) {
     cloudLoggingInitFailed = true;
@@ -107,7 +108,8 @@ export async function queryCloudLogs(query: CloudLogQuery = {}): Promise<CloudLo
     // Build the Cloud Logging filter string
     const filters: string[] = [];
     const logName = query.logName || 'monitrax-audit';
-    filters.push(`logName="projects/${process.env.GCP_PROJECT_ID}/logs/${logName}"`);
+    const projectId = getGCPProjectId();
+    filters.push(`logName="projects/${projectId}/logs/${logName}"`);
 
     if (query.startTime) {
       filters.push(`timestamp>="${query.startTime}"`);
@@ -182,7 +184,7 @@ export function isCloudLoggingAvailable(): boolean {
  * Admin portal can link directly to GCP Console Logs Explorer with a filter.
  */
 export function getCloudLoggingConsoleUrl(logName: string = 'monitrax-audit'): string {
-  const projectId = process.env.GCP_PROJECT_ID || '';
+  const projectId = getGCPProjectId() || '';
   const encodedFilter = encodeURIComponent(
     `logName="projects/${projectId}/logs/${logName}"`
   );

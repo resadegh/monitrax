@@ -11,13 +11,14 @@
  */
 
 import { log } from '@/lib/utils/logger';
+import { getGCPClientOptions, getGCPProjectId } from './credentials';
 
 let errorGroupClient: any = null;
 let errorStatsClient: any = null;
 let errorReportingInitFailed = false;
 
 function getProjectPath(): string | null {
-  const projectId = process.env.GCP_PROJECT_ID;
+  const projectId = getGCPProjectId();
   return projectId ? `projects/${projectId}` : null;
 }
 
@@ -25,8 +26,13 @@ function getErrorStatsClient(): any {
   if (errorReportingInitFailed) return null;
   if (errorStatsClient) return errorStatsClient;
   try {
+    const options = getGCPClientOptions();
+    if (!options) {
+      errorReportingInitFailed = true;
+      return null;
+    }
     const { ErrorStatsServiceClient } = require('@google-cloud/error-reporting');
-    errorStatsClient = new ErrorStatsServiceClient();
+    errorStatsClient = new ErrorStatsServiceClient(options);
     return errorStatsClient;
   } catch (error) {
     errorReportingInitFailed = true;
@@ -105,6 +111,6 @@ export function isErrorReportingAvailable(): boolean {
 }
 
 export function getErrorReportingConsoleUrl(): string {
-  const projectId = process.env.GCP_PROJECT_ID || '';
+  const projectId = getGCPProjectId() || '';
   return `https://console.cloud.google.com/errors?project=${projectId}`;
 }

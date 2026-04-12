@@ -8,6 +8,7 @@
  */
 
 import { log } from '@/lib/utils/logger';
+import { getGCPClientOptions, getGCPProjectId } from './credentials';
 
 // Lazy-initialized clients
 let uptimeClient: any = null;
@@ -15,12 +16,8 @@ let alertPolicyClient: any = null;
 let metricClient: any = null;
 let monitoringInitFailed = false;
 
-function getProjectId(): string | null {
-  return process.env.GCP_PROJECT_ID || null;
-}
-
 function getProjectPath(): string | null {
-  const projectId = getProjectId();
+  const projectId = getGCPProjectId();
   return projectId ? `projects/${projectId}` : null;
 }
 
@@ -28,8 +25,13 @@ function getUptimeClient(): any {
   if (monitoringInitFailed) return null;
   if (uptimeClient) return uptimeClient;
   try {
+    const options = getGCPClientOptions();
+    if (!options) {
+      monitoringInitFailed = true;
+      return null;
+    }
     const { UptimeCheckServiceClient } = require('@google-cloud/monitoring');
-    uptimeClient = new UptimeCheckServiceClient();
+    uptimeClient = new UptimeCheckServiceClient(options);
     return uptimeClient;
   } catch (error) {
     monitoringInitFailed = true;
@@ -42,8 +44,10 @@ function getAlertClient(): any {
   if (monitoringInitFailed) return null;
   if (alertPolicyClient) return alertPolicyClient;
   try {
+    const options = getGCPClientOptions();
+    if (!options) return null;
     const { AlertPolicyServiceClient } = require('@google-cloud/monitoring');
-    alertPolicyClient = new AlertPolicyServiceClient();
+    alertPolicyClient = new AlertPolicyServiceClient(options);
     return alertPolicyClient;
   } catch (error) {
     log.error('[Cloud Monitoring] AlertPolicyServiceClient init failed', error as Error);
@@ -55,8 +59,10 @@ function getMetricClient(): any {
   if (monitoringInitFailed) return null;
   if (metricClient) return metricClient;
   try {
+    const options = getGCPClientOptions();
+    if (!options) return null;
     const { MetricServiceClient } = require('@google-cloud/monitoring');
-    metricClient = new MetricServiceClient();
+    metricClient = new MetricServiceClient(options);
     return metricClient;
   } catch (error) {
     log.error('[Cloud Monitoring] MetricServiceClient init failed', error as Error);
@@ -161,7 +167,7 @@ export function isCloudMonitoringAvailable(): boolean {
  * Get Cloud Monitoring Console URL for an uptime check.
  */
 export function getUptimeCheckConsoleUrl(checkName?: string): string {
-  const projectId = getProjectId() || '';
+  const projectId = getGCPProjectId() || '';
   if (checkName) {
     return `https://console.cloud.google.com/monitoring/uptime/${encodeURIComponent(checkName)}?project=${projectId}`;
   }
