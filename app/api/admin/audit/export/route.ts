@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyAdminAuth } from '@/lib/admin/auth';
+import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { hasPermission } from '@/lib/admin/permissions';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
 import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
   try {
     // Attempt admin session auth. If no admin session exists,
     // fall back to feature-flag-only access (matches /api/admin/dashboard pattern).
-    // TODO: Enforce verifyAdminAuth + RBAC once admin login flow is fully wired.
-    const authResult = await verifyAdminAuth(request);
+    // TODO: Enforce verifyAdminGCPAuth + RBAC once admin login flow is fully wired.
+    const authResult = await verifyAdminGCPAuth(request);
     if (authResult.success && authResult.context) {
       if (!hasPermission(authResult.context.role, 'audit:export')) {
         return NextResponse.json(

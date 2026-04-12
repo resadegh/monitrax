@@ -1,17 +1,19 @@
 /**
- * Phase 33: Admin Session API
+ * Phase M: Admin Session API — GCP Identity Platform
  *
  * GET /api/admin/auth/session
- * Validates current admin session.
+ * Validates current admin session using Firebase ID token.
+ *
+ * Phase M Migration: Uses verifyAdminGCPAuth() instead of verifyAdminAuth().
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminAuth } from '@/lib/admin/auth';
+import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await verifyAdminAuth(request);
+    const authResult = await verifyAdminGCPAuth(request);
 
     if (!authResult.success || !authResult.context) {
       return NextResponse.json(

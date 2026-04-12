@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyAdminAuth } from '@/lib/admin/auth';
+import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { hasPermission } from '@/lib/admin/permissions';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
 import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const authResult = await verifyAdminAuth(request);
+    const authResult = await verifyAdminGCPAuth(request);
     if (!authResult.success || !authResult.context) {
       return NextResponse.json({ error: authResult.error }, { status: 401 });
     }
@@ -82,7 +82,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const authResult = await verifyAdminAuth(request);
+    const authResult = await verifyAdminGCPAuth(request);
     if (!authResult.success || !authResult.context) {
       return NextResponse.json({ error: authResult.error }, { status: 401 });
     }
@@ -175,7 +175,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const authResult = await verifyAdminAuth(request);
+    const authResult = await verifyAdminGCPAuth(request);
     if (!authResult.success || !authResult.context) {
       return NextResponse.json({ error: authResult.error }, { status: 401 });
     }

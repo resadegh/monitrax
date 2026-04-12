@@ -1,23 +1,28 @@
 /**
- * Phase 33: Admin Login API
+ * Phase M: Admin Login API — GCP Identity Platform
  *
  * POST /api/admin/auth/login
- * Handles admin authentication.
+ * Accepts a Firebase ID token (from client-side Firebase Auth login),
+ * verifies admin privileges (custom claims or AdminUser DB record),
+ * and returns admin context.
+ *
+ * The Firebase ID token is passed in the Authorization header:
+ *   Authorization: Bearer <firebase-id-token>
+ *
+ * The client stores the token and passes it with subsequent requests.
+ * No custom session tokens or cookies are created — Firebase handles
+ * token refresh and expiry.
+ *
+ * Phase M Migration: Replaces custom AdminUser password auth with
+ * GCP Identity Platform token verification.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
-import {
-  verifyPassword,
-  createAdminSession,
-  isAccountLocked,
-  recordFailedLogin,
-  resetFailedLoginCount,
-  extractClientIp,
-  extractUserAgent,
-} from '@/lib/admin/auth';
-import { ADMIN_ERROR_CODES, SECURITY_CONSTANTS } from '@/lib/admin/constants';
+import { verifyAdminGCPAuth, extractClientIp } from '@/lib/admin/auth';
+import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 export async function POST(request: NextRequest) {
   // Check if portal is accessible
@@ -34,163 +39,69 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const { email, password, mfaCode } = body;
+    // Verify the Firebase ID token and check admin privileges
+    // verifyAdminGCPAuth extracts the token from Authorization header,
+    // verifies via GCP Identity Platform, and checks admin custom claims
+    // or AdminUser DB record.
+    const authResult = await verifyAdminGCPAuth(request);
 
-    // Validate input
-    if (!email || !password) {
-      return NextResponse.json(
-        {
-          error: {
-            code: ADMIN_ERROR_CODES.INVALID_REQUEST,
-            message: 'Email and password are required',
-          },
+    if (!authResult.success || !authResult.context) {
+      const clientIp = extractClientIp(request);
+
+      // Audit failed admin login attempt
+      createAuditLog({
+        action: 'UNAUTHORIZED_ACCESS',
+        status: 'BLOCKED',
+        entityType: 'AdminLogin',
+        ipAddress: clientIp,
+        metadata: {
+          endpoint: '/api/admin/auth/login',
+          reason: authResult.error?.message || 'Unknown',
         },
-        { status: 400 }
-      );
-    }
+      }).catch(() => {});
 
-    // Find admin by email
-    const admin = await prisma.adminUser.findUnique({
-      where: { email: email.toLowerCase() },
-    });
-
-    if (!admin) {
       return NextResponse.json(
-        {
-          error: {
-            code: ADMIN_ERROR_CODES.INVALID_CREDENTIALS,
-            message: 'Invalid email or password',
-          },
-        },
+        { error: authResult.error },
         { status: 401 }
       );
     }
 
-    // Check if account is locked
-    if (await isAccountLocked(admin.id)) {
-      return NextResponse.json(
-        {
-          error: {
-            code: ADMIN_ERROR_CODES.ACCOUNT_LOCKED,
-            message: 'Account is locked. Please try again later.',
-          },
-        },
-        { status: 403 }
-      );
-    }
-
-    // Check if account is active
-    if (!admin.isActive) {
-      return NextResponse.json(
-        {
-          error: {
-            code: ADMIN_ERROR_CODES.ACCOUNT_INACTIVE,
-            message: 'Account is inactive',
-          },
-        },
-        { status: 403 }
-      );
-    }
-
-    // Verify password
-    const isPasswordValid = await verifyPassword(password, admin.passwordHash);
-    if (!isPasswordValid) {
-      const { locked, remainingAttempts } = await recordFailedLogin(admin.id);
-
-      return NextResponse.json(
-        {
-          error: {
-            code: ADMIN_ERROR_CODES.INVALID_CREDENTIALS,
-            message: locked
-              ? 'Account locked due to too many failed attempts'
-              : `Invalid email or password. ${remainingAttempts} attempts remaining.`,
-          },
-        },
-        { status: 401 }
-      );
-    }
-
-    // Check MFA if enabled
-    if (admin.mfaEnabled) {
-      if (!mfaCode) {
-        return NextResponse.json(
-          {
-            requireMfa: true,
-            error: {
-              code: ADMIN_ERROR_CODES.MFA_REQUIRED,
-              message: 'MFA code is required',
-            },
-          },
-          { status: 200 }
-        );
-      }
-
-      // TODO: Verify MFA code
-      // For now, accept any 6-digit code
-      if (!/^\d{6}$/.test(mfaCode)) {
-        return NextResponse.json(
-          {
-            error: {
-              code: ADMIN_ERROR_CODES.MFA_INVALID,
-              message: 'Invalid MFA code',
-            },
-          },
-          { status: 401 }
-        );
-      }
-    }
-
-    // Reset failed login count
-    await resetFailedLoginCount(admin.id);
-
-    // Create session
+    // Update last login on AdminUser record (if exists)
     const clientIp = extractClientIp(request);
-    const userAgent = extractUserAgent(request);
-    const sessionResult = await createAdminSession(admin.id, clientIp, userAgent);
-
-    if (!sessionResult.success || !sessionResult.session) {
-      return NextResponse.json(
-        {
-          error: {
-            code: ADMIN_ERROR_CODES.INTERNAL_ERROR,
-            message: 'Failed to create session',
-          },
+    try {
+      await prisma.adminUser.update({
+        where: { id: authResult.context.adminId },
+        data: {
+          lastLoginAt: new Date(),
+          lastLoginIp: clientIp,
         },
-        { status: 500 }
-      );
+      });
+    } catch {
+      // AdminUser record may not exist if using custom claims only — that's OK
     }
 
-    // Update last login
-    await prisma.adminUser.update({
-      where: { id: admin.id },
-      data: {
-        lastLoginAt: new Date(),
-        lastLoginIp: clientIp,
+    // Audit successful admin login
+    createAuditLog({
+      userId: authResult.context.adminId,
+      action: 'ADMIN_LOGIN',
+      status: 'SUCCESS',
+      entityType: 'AdminLogin',
+      ipAddress: clientIp,
+      metadata: {
+        role: authResult.context.role,
+        email: authResult.context.email,
       },
-    });
+    }).catch(() => {});
 
-    // Create response with session cookie
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
       admin: {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name,
-        role: admin.role,
+        id: authResult.context.adminId,
+        email: authResult.context.email,
+        name: authResult.context.name,
+        role: authResult.context.role,
       },
     });
-
-    // Set session cookie
-    response.cookies.set('admin_session', sessionResult.session.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: SECURITY_CONSTANTS.SESSION_DURATION_MS / 1000,
-      path: '/admin',
-    });
-
-    return response;
   } catch (error) {
     console.error('[Admin Login] Error:', error);
     return NextResponse.json(

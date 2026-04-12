@@ -6,13 +6,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminAuth, revokeAdminSession } from '@/lib/admin/auth';
+import { verifyAdminGCPAuth, revokeAdminSession } from '@/lib/admin/auth';
 import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
 
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
-    const authResult = await verifyAdminAuth(request);
+    const authResult = await verifyAdminGCPAuth(request);
 
     if (authResult.success && authResult.context) {
       // Revoke the session

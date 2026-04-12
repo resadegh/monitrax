@@ -11,6 +11,8 @@ import type { AdminRole } from '@prisma/client';
 import { isAdminPortalAccessible, isAdminFeatureEnabled } from './featureFlags';
 import { SECURITY_CONSTANTS, ADMIN_ERROR_CODES } from './constants';
 import type { AdminUser, AdminSession, AdminApiError } from './types';
+import { verifyGCPIdToken } from '@/lib/auth/gcpTokenVerifier';
+import { log } from '@/lib/utils/logger';
 
 // =============================================================================
 // TYPES
@@ -607,4 +609,231 @@ export async function verifyAdminAuth(request: Request): Promise<AdminAuthResult
   }
 
   return result;
+}
+
+// =============================================================================
+// GCP-FIRST ADMIN AUTH (Phase M — Admin Portal GCP Migration)
+// =============================================================================
+
+/**
+ * Valid admin roles from Firebase custom claims.
+ * These are set on admin user accounts via Firebase Admin SDK:
+ *   admin.auth().setCustomUserClaims(uid, { monitraxAdmin: true, adminRole: 'SUPER_ADMIN' })
+ */
+const VALID_ADMIN_ROLES: AdminRole[] = ['SUPER_ADMIN', 'BILLING_ADMIN', 'SUPPORT_ADMIN', 'VIEWER'];
+
+/**
+ * Verify admin authentication using GCP Identity Platform (Firebase Auth).
+ *
+ * Phase M: GCP-First Admin Portal Migration
+ * Replaces the custom AdminUser/AdminSession auth with Firebase ID token
+ * verification + custom claims check.
+ *
+ * Admin users authenticate via Firebase Auth (same as regular users) and have
+ * custom claims set on their Firebase account:
+ *   { monitraxAdmin: true, adminRole: 'SUPER_ADMIN' | 'BILLING_ADMIN' | 'SUPPORT_ADMIN' | 'VIEWER' }
+ *
+ * Flow:
+ *   1. Check admin portal is accessible (feature flag)
+ *   2. Extract Bearer token from Authorization header or admin_session cookie
+ *   3. Verify as a GCP Identity Platform token (same verifier as user auth)
+ *   4. Check custom claim: monitraxAdmin === true
+ *   5. Extract adminRole from custom claims
+ *   6. Verify MFA for privileged roles (SUPER_ADMIN, BILLING_ADMIN)
+ *   7. Return AdminAuthContext compatible with existing admin route code
+ *
+ * Returns AdminAuthResult — same interface as verifyAdminAuth() for drop-in replacement.
+ */
+export async function verifyAdminGCPAuth(request: Request): Promise<AdminAuthResult> {
+  // 1. Check if portal is accessible
+  if (!isAdminPortalAccessible()) {
+    return {
+      success: false,
+      error: {
+        code: ADMIN_ERROR_CODES.ADMIN_PORTAL_NOT_ENABLED,
+        message: 'Admin portal is not enabled',
+      },
+    };
+  }
+
+  // 2. Extract token from Authorization header or admin_session cookie
+  const token = extractAdminToken(request);
+  if (!token) {
+    return {
+      success: false,
+      error: {
+        code: ADMIN_ERROR_CODES.SESSION_INVALID,
+        message: 'No authentication token provided',
+      },
+    };
+  }
+
+  // 3. Verify as GCP Identity Platform token
+  const claims = await verifyGCPIdToken(token);
+  if (!claims) {
+    return {
+      success: false,
+      error: {
+        code: ADMIN_ERROR_CODES.SESSION_INVALID,
+        message: 'Invalid or expired authentication token',
+      },
+    };
+  }
+
+  // 4. Check custom claim: monitraxAdmin === true
+  //    Firebase custom claims appear as top-level keys in the JWT payload.
+  //    They are set via Firebase Admin SDK: admin.auth().setCustomUserClaims(uid, { ... })
+  //    The verifyGCPIdToken returns the raw JWT payload, so we access the
+  //    custom claims from the original token payload.
+  //
+  //    For now, we also support a fallback: if the user has an AdminUser record
+  //    in the database linked by email, they are treated as an admin. This allows
+  //    gradual migration from the old system.
+  const rawPayload = getRawTokenPayload(token);
+  const isMonitorAdmin = rawPayload?.monitraxAdmin === true;
+  const claimAdminRole = rawPayload?.adminRole as string | undefined;
+
+  // Fallback: check AdminUser table by email (backward compatibility during migration)
+  let adminRole: AdminRole | null = null;
+  let adminId: string | null = null;
+
+  if (isMonitorAdmin && claimAdminRole && VALID_ADMIN_ROLES.includes(claimAdminRole as AdminRole)) {
+    // Firebase custom claims path (target state)
+    adminRole = claimAdminRole as AdminRole;
+    // Look up AdminUser by email for adminId (or create one if needed)
+    const adminUser = await prisma.adminUser.findFirst({
+      where: { email: claims.email },
+      select: { id: true, isActive: true },
+    });
+    if (adminUser && !adminUser.isActive) {
+      return {
+        success: false,
+        error: {
+          code: ADMIN_ERROR_CODES.SESSION_INVALID,
+          message: 'Admin account is deactivated',
+        },
+      };
+    }
+    adminId = adminUser?.id || claims.uid;
+  } else {
+    // Fallback: check AdminUser table by email (old system compatibility)
+    const adminUser = await prisma.adminUser.findFirst({
+      where: { email: claims.email },
+      select: { id: true, role: true, isActive: true },
+    });
+
+    if (!adminUser) {
+      log.warn('Non-admin user attempted admin portal access', {
+        email: claims.email,
+        gcpUid: claims.uid,
+      });
+      return {
+        success: false,
+        error: {
+          code: ADMIN_ERROR_CODES.SESSION_INVALID,
+          message: 'Access denied — admin privileges required',
+        },
+      };
+    }
+
+    if (!adminUser.isActive) {
+      return {
+        success: false,
+        error: {
+          code: ADMIN_ERROR_CODES.SESSION_INVALID,
+          message: 'Admin account is deactivated',
+        },
+      };
+    }
+
+    adminRole = adminUser.role;
+    adminId = adminUser.id;
+  }
+
+  // 5. MFA enforcement for privileged admin roles (CDR §1.3)
+  const mfaRequiredRoles: AdminRole[] = ['SUPER_ADMIN', 'BILLING_ADMIN'];
+  if (mfaRequiredRoles.includes(adminRole)) {
+    // Check Firebase sign_in_second_factor claim (G17 fix)
+    const firebaseClaims = rawPayload?.firebase as Record<string, unknown> | undefined;
+    const secondFactor = firebaseClaims?.sign_in_second_factor;
+    if (!secondFactor) {
+      // During migration: allow if admin has mfaEnabled=false in DB (hasn't enrolled yet)
+      const adminUser = await prisma.adminUser.findFirst({
+        where: { email: claims.email },
+        select: { mfaEnabled: true },
+      });
+      if (adminUser?.mfaEnabled) {
+        return {
+          success: false,
+          error: {
+            code: ADMIN_ERROR_CODES.MFA_REQUIRED,
+            message: 'MFA verification required for admin access. Please re-authenticate with MFA.',
+          },
+        };
+      }
+    }
+  }
+
+  // 6. IP whitelist (if enabled)
+  if (isAdminFeatureEnabled('ipWhitelist')) {
+    const clientIp = extractClientIp(request);
+    const adminUser = await prisma.adminUser.findFirst({
+      where: { email: claims.email },
+      select: { ipWhitelist: true },
+    });
+
+    // Check admin-specific whitelist
+    if (adminUser?.ipWhitelist && adminUser.ipWhitelist.length > 0) {
+      if (!isIpWhitelisted(clientIp, adminUser.ipWhitelist)) {
+        return {
+          success: false,
+          error: {
+            code: ADMIN_ERROR_CODES.IP_NOT_WHITELISTED,
+            message: 'Access denied from this IP address',
+          },
+        };
+      }
+    }
+
+    // Check global whitelist
+    const globalWhitelist = getGlobalIpWhitelist();
+    if (globalWhitelist.length > 0 && !isIpWhitelisted(clientIp, globalWhitelist)) {
+      return {
+        success: false,
+        error: {
+          code: ADMIN_ERROR_CODES.IP_NOT_WHITELISTED,
+          message: 'Access denied from this IP address',
+        },
+      };
+    }
+  }
+
+  const clientIp = extractClientIp(request);
+
+  return {
+    success: true,
+    context: {
+      adminId: adminId!,
+      email: claims.email,
+      name: claims.displayName || claims.email,
+      role: adminRole,
+      sessionId: claims.uid, // Use GCP UID as session identifier
+      ipAddress: clientIp,
+    },
+  };
+}
+
+/**
+ * Decode JWT payload without verification (token is already verified by verifyGCPIdToken).
+ * Used to access Firebase custom claims which aren't included in GCPTokenClaims type.
+ */
+function getRawTokenPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = Buffer.from(parts[1], 'base64url').toString('utf-8');
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
 }

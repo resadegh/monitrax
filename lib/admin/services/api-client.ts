@@ -1,12 +1,16 @@
 /**
- * Phase 33: Admin Portal API Client
+ * Phase M: Admin Portal API Client — GCP Identity Platform
  *
  * Base HTTP client for admin portal API calls.
- * Provides a consistent interface for all admin API requests.
+ * Sends Firebase ID token as Authorization: Bearer header with every request.
+ *
+ * Phase M Migration: Replaced cookie-based auth with Firebase token auth.
+ * The token is obtained from Firebase Auth client SDK and stored in memory.
  */
 
 import { ADMIN_API_ROUTES } from '../constants';
 import type { AdminApiResponse, AdminApiError } from '../types';
+import { getFirebaseAuth } from '@/lib/firebase/config';
 
 // =============================================================================
 // TYPES
@@ -56,12 +60,24 @@ async function request<T>(
     ...headers,
   };
 
+  // Phase M: Get Firebase ID token and send as Authorization header
+  // This replaces the cookie-based admin_session auth.
+  try {
+    const auth = getFirebaseAuth();
+    const currentUser = auth?.currentUser;
+    if (currentUser) {
+      const idToken = await currentUser.getIdToken();
+      requestHeaders['Authorization'] = `Bearer ${idToken}`;
+    }
+  } catch {
+    // Token fetch failed — request will proceed without auth and get a 401
+  }
+
   try {
     const response = await fetch(url, {
       method,
       headers: requestHeaders,
       body: body ? JSON.stringify(body) : undefined,
-      credentials: 'include', // Include cookies for session
     });
 
     const data = await response.json();

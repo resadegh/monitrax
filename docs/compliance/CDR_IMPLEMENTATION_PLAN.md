@@ -26,7 +26,7 @@
 | **J** | Evidence Collection & Submission | 🔶 **IN PROGRESS** | — | Step 6: Evidence guide created. Screenshots + 2 blockers (pen test, insurance) remain. |
 | **K** | Spreadsheet Completion & Submission | 🔶 **IN PROGRESS** | — | Spreadsheet answers documented. Fill + submit pending user action. |
 | **L** | CDR Code-Level Remediation | 🔶 **IN PROGRESS** | — | 20/46 gaps fixed (2026-04-11). Schema, auth, lifecycle, security hardening done. UI + route migration remaining. |
-| **M** | Admin Portal — GCP-First Migration | ⬜ Pending | — | Migrate admin auth to GCP Identity Platform, integrate Cloud Logging/Monitoring/SCC APIs. Fix broken admin portal. |
+| **M** | Admin Portal — GCP-First Migration | 🔶 **IN PROGRESS** | — | M.1 DONE (2026-04-12): Admin auth migrated to GCP Identity Platform. 22 routes migrated. M.2-M.5 pending. |
 | **N** | Consumer Consent UI & Route Migration | ⬜ Pending | — | Build consumer consent management UI (G13/G14), migrate ~26 legacy auth routes (G37-G39), Basiq webhooks (G16). |
 
 **Overall: 7 of 14 phases complete. 3 in progress (evidence, spreadsheet, code remediation). 4 pending (GCP config, API cleanup, admin portal migration, consent UI).**
@@ -931,14 +931,14 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
-| M.1.1 | Set Firebase custom claims on admin users: `{ monitraxAdmin: true, adminRole: 'SUPER_ADMIN' }` | 0.5 day | ⬜ |
-| M.1.2 | Create `verifyAdminGCPAuth()` guard that verifies Firebase token + checks `monitraxAdmin` claim | 1 day | ⬜ |
-| M.1.3 | Migrate admin login page to use Firebase Auth (email/password with MFA) | 1 day | ⬜ |
-| M.1.4 | Migrate all admin API routes from `verifyAdminAuth()` to `verifyAdminGCPAuth()` | 1 day | ⬜ |
-| M.1.5 | User disable/enable via GCP API: `admin.auth().updateUser(uid, { disabled: true/false })` | 0.5 day | ⬜ |
-| M.1.6 | Session revocation via GCP API: `admin.auth().revokeRefreshTokens(uid)` | 0.5 day | ⬜ |
-| M.1.7 | Deprecate `AdminUser` password auth + `AdminSession` token system (retain table for audit history) | 0.5 day | ⬜ |
-| M.1.8 | Fix current broken admin portal (all pages showing "No authentication token provided") | 0.5 day | ⬜ |
+| M.1.1 | Set Firebase custom claims on admin users: `{ monitraxAdmin: true, adminRole: 'SUPER_ADMIN' }` | 0.5 day | ⬜ User action (Firebase Console) |
+| M.1.2 | Create `verifyAdminGCPAuth()` guard that verifies Firebase token + checks `monitraxAdmin` claim | 1 day | ✅ DONE (2026-04-12) |
+| M.1.3 | Migrate admin login page to use Firebase Auth (email/password with MFA) | 1 day | ✅ DONE (2026-04-12) |
+| M.1.4 | Migrate all admin API routes from `verifyAdminAuth()` to `verifyAdminGCPAuth()` | 1 day | ✅ DONE (2026-04-12) — 22 routes migrated |
+| M.1.5 | Update AdminLayoutClient to use Firebase Auth state (replaced mock data) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.1.6 | Update admin API client to send Firebase Bearer token (replaced cookie auth) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.1.7 | Deprecate `AdminUser` password auth + `AdminSession` token system (retain table for audit history) | 0.5 day | ✅ DONE (2026-04-12) — Old functions retained but no longer called |
+| M.1.8 | Fix current broken admin portal (all pages showing "No authentication token provided") | 0.5 day | ✅ DONE (2026-04-12) — Root cause: custom session system. Fixed by migrating to Firebase Auth |
 
 ### Sub-Phase M.2 — GCP Observability Integration (~3-4 dev days)
 
