@@ -140,7 +140,7 @@ export function AdminLayoutClient({ children }: AdminLayoutClientProps) {
   // For full-width pages (login), render without sidebar
   if (isFullWidthPage) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-[#0A0F1C] dark:via-[#0A0F1C] dark:to-[#0F1929]">
         {children}
       </div>
     );
@@ -149,8 +149,14 @@ export function AdminLayoutClient({ children }: AdminLayoutClientProps) {
   // Show loading while checking auth
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-gray-500 dark:text-gray-400">Loading...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0A0F1C] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <span className="text-sm">Loading...</span>
+        </div>
       </div>
     );
   }
@@ -162,14 +168,16 @@ export function AdminLayoutClient({ children }: AdminLayoutClientProps) {
 
   // Main layout with sidebar
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#070B14] flex">
       <AdminSidebar
         role={adminContext.role}
         adminName={adminContext.name}
         adminEmail={adminContext.email}
       />
-      <main className="flex-1 p-6 overflow-auto">
-        {children}
+      <main className="flex-1 overflow-auto">
+        <div className="max-w-[1600px] mx-auto px-8 py-8">
+          {children}
+        </div>
       </main>
     </div>
   );

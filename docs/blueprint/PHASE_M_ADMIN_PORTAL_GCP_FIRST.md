@@ -1,10 +1,11 @@
 # Phase M: Admin Portal — GCP-First Architecture
 
-**Version:** 1.0
+**Version:** 1.2
 **Created:** 2026-04-12
-**Status:** PLANNED
+**Last Updated:** 2026-04-12
+**Status:** IN PROGRESS — M.1 through M.4 complete, UI modernization in progress
 **Depends On:** Phase E (GCP Service Enablement), Phase L (CDR Code-Level Remediation)
-**Effort:** ~15-20 dev days across 4 sub-phases
+**Effort:** ~15-20 dev days across 5 sub-phases
 **Source:** CDR Implementation Plan Phase M, CLAUDE.md §12.7 (GCP-First)
 
 ---
@@ -244,7 +245,102 @@ Phase M.4 (CDR Consent Admin) ← depends on L ──┘
 
 ---
 
-## 10. Post-Implementation: Operational & BAU Support Documentation
+## 10. Admin Portal Navigation Structure (GCP-Aligned)
+
+The admin portal sidebar is organized into **5 sections** that reflect the admin's actual responsibilities now that GCP services are integrated. This replaces the original Phase 33 flat navigation with a structure aligned to the GCP-First principle.
+
+### Section 1: Overview
+| Page | Purpose | Data Source |
+|------|---------|-------------|
+| Dashboard | Platform overview with key metrics | PostgreSQL (app data) |
+
+### Section 2: Business Management (Monitrax Custom Logic)
+These pages manage Monitrax-specific business logic that has no GCP equivalent.
+
+| Page | Purpose | Data Source |
+|------|---------|-------------|
+| Organizations | Multi-tenant org management | PostgreSQL |
+| Users | User account management | PostgreSQL + Firebase Auth API |
+| Billing | Revenue, subscriptions, refunds | PostgreSQL + Stripe |
+| Analytics | Growth, retention, feature usage | PostgreSQL |
+| Feature Flags | Global and per-org flag control | PostgreSQL |
+
+### Section 3: GCP Infrastructure (Direct GCP API Integration)
+These pages call GCP APIs directly. The admin portal is a thin UI that reads from GCP.
+
+| Page | GCP API | Route |
+|------|---------|-------|
+| Uptime & Alerts | Cloud Monitoring | `/admin/uptime` |
+| Error Tracking | Error Reporting | `/admin/errors` |
+| Cloud Scheduler | Cloud Scheduler | `/admin/scheduler` |
+| Security Findings | Security Command Center | `/admin/security-findings` |
+
+### Section 4: Compliance & Security
+| Page | Purpose | Data Source |
+|------|---------|-------------|
+| CDR Compliance | Consent, complaints, data lifecycle | PostgreSQL (CDRConsent, CDRComplaint) + GCP health |
+| Audit Logs | Searchable audit trail | Cloud Logging API + PostgreSQL fallback |
+| Security Monitoring | Auth events, sessions, violations | PostgreSQL + Cloud Logging |
+
+### Section 5: Operations
+| Page | Purpose | Data Source |
+|------|---------|-------------|
+| Support Tools | User impersonation, lookup | PostgreSQL |
+| Settings | Admin users, IP whitelist, preferences | PostgreSQL |
+
+---
+
+## 11. UI Design System
+
+The admin portal follows a clean, modern, technical aesthetic:
+
+### Design Principles
+
+| # | Principle | Implementation |
+|---|-----------|---------------|
+| 1 | **Generous whitespace** | 1600px max-width container, 8px base grid, large padding on cards |
+| 2 | **Subtle hierarchy** | Small caps section labels, medium-weight headings, tabular-nums for stats |
+| 3 | **Restrained color** | Slate/navy dark mode (`#070B14`, `#0A0F1C`), blue accent only for active/primary |
+| 4 | **Soft edges** | `rounded-xl` (12px) for cards, `rounded-lg` (8px) for buttons/inputs |
+| 5 | **Layered shadows** | Minimal shadow on rest, soft lift on hover |
+| 6 | **Fine borders** | `border-white/[0.06]` in dark mode — almost invisible but provides structure |
+| 7 | **Thin icons** | 1.75 stroke width Heroicons (not 2) for a lighter feel |
+
+### Color Tokens
+
+**Dark Mode (Default):**
+- Background: `#070B14` (main), `#0A0F1C` (sidebar), `#0F1624` (cards)
+- Borders: `rgba(255,255,255,0.06)`
+- Text: `white` (primary), `gray-400` (secondary), `gray-500` (tertiary)
+- Accent: `blue-500` (primary action), `emerald-500` (success), `amber-500` (warning), `rose-500` (error)
+
+**Light Mode:**
+- Background: `gray-50` (main), `white` (sidebar/cards)
+- Borders: `gray-200/70`
+- Text: `gray-900` (primary), `gray-500` (secondary), `gray-400` (tertiary)
+
+### Typography Scale
+
+| Element | Class | Use |
+|---------|-------|-----|
+| Page title | `text-[24px] font-semibold tracking-tight` | AdminHeader |
+| Card title | `text-[15px] font-semibold tracking-tight` | AdminCardHeader |
+| Stat value | `text-[28px] font-semibold tabular-nums` | StatsCard |
+| Stat label | `text-[12px] font-medium uppercase tracking-wider` | StatsCard |
+| Body | `text-[13px]` | Default |
+| Nav item | `text-[13px] font-medium` | Sidebar |
+| Section label | `text-[10px] font-semibold uppercase tracking-[0.08em]` | Sidebar sections |
+
+### Component Guidelines
+
+- **StatsCard**: Supports `accentColor` prop (blue, green, amber, red, purple, gray) for categorization
+- **AdminCard**: `hoverable` prop for interactive cards with lift-on-hover effect
+- **AdminBadge**: Uses dot indicator (`dot={true}`) for status badges
+- **AdminButton**: Small shadow on primary/danger for subtle depth
+
+---
+
+## 12. Post-Implementation: Operational & BAU Support Documentation
 
 **After Phase M implementation is complete**, the following operational documents MUST be created to enable admin portal support team training and ongoing BAU (Business As Usual) operations:
 
