@@ -17,13 +17,13 @@ import { AdminTable } from '@/components/admin/ui/AdminTable';
 import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { AdminBadge } from '@/components/admin/ui/AdminBadge';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
+import { getFirebaseAuth } from '@/lib/firebase/config';
 
 interface ConsentOverview {
   active: number;
-  expiringIn30Days: number;
-  revokedLast90Days: number;
-  expiredLast90Days: number;
-  total: number;
+  orgConsents: { active: number; expiring: number; revoked: number; expired: number; total: number };
+  cdrConsents: { active: number; revoked: number; expired: number };
+  basiqConnections: { active: number; disabled: number };
   activePercent: number;
 }
 
@@ -50,12 +50,20 @@ interface ComplianceCheck {
 interface GcpService {
   name: string;
   description: string;
-  status: 'healthy' | 'degraded' | 'down' | 'unknown';
+  status: 'enabled' | 'planned' | 'healthy' | 'degraded' | 'down' | 'unknown';
   required: boolean;
+}
+
+interface ComplaintsSummary {
+  open: number;
+  resolved: number;
+  escalatedToOAIC: number;
+  total: number;
 }
 
 interface ComplianceData {
   consentOverview: ConsentOverview;
+  complaints: ComplaintsSummary;
   auditTrail: AuditTrail;
   complianceChecklist: ComplianceCheck[];
   complianceScore: number;
@@ -73,8 +81,11 @@ export default function CdrCompliancePage() {
     setError(null);
 
     try {
+      // Get Firebase ID token for admin auth
+      const auth = getFirebaseAuth();
+      const token = await auth?.currentUser?.getIdToken();
       const response = await fetch('/api/admin/cdr/compliance', {
-        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
       });
 
       if (!response.ok) {
@@ -99,9 +110,11 @@ export default function CdrCompliancePage() {
     switch (status) {
       case 'pass':
       case 'healthy':
+      case 'enabled':
         return 'success';
       case 'warning':
       case 'degraded':
+      case 'planned':
         return 'warning';
       case 'fail':
       case 'down':
@@ -115,6 +128,7 @@ export default function CdrCompliancePage() {
     switch (status) {
       case 'pass':
       case 'healthy':
+      case 'enabled':
         return (
           <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -122,6 +136,7 @@ export default function CdrCompliancePage() {
         );
       case 'warning':
       case 'degraded':
+      case 'planned':
         return (
           <svg className="w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -206,18 +221,18 @@ export default function CdrCompliancePage() {
               trend="up"
             />
             <StatsCard
-              title="Expiring (30 days)"
-              value={data.consentOverview.expiringIn30Days.toLocaleString()}
-              change={0}
-              changeLabel="require action"
-              trend={data.consentOverview.expiringIn30Days > 0 ? 'down' : 'up'}
+              title="Bank Connections"
+              value={data.consentOverview.basiqConnections.active.toLocaleString()}
+              change={data.consentOverview.basiqConnections.disabled}
+              changeLabel="disabled"
+              trend={data.consentOverview.basiqConnections.active > 0 ? 'up' : 'down'}
             />
             <StatsCard
-              title="Revoked (90 days)"
-              value={data.consentOverview.revokedLast90Days.toLocaleString()}
-              change={0}
-              changeLabel="data deleted"
-              trend="down"
+              title="CDR Complaints"
+              value={data.complaints.open.toLocaleString()}
+              change={data.complaints.escalatedToOAIC}
+              changeLabel="escalated to OAIC"
+              trend={data.complaints.open > 0 ? 'down' : 'up'}
             />
             <StatsCard
               title="Failed Access"

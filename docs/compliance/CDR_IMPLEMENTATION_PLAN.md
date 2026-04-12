@@ -26,7 +26,7 @@
 | **J** | Evidence Collection & Submission | 🔶 **IN PROGRESS** | — | Step 6: Evidence guide created. Screenshots + 2 blockers (pen test, insurance) remain. |
 | **K** | Spreadsheet Completion & Submission | 🔶 **IN PROGRESS** | — | Spreadsheet answers documented. Fill + submit pending user action. |
 | **L** | CDR Code-Level Remediation | 🔶 **IN PROGRESS** | — | 20/46 gaps fixed (2026-04-11). Schema, auth, lifecycle, security hardening done. UI + route migration remaining. |
-| **M** | Admin Portal — GCP-First Migration | 🔶 **IN PROGRESS** | — | M.1 DONE (2026-04-12): Admin auth migrated to GCP Identity Platform. 22 routes migrated. M.2-M.5 pending. |
+| **M** | Admin Portal — GCP-First Migration | 🔶 **IN PROGRESS** | [#470](https://github.com/resadegh/monitrax/pull/470), [#471](https://github.com/resadegh/monitrax/pull/471), [#472](https://github.com/resadegh/monitrax/pull/472), [#473](https://github.com/resadegh/monitrax/pull/473) | M.1 DONE, M.2.1/M.2.3 DONE, M.4 DONE. GCP config done (Logging, SCC, Scheduler, Monitoring). M.2.2/M.2.4/M.2.5/M.3/M.5 pending. |
 | **N** | Consumer Consent UI & Route Migration | ⬜ Pending | — | Build consumer consent management UI (G13/G14), migrate ~26 legacy auth routes (G37-G39), Basiq webhooks (G16). |
 
 **Overall: 7 of 14 phases complete. 3 in progress (evidence, spreadsheet, code remediation). 4 pending (GCP config, API cleanup, admin portal migration, consent UI).**
@@ -944,9 +944,9 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
-| M.2.1 | Audit log dual-write: existing `createAuditLog()` also writes to Cloud Logging | 1 day | ⬜ |
+| M.2.1 | Audit log dual-write: existing `createAuditLog()` also writes to Cloud Logging | 1 day | ✅ DONE (2026-04-12) |
 | M.2.2 | Admin audit log page: query Cloud Logging API instead of (or alongside) PostgreSQL | 1 day | ⬜ |
-| M.2.3 | CDR compliance dashboard: replace "unknown" GCP health placeholders with real API calls | 1 day | ⬜ |
+| M.2.3 | CDR compliance dashboard: replace "unknown" GCP health placeholders with real status | 1 day | ✅ DONE (2026-04-12) — 5 services enabled, 4 planned |
 | M.2.4 | Security monitoring page: read from Cloud Monitoring API for auth events, rate limits | 0.5 day | ⬜ |
 | M.2.5 | Error tracking: integrate GCP Error Reporting API for error logs page | 0.5 day | ⬜ |
 
@@ -963,9 +963,9 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
-| M.4.1 | Admin CDR dashboard: real consent metrics from CDRConsent model (not just OrganizationClient) | 1 day | ⬜ |
-| M.4.2 | Admin consent management: view/revoke/delete CDR data on behalf of users (with audit trail) | 1 day | ⬜ |
-| M.4.3 | CDR complaint management UI: view/resolve/escalate complaints from CDRComplaint model | 0.5 day | ⬜ |
+| M.4.1 | Admin CDR dashboard: real consent metrics from CDRConsent model (not just OrganizationClient) | 1 day | ✅ DONE (2026-04-12) — includes CDRConsent, BasiqConnection, CDRComplaint, CDRDisclosure |
+| M.4.2 | Admin consent management: view/revoke/delete CDR data on behalf of users (with audit trail) | 1 day | ✅ DONE (2026-04-12) — `/api/admin/cdr/consent` GET + POST |
+| M.4.3 | CDR complaint management: create/resolve/escalate complaints from CDRComplaint model | 0.5 day | ✅ DONE (2026-04-12) — `/api/admin/cdr/complaints` CRUD + `/[id]` PATCH |
 
 ### Sub-Phase M.5 — Operational & BAU Support Documentation (~2 dev days)
 
@@ -1164,4 +1164,5 @@ Each phase will create its own changelog entry:
 *Phase M: Admin Portal GCP-First migration — admin auth, Cloud Logging, Monitoring, SCC, IAM integration*
 *Phase N: Consumer consent UI (G13/G14), legacy route migration (G37-G39), Basiq webhooks (G16)*
 *Remaining P0: G1 (pen test), G2 (insurance), G29 (Cloud Scheduler — GCP Console action)*
-*Admin Portal Status: BROKEN — "No authentication token provided" on all pages. Fix in Phase M.1.8*
+*Admin Portal Status: FIXED (2026-04-12) — Migrated to GCP Identity Platform. Google Sign-In + MFA working.*
+*GCP Services Enabled: Cloud Logging (365-day), SCC (Standard), Cloud Scheduler (CDR lifecycle), Cloud Monitoring (uptime check)*

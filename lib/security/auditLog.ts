@@ -1,10 +1,81 @@
 /**
  * Audit Logging Service
  * Phase 10: Comprehensive, immutable audit logging for security and compliance
+ * Phase M.2: Dual-write to GCP Cloud Logging for 365-day CDR retention
  */
 
 import { prisma } from '@/lib/db';
 import { log } from '@/lib/utils/logger';
+
+// GCP Cloud Logging integration (Phase M.2.1)
+// Lazy-initialized to avoid import errors when credentials aren't configured
+let cloudLoggingClient: InstanceType<typeof import('@google-cloud/logging').Logging> | null = null;
+let cloudLoggingInitFailed = false;
+
+/**
+ * Get or initialize the Cloud Logging client.
+ * Returns null if Cloud Logging is not configured (development environments).
+ */
+function getCloudLogging() {
+  if (cloudLoggingInitFailed) return null;
+  if (cloudLoggingClient) return cloudLoggingClient;
+
+  try {
+    // Dynamic import to avoid build failures when credentials aren't available
+    const { Logging } = require('@google-cloud/logging');
+    const projectId = process.env.GCP_PROJECT_ID;
+    if (!projectId) {
+      cloudLoggingInitFailed = true;
+      return null;
+    }
+    cloudLoggingClient = new Logging({ projectId });
+    return cloudLoggingClient;
+  } catch {
+    cloudLoggingInitFailed = true;
+    return null;
+  }
+}
+
+/**
+ * Write an audit log entry to GCP Cloud Logging (fire-and-forget).
+ * This runs alongside the PostgreSQL write for CDR 365-day retention compliance.
+ */
+function writeToCloudLogging(entry: AuditLogEntry): void {
+  try {
+    const logging = getCloudLogging();
+    if (!logging) return;
+
+    const gcpLog = logging.log('monitrax-audit');
+    const metadata = {
+      resource: { type: 'global' },
+      severity: entry.status === 'BLOCKED' ? 'WARNING' : entry.status === 'FAILURE' ? 'ERROR' : 'INFO',
+      labels: {
+        app: 'monitrax',
+        environment: process.env.NODE_ENV || 'development',
+        action: entry.action,
+        entityType: entry.entityType || 'unknown',
+      },
+    };
+
+    const logEntry = gcpLog.entry(metadata, {
+      userId: entry.userId || null,
+      organizationId: entry.organizationId || null,
+      action: entry.action,
+      status: entry.status || 'SUCCESS',
+      entityType: entry.entityType || null,
+      entityId: entry.entityId || null,
+      ipAddress: entry.ipAddress || null,
+      // Note: metadata is already sanitized by caller via sanitizeCdrMetadata()
+      metadata: entry.metadata || {},
+      timestamp: new Date().toISOString(),
+    });
+
+    // Fire-and-forget — never block the app for logging
+    gcpLog.write(logEntry).catch(() => {});
+  } catch {
+    // Cloud Logging failures must never break app flow
+  }
+}
 
 // Define types locally to avoid Prisma client generation issues
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -64,6 +135,7 @@ export interface AuditLogResult {
  */
 export async function createAuditLog(entry: AuditLogEntry): Promise<void> {
   try {
+    // Primary: Write to PostgreSQL (app-level queries and admin UI)
     await prisma.auditLog.create({
       data: {
         userId: entry.userId,
@@ -77,9 +149,14 @@ export async function createAuditLog(entry: AuditLogEntry): Promise<void> {
         metadata: entry.metadata ? (entry.metadata as any) : undefined,
       },
     });
+
+    // Phase M.2.1: Dual-write to GCP Cloud Logging (365-day CDR retention)
+    writeToCloudLogging(entry);
   } catch (error) {
     // Log audit failures but don't throw - audit logging should never break app flow
     log.error('Failed to create audit log', error as Error);
+    // Still attempt Cloud Logging even if PostgreSQL fails
+    writeToCloudLogging(entry);
   }
 }
 
