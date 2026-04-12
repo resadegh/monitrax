@@ -7,14 +7,12 @@ import {
   Landmark,
   TrendingUp,
   Car,
-  DollarSign,
   Check,
   ChevronRight,
   Sparkles,
   ArrowUpCircle,
   ArrowDownCircle,
   Building2,
-  CreditCard,
   PiggyBank,
 } from 'lucide-react';
 import { WizardData, calculateSummary } from '../types';

@@ -609,6 +609,9 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         // =======================================================================
         // 8. Update user preferences
         // =======================================================================
+        // Phase 12 PR 2: wiping `onboardingDraft` on success is what makes the
+        // resume banner disappear and keeps the DB from growing a stale copy
+        // of the user's financial data after they've finished onboarding.
         await tx.userPreference.upsert({
           where: { userId },
           create: {
@@ -617,11 +620,13 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
             taxYear: data.taxYear || null,
             dismissedWelcomeModal: true,
             hasSeenGuidedTour: true,
+            onboardingDraft: null,
           },
           update: {
             country: data.country,
             taxYear: data.taxYear || null,
             dismissedWelcomeModal: true,
+            onboardingDraft: null,
           },
         });
 

@@ -11,14 +11,12 @@ import {
   Briefcase,
   BarChart3,
   Bitcoin,
-  DollarSign,
 } from 'lucide-react';
 import {
   WizardData,
   InvestmentAccountInput,
   HoldingInput,
   InvestmentAccountType,
-  HoldingType,
   generateId,
 } from '../types';
 import { formatCurrency } from '@/lib/utils/formatters';

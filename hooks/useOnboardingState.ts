@@ -5,6 +5,10 @@ import { useAuth } from '@/lib/context/AuthContext';
 
 // LocalStorage key prefix for fallback when DB is unavailable
 const DISMISSED_WELCOME_KEY_PREFIX = 'monitrax_dismissed_welcome_modal_';
+// Phase 12 PR 2: client-side draft fallback (same-device same-session).
+// The server is the source of truth — this only protects against network
+// blips or tab crashes between debounced server writes.
+const DRAFT_KEY_PREFIX = 'monitrax_onboarding_draft_';
 
 export type OnboardingProfileType = 'HOMEOWNER' | 'INVESTOR' | 'MIXED' | 'STARTER';
 
@@ -17,6 +21,7 @@ export interface OnboardingPreferences {
   preferredCurrency: string;
   preferredDateFormat: string;
   country: string;
+  taxYear: string | null;
 }
 
 export interface OnboardingDataSummary {
@@ -33,6 +38,9 @@ export interface OnboardingState {
   onboardingCompletedAt: string | null;
   currentStep: number;
   preferences: OnboardingPreferences;
+  // Phase 12 PR 2: Server-persisted wizard draft (null if none).
+  // Typed as unknown here; WizardContainer narrows it to Partial<WizardData>.
+  draft: unknown;
   hasExistingData: boolean;
   dataSummary: OnboardingDataSummary;
 }
@@ -46,6 +54,8 @@ interface UseOnboardingStateReturn {
   shouldShowWelcome: boolean;
   shouldShowTour: boolean;
   shouldShowOnboardingBadge: boolean;
+  // Phase 12 PR 2: true when the user has an unfinished wizard to resume.
+  shouldShowResumeBanner: boolean;
 
   // Actions
   setProfileType: (type: OnboardingProfileType) => Promise<void>;
@@ -58,6 +68,14 @@ interface UseOnboardingStateReturn {
   markTourSkipped: () => Promise<void>;
   resetTour: () => Promise<void>; // Restart the tour from settings
   refetch: () => Promise<void>;
+
+  // Phase 12 PR 2: draft persistence
+  /** Save the wizard draft to the server (debounced by caller) and to localStorage. */
+  saveDraft: (draft: unknown, currentStep?: number) => Promise<void>;
+  /** Clear the draft both server-side and in localStorage. */
+  clearDraft: () => Promise<void>;
+  /** Synchronously read the localStorage-cached draft (server state takes precedence). */
+  readLocalDraft: () => unknown;
 }
 
 // Check if welcome modal was dismissed via localStorage (fallback)
@@ -79,6 +97,35 @@ function setWelcomeDismissedLocally(userId: string | null): void {
     localStorage.setItem(DISMISSED_WELCOME_KEY_PREFIX + userId, 'true');
   } catch {
     // Ignore localStorage errors
+  }
+}
+
+// Phase 12 PR 2: localStorage-backed wizard draft (same-device fallback).
+function readLocalDraftForUser(userId: string | null): unknown {
+  if (typeof window === 'undefined' || !userId) return null;
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY_PREFIX + userId);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalDraftForUser(userId: string | null, draft: unknown): void {
+  if (typeof window === 'undefined' || !userId) return;
+  try {
+    localStorage.setItem(DRAFT_KEY_PREFIX + userId, JSON.stringify(draft));
+  } catch {
+    // Quota/privacy mode — server-side write is still the source of truth.
+  }
+}
+
+function clearLocalDraftForUser(userId: string | null): void {
+  if (typeof window === 'undefined' || !userId) return;
+  try {
+    localStorage.removeItem(DRAFT_KEY_PREFIX + userId);
+  } catch {
+    // Ignore localStorage errors.
   }
 }
 
@@ -207,18 +254,97 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     await updateState({ resetTour: true });
   }, [updateState]);
 
-  // Computed properties
-  // Show welcome modal for ALL users who haven't dismissed it or completed tour
-  // This includes both new and existing users - everyone should see onboarding once
-  // Check localStorage as fallback if DB state is unavailable or missing the preference
-  // Now user-specific to prevent cross-user dismissal issues
-  const dismissedViaLocalStorage = isWelcomeDismissedLocally(user?.id || null);
-  const shouldShowWelcome = !isLoading && !!user && !dismissedViaLocalStorage && (
-    state === null || // API failed - check localStorage fallback above
-    (!state.preferences.dismissedWelcomeModal &&
-      !state.preferences.hasSeenGuidedTour &&
-      !state.preferences.tourSkippedAt)
+  // Phase 12 PR 2: Draft persistence actions.
+  // Writes the draft to both the server (authoritative, cross-device) and
+  // localStorage (same-device blip protection). Intentionally does NOT
+  // refetch state on every save — that would thrash the network. The hook
+  // caller (WizardContainer) debounces calls to saveDraft.
+  const saveDraft = useCallback(
+    async (draft: unknown, currentStep?: number) => {
+      if (!token) return;
+      // Same-device fallback: write first, network second.
+      writeLocalDraftForUser(user?.id || null, draft);
+      try {
+        const body: Record<string, unknown> = { draft };
+        if (typeof currentStep === 'number') body.currentStep = currentStep;
+        const response = await fetch('/api/onboarding/state', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || 'Failed to save draft');
+        }
+      } catch (err) {
+        console.warn('Could not save wizard draft to server (using localStorage fallback):', err);
+      }
+    },
+    [token, user?.id]
   );
+
+  const clearDraft = useCallback(async () => {
+    clearLocalDraftForUser(user?.id || null);
+    if (!token) return;
+    try {
+      await fetch('/api/onboarding/state', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ clearDraft: true }),
+      });
+      // Best-effort refetch so shouldShowResumeBanner flips off immediately.
+      await fetchState();
+    } catch (err) {
+      console.warn('Could not clear wizard draft on server:', err);
+    }
+  }, [fetchState, token, user?.id]);
+
+  const readLocalDraft = useCallback(
+    () => readLocalDraftForUser(user?.id || null),
+    [user?.id]
+  );
+
+  // Computed properties
+  //
+  // Welcome modal visibility — strict "show once / never again" contract
+  // (Phase 12 PR 2, per product decision 2026-04-12):
+  //
+  //   Show the welcome modal on login when ALL of:
+  //     1. User is logged in and state has loaded
+  //     2. Onboarding is NOT marked complete (finished wizard → never show)
+  //     3. User did NOT explicitly check "Don't show this again" — i.e.
+  //        `state.preferences.dismissedWelcomeModal !== true` AND the
+  //        localStorage fallback flag is not set
+  //     4. There is NO saved draft / step progress (if there is, the
+  //        resume banner takes priority)
+  //
+  // Critically: simply closing the modal with X or "Skip for now" does
+  // NOT dismiss permanently — it only closes for the current session.
+  // The user must explicitly tick "Don't show this again" to opt out.
+  // Taking or skipping the tour also does NOT suppress the welcome modal
+  // (tour state is tracked separately in preferences.hasSeenGuidedTour /
+  // tourSkippedAt and has no bearing on welcome visibility).
+  const dismissedViaLocalStorage = isWelcomeDismissedLocally(user?.id || null);
+  const localDraftForWelcomeGate = readLocalDraftForUser(user?.id || null);
+  const welcomeHiddenByDraft =
+    (!!state?.draft && typeof state.draft === 'object') ||
+    (!!state && !state.onboardingCompleted && state.currentStep > 0) ||
+    (!state?.onboardingCompleted && !!localDraftForWelcomeGate);
+  const shouldShowWelcome =
+    !isLoading &&
+    !!user &&
+    !dismissedViaLocalStorage &&
+    !welcomeHiddenByDraft &&
+    (
+      state === null || // API failed — localStorage fallback above handles the rest
+      (!state.onboardingCompleted && !state.preferences.dismissedWelcomeModal)
+    );
 
   const shouldShowTour = state
     ? !state.preferences.hasSeenGuidedTour &&
@@ -231,6 +357,22 @@ export function useOnboardingState(): UseOnboardingStateReturn {
       state.onboardingStartedAt !== null
     : false;
 
+  // Phase 12 PR 2: banner fires when the user has an unfinished wizard.
+  // "Unfinished" = onboarding not completed AND we have either a server
+  // draft or some persisted step progress. localStorage is checked as a
+  // last resort for users whose server draft never made it to the DB.
+  const hasServerDraft =
+    !!state?.draft && typeof state.draft === 'object';
+  const hasStepProgress =
+    !!state && !state.onboardingCompleted && state.currentStep > 0;
+  const hasLocalDraft =
+    !state?.onboardingCompleted && !!readLocalDraftForUser(user?.id || null);
+  const shouldShowResumeBanner =
+    !isLoading &&
+    !!state &&
+    !state.onboardingCompleted &&
+    (hasServerDraft || hasStepProgress || hasLocalDraft);
+
   return {
     state,
     isLoading,
@@ -238,6 +380,7 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     shouldShowWelcome,
     shouldShowTour,
     shouldShowOnboardingBadge,
+    shouldShowResumeBanner,
     setProfileType,
     setCurrentStep,
     startOnboarding,
@@ -248,5 +391,8 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     markTourSkipped,
     resetTour,
     refetch: fetchState,
+    saveDraft,
+    clearDraft,
+    readLocalDraft,
   };
 }

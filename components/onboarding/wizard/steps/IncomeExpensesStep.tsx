@@ -9,7 +9,6 @@ import {
   TrendingUp,
   Banknote,
   Building,
-  Store,
   MoreHorizontal,
   ShoppingCart,
   Zap,
@@ -19,7 +18,6 @@ import {
   Tv,
   UtensilsCrossed,
   GraduationCap,
-  Users,
   Package,
   ArrowUpCircle,
   ArrowDownCircle,
@@ -29,7 +27,6 @@ import {
   IncomeInput,
   ExpenseInput,
   IncomeType,
-  SalaryType,
   ExpenseCategory,
   generateId,
 } from '../types';

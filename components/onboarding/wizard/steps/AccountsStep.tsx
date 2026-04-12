@@ -5,8 +5,6 @@ import {
   Wallet,
   Plus,
   Trash2,
-  ChevronDown,
-  ChevronUp,
   CreditCard,
   Landmark,
   PiggyBank,

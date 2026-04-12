@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Rocket, Check, Loader2 } from 'lucide-react';
 import {
   WizardData,
-  WizardStepId,
   WIZARD_STEPS,
   INITIAL_WIZARD_DATA,
   getStepsForProfile,
@@ -28,8 +27,29 @@ interface WizardContainerProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (data: WizardData) => Promise<void> | void;
+  /**
+   * Pre-hydrated draft to seed the wizard with. Typically supplied by
+   * DashboardLayout after reading `useOnboardingState().state.draft` from
+   * the server. Merged over INITIAL_WIZARD_DATA on mount.
+   */
   initialData?: Partial<WizardData>;
+  /**
+   * Step index to resume from (0-based within the profile-filtered steps
+   * array). Ignored on first open if no profile is selected yet.
+   */
+  initialStepIndex?: number;
+  /**
+   * Phase 12 PR 2: Called with the current `WizardData` every time the
+   * wizard state changes, debounced by ~1.2s. Use this to persist the
+   * draft to the server via useOnboardingState().saveDraft.
+   */
+  onAutoSave?: (data: WizardData, currentStepIndex: number) => void;
 }
+
+// Debounce window for autosave. Short enough that a user who closes the
+// modal mid-type doesn't lose much, long enough to avoid hammering the API
+// on every keystroke.
+const AUTOSAVE_DEBOUNCE_MS = 1200;
 
 // =============================================================================
 // WIZARD CONTAINER COMPONENT
@@ -40,15 +60,49 @@ export function WizardContainer({
   onClose,
   onComplete,
   initialData,
+  initialStepIndex,
+  onAutoSave,
 }: WizardContainerProps) {
   // Hooks must be called unconditionally (Rules of Hooks)
   const [data, setData] = useState<WizardData>({
     ...INITIAL_WIZARD_DATA,
     ...initialData,
   });
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(
+    typeof initialStepIndex === 'number' && initialStepIndex >= 0 ? initialStepIndex : 0
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+
+  // Phase 12 PR 2: Autosave. We debounce to avoid hammering the state API.
+  // The ref holds the latest onAutoSave callback so the debounce timer
+  // closure can pick up new closures without re-scheduling on every render.
+  const autoSaveRef = useRef(onAutoSave);
+  useEffect(() => {
+    autoSaveRef.current = onAutoSave;
+  }, [onAutoSave]);
+
+  // Skip the very first autosave trigger of each "open session" — that
+  // first state is the one we received FROM the server (or the empty
+  // bootstrap). Writing it back immediately is pointless churn.
+  // When the wizard closes we reset the guard so the next open also
+  // suppresses its first save.
+  const hasHydratedRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen) {
+      hasHydratedRef.current = false;
+      return;
+    }
+    if (!hasHydratedRef.current) {
+      hasHydratedRef.current = true;
+      return;
+    }
+    if (!autoSaveRef.current) return;
+    const handle = window.setTimeout(() => {
+      autoSaveRef.current?.(data, currentStepIndex);
+    }, AUTOSAVE_DEBOUNCE_MS);
+    return () => window.clearTimeout(handle);
+  }, [data, currentStepIndex, isOpen]);
 
   // Get steps based on profile
   const steps = useMemo(() => {

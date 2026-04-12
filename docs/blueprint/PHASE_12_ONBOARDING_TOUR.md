@@ -989,6 +989,7 @@ interface BulkCreateRequest {
 | v1.2 | 2025-12-07 | Full implementation complete |
 | v2.0 | 2025-12-09 | Enhanced Wizard v2.0 - comprehensive data entry with AI helper |
 | v2.1 | 2026-04-12 | PR 1 onboarding correctness sweep — see `docs/changelog/CHANGELOG_2026_04_12_ONBOARDING_CORRECTNESS.md`. Fixed frequency double-conversion bug in bulk-create, persisted household data (previously dropped), set `Account.balanceSource=MANUAL`, routed INVESTMENT income to `sourceType=INVESTMENT`, added `UserPreference.taxYear` column, captured purchase dates for Property/Asset, added `onboarding.complete` RBAC permission, added HEALTH/EDUCATION/RENT/GROCERIES/SUBSCRIPTION expense categories, added QUARTERLY frequency to Income/Expenses step, deleted the legacy v1 `InitialSetupWizard` + `steps/*` dead code. PR 2 (draft persistence) and PR 3 (UX redesign) to follow. |
+| v2.2 | 2026-04-12 | PR 2 draft persistence + welcome modal redesign + dead-code sweep — see `docs/changelog/CHANGELOG_2026_04_12_ONBOARDING_DRAFT_PERSISTENCE.md`. Added `UserPreference.onboardingDraft Json?` column for server-persisted draft. Wizard now autosaves every state change (1.2s debounce) via `/api/onboarding/state` and hydrates from the server draft on mount. New `OnboardingResumeBanner` component on `/dashboard` for users with an unfinished wizard — actions: Resume, Start over, Dismiss. `bulk-create` clears the draft on success. Strict "show once / never again" welcome modal contract: X / backdrop / "Not right now" closes session-only; only the "Don't show this again" checkbox persists a permanent dismiss; tour completion no longer suppresses welcome. Premium visual redesign of the welcome modal (rotating aurora hero, floating sparkles, glass-frosted logo mark, gradient CTA, 3-col value-prop grid, reduced-motion support, full keyboard a11y). Matching polish on the resume banner. Dead-code sweep: deleted `components/onboarding/shared/` directory (5 orphaned files, 329 LOC) and 14 unused imports across wizard steps. |
 
 ---
 
@@ -1023,8 +1024,49 @@ CREATE TABLE "user_preferences" (
 
 -- PR 1 correctness sweep (2026-04-12)
 ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "taxYear" TEXT;
+
+-- PR 2 draft persistence (2026-04-12)
+ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "onboardingDraft" JSONB;
 ```
 
 ---
 
-*END OF PHASE 12 BLUEPRINT v2.1*
+## 15. Draft Persistence (PR 2 Contract)
+
+The wizard autosaves every state change (1.2s debounce) to
+`UserPreference.onboardingDraft` via `POST /api/onboarding/state { draft }`
+and hydrates from the same column on mount via `GET /api/onboarding/state`.
+This makes the flow **resumable across devices** and **robust to
+interruption**.
+
+### Show-once / never-again contract
+
+| User action | Welcome modal next login? |
+|---|---|
+| Completed the wizard (bulk-create success) | **Never** |
+| Clicked "Don't show this again" + closed | **Never** |
+| Closed with X / backdrop / "Not right now" (checkbox unchecked) | **Yes, reappears** |
+| Has an unfinished draft saved | **No — resume banner shows instead** |
+| Took or skipped the guided tour | **No effect — still shows** |
+
+Implemented in `hooks/useOnboardingState.ts::shouldShowWelcome`. The
+`dismissWelcomeModal()` mutation is reserved exclusively for the
+"Don't show this again" checkbox path. See the hook's JSDoc for the
+full state diagram.
+
+### Components
+
+| Component | Responsibility |
+|---|---|
+| `OnboardingWelcomeModal` | Premium first-time modal (aurora hero, sparkles, gradient CTAs). Strict dismissal contract per §15 above. |
+| `OnboardingResumeBanner` | Dashboard banner for users with an unfinished draft. Actions: Resume, Start over, Dismiss. Session-scoped dismiss. |
+| `WizardContainer` | Accepts `initialData` / `initialStepIndex` / `onAutoSave` props. Debounces autosave to protect the API. |
+
+### Size guard
+
+The server-side `POST /api/onboarding/state` caps `draft` at 200 KB
+serialized. Payloads above the cap return HTTP 413.
+
+---
+
+*END OF PHASE 12 BLUEPRINT v2.2*

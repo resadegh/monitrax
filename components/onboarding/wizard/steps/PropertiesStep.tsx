@@ -9,9 +9,6 @@ import {
   ChevronUp,
   Building2,
   Landmark,
-  DollarSign,
-  Percent,
-  Calendar,
   MapPin,
   Users,
   Receipt,
@@ -23,6 +20,7 @@ import {
   PropertyIncomeInput,
   PropertyExpenseInput,
   PropertyType,
+  ExpenseCategory,
   generateId,
 } from '../types';
 import '@/styles/wizard-animations.css';
@@ -35,8 +33,6 @@ const PROPERTY_TYPES: { value: PropertyType; label: string; icon: React.ReactNod
   { value: 'HOME', label: 'Primary Residence', icon: <Home className="h-4 w-4" /> },
   { value: 'INVESTMENT', label: 'Investment Property', icon: <Building2 className="h-4 w-4" /> },
 ];
-
-import { ExpenseCategory, EXPENSE_CATEGORY_LABELS } from '../types';
 
 const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: 'RATES', label: 'Council Rates' },

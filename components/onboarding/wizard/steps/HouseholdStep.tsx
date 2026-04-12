@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Users, UserPlus, Dog, Plus, Pencil, Trash2, Baby, Briefcase, Car } from 'lucide-react';
+import { Users, UserPlus, Dog, Plus, Pencil, Trash2, Baby, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

@@ -491,3 +491,190 @@
   background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
   background-size: 200% 100%;
 }
+
+/* =============================================================================
+   PHASE 12 PR 2: WELCOME MODAL — PREMIUM DESIGN PASS
+   ============================================================================= */
+
+/* Backdrop: soft radial darken with a whisper of blue tint. */
+@keyframes welcome-backdrop-enter {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to   { opacity: 1; backdrop-filter: blur(14px); }
+}
+
+.welcome-modal-backdrop {
+  animation: welcome-backdrop-enter 0.35s ease-out forwards;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(59, 130, 246, 0.22), transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(168, 85, 247, 0.14), transparent 60%),
+    rgba(7, 11, 24, 0.72);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* Card: rise + fade + subtle overshoot scale. */
+@keyframes welcome-modal-enter {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.96); }
+  70%  { opacity: 1; transform: translateY(-2px) scale(1.005); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.welcome-modal-card {
+  animation: welcome-modal-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  box-shadow:
+    0 30px 80px -20px rgba(15, 23, 42, 0.45),
+    0 12px 28px -10px rgba(59, 130, 246, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+.dark .welcome-modal-card {
+  box-shadow:
+    0 40px 100px -24px rgba(0, 0, 0, 0.75),
+    0 18px 40px -12px rgba(59, 130, 246, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+/* Hero aurora — 3 layered conic gradients rotating slowly.
+   This is the visual centrepiece: a smooth, slow, colourful sheen. */
+@keyframes aurora-drift {
+  0%   { transform: rotate(0deg)   translateX(0)    scale(1.2); }
+  50%  { transform: rotate(180deg) translateX(-6%)  scale(1.35); }
+  100% { transform: rotate(360deg) translateX(0)    scale(1.2); }
+}
+
+.welcome-hero-aurora {
+  position: absolute;
+  inset: -40%;
+  background:
+    conic-gradient(from 0deg at 30% 40%,
+      #6366f1 0deg,
+      #3b82f6 60deg,
+      #06b6d4 120deg,
+      #8b5cf6 200deg,
+      #ec4899 280deg,
+      #6366f1 360deg);
+  filter: blur(38px);
+  opacity: 0.85;
+  animation: aurora-drift 18s linear infinite;
+  will-change: transform;
+}
+
+.welcome-hero-aurora-secondary {
+  position: absolute;
+  inset: -40%;
+  background:
+    conic-gradient(from 180deg at 70% 60%,
+      #0ea5e9 0deg,
+      #8b5cf6 120deg,
+      #ec4899 240deg,
+      #0ea5e9 360deg);
+  filter: blur(50px);
+  opacity: 0.45;
+  animation: aurora-drift 26s linear infinite reverse;
+  will-change: transform;
+}
+
+/* Soft noise/grain overlay gives the hero a tactile, premium feel. */
+.welcome-hero-noise {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+    radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 3px 3px, 7px 7px;
+  background-position: 0 0, 1px 2px;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* Floating sparkles inside the hero. */
+@keyframes sparkle-float {
+  0%, 100% { transform: translateY(0) rotate(0deg);  opacity: 0.65; }
+  50%      { transform: translateY(-8px) rotate(8deg); opacity: 1; }
+}
+
+.welcome-sparkle {
+  animation: sparkle-float 4s ease-in-out infinite;
+  animation-delay: var(--sparkle-delay, 0s);
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6));
+}
+
+/* Staggered reveal for value prop cards. */
+@keyframes welcome-prop-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.welcome-prop {
+  opacity: 0;
+  animation: welcome-prop-enter 0.5s ease-out forwards;
+  animation-delay: calc(0.3s + var(--prop-index, 0) * 0.08s);
+  transition: transform 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
+}
+
+.welcome-prop:hover {
+  transform: translateY(-2px);
+}
+
+/* Primary CTA — gradient with animated inner glow on hover. */
+.welcome-cta-primary {
+  background-image: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+  background-size: 200% 200%;
+  background-position: 0% 50%;
+  transition: background-position 0.6s ease, transform 0.2s ease, box-shadow 0.3s ease;
+  box-shadow:
+    0 10px 30px -10px rgba(99, 102, 241, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+}
+
+.welcome-cta-primary:hover {
+  background-position: 100% 50%;
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 38px -8px rgba(99, 102, 241, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+}
+
+.welcome-cta-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary CTA — ghost with subtle border glow on hover. */
+.welcome-cta-secondary {
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.welcome-cta-secondary:hover {
+  transform: translateY(-1px);
+}
+
+/* Time chip (~5 min) micro-pulse. */
+@keyframes chip-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35); }
+  50%      { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+
+.welcome-time-chip {
+  animation: chip-pulse 2.4s ease-out infinite;
+}
+
+/* Respect users who prefer reduced motion. Disable the heavy animations
+   but keep the modal usable and attractive. */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-modal-backdrop,
+  .welcome-modal-card,
+  .welcome-hero-aurora,
+  .welcome-hero-aurora-secondary,
+  .welcome-sparkle,
+  .welcome-prop,
+  .welcome-time-chip {
+    animation: none !important;
+  }
+  .welcome-hero-aurora,
+  .welcome-hero-aurora-secondary {
+    transform: none !important;
+  }
+  .welcome-prop {
+    opacity: 1 !important;
+  }
+}

@@ -13,7 +13,6 @@ import {
   Palette,
   Package,
   Receipt,
-  Calendar,
 } from 'lucide-react';
 import {
   WizardData,

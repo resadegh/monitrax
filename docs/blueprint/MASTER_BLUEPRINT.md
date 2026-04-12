@@ -4,8 +4,8 @@
 
 ---
 
-**Version:** 2.4
-**Last Updated:** 2026-02-26
+**Version:** 2.5
+**Last Updated:** 2026-04-12
 **Status:** Active Development
 **Owners:** ReNew (Newsha & Reza)
 **Architect:** ChatGPT | **Engineer:** Claude
@@ -48,12 +48,12 @@
 | **Portfolio Strategy** | Investment tracking, performance analytics |
 | **Wealth Forecasting** | Multi-year projections, risk analysis |
 
-### Current State (February 2026)
+### Current State (April 2026)
 
 - **26 Phases** defined in the blueprint
 - **14 Phases** fully implemented (including Phase 25 Document Management Engine)
 - **GCP Identity Platform** — sole identity provider (Firebase Auth, MFA, OAuth)
-- **Active Development:** Phase 19 (Document Management UI), Phase 21 (Asset Management)
+- **Active Development:** Phase 12 Onboarding Wizard remediation (PR 1 merged, PR 2 in flight, PR 3 pending), Phase 19 (Document Management UI), Phase 21 (Asset Management)
 - **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel, GCP Identity Platform
 
 ---
@@ -182,6 +182,7 @@ Every API response follows a standardised format:
 
 | Phase | Name | Status | Notes |
 |-------|------|--------|-------|
+| **12 (wizard)** | Onboarding Wizard Remediation | 🔄 In Progress | **PR 1 merged** (correctness sweep — 11 fixes + dead-code), **PR 2 in flight** (draft persistence, resume banner, premium welcome modal redesign, strict show-once contract), **PR 3 pending** (full wizard visual overhaul + simplification, renter path, non-property loans, super routing, Basiq shortcut, household lifestyle fields). See `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` v2.2. |
 | **19** | Document Management | 🔄 In Progress | Core infrastructure complete |
 | **19.1** | DMS Expansion | 🔄 In Progress | Receipt upload for expenses complete (2025-12-01) |
 | **21** | Asset Management Engine | 🔄 In Progress | Core features complete (2025-12-04), portfolio integration pending |
