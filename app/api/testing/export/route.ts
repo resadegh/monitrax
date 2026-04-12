@@ -16,9 +16,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { TestScenarioExporter } from '@/lib/testing/exporter';
 
-// Only allow in development/test environments
-const isTestingEnabled = process.env.NODE_ENV !== 'production' ||
-  process.env.ENABLE_TESTING_API === 'true';
+// Fix: G42 — Block testing routes unconditionally in production (CDR compliance)
+const isTestingEnabled = process.env.NODE_ENV !== 'production';
 
 export async function GET(request: NextRequest) {
   // Security check

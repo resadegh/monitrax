@@ -15,9 +15,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { withPermission } from '@/lib/auth/guards';
 import { checkConsentExpiry, getCDRDataSummary } from '@/lib/services/cdrDataLifecycle';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { enforceAuditLogRetention, runAnomalyDetection } from '@/lib/security/cdrAuditCompliance';
 
 /**
  * POST /api/cdr/lifecycle
@@ -42,7 +44,13 @@ export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const token = authHeader?.replace('Bearer ', '');
 
-  if (token !== cronSecret) {
+  // Fix: G27 — Use timing-safe comparison to prevent timing attacks
+  const tokenBuffer = Buffer.from(token || '', 'utf-8');
+  const secretBuffer = Buffer.from(cronSecret, 'utf-8');
+  const isValid = tokenBuffer.length === secretBuffer.length &&
+    crypto.timingSafeEqual(tokenBuffer, secretBuffer);
+
+  if (!isValid) {
     // Audit unauthorized cron attempt
     createAuditLog({
       action: 'UNAUTHORIZED_ACCESS',
@@ -59,14 +67,27 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const start = Date.now();
+
+    // 1. Check consent expiry and trigger CDR data deletion
     const result = await checkConsentExpiry();
+
+    // 2. Fix: G44 — Enforce audit log retention (runs with CDR lifecycle)
+    const retentionResult = await enforceAuditLogRetention();
+
+    // 3. Fix: G45 — Run anomaly detection (runs with CDR lifecycle)
+    const anomalies = await runAnomalyDetection();
 
     return NextResponse.json({
       success: true,
-      data: result,
+      data: {
+        consentExpiry: result,
+        auditRetention: retentionResult,
+        anomaliesDetected: anomalies.length,
+      },
       meta: {
         timestamp: new Date().toISOString(),
-        durationMs: 0, // Cloud Scheduler doesn't need this
+        durationMs: Date.now() - start,
       },
     });
   } catch (error) {

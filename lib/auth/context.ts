@@ -32,6 +32,8 @@ export interface AuthContext {
   role: UserRole;
   name: string;
   tenantId: string; // In single-user mode, tenant = user
+  /** MFA second factor method from Firebase token — present when MFA was completed in this session */
+  signInSecondFactor?: string;
 }
 
 // ============================================
@@ -71,6 +73,8 @@ export async function getAuthContext(request: NextRequest): Promise<AuthContext 
       role: user.role,
       name: user.name,
       tenantId: user.id,
+      // Fix: G17 — Propagate MFA second factor claim for session-level MFA verification
+      signInSecondFactor: claims.signInSecondFactor,
     };
   } catch (error) {
     log.error('Auth context extraction failed', error as Error);

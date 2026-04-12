@@ -18,9 +18,10 @@ import prisma from '@/lib/db';
 import { runTestScenario, verifyOutputs, normalizeScenario } from '@/lib/testing';
 import type { FlexibleScenarioInput } from '@/lib/testing/normalizer';
 
-// Only allow in development/test environments
-const isTestingEnabled = process.env.NODE_ENV !== 'production' ||
-  process.env.ENABLE_TESTING_API === 'true';
+// Fix: G42 — Block testing routes unconditionally in production.
+// ENABLE_TESTING_API env var is no longer sufficient to override production block.
+// CDR compliance requires testing endpoints be inaccessible in production.
+const isTestingEnabled = process.env.NODE_ENV !== 'production';
 
 /**
  * GET /api/testing
