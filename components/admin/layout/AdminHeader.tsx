@@ -31,16 +31,20 @@ export function AdminHeader({
   className,
 }: AdminHeaderProps) {
   return (
-    <header className={cn('mb-6', className)}>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <header className={cn('mb-8', className)}>
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h1>
+          <h1 className="text-[24px] font-semibold text-gray-900 dark:text-white tracking-tight leading-tight">
+            {title}
+          </h1>
           {description && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{description}</p>
+            <p className="text-[14px] text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">
+              {description}
+            </p>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {onSearch && (
             <div className="w-64">
               <SearchInput
