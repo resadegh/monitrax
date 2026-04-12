@@ -114,6 +114,12 @@ export const PERMISSIONS = {
   'cdr_data.read': ['OWNER', 'ADMIN'], // Read CDR-protected data (bank accounts, transactions)
   'cdr_data.write': ['OWNER', 'ADMIN'], // Connect/sync bank accounts via Basiq
   'cdr_data.delete': ['OWNER'], // Delete CDR data, revoke consent
+
+  // Onboarding — bulk-create is the only route that writes across property,
+  // loan, account, income, expense, investment, holding, asset AND user
+  // onboarding state in a single transaction. It's a one-time self-setup
+  // action, so we scope it to OWNER to match least-privilege (CLAUDE.md §12.5).
+  'onboarding.complete': ['OWNER'],
 } as const;
 
 // ============================================

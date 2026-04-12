@@ -286,38 +286,49 @@ export interface IncomeInput {
 }
 
 // Prisma: enum ExpenseCategory
+// Must stay in sync with prisma/schema.prisma.
 export type ExpenseCategory =
   | 'HOUSING'
+  | 'RENT'
   | 'RATES'
   | 'INSURANCE'
   | 'MAINTENANCE'
   | 'PERSONAL'
   | 'UTILITIES'
   | 'FOOD'
+  | 'GROCERIES'
   | 'TRANSPORT'
   | 'ENTERTAINMENT'
+  | 'SUBSCRIPTION'
   | 'STRATA'
   | 'LAND_TAX'
   | 'LOAN_INTEREST'
   | 'REGISTRATION'
   | 'MODIFICATIONS'
+  | 'HEALTH'
+  | 'EDUCATION'
   | 'OTHER';
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   HOUSING: 'Housing',
+  RENT: 'Rent',
   RATES: 'Council Rates',
   INSURANCE: 'Insurance',
   MAINTENANCE: 'Maintenance',
   PERSONAL: 'Personal',
   UTILITIES: 'Utilities',
-  FOOD: 'Food & Groceries',
+  FOOD: 'Food & Dining',
+  GROCERIES: 'Groceries',
   TRANSPORT: 'Transport',
   ENTERTAINMENT: 'Entertainment',
+  SUBSCRIPTION: 'Subscriptions',
   STRATA: 'Strata Fees',
   LAND_TAX: 'Land Tax',
   LOAN_INTEREST: 'Loan Interest',
   REGISTRATION: 'Registration',
   MODIFICATIONS: 'Modifications',
+  HEALTH: 'Health & Medical',
+  EDUCATION: 'Education',
   OTHER: 'Other',
 };
 

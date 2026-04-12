@@ -450,6 +450,7 @@ model UserPreference {
   preferredCurrency       String   @default("AUD")
   preferredDateFormat     String   @default("DD/MM/YYYY")
   country                 String   @default("AU")
+  taxYear                 String?  // e.g. "2025-2026" (AU FY). Null until the user sets it.
 
   // Notification preferences (Phase 10)
   emailWeeklyDigest       Boolean  @default(true)

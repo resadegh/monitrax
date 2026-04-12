@@ -23,7 +23,27 @@ type AssetType = 'VEHICLE' | 'ELECTRONICS' | 'FURNITURE' | 'EQUIPMENT' | 'COLLEC
 type IncomeType = 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
 type SalaryType = 'GROSS' | 'NET';
 type Frequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
-type ExpenseCategory = 'HOUSING' | 'RENT' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'OTHER';
+type ExpenseCategory =
+  | 'HOUSING'
+  | 'RENT'
+  | 'RATES'
+  | 'INSURANCE'
+  | 'MAINTENANCE'
+  | 'PERSONAL'
+  | 'UTILITIES'
+  | 'FOOD'
+  | 'GROCERIES'
+  | 'TRANSPORT'
+  | 'ENTERTAINMENT'
+  | 'SUBSCRIPTION'
+  | 'STRATA'
+  | 'LAND_TAX'
+  | 'LOAN_INTEREST'
+  | 'REGISTRATION'
+  | 'MODIFICATIONS'
+  | 'HEALTH'
+  | 'EDUCATION'
+  | 'OTHER';
 
 interface PropertyLoanInput {
   id: string;
@@ -137,10 +157,33 @@ interface ExpenseInput {
   isTaxDeductible?: boolean;
 }
 
+// Phase 29: Household
+type HouseholdRelationship = 'SELF' | 'SPOUSE' | 'PARTNER' | 'CHILD' | 'PARENT' | 'SIBLING' | 'OTHER';
+type HouseholdPetTypeEnum = 'DOG' | 'CAT' | 'BIRD' | 'FISH' | 'RABBIT' | 'REPTILE' | 'OTHER';
+
+interface HouseholdMemberInput {
+  id: string;
+  name: string;
+  relationship: HouseholdRelationship;
+  dateOfBirth?: string;
+  isIncomeEarner: boolean;
+}
+
+interface HouseholdPetInput {
+  id: string;
+  name: string;
+  type: HouseholdPetTypeEnum;
+  breed?: string;
+}
+
 interface WizardData {
   profileType: string | null;
   country: string;
   taxYear: string;
+  // Phase 29: Household
+  householdMembers?: HouseholdMemberInput[];
+  householdPets?: HouseholdPetInput[];
+  carsCount?: number;
   properties: PropertyInput[];
   accounts: AccountInput[];
   investments: InvestmentAccountInput[];
@@ -153,22 +196,13 @@ interface WizardData {
 // HELPER FUNCTIONS
 // =============================================================================
 
-function normalizeToMonthly(amount: number, frequency: Frequency): number {
-  switch (frequency) {
-    case 'WEEKLY':
-      return (amount * 52) / 12;
-    case 'FORTNIGHTLY':
-      return (amount * 26) / 12;
-    case 'MONTHLY':
-      return amount;
-    case 'QUARTERLY':
-      return amount / 3;
-    case 'ANNUAL':
-      return amount / 12;
-    default:
-      return amount;
-  }
-}
+// Fix: frequency double-conversion bug (docs/changelog/CHANGELOG_2026_04_12_ONBOARDING_CORRECTNESS.md).
+// The canonical Income/Expense contract (per lib/utils/frequencies.ts and /api/income)
+// stores `amount` at the given `frequency` — downstream engines call toAnnual/toMonthly.
+// This file previously called normalizeToMonthly() AND stored the original frequency,
+// which caused every amount to be read by the snapshot engine at the wrong scale
+// (e.g. $1000/week became $225K/year instead of $52K/year). We now pass the
+// amount and frequency through unchanged.
 
 // Map PropertyType to LoanType
 function getLoanType(propertyType: PropertyType): 'HOME' | 'INVESTMENT' {
@@ -179,7 +213,7 @@ function getLoanType(propertyType: PropertyType): 'HOME' | 'INVESTMENT' {
 // POST - Bulk create all onboarding data
 // =============================================================================
 
-export const POST = withPermission('settings.write', async (request, auth) => {
+export const POST = withPermission('onboarding.complete', async (request, auth) => {
     try {
       const userId = auth.userId;
       const data: WizardData = await request.json();
@@ -202,11 +236,123 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         });
 
         // =======================================================================
+        // 1a. Phase 29 — Household profile, members, pets
+        //
+        // The wizard collects members/pets/carsCount but previously discarded
+        // them. The Phase 28 budget AI depends on this data, so we upsert a
+        // HouseholdProfile and its children here. Lifestyle preferences are
+        // not captured by the wizard yet — they fall back to schema defaults
+        // (MODERATE / SOMETIMES) until the redesigned step lands in PR 3.
+        // =======================================================================
+        const householdMembers = data.householdMembers ?? [];
+        const householdPets = data.householdPets ?? [];
+        const carsCount = data.carsCount ?? 0;
+
+        if (householdMembers.length > 0 || householdPets.length > 0 || carsCount > 0) {
+          const childrenAges: number[] = [];
+          let adultsCount = 0;
+          let childrenCount = 0;
+          for (const m of householdMembers) {
+            if (m.relationship === 'CHILD') {
+              childrenCount += 1;
+              if (m.dateOfBirth) {
+                const dob = new Date(m.dateOfBirth);
+                if (!Number.isNaN(dob.getTime())) {
+                  const ageMs = Date.now() - dob.getTime();
+                  const ageYears = Math.floor(ageMs / (365.25 * 24 * 60 * 60 * 1000));
+                  if (ageYears >= 0) childrenAges.push(ageYears);
+                }
+              }
+            } else {
+              adultsCount += 1;
+            }
+          }
+          // Ensure at least one adult — the user themselves — to satisfy the
+          // "adultsCount default 1" schema contract even when no SELF member
+          // was explicitly added.
+          if (adultsCount === 0) adultsCount = 1;
+
+          const petTypes = Array.from(new Set(householdPets.map((p) => p.type.toLowerCase())));
+
+          const householdProfile = await tx.householdProfile.upsert({
+            where: { userId },
+            create: {
+              userId,
+              adultsCount,
+              childrenCount,
+              childrenAges,
+              petsCount: householdPets.length,
+              petTypes,
+              carsCount,
+              isComplete: true,
+            },
+            update: {
+              adultsCount,
+              childrenCount,
+              childrenAges,
+              petsCount: householdPets.length,
+              petTypes,
+              carsCount,
+              isComplete: true,
+            },
+          });
+
+          // Replace members/pets idempotently: delete any existing rows for
+          // this profile, then recreate from the wizard payload. This keeps
+          // re-running onboarding safe (consistent with the atomic-bulk model).
+          await tx.householdMember.deleteMany({
+            where: { householdProfileId: householdProfile.id },
+          });
+          await tx.householdPet.deleteMany({
+            where: { householdProfileId: householdProfile.id },
+          });
+
+          for (let i = 0; i < householdMembers.length; i++) {
+            const m = householdMembers[i];
+            if (!m.name?.trim()) continue;
+            await tx.householdMember.create({
+              data: {
+                householdProfileId: householdProfile.id,
+                name: m.name.trim(),
+                relationship: m.relationship,
+                dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth) : null,
+                isIncomeEarner: m.relationship === 'CHILD' ? false : m.isIncomeEarner,
+                sortOrder: i,
+              },
+            });
+          }
+
+          for (let i = 0; i < householdPets.length; i++) {
+            const p = householdPets[i];
+            if (!p.name?.trim()) continue;
+            await tx.householdPet.create({
+              data: {
+                householdProfileId: householdProfile.id,
+                name: p.name.trim(),
+                type: p.type,
+                breed: p.breed?.trim() || null,
+                sortOrder: i,
+              },
+            });
+          }
+        }
+
+        // =======================================================================
         // 2. Create Properties with Loans
         // =======================================================================
         const createdProperties = [];
         for (const prop of data.properties) {
           const now = new Date();
+          // Reject missing purchase date instead of silently defaulting to today.
+          // A wrong purchase date corrupts CGT, depreciation and equity history
+          // downstream; an approximate one from the user is infinitely better.
+          if (!prop.purchaseDate) {
+            throw new Error(`Property "${prop.name || prop.address || 'unnamed'}" is missing a purchase date.`);
+          }
+          const purchaseDate = new Date(prop.purchaseDate);
+          if (Number.isNaN(purchaseDate.getTime())) {
+            throw new Error(`Property "${prop.name || prop.address || 'unnamed'}" has an invalid purchase date.`);
+          }
           // Create property
           const property = await tx.property.create({
             data: {
@@ -215,7 +361,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
               type: prop.type,
               address: prop.address || null,
               purchasePrice: prop.purchasePrice,
-              purchaseDate: prop.purchaseDate ? new Date(prop.purchaseDate) : now,
+              purchaseDate,
               currentValue: prop.currentValue,
               valuationDate: now,
             },
@@ -245,7 +391,6 @@ export const POST = withPermission('settings.write', async (request, auth) => {
 
           // Create rental income if investment property
           if (prop.type === 'INVESTMENT' && prop.income && prop.income.amount > 0) {
-            const monthlyAmount = normalizeToMonthly(prop.income.amount, prop.income.frequency);
             await tx.income.create({
               data: {
                 userId,
@@ -253,7 +398,8 @@ export const POST = withPermission('settings.write', async (request, auth) => {
                 name: `Rent - ${prop.name || prop.address}`,
                 type: 'RENTAL',
                 sourceType: 'PROPERTY',
-                amount: monthlyAmount,
+                // Canonical contract: store amount AT the given frequency (no conversion).
+                amount: prop.income.amount,
                 frequency: prop.income.frequency,
               },
             });
@@ -262,7 +408,6 @@ export const POST = withPermission('settings.write', async (request, auth) => {
           // Create property expenses
           for (const expense of prop.expenses) {
             if (expense.amount > 0) {
-              const monthlyAmount = normalizeToMonthly(expense.amount, expense.frequency);
               await tx.expense.create({
                 data: {
                   userId,
@@ -270,7 +415,8 @@ export const POST = withPermission('settings.write', async (request, auth) => {
                   name: expense.name || expense.category,
                   category: expense.category,
                   sourceType: 'PROPERTY',
-                  amount: monthlyAmount,
+                  // Canonical contract: store amount AT the given frequency (no conversion).
+                  amount: expense.amount,
                   frequency: expense.frequency,
                   isTaxDeductible: prop.type === 'INVESTMENT', // Investment property expenses are tax deductible
                 },
@@ -284,9 +430,6 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         // =======================================================================
         const createdAccounts = [];
         for (const acc of data.accounts) {
-          // Get linked loan ID if offset
-          let offsetAccountId: string | null = null;
-
           const account = await tx.account.create({
             data: {
               userId,
@@ -295,6 +438,9 @@ export const POST = withPermission('settings.write', async (request, auth) => {
               institution: acc.institution || null,
               currentBalance: acc.type === 'CREDIT_CARD' ? -Math.abs(acc.currentBalance) : acc.currentBalance,
               interestRate: acc.interestRate || null,
+              // Onboarded accounts are always manually entered.
+              balanceSource: 'MANUAL',
+              balanceLastUpdatedAt: new Date(),
             },
           });
           createdAccounts.push(account);
@@ -351,6 +497,13 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         const createdAssets = [];
         for (const asset of data.assets) {
           const now = new Date();
+          if (!asset.purchaseDate) {
+            throw new Error(`Asset "${asset.name || asset.type}" is missing a purchase date.`);
+          }
+          const assetPurchaseDate = new Date(asset.purchaseDate);
+          if (Number.isNaN(assetPurchaseDate.getTime())) {
+            throw new Error(`Asset "${asset.name || asset.type}" has an invalid purchase date.`);
+          }
           const createdAsset = await tx.asset.create({
             data: {
               userId,
@@ -358,7 +511,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
               type: asset.type,
               description: asset.description || null,
               purchasePrice: asset.purchasePrice,
-              purchaseDate: asset.purchaseDate ? new Date(asset.purchaseDate) : now,
+              purchaseDate: assetPurchaseDate,
               currentValue: asset.currentValue,
               valuationDate: now,
               ...(asset.type === 'VEHICLE' && {
@@ -373,7 +526,6 @@ export const POST = withPermission('settings.write', async (request, auth) => {
           // Create asset expenses
           for (const expense of asset.expenses) {
             if (expense.amount > 0) {
-              const monthlyAmount = normalizeToMonthly(expense.amount, expense.frequency);
               await tx.expense.create({
                 data: {
                   userId,
@@ -381,7 +533,8 @@ export const POST = withPermission('settings.write', async (request, auth) => {
                   name: expense.name,
                   category: expense.category,
                   sourceType: 'ASSET',
-                  amount: monthlyAmount,
+                  // Canonical contract: store amount AT the given frequency.
+                  amount: expense.amount,
                   frequency: expense.frequency,
                 },
               });
@@ -392,17 +545,34 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         // =======================================================================
         // 6. Create Income Sources
         // =======================================================================
+        // Pick the first investment account (if any) so INVESTMENT-type income
+        // can be linked to a real InvestmentAccount rather than floating free.
+        const firstInvestmentAccountId = createdInvestments[0]?.id ?? null;
+
         const createdIncome = [];
         for (const inc of data.income) {
           if (inc.amount > 0) {
-            const monthlyAmount = normalizeToMonthly(inc.amount, inc.frequency);
+            // Route sourceType based on the income type (not always GENERAL).
+            // Per schema (prisma/schema.prisma) and IncomeSourceType enum:
+            //   GENERAL    — salary, other personal income
+            //   PROPERTY   — handled earlier in the property loop
+            //   INVESTMENT — dividends, distributions, investment interest
+            let sourceType: 'GENERAL' | 'INVESTMENT' = 'GENERAL';
+            let investmentAccountId: string | null = null;
+            if (inc.type === 'INVESTMENT') {
+              sourceType = 'INVESTMENT';
+              investmentAccountId = firstInvestmentAccountId;
+            }
+
             const income = await tx.income.create({
               data: {
                 userId,
                 name: inc.name || inc.type,
                 type: inc.type,
-                sourceType: 'GENERAL',
-                amount: monthlyAmount,
+                sourceType,
+                investmentAccountId,
+                // Canonical contract: store amount AT the given frequency.
+                amount: inc.amount,
                 frequency: inc.frequency,
                 ...(inc.type === 'SALARY' && inc.salaryType && {
                   salaryType: inc.salaryType,
@@ -419,14 +589,14 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         const createdExpenses = [];
         for (const exp of data.expenses) {
           if (exp.amount > 0) {
-            const monthlyAmount = normalizeToMonthly(exp.amount, exp.frequency);
             const expense = await tx.expense.create({
               data: {
                 userId,
                 name: exp.name || exp.category,
                 category: exp.category,
                 sourceType: 'GENERAL',
-                amount: monthlyAmount,
+                // Canonical contract: store amount AT the given frequency.
+                amount: exp.amount,
                 frequency: exp.frequency,
                 isEssential: exp.isEssential ?? true,
                 isTaxDeductible: exp.isTaxDeductible ?? false,
@@ -444,11 +614,13 @@ export const POST = withPermission('settings.write', async (request, auth) => {
           create: {
             userId,
             country: data.country,
+            taxYear: data.taxYear || null,
             dismissedWelcomeModal: true,
             hasSeenGuidedTour: true,
           },
           update: {
             country: data.country,
+            taxYear: data.taxYear || null,
             dismissedWelcomeModal: true,
           },
         });
@@ -460,6 +632,8 @@ export const POST = withPermission('settings.write', async (request, auth) => {
           assets: createdAssets.length,
           income: createdIncome.length,
           expenses: createdExpenses.length,
+          householdMembers: householdMembers.length,
+          householdPets: householdPets.length,
         };
       });
 
@@ -470,9 +644,18 @@ export const POST = withPermission('settings.write', async (request, auth) => {
       });
     } catch (error) {
       console.error('Bulk create error:', error);
+      // Validation errors thrown from inside the transaction (e.g. missing
+      // purchase date) are user-recoverable and should return 400, not 500.
+      const message = error instanceof Error ? error.message : String(error);
+      const isValidationError =
+        message.includes('missing a purchase date') ||
+        message.includes('invalid purchase date');
       return NextResponse.json(
-        { error: 'Failed to save onboarding data', details: String(error) },
-        { status: 500 }
+        {
+          error: isValidationError ? message : 'Failed to save onboarding data',
+          details: isValidationError ? undefined : message,
+        },
+        { status: isValidationError ? 400 : 500 }
       );
     }
 });

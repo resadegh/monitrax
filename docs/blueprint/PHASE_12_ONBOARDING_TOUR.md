@@ -988,6 +988,7 @@ interface BulkCreateRequest {
 | v1.1 | 2025-12-05 | Added animated navigation guide specifications |
 | v1.2 | 2025-12-07 | Full implementation complete |
 | v2.0 | 2025-12-09 | Enhanced Wizard v2.0 - comprehensive data entry with AI helper |
+| v2.1 | 2026-04-12 | PR 1 onboarding correctness sweep — see `docs/changelog/CHANGELOG_2026_04_12_ONBOARDING_CORRECTNESS.md`. Fixed frequency double-conversion bug in bulk-create, persisted household data (previously dropped), set `Account.balanceSource=MANUAL`, routed INVESTMENT income to `sourceType=INVESTMENT`, added `UserPreference.taxYear` column, captured purchase dates for Property/Asset, added `onboarding.complete` RBAC permission, added HEALTH/EDUCATION/RENT/GROCERIES/SUBSCRIPTION expense categories, added QUARTERLY frequency to Income/Expenses step, deleted the legacy v1 `InitialSetupWizard` + `steps/*` dead code. PR 2 (draft persistence) and PR 3 (UX redesign) to follow. |
 
 ---
 
@@ -996,14 +997,14 @@ interface BulkCreateRequest {
 After deployment, run the following migrations:
 
 ```sql
--- Add onboarding fields to users table
+-- Initial onboarding fields (applied 2025-12-07)
 ALTER TABLE "users" ADD COLUMN "onboardingCompleted" BOOLEAN DEFAULT false;
 ALTER TABLE "users" ADD COLUMN "onboardingProfileType" TEXT;
 ALTER TABLE "users" ADD COLUMN "onboardingStartedAt" TIMESTAMP;
 ALTER TABLE "users" ADD COLUMN "onboardingCompletedAt" TIMESTAMP;
 ALTER TABLE "users" ADD COLUMN "onboardingStep" INTEGER DEFAULT 0;
 
--- Create user_preferences table
+-- user_preferences table (applied 2025-12-07)
 CREATE TABLE "user_preferences" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "userId" TEXT NOT NULL UNIQUE,
@@ -1019,8 +1020,11 @@ CREATE TABLE "user_preferences" (
   "updatedAt" TIMESTAMP DEFAULT NOW(),
   FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE
 );
+
+-- PR 1 correctness sweep (2026-04-12)
+ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "taxYear" TEXT;
 ```
 
 ---
 
-*END OF PHASE 12 BLUEPRINT v1.2*
+*END OF PHASE 12 BLUEPRINT v2.1*

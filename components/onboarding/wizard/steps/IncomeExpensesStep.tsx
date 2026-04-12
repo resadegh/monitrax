@@ -61,12 +61,17 @@ const EXPENSE_CATEGORIES: {
   color: string;
   examples: string;
 }[] = [
-  { value: 'HOUSING', label: 'Housing', icon: <Building className="h-4 w-4" />, color: 'text-blue-600', examples: 'Rent, mortgage' },
+  { value: 'HOUSING', label: 'Housing', icon: <Building className="h-4 w-4" />, color: 'text-blue-600', examples: 'Mortgage, housing costs' },
+  { value: 'RENT', label: 'Rent', icon: <Building className="h-4 w-4" />, color: 'text-blue-600', examples: 'Rent paid for a rented property' },
   { value: 'UTILITIES', label: 'Utilities', icon: <Zap className="h-4 w-4" />, color: 'text-yellow-600', examples: 'Electricity, gas, water' },
-  { value: 'FOOD', label: 'Food & Groceries', icon: <ShoppingCart className="h-4 w-4" />, color: 'text-green-600', examples: 'Food, household items' },
+  { value: 'GROCERIES', label: 'Groceries', icon: <ShoppingCart className="h-4 w-4" />, color: 'text-green-600', examples: 'Supermarket, household items' },
+  { value: 'FOOD', label: 'Food & Dining', icon: <UtensilsCrossed className="h-4 w-4" />, color: 'text-green-600', examples: 'Eating out, takeaway' },
   { value: 'TRANSPORT', label: 'Transport', icon: <Car className="h-4 w-4" />, color: 'text-blue-600', examples: 'Fuel, public transport' },
   { value: 'INSURANCE', label: 'Insurance', icon: <Shield className="h-4 w-4" />, color: 'text-purple-600', examples: 'Health, life, home' },
-  { value: 'ENTERTAINMENT', label: 'Entertainment', icon: <Tv className="h-4 w-4" />, color: 'text-pink-600', examples: 'Movies, events, streaming' },
+  { value: 'HEALTH', label: 'Health & Medical', icon: <Heart className="h-4 w-4" />, color: 'text-rose-600', examples: 'Doctor, pharmacy, dental' },
+  { value: 'EDUCATION', label: 'Education', icon: <GraduationCap className="h-4 w-4" />, color: 'text-sky-600', examples: 'School fees, courses, training' },
+  { value: 'ENTERTAINMENT', label: 'Entertainment', icon: <Tv className="h-4 w-4" />, color: 'text-pink-600', examples: 'Movies, events, hobbies' },
+  { value: 'SUBSCRIPTION', label: 'Subscriptions', icon: <Tv className="h-4 w-4" />, color: 'text-fuchsia-600', examples: 'Streaming, software, memberships' },
   { value: 'PERSONAL', label: 'Personal', icon: <Package className="h-4 w-4" />, color: 'text-gray-600', examples: 'Clothing, personal care' },
   { value: 'RATES', label: 'Council Rates', icon: <Building className="h-4 w-4" />, color: 'text-teal-600', examples: 'Council rates' },
   { value: 'MAINTENANCE', label: 'Maintenance', icon: <Package className="h-4 w-4" />, color: 'text-orange-600', examples: 'Repairs, upkeep' },
@@ -82,6 +87,7 @@ const FREQUENCIES = [
   { value: 'WEEKLY', label: 'Weekly' },
   { value: 'FORTNIGHTLY', label: 'Fortnightly' },
   { value: 'MONTHLY', label: 'Monthly' },
+  { value: 'QUARTERLY', label: 'Quarterly' },
   { value: 'ANNUAL', label: 'Annual' },
 ] as const;
 

@@ -15,6 +15,7 @@ const DEFAULT_PREFERENCES = {
   preferredCurrency: 'AUD',
   preferredDateFormat: 'DD/MM/YYYY',
   country: 'AU',
+  taxYear: null as string | null,
 };
 
 /**
@@ -64,6 +65,7 @@ export const GET = withPermission('settings.read', async (request, auth) => {
                 preferredCurrency: true,
                 preferredDateFormat: true,
                 country: true,
+                taxYear: true,
               },
             },
           },
@@ -149,6 +151,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         preferredCurrency,
         preferredDateFormat,
         country,
+        taxYear,
       } = body;
 
       // Build user update data
@@ -212,6 +215,9 @@ export const POST = withPermission('settings.write', async (request, auth) => {
       }
       if (country) {
         prefUpdate.country = country;
+      }
+      if (typeof taxYear === 'string' && taxYear.length > 0) {
+        prefUpdate.taxYear = taxYear;
       }
 
       // Try to upsert user preference (may fail if migration not run)
