@@ -12,6 +12,7 @@ import { AdminTable } from '@/components/admin/ui/AdminTable';
 import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { AdminBadge } from '@/components/admin/ui/AdminBadge';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
+import { safeAdminFetch } from '@/lib/admin/safeFetch';
 
 interface UptimeCheck {
   name: string;
@@ -48,19 +49,13 @@ export default function UptimePage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const response = await fetch('/api/admin/gcp/uptime');
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to fetch uptime data');
-      }
-      const result = await response.json();
+    const result = await safeAdminFetch<UptimeData>('/api/admin/gcp/uptime');
+    if (result.ok && result.data) {
       setData(result.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+    } else {
+      setError(result.error || 'Failed to fetch uptime data');
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {

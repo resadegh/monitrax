@@ -15,6 +15,7 @@ import { AdminTable } from '@/components/admin/ui/AdminTable';
 import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { AdminBadge } from '@/components/admin/ui/AdminBadge';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
+import { safeAdminFetch } from '@/lib/admin/safeFetch';
 
 interface SchedulerJob {
   name: string;
@@ -44,39 +45,27 @@ export default function SchedulerPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-
-    try {
-      const response = await fetch('/api/admin/gcp/scheduler');
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to fetch scheduler data');
-      }
-      const result = await response.json();
+    const result = await safeAdminFetch<SchedulerData>('/api/admin/gcp/scheduler');
+    if (result.ok && result.data) {
       setData(result.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+    } else {
+      setError(result.error || 'Failed to fetch scheduler data');
     }
+    setLoading(false);
   }, []);
 
   const handleAction = async (action: 'pause' | 'resume' | 'run', jobName: string) => {
     setActionLoading(jobName + action);
-    try {
-      const response = await fetch('/api/admin/gcp/scheduler', {
-        method: 'POST',
-        body: JSON.stringify({ action, jobName }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || `Failed to ${action} job`);
-      }
+    const result = await safeAdminFetch('/api/admin/gcp/scheduler', {
+      method: 'POST',
+      body: JSON.stringify({ action, jobName }),
+    });
+    if (result.ok) {
       await fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed');
-    } finally {
-      setActionLoading(null);
+    } else {
+      setError(result.error || `Failed to ${action} job`);
     }
+    setActionLoading(null);
   };
 
   useEffect(() => {

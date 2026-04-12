@@ -12,6 +12,7 @@ import { AdminTable } from '@/components/admin/ui/AdminTable';
 import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { AdminBadge } from '@/components/admin/ui/AdminBadge';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
+import { safeAdminFetch } from '@/lib/admin/safeFetch';
 
 interface SCCFinding {
   name: string;
@@ -45,19 +46,13 @@ export default function SecurityFindingsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const response = await fetch('/api/admin/gcp/security-findings');
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to fetch security findings');
-      }
-      const result = await response.json();
+    const result = await safeAdminFetch<SCCData>('/api/admin/gcp/security-findings');
+    if (result.ok && result.data) {
       setData(result.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+    } else {
+      setError(result.error || 'Failed to fetch security findings');
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
