@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyAdminAuth } from '@/lib/admin/auth';
+import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { hasPermission } from '@/lib/admin/permissions';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
 import { ADMIN_ERROR_CODES, PAGINATION_DEFAULTS } from '@/lib/admin/constants';
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Verify authentication
-    const authResult = await verifyAdminAuth(request);
+    const authResult = await verifyAdminGCPAuth(request);
     if (!authResult.success || !authResult.context) {
       return NextResponse.json({ error: authResult.error }, { status: 401 });
     }

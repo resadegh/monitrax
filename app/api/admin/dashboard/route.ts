@@ -4,18 +4,18 @@
  * GET /api/admin/dashboard
  * Returns real-time platform statistics.
  *
- * Fix: G35 — Added verifyAdminAuth() to prevent unauthenticated access.
+ * Fix: G35 — Added verifyAdminGCPAuth() to prevent unauthenticated access.
  * See: docs/changelog/CHANGELOG_2026_04_11.md
  */
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyAdminAuth } from '@/lib/admin/auth';
+import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
 
 export async function GET(request: Request) {
   // Authenticate admin user (G35 fix — was previously unauthenticated)
-  const authResult = await verifyAdminAuth(request);
+  const authResult = await verifyAdminGCPAuth(request);
   if (!authResult.success) {
     return NextResponse.json(
       { error: authResult.error },

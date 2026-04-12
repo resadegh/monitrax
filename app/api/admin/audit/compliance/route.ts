@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
-import { verifyAdminAuth } from '@/lib/admin/auth';
+import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
 import {
   getRetentionStats,
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Best-effort admin auth (matches dashboard pattern)
-    await verifyAdminAuth(request);
+    await verifyAdminGCPAuth(request);
 
     const [retentionStats, anomalies, actionCoverage] = await Promise.all([
       getRetentionStats(),
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await verifyAdminAuth(request);
+    await verifyAdminGCPAuth(request);
 
     const body = await request.json().catch(() => ({}));
     const retentionDays = body.retentionDays || DEFAULT_RETENTION_DAYS;
