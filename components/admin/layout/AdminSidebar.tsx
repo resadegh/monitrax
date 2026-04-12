@@ -8,7 +8,9 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'firebase/auth';
+import { getFirebaseAuth } from '@/lib/firebase/config';
 import { cn } from '@/lib/utils';
 import { ADMIN_ROUTES } from '@/lib/admin/constants';
 import type { AdminRole } from '@prisma/client';
@@ -136,7 +138,20 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ role, adminName, adminEmail }: AdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const access = getFeatureAccess(role);
+
+  const handleLogout = async () => {
+    try {
+      const auth = getFirebaseAuth();
+      if (auth) {
+        await signOut(auth);
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    router.push('/admin/login');
+  };
 
   const isActive = (href: string) => {
     if (href === ADMIN_ROUTES.DASHBOARD) {
@@ -227,15 +242,15 @@ export function AdminSidebar({ role, adminName, adminEmail }: AdminSidebarProps)
             <p className="text-sm font-medium truncate">{adminName}</p>
             <p className="text-xs text-gray-400 truncate">{adminEmail}</p>
           </div>
-          <Link
-            href={ADMIN_ROUTES.LOGOUT}
+          <button
+            onClick={handleLogout}
             className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"
             title="Sign out"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-          </Link>
+          </button>
         </div>
       </div>
     </aside>
