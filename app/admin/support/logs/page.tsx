@@ -70,7 +70,7 @@ function LogsPageContent() {
       }
 
       const response = await fetch(`/api/admin/audit?${params.toString()}`, {
-        credentials: 'include',
+        
       });
 
       if (!response.ok) {

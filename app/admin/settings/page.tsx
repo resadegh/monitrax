@@ -56,7 +56,7 @@ export default function SettingsPage() {
   const fetchAdmins = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/admins', {
-        credentials: 'include',
+        
       });
 
       if (!response.ok) {
@@ -73,7 +73,7 @@ export default function SettingsPage() {
   const fetchAuditLogs = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/audit?limit=50', {
-        credentials: 'include',
+        
       });
 
       if (!response.ok) {
@@ -109,7 +109,7 @@ export default function SettingsPage() {
     try {
       const response = await fetch(`/api/admin/admins/${adminId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        
       });
 
       if (!response.ok) {
@@ -131,7 +131,7 @@ export default function SettingsPage() {
       const response = await fetch(`/api/admin/admins/${adminId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify({ isActive: true }),
       });
 
@@ -154,7 +154,7 @@ export default function SettingsPage() {
       const response = await fetch(`/api/admin/admins/${adminId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        
         body: JSON.stringify({ unlockAccount: true }),
       });
 

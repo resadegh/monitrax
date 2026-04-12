@@ -89,10 +89,10 @@ export default function BillingPage() {
       // Fetch both overview and transactions in parallel
       const [overviewRes, transactionsRes] = await Promise.all([
         fetch(`/api/admin/billing/overview?period=${period}`, {
-          credentials: 'include',
+          
         }),
         fetch(`/api/admin/billing/transactions?page=${currentPage}&limit=${PAGINATION_DEFAULTS.LIMIT}`, {
-          credentials: 'include',
+          
         }),
       ]);
 

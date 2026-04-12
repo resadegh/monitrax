@@ -81,7 +81,7 @@ export default function OrganizationsPage() {
       if (statusFilter) params.set('status', statusFilter);
 
       const response = await fetch(`/api/admin/organizations?${params.toString()}`, {
-        credentials: 'include',
+        
       });
 
       if (!response.ok) {

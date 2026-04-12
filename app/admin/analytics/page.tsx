@@ -60,9 +60,9 @@ export default function AnalyticsPage() {
     try {
       // Fetch all analytics data in parallel
       const [activeUsersRes, featureUsageRes, growthRes] = await Promise.all([
-        fetch('/api/admin/analytics/active-users', { credentials: 'include' }),
-        fetch('/api/admin/analytics/feature-usage', { credentials: 'include' }),
-        fetch(`/api/admin/analytics/growth?period=${period}`, { credentials: 'include' }),
+        fetch('/api/admin/analytics/active-users', {  }),
+        fetch('/api/admin/analytics/feature-usage', {  }),
+        fetch(`/api/admin/analytics/growth?period=${period}`, {  }),
       ]);
 
       if (!activeUsersRes.ok || !featureUsageRes.ok || !growthRes.ok) {

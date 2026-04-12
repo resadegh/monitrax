@@ -42,6 +42,44 @@ export function AdminLayoutClient({ children }: AdminLayoutClientProps) {
     (page) => pathname === page || pathname.startsWith('/admin/login')
   );
 
+  // Phase M: Global fetch interceptor for admin API routes.
+  // Auto-injects Firebase ID token as Authorization: Bearer header on any
+  // request to /api/admin/*. This lets all existing admin pages continue
+  // using raw fetch() without refactoring — the token is attached
+  // transparently at the browser level.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const originalFetch = window.fetch;
+    window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+      // Only intercept admin API calls
+      if (url && url.includes('/api/admin/') && !url.includes('/api/admin/auth/login')) {
+        try {
+          const auth = getFirebaseAuth();
+          const currentUser = auth?.currentUser;
+          if (currentUser) {
+            const idToken = await currentUser.getIdToken();
+            const headers = new Headers(init?.headers || {});
+            if (!headers.has('Authorization')) {
+              headers.set('Authorization', `Bearer ${idToken}`);
+            }
+            return originalFetch(input, { ...init, headers });
+          }
+        } catch {
+          // Fall through to original fetch if token fetch fails
+        }
+      }
+
+      return originalFetch(input, init);
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
   useEffect(() => {
     // Skip auth check for login page
     if (isFullWidthPage) {
