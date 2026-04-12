@@ -26,8 +26,10 @@
 | **J** | Evidence Collection & Submission | 🔶 **IN PROGRESS** | — | Step 6: Evidence guide created. Screenshots + 2 blockers (pen test, insurance) remain. |
 | **K** | Spreadsheet Completion & Submission | 🔶 **IN PROGRESS** | — | Spreadsheet answers documented. Fill + submit pending user action. |
 | **L** | CDR Code-Level Remediation | 🔶 **IN PROGRESS** | — | 20/46 gaps fixed (2026-04-11). Schema, auth, lifecycle, security hardening done. UI + route migration remaining. |
+| **M** | Admin Portal — GCP-First Migration | ⬜ Pending | — | Migrate admin auth to GCP Identity Platform, integrate Cloud Logging/Monitoring/SCC APIs. Fix broken admin portal. |
+| **N** | Consumer Consent UI & Route Migration | ⬜ Pending | — | Build consumer consent management UI (G13/G14), migrate ~26 legacy auth routes (G37-G39), Basiq webhooks (G16). |
 
-**Overall: 7 of 12 phases complete. 3 in progress (evidence, spreadsheet, code remediation). 2 pending (GCP config, API cleanup).**
+**Overall: 7 of 14 phases complete. 3 in progress (evidence, spreadsheet, code remediation). 4 pending (GCP config, API cleanup, admin portal migration, consent UI).**
 
 ---
 
@@ -850,6 +852,188 @@ Basiq has provided a Security Policies Template covering 25 policy areas. Each s
 
 ---
 
+## PHASE M: Admin Portal — GCP-First Architecture Migration — ⬜ NEW
+
+**Goal:** Migrate the Admin Portal from custom identity/session management to GCP-native services. The Admin Portal becomes a thin UI layer that orchestrates GCP APIs — it never rebuilds capabilities that GCP provides as managed services.
+**Why:** Current admin portal has a completely custom, parallel identity system (`AdminUser` table, SHA256 passwords, custom tokens) that violates the GCP-First principle (CLAUDE.md §12.7). Admin auth, user management, audit logging, monitoring, and security scanning all have superior GCP managed alternatives.
+**Current State:** Admin portal is deployed but broken — API calls fail with "No authentication token provided" across CDR Compliance, Security, Feature Flags, and Settings pages. The custom admin session system is not functioning correctly after the GCP Cloud SQL migration.
+**Architecture Blueprint:** `docs/blueprint/PHASE_M_ADMIN_PORTAL_GCP_FIRST.md`
+**Effort:** ~15-20 dev days total across sub-phases
+**Depends on:** Phase E (GCP Service Enablement) for monitoring/logging/SCC integration
+
+### Design Principles for Admin Portal
+
+1. **GCP is the source of truth for identity** — Admin users authenticate via GCP Identity Platform (Firebase Auth) with custom claims `{ monitraxAdmin: true, adminRole: 'SUPER_ADMIN' }`. No separate `AdminUser` password table.
+2. **GCP APIs for user operations** — Suspend/disable users calls `admin.auth().updateUser(uid, { disabled: true })`. Session revocation calls `admin.auth().revokeRefreshTokens(uid)`.
+3. **GCP for observability** — Audit logs dual-write to Cloud Logging (7-year CDR retention). Admin portal reads from Cloud Logging API. Monitoring dashboards embed/link to Cloud Monitoring.
+4. **GCP for security** — Vulnerability status from Security Command Center API. Encryption status from Cloud KMS API. DDoS/WAF from Cloud Armor.
+5. **No custom rebuilds** — If GCP provides it as a managed service, the admin portal calls the GCP API or links to GCP Console. Custom code is only for Monitrax business logic (billing, subscriptions, feature flags, CDR consent aggregation).
+6. **GCP IAM for infrastructure access** — Admin roles map to GCP IAM roles for Cloud SQL, Cloud Storage, Logging, and Monitoring access. No direct database access from dev machines.
+
+### Target Architecture
+
+```
+                    ┌──────────────────────────────┐
+                    │    GCP IDENTITY PLATFORM      │
+                    │  Firebase Auth + Custom Claims │
+                    │  (monitraxAdmin, adminRole)    │
+                    └──────────────┬─────────────────┘
+                                   │ Firebase ID Token
+                    ┌──────────────▼─────────────────┐
+                    │       ADMIN PORTAL UI           │
+                    │  Thin control plane — delegates  │
+                    │  to GCP APIs for infrastructure  │
+                    └──┬────────┬────────┬────────┬──┘
+                       │        │        │        │
+          ┌────────────▼──┐ ┌──▼─────┐ ┌▼──────┐ ┌▼───────────┐
+          │ GCP Identity  │ │ Cloud  │ │ SCC   │ │ Cloud      │
+          │ Platform API  │ │Logging │ │ API   │ │ Monitoring │
+          │ • Disable user│ │• Audit │ │• Vulns│ │ • Alerts   │
+          │ • Revoke token│ │• 7yr   │ │• Scans│ │ • Uptime   │
+          │ • MFA enforce │ │• Search│ │       │ │ • Metrics  │
+          │ • Custom claim│ │        │ │       │ │            │
+          └───────────────┘ └────────┘ └───────┘ └────────────┘
+                                   │
+                    ┌──────────────▼─────────────────┐
+                    │     GCP Cloud SQL (Sydney)      │
+                    │  PostgreSQL — CDR data + app DB  │
+                    │  Encrypted (CMEK via Cloud KMS)  │
+                    └────────────────────────────────┘
+```
+
+### What Admin Portal Keeps (Monitrax Business Logic)
+
+| Capability | Reason |
+|------------|--------|
+| Billing & Subscriptions | Stripe integration — GCP has no equivalent |
+| Organization License Management | Monitrax-specific business logic |
+| Feature Flag System | App-specific rollout control |
+| CDR Consent Aggregation Dashboard | Monitrax CDR-specific metrics |
+| User Impersonation (support) | App-specific debugging tool |
+| CDR Complaints Tracking | Monitrax CDR compliance model |
+
+### What Admin Portal Delegates to GCP
+
+| Current Custom Code | GCP Replacement |
+|---------------------|-----------------|
+| `AdminUser` table + SHA256 passwords | GCP Identity Platform (Firebase Auth) with admin custom claims |
+| `AdminSession` table + custom tokens | Firebase ID tokens verified by `verifyGCPIdToken()` |
+| Custom lockout/account disable | `admin.auth().updateUser(uid, { disabled: true })` |
+| Custom session revocation | `admin.auth().revokeRefreshTokens(uid)` |
+| Custom MFA check (DB flag only) | Firebase `sign_in_second_factor` token claim |
+| Audit logs in PostgreSQL only | Dual-write: PostgreSQL + Cloud Logging (7-year retention) |
+| Custom anomaly detection | Cloud Monitoring alert policies |
+| Custom error tracking | GCP Error Reporting |
+| "GCP health: unknown" placeholders | Real GCP API calls (SCC, Monitoring, KMS) |
+| Custom log retention cleanup | Cloud Logging retention policies (managed) |
+
+### Sub-Phase M.1 — Admin Auth Migration to GCP Identity Platform (~3-5 dev days)
+
+| Step | Action | Effort | Status |
+|------|--------|--------|--------|
+| M.1.1 | Set Firebase custom claims on admin users: `{ monitraxAdmin: true, adminRole: 'SUPER_ADMIN' }` | 0.5 day | ⬜ |
+| M.1.2 | Create `verifyAdminGCPAuth()` guard that verifies Firebase token + checks `monitraxAdmin` claim | 1 day | ⬜ |
+| M.1.3 | Migrate admin login page to use Firebase Auth (email/password with MFA) | 1 day | ⬜ |
+| M.1.4 | Migrate all admin API routes from `verifyAdminAuth()` to `verifyAdminGCPAuth()` | 1 day | ⬜ |
+| M.1.5 | User disable/enable via GCP API: `admin.auth().updateUser(uid, { disabled: true/false })` | 0.5 day | ⬜ |
+| M.1.6 | Session revocation via GCP API: `admin.auth().revokeRefreshTokens(uid)` | 0.5 day | ⬜ |
+| M.1.7 | Deprecate `AdminUser` password auth + `AdminSession` token system (retain table for audit history) | 0.5 day | ⬜ |
+| M.1.8 | Fix current broken admin portal (all pages showing "No authentication token provided") | 0.5 day | ⬜ |
+
+### Sub-Phase M.2 — GCP Observability Integration (~3-4 dev days)
+
+| Step | Action | Effort | Status |
+|------|--------|--------|--------|
+| M.2.1 | Audit log dual-write: existing `createAuditLog()` also writes to Cloud Logging | 1 day | ⬜ |
+| M.2.2 | Admin audit log page: query Cloud Logging API instead of (or alongside) PostgreSQL | 1 day | ⬜ |
+| M.2.3 | CDR compliance dashboard: replace "unknown" GCP health placeholders with real API calls | 1 day | ⬜ |
+| M.2.4 | Security monitoring page: read from Cloud Monitoring API for auth events, rate limits | 0.5 day | ⬜ |
+| M.2.5 | Error tracking: integrate GCP Error Reporting API for error logs page | 0.5 day | ⬜ |
+
+### Sub-Phase M.3 — GCP Security Integration (~2-3 dev days)
+
+| Step | Action | Effort | Status |
+|------|--------|--------|--------|
+| M.3.1 | Security page: show SCC findings via Security Command Center API | 1 day | ⬜ |
+| M.3.2 | Encryption status: show Cloud KMS key rotation status via KMS API | 0.5 day | ⬜ |
+| M.3.3 | CDR compliance: show Cloud Armor WAF status (when enabled) | 0.5 day | ⬜ |
+| M.3.4 | GCP IAM roles: document and enforce admin IAM role mapping | 0.5 day | ⬜ |
+
+### Sub-Phase M.4 — Admin Portal CDR Consent Management (~2 dev days)
+
+| Step | Action | Effort | Status |
+|------|--------|--------|--------|
+| M.4.1 | Admin CDR dashboard: real consent metrics from CDRConsent model (not just OrganizationClient) | 1 day | ⬜ |
+| M.4.2 | Admin consent management: view/revoke/delete CDR data on behalf of users (with audit trail) | 1 day | ⬜ |
+| M.4.3 | CDR complaint management UI: view/resolve/escalate complaints from CDRComplaint model | 0.5 day | ⬜ |
+
+### Sub-Phase M.5 — Operational & BAU Support Documentation (~2 dev days)
+
+Created AFTER Phase M implementation is complete — to train admin portal support team.
+
+| Step | Action | Effort | Status |
+|------|--------|--------|--------|
+| M.5.1 | Create Admin Portal Operations Guide (`docs/operational/admin/01_ADMIN_PORTAL_OPERATIONS.md`) | 0.5 day | ⬜ |
+| M.5.2 | Create Admin Troubleshooting Runbook (`docs/operational/admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md`) | 0.5 day | ⬜ |
+| M.5.3 | Create GCP Service Operations for Admins (`docs/operational/admin/03_GCP_SERVICE_OPERATIONS.md`) | 0.5 day | ⬜ |
+| M.5.4 | Create Admin Onboarding & Training Guide (`docs/operational/admin/04_ADMIN_ONBOARDING_TRAINING.md`) | 0.5 day | ⬜ |
+| M.5.5 | Create CDR Compliance Admin Procedures (`docs/operational/admin/05_CDR_COMPLIANCE_PROCEDURES.md`) | 0.5 day | ⬜ |
+| M.5.6 | Create Admin Portal BAU Playbook (`docs/bau-framework/ADMIN_PORTAL_BAU_PLAYBOOK.md`) | 0.5 day | ⬜ |
+
+### GCP IAM Role Mapping for Admin Portal
+
+| Admin Portal Role | GCP IAM Roles Required | Purpose |
+|-------------------|----------------------|---------|
+| SUPER_ADMIN | `roles/iam.admin`, `roles/cloudsql.admin`, `roles/logging.admin`, `roles/monitoring.admin` | Full platform control |
+| BILLING_ADMIN | `roles/logging.viewer`, `roles/monitoring.viewer` | Read-only infrastructure access |
+| SUPPORT_ADMIN | `roles/logging.viewer`, `roles/cloudsql.viewer` | Log review for support cases |
+| VIEWER | `roles/logging.viewer` | Read-only log access |
+
+---
+
+## PHASE N: Consumer Consent UI & Remaining Route Migration — ⬜ NEW
+
+**Goal:** Build consumer-facing CDR consent management and complete legacy auth migration
+**Why:** CDR Rules mandate consumer access to consent management. Legacy auth routes bypass RBAC and audit logging.
+**Effort:** ~10-12 dev days
+**Depends on:** Phase L (CDR models), Phase M (GCP auth for admin operations)
+
+### Sub-Phase N.1 — Consumer Consent Management UI (G13/G14) (~5-7 dev days)
+
+| Step | Gap | Action | Effort | Status |
+|------|-----|--------|--------|--------|
+| N.1.1 | G13 | Build `/dashboard/settings/privacy` page — view active consents, connected banks, data scope | 2 days | ⬜ |
+| N.1.2 | G14 | Add CDR data dashboard to privacy page — what data is held, when collected, download/delete | 2 days | ⬜ |
+| N.1.3 | G36 | Replace portal consent demo data with real Basiq consent flow | 2 days | ⬜ |
+| N.1.4 | — | Connect consent UI to `/api/cdr/consent` endpoints + `/api/cdr/lifecycle` | 1 day | ⬜ |
+
+### Sub-Phase N.2 — Legacy Auth Route Migration (G37-G39) (~3-5 dev days)
+
+| Step | Gap | Action | Effort | Status |
+|------|-----|--------|--------|--------|
+| N.2.1 | G37 | Migrate ~26 routes from `verifyToken`/`getCurrentUser` to `withPermission()` | 3 days | ⬜ |
+| N.2.2 | G38 | Add auth to 3 storage settings routes | 0.5 day | ⬜ |
+| N.2.3 | G39 | Migrate ~8 document routes from `getCurrentUser()` to `withPermission()` | 1 day | ⬜ |
+| N.2.4 | G41 | Verify all migrated routes now have audit logging (automatic with `withPermission()`) | 0.5 day | ⬜ |
+
+### Sub-Phase N.3 — Basiq Webhook Integration (G16) (~2-3 dev days)
+
+| Step | Gap | Action | Effort | Status |
+|------|-----|--------|--------|--------|
+| N.3.1 | G16 | Create `/api/basiq/webhook` endpoint for Basiq Events (consent revocation, connection status) | 2 days | ⬜ |
+| N.3.2 | G16 | Subscribe to Basiq Events via Basiq dashboard | 1 hour | ⬜ (user action) |
+
+### Sub-Phase N.4 — Remaining Small Fixes (~2 dev days)
+
+| Step | Gap | Action | Effort | Status |
+|------|-----|--------|--------|--------|
+| N.4.1 | G46 | Document data minimisation enforcement approach | 0.5 day | ⬜ |
+| N.4.2 | G32 | Portal auth token in localStorage → httpOnly cookies | 1 day | ⬜ |
+| N.4.3 | G33 | Optimize `withActiveConsent()` to reduce DB queries | 0.5 day | ⬜ |
+| N.4.4 | G34 | Add fromDate/toDate params to Basiq `getTransactions()` | 0.5 day | ⬜ |
+
+---
+
 ## Execution Sequence & Dependencies
 
 ```
@@ -972,10 +1156,12 @@ Each phase will create its own changelog entry:
 
 ---
 
-*Last Updated: 2026-04-11*
-*Phases A, B, C, D, F, G, I Complete (7 of 12)*
+*Last Updated: 2026-04-12*
+*Phases A, B, C, D, F, G, I Complete (7 of 14)*
 *Phases J, K, L in progress (evidence + spreadsheet + code remediation)*
-*Phases E, H pending (GCP services, API cleanup)*
+*Phases E, H, M, N pending (GCP services, API cleanup, admin portal GCP migration, consent UI)*
 *Phase L progress: 20/46 gaps fixed (G15,G17-G28,G30-G31,G35,G40,G42-G45)*
+*Phase M: Admin Portal GCP-First migration — admin auth, Cloud Logging, Monitoring, SCC, IAM integration*
+*Phase N: Consumer consent UI (G13/G14), legacy route migration (G37-G39), Basiq webhooks (G16)*
 *Remaining P0: G1 (pen test), G2 (insurance), G29 (Cloud Scheduler — GCP Console action)*
-*Remaining P1: G13/G14 (consent UI), G16 (Basiq webhooks), G36 (portal consent), G37-G39 (route migration)*
+*Admin Portal Status: BROKEN — "No authentication token provided" on all pages. Fix in Phase M.1.8*
