@@ -25,6 +25,15 @@ export interface AdminAuthContext {
   role: AdminRole;
   sessionId: string;
   ipAddress: string;
+  /**
+   * True when the admin authenticated successfully but has not yet enrolled MFA.
+   * Privileged roles (SUPER_ADMIN, BILLING_ADMIN) MUST enroll MFA before
+   * accessing any admin routes. When this flag is true:
+   * - Client should redirect to /admin/mfa-setup
+   * - Admin API routes should reject requests with MFA_SETUP_REQUIRED
+   * - Only the MFA setup endpoints are accessible
+   */
+  mfaSetupRequired?: boolean;
 }
 
 export interface AdminAuthResult {
@@ -751,55 +760,31 @@ export async function verifyAdminGCPAuth(request: Request): Promise<AdminAuthRes
   }
 
   // 5. MFA enforcement for privileged admin roles (CDR §1.3)
-  // STRICTLY ENFORCED — all SUPER_ADMIN / BILLING_ADMIN sessions must have MFA.
-  // No grace period. If MFA is not enrolled, direct the admin to enroll via
-  // /dashboard/settings/security-mfa in the main app before granting access.
+  //
+  // STRICT POLICY: SUPER_ADMIN / BILLING_ADMIN must have MFA enrolled.
+  //
+  // UX POLICY: Instead of hard-rejecting at login (which creates a chicken-and-egg
+  // where admins can't log in to enroll), we authenticate them successfully BUT
+  // set `mfaSetupRequired: true` in the context. The admin can access ONLY the
+  // MFA setup endpoints until they enroll. All other admin API routes will reject
+  // with MFA_SETUP_REQUIRED and the client redirects to /admin/mfa-setup.
+  //
+  // Google Sign-In users are trusted because Google provides 2FA at the account
+  // level; Firebase does not set sign_in_second_factor for federated providers.
+  let mfaSetupRequired = false;
   const mfaRequiredRoles: AdminRole[] = ['SUPER_ADMIN', 'BILLING_ADMIN'];
   if (mfaRequiredRoles.includes(adminRole)) {
     const firebaseClaims = rawPayload?.firebase as Record<string, unknown> | undefined;
     const secondFactor = firebaseClaims?.sign_in_second_factor;
     const signInProvider = firebaseClaims?.sign_in_provider as string | undefined;
 
-    // Special case: Google Sign-In users benefit from Google's own 2FA (if enabled
-    // on their Google account). Firebase doesn't set sign_in_second_factor for
-    // federated providers, but we still require the Google account to have 2FA.
-    // For stricter enforcement, we check that the session has a second factor OR
-    // the user signed in via Google (trust Google's 2FA).
     const hasSecondFactor = !!secondFactor;
     const isGoogleSignIn = signInProvider === 'google.com';
 
     if (!hasSecondFactor && !isGoogleSignIn) {
-      // Email/password without MFA → hard rejection
-      return {
-        success: false,
-        error: {
-          code: ADMIN_ERROR_CODES.MFA_REQUIRED,
-          message: 'MFA is required for admin portal access. Please enroll in MFA via your account settings (/dashboard/settings/security-mfa) before signing in.',
-        },
-      };
-    }
-
-    // For Google Sign-In users: also verify they have MFA enrolled at the Monitrax
-    // level (either via Firebase MFA or explicit mfaEnabled flag in AdminUser DB).
-    if (isGoogleSignIn && !hasSecondFactor) {
-      const adminUser = await prisma.adminUser.findFirst({
-        where: { email: claims.email },
-        select: { mfaEnabled: true },
-      });
-      // Allow Google Sign-In users because Google's own 2FA provides the second
-      // factor. We trust that Google accounts used by admins have 2FA enabled
-      // per the Admin Onboarding Guide requirements. If stricter enforcement is
-      // needed, require adminUser.mfaEnabled=true here as well.
-      if (!adminUser) {
-        // Shouldn't happen — user would've been rejected earlier. Fail safe.
-        return {
-          success: false,
-          error: {
-            code: ADMIN_ERROR_CODES.MFA_REQUIRED,
-            message: 'Admin account not found in database',
-          },
-        };
-      }
+      // Email/password admin without MFA — flag for setup.
+      // Do NOT reject — let them through to the setup page.
+      mfaSetupRequired = true;
     }
   }
 
@@ -848,8 +833,34 @@ export async function verifyAdminGCPAuth(request: Request): Promise<AdminAuthRes
       role: adminRole,
       sessionId: claims.uid, // Use GCP UID as session identifier
       ipAddress: clientIp,
+      mfaSetupRequired,
     },
   };
+}
+
+/**
+ * Admin API route guard: rejects if MFA setup is required but not yet completed.
+ * Use this helper in admin routes that should NOT be accessible during MFA setup.
+ *
+ * Usage:
+ *   const authResult = await verifyAdminGCPAuth(request);
+ *   if (authResult.context?.mfaSetupRequired) {
+ *     return mfaSetupRequiredResponse();
+ *   }
+ */
+export function mfaSetupRequiredResponse(): Response {
+  return new Response(
+    JSON.stringify({
+      error: {
+        code: 'MFA_SETUP_REQUIRED',
+        message: 'MFA enrollment is required before accessing this resource. Please complete MFA setup at /admin/mfa-setup.',
+      },
+    }),
+    {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
 }
 
 /**

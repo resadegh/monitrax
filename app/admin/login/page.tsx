@@ -18,6 +18,8 @@ import { isMFAError, getMFAChallengeFromError, resolveWithTOTP, type MFAChalleng
 import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { Input } from '@/components/admin/ui/AdminForm';
 import { AdminCard } from '@/components/admin/ui/AdminCard';
+import { HelpTip } from '@/components/admin/ui/HelpTip';
+import { helpContent } from '@/lib/admin/help-content';
 import { ADMIN_ROUTES } from '@/lib/admin/constants';
 
 export default function AdminLoginPage() {
@@ -84,8 +86,12 @@ export default function AdminLoginPage() {
         throw new Error(data.error?.message || 'Admin access denied');
       }
 
-      // Step 3: Redirect to admin dashboard
-      router.push(ADMIN_ROUTES.DASHBOARD);
+      // Step 3: Redirect based on MFA setup status
+      if (data.mfaSetupRequired) {
+        router.push('/admin/mfa-setup');
+      } else {
+        router.push(ADMIN_ROUTES.DASHBOARD);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       // Make Firebase error messages more user-friendly
@@ -132,7 +138,12 @@ export default function AdminLoginPage() {
         throw new Error(data.error?.message || 'Admin access denied');
       }
 
-      router.push(ADMIN_ROUTES.DASHBOARD);
+      // Redirect based on MFA setup status
+      if (data.mfaSetupRequired) {
+        router.push('/admin/mfa-setup');
+      } else {
+        router.push(ADMIN_ROUTES.DASHBOARD);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       if (message.includes('popup-closed-by-user')) {
@@ -193,8 +204,9 @@ export default function AdminLoginPage() {
           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="text-white font-bold text-2xl">M</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white inline-flex items-center gap-1.5">
             Admin Portal
+            <HelpTip content={helpContent.login.intro} align="right" />
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Sign in with your GCP Identity Platform credentials
@@ -264,7 +276,8 @@ export default function AdminLoginPage() {
             />
 
             {!showMfa && (
-              <div className="text-right">
+              <div className="flex items-center justify-end gap-1">
+                <HelpTip content={helpContent.login.forgotPassword} align="right" />
                 <button
                   type="button"
                   onClick={handleForgotPassword}

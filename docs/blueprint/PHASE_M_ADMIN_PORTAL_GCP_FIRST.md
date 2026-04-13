@@ -340,7 +340,197 @@ The admin portal follows a clean, modern, technical aesthetic:
 
 ---
 
-## 12. Post-Implementation: Operational & BAU Support Documentation
+## 12. Contextual Help Center (Centralized Help System)
+
+The admin portal includes a **centralized contextual help system** that provides in-context guidance throughout the UI. It addresses the common challenge where technical admin portals are intimidating to first-time users — each control, field, and section can have a small `?` icon that reveals a help panel with explanations, steps, tips, and links to documentation.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│         lib/admin/help-content.ts (single source)       │
+│                                                          │
+│  export const helpContent = {                            │
+│    mfaSetup: { intro, scanQr, verifyCode, ... },         │
+│    login: { intro, googleSignIn, forgotPassword, ... },  │
+│    settings: { profile, mfaStatus, auditLog, ... },      │
+│    cdr: { compliance, consentOverview, revoke, ... },    │
+│    gcp: { uptime, errors, scheduler, ... },              │
+│    // Future sections just add here                      │
+│  };                                                      │
+└─────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│      components/admin/ui/HelpTip.tsx                     │
+│                                                          │
+│  <HelpTip>    — Small ? icon with collapsible panel      │
+│  <HelpBanner> — Page-level dismissible help banner       │
+│                                                          │
+│  Both consume HelpContent objects from help-content.ts   │
+└─────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                   Any admin page                          │
+│                                                          │
+│  import { helpContent } from '@/lib/admin/help-content';  │
+│  import { HelpTip } from '@/components/admin/ui/HelpTip'; │
+│                                                          │
+│  <h3>                                                     │
+│    Set up MFA                                             │
+│    <HelpTip content={helpContent.mfaSetup.intro} />       │
+│  </h3>                                                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+### HelpContent Schema
+
+Every help entry follows the same structure for consistency:
+
+```typescript
+interface HelpContent {
+  title: string;              // Heading shown at top of panel
+  description?: string;       // Paragraph explanation
+  steps?: string[];           // Numbered walkthrough
+  tips?: string[];            // Highlighted "lightbulb" tips (amber)
+  learnMoreHref?: string;     // Link to docs (external or internal)
+  learnMoreLabel?: string;    // Custom link label
+}
+```
+
+### Components
+
+#### `<HelpTip>` — Inline Help Icon
+
+A small `?` icon (HelpCircle from lucide-react) that appears next to labels, headings, or field captions. Click to toggle an inline panel showing the help content.
+
+**Properties:**
+- `content: HelpContent` — What to display
+- `align?: 'left' | 'right'` — Panel alignment
+- `size?: 'sm' | 'md'` — Icon size
+- `className?: string`
+
+**Features:**
+- Keyboard accessible (tab + enter)
+- Click-outside to close
+- Matches admin portal dark mode palette
+- Mobile-friendly (click, not hover)
+
+**Usage:**
+```tsx
+<h3 className="flex items-center gap-1.5">
+  Enter verification code
+  <HelpTip content={helpContent.mfaSetup.verifyCode} />
+</h3>
+```
+
+#### `<HelpBanner>` — Page-Level Help Banner
+
+A larger dismissible banner that appears at the top of complex pages. Users can dismiss it (state persisted in localStorage) and re-show it via a "Show help" button.
+
+**Properties:**
+- `content: HelpContent` — What to display
+- `storageKey?: string` — Unique key to remember dismissed state
+- `className?: string`
+
+**Usage:**
+```tsx
+<HelpBanner
+  content={helpContent.mfaSetup.intro}
+  storageKey="mfa-intro"
+/>
+```
+
+### Design Principles
+
+1. **Contextual, not intrusive** — Help is available but never forced. Users see only a small `?` icon until they need it.
+2. **Progressive disclosure** — Short title → description → optional steps → optional tips → optional link.
+3. **Centralized content** — All wording in one file. Non-developers can review/edit without touching UI code.
+4. **Localization-ready** — Structure supports wrapping strings in a future `t()` function without restructuring.
+5. **Dismissible page banners** — First-time users see the banner; returning users can hide it.
+6. **Consistent visual language** — Every help entry uses the same icon, colors, typography.
+
+### Content Guidelines
+
+When writing help text, follow these rules:
+
+| Field | Guideline |
+|-------|-----------|
+| **title** | 3-6 words. Frame as a question when possible ("Why is MFA required?") |
+| **description** | 1-3 sentences. Plain English, no jargon. |
+| **steps** | Use only for procedural instructions. 3-7 steps max. Start each with an action verb. |
+| **tips** | Short gotchas or best practices. Max 3 tips per entry. |
+| **learnMoreHref** | Link to docs or external resources for deep dives. |
+
+### How to Add Help to a New Section
+
+Adding help text to a new page/section takes less than 2 minutes:
+
+**Step 1**: Add content to `lib/admin/help-content.ts`:
+
+```typescript
+export const billingHelp: Record<string, HelpContent> = {
+  overview: {
+    title: 'Billing Dashboard',
+    description: 'Real-time revenue metrics for Monitrax.',
+    tips: ['MRR is calculated from active subscriptions.'],
+  },
+  refund: {
+    title: 'Processing a Refund',
+    description: 'Refunds are processed via Stripe immediately.',
+    steps: [
+      'Find the transaction',
+      'Click Refund',
+      'Enter reason',
+      'Confirm',
+    ],
+  },
+};
+
+export const helpContent = {
+  // ... existing
+  billing: billingHelp,
+};
+```
+
+**Step 2**: Import and use in your component:
+
+```tsx
+import { HelpTip } from '@/components/admin/ui/HelpTip';
+import { helpContent } from '@/lib/admin/help-content';
+
+<h3 className="flex items-center gap-1.5">
+  Billing Overview
+  <HelpTip content={helpContent.billing.overview} />
+</h3>
+```
+
+That's it. No styling, no markup — the component handles everything.
+
+### Current Coverage
+
+| Section | Pages with Help |
+|---------|----------------|
+| **MFA Setup** | ✅ All 4 wizard steps (intro, scan, verify, complete) |
+| **Admin Login** | ✅ Title, Forgot Password |
+| **Admin Settings** | ⬜ Pending — schema ready in help-content.ts |
+| **CDR Compliance** | ⬜ Pending — schema ready in help-content.ts |
+| **GCP Pages** | ⬜ Pending — schema ready in help-content.ts |
+
+Help content for all other sections is already defined in `lib/admin/help-content.ts` — just needs to be wired into each page.
+
+### Future Enhancements
+
+- **First-time guided tour**: A welcome overlay that walks new admins through the portal's key areas. Could be built on top of the existing HelpContent structure.
+- **In-app search**: A global help search that queries `helpContent` and jumps the user to the relevant section.
+- **Feedback loop**: "Was this helpful?" button on each help tip that logs analytics.
+- **Localization**: Wrap all strings in `t()` for multi-language support.
+- **Per-role help**: Different help text based on admin role (SUPER_ADMIN sees more technical details than VIEWER).
+
+---
+
+## 13. Post-Implementation: Operational & BAU Support Documentation
 
 **After Phase M implementation is complete**, the following operational documents MUST be created to enable admin portal support team training and ongoing BAU (Business As Usual) operations:
 
