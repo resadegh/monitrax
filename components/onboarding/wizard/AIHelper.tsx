@@ -217,11 +217,33 @@ Is there something specific about this step I can help clarify?`;
 interface AIHelperButtonProps {
   onClick: () => void;
   isOpen: boolean;
+  /**
+   * When provided, renders the button inline with this className instead
+   * of the default floating pill. Use this to embed the trigger inside
+   * the wizard header so it doesn't overlap the Back/Next buttons.
+   */
+  className?: string;
 }
 
-export function AIHelperButton({ onClick, isOpen }: AIHelperButtonProps) {
+export function AIHelperButton({ onClick, isOpen, className }: AIHelperButtonProps) {
   if (isOpen) return null;
 
+  // Inline variant — caller controls positioning (e.g. wizard header)
+  if (className) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={className}
+        aria-label="Open AI Assistant"
+      >
+        <Sparkles className="h-4 w-4" />
+        <span className="text-xs font-medium">Need Help?</span>
+      </button>
+    );
+  }
+
+  // Legacy floating pill — kept for any non-wizard caller
   return (
     <button
       onClick={onClick}
@@ -459,14 +481,24 @@ export function AIHelperPanel({ isOpen, onClose, currentStep }: AIHelperPanelPro
 
 interface AIHelperProps {
   currentStep: WizardStepId;
+  /**
+   * Optional className override for the trigger button. When provided,
+   * the button renders inline (e.g. inside the wizard header) instead of
+   * as a floating bottom-right pill.
+   */
+  buttonClassName?: string;
 }
 
-export function AIHelper({ currentStep }: AIHelperProps) {
+export function AIHelper({ currentStep, buttonClassName }: AIHelperProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
-      <AIHelperButton onClick={() => setIsOpen(true)} isOpen={isOpen} />
+      <AIHelperButton
+        onClick={() => setIsOpen(true)}
+        isOpen={isOpen}
+        className={buttonClassName}
+      />
       <AIHelperPanel
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
