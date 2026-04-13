@@ -23,7 +23,12 @@ import React from 'react';
 
 interface WizardStepShellProps {
   icon?: React.ReactNode;
-  title: string;
+  /**
+   * Title is `React.ReactNode` rather than `string` so steps can use
+   * gradient clip-text or inline accents (see WelcomeStep for an example).
+   * Plain strings also work for the simple case.
+   */
+  title: React.ReactNode;
   subtitle?: string;
   headerTrailing?: React.ReactNode; // e.g. a step count chip or skip link
   children: React.ReactNode;

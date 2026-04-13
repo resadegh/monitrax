@@ -1,5 +1,23 @@
 'use client';
 
+/**
+ * PropertiesStep — Phase 12 PR 3a redesign + simplification
+ *
+ * Captures owned properties (HOME or INVESTMENT) with their mortgage,
+ * rental income (for investment), and recurring expenses.
+ *
+ * Simplification (PR 3a):
+ *   - Purchase price and purchase date demoted behind "Advanced details"
+ *     disclosure. Only name + current value are asked up front (enough
+ *     to compute net worth). Purchase-date enforcement is already
+ *     applied at API level in PR 1 if the user expands Advanced.
+ *   - Loan section collapsed by default — expanded only when "Has
+ *     mortgage" is ticked.
+ *   - Inline equity preview shown as the user types.
+ *
+ * All existing WizardData fields are preserved. No new fields.
+ */
+
 import React, { useState } from 'react';
 import {
   Home,
@@ -10,8 +28,9 @@ import {
   Building2,
   Landmark,
   MapPin,
-  Users,
+  Users as UsersIcon,
   Receipt,
+  Settings as AdvancedIcon,
 } from 'lucide-react';
 import {
   WizardData,
@@ -23,42 +42,63 @@ import {
   ExpenseCategory,
   generateId,
 } from '../types';
+import {
+  WizardStepShell,
+  WizardSection,
+  WizardField,
+  WizardCurrencyField,
+  WizardPercentField,
+  WizardSelectField,
+  WizardAddButton,
+} from '../primitives';
+import { formatCurrency } from '@/lib/utils/formatters';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
-const PROPERTY_TYPES: { value: PropertyType; label: string; icon: React.ReactNode }[] = [
-  { value: 'HOME', label: 'Primary Residence', icon: <Home className="h-4 w-4" /> },
-  { value: 'INVESTMENT', label: 'Investment Property', icon: <Building2 className="h-4 w-4" /> },
+const PROPERTY_TYPE_OPTIONS = [
+  { value: 'HOME' as const, label: 'Primary residence' },
+  { value: 'INVESTMENT' as const, label: 'Investment property' },
 ];
 
-const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
-  { value: 'RATES', label: 'Council Rates' },
-  { value: 'STRATA', label: 'Strata Fees' },
-  { value: 'INSURANCE', label: 'Insurance' },
-  { value: 'MAINTENANCE', label: 'Maintenance' },
-  { value: 'LAND_TAX', label: 'Land Tax' },
-  { value: 'OTHER', label: 'Other' },
+const RATE_TYPE_OPTIONS = [
+  { value: 'VARIABLE', label: 'Variable' },
+  { value: 'FIXED', label: 'Fixed' },
 ];
 
-const FREQUENCIES = [
+const REPAYMENT_FREQ_OPTIONS = [
+  { value: 'WEEKLY', label: 'Weekly' },
+  { value: 'FORTNIGHTLY', label: 'Fortnightly' },
+  { value: 'MONTHLY', label: 'Monthly' },
+];
+
+const RENT_FREQ_OPTIONS = [
+  { value: 'WEEKLY', label: 'Weekly' },
+  { value: 'FORTNIGHTLY', label: 'Fortnightly' },
+  { value: 'MONTHLY', label: 'Monthly' },
+];
+
+const EXPENSE_FREQ_OPTIONS = [
   { value: 'WEEKLY', label: 'Weekly' },
   { value: 'FORTNIGHTLY', label: 'Fortnightly' },
   { value: 'MONTHLY', label: 'Monthly' },
   { value: 'QUARTERLY', label: 'Quarterly' },
   { value: 'ANNUAL', label: 'Annual' },
-] as const;
+];
 
-const REPAYMENT_FREQUENCIES = [
-  { value: 'WEEKLY', label: 'Weekly' },
-  { value: 'FORTNIGHTLY', label: 'Fortnightly' },
-  { value: 'MONTHLY', label: 'Monthly' },
-] as const;
+const PROPERTY_EXPENSE_CATEGORIES: Array<{ value: ExpenseCategory; label: string }> = [
+  { value: 'RATES', label: 'Council rates' },
+  { value: 'STRATA', label: 'Strata fees' },
+  { value: 'INSURANCE', label: 'Insurance' },
+  { value: 'MAINTENANCE', label: 'Maintenance' },
+  { value: 'LAND_TAX', label: 'Land tax' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 // =============================================================================
-// HELPER FUNCTIONS
+// EMPTY FACTORIES
 // =============================================================================
 
 function createEmptyProperty(): PropertyInput {
@@ -105,51 +145,46 @@ function createEmptyExpense(): PropertyExpenseInput {
   return {
     id: generateId(),
     name: '',
-    category: 'OTHER',
+    category: 'RATES',
     amount: 0,
     frequency: 'ANNUAL',
   };
 }
 
 // =============================================================================
-// PROPERTY CARD COMPONENT
+// PROPERTY CARD
 // =============================================================================
 
 interface PropertyCardProps {
   property: PropertyInput;
   index: number;
-  onUpdate: (updates: Partial<PropertyInput>) => void;
-  onRemove: () => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onUpdate: (updates: Partial<PropertyInput>) => void;
+  onRemove: () => void;
 }
 
 function PropertyCard({
   property,
   index,
-  onUpdate,
-  onRemove,
   isExpanded,
   onToggleExpand,
+  onUpdate,
+  onRemove,
 }: PropertyCardProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const isInvestment = property.type === 'INVESTMENT';
 
   const updateLoan = (updates: Partial<PropertyLoanInput>) => {
-    onUpdate({
-      loan: property.loan ? { ...property.loan, ...updates } : undefined,
-    });
+    onUpdate({ loan: property.loan ? { ...property.loan, ...updates } : undefined });
   };
 
   const updateIncome = (updates: Partial<PropertyIncomeInput>) => {
-    onUpdate({
-      income: property.income ? { ...property.income, ...updates } : undefined,
-    });
+    onUpdate({ income: property.income ? { ...property.income, ...updates } : undefined });
   };
 
   const addExpense = () => {
-    onUpdate({
-      expenses: [...property.expenses, createEmptyExpense()],
-    });
+    onUpdate({ expenses: [...property.expenses, createEmptyExpense()] });
   };
 
   const updateExpense = (expenseId: string, updates: Partial<PropertyExpenseInput>) => {
@@ -161,424 +196,348 @@ function PropertyCard({
   };
 
   const removeExpense = (expenseId: string) => {
-    onUpdate({
-      expenses: property.expenses.filter((exp) => exp.id !== expenseId),
-    });
+    onUpdate({ expenses: property.expenses.filter((exp) => exp.id !== expenseId) });
   };
+
+  // Live equity preview
+  const equity = property.currentValue - (property.loan?.principal ?? 0);
+  const hasEquity = property.currentValue > 0;
 
   return (
     <div
-      className="profile-card border rounded-xl bg-white dark:bg-gray-800 shadow-sm overflow-hidden"
-      style={{ '--card-index': index } as React.CSSProperties}
+      className="wz-section"
+      style={{ padding: 0 }} // override default to manage our own padding
     >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 cursor-pointer"
+      {/* Header — always visible, click to expand */}
+      <button
+        type="button"
         onClick={onToggleExpand}
+        className="flex w-full items-center justify-between gap-3 p-5 text-left"
+        aria-expanded={isExpanded}
       >
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-800/40 rounded-lg">
-            <Home className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-[0_6px_18px_-6px_rgba(99,102,241,0.45)]">
+            {isInvestment ? <Building2 className="h-5 w-5" /> : <Home className="h-5 w-5" />}
           </div>
-          <div>
-            <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+          <div className="min-w-0">
+            <h4 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
               {property.name || `Property ${index + 1}`}
             </h4>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {property.address || 'No address'}
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              {property.address || (isInvestment ? 'Investment property' : 'Primary residence')}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-1">
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
             }}
-            className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            aria-label="Remove property"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
           >
             <Trash2 className="h-4 w-4" />
           </button>
-          {isExpanded ? (
-            <ChevronUp className="h-5 w-5 text-gray-400" />
-          ) : (
-            <ChevronDown className="h-5 w-5 text-gray-400" />
-          )}
+          <div className="flex h-8 w-8 items-center justify-center text-slate-400">
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
         </div>
-      </div>
+      </button>
 
-      {/* Expanded Content */}
       {isExpanded && (
-        <div className="p-4 space-y-6 border-t border-gray-100 dark:border-gray-700">
-          {/* Basic Details */}
-          <div className="space-y-4">
-            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Property Details
-            </h5>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Property Name
-                </label>
-                <input
-                  type="text"
-                  value={property.name}
-                  onChange={(e) => onUpdate({ name: e.target.value })}
-                  placeholder="e.g., Family Home"
-                  className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Property Type
-                </label>
-                <select
-                  value={property.type}
-                  onChange={(e) => {
-                    const newType = e.target.value as PropertyType;
-                    onUpdate({
-                      type: newType,
-                      income: newType === 'INVESTMENT' ? createEmptyIncome() : undefined,
-                    });
-                  }}
-                  className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {PROPERTY_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  value={property.address}
-                  onChange={(e) => onUpdate({ address: e.target.value })}
-                  placeholder="Full property address"
-                  className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Purchase Price
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2 text-gray-400">$</span>
-                  <input
-                    type="number"
-                    value={property.purchasePrice || ''}
-                    onChange={(e) => onUpdate({ purchasePrice: parseFloat(e.target.value) || 0 })}
-                    placeholder="0"
-                    className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+        <div className="space-y-5 border-t border-slate-200/70 dark:border-slate-700/50 px-5 pb-5 pt-4">
+          {/* Basic details */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <WizardField
+              label="Property name"
+              required
+              placeholder="e.g. Family home"
+              value={property.name}
+              onChange={(e) => onUpdate({ name: e.target.value })}
+            />
+            <WizardSelectField
+              label="Type"
+              required
+              value={property.type}
+              onChange={(v) => {
+                const newType = v as PropertyType;
+                onUpdate({
+                  type: newType,
+                  income: newType === 'INVESTMENT' ? createEmptyIncome() : undefined,
+                });
+              }}
+              options={PROPERTY_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            />
+            <WizardField
+              className="sm:col-span-2"
+              label="Address"
+              placeholder="Street address (optional)"
+              value={property.address}
+              onChange={(e) => onUpdate({ address: e.target.value })}
+              helper="Approximate is fine — used to enrich tax defaults."
+            />
+            <WizardCurrencyField
+              label="Current value"
+              required
+              value={property.currentValue}
+              onChange={(v) => onUpdate({ currentValue: v })}
+              helper="A rough estimate is fine"
+            />
+            <div className="flex items-end">
+              {hasEquity && (
+                <div className="flex-1 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 px-3 py-2.5">
+                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Equity
+                  </div>
+                  <div
+                    className={`text-lg font-semibold tabular-nums ${
+                      equity >= 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
+                    {formatCurrency(equity)}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Current Value
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2 text-gray-400">$</span>
-                  <input
-                    type="number"
-                    value={property.currentValue || ''}
-                    onChange={(e) => onUpdate({ currentValue: parseFloat(e.target.value) || 0 })}
-                    placeholder="0"
-                    className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Purchase Date
-                </label>
-                <input
-                  type="date"
-                  value={property.purchaseDate || ''}
-                  max={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => onUpdate({ purchaseDate: e.target.value })}
-                  className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="text-[11px] text-gray-400 mt-1">
-                  Approximate month/year is fine — this is used for CGT, depreciation and equity history.
-                </p>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Loan Section */}
-          <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <Landmark className="h-4 w-4" />
-                Mortgage / Loan
-              </h5>
-              <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <input
-                  type="checkbox"
-                  checked={property.hasLoan}
-                  onChange={(e) => {
-                    onUpdate({
-                      hasLoan: e.target.checked,
-                      loan: e.target.checked ? createEmptyLoan() : undefined,
-                    });
-                  }}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          {/* Advanced disclosure: purchase price + purchase date */}
+          <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+            >
+              <span className="flex items-center gap-1.5">
+                <AdvancedIcon className="h-3.5 w-3.5" />
+                Advanced details (purchase price & date)
+              </span>
+              {showAdvanced ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </button>
+            {showAdvanced && (
+              <div className="grid grid-cols-1 gap-3 border-t border-dashed border-slate-200 dark:border-slate-700 p-3 sm:grid-cols-2">
+                <WizardCurrencyField
+                  label="Purchase price"
+                  value={property.purchasePrice}
+                  onChange={(v) => onUpdate({ purchasePrice: v })}
+                  helper="What you originally paid"
                 />
-                Has loan
-              </label>
-            </div>
+                <WizardField
+                  label="Purchase date"
+                  type="date"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={property.purchaseDate || ''}
+                  onChange={(e) => onUpdate({ purchaseDate: e.target.value })}
+                  helper="Used for CGT and depreciation — approximate month/year is fine"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Mortgage */}
+          <div className="space-y-3 pt-1">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={property.hasLoan}
+                onChange={(e) =>
+                  onUpdate({
+                    hasLoan: e.target.checked,
+                    loan: e.target.checked ? createEmptyLoan() : undefined,
+                  })
+                }
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800"
+              />
+              <Landmark className="h-4 w-4 text-slate-500" />
+              This property has a mortgage
+            </label>
 
             {property.hasLoan && property.loan && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Lender
-                  </label>
-                  <input
-                    type="text"
+              <div className="rounded-xl bg-slate-50/70 dark:bg-slate-800/40 p-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <WizardField
+                    label="Lender"
+                    placeholder="e.g. ANZ, CBA, Westpac"
                     value={property.loan.lender}
                     onChange={(e) => updateLoan({ lender: e.target.value })}
-                    placeholder="e.g., ANZ, CBA, Westpac"
-                    className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Outstanding Balance
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-400">$</span>
-                    <input
-                      type="number"
-                      value={property.loan.principal || ''}
-                      onChange={(e) => updateLoan({ principal: parseFloat(e.target.value) || 0 })}
-                      placeholder="0"
-                      className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Interest Rate (Annual)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={property.loan.interestRateAnnual || ''}
-                      onChange={(e) => updateLoan({ interestRateAnnual: parseFloat(e.target.value) || 0 })}
-                      placeholder="0.00"
-                      className="wizard-input w-full pl-3 pr-7 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <span className="absolute right-3 top-2 text-gray-400">%</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Rate Type
-                  </label>
-                  <select
+                  <WizardCurrencyField
+                    label="Outstanding balance"
+                    required
+                    value={property.loan.principal}
+                    onChange={(v) => updateLoan({ principal: v })}
+                  />
+                  <WizardPercentField
+                    label="Interest rate"
+                    required
+                    value={property.loan.interestRateAnnual}
+                    onChange={(v) => updateLoan({ interestRateAnnual: v })}
+                    max={15}
+                    helper="Annual rate, e.g. 6.25"
+                  />
+                  <WizardSelectField
+                    label="Rate type"
                     value={property.loan.rateType}
-                    onChange={(e) => updateLoan({ rateType: e.target.value as 'FIXED' | 'VARIABLE' })}
-                    className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="VARIABLE">Variable</option>
-                    <option value="FIXED">Fixed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Minimum Repayment
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-400">$</span>
-                    <input
-                      type="number"
-                      value={property.loan.minRepayment || ''}
-                      onChange={(e) => updateLoan({ minRepayment: parseFloat(e.target.value) || 0 })}
-                      placeholder="0"
-                      className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Repayment Frequency
-                  </label>
-                  <select
+                    onChange={(v) => updateLoan({ rateType: v as 'VARIABLE' | 'FIXED' })}
+                    options={RATE_TYPE_OPTIONS}
+                  />
+                  <WizardCurrencyField
+                    label="Minimum repayment"
+                    required
+                    value={property.loan.minRepayment}
+                    onChange={(v) => updateLoan({ minRepayment: v })}
+                  />
+                  <WizardSelectField
+                    label="Repayment frequency"
                     value={property.loan.repaymentFrequency}
-                    onChange={(e) =>
-                      updateLoan({
-                        repaymentFrequency: e.target.value as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY',
-                      })
+                    onChange={(v) =>
+                      updateLoan({ repaymentFrequency: v as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' })
                     }
-                    className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {REPAYMENT_FREQUENCIES.map((freq) => (
-                      <option key={freq.value} value={freq.value}>
-                        {freq.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    options={REPAYMENT_FREQ_OPTIONS}
+                  />
+                  <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 sm:col-span-2">
                     <input
                       type="checkbox"
                       checked={property.loan.isInterestOnly}
                       onChange={(e) => updateLoan({ isInterestOnly: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
-                    Interest Only
+                    Interest only
                   </label>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Rental Income (Investment Properties) */}
+          {/* Rental income (investment only) */}
           {isInvestment && (
-            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-              <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Rental Income
+            <div className="space-y-3 pt-1">
+              <h5 className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                <UsersIcon className="h-4 w-4 text-slate-500" />
+                Rental income
               </h5>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Rent Amount
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-400">$</span>
-                    <input
-                      type="number"
-                      value={property.income?.amount || ''}
-                      onChange={(e) => updateIncome({ amount: parseFloat(e.target.value) || 0 })}
-                      placeholder="0"
-                      className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Frequency
-                  </label>
-                  <select
+              <div className="rounded-xl bg-emerald-50/70 dark:bg-emerald-900/10 p-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <WizardCurrencyField
+                    label="Rent amount"
+                    value={property.income?.amount ?? 0}
+                    onChange={(v) => updateIncome({ amount: v })}
+                  />
+                  <WizardSelectField
+                    label="Frequency"
                     value={property.income?.frequency || 'WEEKLY'}
-                    onChange={(e) =>
-                      updateIncome({
-                        frequency: e.target.value as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY',
-                      })
+                    onChange={(v) =>
+                      updateIncome({ frequency: v as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' })
                     }
-                    className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {REPAYMENT_FREQUENCIES.map((freq) => (
-                      <option key={freq.value} value={freq.value}>
-                        {freq.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Tenant Name (Optional)
-                  </label>
-                  <input
-                    type="text"
+                    options={RENT_FREQ_OPTIONS}
+                  />
+                  <WizardField
+                    label="Tenant name (optional)"
+                    placeholder="Tenant"
                     value={property.income?.tenantName || ''}
                     onChange={(e) => updateIncome({ tenantName: e.target.value })}
-                    placeholder="Tenant name"
-                    className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
             </div>
           )}
 
-          {/* Property Expenses */}
-          <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <Receipt className="h-4 w-4" />
-                Property Expenses
+          {/* Property expenses */}
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between gap-2">
+              <h5 className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                <Receipt className="h-4 w-4 text-slate-500" />
+                Property expenses
               </h5>
               <button
+                type="button"
                 onClick={addExpense}
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               >
-                <Plus className="h-4 w-4" />
-                Add Expense
+                <Plus className="h-3.5 w-3.5" />
+                Add expense
               </button>
             </div>
-
             {property.expenses.length === 0 ? (
-              <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
-                No expenses added yet. Add common expenses like rates, insurance, or maintenance.
-              </div>
+              <p className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 px-4 py-3 text-center text-xs text-slate-500 dark:text-slate-400">
+                Add rates, insurance, maintenance — approximate is fine.
+              </p>
             ) : (
-              <div className="space-y-3">
-                {property.expenses.map((expense, expIndex) => (
+              <div className="space-y-2">
+                {property.expenses.map((exp) => (
                   <div
-                    key={expense.id}
-                    className="flex gap-2 items-start bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg"
+                    key={exp.id}
+                    className="grid grid-cols-12 gap-2 rounded-lg bg-amber-50/60 dark:bg-amber-900/10 p-3"
                   >
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div className="col-span-5 sm:col-span-4">
                       <select
-                        value={expense.category}
+                        value={exp.category}
                         onChange={(e) =>
-                          updateExpense(expense.id, {
+                          updateExpense(exp.id, {
                             category: e.target.value as ExpenseCategory,
-                            name: EXPENSE_CATEGORIES.find(c => c.value === e.target.value)?.label || e.target.value,
+                            name:
+                              PROPERTY_EXPENSE_CATEGORIES.find((c) => c.value === e.target.value)
+                                ?.label || exp.name,
                           })
                         }
-                        className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="wz-input"
                       >
-                        {EXPENSE_CATEGORIES.map((cat) => (
-                          <option key={cat.value} value={cat.value}>
-                            {cat.label}
+                        {PROPERTY_EXPENSE_CATEGORIES.map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
                           </option>
                         ))}
                       </select>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2 text-gray-400">$</span>
+                    </div>
+                    <div className="col-span-4 sm:col-span-3">
+                      <div className="wz-input-currency-wrap">
+                        <span aria-hidden className="wz-input-currency-prefix">
+                          $
+                        </span>
                         <input
                           type="number"
-                          value={expense.amount || ''}
+                          value={exp.amount === 0 ? '' : exp.amount}
                           onChange={(e) =>
-                            updateExpense(expense.id, { amount: parseFloat(e.target.value) || 0 })
+                            updateExpense(exp.id, { amount: parseFloat(e.target.value) || 0 })
                           }
-                          placeholder="Amount"
-                          className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="0"
+                          className="wz-input"
                         />
                       </div>
+                    </div>
+                    <div className="col-span-3 sm:col-span-4">
                       <select
-                        value={expense.frequency}
+                        value={exp.frequency}
                         onChange={(e) =>
-                          updateExpense(expense.id, {
+                          updateExpense(exp.id, {
                             frequency: e.target.value as PropertyExpenseInput['frequency'],
                           })
                         }
-                        className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="wz-input"
                       >
-                        {FREQUENCIES.map((freq) => (
-                          <option key={freq.value} value={freq.value}>
-                            {freq.label}
+                        {EXPENSE_FREQ_OPTIONS.map((f) => (
+                          <option key={f.value} value={f.value}>
+                            {f.label}
                           </option>
                         ))}
                       </select>
-                      <button
-                        onClick={() => removeExpense(expense.id)}
-                        className="flex items-center justify-center p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => removeExpense(exp.id)}
+                      aria-label="Remove expense"
+                      className="col-span-12 flex h-9 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20 sm:col-span-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -591,7 +550,7 @@ function PropertyCard({
 }
 
 // =============================================================================
-// PROPERTIES STEP COMPONENT
+// PROPERTIES STEP
 // =============================================================================
 
 interface PropertiesStepProps {
@@ -606,116 +565,106 @@ export function PropertiesStep({ data, onUpdate }: PropertiesStepProps) {
 
   const addProperty = () => {
     const newProperty = createEmptyProperty();
-    onUpdate({
-      properties: [...data.properties, newProperty],
-    });
+    onUpdate({ properties: [...data.properties, newProperty] });
     setExpandedId(newProperty.id);
   };
 
   const updateProperty = (propertyId: string, updates: Partial<PropertyInput>) => {
     onUpdate({
-      properties: data.properties.map((p) =>
-        p.id === propertyId ? { ...p, ...updates } : p
-      ),
+      properties: data.properties.map((p) => (p.id === propertyId ? { ...p, ...updates } : p)),
     });
   };
 
   const removeProperty = (propertyId: string) => {
-    onUpdate({
-      properties: data.properties.filter((p) => p.id !== propertyId),
-    });
+    onUpdate({ properties: data.properties.filter((p) => p.id !== propertyId) });
     if (expandedId === propertyId) {
-      setExpandedId(data.properties.length > 1 ? data.properties[0].id : null);
+      const remaining = data.properties.filter((p) => p.id !== propertyId);
+      setExpandedId(remaining.length > 0 ? remaining[0].id : null);
     }
   };
 
+  // Summary
+  const totalValue = data.properties.reduce((sum, p) => sum + p.currentValue, 0);
+  const totalDebt = data.properties.reduce((sum, p) => sum + (p.loan?.principal || 0), 0);
+  const totalEquity = totalValue - totalDebt;
+
   return (
-    <div className="space-y-6 wizard-step-enter">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-2xl mb-2">
-          <Home className="h-7 w-7" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Your Properties
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto text-sm">
-          Add your properties with their loans and expenses. This helps us track your equity and
-          calculate your net worth accurately.
-        </p>
-      </div>
+    <WizardStepShell
+      icon={<Home className="h-8 w-8" strokeWidth={1.5} />}
+      title="Your properties"
+      subtitle="Add any property you own — we'll track equity, leverage, and cashflow for each."
+    >
+      {data.properties.map((property, index) => (
+        <PropertyCard
+          key={property.id}
+          property={property}
+          index={index}
+          isExpanded={expandedId === property.id}
+          onToggleExpand={() =>
+            setExpandedId(expandedId === property.id ? null : property.id)
+          }
+          onUpdate={(updates) => updateProperty(property.id, updates)}
+          onRemove={() => removeProperty(property.id)}
+        />
+      ))}
 
-      {/* Property Cards */}
-      <div className="space-y-4">
-        {data.properties.map((property, index) => (
-          <PropertyCard
-            key={property.id}
-            property={property}
-            index={index}
-            onUpdate={(updates) => updateProperty(property.id, updates)}
-            onRemove={() => removeProperty(property.id)}
-            isExpanded={expandedId === property.id}
-            onToggleExpand={() =>
-              setExpandedId(expandedId === property.id ? null : property.id)
-            }
-          />
-        ))}
-      </div>
-
-      {/* Add Property Button */}
-      <button
+      <WizardAddButton
+        leadingIcon={<Plus className="h-4 w-4" />}
         onClick={addProperty}
-        className="wizard-add-button w-full p-6 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
       >
-        <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-          <Plus className="h-6 w-6" />
-        </div>
-        <span className="font-medium">
-          {data.properties.length === 0 ? 'Add Your First Property' : 'Add Another Property'}
-        </span>
-        <span className="text-xs text-gray-400">
-          Primary residence, investment property, or holiday home
-        </span>
-      </button>
+        {data.properties.length === 0 ? 'Add your first property' : 'Add another property'}
+      </WizardAddButton>
 
-      {/* Summary */}
       {data.properties.length > 0 && (
-        <div className="wizard-card bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl" style={{ '--card-index': 0 } as React.CSSProperties}>
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Property Summary
-          </h4>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {data.properties.length}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {data.properties.length === 1 ? 'Property' : 'Properties'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                ${(data.properties.reduce((sum, p) => sum + p.currentValue, 0) / 1000000).toFixed(2)}M
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Total Value</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                ${(data.properties.reduce((sum, p) => sum + (p.loan?.principal || 0), 0) / 1000000).toFixed(2)}M
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Total Debt</div>
-            </div>
-          </div>
+        <div className="grid grid-cols-3 gap-3">
+          <SummaryTile label="Properties" value={`${data.properties.length}`} accent="blue" />
+          <SummaryTile
+            label="Total value"
+            value={formatCurrency(totalValue, { abbreviate: true })}
+            accent="emerald"
+          />
+          <SummaryTile
+            label="Total equity"
+            value={formatCurrency(totalEquity, { abbreviate: true })}
+            accent={totalEquity >= 0 ? 'violet' : 'rose'}
+          />
         </div>
       )}
 
-      {/* Skip hint */}
       {data.properties.length === 0 && (
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          Don&apos;t have any properties? No problem! Click <strong>Continue</strong> to skip this
-          step.
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+          Don&apos;t own any property? Click <span className="font-medium">Continue</span> to skip.
         </p>
       )}
+    </WizardStepShell>
+  );
+}
+
+// =============================================================================
+// SUMMARY TILE
+// =============================================================================
+
+function SummaryTile({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent: 'blue' | 'emerald' | 'violet' | 'rose';
+}) {
+  const accentClass = {
+    blue: 'text-blue-600 dark:text-blue-400',
+    emerald: 'text-emerald-600 dark:text-emerald-400',
+    violet: 'text-violet-600 dark:text-violet-400',
+    rose: 'text-rose-600 dark:text-rose-400',
+  }[accent];
+  return (
+    <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-white/70 dark:bg-slate-800/40 p-3 text-center">
+      <div className={`text-xl font-semibold tabular-nums ${accentClass}`}>{value}</div>
+      <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
     </div>
   );
 }
+
+export default PropertiesStep;

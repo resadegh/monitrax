@@ -78,11 +78,9 @@ Captured from the planning Q&A on 2026-04-12:
 
 ## 4. Pending / Open Questions
 
-All PR 3a / PR 3b blocking questions have been answered and locked into
-§3. This section is kept for future assumption-tracking as new questions
-arise during implementation.
-
-*No currently open questions — 2026-04-12*
+| # | Question | Status | Blocking? |
+|---|---|---|---|
+| F | **Data source hygiene for account balances** — should manual account balance entry be *eliminated entirely* in favour of Basiq + file import, or kept as a de-ranked fallback? Raised by Reza on 2026-04-12 evening. See §10 for Claude's full analysis and three-tier recommendation. **Pending Reza's yes/no on three sub-questions:** (1) Keep manual entry as de-ranked fallback? (2) Add file import flow to PR 3b's Accounts step? (3) Spec out a new PR 3c "Data source hygiene" now? | **OPEN** | **Yes** (blocks final PR 3b Accounts step scope; blocks whether to create PR 3c) |
 
 ---
 
@@ -213,15 +211,15 @@ STARTER flow in under 3 minutes and a MIXED flow in under 8 minutes.**
 - [x] `WizardContainer` footer nav — primary/ghost buttons from primitives
 - [ ] AI helper button — reskin to match design language *(deferred to a later batch — AI helper is stable and not blocking step redesigns)*
 
-**Step redesigns (each gets its own commit within PR 3a):**
-- [ ] `WelcomeStep` — aurora header + 2-question profile inference + country/tax
-- [ ] `HouseholdStep` — cleaner member/pet cards, inline empty states
-- [ ] `PropertiesStep` — collapsible loan section, reduced mandatory fields, inline equity preview
-- [ ] `AccountsStep` — redesigned quick-add, offset linking cleanup
-- [ ] `InvestmentsStep` — holdings table cleanup, better empty state
-- [ ] `AssetsStep` — vehicle fields inline, cleaner expense entry
-- [ ] `IncomeExpensesStep` — tab switcher redesign, live annualized preview
-- [ ] `ReviewStep` — stat card redesign, "what you'll unlock" section
+**Step redesigns (batched across 2 commits within PR 3a):**
+- [x] `WelcomeStep` — gradient-clip-text header + 2-question profile auto-inference (removes 4-card picker) + country/tax revealed after answers
+- [x] `HouseholdStep` — WizardStepShell + WizardSection for members/pets + WizardSegmentedControl for vehicle count + cleaner member/pet cards
+- [x] `PropertiesStep` — WizardStepShell + simplification (purchase price/date behind "Advanced details" disclosure) + inline live equity preview + collapsible loan section + summary tiles
+- [x] `AccountsStep` — WizardStepShell + quick-add tile grid for empty state + compact account cards with offset linking + 3-tile summary
+- [x] `InvestmentsStep` — WizardStepShell + expandable account cards + inline holdings table + live value preview in header + 3-tile summary
+- [ ] `AssetsStep` — vehicle fields inline, cleaner expense entry *(next)*
+- [ ] `IncomeExpensesStep` — tab switcher redesign, live annualized preview *(next)*
+- [ ] `ReviewStep` — stat card redesign, "what you'll unlock" section *(next)*
 
 **Cross-cutting:**
 - [ ] Per-step accessibility audit (ARIA, keyboard, focus trap)
@@ -396,6 +394,64 @@ accepted by Reza without modification:
 > Dated entries, most recent first. Update after every meaningful batch of
 > work (not every individual edit).
 
+### 2026-04-12 (late evening) — PR 3a step redesigns batch 1 of 2
+
+Five of eight step files redesigned to compose the new PR 3a primitives.
+All five use `WizardStepShell` / `WizardSection` / `WizardField` /
+`WizardCurrencyField` / `WizardPercentField` / `WizardSelectField` /
+`WizardSegmentedControl` / `WizardAddButton` consistently.
+
+**Completed steps:**
+
+- `WelcomeStep.tsx` — **Profile auto-inference**. Removes the old
+  4-card explicit picker. Asks two direct questions ("Do you own any
+  property?" + "Do you have investments?") via `WizardSegmentedControl`,
+  then derives `profileType` from the combination
+  (STARTER/HOMEOWNER/INVESTOR/MIXED). Reverse-infers on mount so
+  hydrated drafts show the user's previous answers. Country + tax year
+  only revealed after both answers are given. Title uses gradient
+  clip-text on "Monitrax". Dynamic time chip updates with each
+  inference.
+- `HouseholdStep.tsx` — cleaner member/pet cards (h-8 w-8 icon tiles,
+  tighter grid), inline empty states with dashed borders,
+  `WizardSegmentedControl` for the vehicle count picker. Member and pet
+  dialogs preserve existing functionality but use better spacing.
+- `PropertiesStep.tsx` — **Simplification**. Name + current value are
+  the only up-front required fields (drops purchase price / date to an
+  "Advanced details" disclosure). Live equity preview shows as the user
+  types (`equity = currentValue - loan.principal`). Loan section
+  collapses when `hasLoan` is unticked. Rental income section only
+  appears for INVESTMENT type. 3-tile summary at the bottom.
+- `AccountsStep.tsx` — quick-add tile grid for the empty state (4 type
+  options), compact account cards with offset→loan linking only
+  surfaced when type=OFFSET, credit card helper clarifies the debt
+  semantics, 3-tile summary showing cash assets / credit debt / net.
+- `InvestmentsStep.tsx` — expandable account cards (collapsed shows
+  total value in the header), inline 12-col holdings grid with
+  ticker/units/avg price/type/delete, live holdings-value calc at the
+  card footer, 3-tile summary showing accounts/holdings/total value.
+
+**Primitives update:**
+
+- `WizardStepShell.tsx` — `title` prop widened from `string` to
+  `React.ReactNode` so steps can use gradient clip-text accents inline.
+
+**Not yet in this batch (next commit):**
+
+- `AssetsStep.tsx`
+- `IncomeExpensesStep.tsx`
+- `ReviewStep.tsx`
+- PR 3a docs (Phase 12 blueprint §16, changelog, master blueprint)
+
+**Also captured in this commit:**
+
+- §4 and §10 of this plan doc updated with Reza's **new architectural
+  question** about data source hygiene for account balances (§10 — full
+  analysis and three-tier recommendation). Three sub-questions remain
+  open pending Reza's yes/no answers; blocks final PR 3b Accounts step
+  scope. Does NOT block PR 3a — PR 3a is purely visual and continues on
+  plan.
+
 ### 2026-04-12 (evening) — PR 3a foundation checkpoint committed
 
 First PR 3a batch shipped: the shared foundation that every step depends
@@ -482,4 +538,129 @@ Initial draft of this plan written and committed on
 
 ---
 
-*End of plan — last updated 2026-04-12*
+## 10. Pending Architectural Discussion — Data Source Hygiene for Account Balances
+
+> **Status:** OPEN — raised by Reza 2026-04-12 (evening). Awaiting yes/no
+> decisions on three sub-questions before PR 3b Accounts-step scope is
+> finalised.
+
+### 10.1 The problem Reza raised
+
+Manually-entered account balances go stale the moment they're typed. A
+user enters `$5,000` on day 1, but by day 7 they've spent `$500` and the
+dashboard still shows `$5,000` until they manually update. Every
+downstream engine (cashflow forecasts, debt plans, net worth, insights)
+is silently misled. His proposal: **eliminate manual balance entry**,
+allow only (a) Basiq Open Banking connection, or (b) transaction file
+upload, where the user provides a closing balance that the system then
+reconciles forward against imported transactions.
+
+### 10.2 What Monitrax already has
+
+The team has already thought about this. Evidence:
+
+- `schema.prisma` — `Account.balanceSource BalanceSource`, enum is
+  `MANUAL | IMPORT | BASIQ | USER_VERIFIED`. Default is `MANUAL`.
+  PR 1 fix already sets this to `MANUAL` explicitly on bulk-create.
+- `Account.basiqLastSynced`, `Account.balanceLastUpdatedAt`,
+  `Account.lastImportedBalance` — schema tracks freshness per source.
+- `PHASE_13_TRANSACTIONAL_INTELLIGENCE.md §417`: explicit hierarchy
+  documented — `BASIQ > IMPORT > MANUAL`.
+- `components/bank/ImportWizard.tsx` + `TransactionImportDialog.tsx`
+  already exist for CSV/QIF/OFX import.
+- `app/api/basiq/connect/route.ts` already returns a `consentUrl` and
+  is Phase 24 (Open Banking) live.
+
+The schema and backend infra agree with Reza's instinct. The gap is
+the **wizard UX** and the **app-wide staleness story** — neither has
+been caught up yet.
+
+### 10.3 Claude's recommendation
+
+**Don't eliminate manual entry — de-rank it.** Three reasons:
+
+1. **Coverage gaps are real.** Basiq doesn't cover: smaller fintechs,
+   foreign banks, crypto exchanges, cash, prepaid/gift cards, employer
+   RSU accounts, old dormant accounts a user still wants in net worth.
+   Without a manual fallback, those are invisible to Monitrax.
+2. **Consent friction on signup.** Forcing a Basiq consent redirect
+   during onboarding will hurt completion. File import requires a file
+   the user has on hand — also friction.
+3. **Existing users.** Every current Monitrax user has MANUAL accounts.
+   Removing the option forces a migration that would be worse than the
+   drift problem it solves.
+
+**Recommended three-tier model** (aligned with the schema's existing
+`BalanceSource` enum and Phase 13's documented hierarchy):
+
+```
+Tier 1 (best):   Basiq / Open Banking   → balanceSource = BASIQ
+                 Always fresh, Phase 24 integration.
+
+Tier 2 (good):   Transaction file upload → balanceSource = IMPORT
+                 User uploads CSV/OFX/QIF + provides closing balance
+                 as an anchor. System reconciles forward from
+                 imported transactions.
+
+Tier 3 (fallback): Manual entry         → balanceSource = MANUAL
+                   Still allowed for coverage gaps, but:
+                   - UI shows `balanceLastUpdatedAt`
+                   - Dashboard shows a staleness nudge after 14 days
+                   - Confidence indicators on dependent metrics
+```
+
+### 10.4 Proposed wizard UX (would replace PR 3b Accounts step plan)
+
+```
+Where should we pull your account data from?
+
+┌─────────────────────────────────────────┐
+│ 🏦 Connect your bank      [Recommended] │  Tier 1: Basiq
+│    30 seconds, always up to date        │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│ 📄 Upload a transaction file            │  Tier 2: File import
+│    CSV / OFX / QIF + closing balance    │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│ ✏️  Enter manually                       │  Tier 3: Manual
+│    Cash, crypto, foreign or unsupported │
+└─────────────────────────────────────────┘
+```
+
+Tiles are visually ranked — Basiq is hero, Import is secondary, Manual
+is tertiary. All three remain available.
+
+### 10.5 Scope allocation
+
+| Work | Where it lives |
+|---|---|
+| Visual tier-ranking of Accounts step options | PR 3b (expanded from original Basiq-only plan) |
+| File upload integration into wizard (via existing `components/bank/ImportWizard.tsx`) | PR 3b |
+| Closing balance anchor input | PR 3b |
+| `AccountInput.source: 'BASIQ' \| 'IMPORT' \| 'MANUAL'` on wizard types | PR 3b |
+| `bulk-create` handling of all three sources (skips BASIQ/IMPORT accounts, persists MANUAL only) | PR 3b |
+| Dashboard staleness nudge ("Your balance is 14 days old — reconnect Basiq or re-upload") | **PR 3c (new)** |
+| Confidence indicators on stale-MANUAL-derived metrics | **PR 3c** |
+| Settings > Accounts "Upgrade this account" button (MANUAL → IMPORT → BASIQ) | **PR 3c** |
+| `balanceLastUpdatedAt` enforcement app-wide | **PR 3c** |
+| Migration path for existing manual-entry users | **PR 3c** |
+
+### 10.6 Open sub-questions (pending Reza answer)
+
+1. **Keep manual entry as a de-ranked fallback?** Claude's recommendation: **yes**, for the coverage gaps. Alternative: force Basiq or file upload only, accepting the gap coverage loss.
+2. **Add file import to PR 3b's Accounts step?** Claude's recommendation: **yes**, composes the existing `ImportWizard` component.
+3. **Spec out PR 3c "Data source hygiene" now?** Claude's recommendation: **yes**, so the full pipeline is documented even though only PR 3b is blocking.
+
+### 10.7 Impact on current PR 3a work
+
+**None.** PR 3a is purely visual and simplification. It does not touch
+data sources — it just makes manual entry look nicer. The decisions in
+§10 only affect PR 3b (Accounts-step scope expansion) and PR 3c (new
+follow-up). PR 3a continues on plan.
+
+---
+
+*End of plan — last updated 2026-04-12 (evening)*

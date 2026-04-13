@@ -1,5 +1,19 @@
 'use client';
 
+/**
+ * InvestmentsStep — Phase 12 PR 3a visual redesign
+ *
+ * Captures investment accounts (brokerage, super, fund, trust, ETF/crypto)
+ * and their holdings. PR 3a simplification:
+ *   - Each account card is expandable — collapsed shows just the name
+ *     and the value summary; expanded shows the holdings table
+ *   - Holdings inline table with ticker / units / avg price
+ *   - Live value preview at the card header level
+ *
+ * No data model changes. PR 3b will route SUPERS type to a dedicated
+ * SuperannuationAccount step.
+ */
+
 import React, { useState } from 'react';
 import {
   TrendingUp,
@@ -19,64 +33,77 @@ import {
   InvestmentAccountType,
   generateId,
 } from '../types';
+import {
+  WizardStepShell,
+  WizardField,
+  WizardCurrencyField,
+  WizardSelectField,
+  WizardAddButton,
+} from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
-// CONSTANTS
+// META
 // =============================================================================
 
-const ACCOUNT_TYPES: {
+interface InvestmentTypeMeta {
   value: InvestmentAccountType;
   label: string;
-  description: string;
   icon: React.ReactNode;
-  color: string;
-}[] = [
+  accent: string;
+}
+
+const INVESTMENT_TYPES: InvestmentTypeMeta[] = [
   {
     value: 'BROKERAGE',
     label: 'Brokerage',
-    description: 'Share trading account',
     icon: <BarChart3 className="h-5 w-5" />,
-    color: 'text-blue-600 dark:text-blue-400',
+    accent: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
   },
   {
     value: 'SUPERS',
     label: 'Superannuation',
-    description: 'Retirement savings',
     icon: <Briefcase className="h-5 w-5" />,
-    color: 'text-purple-600 dark:text-purple-400',
+    accent: 'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400',
   },
   {
     value: 'FUND',
-    label: 'Managed Fund',
-    description: 'ETFs & managed investments',
+    label: 'Managed fund',
     icon: <Coins className="h-5 w-5" />,
-    color: 'text-green-600 dark:text-green-400',
-  },
-  {
-    value: 'ETF_CRYPTO',
-    label: 'ETF / Crypto',
-    description: 'ETFs & Cryptocurrency holdings',
-    icon: <Bitcoin className="h-5 w-5" />,
-    color: 'text-orange-600 dark:text-orange-400',
+    accent: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
   },
   {
     value: 'TRUST',
     label: 'Trust',
-    description: 'Trust investments',
     icon: <Briefcase className="h-5 w-5" />,
-    color: 'text-pink-600 dark:text-pink-400',
+    accent: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
+  },
+  {
+    value: 'ETF_CRYPTO',
+    label: 'ETF / Crypto',
+    icon: <Bitcoin className="h-5 w-5" />,
+    accent: 'bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400',
   },
 ];
 
-const COMMON_TICKERS = ['VAS', 'VGS', 'IVV', 'A200', 'NDQ', 'VDHG', 'IOZ', 'STW', 'AFI', 'ARG'];
+const INVESTMENT_TYPE_OPTIONS = INVESTMENT_TYPES.map((t) => ({
+  value: t.value,
+  label: t.label,
+}));
+
+const HOLDING_TYPE_OPTIONS = [
+  { value: 'SHARE', label: 'Share' },
+  { value: 'ETF', label: 'ETF' },
+  { value: 'MANAGED_FUND', label: 'Managed fund' },
+  { value: 'CRYPTO', label: 'Crypto' },
+];
 
 // =============================================================================
-// HELPER FUNCTIONS
+// FACTORIES
 // =============================================================================
 
-function createEmptyAccount(type: InvestmentAccountType = 'BROKERAGE'): InvestmentAccountInput {
+function createEmptyInvestment(type: InvestmentAccountType = 'BROKERAGE'): InvestmentAccountInput {
   return {
     id: generateId(),
     name: '',
@@ -91,303 +118,222 @@ function createEmptyHolding(): HoldingInput {
   return {
     id: generateId(),
     ticker: '',
+    name: '',
     units: 0,
     averagePrice: 0,
-    type: 'SHARE',
+    type: 'ETF',
   };
 }
 
 // =============================================================================
-// HOLDING ROW COMPONENT
-// =============================================================================
-
-interface HoldingRowProps {
-  holding: HoldingInput;
-  onUpdate: (updates: Partial<HoldingInput>) => void;
-  onRemove: () => void;
-  showSuggestions?: boolean;
-}
-
-function HoldingRow({ holding, onUpdate, onRemove, showSuggestions }: HoldingRowProps) {
-  const holdingValue = holding.units * holding.averagePrice;
-
-  return (
-    <div className="flex gap-2 items-center bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg">
-      <div className="flex-1 grid grid-cols-4 gap-2">
-        <div className="relative">
-          <input
-            type="text"
-            value={holding.ticker}
-            onChange={(e) => onUpdate({ ticker: e.target.value.toUpperCase() })}
-            placeholder="Ticker"
-            list="common-tickers"
-            className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-          />
-          {showSuggestions && (
-            <datalist id="common-tickers">
-              {COMMON_TICKERS.map((ticker) => (
-                <option key={ticker} value={ticker} />
-              ))}
-            </datalist>
-          )}
-        </div>
-        <input
-          type="number"
-          value={holding.units || ''}
-          onChange={(e) => onUpdate({ units: parseFloat(e.target.value) || 0 })}
-          placeholder="Units"
-          className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <div className="relative">
-          <span className="absolute left-3 top-2 text-gray-400">$</span>
-          <input
-            type="number"
-            step="0.01"
-            value={holding.averagePrice || ''}
-            onChange={(e) => onUpdate({ averagePrice: parseFloat(e.target.value) || 0 })}
-            placeholder="Avg Price"
-            className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-            {holdingValue > 0 ? formatCurrency(holdingValue) : '-'}
-          </span>
-          <button
-            onClick={onRemove}
-            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// INVESTMENT CARD COMPONENT
+// ACCOUNT CARD
 // =============================================================================
 
 interface InvestmentCardProps {
   account: InvestmentAccountInput;
-  index: number;
-  onUpdate: (updates: Partial<InvestmentAccountInput>) => void;
-  onRemove: () => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onUpdate: (updates: Partial<InvestmentAccountInput>) => void;
+  onRemove: () => void;
 }
 
 function InvestmentCard({
   account,
-  index,
-  onUpdate,
-  onRemove,
   isExpanded,
   onToggleExpand,
+  onUpdate,
+  onRemove,
 }: InvestmentCardProps) {
-  const accountType = ACCOUNT_TYPES.find((t) => t.value === account.type);
-
+  const meta = INVESTMENT_TYPES.find((t) => t.value === account.type) ?? INVESTMENT_TYPES[0];
   const holdingsValue = account.holdings.reduce(
     (sum, h) => sum + h.units * h.averagePrice,
     0
   );
   const totalValue = account.cashBalance + holdingsValue;
 
-  const addHolding = () => {
-    onUpdate({
-      holdings: [...account.holdings, createEmptyHolding()],
-    });
-  };
+  const addHolding = () =>
+    onUpdate({ holdings: [...account.holdings, createEmptyHolding()] });
 
-  const updateHolding = (holdingId: string, updates: Partial<HoldingInput>) => {
+  const updateHolding = (holdingId: string, updates: Partial<HoldingInput>) =>
     onUpdate({
-      holdings: account.holdings.map((h) =>
-        h.id === holdingId ? { ...h, ...updates } : h
-      ),
+      holdings: account.holdings.map((h) => (h.id === holdingId ? { ...h, ...updates } : h)),
     });
-  };
 
-  const removeHolding = (holdingId: string) => {
-    onUpdate({
-      holdings: account.holdings.filter((h) => h.id !== holdingId),
-    });
-  };
+  const removeHolding = (holdingId: string) =>
+    onUpdate({ holdings: account.holdings.filter((h) => h.id !== holdingId) });
 
   return (
-    <div
-      className="profile-card border rounded-xl bg-white dark:bg-gray-800 shadow-sm overflow-hidden"
-      style={{ '--card-index': index } as React.CSSProperties}
-    >
-      {/* Header */}
-      <div
-        className={`flex items-center justify-between p-4 cursor-pointer ${
-          account.type === 'BROKERAGE'
-            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20'
-            : account.type === 'SUPERS'
-            ? 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20'
-            : account.type === 'ETF_CRYPTO'
-            ? 'bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20'
-            : 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20'
-        }`}
+    <div className="wz-section" style={{ padding: 0 }}>
+      <button
+        type="button"
         onClick={onToggleExpand}
+        className="flex w-full items-center justify-between gap-3 p-5 text-left"
+        aria-expanded={isExpanded}
       >
-        <div className="flex items-center gap-3">
-          <div
-            className={`p-2 rounded-lg ${
-              account.type === 'BROKERAGE'
-                ? 'bg-blue-100 dark:bg-blue-800/40'
-                : account.type === 'SUPERS'
-                ? 'bg-purple-100 dark:bg-purple-800/40'
-                : account.type === 'ETF_CRYPTO'
-                ? 'bg-orange-100 dark:bg-orange-800/40'
-                : 'bg-green-100 dark:bg-green-800/40'
-            }`}
-          >
-            <span className={accountType?.color}>{accountType?.icon}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${meta.accent}`}>
+            {meta.icon}
           </div>
-          <div>
-            <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-              {account.name || `${accountType?.label} Account`}
+          <div className="min-w-0">
+            <h4 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {account.name || meta.label}
             </h4>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {account.platform || 'No platform'} • {formatCurrency(totalValue)}
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              {account.platform || meta.label} · {account.holdings.length}{' '}
+              {account.holdings.length === 1 ? 'holding' : 'holdings'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-3">
+          {totalValue > 0 && (
+            <div className="text-right">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">Value</div>
+              <div className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                {formatCurrency(totalValue, { abbreviate: true })}
+              </div>
+            </div>
+          )}
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
             }}
-            className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            aria-label="Remove account"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
           >
             <Trash2 className="h-4 w-4" />
           </button>
-          {isExpanded ? (
-            <ChevronUp className="h-5 w-5 text-gray-400" />
-          ) : (
-            <ChevronDown className="h-5 w-5 text-gray-400" />
-          )}
+          <div className="flex h-8 w-8 items-center justify-center text-slate-400">
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
         </div>
-      </div>
+      </button>
 
-      {/* Expanded Content */}
       {isExpanded && (
-        <div className="p-4 space-y-4 border-t border-gray-100 dark:border-gray-700">
-          {/* Account Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Account Name
-              </label>
-              <input
-                type="text"
-                value={account.name}
-                onChange={(e) => onUpdate({ name: e.target.value })}
-                placeholder="e.g., My Share Portfolio"
-                className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Platform
-              </label>
-              <input
-                type="text"
-                value={account.platform}
-                onChange={(e) => onUpdate({ platform: e.target.value })}
-                placeholder="e.g., CommSec, SelfWealth"
-                className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Account Type
-              </label>
-              <select
-                value={account.type}
-                onChange={(e) => onUpdate({ type: e.target.value as InvestmentAccountType })}
-                className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {ACCOUNT_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="space-y-4 border-t border-slate-200/70 dark:border-slate-700/50 px-5 pb-5 pt-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <WizardField
+              label="Account name"
+              required
+              placeholder="e.g. CommSec Portfolio"
+              value={account.name}
+              onChange={(e) => onUpdate({ name: e.target.value })}
+            />
+            <WizardField
+              label="Platform"
+              placeholder="e.g. CommSec, Sharesies, Vanguard"
+              value={account.platform || ''}
+              onChange={(e) => onUpdate({ platform: e.target.value })}
+            />
+            <WizardSelectField
+              label="Type"
+              value={account.type}
+              onChange={(v) => onUpdate({ type: v as InvestmentAccountType })}
+              options={INVESTMENT_TYPE_OPTIONS}
+            />
+            <WizardCurrencyField
+              label="Cash balance"
+              value={account.cashBalance}
+              onChange={(v) => onUpdate({ cashBalance: v })}
+              helper="Uninvested cash in the account"
+            />
           </div>
 
-          {/* Cash Balance */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Cash Balance (uninvested)
-            </label>
-            <div className="relative max-w-xs">
-              <span className="absolute left-3 top-2 text-gray-400">$</span>
-              <input
-                type="number"
-                value={account.cashBalance || ''}
-                onChange={(e) => onUpdate({ cashBalance: parseFloat(e.target.value) || 0 })}
-                placeholder="0"
-                className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Holdings Section */}
-          <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+          {/* Holdings */}
+          <div className="space-y-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 p-4">
             <div className="flex items-center justify-between">
-              <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
+              <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 Holdings
               </h5>
               <button
+                type="button"
                 onClick={addHolding}
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               >
-                <Plus className="h-4 w-4" />
-                Add Holding
+                <Plus className="h-3.5 w-3.5" />
+                Add holding
               </button>
             </div>
-
-            {account.holdings.length > 0 && (
-              <div className="grid grid-cols-4 gap-2 text-xs text-gray-500 dark:text-gray-400 px-3">
-                <span>Ticker</span>
-                <span>Units</span>
-                <span>Avg Price</span>
-                <span>Value</span>
-              </div>
-            )}
-
             {account.holdings.length === 0 ? (
-              <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
-                No holdings added yet. Add your shares, ETFs, or other investments.
-              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Add shares, ETFs, or fund units you own in this account.
+              </p>
             ) : (
               <div className="space-y-2">
-                {account.holdings.map((holding, hIndex) => (
-                  <HoldingRow
-                    key={holding.id}
-                    holding={holding}
-                    onUpdate={(updates) => updateHolding(holding.id, updates)}
-                    onRemove={() => removeHolding(holding.id)}
-                    showSuggestions={hIndex === 0}
-                  />
+                {account.holdings.map((h) => (
+                  <div
+                    key={h.id}
+                    className="grid grid-cols-12 gap-2 rounded-lg bg-white dark:bg-slate-900/60 p-2.5"
+                  >
+                    <input
+                      type="text"
+                      value={h.ticker}
+                      onChange={(e) =>
+                        updateHolding(h.id, { ticker: e.target.value.toUpperCase() })
+                      }
+                      placeholder="TICKER"
+                      className="wz-input col-span-3 uppercase"
+                    />
+                    <input
+                      type="number"
+                      value={h.units === 0 ? '' : h.units}
+                      onChange={(e) =>
+                        updateHolding(h.id, { units: parseFloat(e.target.value) || 0 })
+                      }
+                      placeholder="Units"
+                      min={0}
+                      step="any"
+                      className="wz-input col-span-3"
+                    />
+                    <div className="wz-input-currency-wrap col-span-3">
+                      <span aria-hidden className="wz-input-currency-prefix">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        value={h.averagePrice === 0 ? '' : h.averagePrice}
+                        onChange={(e) =>
+                          updateHolding(h.id, { averagePrice: parseFloat(e.target.value) || 0 })
+                        }
+                        placeholder="Avg price"
+                        min={0}
+                        step="any"
+                        className="wz-input"
+                      />
+                    </div>
+                    <select
+                      value={h.type}
+                      onChange={(e) =>
+                        updateHolding(h.id, {
+                          type: e.target.value as HoldingInput['type'],
+                        })
+                      }
+                      className="wz-input col-span-2"
+                    >
+                      {HOLDING_TYPE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeHolding(h.id)}
+                      aria-label="Remove holding"
+                      className="col-span-1 flex h-9 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
-
-            {/* Holdings Summary */}
             {account.holdings.length > 0 && (
-              <div className="flex justify-between text-sm pt-2 border-t border-gray-100 dark:border-gray-700">
-                <span className="text-gray-500 dark:text-gray-400">
-                  {account.holdings.length} holding{account.holdings.length !== 1 ? 's' : ''}
-                </span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">
-                  Total: {formatCurrency(holdingsValue)}
+              <div className="flex justify-between pt-2 text-xs text-slate-600 dark:text-slate-400">
+                <span>Total holdings value</span>
+                <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                  {formatCurrency(holdingsValue)}
                 </span>
               </div>
             )}
@@ -399,7 +345,7 @@ function InvestmentCard({
 }
 
 // =============================================================================
-// INVESTMENTS STEP COMPONENT
+// INVESTMENTS STEP
 // =============================================================================
 
 interface InvestmentsStepProps {
@@ -412,163 +358,94 @@ export function InvestmentsStep({ data, onUpdate }: InvestmentsStepProps) {
     data.investments.length > 0 ? data.investments[0].id : null
   );
 
-  const addAccount = (type: InvestmentAccountType = 'BROKERAGE') => {
-    const newAccount = createEmptyAccount(type);
-    onUpdate({
-      investments: [...data.investments, newAccount],
-    });
-    setExpandedId(newAccount.id);
+  const addInvestment = () => {
+    const newAcc = createEmptyInvestment();
+    onUpdate({ investments: [...data.investments, newAcc] });
+    setExpandedId(newAcc.id);
   };
 
-  const updateAccount = (accountId: string, updates: Partial<InvestmentAccountInput>) => {
+  const updateInvestment = (id: string, updates: Partial<InvestmentAccountInput>) => {
     onUpdate({
-      investments: data.investments.map((a) =>
-        a.id === accountId ? { ...a, ...updates } : a
-      ),
+      investments: data.investments.map((i) => (i.id === id ? { ...i, ...updates } : i)),
     });
   };
 
-  const removeAccount = (accountId: string) => {
-    onUpdate({
-      investments: data.investments.filter((a) => a.id !== accountId),
-    });
-    if (expandedId === accountId) {
-      setExpandedId(data.investments.length > 1 ? data.investments[0].id : null);
+  const removeInvestment = (id: string) => {
+    onUpdate({ investments: data.investments.filter((i) => i.id !== id) });
+    if (expandedId === id) {
+      const remaining = data.investments.filter((i) => i.id !== id);
+      setExpandedId(remaining.length > 0 ? remaining[0].id : null);
     }
   };
 
-  // Calculate totals
-  const totalValue = data.investments.reduce((sum, acc) => {
-    const holdingsValue = acc.holdings.reduce((h, hold) => h + hold.units * hold.averagePrice, 0);
-    return sum + acc.cashBalance + holdingsValue;
+  // Summary
+  const totalValue = data.investments.reduce((sum, inv) => {
+    const holdingsValue = inv.holdings.reduce((h, hold) => h + hold.units * hold.averagePrice, 0);
+    return sum + inv.cashBalance + holdingsValue;
   }, 0);
-
-  const totalHoldings = data.investments.reduce(
-    (sum, acc) => sum + acc.holdings.length,
-    0
-  );
+  const totalHoldings = data.investments.reduce((sum, inv) => sum + inv.holdings.length, 0);
 
   return (
-    <div className="space-y-6 wizard-step-enter">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 text-white text-2xl mb-2">
-          <TrendingUp className="h-7 w-7" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Investment Accounts
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto text-sm">
-          Add your share portfolios, superannuation, and other investments. Track your holdings
-          and monitor your investment growth.
-        </p>
-      </div>
-
-      {/* Quick Add Buttons */}
-      {data.investments.length === 0 && (
-        <div className="wizard-card" style={{ '--card-index': 0 } as React.CSSProperties}>
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-4">
-            Select account type to get started:
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {ACCOUNT_TYPES.map((type) => (
-              <button
-                key={type.value}
-                onClick={() => addAccount(type.value)}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all"
-              >
-                <div
-                  className={`p-2 rounded-lg ${
-                    type.value === 'BROKERAGE'
-                      ? 'bg-blue-100 dark:bg-blue-800/40'
-                      : type.value === 'SUPERS'
-                      ? 'bg-purple-100 dark:bg-purple-800/40'
-                      : type.value === 'ETF_CRYPTO'
-                      ? 'bg-orange-100 dark:bg-orange-800/40'
-                      : 'bg-green-100 dark:bg-green-800/40'
-                  }`}
-                >
-                  <span className={type.color}>{type.icon}</span>
-                </div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {type.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Account Cards */}
+    <WizardStepShell
+      icon={<TrendingUp className="h-8 w-8" strokeWidth={1.5} />}
+      title="Investments"
+      subtitle="Brokerage accounts, super, managed funds — we'll track performance and yield."
+    >
       {data.investments.length > 0 && (
-        <div className="space-y-4">
-          {data.investments.map((account, index) => (
+        <div className="space-y-3">
+          {data.investments.map((account) => (
             <InvestmentCard
               key={account.id}
               account={account}
-              index={index}
-              onUpdate={(updates) => updateAccount(account.id, updates)}
-              onRemove={() => removeAccount(account.id)}
               isExpanded={expandedId === account.id}
-              onToggleExpand={() =>
-                setExpandedId(expandedId === account.id ? null : account.id)
-              }
+              onToggleExpand={() => setExpandedId(expandedId === account.id ? null : account.id)}
+              onUpdate={(updates) => updateInvestment(account.id, updates)}
+              onRemove={() => removeInvestment(account.id)}
             />
           ))}
         </div>
       )}
 
-      {/* Add Account Button */}
-      {data.investments.length > 0 && (
-        <button
-          onClick={() => addAccount()}
-          className="wizard-add-button w-full p-4 rounded-xl flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
-        >
-          <Plus className="h-5 w-5" />
-          <span className="font-medium">Add Another Investment Account</span>
-        </button>
-      )}
+      <WizardAddButton leadingIcon={<Plus className="h-4 w-4" />} onClick={addInvestment}>
+        {data.investments.length === 0
+          ? 'Add your first investment account'
+          : 'Add another investment account'}
+      </WizardAddButton>
 
-      {/* Summary */}
       {data.investments.length > 0 && (
-        <div
-          className="wizard-card bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 rounded-xl"
-          style={{ '--card-index': data.investments.length } as React.CSSProperties}
-        >
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Investment Summary
-          </h4>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {data.investments.length}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {data.investments.length === 1 ? 'Account' : 'Accounts'}
-              </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-white/70 dark:bg-slate-800/40 p-3 text-center">
+            <div className="text-xl font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+              {data.investments.length}
             </div>
-            <div>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {totalHoldings}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Holdings</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {data.investments.length === 1 ? 'Account' : 'Accounts'}
             </div>
-            <div>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(totalValue, { abbreviate: true })}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Total Value</div>
+          </div>
+          <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-white/70 dark:bg-slate-800/40 p-3 text-center">
+            <div className="text-xl font-semibold tabular-nums text-violet-600 dark:text-violet-400">
+              {totalHoldings}
             </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {totalHoldings === 1 ? 'Holding' : 'Holdings'}
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-white/70 dark:bg-slate-800/40 p-3 text-center">
+            <div className="text-xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+              {formatCurrency(totalValue, { abbreviate: true })}
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">Total value</div>
           </div>
         </div>
       )}
 
-      {/* Skip hint */}
       {data.investments.length === 0 && (
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          No investment accounts? No problem! Click <strong>Continue</strong> to skip this step.
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+          No investments yet? Click <span className="font-medium">Continue</span> to skip.
         </p>
       )}
-    </div>
+    </WizardStepShell>
   );
 }
+
+export default InvestmentsStep;

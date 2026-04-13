@@ -1,6 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+/**
+ * AccountsStep — Phase 12 PR 3a visual redesign
+ *
+ * Captures bank / transaction / savings / offset / credit card accounts.
+ * PR 3a simplification:
+ *   - Account type chosen via segmented quick-add (one click)
+ *   - Each account card is compact — 2-column grid
+ *   - Offset→loan link surfaces only for OFFSET accounts
+ *   - Summary tiles at the bottom
+ *
+ * PR 3b will add the Basiq "Connect your bank" primary CTA at the top.
+ */
+
+import React from 'react';
 import {
   Wallet,
   Plus,
@@ -18,52 +31,67 @@ import {
   generateId,
   getLoansFromProperties,
 } from '../types';
+import {
+  WizardStepShell,
+  WizardSection,
+  WizardField,
+  WizardCurrencyField,
+  WizardSelectField,
+  WizardAddButton,
+} from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
-// CONSTANTS
+// ACCOUNT TYPE META
 // =============================================================================
 
-const ACCOUNT_TYPES: {
+interface AccountTypeMeta {
   value: AccountType;
   label: string;
   description: string;
   icon: React.ReactNode;
-  color: string;
-}[] = [
+  accent: string;
+}
+
+const ACCOUNT_TYPES: AccountTypeMeta[] = [
   {
     value: 'TRANSACTIONAL',
     label: 'Transaction',
-    description: 'Everyday spending account',
+    description: 'Everyday spending',
     icon: <Wallet className="h-5 w-5" />,
-    color: 'text-blue-600 dark:text-blue-400',
+    accent: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
   },
   {
     value: 'SAVINGS',
     label: 'Savings',
-    description: 'High interest savings',
+    description: 'High-interest',
     icon: <PiggyBank className="h-5 w-5" />,
-    color: 'text-green-600 dark:text-green-400',
+    accent: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
   },
   {
     value: 'OFFSET',
     label: 'Offset',
     description: 'Linked to mortgage',
     icon: <Link2 className="h-5 w-5" />,
-    color: 'text-purple-600 dark:text-purple-400',
+    accent: 'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400',
   },
   {
     value: 'CREDIT_CARD',
-    label: 'Credit Card',
-    description: 'Credit card account',
+    label: 'Credit card',
+    description: 'Balance as debt',
     icon: <CreditCard className="h-5 w-5" />,
-    color: 'text-orange-600 dark:text-orange-400',
+    accent: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
   },
 ];
 
+const ACCOUNT_TYPE_OPTIONS = ACCOUNT_TYPES.map((t) => ({
+  value: t.value,
+  label: t.label,
+}));
+
 // =============================================================================
-// HELPER FUNCTIONS
+// HELPERS
 // =============================================================================
 
 function createEmptyAccount(type: AccountType = 'TRANSACTIONAL'): AccountInput {
@@ -77,125 +105,92 @@ function createEmptyAccount(type: AccountType = 'TRANSACTIONAL'): AccountInput {
 }
 
 // =============================================================================
-// ACCOUNT CARD COMPONENT
+// ACCOUNT CARD
 // =============================================================================
 
 interface AccountCardProps {
   account: AccountInput;
-  index: number;
   availableLoans: Array<{ id: string; name: string; propertyName: string }>;
   onUpdate: (updates: Partial<AccountInput>) => void;
   onRemove: () => void;
 }
 
-function AccountCard({
-  account,
-  index,
-  availableLoans,
-  onUpdate,
-  onRemove,
-}: AccountCardProps) {
-  const accountType = ACCOUNT_TYPES.find((t) => t.value === account.type);
-  const isNegative = account.type === 'CREDIT_CARD';
+function AccountCard({ account, availableLoans, onUpdate, onRemove }: AccountCardProps) {
+  const meta = ACCOUNT_TYPES.find((t) => t.value === account.type) ?? ACCOUNT_TYPES[0];
+  const isCredit = account.type === 'CREDIT_CARD';
   const linkedLoan = availableLoans.find((l) => l.id === account.linkedLoanId);
 
   return (
-    <div
-      className="profile-card border rounded-xl bg-white dark:bg-gray-800 shadow-sm p-4 space-y-4"
-      style={{ '--card-index': index } as React.CSSProperties}
-    >
-      {/* Account Type Badge */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className={`p-2 rounded-lg ${
-              account.type === 'TRANSACTIONAL'
-                ? 'bg-blue-100 dark:bg-blue-800/40'
-                : account.type === 'SAVINGS'
-                ? 'bg-green-100 dark:bg-green-800/40'
-                : account.type === 'OFFSET'
-                ? 'bg-purple-100 dark:bg-purple-800/40'
-                : 'bg-orange-100 dark:bg-orange-800/40'
-            }`}
-          >
-            <span className={accountType?.color}>{accountType?.icon}</span>
+    <div className="wz-section">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${meta.accent}`}>
+            {meta.icon}
           </div>
-          <div>
-            <select
-              value={account.type}
-              onChange={(e) => {
-                const newType = e.target.value as AccountType;
-                onUpdate({
-                  type: newType,
-                  linkedLoanId: newType === 'OFFSET' ? account.linkedLoanId : undefined,
-                });
-              }}
-              className="text-sm font-semibold text-gray-900 dark:text-gray-100 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer"
-            >
-              {ACCOUNT_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
+          <div className="min-w-0">
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {meta.label}
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{meta.description}</p>
           </div>
         </div>
         <button
+          type="button"
           onClick={onRemove}
-          className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          aria-label="Remove account"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
         >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Account Details */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Account Name
-          </label>
-          <input
-            type="text"
-            value={account.name}
-            onChange={(e) => onUpdate({ name: e.target.value })}
-            placeholder={`e.g., ${account.type === 'CREDIT_CARD' ? 'Visa Platinum' : 'Everyday Account'}`}
-            className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            {isNegative ? 'Outstanding Balance' : 'Current Balance'}
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-2 text-gray-400">$</span>
-            <input
-              type="number"
-              value={account.currentBalance || ''}
-              onChange={(e) => onUpdate({ currentBalance: parseFloat(e.target.value) || 0 })}
-              placeholder="0"
-              className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          {isNegative && (
-            <p className="text-xs text-gray-400 mt-1">Enter as positive number (debt)</p>
-          )}
-        </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <WizardField
+          label="Account name"
+          placeholder={isCredit ? 'e.g. Visa platinum' : 'e.g. Everyday account'}
+          value={account.name}
+          onChange={(e) => onUpdate({ name: e.target.value })}
+        />
+        <WizardCurrencyField
+          label={isCredit ? 'Outstanding balance' : 'Current balance'}
+          required
+          value={account.currentBalance}
+          onChange={(v) => onUpdate({ currentBalance: v })}
+          helper={isCredit ? 'Enter as a positive number — we\u2019ll track it as debt.' : undefined}
+        />
+        <WizardField
+          className="sm:col-span-2"
+          label="Institution (optional)"
+          placeholder="e.g. CommBank, NAB, ANZ"
+          value={account.institution || ''}
+          onChange={(e) => onUpdate({ institution: e.target.value })}
+        />
+        <WizardSelectField
+          className="sm:col-span-2"
+          label="Change type"
+          value={account.type}
+          onChange={(v) => {
+            const newType = v as AccountType;
+            onUpdate({
+              type: newType,
+              linkedLoanId: newType === 'OFFSET' ? account.linkedLoanId : undefined,
+            });
+          }}
+          options={ACCOUNT_TYPE_OPTIONS}
+        />
       </div>
 
-      {/* Offset Linking */}
       {account.type === 'OFFSET' && (
-        <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-            <span className="flex items-center gap-1">
-              <Link2 className="h-3 w-3" />
-              Link to Loan
-            </span>
+        <div className="mt-4 rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-violet-50/60 dark:bg-violet-900/10 p-3">
+          <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-violet-700 dark:text-violet-300">
+            <Link2 className="h-3 w-3" />
+            Link to a loan
           </label>
           {availableLoans.length > 0 ? (
             <select
               value={account.linkedLoanId || ''}
               onChange={(e) => onUpdate({ linkedLoanId: e.target.value || undefined })}
-              className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="wz-input"
             >
               <option value="">Select a loan to link</option>
               {availableLoans.map((loan) => (
@@ -205,12 +200,12 @@ function AccountCard({
               ))}
             </select>
           ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg">
-              No loans available. Add a property with a loan first to link an offset account.
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              No loans to link yet. Add a property with a mortgage first.
             </p>
           )}
           {linkedLoan && (
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2 flex items-center gap-1">
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400">
               <Building2 className="h-3 w-3" />
               Linked to {linkedLoan.propertyName}
             </p>
@@ -222,44 +217,31 @@ function AccountCard({
 }
 
 // =============================================================================
-// QUICK ADD BUTTONS
+// QUICK ADD TILE
 // =============================================================================
 
-interface QuickAddButtonProps {
-  type: AccountType;
-  onClick: () => void;
-}
-
-function QuickAddButton({ type, onClick }: QuickAddButtonProps) {
-  const accountType = ACCOUNT_TYPES.find((t) => t.value === type)!;
-
+function QuickAddTile({ meta, onClick }: { meta: AccountTypeMeta; onClick: () => void }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all"
+      className="group flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-white/40 p-4 text-center transition-all hover:border-indigo-300 hover:bg-indigo-50/60 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-indigo-600 dark:hover:bg-indigo-900/20"
     >
-      <div
-        className={`p-2 rounded-lg ${
-          type === 'TRANSACTIONAL'
-            ? 'bg-blue-100 dark:bg-blue-800/40'
-            : type === 'SAVINGS'
-            ? 'bg-green-100 dark:bg-green-800/40'
-            : type === 'OFFSET'
-            ? 'bg-purple-100 dark:bg-purple-800/40'
-            : 'bg-orange-100 dark:bg-orange-800/40'
-        }`}
-      >
-        <span className={accountType.color}>{accountType.icon}</span>
+      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.accent}`}>
+        {meta.icon}
       </div>
-      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-        {accountType.label}
-      </span>
+      <div>
+        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
+          {meta.label}
+        </div>
+        <div className="text-[11px] text-slate-500 dark:text-slate-400">{meta.description}</div>
+      </div>
     </button>
   );
 }
 
 // =============================================================================
-// ACCOUNTS STEP COMPONENT
+// ACCOUNTS STEP
 // =============================================================================
 
 interface AccountsStepProps {
@@ -271,77 +253,53 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
   const availableLoans = getLoansFromProperties(data.properties);
 
   const addAccount = (type: AccountType = 'TRANSACTIONAL') => {
-    const newAccount = createEmptyAccount(type);
-    onUpdate({
-      accounts: [...data.accounts, newAccount],
-    });
+    onUpdate({ accounts: [...data.accounts, createEmptyAccount(type)] });
   };
 
   const updateAccount = (accountId: string, updates: Partial<AccountInput>) => {
     onUpdate({
-      accounts: data.accounts.map((a) =>
-        a.id === accountId ? { ...a, ...updates } : a
-      ),
+      accounts: data.accounts.map((a) => (a.id === accountId ? { ...a, ...updates } : a)),
     });
   };
 
   const removeAccount = (accountId: string) => {
-    onUpdate({
-      accounts: data.accounts.filter((a) => a.id !== accountId),
-    });
+    onUpdate({ accounts: data.accounts.filter((a) => a.id !== accountId) });
   };
 
-  // Calculate totals
-  const totalAssets = data.accounts
+  // Summary
+  const cashAssets = data.accounts
     .filter((a) => a.type !== 'CREDIT_CARD')
     .reduce((sum, a) => sum + a.currentBalance, 0);
-  const totalDebt = data.accounts
+  const creditDebt = data.accounts
     .filter((a) => a.type === 'CREDIT_CARD')
     .reduce((sum, a) => sum + a.currentBalance, 0);
-  const netBalance = totalAssets - totalDebt;
+  const net = cashAssets - creditDebt;
 
   return (
-    <div className="space-y-6 wizard-step-enter">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-white text-2xl mb-2">
-          <Landmark className="h-7 w-7" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Bank Accounts
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto text-sm">
-          Add your bank accounts to track your liquid assets. If you have an offset account, you
-          can link it to your mortgage.
-        </p>
-      </div>
-
-      {/* Quick Add Buttons */}
+    <WizardStepShell
+      icon={<Landmark className="h-8 w-8" strokeWidth={1.5} />}
+      title="Bank accounts"
+      subtitle="Add your cash, savings, and credit accounts to track your liquid balance."
+    >
       {data.accounts.length === 0 && (
-        <div className="wizard-card" style={{ '--card-index': 0 } as React.CSSProperties}>
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-4">
-            Quick add common account types:
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <WizardSection
+          title="Quick add"
+          description="Start with the account type you use most."
+        >
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {ACCOUNT_TYPES.map((type) => (
-              <QuickAddButton
-                key={type.value}
-                type={type.value}
-                onClick={() => addAccount(type.value)}
-              />
+              <QuickAddTile key={type.value} meta={type} onClick={() => addAccount(type.value)} />
             ))}
           </div>
-        </div>
+        </WizardSection>
       )}
 
-      {/* Account Cards */}
       {data.accounts.length > 0 && (
-        <div className="space-y-4">
-          {data.accounts.map((account, index) => (
+        <div className="space-y-3">
+          {data.accounts.map((account) => (
             <AccountCard
               key={account.id}
               account={account}
-              index={index}
               availableLoans={availableLoans}
               onUpdate={(updates) => updateAccount(account.id, updates)}
               onRemove={() => removeAccount(account.id)}
@@ -350,72 +308,70 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
         </div>
       )}
 
-      {/* Add Account Button */}
       {data.accounts.length > 0 && (
-        <button
+        <WizardAddButton
+          leadingIcon={<Plus className="h-4 w-4" />}
           onClick={() => addAccount()}
-          className="wizard-add-button w-full p-4 rounded-xl flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
         >
-          <Plus className="h-5 w-5" />
-          <span className="font-medium">Add Another Account</span>
-        </button>
+          Add another account
+        </WizardAddButton>
       )}
 
-      {/* Summary */}
       {data.accounts.length > 0 && (
-        <div
-          className="wizard-card bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl"
-          style={{ '--card-index': data.accounts.length } as React.CSSProperties}
-        >
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Account Summary
-          </h4>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(totalAssets, { abbreviate: true })}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Cash Assets</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {formatCurrency(totalDebt, { abbreviate: true })}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Credit Card Debt</div>
-            </div>
-            <div>
-              <div
-                className={`text-2xl font-bold ${
-                  netBalance >= 0
-                    ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-red-600 dark:text-red-400'
-                }`}
-              >
-                {formatCurrency(netBalance, { abbreviate: true })}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Net Balance</div>
-            </div>
-          </div>
-
-          {/* Offset Summary */}
-          {data.accounts.some((a) => a.type === 'OFFSET' && a.linkedLoanId) && (
-            <div className="mt-4 pt-3 border-t border-green-200 dark:border-green-800">
-              <div className="text-xs text-purple-600 dark:text-purple-400 flex items-center justify-center gap-2">
-                <Link2 className="h-3 w-3" />
-                {data.accounts.filter((a) => a.type === 'OFFSET' && a.linkedLoanId).length} offset
-                account(s) linked to loans
-              </div>
-            </div>
-          )}
+        <div className="grid grid-cols-3 gap-3">
+          <SummaryTile
+            label="Cash"
+            value={formatCurrency(cashAssets, { abbreviate: true })}
+            accent="emerald"
+          />
+          <SummaryTile
+            label="Credit debt"
+            value={formatCurrency(creditDebt, { abbreviate: true })}
+            accent="amber"
+          />
+          <SummaryTile
+            label="Net"
+            value={formatCurrency(net, { abbreviate: true })}
+            accent={net >= 0 ? 'blue' : 'rose'}
+          />
         </div>
       )}
 
-      {/* Skip hint */}
       {data.accounts.length === 0 && (
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          We recommend adding at least one bank account for accurate cashflow tracking.
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+          We recommend adding at least one account for accurate cashflow tracking.
         </p>
       )}
+    </WizardStepShell>
+  );
+}
+
+// =============================================================================
+// SUMMARY TILE
+// =============================================================================
+
+function SummaryTile({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent: 'blue' | 'emerald' | 'violet' | 'amber' | 'rose';
+}) {
+  const accentClass = {
+    blue: 'text-blue-600 dark:text-blue-400',
+    emerald: 'text-emerald-600 dark:text-emerald-400',
+    violet: 'text-violet-600 dark:text-violet-400',
+    amber: 'text-amber-600 dark:text-amber-400',
+    rose: 'text-rose-600 dark:text-rose-400',
+  }[accent];
+  return (
+    <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-white/70 dark:bg-slate-800/40 p-3 text-center">
+      <div className={`text-xl font-semibold tabular-nums ${accentClass}`}>{value}</div>
+      <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
     </div>
   );
 }
+
+export default AccountsStep;
