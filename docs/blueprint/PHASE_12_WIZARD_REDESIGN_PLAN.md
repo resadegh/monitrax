@@ -5,7 +5,7 @@
 > If anything here doesn't match reality, fix the doc first, then the code.
 
 **Owner:** Claude (engineer) | **Reviewer:** Reza
-**Status:** 🟡 Planning (PR 3a not yet started)
+**Status:** 🟢 PR 3a implementation in progress (decisions locked, building)
 **Branch:** `claude/review-monitrax-docs-ty15A`
 **Related docs:**
 - `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` (canonical spec, v2.2)
@@ -68,21 +68,21 @@ Captured from the planning Q&A on 2026-04-12:
 | 7 | Draft persistence mechanism? | **`UserPreference.onboardingDraft JSONB`** — shipped in PR 2 | Simpler than per-entity incremental creates; keeps atomic bulk-create |
 | 8 | PR 3 scope | **Split into 3a (visual + simplify) and 3b (new paths)** | Each PR is independently reviewable and shippable |
 | 9 | Plan document | **This file** — updated constantly | No assumptions; all scope changes captured here first |
+| **A** | **Super fields for the wizard** | **`name` + `fundName` + `currentBalance` only** — defer everything else (memberNumber, fundABN, tax components, contribution YTD, caps, investment option, returns) to a future Settings > Retirement page | Net worth only needs `currentBalance`. Fund name is free text and easy. All other fields require a super statement that users typically don't have on hand during signup — blocking onboarding on them would hurt completion. Phase 20 (Tax Intelligence Engine) reads the deeper fields but runs post-onboarding; users will have a reason to fill them in after first-run value. The schema has sensible defaults for contribution caps (`$27,500` / `$110,000`) so no need to ask. |
+| **B** | **Basiq shortcut UX on the Accounts step** | **Parallel path with seamless fallback.** Prominent primary CTA "Connect your bank (recommended)" kicks off Basiq consent. Manual entry always available below (`— or add accounts manually —`). Post-redirect: new `/app/onboarding/basiq-callback` route polls for ACTIVE connection, fetches imported accounts, marks them as `isBasiqImported: true` in the wizard draft. User can review/rename/flag-as-offset before proceeding. On final submit, `bulk-create` skips imported accounts (they already exist in DB from Basiq sync) and only creates manually-entered ones. | Many users bank at multiple institutions — forcing Basiq-or-nothing is bad UX. Users may not want to share credit card data via Basiq while still wanting it tracked. The review step is where Monitrax's edge shows (renaming, offset linking). CDR compliance (CLAUDE.md §13): draft never holds CDR data — only pointers to existing `Account` rows by ID. |
+| **C** | **Non-property loans: dedicated step or Accounts sub-section?** | **Dedicated "Debts" step, shown conditionally.** Welcome step asks a single checkbox question ("Do you have any of these? HECS, car loan, credit card, personal loan"). If anything ticked → Debts step shown. Captures `CAR`, `STUDENT`, `PERSONAL`, `BUSINESS` loans. `CREDIT_CARD` **stays in Accounts step** (existing behaviour, stored as negative balance). `LINE_OF_CREDIT` modelled as CREDIT_CARD-style Account for PR 3b simplicity (full LOC-as-Loan modelling deferred). CAR loans get `linkedAssetId` wired in bulk-create, same pattern as the property-loan offset linking that already works. | `Account` and `Loan` are separate Prisma models — mixing them in one step muddles the model and breaks the Review screen's mental grouping. STUDENT (HECS-HELP) is near-universal for Australian users under 40 — not capturing it undersells Monitrax on first run. Conditional visibility keeps the STARTER flow clean (typical STARTER users don't have these). |
+| **D** | **Lifestyle fields: own step or Household step?** | **Add to existing Household step** as a 4th section titled "Your lifestyle". Three fields: `lifestylePreference` (segmented control, 3 options), `diningOutFrequency` (segmented control, 4 options), `hobbiesWithCosts` (optional free text). Inline helper: "We use this to personalize your budget estimates." | Conceptually grouped: "who's in your household and how do you live". The Household step is currently under-populated (<60 seconds) so adding a 4th short section barely lengthens it. Phase 28 budget AI reads all these fields at once. Avoids step inflation (PR 3b is already adding a conditional Debts step). |
+| **E** | **Dedicated `/app/onboarding` route: PR 3a or PR 3b?** | **PR 3a**, with a new `mode: 'page' \| 'modal'` prop on `WizardContainer`. `'modal'` keeps the existing dashboard behaviour exactly as it is. `'page'` uses the full-width layout. A new `/app/onboarding/page.tsx` mounts `WizardContainer` in page mode. Unauth users redirect to `/signin?next=/onboarding`. | Deep-linkability for marketing emails. The new full-page shell design works better with more room to breathe. Backwards-compatible — nothing changes for users coming from the dashboard modal. Small incremental change, large user-value unlock (email CTAs, marketing flows). |
 
 ---
 
 ## 4. Pending / Open Questions
 
-These are blocking for PR 3b but NOT for PR 3a. Will resolve as we get
-there.
+All PR 3a / PR 3b blocking questions have been answered and locked into
+§3. This section is kept for future assumption-tracking as new questions
+arise during implementation.
 
-| # | Question | Status | Blocking? |
-|---|---|---|---|
-| A | Exact fields to capture for `SuperannuationAccount`? The schema has fund/USI/member/contributions. Minimum for onboarding = fund name + current balance, with deeper fields in Settings later? | **OPEN** (PR 3b) | PR 3b |
-| B | Basiq shortcut UX: does connecting a bank **skip** the manual account entry step, or run in parallel? | **OPEN** (PR 3b) | PR 3b |
-| C | For non-property loans (CAR / PERSONAL / STUDENT / LOC): do we need a dedicated "Debts" step, or should they fold into the Accounts step as a sub-section? | **OPEN** (PR 3b) | PR 3b |
-| D | Lifestyle fields (`lifestylePreference`, `diningOutFrequency`, `hobbiesWithCosts`) — add to existing Household step or own micro-step? | **OPEN** (PR 3b) | PR 3b |
-| E | `/app/onboarding` dedicated route — is this PR 3a or PR 3b? | **PR 3a** (pre-decided) | — |
+*No currently open questions — 2026-04-12*
 
 ---
 
@@ -268,23 +268,116 @@ primitives and design language.
 
 ### 6.3 PR 3b Task Checklist
 
-> Stubs only. Populated with detail after PR 3a lands and pending questions §4 A-D are resolved.
+> Detailed breakdown based on answered questions in §3. Updated as work progresses.
 
-- [ ] Resolve pending questions (§4 A-D)
-- [ ] **Renter path** implementation
-- [ ] **Non-property loans** implementation
-- [ ] **Super routing** implementation
-- [ ] **Basiq shortcut** implementation
-- [ ] **Lifestyle fields** implementation
-- [ ] `bulk-create` updates for all of the above
-- [ ] Documentation updates (Phase 12, plan doc, changelog, master blueprint)
-- [ ] Commit + push
+**Renter path (question 3):**
+- [ ] Add a "Do you own property, rent, or both?" question to `WelcomeStep` (renders as 3 cards: Own / Rent / Both)
+- [ ] If Rent or Both: seed an empty `Expense(category=RENT, sourceType=GENERAL)` row on the `IncomeExpensesStep` with placeholder copy
+- [ ] If Rent only (not Both): hide the Properties step entirely from the profile-filtered step list
+- [ ] Add to `WizardData.housing: 'OWN' | 'RENT' | 'BOTH' | null`
+- [ ] No schema / API changes (`RENT` is already an `ExpenseCategory`)
+
+**Non-property loans (question C):**
+- [ ] Add a "Do you have any of these debts?" checkbox list to `WelcomeStep` (HECS / car loan / personal loan — credit cards excluded, they stay in Accounts)
+- [ ] New `DebtsStep` component with conditional visibility based on the checkbox answers
+- [ ] Support loan types: `CAR`, `STUDENT`, `PERSONAL`, `BUSINESS` (HOME/INVESTMENT stay under Properties)
+- [ ] CAR loan can link to an `Asset` (vehicle) via `Loan.linkedAssetId` — handled in `bulk-create` like property-loan offset linking
+- [ ] STUDENT (HECS) gets a dedicated mini-UX: "Current outstanding balance" + "Indexation rate (default 4%)"
+- [ ] PERSONAL/BUSINESS get the full loan mini-form (name, principal, rate, min repayment, frequency)
+- [ ] Add `WizardData.debts: LoanInput[]` type; corresponding `bulk-create` loop that writes `Loan` rows with the right `type`
+- [ ] `LINE_OF_CREDIT` handling: keep it in Accounts step as a CREDIT_CARD-variant for PR 3b simplicity — document the limitation in the Phase 12 blueprint for future PR
+- [ ] Unit test: bulk-create with one of each loan type
+- [ ] Update Review step to surface total non-property debt separately
+
+**Super routing (question A + 4):**
+- [ ] New `SuperStep` component (or sub-section of InvestmentsStep — finalised during PR 3b design pass)
+- [ ] Capture exactly three fields: `name`, `fundName`, `currentBalance`
+- [ ] Add `WizardData.super: SuperannuationAccountInput[]` type
+- [ ] `bulk-create` creates real `SuperannuationAccount` rows (not `InvestmentAccount(type=SUPERS)`)
+- [ ] `InvestmentsStep` drops the `SUPERS` option from `InvestmentAccountType` when rendered in the wizard context (schema keeps it for backwards compat with pre-PR 3b data)
+- [ ] Review step: net worth calc includes `SuperannuationAccount.currentBalance`
+- [ ] Data migration: flag a follow-up to migrate existing `InvestmentAccount(type=SUPERS)` rows to `SuperannuationAccount` — but NOT in this PR (would be a standalone data-migration PR after PR 3b ships)
+
+**Basiq shortcut (question B + 5):**
+- [ ] Add "Connect your bank (recommended)" primary CTA card at the top of `AccountsStep`
+- [ ] Wire button to `POST /api/basiq/connect` → redirect to returned `consentUrl`
+- [ ] Before redirect: save the current wizard draft so nothing is lost
+- [ ] New `/app/onboarding/basiq-callback/page.tsx` — polls `GET /api/basiq/connections` until `ACTIVE`, then redirects back to `/app/onboarding?step=accounts&basiq=connected`
+- [ ] On return: wizard reads imported accounts from the DB (they're now in `Account` with `balanceSource='BASIQ'`) and shows them as pre-filled, read-only-except-for-rename rows
+- [ ] Add `AccountInput.isBasiqImported: boolean`; `bulk-create` skips imported accounts in its write loop
+- [ ] Dark mode + reduced-motion for the new card
+- [ ] Loading/error states for the Basiq round-trip
+- [ ] CDR compliance note in the changelog (draft never holds CDR data, only DB row IDs)
+
+**Lifestyle fields (question D):**
+- [ ] Add a 4th "Your lifestyle" section to `HouseholdStep` with:
+  - [ ] Segmented control for `lifestylePreference` (FRUGAL / MODERATE / COMFORTABLE) — default MODERATE
+  - [ ] Segmented control for `diningOutFrequency` (NEVER / RARELY / SOMETIMES / OFTEN) — default SOMETIMES
+  - [ ] Optional free-text input for `hobbiesWithCosts`
+  - [ ] Helper copy: "We use this to personalize your budget estimates."
+- [ ] Add `WizardData.lifestyle: { lifestylePreference, diningOutFrequency, hobbiesWithCosts }`
+- [ ] `bulk-create`: extend the existing `HouseholdProfile` upsert to include the new fields (they already exist on the schema model)
+
+**Cross-cutting:**
+- [ ] `WizardData` type extensions in `components/onboarding/wizard/types.ts`
+- [ ] `bulk-create/route.ts` request type extensions
+- [ ] Full Prisma transaction still atomic (one big `$transaction` as today)
+- [ ] Any net-worth / cashflow calcs in the Review step must include the new entities
+- [ ] CLAUDE.md §12.3 compliance: no business logic in the API route — all calculations go through canonical services
+- [ ] Accessibility audit on every new UI element
+- [ ] Dark mode on every new UI element
+- [ ] `prefers-reduced-motion` audit
+
+**Documentation:**
+- [ ] Update `PHASE_12_ONBOARDING_TOUR.md` with a new §16 (PR 3b structural additions)
+- [ ] New changelog: `CHANGELOG_2026_04_12_WIZARD_STRUCTURAL_ADDITIONS.md`
+- [ ] Update this plan's §6.3 checklist continuously
+- [ ] Update `CONSOLIDATED_CHANGELOG.md`
+- [ ] Update `MASTER_BLUEPRINT.md` version
+- [ ] Add the LINE_OF_CREDIT limitation + planned data migration as follow-up items in Phase 12
+
+**Commit + push:**
+- [ ] Single atomic commit for PR 3b on `claude/review-monitrax-docs-ty15A` after PR 3a lands
 
 ---
 
 ## 7. Architectural Decisions Log
 
 Captured as decisions are made during implementation. Most-recent first.
+
+### 2026-04-12 (PM) — All PR 3b pending questions answered
+
+Five questions (A-E from the original §4) were suggested by Claude and
+accepted by Reza without modification:
+
+- **A (super fields)**: Minimum viable — `name`, `fundName`,
+  `currentBalance`. Deferring all deeper fields (memberNumber, tax
+  components, contributions, caps, investment option) to a future
+  Settings > Retirement page. The Phase 20 Tax Intelligence Engine reads
+  those deeper fields but runs post-onboarding, so blocking signup on
+  them is not needed.
+- **B (Basiq UX)**: Parallel path. Manual entry remains available at all
+  times; Basiq is the prominent "recommended" primary CTA. After the
+  Basiq callback, imported accounts appear as pre-filled cards the user
+  can rename or flag as offset before proceeding. `bulk-create` skips
+  imported accounts (already in DB from Basiq sync) via a new
+  `AccountInput.isBasiqImported` flag. Draft never holds CDR data — only
+  DB row IDs as pointers (CLAUDE.md §13 compliant).
+- **C (non-property loans)**: Dedicated "Debts" step shown conditionally
+  based on a Welcome checkbox. Captures CAR, STUDENT, PERSONAL, BUSINESS.
+  `CREDIT_CARD` stays in AccountsStep (unchanged). `LINE_OF_CREDIT`
+  modelled as a CREDIT_CARD variant for PR 3b simplicity — the full
+  `Loan(type=LINE_OF_CREDIT)` + `linkedAccountId` path is deferred.
+- **D (lifestyle fields)**: Added as a 4th "Your lifestyle" section
+  inside the existing Household step — not a separate micro-step. Three
+  fields: segmented control for `lifestylePreference`, segmented control
+  for `diningOutFrequency`, optional free-text `hobbiesWithCosts`. Fits
+  the Household step's "who's in your household and how do you live"
+  mental model and avoids step inflation.
+- **E (`/app/onboarding` route)**: PR 3a, not PR 3b. New `mode: 'page'
+  | 'modal'` prop on `WizardContainer`. `'modal'` preserves the existing
+  dashboard modal behaviour exactly as it is. `'page'` uses a full-page
+  layout. Unauth users redirect to `/signin?next=/onboarding`.
 
 ### 2026-04-12 — Initial plan written
 
@@ -301,6 +394,18 @@ Captured as decisions are made during implementation. Most-recent first.
 
 > Dated entries, most recent first. Update after every meaningful batch of
 > work (not every individual edit).
+
+### 2026-04-12 (PM) — PR 3b questions answered; plan doc updated
+
+All five pending questions resolved. §3 Decisions Locked In updated with
+the five new rows (A-E). §4 Pending Questions emptied. §6.3 PR 3b task
+checklist expanded from 9 stubs to ~45 concrete items covering the
+renter path, non-property loans, super routing, Basiq shortcut, and
+lifestyle fields. §7 decisions log updated with the detailed rationale
+for each answer.
+
+**Next up:** starting PR 3a implementation — primitives + CSS tokens +
+new `/app/onboarding` route + shell redesign in the first batch.
 
 ### 2026-04-12 — Plan document created
 
