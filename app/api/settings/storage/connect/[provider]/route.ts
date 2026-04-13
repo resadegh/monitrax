@@ -4,7 +4,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { withPermission } from '@/lib/auth/guards';
+
+type RouteContext = { params: Promise<{ provider: string }> };
 
 // OAuth configuration (redirect URIs are built dynamically from request)
 const OAUTH_CONFIG = {
@@ -50,17 +52,11 @@ function getBaseUrl(request: Request): string {
   return `${url.protocol}//${url.host}`;
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ provider: string }> }
-) {
+export const POST = withPermission<RouteContext>('settings.write', async (request, auth, context) => {
   try {
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
-    const { provider } = await params;
+    const { provider } = await context!.params;
     const providerConfig = OAUTH_CONFIG[provider as keyof typeof OAUTH_CONFIG];
 
     if (!providerConfig) {
@@ -83,7 +79,7 @@ export async function POST(
     // Generate state parameter for CSRF protection
     const state = Buffer.from(
       JSON.stringify({
-        userId: user.id,
+        userId,
         provider,
         timestamp: Date.now(),
       })
@@ -125,7 +121,7 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});
 
 function buildGoogleAuthUrl(
   config: typeof OAUTH_CONFIG.google_drive,

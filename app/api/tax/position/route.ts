@@ -4,8 +4,8 @@
  * POST /api/tax/position/compare - Compare two scenarios
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import {
   calculateTaxPosition,
@@ -69,17 +69,9 @@ interface SuperTotalsAccumulator {
 /**
  * GET /api/tax/position - Get user's comprehensive tax position
  */
-export async function GET(request: NextRequest) {
+export const GET = withPermission('report.read', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const { searchParams } = new URL(request.url);
     const requestedFY = searchParams.get('financialYear');
@@ -90,7 +82,7 @@ export async function GET(request: NextRequest) {
     const [incomes, expenses, depreciations, superAccounts] = await Promise.all([
       // Get all incomes
       prisma.income.findMany({
-        where: { userId: user.userId },
+        where: { userId },
         include: {
           property: { select: { id: true, name: true } },
           investmentAccount: { select: { id: true, name: true } },
@@ -98,7 +90,7 @@ export async function GET(request: NextRequest) {
       }),
       // Get all expenses
       prisma.expense.findMany({
-        where: { userId: user.userId },
+        where: { userId },
         include: {
           property: { select: { id: true, name: true } },
           loan: { select: { id: true, name: true } },
@@ -107,7 +99,7 @@ export async function GET(request: NextRequest) {
       // Get depreciation schedules
       prisma.depreciationSchedule.findMany({
         where: {
-          property: { userId: user.userId },
+          property: { userId },
         },
         include: {
           property: { select: { id: true, name: true } },
@@ -115,7 +107,7 @@ export async function GET(request: NextRequest) {
       }),
       // Get super accounts for contribution totals
       prisma.superannuationAccount.findMany({
-        where: { userId: user.userId },
+        where: { userId },
         select: {
           concessionalYTD: true,
           nonConcessionalYTD: true,
@@ -250,23 +242,13 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/tax/position - Calculate quick tax position for a scenario
  */
-export async function POST(request: NextRequest) {
+export const POST = withPermission('report.read', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const body = await request.json();
     const {
       taxableIncome,
@@ -313,4 +295,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

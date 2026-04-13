@@ -18,6 +18,7 @@ import {
   Key,
   ArrowLeft,
   X,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,12 @@ const settingsNavItems: SettingsNavItem[] = [
     href: '/dashboard/settings/security',
     icon: Shield,
     description: 'Password and authentication',
+  },
+  {
+    name: 'Privacy & CDR',
+    href: '/dashboard/settings/privacy',
+    icon: Lock,
+    description: 'Consent management and data rights',
   },
   {
     name: 'Cloud Storage',

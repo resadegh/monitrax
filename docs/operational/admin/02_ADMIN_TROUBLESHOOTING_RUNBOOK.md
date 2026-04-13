@@ -1,0 +1,315 @@
+# Admin Portal Troubleshooting Runbook
+
+**Version:** 1.0
+**Created:** 2026-04-12
+**Audience:** Admin Portal support team
+**Purpose:** Fast reference for common issues and resolutions
+
+---
+
+## Quick Navigation
+
+- [Authentication Issues](#authentication-issues)
+- [Admin Portal UI Issues](#admin-portal-ui-issues)
+- [GCP Integration Issues](#gcp-integration-issues)
+- [CDR Compliance Issues](#cdr-compliance-issues)
+- [Performance Issues](#performance-issues)
+- [Emergency Procedures](#emergency-procedures)
+
+---
+
+## Authentication Issues
+
+### Issue: "No authentication token provided" on admin portal pages
+
+**Symptoms**: All admin pages show error "No authentication token provided"
+
+**Root cause**: Firebase token not being sent with API requests, or AdminLayoutClient not installing fetch interceptor.
+
+**Resolution**:
+1. Verify user is logged in (check sidebar footer for user avatar)
+2. Hard refresh browser (Cmd+Shift+R / Ctrl+Shift+R)
+3. Check browser console for Firebase Auth errors
+4. If persists: log out and log back in
+
+**Root cause check (developer)**:
+- Check `app/admin/AdminLayoutClient.tsx` — verify global fetch interceptor is installed in useState initializer
+- Verify `getFirebaseAuth().currentUser` is not null at time of fetch
+
+### Issue: Login fails with "Invalid email or password"
+
+**Checks**:
+1. Verify Firebase Auth user exists (Cloud Shell: `node -e "admin.auth().getUserByEmail(...)..."`)
+2. Verify the user has `monitraxAdmin: true` custom claim set
+3. Alternatively: verify an `AdminUser` row exists with matching email (fallback path)
+
+**Resolution**:
+- If user exists but password is unknown: send password reset via Firebase Auth
+- If custom claims missing: run the Cloud Shell claim-setting command (see `04_ADMIN_ONBOARDING_TRAINING.md`)
+- If `AdminUser` row missing: ask SUPER_ADMIN to add via admin portal Settings
+
+### Issue: Login fails with "Access denied — admin privileges required"
+
+**Root cause**: User authenticated successfully but doesn't have admin access.
+
+**Resolution**:
+1. Verify custom claim: `node -e "admin.auth().getUser('<uid>').then(u => console.log(u.customClaims))"`
+2. Expected: `{ monitraxAdmin: true, adminRole: 'SUPER_ADMIN' | 'BILLING_ADMIN' | 'SUPPORT_ADMIN' | 'VIEWER' }`
+3. If missing, set via Cloud Shell (Firebase Admin SDK)
+4. User must log out and log back in to refresh token
+
+### Issue: MFA challenge not appearing
+
+**Checks**:
+1. User has MFA enrolled: check Firebase Console → Authentication → Users
+2. User's org has `mfaEnforced: true` OR user role is SUPER_ADMIN/BILLING_ADMIN
+
+**Resolution**:
+- If user hasn't enrolled: direct them to `/dashboard/settings/security-mfa` on the main app
+- MFA enrollment is handled by Firebase Auth and shared across main app + admin portal
+
+### Issue: Logout 404 error
+
+**Root cause**: Old deployment with broken `<Link href="/admin/logout">` logout.
+
+**Resolution**:
+- Ensure latest deployment includes the fix (sidebar uses `signOut()` + redirect)
+- Hard refresh browser
+
+---
+
+## Admin Portal UI Issues
+
+### Issue: Page shows "Failed to execute 'json' on 'Response': Unexpected end of JSON input"
+
+**Root cause**: API route returned empty body (usually a serverless function crash on Vercel).
+
+**Resolution**:
+1. Check Vercel function logs for the specific endpoint
+2. Use diagnostic endpoint: `GET /api/admin/gcp/healthcheck` — verifies env var config without loading GCP SDKs
+3. Common causes:
+   - Missing env var (GCS_SERVICE_ACCOUNT_KEY not set)
+   - GCP SDK package crashed during init
+   - Route handler threw uncaught error
+
+**Fixed in PR #476**: All GCP API routes now use bulletproof try/catch and return structured JSON even on failure. If you see this error, it means the old deployment is still live.
+
+### Issue: Dashboard shows "Failed to fetch dashboard data"
+
+**Root cause**: Either fetch interceptor not working OR dashboard API crashed.
+
+**Resolution**:
+1. Open browser DevTools → Network tab
+2. Find the failing `/api/admin/dashboard` request
+3. Check response body for actual error
+4. If 401: auth token not being sent (see Auth section above)
+5. If 500: check Vercel function logs
+
+### Issue: New sidebar sections not appearing
+
+**Root cause**: Cached old deployment.
+
+**Resolution**:
+1. Hard refresh (Cmd+Shift+R / Ctrl+Shift+R)
+2. Clear browser cache for monitrax.com.au
+3. Verify latest deployment on Vercel
+
+### Issue: Logout button doesn't work / wrong page
+
+**Resolution**:
+- Click the logout icon in the sidebar footer (bottom-right of user card)
+- It calls Firebase `signOut()` and redirects to `/admin/login`
+- If stuck: manually navigate to `/admin/login`
+
+---
+
+## GCP Integration Issues
+
+### Issue: Uptime / Errors / Scheduler / Security Findings pages show empty or error
+
+**Diagnostic**: Visit `/api/admin/gcp/healthcheck` (requires admin auth)
+
+Expected response:
+```json
+{
+  "success": true,
+  "data": {
+    "projectId": "monitrax-479700",
+    "hasServiceAccountKey": true,
+    "serviceAccountEmail": "monitrax-backend@monitrax-479700.iam.gserviceaccount.com",
+    "hasOrgId": true,
+    "orgId": "451282880218",
+    "hasCronSecret": true
+  }
+}
+```
+
+**If fields are missing**:
+- `hasServiceAccountKey: false` → Set `GCS_SERVICE_ACCOUNT_KEY` env var on Vercel
+- `projectId: null` → Set `GCP_PROJECT_ID` or `GCS_PROJECT_ID` env var
+- `hasOrgId: false` → Set `GCP_ORGANIZATION_ID` env var (for SCC)
+
+### Issue: "Cloud Monitoring SDK failed to load"
+
+**Root cause**: `@google-cloud/monitoring` gRPC runtime failure on Vercel.
+
+**Resolution (short-term)**:
+- Click "Open in GCP Console" to view data directly in GCP
+- Fall back to GCP Console for Cloud Monitoring operations
+
+**Resolution (long-term, developer)**:
+- Replace gRPC client with REST API calls via fetch()
+- See `lib/gcp/cloudMonitoring.ts` for migration target
+
+### Issue: Cloud Scheduler shows no jobs
+
+**Checks**:
+1. Verify `monitrax-backend` service account has `Cloud Scheduler Admin` role
+2. Verify `GCP_SCHEDULER_LOCATION` env var (defaults to `australia-southeast1`)
+3. Check GCP Console → Cloud Scheduler → should see `monitrax-cdr-lifecycle` job
+
+**Resolution**:
+- Add IAM role in GCP Console (see `03_GCP_SERVICE_OPERATIONS.md`)
+- Verify the job exists in the correct region
+
+### Issue: Security Findings shows "SCC requires GCP_ORGANIZATION_ID"
+
+**Root cause**: Missing org ID env var or `monitrax-backend` lacks org-level SCC permission.
+
+**Resolution**:
+1. Add `GCP_ORGANIZATION_ID = 451282880218` to Vercel env vars
+2. At organization level (not project), grant `monitrax-backend@monitrax-479700.iam.gserviceaccount.com` the `Security Center Findings Viewer` role
+3. Redeploy
+
+---
+
+## CDR Compliance Issues
+
+### Issue: Consent expiry job not running
+
+**Symptoms**: Expired consents not being cleaned up.
+
+**Checks**:
+1. Cloud Scheduler job exists: GCP Console → Cloud Scheduler → `monitrax-cdr-lifecycle`
+2. Job is ENABLED (not PAUSED)
+3. Last run succeeded (check **Last Attempt Time**)
+4. `CRON_SECRET` env var is set on Vercel
+
+**Resolution**:
+- If job not running: via admin portal **Cloud Scheduler** page → click "Run Now" to test
+- If returning 401: verify `CRON_SECRET` matches the one configured in Cloud Scheduler Authorization header
+- If returning 500: check Vercel function logs for `/api/cdr/lifecycle`
+
+### Issue: User reports their CDR data wasn't deleted after revoking consent
+
+**Investigation**:
+1. **Audit Logs** → filter by userId + `action=CDR_DATA_DELETED`
+2. Check if deletion actually ran
+3. Check **CDR Compliance** dashboard → user's Basiq connections status
+4. If still showing active: run manual deletion via admin API:
+   ```
+   POST /api/admin/cdr/consent
+   Body: { action: 'delete_user_cdr_data', userId: '<id>' }
+   ```
+5. Document in ticket + audit log
+
+### Issue: CDR complaint needs OAIC escalation
+
+**Procedure**:
+1. Complaint detail page
+2. Click **Escalate** action
+3. Enter OAIC reference ID (obtain from OAIC)
+4. Save
+5. Complaint status → `ESCALATED`
+6. Also document in `docs/policy/CDR_COMPLAINTS_POLICY.md` records
+
+---
+
+## Performance Issues
+
+### Issue: Admin portal page loads slowly
+
+**Checks**:
+1. Check GCP Cloud Monitoring uptime check latency
+2. Check browser Network tab for slow API calls
+3. Common culprits: large DB queries (audit logs, user lists)
+
+**Resolution**:
+- Use pagination (limit=50 or less)
+- Use date range filters on audit logs
+- For audit logs > 90 days old, use Cloud Logging API directly instead of PostgreSQL
+
+### Issue: API 504 Gateway Timeout
+
+**Root cause**: Vercel serverless function exceeded 10s timeout.
+
+**Resolution**:
+- Add pagination/date filters to reduce query size
+- Split large operations into smaller batches
+- For reporting queries: consider moving to a background job or admin-only endpoint
+
+---
+
+## Emergency Procedures
+
+### Admin Portal Fully Down
+
+**Escalation path**:
+1. Check Vercel deployment status (dashboard.vercel.com)
+2. Check GCP Cloud SQL status (console.cloud.google.com/sql)
+3. Check Firebase Auth status (firebase.google.com/status)
+4. Rollback latest Vercel deployment if deployment-related
+
+### Data Breach Detected
+
+**Immediate actions** (per `docs/policy/INCIDENT_RESPONSE_PLAN.md`):
+1. Isolate affected systems (disable affected user accounts)
+2. Preserve logs (Cloud Logging will retain automatically)
+3. Notify Director immediately
+4. Start incident log with timestamp
+5. Follow full incident response procedure
+
+### Suspected Unauthorized Admin Access
+
+1. **Immediate**: Revoke all admin sessions via Firebase Admin SDK
+2. **Immediate**: Rotate all admin passwords
+3. **Immediate**: Check audit logs for the suspicious admin ID
+4. Notify Director
+5. Review Cloud Logging for authentication events
+
+**Commands** (Cloud Shell):
+```bash
+# Revoke all tokens for a user
+node -e "admin.auth().revokeRefreshTokens('<uid>').then(() => console.log('Done'))"
+
+# Disable account
+node -e "admin.auth().updateUser('<uid>', { disabled: true }).then(() => console.log('Done'))"
+```
+
+### Cloud Scheduler Job Failed (CDR Lifecycle)
+
+**Impact**: Expired consents may not be cleaned up on schedule — potential CDR compliance issue.
+
+**Resolution**:
+1. Admin Portal → **Cloud Scheduler** → click **Run Now** to trigger manually
+2. Check Vercel function logs for `/api/cdr/lifecycle`
+3. If `CRON_SECRET` mismatch: regenerate secret on Vercel + update Cloud Scheduler header
+4. If persistent failure: escalate to Director
+
+---
+
+## Contact List
+
+| Issue Type | Contact |
+|-----------|---------|
+| Portal access issues | Director (admin@monitrax.com.au) |
+| Billing disputes | Director |
+| CDR compliance emergencies | Director |
+| Security incidents | Director + follow INCIDENT_RESPONSE_PLAN.md |
+| GCP infrastructure | GCP Console Support |
+| Basiq integration | support@basiq.io |
+
+---
+
+*Last Updated: 2026-04-12*
+*Review Schedule: Quarterly or after any major incident*

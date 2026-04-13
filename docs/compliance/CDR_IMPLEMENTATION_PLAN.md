@@ -26,8 +26,8 @@
 | **J** | Evidence Collection & Submission | 🔶 **IN PROGRESS** | — | Step 6: Evidence guide created. Screenshots + 2 blockers (pen test, insurance) remain. |
 | **K** | Spreadsheet Completion & Submission | 🔶 **IN PROGRESS** | — | Spreadsheet answers documented. Fill + submit pending user action. |
 | **L** | CDR Code-Level Remediation | 🔶 **IN PROGRESS** | — | 20/46 gaps fixed (2026-04-11). Schema, auth, lifecycle, security hardening done. UI + route migration remaining. |
-| **M** | Admin Portal — GCP-First Migration | 🔶 **IN PROGRESS** | [#470](https://github.com/resadegh/monitrax/pull/470), [#471](https://github.com/resadegh/monitrax/pull/471), [#472](https://github.com/resadegh/monitrax/pull/472), [#473](https://github.com/resadegh/monitrax/pull/473) | M.1 DONE, M.2.1/M.2.3 DONE, M.4 DONE. GCP config done (Logging, SCC, Scheduler, Monitoring). M.2.2/M.2.4/M.2.5/M.3/M.5 pending. |
-| **N** | Consumer Consent UI & Route Migration | ⬜ Pending | — | Build consumer consent management UI (G13/G14), migrate ~26 legacy auth routes (G37-G39), Basiq webhooks (G16). |
+| **M** | Admin Portal — GCP-First Migration | ✅ **COMPLETE** | [#470](https://github.com/resadegh/monitrax/pull/470)-[#477](https://github.com/resadegh/monitrax/pull/477) | M.1-M.5 all DONE (2026-04-12). Admin auth on Firebase, 5 GCP API integrations, modernized UI, 6 operational docs. |
+| **N** | Consumer Consent UI & Route Migration | 🔶 **IN PROGRESS** | — | N.1 Consumer consent UI DONE. N.3 Basiq webhook DONE. N.4 small fixes DONE. N.2 legacy route migration in progress. |
 
 **Overall: 7 of 14 phases complete. 3 in progress (evidence, spreadsheet, code remediation). 4 pending (GCP config, API cleanup, admin portal migration, consent UI).**
 
@@ -974,12 +974,12 @@ Created AFTER Phase M implementation is complete — to train admin portal suppo
 
 | Step | Action | Effort | Status |
 |------|--------|--------|--------|
-| M.5.1 | Create Admin Portal Operations Guide (`docs/operational/admin/01_ADMIN_PORTAL_OPERATIONS.md`) | 0.5 day | ⬜ |
-| M.5.2 | Create Admin Troubleshooting Runbook (`docs/operational/admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md`) | 0.5 day | ⬜ |
-| M.5.3 | Create GCP Service Operations for Admins (`docs/operational/admin/03_GCP_SERVICE_OPERATIONS.md`) | 0.5 day | ⬜ |
-| M.5.4 | Create Admin Onboarding & Training Guide (`docs/operational/admin/04_ADMIN_ONBOARDING_TRAINING.md`) | 0.5 day | ⬜ |
-| M.5.5 | Create CDR Compliance Admin Procedures (`docs/operational/admin/05_CDR_COMPLIANCE_PROCEDURES.md`) | 0.5 day | ⬜ |
-| M.5.6 | Create Admin Portal BAU Playbook (`docs/bau-framework/ADMIN_PORTAL_BAU_PLAYBOOK.md`) | 0.5 day | ⬜ |
+| M.5.1 | Create Admin Portal Operations Guide (`docs/operational/admin/01_ADMIN_PORTAL_OPERATIONS.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.2 | Create Admin Troubleshooting Runbook (`docs/operational/admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.3 | Create GCP Service Operations for Admins (`docs/operational/admin/03_GCP_SERVICE_OPERATIONS.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.4 | Create Admin Onboarding & Training Guide (`docs/operational/admin/04_ADMIN_ONBOARDING_TRAINING.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.5 | Create CDR Compliance Admin Procedures (`docs/operational/admin/05_CDR_COMPLIANCE_PROCEDURES.md`) | 0.5 day | ✅ DONE (2026-04-12) |
+| M.5.6 | Create Admin Portal BAU Playbook (`docs/bau-framework/ADMIN_PORTAL_BAU_PLAYBOOK.md`) | 0.5 day | ✅ DONE (2026-04-12) |
 
 ### GCP IAM Role Mapping for Admin Portal
 
@@ -1003,35 +1003,35 @@ Created AFTER Phase M implementation is complete — to train admin portal suppo
 
 | Step | Gap | Action | Effort | Status |
 |------|-----|--------|--------|--------|
-| N.1.1 | G13 | Build `/dashboard/settings/privacy` page — view active consents, connected banks, data scope | 2 days | ⬜ |
-| N.1.2 | G14 | Add CDR data dashboard to privacy page — what data is held, when collected, download/delete | 2 days | ⬜ |
-| N.1.3 | G36 | Replace portal consent demo data with real Basiq consent flow | 2 days | ⬜ |
-| N.1.4 | — | Connect consent UI to `/api/cdr/consent` endpoints + `/api/cdr/lifecycle` | 1 day | ⬜ |
+| N.1.1 | G13 | Build `/dashboard/settings/privacy` page — view active consents, connected banks, data scope | 2 days | ✅ DONE (2026-04-12) |
+| N.1.2 | G14 | Add CDR data dashboard to privacy page — what data is held, when collected, download/delete | 2 days | ✅ DONE (2026-04-12) |
+| N.1.3 | G36 | Replace portal consent demo data with real Basiq consent flow | 2 days | ⬜ (portal is separate feature) |
+| N.1.4 | — | Connect consent UI to `/api/cdr/consent` endpoints + `/api/cdr/lifecycle` | 1 day | ✅ DONE (2026-04-12) |
 
 ### Sub-Phase N.2 — Legacy Auth Route Migration (G37-G39) (~3-5 dev days)
 
 | Step | Gap | Action | Effort | Status |
 |------|-----|--------|--------|--------|
-| N.2.1 | G37 | Migrate ~26 routes from `verifyToken`/`getCurrentUser` to `withPermission()` | 3 days | ⬜ |
-| N.2.2 | G38 | Add auth to 3 storage settings routes | 0.5 day | ⬜ |
-| N.2.3 | G39 | Migrate ~8 document routes from `getCurrentUser()` to `withPermission()` | 1 day | ⬜ |
-| N.2.4 | G41 | Verify all migrated routes now have audit logging (automatic with `withPermission()`) | 0.5 day | ⬜ |
+| N.2.1 | G37 | Migrate ~26 routes from `verifyToken`/`getCurrentUser` to `withPermission()` | 3 days | 🔶 IN PROGRESS (2026-04-12) |
+| N.2.2 | G38 | Add auth to 3 storage settings routes | 0.5 day | 🔶 IN PROGRESS |
+| N.2.3 | G39 | Migrate ~8 document routes from `getCurrentUser()` to `withPermission()` | 1 day | 🔶 IN PROGRESS |
+| N.2.4 | G41 | Verify all migrated routes now have audit logging (automatic with `withPermission()`) | 0.5 day | 🔶 IN PROGRESS |
 
 ### Sub-Phase N.3 — Basiq Webhook Integration (G16) (~2-3 dev days)
 
 | Step | Gap | Action | Effort | Status |
 |------|-----|--------|--------|--------|
-| N.3.1 | G16 | Create `/api/basiq/webhook` endpoint for Basiq Events (consent revocation, connection status) | 2 days | ⬜ |
-| N.3.2 | G16 | Subscribe to Basiq Events via Basiq dashboard | 1 hour | ⬜ (user action) |
+| N.3.1 | G16 | Create `/api/basiq/webhook` endpoint for Basiq Events (consent revocation, connection status) | 2 days | ✅ DONE (2026-04-12) |
+| N.3.2 | G16 | Subscribe to Basiq Events via Basiq dashboard | 1 hour | ⬜ (user action — post-deploy) |
 
 ### Sub-Phase N.4 — Remaining Small Fixes (~2 dev days)
 
 | Step | Gap | Action | Effort | Status |
 |------|-----|--------|--------|--------|
-| N.4.1 | G46 | Document data minimisation enforcement approach | 0.5 day | ⬜ |
-| N.4.2 | G32 | Portal auth token in localStorage → httpOnly cookies | 1 day | ⬜ |
-| N.4.3 | G33 | Optimize `withActiveConsent()` to reduce DB queries | 0.5 day | ⬜ |
-| N.4.4 | G34 | Add fromDate/toDate params to Basiq `getTransactions()` | 0.5 day | ⬜ |
+| N.4.1 | G46 | Document data minimisation enforcement approach | 0.5 day | ✅ DONE (2026-04-12) — `docs/policy/CDR_DATA_MINIMISATION.md` |
+| N.4.2 | G32 | Portal auth token in localStorage → httpOnly cookies | 1 day | ⬜ (portal-specific) |
+| N.4.3 | G33 | Optimize `withActiveConsent()` to reduce DB queries | 0.5 day | ✅ DONE (2026-04-12) — parallel queries, count() |
+| N.4.4 | G34 | Add fromDate/toDate params to Basiq `getTransactions()` | 0.5 day | ✅ DONE (2026-04-12) |
 
 ---
 

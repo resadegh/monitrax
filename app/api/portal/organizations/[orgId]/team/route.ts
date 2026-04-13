@@ -3,15 +3,19 @@
  *
  * GET /api/portal/organizations/[orgId]/team - List team members
  * POST /api/portal/organizations/[orgId]/team - Invite new member
+ *
+ * Phase N.2: Migrated to withPermission (G37/G38/G39)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
-import { isPortalAccessible, isPortalFeatureEnabled } from '@/lib/portal/featureFlags';
+import { withPermission } from '@/lib/auth/guards';
+import { isPortalAccessible } from '@/lib/portal/featureFlags';
 import { PermissionGuards } from '@/lib/portal/permissions';
 import { PORTAL_ERROR_CODES, PLAN_LIMITS, INVITATION_CONSTANTS } from '@/lib/portal/constants';
 import type { PortalUserRole, OrganizationPlan } from '@prisma/client';
+
+type RouteContext = { params: Promise<{ orgId: string }> };
 
 // Type for member with user data from the query
 interface MemberWithUser {
@@ -39,20 +43,6 @@ interface MappedMember {
   isActive: boolean;
   user: { id: string; email: string; name: string | null };
   stats: { assignedClients: number; pendingTasks: number; notesCreated: number };
-}
-
-// Get current user ID from auth token
-async function getCurrentUserId(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-
-  try {
-    const token = authHeader.substring(7);
-    const payload = await verifyToken(token);
-    return payload?.userId || null;
-  } catch {
-    return null;
-  }
 }
 
 async function getMemberContext(userId: string, orgId: string) {
@@ -86,11 +76,8 @@ async function getMemberContext(userId: string, orgId: string) {
  * GET /api/portal/organizations/[orgId]/team
  * List all team members
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
-  const { orgId } = await params;
+export const GET = withPermission<RouteContext>('org.read', async (request, auth, routeCtx) => {
+  const { orgId } = await routeCtx!.params;
 
   if (!isPortalAccessible()) {
     return NextResponse.json(
@@ -99,13 +86,7 @@ export async function GET(
     );
   }
 
-  const userId = await getCurrentUserId(request);
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'UNAUTHORIZED', message: 'Authentication required' },
-      { status: 401 }
-    );
-  }
+  const userId = auth.userId;
 
   try {
     const context = await getMemberContext(userId, orgId);
@@ -223,17 +204,14 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/portal/organizations/[orgId]/team
  * Invite a new team member
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
-  const { orgId } = await params;
+export const POST = withPermission<RouteContext>('org.update', async (request, auth, routeCtx) => {
+  const { orgId } = await routeCtx!.params;
 
   if (!isPortalAccessible()) {
     return NextResponse.json(
@@ -242,13 +220,7 @@ export async function POST(
     );
   }
 
-  const userId = await getCurrentUserId(request);
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'UNAUTHORIZED', message: 'Authentication required' },
-      { status: 401 }
-    );
-  }
+  const userId = auth.userId;
 
   try {
     const context = await getMemberContext(userId, orgId);
@@ -389,4 +361,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

@@ -11,9 +11,9 @@
  * 4. Create entity (this endpoint)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { withPermission } from '@/lib/auth/guards';
 import { SuggestedActionType } from '@/lib/documents/intelligence';
 
 // Types defined locally to avoid dependency on Prisma client regeneration timing
@@ -41,16 +41,9 @@ interface ConfirmRequest {
 // POST /api/documents/analyze/confirm
 // ============================================================================
 
-export async function POST(request: NextRequest) {
+export const POST = withPermission('report.export', async (request, auth) => {
   try {
-    // Authenticate user
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const userId = auth.userId;
 
     // Parse request body
     const body: ConfirmRequest = await request.json();
@@ -68,7 +61,7 @@ export async function POST(request: NextRequest) {
       where: {
         id: analysisId,
         document: {
-          userId: user.id,
+          userId,
         },
       },
       include: {
@@ -88,19 +81,19 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'CREATE_EXPENSE':
-        entity = await createExpenseFromAnalysis(user.id, analysis.document.id, data);
+        entity = await createExpenseFromAnalysis(userId, analysis.document.id, data);
         break;
 
       case 'CREATE_INCOME':
-        entity = await createIncomeFromAnalysis(user.id, analysis.document.id, data);
+        entity = await createIncomeFromAnalysis(userId, analysis.document.id, data);
         break;
 
       case 'CREATE_LOAN':
-        entity = await createLoanFromAnalysis(user.id, analysis.document.id, data);
+        entity = await createLoanFromAnalysis(userId, analysis.document.id, data);
         break;
 
       case 'UPDATE_LOAN':
-        entity = await updateLoanFromAnalysis(user.id, data);
+        entity = await updateLoanFromAnalysis(userId, data);
         break;
 
       case 'LINK_TO_PROPERTY':
@@ -158,7 +151,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // ============================================================================
 // Entity Creation Functions

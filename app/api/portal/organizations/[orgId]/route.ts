@@ -4,29 +4,19 @@
  * GET /api/portal/organizations/[orgId] - Get organization details
  * PATCH /api/portal/organizations/[orgId] - Update organization
  * DELETE /api/portal/organizations/[orgId] - Delete organization
+ *
+ * Phase N.2: Migrated to withPermission (G37/G38/G39)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { withPermission } from '@/lib/auth/guards';
 import { isPortalAccessible } from '@/lib/portal/featureFlags';
 import { PermissionGuards } from '@/lib/portal/permissions';
 import { PORTAL_ERROR_CODES } from '@/lib/portal/constants';
 import type { PortalUserRole, Prisma } from '@prisma/client';
 
-// Get current user ID from auth token
-async function getCurrentUserId(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-
-  try {
-    const token = authHeader.substring(7);
-    const payload = await verifyToken(token);
-    return payload?.userId || null;
-  } catch {
-    return null;
-  }
-}
+type RouteContext = { params: Promise<{ orgId: string }> };
 
 async function getMemberContext(userId: string, orgId: string) {
   const membership = await prisma.organizationMember.findFirst({
@@ -60,11 +50,8 @@ async function getMemberContext(userId: string, orgId: string) {
  * GET /api/portal/organizations/[orgId]
  * Get detailed organization information
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
-  const { orgId } = await params;
+export const GET = withPermission<RouteContext>('org.read', async (request, auth, routeCtx) => {
+  const { orgId } = await routeCtx!.params;
 
   if (!isPortalAccessible()) {
     return NextResponse.json(
@@ -73,13 +60,7 @@ export async function GET(
     );
   }
 
-  const userId = await getCurrentUserId(request);
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'UNAUTHORIZED', message: 'Authentication required' },
-      { status: 401 }
-    );
-  }
+  const userId = auth.userId;
 
   try {
     const context = await getMemberContext(userId, orgId);
@@ -145,17 +126,14 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PATCH /api/portal/organizations/[orgId]
  * Update organization details
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
-  const { orgId } = await params;
+export const PATCH = withPermission<RouteContext>('org.update', async (request, auth, routeCtx) => {
+  const { orgId } = await routeCtx!.params;
 
   if (!isPortalAccessible()) {
     return NextResponse.json(
@@ -164,13 +142,7 @@ export async function PATCH(
     );
   }
 
-  const userId = await getCurrentUserId(request);
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'UNAUTHORIZED', message: 'Authentication required' },
-      { status: 401 }
-    );
-  }
+  const userId = auth.userId;
 
   try {
     const context = await getMemberContext(userId, orgId);
@@ -270,17 +242,14 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE /api/portal/organizations/[orgId]
  * Delete organization (requires PORTAL_OWNER role)
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ orgId: string }> }
-) {
-  const { orgId } = await params;
+export const DELETE = withPermission<RouteContext>('org.update', async (request, auth, routeCtx) => {
+  const { orgId } = await routeCtx!.params;
 
   if (!isPortalAccessible()) {
     return NextResponse.json(
@@ -289,13 +258,7 @@ export async function DELETE(
     );
   }
 
-  const userId = await getCurrentUserId(request);
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'UNAUTHORIZED', message: 'Authentication required' },
-      { status: 401 }
-    );
-  }
+  const userId = auth.userId;
 
   try {
     const context = await getMemberContext(userId, orgId);
@@ -330,4 +293,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});

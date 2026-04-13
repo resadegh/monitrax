@@ -3,11 +3,13 @@
  *
  * GET /api/portal/organizations - List user's organizations with portal access
  * POST /api/portal/organizations - Create a new organization
+ *
+ * Phase N.2: Migrated to withPermission (G37/G38/G39)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { withPermission } from '@/lib/auth/guards';
 import { isPortalAccessible } from '@/lib/portal/featureFlags';
 import { PORTAL_ERROR_CODES } from '@/lib/portal/constants';
 import type { Prisma } from '@prisma/client';
@@ -37,25 +39,11 @@ interface MembershipWithOrg {
   organization: OrganizationData;
 }
 
-// Get current user ID from auth token
-async function getCurrentUserId(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-
-  try {
-    const token = authHeader.substring(7);
-    const payload = await verifyToken(token);
-    return payload?.userId || null;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * GET /api/portal/organizations
  * List all organizations the current user has portal access to
  */
-export async function GET(request: NextRequest) {
+export const GET = withPermission('org.read', async (request, auth) => {
   // Check if portal is enabled
   if (!isPortalAccessible()) {
     return NextResponse.json(
@@ -64,13 +52,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const userId = await getCurrentUserId(request);
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'UNAUTHORIZED', message: 'Authentication required' },
-      { status: 401 }
-    );
-  }
+  const userId = auth.userId;
 
   try {
     // Get all organizations where user is a member
@@ -134,13 +116,13 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/portal/organizations
  * Create a new organization with portal settings
  */
-export async function POST(request: NextRequest) {
+export const POST = withPermission('org.update', async (request, auth) => {
   // Check if portal is enabled
   if (!isPortalAccessible()) {
     return NextResponse.json(
@@ -149,13 +131,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const userId = await getCurrentUserId(request);
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'UNAUTHORIZED', message: 'Authentication required' },
-      { status: 401 }
-    );
-  }
+  const userId = auth.userId;
 
   try {
     const body = await request.json();
@@ -264,4 +240,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { withPermission } from '@/lib/auth/guards';
 import {
   getDocumentManagementEngine,
   createUploadContext,
@@ -22,13 +22,9 @@ import {
   MAX_FILE_SIZE,
 } from '@/lib/documents/types';
 
-export async function POST(request: Request) {
+export const POST = withPermission('report.export', async (request, auth) => {
   try {
-    // Authenticate user
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     // Parse form data
     const formData = await request.formData();
@@ -118,7 +114,7 @@ export async function POST(request: Request) {
       size: file.size,
       entities: cleanEntities,
       userInput: cleanUserInput,
-      userId: user.id,
+      userId,
       timestamp: new Date(),
     });
 
@@ -197,17 +193,14 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * Preview what the engine would do for an upload (for debugging)
  */
-export async function OPTIONS(request: Request) {
+export const OPTIONS = withPermission('report.export', async (request, auth) => {
   try {
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -232,7 +225,7 @@ export async function OPTIONS(request: Request) {
       size: file.size,
       entities: {},
       userInput: {},
-      userId: user.id,
+      userId,
       timestamp: new Date(),
     });
 
@@ -249,4 +242,4 @@ export async function OPTIONS(request: Request) {
       { status: 500 }
     );
   }
-}
+});

@@ -11,8 +11,8 @@
  * 4. Return field mappings with confidence scores
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { getVisionService } from '@/lib/documents/intelligence/services/visionService';
 import { uploadDocument } from '@/lib/documents';
 import { DocumentCategory, SUPPORTED_MIME_TYPES, MAX_FILE_SIZE } from '@/lib/documents/types';
@@ -275,16 +275,9 @@ function extractFieldsWithPatterns(
 // API Handler
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeForFormResponse>> {
+export const POST = withPermission('report.export', async (request, auth) => {
   try {
-    // Authenticate user
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const userId = auth.userId;
 
     // Parse form data
     const formData = await request.formData();
@@ -403,7 +396,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
         property: DocumentCategory.VALUATION,
       };
 
-      const uploadResult = await uploadDocument(user.id, {
+      const uploadResult = await uploadDocument(userId, {
         file,
         filename: file.name,
         mimeType: file.type,
@@ -504,4 +497,4 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeFo
       { status: 500 }
     );
   }
-}
+});

@@ -4,8 +4,8 @@
  * POST /api/tax/calculate - Calculate tax for a scenario
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { TaxEngine } from '@/lib/tax-engine';
 import { getCurrentFinancialYear } from '@/lib/tax-engine/types';
@@ -13,17 +13,9 @@ import { getCurrentFinancialYear } from '@/lib/tax-engine/types';
 /**
  * GET /api/tax - Get user's current tax position
  */
-export async function GET(request: NextRequest) {
+export const GET = withPermission('report.read', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const userId = auth.userId;
 
     const { searchParams } = new URL(request.url);
     const requestedFY = searchParams.get('financialYear');
@@ -34,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch all income for the user
     const incomes = await prisma.income.findMany({
-      where: { userId: user.userId },
+      where: { userId },
       include: {
         property: true,
         investmentAccount: true,
@@ -43,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch all expenses for the user
     const expenses = await prisma.expense.findMany({
-      where: { userId: user.userId },
+      where: { userId },
       include: {
         property: true,
       },
@@ -233,23 +225,13 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * POST /api/tax - Calculate tax for a hypothetical scenario
  */
-export async function POST(request: NextRequest) {
+export const POST = withPermission('report.export', async (request, auth) => {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await verifyToken(token);
-    if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const body = await request.json();
     const {
       taxableIncome,
@@ -315,7 +297,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // Helper function to get frequency multiplier for annualization
 function getFrequencyMultiplier(frequency: string): number {
