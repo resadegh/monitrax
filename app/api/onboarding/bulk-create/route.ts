@@ -607,7 +607,10 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         // fields (name, fundName, currentBalance). Everything else defers
         // to a future Settings > Retirement page.
         // =======================================================================
-        const createdSuper = [];
+        // Typed as the minimal structural shape we push — avoids the
+        // `implicitly has type any[]` strict-mode error if a future
+        // edit adds a read site to this array.
+        const createdSuper: Array<{ id: string }> = [];
         const superInputs = data.superAccounts ?? [];
         for (const s of superInputs) {
           if (!s.fundName?.trim() && s.currentBalance <= 0) {
@@ -638,7 +641,8 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         // We write the non-CAR debts immediately; CAR debts wait until
         // after the Assets loop so we can resolve linkedAssetId.
         const carDebtsToWriteAfterAssets: typeof debtInputs = [];
-        const createdDebts = [];
+        // Typed for the same reason as createdAssets / createdSuper above.
+        const createdDebts: Array<{ id: string }> = [];
         for (const debt of debtInputs) {
           if (debt.principal <= 0) continue;
           if (debt.type === 'CAR' && debt.linkedAssetId) {
@@ -669,7 +673,13 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         // =======================================================================
         // 5. Create Personal Assets
         // =======================================================================
-        const createdAssets = [];
+        // Fix (PR 3b.11): explicit element type. The CAR→Asset linking
+        // second pass (section 5a below) reads `createdAssets[i].id`,
+        // which means TypeScript strict mode can't fall back to the
+        // push-site inference. A structural `{ id: string }` type is
+        // enough — it's satisfied by the full Prisma `Asset` object we
+        // push, and covers the only field we read.
+        const createdAssets: Array<{ id: string }> = [];
         for (const asset of data.assets) {
           const now = new Date();
           if (!asset.purchaseDate) {
