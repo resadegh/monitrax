@@ -990,6 +990,7 @@ interface BulkCreateRequest {
 | v2.0 | 2025-12-09 | Enhanced Wizard v2.0 - comprehensive data entry with AI helper |
 | v2.1 | 2026-04-12 | PR 1 onboarding correctness sweep — see `docs/changelog/CHANGELOG_2026_04_12_ONBOARDING_CORRECTNESS.md`. Fixed frequency double-conversion bug in bulk-create, persisted household data (previously dropped), set `Account.balanceSource=MANUAL`, routed INVESTMENT income to `sourceType=INVESTMENT`, added `UserPreference.taxYear` column, captured purchase dates for Property/Asset, added `onboarding.complete` RBAC permission, added HEALTH/EDUCATION/RENT/GROCERIES/SUBSCRIPTION expense categories, added QUARTERLY frequency to Income/Expenses step, deleted the legacy v1 `InitialSetupWizard` + `steps/*` dead code. PR 2 (draft persistence) and PR 3 (UX redesign) to follow. |
 | v2.2 | 2026-04-12 | PR 2 draft persistence + welcome modal redesign + dead-code sweep — see `docs/changelog/CHANGELOG_2026_04_12_ONBOARDING_DRAFT_PERSISTENCE.md`. Added `UserPreference.onboardingDraft Json?` column for server-persisted draft. Wizard now autosaves every state change (1.2s debounce) via `/api/onboarding/state` and hydrates from the server draft on mount. New `OnboardingResumeBanner` component on `/dashboard` for users with an unfinished wizard — actions: Resume, Start over, Dismiss. `bulk-create` clears the draft on success. Strict "show once / never again" welcome modal contract: X / backdrop / "Not right now" closes session-only; only the "Don't show this again" checkbox persists a permanent dismiss; tour completion no longer suppresses welcome. Premium visual redesign of the welcome modal (rotating aurora hero, floating sparkles, glass-frosted logo mark, gradient CTA, 3-col value-prop grid, reduced-motion support, full keyboard a11y). Matching polish on the resume banner. Dead-code sweep: deleted `components/onboarding/shared/` directory (5 orphaned files, 329 LOC) and 14 unused imports across wizard steps. |
+| v2.3 | 2026-04-12 | PR 3a — full wizard visual overhaul + simplification — see `docs/changelog/CHANGELOG_2026_04_12_WIZARD_VISUAL_OVERHAUL.md`. New dedicated `/app/onboarding` route (deep-linkable, unauth → `/signin?next=/onboarding`, completed → `/dashboard` short-circuit). `WizardContainer` gains a `mode: 'page' \| 'modal'` prop — `'modal'` preserves the existing dashboard modal behaviour exactly as before; `'page'` renders the new full-page experience. New wizard primitives library in `components/onboarding/wizard/primitives/` — `WizardStepShell`, `WizardSection`, `WizardField` (+ currency / percent / select variants), `WizardSegmentedControl`, `WizardPrimaryButton`, `WizardGhostButton`, `WizardAddButton`, `WizardChip` — so every step composes the same building blocks and design language. `styles/wizard-animations.css` extended with ~330 LOC of PR 3a design tokens (buttons, fields, segmented, chips, page layout, reduced-motion). All 8 step files redesigned to compose the primitives. **Welcome step**: removed the 4-card explicit profile picker in favour of 2-question auto-inference (`ownsProperty` + `hasInvestments` → STARTER/HOMEOWNER/INVESTOR/MIXED). **Properties step**: simplified required fields to name + current value; purchase price/date demoted to "Advanced details" disclosure; live equity preview. **Review step**: hero net-worth card, 3-tile metrics row, "what you've added" grid, "what you'll unlock" panel, confetti preserved. No data model changes. See `docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md` §5 for the full PR 3a checklist and §10 for the resolved data-hygiene architectural discussion. |
 
 ---
 
@@ -1069,4 +1070,92 @@ serialized. Payloads above the cap return HTTP 413.
 
 ---
 
-*END OF PHASE 12 BLUEPRINT v2.2*
+## 16. PR 3a Visual Overhaul & Simplification (2026-04-12)
+
+> Full wizard redesign behind the same decisions as PR 2 (draft
+> persistence, strict "show once / never again"). Visual only — no new
+> data capture paths. Structural additions (renter path, non-property
+> loans, super routing, Basiq shortcut, lifestyle fields) ship in PR 3b.
+
+### 16.1 Scope summary
+
+| Area | Change |
+|---|---|
+| Route | New `/app/onboarding/page.tsx` (deep-linkable). `WizardContainer.mode: 'page' \| 'modal'` preserves backwards compatibility. |
+| Shell | Redesigned header, progress bar, footer — gradient rocket mark, gradient progress fill, primitives-based buttons. |
+| Primitives | New `components/onboarding/wizard/primitives/` library — `WizardStepShell`, `WizardSection`, `WizardField` (+ variants), `WizardSegmentedControl`, `WizardPrimaryButton`/`GhostButton`/`AddButton`, `WizardChip`. |
+| CSS tokens | `styles/wizard-animations.css` extended with PR 3a tokens (fields, buttons, segmented, chips, page layout, stagger helper, reduced-motion overrides). |
+| Steps | All 8 step files redesigned to compose the primitives — Welcome, Household, Properties, Accounts, Investments, Assets, Income/Expenses, Review. |
+| Simplification | Welcome: 2-question profile auto-inference replaces the 4-card picker. Properties: purchase price/date pushed behind "Advanced details". Every step: cleaner empty states, inline summaries, annualised previews. |
+
+### 16.2 Step-by-step redesign notes
+
+- **WelcomeStep** — gradient clip-text on "Monitrax"; two
+  `WizardSegmentedControl` questions ("Do you own any property?" +
+  "Do you have investments?") auto-derive `profileType`. Reverse-infers
+  on mount so hydrated drafts show existing answers highlighted.
+  Country / tax year only revealed after both answers are given. Time
+  chip (`~X min`) updates dynamically.
+- **HouseholdStep** — composes three `WizardSection` cards (members,
+  pets, vehicles). Vehicle count now uses `WizardSegmentedControl`
+  (one click instead of a select). Empty states use dashed borders.
+- **PropertiesStep** — expandable property cards with inline live
+  equity preview (`currentValue - loan.principal`). Purchase price
+  and purchase date moved behind an "Advanced details" disclosure so
+  the up-front form is just name + type + address + value. Loan
+  section collapses when "has mortgage" is unticked. 3-tile summary.
+- **AccountsStep** — quick-add tile grid for the empty state (4
+  type options with icon + description). Compact account cards with
+  type-specific accents. Offset→loan linking only surfaces when
+  type=OFFSET. 3-tile summary (cash / credit debt / net).
+- **InvestmentsStep** — expandable cards with live value in the
+  header. Inline 12-col holdings grid with ticker / units / avg
+  price / type / delete. 3-tile summary.
+- **AssetsStep** — expandable cards. Vehicle-specific fields appear
+  inline only for `type=VEHICLE`. Depreciation preview (`purchasePrice
+  - currentValue`) with colour-coded percentage chip. Running-cost
+  expenses reuse the 12-col inline grid pattern from PropertiesStep
+  for consistency.
+- **IncomeExpensesStep** — cleaner tab switcher with live counts and
+  rounded pills. Each row shows an inline "Annualised: $X / year"
+  preview. Salary rows keep their GROSS/NET segmented control. Bottom
+  cashflow summary shows annual income, expenses, surplus/deficit +
+  per-month equivalent.
+- **ReviewStep** — hero net-worth card with gradient background and
+  ambient blur glow. 3-tile metrics row (annual income / outgoings
+  incl. loan repayments / monthly cashflow). "What you've added"
+  section listing per-entity counts. "What you'll unlock" section
+  listing the capabilities about to be enabled. Confetti preserved
+  from PR 2.
+
+### 16.3 What did NOT change in PR 3a
+
+- No schema changes
+- No new API endpoints
+- No new data capture paths (no renter path, no non-property loans,
+  no super routing, no Basiq shortcut, no lifestyle fields — all PR 3b)
+- `DashboardLayout` still renders the wizard as a modal exactly as
+  before (the `mode='modal'` default is a no-op for existing callers)
+- `bulk-create/route.ts` unchanged since PR 1
+- Draft persistence unchanged since PR 2
+
+### 16.4 Design tokens (PR 3a)
+
+Codified so every step uses the same palette, spacing, radii, shadows,
+and motion. Full reference: `docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md` §5.3.
+
+- **Primary gradient**: `from-blue-500 via-indigo-500 to-violet-500`
+- **Success gradient**: `from-emerald-500 to-teal-500`
+- **Danger**: `from-rose-500 to-red-500`
+- **Typography**: `font-semibold tracking-tight` with
+  `letter-spacing: -0.02em` on h1/h2; gradient clip-text on accent
+  words only
+- **Radii**: page card `rounded-3xl`, section card `rounded-2xl`,
+  button `rounded-xl`, chip `rounded-full`
+- **Motion**: `cubic-bezier(0.22, 1, 0.36, 1)` entry; staggered
+  children at `calc(var(--index) * 0.08s)`; hover lift `translateY(-1px)`;
+  every keyframe respects `prefers-reduced-motion`
+
+---
+
+*END OF PHASE 12 BLUEPRINT v2.3*

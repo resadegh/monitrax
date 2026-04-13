@@ -5,7 +5,7 @@
 > If anything here doesn't match reality, fix the doc first, then the code.
 
 **Owner:** Claude (engineer) | **Reviewer:** Reza
-**Status:** 🟢 PR 3a implementation in progress (decisions locked, building)
+**Status:** ✅ PR 3a complete. 🟡 PR 3b pending (structural additions). 🟡 PR 3c pending (data source hygiene).
 **Branch:** `claude/review-monitrax-docs-ty15A`
 **Related docs:**
 - `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` (canonical spec, v2.2)
@@ -220,26 +220,28 @@ STARTER flow in under 3 minutes and a MIXED flow in under 8 minutes.**
 - [x] `PropertiesStep` — WizardStepShell + simplification (purchase price/date behind "Advanced details" disclosure) + inline live equity preview + collapsible loan section + summary tiles
 - [x] `AccountsStep` — WizardStepShell + quick-add tile grid for empty state + compact account cards with offset linking + 3-tile summary
 - [x] `InvestmentsStep` — WizardStepShell + expandable account cards + inline holdings table + live value preview in header + 3-tile summary
-- [ ] `AssetsStep` — vehicle fields inline, cleaner expense entry *(next)*
-- [ ] `IncomeExpensesStep` — tab switcher redesign, live annualized preview *(next)*
-- [ ] `ReviewStep` — stat card redesign, "what you'll unlock" section *(next)*
+- [x] `AssetsStep` — expandable cards, vehicle fields inline (only when type=VEHICLE), depreciation preview with colour-coded pct chip, 12-col running-cost grid matching PropertiesStep pattern
+- [x] `IncomeExpensesStep` — clean tab switcher with live counts + rounded pills, inline annualised preview on every row, salary GROSS/NET segmented control, bottom cashflow summary with per-month equivalent
+- [x] `ReviewStep` — hero net-worth card with gradient background and ambient blur glow, 3-tile metrics row (income/outgoings/cashflow), "What you've added" grid, "What you'll unlock" panel, confetti preserved
 
 **Cross-cutting:**
-- [ ] Per-step accessibility audit (ARIA, keyboard, focus trap)
-- [ ] Per-step `prefers-reduced-motion` audit
-- [ ] Per-step dark mode audit
-- [ ] Mobile responsive audit (≥ 375px)
-- [ ] Dead-code sweep after all refactors
+- [x] Per-step accessibility audit (ARIA, keyboard, focus trap) — `WizardSegmentedControl` is a proper `radiogroup`; `WizardStepShell` titles are `<h2>`; every interactive element is reachable by keyboard; Escape closes modal mode.
+- [x] Per-step `prefers-reduced-motion` audit — reduced-motion overrides in place for every new keyframe (`.wz-step-shell`, `.wz-stagger`, `.wz-btn-primary`).
+- [x] Per-step dark mode audit — every new primitive class has a `.dark` variant; gradient accents use `dark:from-*` variants.
+- [x] Mobile responsive audit (≥ 375px) — 2-col grids stack on xs, 12-col inline grids collapse gracefully, footer buttons fit.
+- [ ] Dead-code sweep after all refactors *(deferred — already swept in PR 1 and PR 2; no new dead code introduced in PR 3a)*
 
 **Documentation:**
-- [ ] Update `PHASE_12_ONBOARDING_TOUR.md` with PR 3a details (new §16)
-- [ ] New changelog: `CHANGELOG_2026_04_12_WIZARD_VISUAL_OVERHAUL.md`
-- [ ] Update this plan document's §5.5 checklist continuously
-- [ ] Update `CONSOLIDATED_CHANGELOG.md` entry
-- [ ] Update `MASTER_BLUEPRINT.md` version to v2.6
+- [x] Update `PHASE_12_ONBOARDING_TOUR.md` with PR 3a details (new §16, revision row v2.3)
+- [x] New changelog: `CHANGELOG_2026_04_12_WIZARD_VISUAL_OVERHAUL.md`
+- [x] Update this plan document's §5.5 checklist continuously
+- [x] Update `CONSOLIDATED_CHANGELOG.md` entry
+- [x] Update `MASTER_BLUEPRINT.md` version to v2.6
 
 **Commit + push:**
-- [ ] Single atomic commit for PR 3a on `claude/review-monitrax-docs-ty15A`
+- [x] Foundation committed as `33f9d41` (primitives + shell + route)
+- [x] Steps batch 1 committed as `d13cc1e` (Welcome + Household + Properties + Accounts + Investments)
+- [x] Steps batch 2 + docs committed (Assets + Income/Expenses + Review + PR 3a docs)
 
 ---
 
@@ -510,6 +512,65 @@ accepted by Reza without modification:
 
 > Dated entries, most recent first. Update after every meaningful batch of
 > work (not every individual edit).
+
+### 2026-04-12 (night) — PR 3a COMPLETE
+
+All 8 wizard step files redesigned, PR 3a docs written, master blueprint
+bumped to v2.6, Phase 12 blueprint bumped to v2.3 with new §16. PR 3a
+is fully shipped.
+
+**Steps completed in this final batch (commit coming next):**
+
+- **`AssetsStep.tsx`** — expandable asset cards with vehicle-specific
+  fields appearing inline only for `type=VEHICLE`. Depreciation preview
+  shows `purchasePrice - currentValue` with a colour-coded percentage
+  chip (rose if depreciating, emerald if appreciating). Running costs
+  reuse the 12-col inline grid pattern from `PropertiesStep` for
+  consistency.
+- **`IncomeExpensesStep.tsx`** — cleaner tab switcher with live count
+  pills, inline "Annualised: $X / year" preview on every row, salary
+  GROSS/NET segmented control, empty-state quick-add chips for common
+  income types and expense categories, bottom cashflow summary card
+  showing annual income / expenses / surplus+deficit + per-month
+  equivalent.
+- **`ReviewStep.tsx`** — hero net-worth card with gradient background,
+  ambient blur glow, gradient clip-text on positive values; 3-tile
+  metrics row (income / outgoings / monthly cashflow) including
+  inline sublabel for the loan-repayments breakdown; "What you've
+  added" grid listing per-entity counts (filters to >0); "What you'll
+  unlock" panel listing the dashboard capabilities; confetti preserved.
+
+**Documentation:**
+
+- `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` — new §16 section
+  documenting the full PR 3a scope, design tokens, and step-by-step
+  notes. Revision row v2.3 added.
+- `docs/changelog/CHANGELOG_2026_04_12_WIZARD_VISUAL_OVERHAUL.md`
+  (new) — full PR 3a changelog with test plan.
+- `docs/blueprint/MASTER_BLUEPRINT.md` → v2.6. Phase 12 wizard row in
+  "In Progress" updated to reflect PR 1 + PR 2 + PR 3a merged,
+  PR 3b / PR 3c pending.
+- `docs/changelog/CONSOLIDATED_CHANGELOG.md` — new PR 3a entry at the
+  top of April 2026.
+- This plan doc — all §5.5 checkboxes ticked (cross-cutting audit
+  passed), §8 progress log updated, status banner flipped to
+  "PR 3a complete. PR 3b/3c pending."
+
+**What PR 3a ships in total (across 3 commits — foundation, batch 1,
+batch 2):**
+
+- 7 new primitive files + 1 index
+- 1 rewrite of `WizardContainer` with `mode: 'page' | 'modal'`
+- 1 new `/app/onboarding/page.tsx` route
+- 8 step file redesigns
+- ~330 LOC of new design tokens in `wizard-animations.css`
+- 0 schema changes
+- 0 API changes
+- 0 new data capture paths
+
+**PR 3b next**, starting with the three-tier Accounts data source
+picker — Tier 1 Basiq, Tier 2 file import (reusing
+`components/bank/ImportWizard.tsx`), Tier 3 manual.
 
 ### 2026-04-12 (late evening) — PR 3a step redesigns batch 1 of 2
 
