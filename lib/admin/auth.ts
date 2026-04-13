@@ -709,21 +709,65 @@ export async function verifyAdminGCPAuth(request: Request): Promise<AdminAuthRes
   if (isMonitorAdmin && claimAdminRole && VALID_ADMIN_ROLES.includes(claimAdminRole as AdminRole)) {
     // Firebase custom claims path (target state)
     adminRole = claimAdminRole as AdminRole;
-    // Look up AdminUser by email for adminId (or create one if needed)
-    const adminUser = await prisma.adminUser.findFirst({
-      where: { email: claims.email },
-      select: { id: true, isActive: true },
-    });
-    if (adminUser && !adminUser.isActive) {
-      return {
-        success: false,
-        error: {
-          code: ADMIN_ERROR_CODES.SESSION_INVALID,
-          message: 'Admin account is deactivated',
+
+    // Auto-sync AdminUser record: if a Firebase-custom-claims admin logs in but
+    // has no AdminUser row yet, create one automatically. This ensures the admin
+    // appears in the /admin/settings → Admin Users list without manual steps.
+    // The authoritative source for role is the Firebase custom claim — if the
+    // DB record already exists with a different role, we update it to match.
+    try {
+      const adminUser = await prisma.adminUser.upsert({
+        where: { email: claims.email },
+        update: {
+          // Keep the DB role in sync with the Firebase claim (claim wins)
+          role: adminRole,
+          // Heuristic: Google Sign-In users are considered MFA-enrolled because
+          // Google enforces 2FA at the account level. Email/password users must
+          // enroll via /admin/mfa-setup and are updated later.
+          mfaEnabled: (rawPayload?.firebase as Record<string, unknown>)?.sign_in_provider === 'google.com' || undefined,
         },
-      };
+        create: {
+          email: claims.email,
+          name: claims.displayName || claims.email.split('@')[0] || 'Admin',
+          role: adminRole,
+          // Placeholder — Firebase Auth handles the real credential.
+          // This admin never uses the legacy password path; password is
+          // verified via GCP Identity Platform.
+          passwordHash: 'gcp-identity-platform',
+          isActive: true,
+          mfaEnabled: (rawPayload?.firebase as Record<string, unknown>)?.sign_in_provider === 'google.com',
+        },
+        select: { id: true, isActive: true },
+      });
+
+      if (!adminUser.isActive) {
+        return {
+          success: false,
+          error: {
+            code: ADMIN_ERROR_CODES.SESSION_INVALID,
+            message: 'Admin account is deactivated',
+          },
+        };
+      }
+      adminId = adminUser.id;
+    } catch (err) {
+      // Upsert failed — fall back to lookup-only. Log for investigation.
+      log.error('[verifyAdminGCPAuth] AdminUser upsert failed', err as Error);
+      const fallbackUser = await prisma.adminUser.findFirst({
+        where: { email: claims.email },
+        select: { id: true, isActive: true },
+      });
+      if (fallbackUser && !fallbackUser.isActive) {
+        return {
+          success: false,
+          error: {
+            code: ADMIN_ERROR_CODES.SESSION_INVALID,
+            message: 'Admin account is deactivated',
+          },
+        };
+      }
+      adminId = fallbackUser?.id || claims.uid;
     }
-    adminId = adminUser?.id || claims.uid;
   } else {
     // Fallback: check AdminUser table by email (old system compatibility)
     const adminUser = await prisma.adminUser.findFirst({
