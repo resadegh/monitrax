@@ -32,8 +32,12 @@ import {
 import { WelcomeStep } from './steps/WelcomeStep';
 import { HouseholdStep } from './steps/HouseholdStep';
 import { PropertiesStep } from './steps/PropertiesStep';
+// PR 3b: new conditional step for non-property loans
+import { DebtsStep } from './steps/DebtsStep';
 import { AccountsStep } from './steps/AccountsStep';
 import { InvestmentsStep } from './steps/InvestmentsStep';
+// PR 3b: new step for SuperannuationAccount (replaces InvestmentAccount type=SUPERS)
+import { SuperStep } from './steps/SuperStep';
 import { AssetsStep } from './steps/AssetsStep';
 import { IncomeExpensesStep } from './steps/IncomeExpensesStep';
 import { ReviewStep } from './steps/ReviewStep';
@@ -138,12 +142,18 @@ export function WizardContainer({
   }, [isOpen, mode]);
 
   // ---- Steps -----------------------------------------------------------
+  // PR 3b: pass runtime context so getStepsForProfile can hide the
+  // Properties step for renters and show the Debts step only when the
+  // user ticked at least one debt category on Welcome.
   const steps = useMemo(() => {
     if (!data.profileType) {
       return WIZARD_STEPS.filter((s) => s.id === 'welcome');
     }
-    return getStepsForProfile(data.profileType);
-  }, [data.profileType]);
+    return getStepsForProfile(data.profileType, {
+      housing: data.housing,
+      debtCategories: data.debtCategories,
+    });
+  }, [data.profileType, data.housing, data.debtCategories]);
 
   const currentStep = steps[currentStepIndex];
   const isFirstStep = currentStepIndex === 0;
@@ -235,6 +245,12 @@ export function WizardContainer({
             <PropertiesStep data={data} onUpdate={handleUpdate} />
           </div>
         );
+      case 'debts':
+        return (
+          <div key={currentStep.id} className={animationClass}>
+            <DebtsStep data={data} onUpdate={handleUpdate} />
+          </div>
+        );
       case 'accounts':
         return (
           <div key={currentStep.id} className={animationClass}>
@@ -245,6 +261,12 @@ export function WizardContainer({
         return (
           <div key={currentStep.id} className={animationClass}>
             <InvestmentsStep data={data} onUpdate={handleUpdate} />
+          </div>
+        );
+      case 'super':
+        return (
+          <div key={currentStep.id} className={animationClass}>
+            <SuperStep data={data} onUpdate={handleUpdate} />
           </div>
         );
       case 'assets':
