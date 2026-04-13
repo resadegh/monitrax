@@ -710,6 +710,16 @@ export async function verifyAdminGCPAuth(request: Request): Promise<AdminAuthRes
     // Firebase custom claims path (target state)
     adminRole = claimAdminRole as AdminRole;
 
+    // Detect MFA enrollment from the current session token.
+    // Firebase sets sign_in_second_factor when the user passed an MFA
+    // challenge (TOTP or SMS) in this session. Google Sign-In users are
+    // trusted via Google's own 2FA at the account level.
+    const firebaseClaimsRaw = rawPayload?.firebase as Record<string, unknown> | undefined;
+    const signInProvider = firebaseClaimsRaw?.sign_in_provider;
+    const hasSecondFactor = !!firebaseClaimsRaw?.sign_in_second_factor;
+    const sessionHasMfa = signInProvider === 'google.com' || hasSecondFactor;
+    const clientIpNow = extractClientIp(request);
+
     // Auto-sync AdminUser record: if a Firebase-custom-claims admin logs in but
     // has no AdminUser row yet, create one automatically. This ensures the admin
     // appears in the /admin/settings → Admin Users list without manual steps.
@@ -719,12 +729,20 @@ export async function verifyAdminGCPAuth(request: Request): Promise<AdminAuthRes
       const adminUser = await prisma.adminUser.upsert({
         where: { email: claims.email },
         update: {
-          // Keep the DB role in sync with the Firebase claim (claim wins)
+          // Keep the DB role in sync with the Firebase claim (claim wins).
           role: adminRole,
-          // Heuristic: Google Sign-In users are considered MFA-enrolled because
-          // Google enforces 2FA at the account level. Email/password users must
-          // enroll via /admin/mfa-setup and are updated later.
-          mfaEnabled: (rawPayload?.firebase as Record<string, unknown>)?.sign_in_provider === 'google.com' || undefined,
+          // MFA enabled flag: only flip to true when we see evidence in the
+          // current session. Never flip back to false via auto-sync, so that
+          // once a user has enrolled MFA, the DB reflects it permanently.
+          // (undefined = skip update, true = set true).
+          mfaEnabled: sessionHasMfa ? true : undefined,
+          // Update last login on every verified auth call — gives us fresh
+          // activity timestamps in the Settings → Admin Users list without
+          // needing a dedicated heartbeat endpoint.
+          lastLoginAt: new Date(),
+          lastLoginIp: clientIpNow,
+          // Update name if Firebase has a newer displayName
+          name: claims.displayName || undefined,
         },
         create: {
           email: claims.email,
@@ -735,7 +753,9 @@ export async function verifyAdminGCPAuth(request: Request): Promise<AdminAuthRes
           // verified via GCP Identity Platform.
           passwordHash: 'gcp-identity-platform',
           isActive: true,
-          mfaEnabled: (rawPayload?.firebase as Record<string, unknown>)?.sign_in_provider === 'google.com',
+          mfaEnabled: sessionHasMfa,
+          lastLoginAt: new Date(),
+          lastLoginIp: clientIpNow,
         },
         select: { id: true, isActive: true },
       });
