@@ -335,13 +335,20 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
     setImportDialogOpen(true);
   }, []);
 
+  // ImportWizard's onAccountCreated callback fires with just
+  // { id, name, type } — it doesn't include currentBalance because the
+  // Phase 18 import flow sets the balance from the statement's closing
+  // balance anchor *after* the account is created. We record the row
+  // here as a display pointer with currentBalance=0; bulk-create skips
+  // writing source='IMPORT' accounts (they already exist in the DB with
+  // the correct balance), so the 0 placeholder never persists.
   const handleImportAccountCreated = useCallback(
-    (created: { id: string; name: string; type: string; currentBalance: number }) => {
+    (created: { id: string; name: string; type: string }) => {
       const newRow: AccountInput = {
         id: generateId(),
         name: created.name,
         type: (created.type as AccountType) || 'TRANSACTIONAL',
-        currentBalance: created.currentBalance ?? 0,
+        currentBalance: 0,
         source: 'IMPORT',
         existingAccountId: created.id,
       };
