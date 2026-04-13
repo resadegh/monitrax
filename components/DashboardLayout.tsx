@@ -190,12 +190,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   //   • state.preferences.dismissedWelcomeModal (set on any skip)
   //   • localStorage fallback (useOnboardingState)
   //   • draft/step progress priority (resume banner takes over)
+  //   • wizard guard: do not re-open the welcome modal once the wizard
+  //     has started (prevents a loop where startOnboarding refreshes
+  //     state, momentarily flips shouldShowWelcome back to true, and
+  //     this effect pops the welcome modal back over the wizard).
   // See useOnboardingState.shouldShowWelcome for the full contract.
   useEffect(() => {
-    if (shouldShowWelcome && pathname === '/dashboard') {
+    if (shouldShowWelcome && pathname === '/dashboard' && !showWizard) {
       setShowWelcomeModal(true);
     }
-  }, [shouldShowWelcome, pathname]);
+  }, [shouldShowWelcome, pathname, showWizard]);
 
   // Onboarding handlers - all wrapped in try-catch to work even if DB not migrated
   const handleStartSetup = useCallback(async () => {
@@ -666,8 +670,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      {/* AI Chat Floating Button */}
-      <AiChatButton />
+      {/* AI Chat Floating Button — hidden when onboarding modals are open
+           so it doesn't overlap the wizard's Back/Next buttons. */}
+      {!showWelcomeModal && !showWizard && <AiChatButton />}
 
       {/* Universal Search */}
       <UniversalSearch open={searchOpen} onOpenChange={setSearchOpen} />
