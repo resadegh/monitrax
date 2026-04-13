@@ -5,7 +5,7 @@
 > If anything here doesn't match reality, fix the doc first, then the code.
 
 **Owner:** Claude (engineer) | **Reviewer:** Reza
-**Status:** ✅ PR 3a complete. 🟡 PR 3b pending (structural additions). 🟡 PR 3c pending (data source hygiene).
+**Status:** ✅ PR 3a complete. ✅ PR 3b complete (branch ready for review). 🟡 PR 3c pending (data source hygiene).
 **Branch:** `claude/review-monitrax-docs-ty15A`
 **Related docs:**
 - `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` (canonical spec, v2.2)
@@ -512,6 +512,34 @@ accepted by Reza without modification:
 
 > Dated entries, most recent first. Update after every meaningful batch of
 > work (not every individual edit).
+
+### 2026-04-12 (night, later) — PR 3b COMPLETE
+
+All structural additions shipped across 7 atomic commits on the same
+branch (`claude/review-monitrax-docs-ty15A`):
+
+| Commit    | Scope |
+|-----------|-------|
+| `690161d` | Types foundation — `WizardData` extended with `housing`, `debtCategories`, `debts`, `superAccounts`, `lifestylePreference`, `diningOutFrequency`, `hobbiesWithCosts`, `AccountInput.source`. `getStepsForProfile` gains runtime context for renter path + Debts gate. `calculateSummary` folds in super + non-property debts. |
+| `6ccdbea` | Welcome / Household updates + new DebtsStep + new SuperStep components. |
+| `417880b` | Accounts step 3-tier data source picker (new `AccountsDataSourceTiles` component + wiring). |
+| `5820ae4` | `/app/onboarding/basiq-callback` route + `WizardContainer` wired to render new step IDs and pass runtime context to `getStepsForProfile`. |
+| `df9b314` | `bulk-create` API updates: skip BASIQ/IMPORT accounts, create `SuperannuationAccount` rows, two-pass non-property Loan writes (CAR→Asset link), lifestyle fields on `HouseholdProfile`, renter-path documented. |
+| `c20f428` | Add `CHANGELOG_2026_04_12_WIZARD_STRUCTURAL_ADDITIONS.md`. |
+| `50cefc9` | Phase 12 blueprint new §17 + v2.4 revision row. |
+| `7b84cfa` | Master blueprint v2.7 + consolidated changelog PR 3b entry. |
+
+**No schema changes.** Every new field maps to an existing Prisma
+column. Reuses `components/bank/ImportWizard.tsx` (Phase 13/18) for
+file import — zero duplicate parsing logic. Reuses
+`/api/basiq/connect` (Phase 24) for the Basiq tier.
+
+**Build verification:** cannot run locally (no `node_modules` in
+sandbox). CI gates the merge.
+
+**Next:** create the GitHub PR for the branch and hand the URL to
+Reza for review + merge + testing. PR 3c (data source hygiene) is
+specced in §6A and will ship as a follow-up.
 
 ### 2026-04-12 (night) — PR 3a COMPLETE
 
