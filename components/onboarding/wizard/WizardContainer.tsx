@@ -469,7 +469,7 @@ export function WizardContainer({
       role="dialog"
       aria-modal="true"
       aria-labelledby="wizard-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
     >
       <div className="relative flex w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-[0_40px_100px_-24px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] max-h-[92vh]">
         {ShellInner}
