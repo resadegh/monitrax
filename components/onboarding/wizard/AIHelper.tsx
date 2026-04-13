@@ -350,19 +350,23 @@ export function AIHelperPanel({ isOpen, onClose, currentStep }: AIHelperPanelPro
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-end p-4 pointer-events-none">
-      {/* Backdrop */}
+    // Non-modal side drawer.
+    // - z-[70] so it sits ABOVE the wizard (z-[60]) — otherwise the
+    //   wizard's backdrop-blur makes the panel look blurred and unusable.
+    // - No backdrop: the user should be able to read help AND keep
+    //   interacting with the wizard form underneath.
+    // - Anchored top-right so it never covers the wizard's Back/Next
+    //   buttons (which live at the bottom-right of the wizard card).
+    // - pointer-events gated so clicks outside the panel pass through
+    //   to the wizard.
+    <div className="fixed inset-0 z-[70] pointer-events-none">
       <div
-        className="absolute inset-0 bg-black/20 pointer-events-auto"
-        onClick={handleClose}
-      />
-
-      {/* Panel */}
-      <div
-        className={`relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden pointer-events-auto ${
+        className={`pointer-events-auto absolute right-4 top-4 w-[min(92vw,24rem)] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl ring-1 ring-black/10 dark:ring-white/10 overflow-hidden flex flex-col ${
           isClosing ? 'ai-helper-panel-exit' : 'ai-helper-panel-enter'
         }`}
-        style={{ maxHeight: 'calc(100vh - 120px)' }}
+        style={{ maxHeight: 'calc(100vh - 32px)' }}
+        role="dialog"
+        aria-label="Wizard help assistant"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-500 to-blue-600">
