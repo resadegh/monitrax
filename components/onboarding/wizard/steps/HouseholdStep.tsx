@@ -29,6 +29,7 @@ import {
   Trash2,
   Baby,
   Car,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,6 +51,8 @@ import {
   HouseholdPetInput,
   HouseholdRelationship,
   HouseholdPetType,
+  LifestylePreference,
+  DiningFrequency,
   RELATIONSHIP_LABELS,
   PET_TYPE_LABELS,
 } from '../types';
@@ -57,6 +60,7 @@ import {
   WizardStepShell,
   WizardSection,
   WizardSegmentedControl,
+  WizardField,
 } from '../primitives';
 import '@/styles/wizard-animations.css';
 
@@ -288,6 +292,47 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
           ]}
           name="cars-count"
         />
+      </WizardSection>
+
+      {/* Phase 12 PR 3b: Lifestyle fields (Phase 28 budget AI) */}
+      <WizardSection
+        icon={<Sparkles className="h-4 w-4" />}
+        iconClassName="bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400"
+        title="Your lifestyle"
+        description="We use this to personalise your budget estimates."
+      >
+        <div className="space-y-4">
+          <WizardSegmentedControl<LifestylePreference>
+            label="How would you describe your spending?"
+            value={data.lifestylePreference}
+            onChange={(v) => onUpdate({ lifestylePreference: v })}
+            options={[
+              { value: 'FRUGAL', label: 'Frugal' },
+              { value: 'MODERATE', label: 'Moderate' },
+              { value: 'COMFORTABLE', label: 'Comfortable' },
+            ]}
+            name="lifestyle-preference"
+          />
+          <WizardSegmentedControl<DiningFrequency>
+            label="How often do you eat out?"
+            value={data.diningOutFrequency}
+            onChange={(v) => onUpdate({ diningOutFrequency: v })}
+            options={[
+              { value: 'NEVER', label: 'Never' },
+              { value: 'RARELY', label: 'Rarely' },
+              { value: 'SOMETIMES', label: 'Sometimes' },
+              { value: 'OFTEN', label: 'Often' },
+            ]}
+            name="dining-frequency"
+          />
+          <WizardField
+            label="Any expensive hobbies?"
+            placeholder="e.g. golf, photography, restoring cars"
+            value={data.hobbiesWithCosts}
+            onChange={(e) => onUpdate({ hobbiesWithCosts: e.target.value })}
+            helper="Optional — helps the budget AI allow for hobby-related spending"
+          />
+        </div>
       </WizardSection>
 
       {/* Member dialog */}
