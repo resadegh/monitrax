@@ -73,14 +73,17 @@ Captured from the planning Q&A on 2026-04-12:
 | **C** | **Non-property loans: dedicated step or Accounts sub-section?** | **Dedicated "Debts" step, shown conditionally.** Welcome step asks a single checkbox question ("Do you have any of these? HECS, car loan, credit card, personal loan"). If anything ticked → Debts step shown. Captures `CAR`, `STUDENT`, `PERSONAL`, `BUSINESS` loans. `CREDIT_CARD` **stays in Accounts step** (existing behaviour, stored as negative balance). `LINE_OF_CREDIT` modelled as CREDIT_CARD-style Account for PR 3b simplicity (full LOC-as-Loan modelling deferred). CAR loans get `linkedAssetId` wired in bulk-create, same pattern as the property-loan offset linking that already works. | `Account` and `Loan` are separate Prisma models — mixing them in one step muddles the model and breaks the Review screen's mental grouping. STUDENT (HECS-HELP) is near-universal for Australian users under 40 — not capturing it undersells Monitrax on first run. Conditional visibility keeps the STARTER flow clean (typical STARTER users don't have these). |
 | **D** | **Lifestyle fields: own step or Household step?** | **Add to existing Household step** as a 4th section titled "Your lifestyle". Three fields: `lifestylePreference` (segmented control, 3 options), `diningOutFrequency` (segmented control, 4 options), `hobbiesWithCosts` (optional free text). Inline helper: "We use this to personalize your budget estimates." | Conceptually grouped: "who's in your household and how do you live". The Household step is currently under-populated (<60 seconds) so adding a 4th short section barely lengthens it. Phase 28 budget AI reads all these fields at once. Avoids step inflation (PR 3b is already adding a conditional Debts step). |
 | **E** | **Dedicated `/app/onboarding` route: PR 3a or PR 3b?** | **PR 3a**, with a new `mode: 'page' \| 'modal'` prop on `WizardContainer`. `'modal'` keeps the existing dashboard behaviour exactly as it is. `'page'` uses the full-width layout. A new `/app/onboarding/page.tsx` mounts `WizardContainer` in page mode. Unauth users redirect to `/signin?next=/onboarding`. | Deep-linkability for marketing emails. The new full-page shell design works better with more room to breathe. Backwards-compatible — nothing changes for users coming from the dashboard modal. Small incremental change, large user-value unlock (email CTAs, marketing flows). |
+| **F** | **Data source hygiene for account balances** — eliminate manual entry or de-rank it? | **Three-tier hierarchy** (aligned with the schema's existing `BalanceSource` enum and Phase 13 §417): **Basiq > Import > Manual**. Manual entry is **kept as a de-ranked fallback** for coverage gaps (cash, crypto, foreign banks, fintechs without Basiq support, dormant accounts). File import (composing the existing `components/bank/ImportWizard.tsx` — Phase 13/18) is added to PR 3b's Accounts step as Tier 2 with a closing balance anchor. A new **PR 3c "Data source hygiene"** handles the app-wide staleness story: balance-freshness indicators, "upgrade this account" UI in Settings, existing-user migration nudges. | Eliminating manual entry entirely would break existing users and leave coverage gaps invisible to Monitrax. Basiq doesn't cover every institution. The schema already documented the three-tier hierarchy — we just need to catch the UX up. Reusing the existing `ImportWizard` avoids duplicating file-parsing logic. |
 
 ---
 
 ## 4. Pending / Open Questions
 
-| # | Question | Status | Blocking? |
-|---|---|---|---|
-| F | **Data source hygiene for account balances** — should manual account balance entry be *eliminated entirely* in favour of Basiq + file import, or kept as a de-ranked fallback? Raised by Reza on 2026-04-12 evening. See §10 for Claude's full analysis and three-tier recommendation. **Pending Reza's yes/no on three sub-questions:** (1) Keep manual entry as de-ranked fallback? (2) Add file import flow to PR 3b's Accounts step? (3) Spec out a new PR 3c "Data source hygiene" now? | **OPEN** | **Yes** (blocks final PR 3b Accounts step scope; blocks whether to create PR 3c) |
+All questions answered as of 2026-04-12 (late evening). See §3 row F
+and §7 progress log for the resolution of the data source hygiene
+question. This section is kept for future assumption-tracking.
+
+*No currently open questions.*
 
 ---
 
@@ -297,16 +300,33 @@ primitives and design language.
 - [ ] Review step: net worth calc includes `SuperannuationAccount.currentBalance`
 - [ ] Data migration: flag a follow-up to migrate existing `InvestmentAccount(type=SUPERS)` rows to `SuperannuationAccount` — but NOT in this PR (would be a standalone data-migration PR after PR 3b ships)
 
-**Basiq shortcut (question B + 5):**
-- [ ] Add "Connect your bank (recommended)" primary CTA card at the top of `AccountsStep`
-- [ ] Wire button to `POST /api/basiq/connect` → redirect to returned `consentUrl`
-- [ ] Before redirect: save the current wizard draft so nothing is lost
-- [ ] New `/app/onboarding/basiq-callback/page.tsx` — polls `GET /api/basiq/connections` until `ACTIVE`, then redirects back to `/app/onboarding?step=accounts&basiq=connected`
-- [ ] On return: wizard reads imported accounts from the DB (they're now in `Account` with `balanceSource='BASIQ'`) and shows them as pre-filled, read-only-except-for-rename rows
-- [ ] Add `AccountInput.isBasiqImported: boolean`; `bulk-create` skips imported accounts in its write loop
-- [ ] Dark mode + reduced-motion for the new card
-- [ ] Loading/error states for the Basiq round-trip
-- [ ] CDR compliance note in the changelog (draft never holds CDR data, only DB row IDs)
+**Three-tier Accounts step (questions B, 5, F — expanded from original Basiq-only scope):**
+- [ ] **Tier 1: Basiq "Connect your bank" tile (Recommended)**
+  - [ ] Add "Connect your bank" primary CTA tile at the top of `AccountsStep`
+  - [ ] Wire button to `POST /api/basiq/connect` → redirect to returned `consentUrl`
+  - [ ] Before redirect: save the current wizard draft so nothing is lost
+  - [ ] New `/app/onboarding/basiq-callback/page.tsx` — polls `GET /api/basiq/connections` until `ACTIVE`, then redirects back to `/app/onboarding?step=accounts&basiq=connected`
+  - [ ] On return: wizard reads imported accounts from the DB (they're now in `Account` with `balanceSource='BASIQ'`) and shows them as pre-filled, read-only-except-for-rename rows
+  - [ ] Add `AccountInput.source: 'BASIQ' | 'IMPORT' | 'MANUAL'` on the wizard type
+  - [ ] `bulk-create`: skip accounts with `source === 'BASIQ'` (already in DB from Basiq sync)
+  - [ ] Loading/error states for the Basiq round-trip
+- [ ] **Tier 2: File import tile (Good)**
+  - [ ] Add "Upload a transaction file" tile below the Basiq one
+  - [ ] Compose the existing `components/bank/ImportWizard.tsx` (Phase 13/18) — do NOT duplicate parsing logic
+  - [ ] After file upload, prompt user for a "closing balance" anchor value from their statement
+  - [ ] Backend: reconcile forward — `currentBalance = closingBalance + sum(transactions since statement date)`; store on `Account` with `balanceSource='IMPORT'`, `lastImportedBalance=closingBalance`
+  - [ ] `bulk-create`: skip accounts with `source === 'IMPORT'` (already persisted by the import flow)
+  - [ ] File-imported accounts also appear as pre-filled, editable-name cards on return
+- [ ] **Tier 3: Manual entry tile (Fallback)**
+  - [ ] Rename existing "Add manually" quick-add tiles under a single "Enter manually" tile, visually de-ranked
+  - [ ] Inline helper text: "Best for cash, crypto, foreign or unsupported accounts. You'll need to update the balance manually."
+  - [ ] `source='MANUAL'` on the wizard input; `bulk-create` writes these as today (already sets `balanceSource='MANUAL'` per PR 1)
+- [ ] **Cross-tier**:
+  - [ ] Visual ranking: Tier 1 tile is the hero (full-width, gradient accent, "Recommended" chip), Tier 2 is mid-weight, Tier 3 is the smallest
+  - [ ] Only one tier is actively being set up at a time; switching tiers collapses the previous tier's inputs
+  - [ ] Dark mode + reduced-motion on every new element
+  - [ ] Keyboard accessible (tab through tiles, Enter to select)
+  - [ ] CDR compliance note in the changelog (draft never holds CDR data — only DB row IDs as pointers for BASIQ/IMPORT rows)
 
 **Lifestyle fields (question D):**
 - [ ] Add a 4th "Your lifestyle" section to `HouseholdStep` with:
@@ -340,9 +360,106 @@ primitives and design language.
 
 ---
 
+## 6A. PR 3c Scope — Data Source Hygiene (Follow-up)
+
+**Goal:** Close the drift problem app-wide. PR 3b fixes the onboarding
+Accounts step to offer Basiq + Import + Manual as ranked tiers. PR 3c
+makes the staleness visible across the dashboard and gives existing
+users an upgrade path from MANUAL to BASIQ / IMPORT.
+
+**Dependency:** PR 3a and PR 3b must both be merged first — PR 3c
+builds on the three-tier data model locked in by PR 3b.
+
+### 6A.1 In Scope (PR 3c)
+
+| # | Change | Affected surface |
+|---|---|---|
+| 1 | **Staleness indicators on Account entities.** Every place in the app that renders an account balance displays a freshness chip: "🟢 Synced 2 min ago" (BASIQ), "🔵 Imported 3 days ago" (IMPORT), "🟡 Manual · 14 days old" (MANUAL stale). | `components/accounts/*`, `components/dashboard/*`, `components/loans/*` (offset accounts) |
+| 2 | **Dashboard staleness nudge.** If any MANUAL account has `balanceLastUpdatedAt` > 14 days ago, show a banner: "Your manual balances are getting stale — connect via Basiq or re-upload a statement to keep them fresh." Dismissable for the session. | `components/DashboardLayout.tsx` or a new `components/dashboard/StaleBalanceNudge.tsx` |
+| 3 | **Confidence indicators on derived metrics.** Any metric that depends on a stale MANUAL balance (net worth, cashflow forecast, emergency fund tracker) gets a small ⓘ tooltip: "This number may be stale — based on X manual balances last updated Y days ago." | `lib/services/masterFinancialService.ts` (output structure), `components/StatCard.tsx`, dashboard widgets |
+| 4 | **Settings > Accounts "Upgrade this account" button.** On each existing account row, show an action: "Upgrade to Basiq" (opens consent flow) or "Upgrade to Import" (opens ImportWizard with this account pre-selected). Success replaces the account's `balanceSource` and updates `balance`. | `app/dashboard/accounts/page.tsx`, new `components/accounts/UpgradeAccountButton.tsx` |
+| 5 | **Existing-user migration nudge.** On first /dashboard visit after PR 3c deploys, show a one-time modal to users with ≥1 MANUAL account: "Monitrax can now sync your bank directly. Upgrade your accounts for always-fresh balances." CTAs: "Connect now" / "Remind me later" / "I'll keep them manual". Dismissal flag on `UserPreference` (new column `dismissedBalanceUpgradeNudge`). | New `components/onboarding/BalanceUpgradeNudgeModal.tsx`, schema addition |
+| 6 | **`balanceLastUpdatedAt` enforcement app-wide.** Every code path that writes `Account.currentBalance` must also write `balanceLastUpdatedAt = now()`. Audit all write sites and add to a canonical helper. | `lib/services/accountBalanceService.ts` (new, or extend existing), every `Account.update` call site |
+| 7 | **Balance age heat-map in Settings > Data Health.** New small dashboard tile showing accounts coloured by freshness (green / amber / red). | `app/dashboard/settings/data-health/page.tsx` (new sub-route) |
+
+### 6A.2 Out of Scope for PR 3c
+
+- Basiq Advanced (Phase 24B) features like webhooks / scheduled sync / transaction enrichment — those are a separate phase
+- Automatic re-sync scheduling via Cloud Scheduler (belongs to Phase E / §6A follow-up)
+- Deletion / deactivation of accounts — already exists, unchanged
+- Any schema changes to the `BalanceSource` enum itself — already complete in the schema
+
+### 6A.3 PR 3c Task Checklist (stub — fleshed out when PR 3b lands)
+
+- [ ] Resolve any questions arising from PR 3b implementation
+- [ ] **Staleness chip component** (shared, used everywhere an `Account` balance is shown)
+- [ ] **Dashboard staleness nudge banner**
+- [ ] **Confidence indicators** on derived metrics (+ the canonical snapshot service must expose staleness metadata in its output)
+- [ ] **Settings > Accounts upgrade button** (Basiq path + Import path)
+- [ ] **First-visit migration modal** for existing users with MANUAL accounts
+- [ ] **`balanceLastUpdatedAt` audit** — every write path updated
+- [ ] **Balance age heat-map** in Settings > Data Health
+- [ ] Schema: `UserPreference.dismissedBalanceUpgradeNudge Boolean @default(false)`
+- [ ] Documentation: Phase 12 blueprint §17, plan doc §6A.3, changelog, master blueprint
+- [ ] Single atomic commit on `claude/review-monitrax-docs-ty15A` after PR 3b lands
+
+### 6A.4 Success metrics (for PR 3c)
+
+- **Primary**: ≥50% of MANUAL accounts upgraded to BASIQ or IMPORT within 30 days of PR 3c shipping (measured on existing user base)
+- **Secondary**: `balanceLastUpdatedAt` median age across the user base drops from current (unbounded) to < 7 days
+- **Tertiary**: Zero user complaints about silently-stale dashboard metrics after the confidence-indicator rollout
+
+---
+
 ## 7. Architectural Decisions Log
 
 Captured as decisions are made during implementation. Most-recent first.
+
+### 2026-04-12 (late evening) — Data source hygiene question F resolved; PR 3c added
+
+Reza answered all three sub-questions from §10 with **yes, yes, yes**.
+
+**Decisions locked in:**
+
+1. **Manual account entry stays** as a de-ranked fallback. Not
+   eliminated. Rationale: coverage gaps are real (Basiq doesn't cover
+   every institution, credit cards may not be CDR-shared, some users
+   have cash / crypto / foreign accounts). Existing users shouldn't be
+   broken.
+2. **File import added to PR 3b's Accounts step** as Tier 2. **Reuses
+   the existing `components/bank/ImportWizard.tsx` (Phase 13/18) — no
+   new file parsing logic.** The wizard composes that component, then
+   asks for a closing balance as an anchor. Backend reconciles
+   `balance = closingBalance + sum(transactions since statement date)`.
+3. **PR 3c "Data source hygiene" is now formally planned** in §6A.
+   Covers staleness indicators everywhere, the dashboard nudge,
+   confidence indicators on derived metrics, Settings > Accounts
+   upgrade button, the existing-user migration modal, and the
+   app-wide `balanceLastUpdatedAt` audit.
+
+**Impact on §3 Decisions Locked In:** new row F added with the
+three-tier hierarchy (Basiq > Import > Manual), aligned with the
+existing `BalanceSource` enum in the schema and the already-documented
+hierarchy in `PHASE_13_TRANSACTIONAL_INTELLIGENCE.md §417`.
+
+**Impact on §6.3 PR 3b:** the Accounts step task list was expanded
+from "Basiq shortcut + manual form" into a three-tier tile picker.
+Tier 1 (Basiq) remains what I had planned. Tier 2 (file import) is new
+— eight new sub-tasks. Tier 3 (manual) is the demotion of the current
+behaviour. The `AccountInput.isBasiqImported: boolean` field in the
+original plan is replaced by a more general `AccountInput.source:
+'BASIQ' | 'IMPORT' | 'MANUAL'` so all three flows route through the
+same field.
+
+**Impact on §6A PR 3c (NEW):** 7 work items documented, ranging from
+staleness chips (Tier 1 of the rollout) to the full app-wide audit of
+`balanceLastUpdatedAt` write sites. Success metrics defined: 50% of
+MANUAL accounts upgraded within 30 days of ship, median balance age
+< 7 days.
+
+**Not affected:** PR 3a continues on plan unchanged. PR 3a is purely
+visual and doesn't touch data sources. Batch 2 (Assets, Income/Expenses,
+Review + docs) resumes now.
 
 ### 2026-04-12 (PM) — All PR 3b pending questions answered
 
@@ -538,11 +655,12 @@ Initial draft of this plan written and committed on
 
 ---
 
-## 10. Pending Architectural Discussion — Data Source Hygiene for Account Balances
+## 10. Architectural Discussion — Data Source Hygiene for Account Balances *(RESOLVED)*
 
-> **Status:** OPEN — raised by Reza 2026-04-12 (evening). Awaiting yes/no
-> decisions on three sub-questions before PR 3b Accounts-step scope is
-> finalised.
+> **Status:** ✅ RESOLVED — raised by Reza 2026-04-12 (evening), decided
+> same day. All three sub-questions answered **yes**. Kept here as the
+> written record of the reasoning. The decision is captured in §3 row F
+> and the PR 3b / PR 3c scope in §6.3 and §6A.
 
 ### 10.1 The problem Reza raised
 
@@ -648,11 +766,11 @@ is tertiary. All three remain available.
 | `balanceLastUpdatedAt` enforcement app-wide | **PR 3c** |
 | Migration path for existing manual-entry users | **PR 3c** |
 
-### 10.6 Open sub-questions (pending Reza answer)
+### 10.6 Sub-questions — all RESOLVED 2026-04-12 (late evening)
 
-1. **Keep manual entry as a de-ranked fallback?** Claude's recommendation: **yes**, for the coverage gaps. Alternative: force Basiq or file upload only, accepting the gap coverage loss.
-2. **Add file import to PR 3b's Accounts step?** Claude's recommendation: **yes**, composes the existing `ImportWizard` component.
-3. **Spec out PR 3c "Data source hygiene" now?** Claude's recommendation: **yes**, so the full pipeline is documented even though only PR 3b is blocking.
+1. **Keep manual entry as a de-ranked fallback?** ✅ **YES** — coverage gaps are real.
+2. **Add file import to PR 3b's Accounts step?** ✅ **YES** — reuses the existing `components/bank/ImportWizard.tsx`, no duplication of parsing logic.
+3. **Spec out PR 3c "Data source hygiene" now?** ✅ **YES** — the full pipeline is documented in §6A.
 
 ### 10.7 Impact on current PR 3a work
 
