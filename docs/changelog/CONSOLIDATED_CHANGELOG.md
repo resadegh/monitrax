@@ -8,6 +8,19 @@
 
 ## April 2026
 
+### 2026-04-12 — Onboarding Wizard PR 3b: Structural Additions (renter path, non-property loans, super routing, 3-tier Accounts, lifestyle fields)
+- **Type:** feat/refactor | **Scope:** Onboarding wizard — Welcome, Household, new Debts step, new Super step, Accounts 3-tier picker, new Basiq callback route, bulk-create API
+- Fourth PR in the Phase 12 pipeline. Closes the data-capture gaps identified in the original review. No schema changes — every new field maps to an existing Prisma column. Reuses existing Monitrax functionality (Phase 13/18 `components/bank/ImportWizard.tsx` for file import, Phase 24 `/api/basiq/connect` for Basiq flow).
+- **Welcome step:** 3-option housing segmented control (`Own / Rent / Both`) drives the renter path — Properties step hidden when `housing='RENT'` via `getStepsForProfile` context. Multi-select debts checkbox (HECS / Car / Personal / Business) gates the new conditional Debts step.
+- **New Debts step** captures `LoanType` = `CAR / STUDENT / PERSONAL / BUSINESS`. HECS/STUDENT special case: indexation default 4%, no `minRepayment` (income-contingent). CAR loans can link to a vehicle in Assets via `Loan.linkedAssetId` — resolved in a second bulk-create pass after Assets are written.
+- **New Super step** creates real `SuperannuationAccount` rows with minimum-viable fields (`name`, `fundName`, `currentBalance`). Replaces the PR 3a mis-routing through `InvestmentAccount(type=SUPERS)`. Deeper fields deferred to Settings > Retirement.
+- **Household step** adds a 4th "Your lifestyle" section with `lifestylePreference` / `diningOutFrequency` / `hobbiesWithCosts` for the Phase 28 budget AI.
+- **Accounts step** — new three-tier data source picker: Tier 1 Basiq (recommended hero card), Tier 2 file import (composes existing `ImportWizard` in a dialog), Tier 3 manual (de-ranked fallback). `AccountInput.source` + `existingAccountId` track pre-existing DB rows. `bulk-create` skips writing BASIQ/IMPORT accounts.
+- **New `/app/onboarding/basiq-callback`** page polls `GET /api/basiq/connections` every 1.5s for up to 30s after the Basiq redirect, then returns to `/onboarding?step=accounts&basiq=connected`. Timeout path shows a friendly "still syncing" message.
+- **bulk-create** updated: skips BASIQ/IMPORT accounts (offset linking still works for imported rows), creates `SuperannuationAccount` rows, creates non-property `Loan` rows in two passes (second pass after Assets for CAR→Asset linking), writes lifestyle fields to `HouseholdProfile` conditionally (doesn't clobber Settings values on re-runs), HECS `minRepayment` forced to 0.
+- **Key files:** `components/onboarding/wizard/types.ts`, `components/onboarding/wizard/WizardContainer.tsx`, `components/onboarding/wizard/steps/{Welcome,Household,Accounts}Step.tsx`, `components/onboarding/wizard/steps/{Debts,Super}Step.tsx` (new), `components/onboarding/wizard/steps/AccountsDataSourceTiles.tsx` (new), `app/onboarding/basiq-callback/page.tsx` (new), `app/api/onboarding/bulk-create/route.ts`
+- **Docs:** `docs/changelog/CHANGELOG_2026_04_12_WIZARD_STRUCTURAL_ADDITIONS.md`, `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` v2.4 (new §17), `docs/blueprint/MASTER_BLUEPRINT.md` v2.7, `docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md`
+
 ### 2026-04-12 — Onboarding Wizard PR 3a: Full Wizard Visual Overhaul + Simplification + /app/onboarding Route
 - **Type:** feat/design/refactor | **Scope:** Onboarding wizard (all 8 step files, shell, new route, primitives library, design tokens)
 - Third of three PRs in the Phase 12 remediation pipeline. Visual-only — no data changes, no schema changes, no new capture paths. Structural additions (renter path, non-property loans, super routing, Basiq shortcut, lifestyle fields) ship in PR 3b. Data source hygiene (staleness indicators, upgrade-this-account button, existing-user migration modal) ships in PR 3c.

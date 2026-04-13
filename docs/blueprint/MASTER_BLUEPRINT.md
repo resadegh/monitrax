@@ -4,7 +4,7 @@
 
 ---
 
-**Version:** 2.6
+**Version:** 2.7
 **Last Updated:** 2026-04-12
 **Status:** Active Development
 **Owners:** ReNew (Newsha & Reza)
@@ -182,7 +182,7 @@ Every API response follows a standardised format:
 
 | Phase | Name | Status | Notes |
 |-------|------|--------|-------|
-| **12 (wizard)** | Onboarding Wizard Remediation | 🔄 In Progress | **PR 1 merged** (correctness sweep — 11 fixes + dead-code). **PR 2 merged** (draft persistence, resume banner, premium welcome modal redesign, strict show-once contract). **PR 3a merged** (full wizard visual overhaul: new primitives library, design tokens CSS, dedicated `/app/onboarding` route, all 8 steps redesigned, Welcome step profile auto-inference). **PR 3b pending** (3-tier Accounts data source picker with Basiq + file import + manual, non-property loans step, proper `SuperannuationAccount` routing, household lifestyle fields, renter path). **PR 3c pending** (data source hygiene — app-wide staleness indicators, upgrade-this-account button, existing-user migration modal, `balanceLastUpdatedAt` enforcement audit, balance age heat-map). See `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` v2.3 and `docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md`. |
+| **12 (wizard)** | Onboarding Wizard Remediation | 🔄 In Progress | **PR 1 merged** (correctness sweep — 11 fixes + dead-code). **PR 2 merged** (draft persistence, resume banner, premium welcome modal redesign, strict show-once contract). **PR 3a merged** (full wizard visual overhaul: new primitives library, design tokens CSS, dedicated `/app/onboarding` route, all 8 steps redesigned, Welcome step profile auto-inference). **PR 3b merged** (structural additions: 3-option housing/renter path, conditional Debts step for non-property loans with CAR→Asset linking, dedicated Super step routing real `SuperannuationAccount` rows, Household lifestyle fields for Phase 28 budget AI, 3-tier Accounts data source picker — Tier 1 Basiq / Tier 2 file import / Tier 3 manual — composing the existing Phase 13/18 `ImportWizard` with zero duplicate parsing, new `/app/onboarding/basiq-callback` route polling for ACTIVE connections, bulk-create API updated to skip BASIQ/IMPORT accounts and create Super/Debt rows in two passes). **PR 3c pending** (data source hygiene — app-wide staleness indicators, upgrade-this-account button, existing-user migration modal, `balanceLastUpdatedAt` enforcement audit, balance age heat-map). See `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` v2.4 and `docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md`. |
 | **19** | Document Management | 🔄 In Progress | Core infrastructure complete |
 | **19.1** | DMS Expansion | 🔄 In Progress | Receipt upload for expenses complete (2025-12-01) |
 | **21** | Asset Management Engine | 🔄 In Progress | Core features complete (2025-12-04), portfolio integration pending |
