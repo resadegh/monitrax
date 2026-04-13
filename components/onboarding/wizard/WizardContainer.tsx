@@ -313,16 +313,25 @@ export function WizardContainer({
           </p>
         </div>
       </div>
-      {mode === 'modal' && (
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close setup"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      )}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* AI Helper trigger — rendered inline in the header so it never
+            overlaps the wizard's Back/Next buttons (which sit in the
+            footer at the bottom-right of the card). */}
+        <AIHelper
+          currentStep={currentStep?.id || 'welcome'}
+          buttonClassName="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-3 py-1.5 text-white shadow-sm hover:shadow-md hover:brightness-110 transition-all"
+        />
+        {mode === 'modal' && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close setup"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -448,7 +457,9 @@ export function WizardContainer({
       {ProgressBar}
       {Body}
       {Footer}
-      <AIHelper currentStep={currentStep?.id || 'welcome'} />
+      {/* AIHelper trigger is rendered inline inside the Header (see above)
+          to avoid the floating button overlapping the wizard's Next button.
+          The panel itself is still portaled from within <AIHelper />. */}
     </div>
   );
 
