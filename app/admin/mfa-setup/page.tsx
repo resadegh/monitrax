@@ -29,6 +29,8 @@ import { getFirebaseAuth } from '@/lib/firebase/config';
 import { startTOTPEnrollment, finalizeTOTPEnrollment, type TOTPEnrollmentResult } from '@/lib/firebase/mfa';
 import { AdminCard, AdminCardHeader } from '@/components/admin/ui/AdminCard';
 import { AdminButton } from '@/components/admin/ui/AdminButton';
+import { HelpTip, HelpBanner } from '@/components/admin/ui/HelpTip';
+import { helpContent } from '@/lib/admin/help-content';
 import { Shield, AlertTriangle, CheckCircle2, Copy, RefreshCw, LogOut } from 'lucide-react';
 
 type Step = 'intro' | 'generating' | 'scan' | 'verify' | 'complete';
@@ -180,48 +182,50 @@ export default function AdminMFASetupPage() {
 
         {/* Step: Intro */}
         {step === 'intro' && (
-          <AdminCard>
-            <AdminCardHeader
-              title="Set up your authenticator app"
-              description="You'll need an authenticator app like Google Authenticator, Authy, or 1Password."
-            />
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30">
-                <p className="text-sm text-blue-800 dark:text-blue-300">
-                  <strong>Why this is required:</strong> Monitrax handles CDR-regulated financial data.
-                  Privileged admins (SUPER_ADMIN, BILLING_ADMIN) must use MFA to protect access to this data,
-                  per CDR §1.3 and Basiq accreditation requirements.
+          <>
+            <HelpBanner content={helpContent.mfaSetup.intro} storageKey="mfa-intro" />
+            <AdminCard>
+              <div className="flex items-start justify-between mb-5">
+                <div>
+                  <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white tracking-tight flex items-center gap-1.5">
+                    Set up your authenticator app
+                    <HelpTip content={helpContent.mfaSetup.authenticatorApps} />
+                  </h3>
+                  <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                    You'll need an authenticator app like Google Authenticator, Authy, or 1Password.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                  <p className="font-medium text-gray-900 dark:text-white">How it works:</p>
+                  <ol className="space-y-1.5 list-decimal pl-5">
+                    <li>Install an authenticator app on your phone</li>
+                    <li>Scan the QR code we'll show you next</li>
+                    <li>Enter the 6-digit code to verify</li>
+                    <li>Sign back in — you'll be challenged for MFA going forward</li>
+                  </ol>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <AdminButton
+                    onClick={handleStartEnrollment}
+                    isLoading={isProcessing}
+                    className="flex-1"
+                  >
+                    Start MFA Setup
+                  </AdminButton>
+                  <AdminButton variant="outline" onClick={handleLogout}>
+                    <LogOut className="w-3.5 h-3.5 mr-1" /> Sign Out
+                  </AdminButton>
+                </div>
+
+                <p className="text-xs text-gray-500 dark:text-gray-500 text-center pt-2">
+                  Signed in as <strong>{firebaseUser?.email}</strong>
                 </p>
               </div>
-
-              <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                <p className="font-medium text-gray-900 dark:text-white">How it works:</p>
-                <ol className="space-y-1.5 list-decimal pl-5">
-                  <li>Install an authenticator app on your phone</li>
-                  <li>Scan the QR code we'll show you next</li>
-                  <li>Enter the 6-digit code to verify</li>
-                  <li>Sign back in — you'll be challenged for MFA going forward</li>
-                </ol>
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <AdminButton
-                  onClick={handleStartEnrollment}
-                  isLoading={isProcessing}
-                  className="flex-1"
-                >
-                  Start MFA Setup
-                </AdminButton>
-                <AdminButton variant="outline" onClick={handleLogout}>
-                  <LogOut className="w-3.5 h-3.5 mr-1" /> Sign Out
-                </AdminButton>
-              </div>
-
-              <p className="text-xs text-gray-500 dark:text-gray-500 text-center pt-2">
-                Signed in as <strong>{firebaseUser?.email}</strong>
-              </p>
-            </div>
-          </AdminCard>
+            </AdminCard>
+          </>
         )}
 
         {/* Step: Generating */}
@@ -237,10 +241,17 @@ export default function AdminMFASetupPage() {
         {/* Step: Scan QR */}
         {step === 'scan' && enrollment && (
           <AdminCard>
-            <AdminCardHeader
-              title="Scan with your authenticator"
-              description="Point your authenticator app's camera at the QR code below."
-            />
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white tracking-tight flex items-center gap-1.5">
+                  Scan with your authenticator
+                  <HelpTip content={helpContent.mfaSetup.scanQr} />
+                </h3>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                  Point your authenticator app's camera at the QR code below.
+                </p>
+              </div>
+            </div>
             <div className="space-y-4">
               {/* QR Code */}
               <div className="flex flex-col items-center p-6 rounded-xl bg-white dark:bg-white border border-gray-200 dark:border-white/[0.1]">
@@ -255,9 +266,12 @@ export default function AdminMFASetupPage() {
 
               {/* Manual entry fallback */}
               <div className="p-3 rounded-lg bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.06]">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Can't scan? Enter this key manually:
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                    Can't scan? Enter this key manually:
+                    <HelpTip content={helpContent.mfaSetup.manualKey} />
+                  </p>
+                </div>
                 <div className="flex items-center gap-2">
                   <code className="text-xs font-mono bg-white dark:bg-white/[0.04] px-2 py-1.5 rounded border border-gray-200 dark:border-white/[0.08] flex-1 break-all">
                     {enrollment.secretKey}
@@ -282,14 +296,22 @@ export default function AdminMFASetupPage() {
         {/* Step: Verify */}
         {step === 'verify' && (
           <AdminCard>
-            <AdminCardHeader
-              title="Enter verification code"
-              description="Open your authenticator app and enter the 6-digit code for Monitrax."
-            />
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white tracking-tight flex items-center gap-1.5">
+                  Enter verification code
+                  <HelpTip content={helpContent.mfaSetup.verifyCode} />
+                </h3>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                  Open your authenticator app and enter the 6-digit code for Monitrax.
+                </p>
+              </div>
+            </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   Authenticator Name
+                  <HelpTip content={helpContent.mfaSetup.authenticatorName} />
                 </label>
                 <input
                   type="text"
@@ -338,8 +360,9 @@ export default function AdminMFASetupPage() {
               <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center mb-4">
                 <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1.5">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1.5 flex items-center gap-1.5">
                 MFA Enrolled Successfully
+                <HelpTip content={helpContent.mfaSetup.complete} />
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mb-6">
                 Your authenticator app is now linked to your Monitrax admin account.
