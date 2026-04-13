@@ -84,8 +84,12 @@ export default function AdminLoginPage() {
         throw new Error(data.error?.message || 'Admin access denied');
       }
 
-      // Step 3: Redirect to admin dashboard
-      router.push(ADMIN_ROUTES.DASHBOARD);
+      // Step 3: Redirect based on MFA setup status
+      if (data.mfaSetupRequired) {
+        router.push('/admin/mfa-setup');
+      } else {
+        router.push(ADMIN_ROUTES.DASHBOARD);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       // Make Firebase error messages more user-friendly
@@ -132,7 +136,12 @@ export default function AdminLoginPage() {
         throw new Error(data.error?.message || 'Admin access denied');
       }
 
-      router.push(ADMIN_ROUTES.DASHBOARD);
+      // Redirect based on MFA setup status
+      if (data.mfaSetupRequired) {
+        router.push('/admin/mfa-setup');
+      } else {
+        router.push(ADMIN_ROUTES.DASHBOARD);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       if (message.includes('popup-closed-by-user')) {

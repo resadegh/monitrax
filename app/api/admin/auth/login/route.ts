@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         role: authResult.context.role,
         email: authResult.context.email,
+        mfaSetupRequired: authResult.context.mfaSetupRequired,
       },
     }).catch(() => {});
 
@@ -101,6 +102,8 @@ export async function POST(request: NextRequest) {
         name: authResult.context.name,
         role: authResult.context.role,
       },
+      // Signal to client that admin must enroll MFA before accessing the portal
+      mfaSetupRequired: authResult.context.mfaSetupRequired === true,
     });
   } catch (error) {
     console.error('[Admin Login] Error:', error);

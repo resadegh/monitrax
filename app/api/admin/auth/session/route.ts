@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         name: authResult.context.name,
         role: authResult.context.role,
       },
+      mfaSetupRequired: authResult.context.mfaSetupRequired === true,
     });
   } catch (error) {
     console.error('[Admin Session] Error:', error);

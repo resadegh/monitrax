@@ -19,13 +19,14 @@ import { onAuthStateChanged } from 'firebase/auth';
 import type { AdminRole } from '@prisma/client';
 
 // Pages that don't show the sidebar
-const FULL_WIDTH_PAGES = ['/admin/login', '/admin'];
+const FULL_WIDTH_PAGES = ['/admin/login', '/admin', '/admin/mfa-setup'];
 
 interface AdminContext {
   adminId: string;
   email: string;
   name: string;
   role: AdminRole;
+  mfaSetupRequired?: boolean;
 }
 
 interface AdminLayoutClientProps {
@@ -123,7 +124,20 @@ export function AdminLayoutClient({ children }: AdminLayoutClientProps) {
             email: data.admin.email,
             name: data.admin.name,
             role: data.admin.role,
+            mfaSetupRequired: data.mfaSetupRequired === true,
           });
+
+          // Phase M: MFA enrollment wall — redirect privileged admins
+          // without MFA to the setup page. They cannot access any other
+          // admin routes until MFA is enrolled.
+          if (
+            data.mfaSetupRequired === true &&
+            pathname !== '/admin/mfa-setup' &&
+            pathname !== '/admin/login'
+          ) {
+            router.push('/admin/mfa-setup');
+            return;
+          }
         } else {
           router.push('/admin/login');
         }
@@ -135,7 +149,7 @@ export function AdminLayoutClient({ children }: AdminLayoutClientProps) {
     });
 
     return () => unsubscribe();
-  }, [isFullWidthPage, router]);
+  }, [isFullWidthPage, router, pathname]);
 
   // For full-width pages (login), render without sidebar
   if (isFullWidthPage) {
