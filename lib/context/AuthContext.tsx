@@ -71,7 +71,7 @@ async function fetchUserProfile(idToken: string): Promise<User> {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch user profile');
+    throw new Error(`Failed to fetch user profile (status ${response.status})`);
   }
 
   const data = await response.json();
@@ -80,6 +80,66 @@ async function fetchUserProfile(idToken: string): Promise<User> {
     email: data.user?.email || data.data?.email || '',
     name: data.user?.name || data.data?.name || '',
     role: data.user?.role || data.data?.role || 'OWNER',
+  };
+}
+
+/**
+ * Fetch the user profile with retry + exponential backoff.
+ * Guards against transient /api/auth/me failures that would otherwise
+ * leave the dashboard stuck on "Loading..." (see DashboardLayout's
+ * `isLoading || (token && !user)` check).
+ */
+async function fetchUserProfileWithRetry(
+  idToken: string,
+  maxAttempts = 3,
+): Promise<User> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fetchUserProfile(idToken);
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts) {
+        // 400ms, 1200ms
+        await new Promise((r) => setTimeout(r, 400 * attempt * attempt));
+      }
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Failed to fetch user profile');
+}
+
+/**
+ * Build a minimal User object from the Firebase user's token claims.
+ * Used as a last-resort fallback so the dashboard always renders once
+ * Firebase has a valid session, even if /api/auth/me is temporarily down.
+ * Subsequent API calls still carry the real token, so permission checks
+ * on the server continue to work normally.
+ */
+async function buildFallbackUserFromFirebase(
+  fbUser: FirebaseUser,
+): Promise<User> {
+  // Read the decoded ID token claims (client-side — not a security boundary)
+  // so we can pick up the Monitrax role claim if one was set via custom claims.
+  let roleFromClaims: string | undefined;
+  try {
+    const result = await fbUser.getIdTokenResult();
+    const claims = result.claims as Record<string, unknown>;
+    if (typeof claims.role === 'string') {
+      roleFromClaims = claims.role;
+    } else if (typeof claims.monitrax_role === 'string') {
+      roleFromClaims = claims.monitrax_role;
+    }
+  } catch {
+    // ignore — fall through to default role
+  }
+
+  return {
+    id: fbUser.uid,
+    email: fbUser.email || '',
+    name: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+    role: roleFromClaims || 'OWNER',
   };
 }
 
@@ -113,14 +173,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setFirebaseUser(fbUser);
         setToken(idToken);
 
-        // Fetch user profile on initial sign-in (not on every token refresh)
+        // Fetch user profile on initial sign-in (not on every token refresh).
+        // Retry + Firebase-claims fallback ensures the dashboard never gets
+        // stuck on "Loading..." when /api/auth/me is transiently unavailable
+        // (DashboardLayout gates render on `token && !user`).
         if (!profileFetchedRef.current) {
           try {
-            const profile = await fetchUserProfile(idToken);
+            const profile = await fetchUserProfileWithRetry(idToken);
             setUser(profile);
             profileFetchedRef.current = true;
           } catch (err) {
-            console.error('Failed to fetch user profile:', err);
+            console.error(
+              'Failed to fetch user profile after retries — falling back to Firebase claims:',
+              err,
+            );
+            try {
+              const fallback = await buildFallbackUserFromFirebase(fbUser);
+              setUser(fallback);
+              profileFetchedRef.current = true;
+            } catch (fallbackErr) {
+              console.error(
+                'Fallback user construction also failed:',
+                fallbackErr,
+              );
+              // Last resort: sign the user out so they land on /signin
+              // rather than a frozen loading spinner.
+              try {
+                await firebaseSignOut(auth);
+              } catch {
+                // ignore
+              }
+            }
           }
         }
       } else {
@@ -146,8 +229,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(idToken);
     setMFAChallenge(null);
 
-    const profile = await fetchUserProfile(idToken);
-    setUser(profile);
+    try {
+      const profile = await fetchUserProfileWithRetry(idToken);
+      setUser(profile);
+    } catch (err) {
+      console.error(
+        'Profile fetch failed on sign-in — using Firebase claims fallback:',
+        err,
+      );
+      const fallback = await buildFallbackUserFromFirebase(fbUser);
+      setUser(fallback);
+    }
     profileFetchedRef.current = true;
   };
 
