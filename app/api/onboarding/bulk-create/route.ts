@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+// Prisma's Json? columns disallow raw `null` — use Prisma.JsonNull
+// (sentinel meaning "write SQL NULL") to clear a JSONB field.
+// See: https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields#using-null-values
+import { Prisma } from '@prisma/client';
 
 // Prisma transaction client type
 type TransactionClient = Omit<
@@ -851,13 +855,15 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
             taxYear: data.taxYear || null,
             dismissedWelcomeModal: true,
             hasSeenGuidedTour: true,
-            onboardingDraft: null,
+            // Prisma Json? — raw `null` is rejected by the generated
+            // type, so we use Prisma.JsonNull to write SQL NULL.
+            onboardingDraft: Prisma.JsonNull,
           },
           update: {
             country: data.country,
             taxYear: data.taxYear || null,
             dismissedWelcomeModal: true,
-            onboardingDraft: null,
+            onboardingDraft: Prisma.JsonNull,
           },
         });
 
