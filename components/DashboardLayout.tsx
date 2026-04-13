@@ -3,7 +3,7 @@
 import { useAuth } from '@/lib/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   LayoutDashboard,
   Home,
@@ -50,6 +50,7 @@ import {
   GuidedTour,
   WizardContainer,
   OnboardingProgressBadge,
+  OnboardingResumeBanner,
   WizardData,
 } from '@/components/onboarding';
 
@@ -147,20 +148,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     state: onboardingState,
     shouldShowWelcome,
     shouldShowOnboardingBadge,
+    shouldShowResumeBanner,
     dismissWelcomeModal,
     dismissOnboardingBadge,
     startOnboarding,
     markTourCompleted,
     markTourSkipped,
     completeOnboarding,
+    setCurrentStep,
+    saveDraft,
+    clearDraft,
   } = useOnboardingState();
 
   // Onboarding modal states
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
+  // Phase 12 PR 2: Hydrated draft + step index passed to WizardContainer.
+  // Reads from the server-backed onboardingState; falls back to the local
+  // draft if the server returned null (same-device blip safety net).
+  const hydratedDraft = useMemo<Partial<WizardData> | undefined>(() => {
+    const serverDraft = onboardingState?.draft;
+    if (serverDraft && typeof serverDraft === 'object') {
+      return serverDraft as Partial<WizardData>;
+    }
+    // Local fallback is only read when server said "no draft". This avoids
+    // the case where a stale localStorage entry from a previous user
+    // leaks into a different session (useOnboardingState namespaces by
+    // userId so this is already safe, but the explicit check keeps intent
+    // readable).
+    return undefined;
+  }, [onboardingState?.draft]);
+  const hydratedStepIndex = onboardingState?.currentStep ?? 0;
+  // Session-scoped banner dismiss (resets next login). For "never show
+  // again" semantics, the user clicks Start over, which wipes the draft.
+  const [resumeBannerDismissed, setResumeBannerDismissed] = useState(false);
 
-  // Show welcome modal for new users (only on dashboard page)
+  // Show welcome modal for new users (only on dashboard page).
+  // Hardened "show once / never again" — backed by:
+  //   • state.onboardingCompleted (set on bulk-create success)
+  //   • state.preferences.dismissedWelcomeModal (set on any skip)
+  //   • localStorage fallback (useOnboardingState)
+  //   • draft/step progress priority (resume banner takes over)
+  // See useOnboardingState.shouldShowWelcome for the full contract.
   useEffect(() => {
     if (shouldShowWelcome && pathname === '/dashboard') {
       setShowWelcomeModal(true);
@@ -183,14 +213,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setShowTour(true);
   }, []);
 
-  const handleSkipOnboarding = useCallback(async () => {
+  // Phase 12 PR 2 — strict "show once / never again" contract:
+  //   - handleSkipOnboarding: close-only. Modal reappears next login UNLESS
+  //     the user explicitly ticks "Don't show this again" (which triggers
+  //     onDismissPermanently in the modal → dismissWelcomeModal()).
+  //   - handleWizardComplete: clears draft + sets onboardingCompleted=true,
+  //     so the modal never returns.
+  const handleSkipOnboarding = useCallback(() => {
+    // NO server-side dismiss. This intentionally does NOT call
+    // dismissWelcomeModal() — that's reserved for the checkbox path.
     setShowWelcomeModal(false);
-    try {
-      await dismissWelcomeModal();
-    } catch (e) {
-      console.warn('Could not save dismiss state:', e);
-    }
-  }, [dismissWelcomeModal]);
+  }, []);
 
   const handleTourComplete = useCallback(async () => {
     setShowTour(false);
@@ -213,7 +246,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleWizardComplete = useCallback(async (wizardData: WizardData) => {
     try {
-      // Save all wizard data to the database via bulk-create API
+      // Save all wizard data to the database via bulk-create API.
+      // bulk-create itself clears UserPreference.onboardingDraft on success
+      // (see PR 1 / PR 2 changelog), so the resume banner disappears and
+      // the welcome modal will never re-fire (onboardingCompleted = true).
       const response = await fetch('/api/onboarding/bulk-create', {
         method: 'POST',
         headers: {
@@ -229,8 +265,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         throw new Error(errorData.error || 'Failed to save data');
       }
 
-      // Mark onboarding as complete
+      // Mark onboarding as complete + clear local draft fallback.
       await completeOnboarding();
+      await clearDraft();
       setShowWizard(false);
 
       // Full page reload to ensure client components refetch data
@@ -242,10 +279,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Still close the wizard but show an error state could be added here
       setShowWizard(false);
     }
-  }, [completeOnboarding, token]);
+  }, [clearDraft, completeOnboarding, token]);
 
   const handleResumeOnboarding = useCallback(() => {
     setShowWizard(true);
+  }, []);
+
+  // Phase 12 PR 2: Wizard autosave callback. Invoked by WizardContainer
+  // after the debounce fires. Persists the in-progress draft + current
+  // step to the server so the user can resume on any device.
+  const handleWizardAutoSave = useCallback(
+    (wizardData: WizardData, stepIndex: number) => {
+      // Fire-and-forget; saveDraft already catches and logs its own errors.
+      void saveDraft(wizardData, stepIndex);
+      // Also update the step index explicitly so `currentStep` on
+      // useOnboardingState stays in sync for the resume banner label.
+      void setCurrentStep(stepIndex);
+    },
+    [saveDraft, setCurrentStep]
+  );
+
+  // Phase 12 PR 2: Resume banner actions.
+  const handleResumeBannerResume = useCallback(() => {
+    setShowWizard(true);
+  }, []);
+  const handleResumeBannerStartOver = useCallback(async () => {
+    try {
+      await clearDraft();
+      await setCurrentStep(0);
+    } catch (e) {
+      console.warn('Could not fully reset onboarding draft:', e);
+    }
+    setResumeBannerDismissed(true);
+    // Force a fresh wizard instance on next open.
+    setShowWizard(false);
+  }, [clearDraft, setCurrentStep]);
+  const handleResumeBannerDismiss = useCallback(() => {
+    setResumeBannerDismissed(true);
   }, []);
 
   // Collapsible nav groups state - auto-expand group containing current path
@@ -564,6 +634,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Add top padding on mobile for the header */}
         <main className="min-h-screen p-3 pt-16 sm:p-4 sm:pt-20 lg:p-8 lg:pt-8">
           <div className="mx-auto max-w-7xl">
+            {/* Phase 12 PR 2: Resume banner for users with an unfinished
+                wizard draft. Renders on the dashboard only; hidden once
+                the user dismisses the banner (session-scoped) or clicks
+                "Start over" (clears the draft). Completion of the wizard
+                clears the draft server-side, so the banner never returns
+                after onboarding is finished. */}
+            {pathname === '/dashboard' && shouldShowResumeBanner && !resumeBannerDismissed && (
+              <OnboardingResumeBanner
+                currentStep={onboardingState?.currentStep ?? 0}
+                totalSteps={8}
+                onResume={handleResumeBannerResume}
+                onStartOver={handleResumeBannerStartOver}
+                onDismiss={handleResumeBannerDismiss}
+              />
+            )}
             {/* Phase 12: Onboarding Progress Badge */}
             {shouldShowOnboardingBadge && onboardingState && (
               <div className="mb-4" data-tour="dashboard-stats">
@@ -607,11 +692,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onDismissPermanently={dismissWelcomeModal}
       />
 
-      {/* Enhanced Setup Wizard v2.0 */}
+      {/* Enhanced Setup Wizard v2.0 — Phase 12 PR 2 hydrates from server
+          draft + autosaves on every change. */}
       <WizardContainer
         isOpen={showWizard}
         onClose={() => setShowWizard(false)}
         onComplete={handleWizardComplete}
+        initialData={hydratedDraft}
+        initialStepIndex={hydratedStepIndex}
+        onAutoSave={handleWizardAutoSave}
       />
     </div>
   );

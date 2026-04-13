@@ -123,8 +123,16 @@ Before adding ANY calculation:
 
 ### **4.4 New Components**
 For onboarding components:
-1. Check `components/onboarding/shared/` first
-2. Use `CurrencyInput`, `FrequencySelect`, `StatCard`, `SectionSummary`
+1. The live wizard lives in `components/onboarding/wizard/` (`WizardContainer`,
+   `steps/*`, `AIHelper`, `types.ts`).
+2. For shared primitives (currency input, etc.), use the top-level
+   `components/form/` directory. The old `components/onboarding/shared/` was
+   removed in PR 2 (2026-04-12) as dead code — see
+   `docs/changelog/CHANGELOG_2026_04_12_ONBOARDING_DRAFT_PERSISTENCE.md`.
+3. First-time experience: `OnboardingWelcomeModal` (shown on first dashboard
+   visit) and `OnboardingResumeBanner` (shown when an unfinished wizard
+   draft exists). Both share the same premium design language — see
+   `styles/wizard-animations.css` for the keyframes.
 
 ---
 

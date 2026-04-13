@@ -15,7 +15,12 @@ const DEFAULT_PREFERENCES = {
   preferredCurrency: 'AUD',
   preferredDateFormat: 'DD/MM/YYYY',
   country: 'AU',
+  taxYear: null as string | null,
 };
+
+// Maximum serialized draft size (~ 200 KB). Guards against pathological
+// payloads and fits comfortably within Postgres row limits.
+const MAX_DRAFT_JSON_BYTES = 200_000;
 
 /**
  * GET /api/onboarding/state
@@ -43,6 +48,7 @@ export const GET = withPermission('settings.read', async (request, auth) => {
         onboardingCompletedAt: null as Date | null,
         onboardingStep: 0,
         userPreference: null as typeof DEFAULT_PREFERENCES | null,
+        draft: null as unknown,
       };
 
       try {
@@ -64,19 +70,26 @@ export const GET = withPermission('settings.read', async (request, auth) => {
                 preferredCurrency: true,
                 preferredDateFormat: true,
                 country: true,
+                taxYear: true,
+                onboardingDraft: true,
               },
             },
           },
         });
 
         if (user) {
+          // Split the draft out from the preferences object so the client
+          // can hydrate the wizard without threading it through the prefs type.
+          const pref = user.userPreference;
+          const { onboardingDraft = null, ...prefWithoutDraft } = pref ?? {};
           onboardingData = {
             onboardingCompleted: user.onboardingCompleted ?? false,
             onboardingProfileType: user.onboardingProfileType ?? null,
             onboardingStartedAt: user.onboardingStartedAt ?? null,
             onboardingCompletedAt: user.onboardingCompletedAt ?? null,
             onboardingStep: user.onboardingStep ?? 0,
-            userPreference: user.userPreference ?? null,
+            userPreference: pref ? (prefWithoutDraft as typeof DEFAULT_PREFERENCES) : null,
+            draft: onboardingDraft,
           };
         }
       } catch (dbError) {
@@ -103,6 +116,8 @@ export const GET = withPermission('settings.read', async (request, auth) => {
           onboardingCompletedAt: onboardingData.onboardingCompletedAt,
           currentStep: onboardingData.onboardingStep,
           preferences: onboardingData.userPreference || DEFAULT_PREFERENCES,
+          // Phase 12 PR 2: draft wizard state (null if none saved)
+          draft: onboardingData.draft ?? null,
           hasExistingData: hasData,
           dataSummary: {
             properties: propertyCount,
@@ -149,6 +164,10 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         preferredCurrency,
         preferredDateFormat,
         country,
+        taxYear,
+        // Phase 12 PR 2: Draft persistence
+        draft,
+        clearDraft,
       } = body;
 
       // Build user update data
@@ -212,6 +231,39 @@ export const POST = withPermission('settings.write', async (request, auth) => {
       }
       if (country) {
         prefUpdate.country = country;
+      }
+      if (typeof taxYear === 'string' && taxYear.length > 0) {
+        prefUpdate.taxYear = taxYear;
+      }
+
+      // Phase 12 PR 2: Draft handling.
+      //   - `draft: <object>` → save a new draft (replacing any previous one)
+      //   - `clearDraft: true` → explicitly wipe the draft
+      // These are mutually exclusive; `clearDraft` wins if both are set.
+      if (clearDraft) {
+        prefUpdate.onboardingDraft = null;
+      } else if (draft !== undefined && draft !== null) {
+        if (typeof draft !== 'object') {
+          return NextResponse.json(
+            { success: false, error: 'draft must be an object' },
+            { status: 400 }
+          );
+        }
+        // Guard against pathological payloads. Draft is user-entered
+        // self-reported data (not CDR data — see CLAUDE.md §13.1), so no
+        // special protection beyond standard input validation is needed,
+        // but we still cap the size to avoid runaway serialization.
+        const serialized = JSON.stringify(draft);
+        if (serialized.length > MAX_DRAFT_JSON_BYTES) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Draft is too large (max ${MAX_DRAFT_JSON_BYTES} bytes)`,
+            },
+            { status: 413 }
+          );
+        }
+        prefUpdate.onboardingDraft = draft;
       }
 
       // Try to upsert user preference (may fail if migration not run)

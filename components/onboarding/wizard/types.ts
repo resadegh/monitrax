@@ -17,8 +17,10 @@ export type WizardStepId =
   | 'welcome'
   | 'household'  // Phase 29: Household setup step (first after welcome)
   | 'properties'
+  | 'debts'      // Phase 12 PR 3b: non-property loans (CAR/STUDENT/PERSONAL/BUSINESS)
   | 'accounts'
   | 'investments'
+  | 'super'      // Phase 12 PR 3b: dedicated SuperannuationAccount step
   | 'assets'
   | 'income-expenses'
   | 'review';
@@ -55,6 +57,18 @@ export const WIZARD_STEPS: WizardStep[] = [
     isOptional: true,
     profiles: ['HOMEOWNER', 'INVESTOR', 'MIXED'],
   },
+  // Phase 12 PR 3b: Debts step — conditionally shown when the user ticks
+  // at least one "Do you have any of these debts?" option on Welcome.
+  // Visibility is further filtered at runtime in getStepsForProfile based
+  // on WizardData.hasDebts (see below) — not just the profile list.
+  {
+    id: 'debts',
+    title: 'Debts',
+    description: 'Car, student, personal or business loans',
+    icon: '💳',
+    isOptional: true,
+    profiles: ['STARTER', 'HOMEOWNER', 'INVESTOR', 'MIXED'],
+  },
   {
     id: 'accounts',
     title: 'Accounts',
@@ -69,6 +83,16 @@ export const WIZARD_STEPS: WizardStep[] = [
     icon: '📈',
     isOptional: true,
     profiles: ['INVESTOR', 'MIXED'],
+  },
+  // Phase 12 PR 3b: Super step — shown to all profiles; still optional.
+  // Creates real SuperannuationAccount rows (not InvestmentAccount type=SUPERS).
+  {
+    id: 'super',
+    title: 'Super',
+    description: 'Add your superannuation accounts',
+    icon: '🛡️',
+    isOptional: true,
+    profiles: ['STARTER', 'HOMEOWNER', 'INVESTOR', 'MIXED'],
   },
   {
     id: 'assets',
@@ -170,6 +194,19 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   CREDIT_CARD: 'Credit Card',
 };
 
+// Phase 12 PR 3b: Data source hierarchy for an account entered in the
+// wizard. Matches the schema's BalanceSource enum (minus USER_VERIFIED
+// which isn't reachable from onboarding).
+//   - BASIQ  : account was imported via the Basiq Open Banking connect
+//              flow; the real Account row already exists in the DB, the
+//              wizard only holds a display-pointer. bulk-create skips
+//              writing these.
+//   - IMPORT : account was created by the file-import flow (CSV/OFX/QIF)
+//              which set a closing balance anchor; the real Account row
+//              already exists. bulk-create skips writing these.
+//   - MANUAL : user typed the balance directly (existing PR 1/3a path).
+export type AccountDataSource = 'BASIQ' | 'IMPORT' | 'MANUAL';
+
 export interface AccountInput {
   id: string;
   name: string;
@@ -178,6 +215,14 @@ export interface AccountInput {
   currentBalance: number;
   interestRate?: number; // Annual interest rate (e.g., 0.025 for 2.5%)
   linkedLoanId?: string; // For offset accounts - reference to a loan
+  // Phase 12 PR 3b: origin of the balance. Default MANUAL for existing
+  // quick-add and manual-entry paths. Set to BASIQ or IMPORT by the
+  // three-tier Accounts step when the user takes one of those routes.
+  source?: AccountDataSource;
+  // For BASIQ / IMPORT accounts, this is the ID of the real Account
+  // row already persisted in the DB. bulk-create uses it to skip the
+  // write without losing the reference.
+  existingAccountId?: string;
 }
 
 // =============================================================================
@@ -286,38 +331,49 @@ export interface IncomeInput {
 }
 
 // Prisma: enum ExpenseCategory
+// Must stay in sync with prisma/schema.prisma.
 export type ExpenseCategory =
   | 'HOUSING'
+  | 'RENT'
   | 'RATES'
   | 'INSURANCE'
   | 'MAINTENANCE'
   | 'PERSONAL'
   | 'UTILITIES'
   | 'FOOD'
+  | 'GROCERIES'
   | 'TRANSPORT'
   | 'ENTERTAINMENT'
+  | 'SUBSCRIPTION'
   | 'STRATA'
   | 'LAND_TAX'
   | 'LOAN_INTEREST'
   | 'REGISTRATION'
   | 'MODIFICATIONS'
+  | 'HEALTH'
+  | 'EDUCATION'
   | 'OTHER';
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   HOUSING: 'Housing',
+  RENT: 'Rent',
   RATES: 'Council Rates',
   INSURANCE: 'Insurance',
   MAINTENANCE: 'Maintenance',
   PERSONAL: 'Personal',
   UTILITIES: 'Utilities',
-  FOOD: 'Food & Groceries',
+  FOOD: 'Food & Dining',
+  GROCERIES: 'Groceries',
   TRANSPORT: 'Transport',
   ENTERTAINMENT: 'Entertainment',
+  SUBSCRIPTION: 'Subscriptions',
   STRATA: 'Strata Fees',
   LAND_TAX: 'Land Tax',
   LOAN_INTEREST: 'Loan Interest',
   REGISTRATION: 'Registration',
   MODIFICATIONS: 'Modifications',
+  HEALTH: 'Health & Medical',
+  EDUCATION: 'Education',
   OTHER: 'Other',
 };
 
@@ -374,6 +430,80 @@ export interface HouseholdPetInput {
 }
 
 // =============================================================================
+// PHASE 12 PR 3b: RENTER PATH
+// =============================================================================
+
+// Housing situation — captured on Welcome as a 3-option segmented control.
+//   - OWN   : user owns at least one property (home and/or investment).
+//             Shows the Properties step.
+//   - RENT  : user rents. Hides the Properties step. bulk-create seeds an
+//             Expense(category=RENT, sourceType=GENERAL) in IncomeExpenses
+//             if the user leaves the rent row untouched but has this
+//             value set.
+//   - BOTH  : user both owns property AND rents (e.g. has an investment
+//             property and rents their primary residence). Shows both
+//             the Properties step and the rent expense seeding.
+export type HousingSituation = 'OWN' | 'RENT' | 'BOTH';
+
+// =============================================================================
+// PHASE 12 PR 3b: DEBTS STEP (non-property loans)
+// =============================================================================
+
+// Which debt types the user indicated on Welcome. Drives visibility of
+// the Debts step and the pre-seeded rows inside it.
+export type DebtCategory = 'CAR' | 'STUDENT' | 'PERSONAL' | 'BUSINESS';
+
+// Prisma LoanType values the Debts step captures (HOME / INVESTMENT /
+// LINE_OF_CREDIT are NOT in this set — HOME/INVESTMENT live on the
+// Properties step, LINE_OF_CREDIT is modelled as a CREDIT_CARD Account
+// per the PR 3b design decision in the plan doc §3 row C).
+export type DebtLoanType = 'CAR' | 'PERSONAL' | 'STUDENT' | 'BUSINESS';
+
+export interface DebtInput {
+  id: string;
+  name: string;
+  type: DebtLoanType;
+  lender?: string;
+  principal: number;
+  interestRateAnnual: number; // percentage, e.g. 6.5 (converted to decimal in bulk-create)
+  minRepayment: number;
+  repaymentFrequency: RepaymentFrequency;
+  termMonthsRemaining?: number;
+  // For CAR loans: optional link to an Asset row in the Assets step.
+  // Matches the existing Loan.linkedAssetId column.
+  linkedAssetId?: string;
+  // For STUDENT loans: HECS/HELP has no lender name and no minimum
+  // repayment in the traditional sense (it's income-contingent). The
+  // wizard still uses `principal` for the outstanding balance; the
+  // other fields are optional and default sensibly.
+  isHecsHelp?: boolean;
+}
+
+// =============================================================================
+// PHASE 12 PR 3b: SUPER STEP (SuperannuationAccount)
+// =============================================================================
+
+// Matches the core fields on the SuperannuationAccount Prisma model.
+// PR 3b captures only the absolute minimum — users can fill in the rest
+// from a future Settings > Retirement page (per plan doc §3 row A).
+export interface SuperAccountInput {
+  id: string;
+  name: string;
+  fundName: string;
+  currentBalance: number;
+}
+
+// =============================================================================
+// PHASE 12 PR 3b: HOUSEHOLD LIFESTYLE FIELDS (Phase 28 budget AI)
+// =============================================================================
+
+// Matches the LifestylePreference enum in the Prisma schema.
+export type LifestylePreference = 'FRUGAL' | 'MODERATE' | 'COMFORTABLE';
+
+// Matches the DiningFrequency enum in the Prisma schema.
+export type DiningFrequency = 'NEVER' | 'RARELY' | 'SOMETIMES' | 'OFTEN';
+
+// =============================================================================
 // WIZARD STATE
 // =============================================================================
 
@@ -382,20 +512,37 @@ export interface WizardData {
   profileType: OnboardingProfileType | null;
   country: string;
   taxYear: string;
+  // Phase 12 PR 3b: housing situation drives Properties step visibility
+  // and the renter-path expense seed. null until the user answers.
+  housing: HousingSituation | null;
+  // Phase 12 PR 3b: which non-property debts the user has. Drives
+  // Debts step visibility and the pre-seeded rows.
+  debtCategories: DebtCategory[];
 
-  // Step 2: Household (Phase 29)
+  // Step 2: Household (Phase 29 + PR 3b lifestyle)
   householdMembers: HouseholdMemberInput[];
   householdPets: HouseholdPetInput[];
   carsCount: number;
+  // Phase 12 PR 3b: lifestyle fields for the Phase 28 budget AI.
+  // All three are nullable — defaults only apply in bulk-create.
+  lifestylePreference: LifestylePreference | null;
+  diningOutFrequency: DiningFrequency | null;
+  hobbiesWithCosts: string;
 
   // Step 3: Properties (with inline loans)
   properties: PropertyInput[];
+
+  // Step 3b: Debts (non-property loans) — PR 3b
+  debts: DebtInput[];
 
   // Step 4: Accounts
   accounts: AccountInput[];
 
   // Step 5: Investments
   investments: InvestmentAccountInput[];
+
+  // Step 5b: Super (SuperannuationAccount) — PR 3b
+  superAccounts: SuperAccountInput[];
 
   // Step 6: Assets
   assets: AssetInput[];
@@ -409,12 +556,21 @@ export const INITIAL_WIZARD_DATA: WizardData = {
   profileType: null,
   country: 'AU',
   taxYear: new Date().getFullYear().toString(),
+  // PR 3b new fields
+  housing: null,
+  debtCategories: [],
+  lifestylePreference: null,
+  diningOutFrequency: null,
+  hobbiesWithCosts: '',
+  // Existing fields
   householdMembers: [],
   householdPets: [],
   carsCount: 0,
   properties: [],
+  debts: [],
   accounts: [],
   investments: [],
+  superAccounts: [],
   assets: [],
   income: [],
   expenses: [],
@@ -424,8 +580,58 @@ export const INITIAL_WIZARD_DATA: WizardData = {
 // HELPER FUNCTIONS
 // =============================================================================
 
-export function getStepsForProfile(profile: OnboardingProfileType): WizardStep[] {
-  return WIZARD_STEPS.filter(step => step.profiles.includes(profile));
+/**
+ * Phase 12 PR 3a: Returns the visible steps for a given profile type.
+ *
+ * Phase 12 PR 3b extends this with **runtime context** so that step
+ * visibility can depend on Welcome answers in addition to the profile
+ * label. The optional `context` parameter drives three conditions:
+ *
+ *   1. **Renter path**: if `context.housing === 'RENT'`, the Properties
+ *      step is hidden — renters don't own property. When they later add
+ *      a rent expense on the Income/Expenses step, it's seeded as an
+ *      Expense(category=RENT) rather than a Property(type=RENTAL).
+ *   2. **Debts step**: the Debts step is only shown when
+ *      `context.debtCategories.length > 0` — i.e. the user ticked at
+ *      least one checkbox on Welcome ("Do you have any of these debts?").
+ *   3. **Backwards compatibility**: if `context` is undefined (existing
+ *      callers from PR 3a that don't pass it yet), Properties and Debts
+ *      fall back to their legacy behaviour — Properties always visible
+ *      for non-STARTER profiles, Debts always visible.
+ *
+ * Super and Assets stay profile-gated as they were in PR 3a (Super is
+ * all profiles, Assets is MIXED only — Assets may also become
+ * conditionally gated in a future PR).
+ */
+export function getStepsForProfile(
+  profile: OnboardingProfileType,
+  context?: { housing?: HousingSituation | null; debtCategories?: DebtCategory[] }
+): WizardStep[] {
+  return WIZARD_STEPS.filter((step) => {
+    // Profile gate — always applied
+    if (!step.profiles.includes(profile)) return false;
+
+    // PR 3b runtime gates
+    if (context) {
+      // Renter path — hide Properties unless they actually own
+      if (step.id === 'properties' && context.housing === 'RENT') {
+        return false;
+      }
+      // Debts step — only show when Welcome-ticked
+      if (
+        step.id === 'debts' &&
+        (!context.debtCategories || context.debtCategories.length === 0)
+      ) {
+        return false;
+      }
+    } else {
+      // Legacy behaviour (no context supplied): hide the Debts step by
+      // default so PR 3a tests that don't know about it still pass.
+      if (step.id === 'debts') return false;
+    }
+
+    return true;
+  });
 }
 
 export function generateId(): string {
@@ -447,8 +653,12 @@ export function getLoansFromProperties(properties: PropertyInput[]): Array<{ id:
 export function calculateSummary(data: WizardData): {
   totalPropertyValue: number;
   totalLoanBalance: number;
+  /** PR 3b: total principal across non-property debts */
+  totalDebtsBalance: number;
   totalAccountBalance: number;
   totalInvestmentValue: number;
+  /** PR 3b: total superannuation balance */
+  totalSuperValue: number;
   totalAssetValue: number;
   netWorth: number;
   annualIncome: number;
@@ -463,14 +673,25 @@ export function calculateSummary(data: WizardData): {
 
   const totalPropertyValue = data.properties.reduce((sum, p) => sum + p.currentValue, 0);
   const totalLoanBalance = data.properties.reduce((sum, p) => sum + (p.loan?.principal || 0), 0);
+  // PR 3b: include non-property debts (CAR / STUDENT / PERSONAL / BUSINESS)
+  const totalDebtsBalance = data.debts.reduce((sum, d) => sum + d.principal, 0);
   const totalAccountBalance = data.accounts.reduce((sum, a) => sum + a.currentBalance, 0);
   const totalInvestmentValue = data.investments.reduce((sum, inv) => {
     const holdingsValue = inv.holdings.reduce((h, hold) => h + (hold.units * hold.averagePrice), 0);
     return sum + inv.cashBalance + holdingsValue;
   }, 0);
+  // PR 3b: include superannuation balances
+  const totalSuperValue = data.superAccounts.reduce((sum, s) => sum + s.currentBalance, 0);
   const totalAssetValue = data.assets.reduce((sum, a) => sum + a.currentValue, 0);
 
-  const netWorth = totalPropertyValue + totalAccountBalance + totalInvestmentValue + totalAssetValue - totalLoanBalance;
+  const netWorth =
+    totalPropertyValue +
+    totalAccountBalance +
+    totalInvestmentValue +
+    totalSuperValue +
+    totalAssetValue -
+    totalLoanBalance -
+    totalDebtsBalance;
 
   // Calculate annual income
   let annualIncome = 0;
@@ -506,14 +727,27 @@ export function calculateSummary(data: WizardData): {
       annualLoanRepayments += frequencyToAnnual(prop.loan.minRepayment, prop.loan.repaymentFrequency);
     }
   });
+  // PR 3b: include non-property debt repayments (CAR / PERSONAL / BUSINESS —
+  // STUDENT/HECS is income-contingent, so it has no fixed minRepayment and
+  // contributes 0 here).
+  data.debts.forEach((debt) => {
+    if (debt.minRepayment > 0 && !debt.isHecsHelp) {
+      annualLoanRepayments += frequencyToAnnual(
+        debt.minRepayment,
+        debt.repaymentFrequency
+      );
+    }
+  });
 
   const monthlyCashflow = (annualIncome - annualExpenses - annualLoanRepayments) / 12;
 
   return {
     totalPropertyValue,
     totalLoanBalance,
+    totalDebtsBalance,
     totalAccountBalance,
     totalInvestmentValue,
+    totalSuperValue,
     totalAssetValue,
     netWorth,
     annualIncome,

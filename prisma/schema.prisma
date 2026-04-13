@@ -450,6 +450,13 @@ model UserPreference {
   preferredCurrency       String   @default("AUD")
   preferredDateFormat     String   @default("DD/MM/YYYY")
   country                 String   @default("AU")
+  taxYear                 String?  // e.g. "2025-2026" (AU FY). Null until the user sets it.
+
+  // Phase 12 PR 2: Onboarding wizard draft state.
+  // Stores the in-progress WizardData blob so users can resume a partial
+  // setup across devices. Cleared (set to null) when bulk-create succeeds.
+  // Null for users who have either not started or already completed onboarding.
+  onboardingDraft         Json?
 
   // Notification preferences (Phase 10)
   emailWeeklyDigest       Boolean  @default(true)

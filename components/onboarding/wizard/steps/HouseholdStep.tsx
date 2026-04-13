@@ -1,7 +1,36 @@
 'use client';
 
+/**
+ * HouseholdStep — Phase 12 PR 3a visual redesign
+ *
+ * Composes the new PR 3a primitives. Still captures the same fields as
+ * before (members, pets, cars count); no data model changes. The
+ * lifestyle fields (lifestylePreference, diningOutFrequency,
+ * hobbiesWithCosts) land in PR 3b, not here.
+ *
+ * Layout:
+ *   [WizardStepShell]
+ *     ├─ Members section
+ *     │   ├─ empty state OR member cards grid
+ *     │   └─ Add member dialog
+ *     ├─ Pets section
+ *     │   ├─ empty state OR pet cards grid
+ *     │   └─ Add pet dialog
+ *     └─ Vehicles section (inline number picker)
+ */
+
 import React, { useState } from 'react';
-import { Users, UserPlus, Dog, Plus, Pencil, Trash2, Baby, Briefcase, Car } from 'lucide-react';
+import {
+  Users,
+  UserPlus,
+  Dog,
+  Plus,
+  Pencil,
+  Trash2,
+  Baby,
+  Car,
+  Sparkles,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,13 +51,21 @@ import {
   HouseholdPetInput,
   HouseholdRelationship,
   HouseholdPetType,
+  LifestylePreference,
+  DiningFrequency,
   RELATIONSHIP_LABELS,
   PET_TYPE_LABELS,
 } from '../types';
+import {
+  WizardStepShell,
+  WizardSection,
+  WizardSegmentedControl,
+  WizardField,
+} from '../primitives';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
-// TYPES
+// MAIN COMPONENT
 // =============================================================================
 
 interface HouseholdStepProps {
@@ -36,12 +73,8 @@ interface HouseholdStepProps {
   onUpdate: (updates: Partial<WizardData>) => void;
 }
 
-// =============================================================================
-// MAIN COMPONENT
-// =============================================================================
-
 export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
-  // Member dialog state
+  // ---- Member dialog state -------------------------------------------
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<HouseholdMemberInput | null>(null);
   const [memberForm, setMemberForm] = useState({
@@ -51,7 +84,7 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
     isIncomeEarner: true,
   });
 
-  // Pet dialog state
+  // ---- Pet dialog state ----------------------------------------------
   const [petDialogOpen, setPetDialogOpen] = useState(false);
   const [editingPet, setEditingPet] = useState<HouseholdPetInput | null>(null);
   const [petForm, setPetForm] = useState({
@@ -60,13 +93,10 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
     breed: '',
   });
 
-  // =============================================================================
-  // MEMBER OPERATIONS
-  // =============================================================================
-
+  // ---- Member operations ---------------------------------------------
   const openAddMemberDialog = () => {
     setEditingMember(null);
-    const hasSelf = data.householdMembers.some(m => m.relationship === 'SELF');
+    const hasSelf = data.householdMembers.some((m) => m.relationship === 'SELF');
     setMemberForm({
       name: '',
       relationship: hasSelf ? 'SPOUSE' : 'SELF',
@@ -89,10 +119,8 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
 
   const saveMember = () => {
     if (!memberForm.name.trim()) return;
-
     if (editingMember) {
-      // Update existing member
-      const updatedMembers = data.householdMembers.map(m =>
+      const updatedMembers = data.householdMembers.map((m) =>
         m.id === editingMember.id
           ? {
               ...m,
@@ -105,7 +133,6 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
       );
       onUpdate({ householdMembers: updatedMembers });
     } else {
-      // Add new member
       const newMember: HouseholdMemberInput = {
         id: `member-${Date.now()}`,
         name: memberForm.name.trim(),
@@ -115,44 +142,30 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
       };
       onUpdate({ householdMembers: [...data.householdMembers, newMember] });
     }
-
     setMemberDialogOpen(false);
   };
 
   const deleteMember = (id: string) => {
-    onUpdate({ householdMembers: data.householdMembers.filter(m => m.id !== id) });
+    onUpdate({ householdMembers: data.householdMembers.filter((m) => m.id !== id) });
   };
 
-  // =============================================================================
-  // PET OPERATIONS
-  // =============================================================================
-
+  // ---- Pet operations ------------------------------------------------
   const openAddPetDialog = () => {
     setEditingPet(null);
-    setPetForm({
-      name: '',
-      type: 'DOG',
-      breed: '',
-    });
+    setPetForm({ name: '', type: 'DOG', breed: '' });
     setPetDialogOpen(true);
   };
 
   const openEditPetDialog = (pet: HouseholdPetInput) => {
     setEditingPet(pet);
-    setPetForm({
-      name: pet.name,
-      type: pet.type,
-      breed: pet.breed || '',
-    });
+    setPetForm({ name: pet.name, type: pet.type, breed: pet.breed || '' });
     setPetDialogOpen(true);
   };
 
   const savePet = () => {
     if (!petForm.name.trim()) return;
-
     if (editingPet) {
-      // Update existing pet
-      const updatedPets = data.householdPets.map(p =>
+      const updatedPets = data.householdPets.map((p) =>
         p.id === editingPet.id
           ? {
               ...p,
@@ -164,7 +177,6 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
       );
       onUpdate({ householdPets: updatedPets });
     } else {
-      // Add new pet
       const newPet: HouseholdPetInput = {
         id: `pet-${Date.now()}`,
         name: petForm.name.trim(),
@@ -173,12 +185,11 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
       };
       onUpdate({ householdPets: [...data.householdPets, newPet] });
     }
-
     setPetDialogOpen(false);
   };
 
   const deletePet = (id: string) => {
-    onUpdate({ householdPets: data.householdPets.filter(p => p.id !== id) });
+    onUpdate({ householdPets: data.householdPets.filter((p) => p.id !== id) });
   };
 
   // =============================================================================
@@ -186,44 +197,36 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
   // =============================================================================
 
   return (
-    <div className="space-y-6 wizard-step-enter">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-          <Users className="h-8 w-8 text-primary" />
-        </div>
-        <h2 className="text-2xl font-bold">Who&apos;s in Your Household?</h2>
-        <p className="text-muted-foreground mt-2">
-          Add your household members and pets to create personalized tracking categories
-        </p>
-      </div>
-
-      {/* Household Members Section */}
-      <div className="bg-card border rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-semibold flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Household Members
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Add people in your household to track income and expenses separately
+    <WizardStepShell
+      icon={<Users className="h-8 w-8" strokeWidth={1.5} />}
+      title="Your household"
+      subtitle="We'll use this to create personalised budget categories for each member and pet."
+    >
+      {/* Members */}
+      <WizardSection
+        icon={<Users className="h-4 w-4" />}
+        iconClassName="bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+        title="Household members"
+        description="Add the people who live with you — including yourself."
+        trailing={
+          <Button onClick={openAddMemberDialog} size="sm" variant="outline">
+            <UserPlus className="h-4 w-4 mr-1.5" />
+            Add
+          </Button>
+        }
+      >
+        {data.householdMembers.length === 0 ? (
+          <div className="rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-6 text-center">
+            <Users className="mx-auto mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+              No members yet
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-500">
+              Start by adding yourself
             </p>
           </div>
-          <Button onClick={openAddMemberDialog} size="sm">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add Member
-          </Button>
-        </div>
-
-        {data.householdMembers.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-            <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
-            <p>No household members added yet</p>
-            <p className="text-sm">Start by adding yourself</p>
-          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {data.householdMembers.map((member) => (
               <MemberCard
                 key={member.id}
@@ -234,33 +237,30 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
             ))}
           </div>
         )}
-      </div>
+      </WizardSection>
 
-      {/* Pets Section */}
-      <div className="bg-card border rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="font-semibold flex items-center gap-2">
-              <Dog className="h-5 w-5" />
-              Pets
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Add pets to track vet bills, food, and insurance expenses
+      {/* Pets */}
+      <WizardSection
+        icon={<Dog className="h-4 w-4" />}
+        iconClassName="bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400"
+        title="Pets"
+        description="Track vet bills, food, insurance per pet."
+        trailing={
+          <Button onClick={openAddPetDialog} size="sm" variant="outline">
+            <Plus className="h-4 w-4 mr-1.5" />
+            Add
+          </Button>
+        }
+      >
+        {data.householdPets.length === 0 ? (
+          <div className="rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-5 text-center">
+            <Dog className="mx-auto mb-1.5 h-7 w-7 text-slate-300 dark:text-slate-600" />
+            <p className="text-xs text-slate-500 dark:text-slate-500">
+              No pets? Skip this section.
             </p>
           </div>
-          <Button onClick={openAddPetDialog} size="sm" variant="outline">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Pet
-          </Button>
-        </div>
-
-        {data.householdPets.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
-            <Dog className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No pets? Skip this section</p>
-          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
             {data.householdPets.map((pet) => (
               <PetCard
                 key={pet.id}
@@ -271,65 +271,99 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
             ))}
           </div>
         )}
-      </div>
+      </WizardSection>
 
-      {/* Vehicles Section */}
-      <div className="bg-card border rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <Car className="h-5 w-5 text-muted-foreground" />
-          <div className="flex-1">
-            <h3 className="font-semibold">Vehicles</h3>
-            <p className="text-sm text-muted-foreground">
-              How many vehicles does your household have?
-            </p>
-          </div>
-          <Select
-            value={String(data.carsCount)}
-            onValueChange={(v) => onUpdate({ carsCount: parseInt(v) })}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[0, 1, 2, 3, 4, 5].map((n) => (
-                <SelectItem key={n} value={String(n)}>
-                  {n} {n === 1 ? 'vehicle' : 'vehicles'}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Vehicles — segmented count picker */}
+      <WizardSection
+        icon={<Car className="h-4 w-4" />}
+        iconClassName="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400"
+        title="Vehicles"
+        description="How many vehicles does your household have?"
+      >
+        <WizardSegmentedControl<string>
+          value={String(data.carsCount)}
+          onChange={(v) => onUpdate({ carsCount: parseInt(v, 10) })}
+          options={[
+            { value: '0', label: 'None' },
+            { value: '1', label: '1' },
+            { value: '2', label: '2' },
+            { value: '3', label: '3' },
+            { value: '4', label: '4+' },
+          ]}
+          name="cars-count"
+        />
+      </WizardSection>
+
+      {/* Phase 12 PR 3b: Lifestyle fields (Phase 28 budget AI) */}
+      <WizardSection
+        icon={<Sparkles className="h-4 w-4" />}
+        iconClassName="bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400"
+        title="Your lifestyle"
+        description="We use this to personalise your budget estimates."
+      >
+        <div className="space-y-4">
+          <WizardSegmentedControl<LifestylePreference>
+            label="How would you describe your spending?"
+            value={data.lifestylePreference}
+            onChange={(v) => onUpdate({ lifestylePreference: v })}
+            options={[
+              { value: 'FRUGAL', label: 'Frugal' },
+              { value: 'MODERATE', label: 'Moderate' },
+              { value: 'COMFORTABLE', label: 'Comfortable' },
+            ]}
+            name="lifestyle-preference"
+          />
+          <WizardSegmentedControl<DiningFrequency>
+            label="How often do you eat out?"
+            value={data.diningOutFrequency}
+            onChange={(v) => onUpdate({ diningOutFrequency: v })}
+            options={[
+              { value: 'NEVER', label: 'Never' },
+              { value: 'RARELY', label: 'Rarely' },
+              { value: 'SOMETIMES', label: 'Sometimes' },
+              { value: 'OFTEN', label: 'Often' },
+            ]}
+            name="dining-frequency"
+          />
+          <WizardField
+            label="Any expensive hobbies?"
+            placeholder="e.g. golf, photography, restoring cars"
+            value={data.hobbiesWithCosts}
+            onChange={(e) => onUpdate({ hobbiesWithCosts: e.target.value })}
+            helper="Optional — helps the budget AI allow for hobby-related spending"
+          />
         </div>
-      </div>
+      </WizardSection>
 
-      {/* Member Dialog */}
+      {/* Member dialog */}
       <Dialog open={memberDialogOpen} onOpenChange={setMemberDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>
-              {editingMember ? 'Edit Member' : 'Add Member'}
-            </DialogTitle>
+            <DialogTitle>{editingMember ? 'Edit member' : 'Add member'}</DialogTitle>
             <DialogDescription>
-              Categories will be created automatically based on their role
+              Categories will be created automatically based on their role.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="member-name">Name</Label>
               <Input
-                id="name"
+                id="member-name"
                 value={memberForm.name}
                 onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })}
-                placeholder="Enter name"
+                placeholder="e.g. Reza"
                 autoFocus
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="relationship">Relationship</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="member-relationship">Relationship</Label>
               <Select
                 value={memberForm.relationship}
-                onValueChange={(v) => setMemberForm({ ...memberForm, relationship: v as HouseholdRelationship })}
+                onValueChange={(v) =>
+                  setMemberForm({ ...memberForm, relationship: v as HouseholdRelationship })
+                }
               >
-                <SelectTrigger id="relationship">
+                <SelectTrigger id="member-relationship">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -342,26 +376,31 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
               </Select>
             </div>
             {memberForm.relationship === 'CHILD' && (
-              <div className="grid gap-2">
-                <Label htmlFor="dob">Date of Birth (optional)</Label>
+              <div className="grid gap-1.5">
+                <Label htmlFor="member-dob">Date of birth (optional)</Label>
                 <Input
-                  id="dob"
+                  id="member-dob"
                   type="date"
+                  max={new Date().toISOString().slice(0, 10)}
                   value={memberForm.dateOfBirth}
-                  onChange={(e) => setMemberForm({ ...memberForm, dateOfBirth: e.target.value })}
+                  onChange={(e) =>
+                    setMemberForm({ ...memberForm, dateOfBirth: e.target.value })
+                  }
                 />
               </div>
             )}
             {memberForm.relationship !== 'CHILD' && (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 px-3 py-2.5">
                 <Switch
-                  id="earner"
+                  id="member-earner"
                   checked={memberForm.isIncomeEarner}
-                  onCheckedChange={(checked) => setMemberForm({ ...memberForm, isIncomeEarner: checked })}
+                  onCheckedChange={(checked) =>
+                    setMemberForm({ ...memberForm, isIncomeEarner: checked })
+                  }
                 />
-                <Label htmlFor="earner" className="cursor-pointer">
-                  Income earner
-                  <span className="block text-xs text-muted-foreground font-normal">
+                <Label htmlFor="member-earner" className="cursor-pointer">
+                  <span className="font-medium">Income earner</span>
+                  <span className="block text-xs font-normal text-slate-500 dark:text-slate-400">
                     Creates salary and work expense categories
                   </span>
                 </Label>
@@ -379,29 +418,27 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Pet Dialog */}
+      {/* Pet dialog */}
       <Dialog open={petDialogOpen} onOpenChange={setPetDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>
-              {editingPet ? 'Edit Pet' : 'Add Pet'}
-            </DialogTitle>
+            <DialogTitle>{editingPet ? 'Edit pet' : 'Add pet'}</DialogTitle>
             <DialogDescription>
-              Expense categories will be created automatically
+              Expense categories will be created automatically.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-1.5">
               <Label htmlFor="pet-name">Name</Label>
               <Input
                 id="pet-name"
                 value={petForm.name}
                 onChange={(e) => setPetForm({ ...petForm, name: e.target.value })}
-                placeholder="Enter pet's name"
+                placeholder="e.g. Fandogh"
                 autoFocus
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-1.5">
               <Label htmlFor="pet-type">Type</Label>
               <Select
                 value={petForm.type}
@@ -419,13 +456,13 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-1.5">
               <Label htmlFor="pet-breed">Breed (optional)</Label>
               <Input
                 id="pet-breed"
                 value={petForm.breed}
                 onChange={(e) => setPetForm({ ...petForm, breed: e.target.value })}
-                placeholder="e.g., Golden Retriever"
+                placeholder="e.g. Golden Retriever"
               />
             </div>
           </div>
@@ -439,12 +476,12 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </WizardStepShell>
   );
 }
 
 // =============================================================================
-// MEMBER CARD COMPONENT
+// MEMBER CARD
 // =============================================================================
 
 function MemberCard({
@@ -457,20 +494,23 @@ function MemberCard({
   onDelete: () => void;
 }) {
   const isChild = member.relationship === 'CHILD';
-
   return (
-    <div className="p-3 border rounded-lg bg-background flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-full ${isChild ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-primary/10'}`}>
-          {isChild ? (
-            <Baby className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          ) : (
-            <Users className="h-4 w-4 text-primary" />
-          )}
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-2.5 transition-colors hover:border-slate-300 dark:hover:border-slate-600">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <div
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
+            isChild
+              ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+              : 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
+          }`}
+        >
+          {isChild ? <Baby className="h-4 w-4" /> : <Users className="h-4 w-4" />}
         </div>
-        <div>
-          <div className="font-medium text-sm">{member.name}</div>
-          <div className="text-xs text-muted-foreground flex items-center gap-1">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            {member.name}
+          </div>
+          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
             {RELATIONSHIP_LABELS[member.relationship]}
             {member.isIncomeEarner && !isChild && (
               <Badge variant="secondary" className="text-[10px] px-1 py-0">
@@ -480,12 +520,12 @@ function MemberCard({
           </div>
         </div>
       </div>
-      <div className="flex gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
-          <Pencil className="h-3 w-3" />
+      <div className="flex flex-shrink-0 gap-0.5">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+          <Pencil className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDelete}>
-          <Trash2 className="h-3 w-3 text-red-500" />
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete}>
+          <Trash2 className="h-3.5 w-3.5 text-rose-500" />
         </Button>
       </div>
     </div>
@@ -493,7 +533,7 @@ function MemberCard({
 }
 
 // =============================================================================
-// PET CARD COMPONENT
+// PET CARD
 // =============================================================================
 
 function PetCard({
@@ -506,25 +546,27 @@ function PetCard({
   onDelete: () => void;
 }) {
   return (
-    <div className="p-3 border rounded-lg bg-background flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-full bg-cyan-100 dark:bg-cyan-900/30">
-          <Dog className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-2.5 transition-colors hover:border-slate-300 dark:hover:border-slate-600">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400">
+          <Dog className="h-4 w-4" />
         </div>
-        <div>
-          <div className="font-medium text-sm">{pet.name}</div>
-          <div className="text-xs text-muted-foreground">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            {pet.name}
+          </div>
+          <div className="truncate text-xs text-slate-500 dark:text-slate-400">
             {PET_TYPE_LABELS[pet.type]}
-            {pet.breed && ` - ${pet.breed}`}
+            {pet.breed && ` · ${pet.breed}`}
           </div>
         </div>
       </div>
-      <div className="flex gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
-          <Pencil className="h-3 w-3" />
+      <div className="flex flex-shrink-0 gap-0.5">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+          <Pencil className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDelete}>
-          <Trash2 className="h-3 w-3 text-red-500" />
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete}>
+          <Trash2 className="h-3.5 w-3.5 text-rose-500" />
         </Button>
       </div>
     </div>

@@ -1,5 +1,20 @@
 'use client';
 
+/**
+ * IncomeExpensesStep — Phase 12 PR 3a visual redesign
+ *
+ * Captures general income and expenses (not linked to a property, asset,
+ * or investment). PR 3a simplification:
+ *   - Cleaner tab switcher with live counts
+ *   - Inline "annualised to $X/yr" preview on every row
+ *   - Category / type picker uses a dropdown (not a horizontal chip row)
+ *     so long lists don't wrap awkwardly on mobile
+ *   - Summary card at the bottom shows total income, total expenses,
+ *     annual surplus / deficit + per-month equivalent
+ *
+ * No data model changes.
+ */
+
 import React, { useState } from 'react';
 import {
   DollarSign,
@@ -9,7 +24,6 @@ import {
   TrendingUp,
   Banknote,
   Building,
-  Store,
   MoreHorizontal,
   ShoppingCart,
   Zap,
@@ -19,7 +33,6 @@ import {
   Tv,
   UtensilsCrossed,
   GraduationCap,
-  Users,
   Package,
   ArrowUpCircle,
   ArrowDownCircle,
@@ -29,64 +42,111 @@ import {
   IncomeInput,
   ExpenseInput,
   IncomeType,
-  SalaryType,
   ExpenseCategory,
   generateId,
 } from '../types';
+import {
+  WizardStepShell,
+  WizardField,
+  WizardCurrencyField,
+  WizardSelectField,
+  WizardSegmentedControl,
+  WizardAddButton,
+} from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
-// CONSTANTS
+// META
 // =============================================================================
 
-const INCOME_TYPES: {
+interface IncomeTypeMeta {
   value: IncomeType;
   label: string;
   icon: React.ReactNode;
-  color: string;
-}[] = [
-  { value: 'SALARY', label: 'Salary', icon: <Briefcase className="h-4 w-4" />, color: 'text-blue-600' },
-  { value: 'INVESTMENT', label: 'Investment Income', icon: <TrendingUp className="h-4 w-4" />, color: 'text-purple-600' },
-  { value: 'RENT', label: 'Rent Received', icon: <Building className="h-4 w-4" />, color: 'text-amber-600' },
-  { value: 'RENTAL', label: 'Rental Income', icon: <Building className="h-4 w-4" />, color: 'text-green-600' },
-  { value: 'OTHER', label: 'Other', icon: <MoreHorizontal className="h-4 w-4" />, color: 'text-gray-600' },
+  accent: string;
+}
+
+const INCOME_TYPES: IncomeTypeMeta[] = [
+  {
+    value: 'SALARY',
+    label: 'Salary / wages',
+    icon: <Briefcase className="h-4 w-4" />,
+    accent: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
+  },
+  {
+    value: 'INVESTMENT',
+    label: 'Investment income',
+    icon: <TrendingUp className="h-4 w-4" />,
+    accent: 'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400',
+  },
+  {
+    value: 'RENT',
+    label: 'Rent received',
+    icon: <Building className="h-4 w-4" />,
+    accent: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
+  },
+  {
+    value: 'RENTAL',
+    label: 'Rental income',
+    icon: <Building className="h-4 w-4" />,
+    accent: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
+  },
+  {
+    value: 'OTHER',
+    label: 'Other',
+    icon: <MoreHorizontal className="h-4 w-4" />,
+    accent: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  },
 ];
 
-const EXPENSE_CATEGORIES: {
+const INCOME_TYPE_OPTIONS = INCOME_TYPES.map((t) => ({ value: t.value, label: t.label }));
+
+interface ExpenseCategoryMeta {
   value: ExpenseCategory;
   label: string;
   icon: React.ReactNode;
-  color: string;
-  examples: string;
-}[] = [
-  { value: 'HOUSING', label: 'Housing', icon: <Building className="h-4 w-4" />, color: 'text-blue-600', examples: 'Rent, mortgage' },
-  { value: 'UTILITIES', label: 'Utilities', icon: <Zap className="h-4 w-4" />, color: 'text-yellow-600', examples: 'Electricity, gas, water' },
-  { value: 'FOOD', label: 'Food & Groceries', icon: <ShoppingCart className="h-4 w-4" />, color: 'text-green-600', examples: 'Food, household items' },
-  { value: 'TRANSPORT', label: 'Transport', icon: <Car className="h-4 w-4" />, color: 'text-blue-600', examples: 'Fuel, public transport' },
-  { value: 'INSURANCE', label: 'Insurance', icon: <Shield className="h-4 w-4" />, color: 'text-purple-600', examples: 'Health, life, home' },
-  { value: 'ENTERTAINMENT', label: 'Entertainment', icon: <Tv className="h-4 w-4" />, color: 'text-pink-600', examples: 'Movies, events, streaming' },
-  { value: 'PERSONAL', label: 'Personal', icon: <Package className="h-4 w-4" />, color: 'text-gray-600', examples: 'Clothing, personal care' },
-  { value: 'RATES', label: 'Council Rates', icon: <Building className="h-4 w-4" />, color: 'text-teal-600', examples: 'Council rates' },
-  { value: 'MAINTENANCE', label: 'Maintenance', icon: <Package className="h-4 w-4" />, color: 'text-orange-600', examples: 'Repairs, upkeep' },
-  { value: 'STRATA', label: 'Strata Fees', icon: <Building className="h-4 w-4" />, color: 'text-indigo-600', examples: 'Body corporate fees' },
-  { value: 'LAND_TAX', label: 'Land Tax', icon: <Building className="h-4 w-4" />, color: 'text-red-600', examples: 'Land tax' },
-  { value: 'LOAN_INTEREST', label: 'Loan Interest', icon: <Banknote className="h-4 w-4" />, color: 'text-amber-600', examples: 'Interest payments' },
-  { value: 'REGISTRATION', label: 'Registration', icon: <Car className="h-4 w-4" />, color: 'text-cyan-600', examples: 'Vehicle registration' },
-  { value: 'MODIFICATIONS', label: 'Modifications', icon: <Package className="h-4 w-4" />, color: 'text-violet-600', examples: 'Asset modifications' },
-  { value: 'OTHER', label: 'Other', icon: <MoreHorizontal className="h-4 w-4" />, color: 'text-gray-500', examples: 'Miscellaneous' },
+}
+
+const EXPENSE_CATEGORIES: ExpenseCategoryMeta[] = [
+  { value: 'HOUSING', label: 'Housing', icon: <Building className="h-3.5 w-3.5" /> },
+  { value: 'RENT', label: 'Rent', icon: <Building className="h-3.5 w-3.5" /> },
+  { value: 'UTILITIES', label: 'Utilities', icon: <Zap className="h-3.5 w-3.5" /> },
+  { value: 'GROCERIES', label: 'Groceries', icon: <ShoppingCart className="h-3.5 w-3.5" /> },
+  { value: 'FOOD', label: 'Food & dining', icon: <UtensilsCrossed className="h-3.5 w-3.5" /> },
+  { value: 'TRANSPORT', label: 'Transport', icon: <Car className="h-3.5 w-3.5" /> },
+  { value: 'INSURANCE', label: 'Insurance', icon: <Shield className="h-3.5 w-3.5" /> },
+  { value: 'HEALTH', label: 'Health & medical', icon: <Heart className="h-3.5 w-3.5" /> },
+  { value: 'EDUCATION', label: 'Education', icon: <GraduationCap className="h-3.5 w-3.5" /> },
+  { value: 'ENTERTAINMENT', label: 'Entertainment', icon: <Tv className="h-3.5 w-3.5" /> },
+  { value: 'SUBSCRIPTION', label: 'Subscriptions', icon: <Tv className="h-3.5 w-3.5" /> },
+  { value: 'PERSONAL', label: 'Personal', icon: <Package className="h-3.5 w-3.5" /> },
+  { value: 'RATES', label: 'Council rates', icon: <Building className="h-3.5 w-3.5" /> },
+  { value: 'MAINTENANCE', label: 'Maintenance', icon: <Package className="h-3.5 w-3.5" /> },
+  { value: 'STRATA', label: 'Strata fees', icon: <Building className="h-3.5 w-3.5" /> },
+  { value: 'LAND_TAX', label: 'Land tax', icon: <Building className="h-3.5 w-3.5" /> },
+  { value: 'LOAN_INTEREST', label: 'Loan interest', icon: <Banknote className="h-3.5 w-3.5" /> },
+  { value: 'REGISTRATION', label: 'Registration', icon: <Car className="h-3.5 w-3.5" /> },
+  { value: 'MODIFICATIONS', label: 'Modifications', icon: <Package className="h-3.5 w-3.5" /> },
+  { value: 'OTHER', label: 'Other', icon: <MoreHorizontal className="h-3.5 w-3.5" /> },
 ];
 
-const FREQUENCIES = [
+const EXPENSE_CATEGORY_OPTIONS = EXPENSE_CATEGORIES.map((c) => ({
+  value: c.value,
+  label: c.label,
+}));
+
+const FREQUENCY_OPTIONS = [
   { value: 'WEEKLY', label: 'Weekly' },
   { value: 'FORTNIGHTLY', label: 'Fortnightly' },
   { value: 'MONTHLY', label: 'Monthly' },
+  { value: 'QUARTERLY', label: 'Quarterly' },
   { value: 'ANNUAL', label: 'Annual' },
-] as const;
+];
 
 // =============================================================================
-// HELPER FUNCTIONS
+// FACTORIES
 // =============================================================================
 
 function createEmptyIncome(type: IncomeType = 'SALARY'): IncomeInput {
@@ -110,137 +170,109 @@ function createEmptyExpense(category: ExpenseCategory = 'HOUSING'): ExpenseInput
   };
 }
 
-function annualizeAmount(amount: number, frequency: string): number {
-  // Use centralized utility for frequency conversion
+function annualize(amount: number, frequency: string): number {
   return toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
 }
 
 // =============================================================================
-// INCOME CARD COMPONENT
+// INCOME CARD
 // =============================================================================
 
-interface IncomeCardProps {
+function IncomeCard({
+  income,
+  onUpdate,
+  onRemove,
+}: {
   income: IncomeInput;
   onUpdate: (updates: Partial<IncomeInput>) => void;
   onRemove: () => void;
-}
-
-function IncomeCard({ income, onUpdate, onRemove }: IncomeCardProps) {
-  const incomeType = INCOME_TYPES.find((t) => t.value === income.type);
-  const annualAmount = annualizeAmount(income.amount, income.frequency);
+}) {
+  const meta = INCOME_TYPES.find((t) => t.value === income.type) ?? INCOME_TYPES[0];
+  const annualAmount = annualize(income.amount, income.frequency);
 
   return (
-    <div className="border rounded-lg bg-white dark:bg-gray-800 p-4 space-y-3 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={incomeType?.color}>{incomeType?.icon}</span>
-          <select
-            value={income.type}
-            onChange={(e) => {
-              const newType = e.target.value as IncomeType;
-              onUpdate({
-                type: newType,
-                salaryType: newType === 'SALARY' ? 'GROSS' : undefined,
-                frequency: newType === 'SALARY' ? 'ANNUAL' : 'MONTHLY',
-              });
-            }}
-            className="text-sm font-medium text-gray-900 dark:text-gray-100 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer"
-          >
-            {INCOME_TYPES.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
+    <div className="wz-section">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${meta.accent}`}>
+            {meta.icon}
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {meta.label}
+            </div>
+          </div>
         </div>
         <button
+          type="button"
           onClick={onRemove}
-          className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          aria-label="Remove income"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Description
-          </label>
-          <input
-            type="text"
-            value={income.name}
-            onChange={(e) => onUpdate({ name: e.target.value })}
-            placeholder={income.type === 'SALARY' ? 'e.g., Main Job' : 'Description'}
-            className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Amount
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-2 text-gray-400">$</span>
-            <input
-              type="number"
-              step="any"
-              value={income.amount || ''}
-              onChange={(e) => onUpdate({ amount: parseFloat(e.target.value) || 0 })}
-              placeholder="0"
-              className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Frequency
-          </label>
-          <select
-            value={income.frequency}
-            onChange={(e) =>
-              onUpdate({ frequency: e.target.value as IncomeInput['frequency'] })
-            }
-            className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {FREQUENCIES.map((freq) => (
-              <option key={freq.value} value={freq.value}>
-                {freq.label}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-12">
+        <WizardSelectField
+          className="sm:col-span-3"
+          label="Type"
+          value={income.type}
+          onChange={(v) => {
+            const newType = v as IncomeType;
+            onUpdate({
+              type: newType,
+              salaryType: newType === 'SALARY' ? 'GROSS' : undefined,
+              frequency: newType === 'SALARY' ? 'ANNUAL' : 'MONTHLY',
+            });
+          }}
+          options={INCOME_TYPE_OPTIONS}
+        />
+        <WizardField
+          className="sm:col-span-4"
+          label="Description"
+          placeholder={income.type === 'SALARY' ? 'e.g. Main job' : 'Description'}
+          value={income.name}
+          onChange={(e) => onUpdate({ name: e.target.value })}
+        />
+        <WizardCurrencyField
+          className="sm:col-span-2"
+          label="Amount"
+          required
+          value={income.amount}
+          onChange={(v) => onUpdate({ amount: v })}
+        />
+        <WizardSelectField
+          className="sm:col-span-3"
+          label="Frequency"
+          value={income.frequency}
+          onChange={(v) => onUpdate({ frequency: v as IncomeInput['frequency'] })}
+          options={FREQUENCY_OPTIONS}
+        />
       </div>
 
-      {/* Salary-specific options */}
       {income.type === 'SALARY' && (
-        <div className="flex items-center gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
-          <span className="text-xs text-gray-500 dark:text-gray-400">Amount is:</span>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name={`salary-type-${income.id}`}
-              checked={income.salaryType === 'GROSS'}
-              onChange={() => onUpdate({ salaryType: 'GROSS' })}
-              className="text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-gray-700 dark:text-gray-300">Gross (before tax)</span>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name={`salary-type-${income.id}`}
-              checked={income.salaryType === 'NET'}
-              onChange={() => onUpdate({ salaryType: 'NET' })}
-              className="text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-gray-700 dark:text-gray-300">Net (after tax)</span>
-          </label>
+        <div className="mt-3">
+          <WizardSegmentedControl
+            label="Amount is"
+            value={income.salaryType || 'GROSS'}
+            onChange={(v) => onUpdate({ salaryType: v as 'GROSS' | 'NET' })}
+            options={[
+              { value: 'GROSS', label: 'Gross (before tax)' },
+              { value: 'NET', label: 'Net (after tax)' },
+            ]}
+            name={`salary-${income.id}`}
+          />
         </div>
       )}
 
-      {/* Annualized indicator */}
       {income.amount > 0 && (
-        <div className="text-xs text-gray-500 dark:text-gray-400 text-right">
-          = {formatCurrency(annualAmount)} per year
+        <div className="mt-3 flex items-center justify-end gap-1.5 text-xs">
+          <span className="text-slate-500 dark:text-slate-400">Annualised:</span>
+          <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+            {formatCurrency(annualAmount)}
+          </span>
+          <span className="text-slate-400 dark:text-slate-500">/ year</span>
         </div>
       )}
     </div>
@@ -248,99 +280,80 @@ function IncomeCard({ income, onUpdate, onRemove }: IncomeCardProps) {
 }
 
 // =============================================================================
-// EXPENSE CARD COMPONENT
+// EXPENSE CARD
 // =============================================================================
 
-interface ExpenseCardProps {
+function ExpenseCard({
+  expense,
+  onUpdate,
+  onRemove,
+}: {
   expense: ExpenseInput;
   onUpdate: (updates: Partial<ExpenseInput>) => void;
   onRemove: () => void;
-}
-
-function ExpenseCard({ expense, onUpdate, onRemove }: ExpenseCardProps) {
-  const expenseCategory = EXPENSE_CATEGORIES.find((c) => c.value === expense.category);
-  const annualAmount = annualizeAmount(expense.amount, expense.frequency);
+}) {
+  const catMeta = EXPENSE_CATEGORIES.find((c) => c.value === expense.category) ?? EXPENSE_CATEGORIES[0];
+  const annualAmount = annualize(expense.amount, expense.frequency);
 
   return (
-    <div className="border rounded-lg bg-white dark:bg-gray-800 p-4 space-y-3 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={expenseCategory?.color}>{expenseCategory?.icon}</span>
-          <select
-            value={expense.category}
-            onChange={(e) =>
-              onUpdate({ category: e.target.value as ExpenseCategory })
-            }
-            className="text-sm font-medium text-gray-900 dark:text-gray-100 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer"
-          >
-            {EXPENSE_CATEGORIES.map((cat) => (
-              <option key={cat.value} value={cat.value}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
+    <div className="wz-section">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400">
+            {catMeta.icon}
+          </div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            {catMeta.label}
+          </div>
         </div>
         <button
+          type="button"
           onClick={onRemove}
-          className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          aria-label="Remove expense"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Description
-          </label>
-          <input
-            type="text"
-            value={expense.name}
-            onChange={(e) => onUpdate({ name: e.target.value })}
-            placeholder={expenseCategory?.examples || 'Description'}
-            className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Amount
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-2 text-gray-400">$</span>
-            <input
-              type="number"
-              step="any"
-              value={expense.amount || ''}
-              onChange={(e) => onUpdate({ amount: parseFloat(e.target.value) || 0 })}
-              placeholder="0"
-              className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-            Frequency
-          </label>
-          <select
-            value={expense.frequency}
-            onChange={(e) =>
-              onUpdate({ frequency: e.target.value as ExpenseInput['frequency'] })
-            }
-            className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {FREQUENCIES.map((freq) => (
-              <option key={freq.value} value={freq.value}>
-                {freq.label}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-12">
+        <WizardSelectField
+          className="sm:col-span-3"
+          label="Category"
+          value={expense.category}
+          onChange={(v) => onUpdate({ category: v as ExpenseCategory })}
+          options={EXPENSE_CATEGORY_OPTIONS}
+        />
+        <WizardField
+          className="sm:col-span-4"
+          label="Description"
+          placeholder="e.g. Groceries"
+          value={expense.name}
+          onChange={(e) => onUpdate({ name: e.target.value })}
+        />
+        <WizardCurrencyField
+          className="sm:col-span-2"
+          label="Amount"
+          required
+          value={expense.amount}
+          onChange={(v) => onUpdate({ amount: v })}
+        />
+        <WizardSelectField
+          className="sm:col-span-3"
+          label="Frequency"
+          value={expense.frequency}
+          onChange={(v) => onUpdate({ frequency: v as ExpenseInput['frequency'] })}
+          options={FREQUENCY_OPTIONS}
+        />
       </div>
 
-      {/* Annualized indicator */}
       {expense.amount > 0 && (
-        <div className="text-xs text-gray-500 dark:text-gray-400 text-right">
-          = {formatCurrency(annualAmount)} per year
+        <div className="mt-3 flex items-center justify-end gap-1.5 text-xs">
+          <span className="text-slate-500 dark:text-slate-400">Annualised:</span>
+          <span className="font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+            {formatCurrency(annualAmount)}
+          </span>
+          <span className="text-slate-400 dark:text-slate-500">/ year</span>
         </div>
       )}
     </div>
@@ -348,7 +361,7 @@ function ExpenseCard({ expense, onUpdate, onRemove }: ExpenseCardProps) {
 }
 
 // =============================================================================
-// INCOME & EXPENSES STEP COMPONENT
+// INCOME & EXPENSES STEP
 // =============================================================================
 
 interface IncomeExpensesStepProps {
@@ -359,118 +372,92 @@ interface IncomeExpensesStepProps {
 export function IncomeExpensesStep({ data, onUpdate }: IncomeExpensesStepProps) {
   const [activeTab, setActiveTab] = useState<'income' | 'expenses'>('income');
 
-  const addIncome = () => {
-    onUpdate({
-      income: [...data.income, createEmptyIncome()],
-    });
-  };
+  // Income operations
+  const addIncome = (type: IncomeType = 'SALARY') =>
+    onUpdate({ income: [...data.income, createEmptyIncome(type)] });
+  const updateIncome = (id: string, updates: Partial<IncomeInput>) =>
+    onUpdate({ income: data.income.map((i) => (i.id === id ? { ...i, ...updates } : i)) });
+  const removeIncome = (id: string) =>
+    onUpdate({ income: data.income.filter((i) => i.id !== id) });
 
-  const updateIncome = (incomeId: string, updates: Partial<IncomeInput>) => {
+  // Expense operations
+  const addExpense = (category: ExpenseCategory = 'HOUSING') =>
+    onUpdate({ expenses: [...data.expenses, createEmptyExpense(category)] });
+  const updateExpense = (id: string, updates: Partial<ExpenseInput>) =>
     onUpdate({
-      income: data.income.map((i) =>
-        i.id === incomeId ? { ...i, ...updates } : i
-      ),
+      expenses: data.expenses.map((e) => (e.id === id ? { ...e, ...updates } : e)),
     });
-  };
+  const removeExpense = (id: string) =>
+    onUpdate({ expenses: data.expenses.filter((e) => e.id !== id) });
 
-  const removeIncome = (incomeId: string) => {
-    onUpdate({
-      income: data.income.filter((i) => i.id !== incomeId),
-    });
-  };
-
-  const addExpense = () => {
-    onUpdate({
-      expenses: [...data.expenses, createEmptyExpense()],
-    });
-  };
-
-  const updateExpense = (expenseId: string, updates: Partial<ExpenseInput>) => {
-    onUpdate({
-      expenses: data.expenses.map((e) =>
-        e.id === expenseId ? { ...e, ...updates } : e
-      ),
-    });
-  };
-
-  const removeExpense = (expenseId: string) => {
-    onUpdate({
-      expenses: data.expenses.filter((e) => e.id !== expenseId),
-    });
-  };
-
-  // Calculate totals
+  // Summary
   const totalAnnualIncome = data.income.reduce(
-    (sum, i) => sum + annualizeAmount(i.amount, i.frequency),
+    (sum, i) => sum + annualize(i.amount, i.frequency),
     0
   );
   const totalAnnualExpenses = data.expenses.reduce(
-    (sum, e) => sum + annualizeAmount(e.amount, e.frequency),
+    (sum, e) => sum + annualize(e.amount, e.frequency),
     0
   );
   const annualSurplus = totalAnnualIncome - totalAnnualExpenses;
+  const monthlySurplus = annualSurplus / 12;
 
   return (
-    <div className="space-y-6 wizard-step-enter">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-teal-600 text-white text-2xl mb-2">
-          <DollarSign className="h-7 w-7" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Income & Expenses
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto text-sm">
-          Set up your regular income and living expenses. This helps us calculate your cashflow
-          and savings potential.
-        </p>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+    <WizardStepShell
+      icon={<DollarSign className="h-8 w-8" strokeWidth={1.5} />}
+      title="Income & expenses"
+      subtitle="Your regular inflows and outflows. We'll compute your cashflow, savings rate, and forecasts from this."
+    >
+      {/* Tab switcher */}
+      <div className="flex gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 p-1">
         <button
+          type="button"
           onClick={() => setActiveTab('income')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
             activeTab === 'income'
-              ? 'bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
           }`}
         >
           <ArrowUpCircle className="h-4 w-4" />
-          Income ({data.income.length})
+          Income
+          <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
+            {data.income.length}
+          </span>
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('expenses')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
             activeTab === 'expenses'
-              ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
           }`}
         >
           <ArrowDownCircle className="h-4 w-4" />
-          Expenses ({data.expenses.length})
+          Expenses
+          <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
+            {data.expenses.length}
+          </span>
         </button>
       </div>
 
-      {/* Income Tab */}
+      {/* Income tab */}
       {activeTab === 'income' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {data.income.length === 0 ? (
-            <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
-              <ArrowUpCircle className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                No income sources added yet
+            <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-6 text-center">
+              <ArrowUpCircle className="mx-auto mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" />
+              <p className="mb-3 text-sm font-medium text-slate-600 dark:text-slate-400">
+                No income added yet
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {INCOME_TYPES.slice(0, 4).map((type) => (
                   <button
                     key={type.value}
-                    onClick={() => {
-                      onUpdate({
-                        income: [...data.income, createEmptyIncome(type.value)],
-                      });
-                    }}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 transition-colors"
+                    type="button"
+                    onClick={() => addIncome(type.value)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors"
                   >
                     {type.icon}
                     {type.label}
@@ -479,49 +466,42 @@ export function IncomeExpensesStep({ data, onUpdate }: IncomeExpensesStepProps) 
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              {data.income.map((income) => (
+            <>
+              {data.income.map((inc) => (
                 <IncomeCard
-                  key={income.id}
-                  income={income}
-                  onUpdate={(updates) => updateIncome(income.id, updates)}
-                  onRemove={() => removeIncome(income.id)}
+                  key={inc.id}
+                  income={inc}
+                  onUpdate={(updates) => updateIncome(inc.id, updates)}
+                  onRemove={() => removeIncome(inc.id)}
                 />
               ))}
-            </div>
-          )}
-
-          {data.income.length > 0 && (
-            <button
-              onClick={addIncome}
-              className="wizard-add-button w-full p-3 rounded-lg flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="text-sm font-medium">Add Another Income Source</span>
-            </button>
+              <WizardAddButton
+                leadingIcon={<Plus className="h-4 w-4" />}
+                onClick={() => addIncome()}
+              >
+                Add another income source
+              </WizardAddButton>
+            </>
           )}
         </div>
       )}
 
-      {/* Expenses Tab */}
+      {/* Expenses tab */}
       {activeTab === 'expenses' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {data.expenses.length === 0 ? (
-            <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
-              <ArrowDownCircle className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
+            <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-6 text-center">
+              <ArrowDownCircle className="mx-auto mb-2 h-10 w-10 text-slate-300 dark:text-slate-600" />
+              <p className="mb-3 text-sm font-medium text-slate-600 dark:text-slate-400">
                 No expenses added yet
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {EXPENSE_CATEGORIES.slice(0, 6).map((cat) => (
                   <button
                     key={cat.value}
-                    onClick={() => {
-                      onUpdate({
-                        expenses: [...data.expenses, createEmptyExpense(cat.value)],
-                      });
-                    }}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 hover:border-blue-500 hover:text-blue-600 transition-colors"
+                    type="button"
+                    onClick={() => addExpense(cat.value)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-rose-400 hover:text-rose-600 dark:hover:border-rose-500 dark:hover:text-rose-400 transition-colors"
                   >
                     {cat.icon}
                     {cat.label}
@@ -530,76 +510,74 @@ export function IncomeExpensesStep({ data, onUpdate }: IncomeExpensesStepProps) 
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              {data.expenses.map((expense) => (
+            <>
+              {data.expenses.map((exp) => (
                 <ExpenseCard
-                  key={expense.id}
-                  expense={expense}
-                  onUpdate={(updates) => updateExpense(expense.id, updates)}
-                  onRemove={() => removeExpense(expense.id)}
+                  key={exp.id}
+                  expense={exp}
+                  onUpdate={(updates) => updateExpense(exp.id, updates)}
+                  onRemove={() => removeExpense(exp.id)}
                 />
               ))}
-            </div>
-          )}
-
-          {data.expenses.length > 0 && (
-            <button
-              onClick={addExpense}
-              className="wizard-add-button w-full p-3 rounded-lg flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="text-sm font-medium">Add Another Expense</span>
-            </button>
+              <WizardAddButton
+                leadingIcon={<Plus className="h-4 w-4" />}
+                onClick={() => addExpense()}
+              >
+                Add another expense
+              </WizardAddButton>
+            </>
           )}
         </div>
       )}
 
-      {/* Summary */}
+      {/* Cashflow summary — always visible once there's any data */}
       {(data.income.length > 0 || data.expenses.length > 0) && (
-        <div className="wizard-card bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-slate-900/50 p-4 rounded-xl" style={{ '--card-index': 0 } as React.CSSProperties}>
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Cashflow Summary (Annual)
+        <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/50 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/60 dark:to-slate-900/60 p-5">
+          <h4 className="mb-4 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Annual cashflow preview
           </h4>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl bg-white dark:bg-slate-900/60 p-3 text-center">
+              <div className="text-xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(totalAnnualIncome, { abbreviate: true })}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Total Income</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">Income</div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+            <div className="rounded-xl bg-white dark:bg-slate-900/60 p-3 text-center">
+              <div className="text-xl font-semibold tabular-nums text-rose-600 dark:text-rose-400">
                 {formatCurrency(totalAnnualExpenses, { abbreviate: true })}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Total Expenses</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">Expenses</div>
             </div>
-            <div>
+            <div className="rounded-xl bg-white dark:bg-slate-900/60 p-3 text-center">
               <div
-                className={`text-2xl font-bold ${
+                className={`text-xl font-semibold tabular-nums ${
                   annualSurplus >= 0
                     ? 'text-blue-600 dark:text-blue-400'
-                    : 'text-red-600 dark:text-red-400'
+                    : 'text-rose-600 dark:text-rose-400'
                 }`}
               >
-                {annualSurplus >= 0 ? '+' : ''}{formatCurrency(annualSurplus, { abbreviate: true })}
+                {annualSurplus >= 0 ? '+' : ''}
+                {formatCurrency(annualSurplus, { abbreviate: true })}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 {annualSurplus >= 0 ? 'Surplus' : 'Deficit'}
               </div>
             </div>
           </div>
-          {annualSurplus > 0 && (
-            <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">
-              That&apos;s {formatCurrency(annualSurplus / 12)} per month available for savings or investments!
+          {annualSurplus !== 0 && (
+            <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+              That&apos;s{' '}
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                {formatCurrency(Math.abs(monthlySurplus))}
+              </span>{' '}
+              {annualSurplus >= 0 ? 'per month available for savings or investments.' : 'per month short.'}
             </p>
           )}
         </div>
       )}
-
-      {/* Hint */}
-      <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-        Tip: Property rental income and expenses are captured in the Properties step.
-      </p>
-    </div>
+    </WizardStepShell>
   );
 }
+
+export default IncomeExpensesStep;

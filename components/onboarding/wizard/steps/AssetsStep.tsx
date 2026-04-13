@@ -1,5 +1,23 @@
 'use client';
 
+/**
+ * AssetsStep — Phase 12 PR 3a visual redesign
+ *
+ * Captures personal assets (vehicles, electronics, equipment, furniture,
+ * collectibles) with their purchase details and optional ongoing
+ * expenses.
+ *
+ * Simplification:
+ *   - Vehicle-specific fields (make/model/year) appear inline only for
+ *     type=VEHICLE. For other types the card is a tighter 2-column form.
+ *   - Purchase date is now explicit (PR 1 fix) — helper text makes clear
+ *     "approximate is fine".
+ *   - Asset expenses reuse the same 12-col inline grid pattern as the
+ *     Properties step for consistency.
+ *
+ * No data model changes.
+ */
+
 import React, { useState } from 'react';
 import {
   Car,
@@ -13,92 +31,96 @@ import {
   Palette,
   Package,
   Receipt,
-  Calendar,
 } from 'lucide-react';
 import {
   WizardData,
   AssetInput,
   AssetExpenseInput,
   AssetType,
+  ExpenseCategory,
   generateId,
 } from '../types';
+import {
+  WizardStepShell,
+  WizardField,
+  WizardCurrencyField,
+  WizardSelectField,
+  WizardAddButton,
+} from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
-// CONSTANTS
+// ASSET TYPE META
 // =============================================================================
 
-const ASSET_TYPES: {
+interface AssetTypeMeta {
   value: AssetType;
   label: string;
-  description: string;
   icon: React.ReactNode;
-  color: string;
-}[] = [
+  accent: string;
+}
+
+const ASSET_TYPES: AssetTypeMeta[] = [
   {
     value: 'VEHICLE',
     label: 'Vehicle',
-    description: 'Car, motorcycle, boat',
     icon: <Car className="h-5 w-5" />,
-    color: 'text-blue-600 dark:text-blue-400',
+    accent: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
   },
   {
     value: 'ELECTRONICS',
     label: 'Electronics',
-    description: 'Computers, phones, TV',
     icon: <Laptop className="h-5 w-5" />,
-    color: 'text-purple-600 dark:text-purple-400',
+    accent: 'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400',
   },
   {
     value: 'EQUIPMENT',
     label: 'Equipment',
-    description: 'Tools, machinery, gear',
     icon: <Watch className="h-5 w-5" />,
-    color: 'text-amber-600 dark:text-amber-400',
+    accent: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
   },
   {
     value: 'FURNITURE',
     label: 'Furniture',
-    description: 'Home furniture',
     icon: <Sofa className="h-5 w-5" />,
-    color: 'text-green-600 dark:text-green-400',
+    accent: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
   },
   {
     value: 'COLLECTIBLE',
     label: 'Collectibles',
-    description: 'Art, antiques, jewelry, collections',
     icon: <Palette className="h-5 w-5" />,
-    color: 'text-pink-600 dark:text-pink-400',
+    accent: 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400',
   },
   {
     value: 'OTHER',
     label: 'Other',
-    description: 'Other valuable assets',
     icon: <Package className="h-5 w-5" />,
-    color: 'text-gray-600 dark:text-gray-400',
+    accent: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
   },
 ];
 
-const VEHICLE_EXPENSE_TYPES = [
-  'Registration',
-  'Insurance',
-  'Servicing',
-  'Fuel',
-  'Loan Repayment',
-  'Other',
+const ASSET_TYPE_OPTIONS = ASSET_TYPES.map((t) => ({ value: t.value, label: t.label }));
+
+const ASSET_EXPENSE_CATEGORIES: Array<{ value: ExpenseCategory; label: string }> = [
+  { value: 'INSURANCE', label: 'Insurance' },
+  { value: 'REGISTRATION', label: 'Registration' },
+  { value: 'MAINTENANCE', label: 'Maintenance / servicing' },
+  { value: 'LOAN_INTEREST', label: 'Loan interest' },
+  { value: 'MODIFICATIONS', label: 'Modifications' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
-const FREQUENCIES = [
+const EXPENSE_FREQ_OPTIONS = [
   { value: 'WEEKLY', label: 'Weekly' },
   { value: 'FORTNIGHTLY', label: 'Fortnightly' },
   { value: 'MONTHLY', label: 'Monthly' },
   { value: 'QUARTERLY', label: 'Quarterly' },
   { value: 'ANNUAL', label: 'Annual' },
-] as const;
+];
 
 // =============================================================================
-// HELPER FUNCTIONS
+// FACTORIES
 // =============================================================================
 
 function createEmptyAsset(type: AssetType = 'VEHICLE'): AssetInput {
@@ -122,341 +144,303 @@ function createEmptyExpense(): AssetExpenseInput {
   return {
     id: generateId(),
     name: '',
-    category: 'OTHER',
+    category: 'INSURANCE',
     amount: 0,
     frequency: 'ANNUAL',
   };
 }
 
 // =============================================================================
-// ASSET CARD COMPONENT
+// ASSET CARD
 // =============================================================================
 
 interface AssetCardProps {
   asset: AssetInput;
-  index: number;
-  onUpdate: (updates: Partial<AssetInput>) => void;
-  onRemove: () => void;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onUpdate: (updates: Partial<AssetInput>) => void;
+  onRemove: () => void;
 }
 
 function AssetCard({
   asset,
-  index,
-  onUpdate,
-  onRemove,
   isExpanded,
   onToggleExpand,
+  onUpdate,
+  onRemove,
 }: AssetCardProps) {
-  const assetType = ASSET_TYPES.find((t) => t.value === asset.type);
+  const meta = ASSET_TYPES.find((t) => t.value === asset.type) ?? ASSET_TYPES[0];
   const isVehicle = asset.type === 'VEHICLE';
 
-  const addExpense = () => {
-    onUpdate({
-      expenses: [...asset.expenses, createEmptyExpense()],
-    });
-  };
+  const displayName =
+    asset.name ||
+    (isVehicle && asset.vehicleMake
+      ? `${asset.vehicleYear || ''} ${asset.vehicleMake} ${asset.vehicleModel || ''}`.trim()
+      : meta.label);
 
-  const updateExpense = (expenseId: string, updates: Partial<AssetExpenseInput>) => {
+  const addExpense = () =>
+    onUpdate({ expenses: [...asset.expenses, createEmptyExpense()] });
+
+  const updateExpense = (expenseId: string, updates: Partial<AssetExpenseInput>) =>
     onUpdate({
       expenses: asset.expenses.map((exp) =>
         exp.id === expenseId ? { ...exp, ...updates } : exp
       ),
     });
-  };
 
-  const removeExpense = (expenseId: string) => {
-    onUpdate({
-      expenses: asset.expenses.filter((exp) => exp.id !== expenseId),
-    });
-  };
+  const removeExpense = (expenseId: string) =>
+    onUpdate({ expenses: asset.expenses.filter((exp) => exp.id !== expenseId) });
 
-  const getGradientClass = () => {
-    switch (asset.type) {
-      case 'VEHICLE':
-        return 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20';
-      case 'ELECTRONICS':
-        return 'bg-gradient-to-r from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20';
-      case 'EQUIPMENT':
-        return 'bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20';
-      case 'COLLECTIBLE':
-        return 'bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20';
-      default:
-        return 'bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20';
-    }
-  };
-
-  const getBgClass = () => {
-    switch (asset.type) {
-      case 'VEHICLE':
-        return 'bg-blue-100 dark:bg-blue-800/40';
-      case 'ELECTRONICS':
-        return 'bg-purple-100 dark:bg-purple-800/40';
-      case 'EQUIPMENT':
-        return 'bg-amber-100 dark:bg-amber-800/40';
-      case 'COLLECTIBLE':
-        return 'bg-pink-100 dark:bg-pink-800/40';
-      default:
-        return 'bg-gray-100 dark:bg-gray-800/40';
-    }
-  };
+  // Depreciation preview
+  const depreciation = asset.purchasePrice - asset.currentValue;
+  const depreciationPct =
+    asset.purchasePrice > 0 ? (depreciation / asset.purchasePrice) * 100 : 0;
+  const showDepreciation = asset.purchasePrice > 0 && asset.currentValue > 0;
 
   return (
-    <div
-      className="profile-card border rounded-xl bg-white dark:bg-gray-800 shadow-sm overflow-hidden"
-      style={{ '--card-index': index } as React.CSSProperties}
-    >
-      {/* Header */}
-      <div
-        className={`flex items-center justify-between p-4 cursor-pointer ${getGradientClass()}`}
+    <div className="wz-section" style={{ padding: 0 }}>
+      <button
+        type="button"
         onClick={onToggleExpand}
+        className="flex w-full items-center justify-between gap-3 p-5 text-left"
+        aria-expanded={isExpanded}
       >
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${getBgClass()}`}>
-            <span className={assetType?.color}>{assetType?.icon}</span>
+        <div className="flex min-w-0 items-center gap-3">
+          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${meta.accent}`}>
+            {meta.icon}
           </div>
-          <div>
-            <h4 className="font-semibold text-gray-900 dark:text-gray-100">
-              {asset.name ||
-                (isVehicle && asset.vehicleMake
-                  ? `${asset.vehicleYear} ${asset.vehicleMake} ${asset.vehicleModel}`
-                  : `${assetType?.label}`)}
+          <div className="min-w-0">
+            <h4 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+              {displayName}
             </h4>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {formatCurrency(asset.currentValue)}
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              {meta.label}
+              {asset.currentValue > 0 && ` · ${formatCurrency(asset.currentValue, { abbreviate: true })}`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-1">
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onRemove();
             }}
-            className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            aria-label="Remove asset"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
           >
             <Trash2 className="h-4 w-4" />
           </button>
-          {isExpanded ? (
-            <ChevronUp className="h-5 w-5 text-gray-400" />
-          ) : (
-            <ChevronDown className="h-5 w-5 text-gray-400" />
-          )}
+          <div className="flex h-8 w-8 items-center justify-center text-slate-400">
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
         </div>
-      </div>
+      </button>
 
-      {/* Expanded Content */}
       {isExpanded && (
-        <div className="p-4 space-y-4 border-t border-gray-100 dark:border-gray-700">
-          {/* Basic Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Asset Type
-              </label>
-              <select
-                value={asset.type}
-                onChange={(e) => {
-                  const newType = e.target.value as AssetType;
-                  onUpdate({
-                    type: newType,
-                    vehicleMake: newType === 'VEHICLE' ? '' : undefined,
-                    vehicleModel: newType === 'VEHICLE' ? '' : undefined,
-                    vehicleYear: newType === 'VEHICLE' ? new Date().getFullYear() : undefined,
-                  });
-                }}
-                className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {ASSET_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                {isVehicle ? 'Nickname (Optional)' : 'Name'}
-              </label>
-              <input
-                type="text"
-                value={asset.name}
-                onChange={(e) => onUpdate({ name: e.target.value })}
-                placeholder={isVehicle ? 'e.g., Family Car' : 'e.g., Engagement Ring'}
-                className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+        <div className="space-y-5 border-t border-slate-200/70 dark:border-slate-700/50 px-5 pb-5 pt-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <WizardSelectField
+              label="Type"
+              required
+              value={asset.type}
+              onChange={(v) => {
+                const newType = v as AssetType;
+                onUpdate({
+                  type: newType,
+                  // Clear vehicle fields when switching away
+                  ...(newType !== 'VEHICLE' && {
+                    vehicleMake: undefined,
+                    vehicleModel: undefined,
+                    vehicleYear: undefined,
+                  }),
+                  // Seed them when switching in
+                  ...(newType === 'VEHICLE' &&
+                    !asset.vehicleMake && {
+                      vehicleMake: '',
+                      vehicleModel: '',
+                      vehicleYear: new Date().getFullYear(),
+                    }),
+                });
+              }}
+              options={ASSET_TYPE_OPTIONS}
+            />
+            <WizardField
+              label={isVehicle ? 'Nickname (optional)' : 'Name'}
+              placeholder={isVehicle ? 'e.g. "My daily"' : 'e.g. MacBook Pro'}
+              value={asset.name}
+              onChange={(e) => onUpdate({ name: e.target.value })}
+              required={!isVehicle}
+            />
           </div>
 
-          {/* Vehicle-specific fields */}
           {isVehicle && (
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Year
-                </label>
-                <input
-                  type="number"
-                  value={asset.vehicleYear || ''}
-                  onChange={(e) => onUpdate({ vehicleYear: parseInt(e.target.value) || 0 })}
-                  placeholder="2024"
-                  className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Make
-                </label>
-                <input
-                  type="text"
+            <div className="rounded-xl bg-blue-50/60 dark:bg-blue-900/10 p-4">
+              <p className="mb-3 text-xs font-medium text-blue-700 dark:text-blue-300">
+                Vehicle details
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <WizardField
+                  label="Make"
+                  placeholder="e.g. Toyota"
                   value={asset.vehicleMake || ''}
                   onChange={(e) => onUpdate({ vehicleMake: e.target.value })}
-                  placeholder="Toyota"
-                  className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                  Model
-                </label>
-                <input
-                  type="text"
+                <WizardField
+                  label="Model"
+                  placeholder="e.g. RAV4"
                   value={asset.vehicleModel || ''}
                   onChange={(e) => onUpdate({ vehicleModel: e.target.value })}
-                  placeholder="Camry"
-                  className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <WizardField
+                  label="Year"
+                  type="number"
+                  placeholder="2020"
+                  min={1900}
+                  max={new Date().getFullYear() + 1}
+                  value={asset.vehicleYear || ''}
+                  onChange={(e) =>
+                    onUpdate({ vehicleYear: parseInt(e.target.value, 10) || undefined })
+                  }
                 />
               </div>
             </div>
           )}
 
-          {/* Value Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Purchase Price
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-400">$</span>
-                <input
-                  type="number"
-                  value={asset.purchasePrice || ''}
-                  onChange={(e) => onUpdate({ purchasePrice: parseFloat(e.target.value) || 0 })}
-                  placeholder="0"
-                  className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                Current Value
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-400">$</span>
-                <input
-                  type="number"
-                  value={asset.currentValue || ''}
-                  onChange={(e) => onUpdate({ currentValue: parseFloat(e.target.value) || 0 })}
-                  placeholder="0"
-                  className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <WizardCurrencyField
+              label="Purchase price"
+              required
+              value={asset.purchasePrice}
+              onChange={(v) => onUpdate({ purchasePrice: v })}
+              helper="What you paid originally"
+            />
+            <WizardCurrencyField
+              label="Current value"
+              required
+              value={asset.currentValue}
+              onChange={(v) => onUpdate({ currentValue: v })}
+              helper="Rough market value today"
+            />
+            <WizardField
+              className="sm:col-span-2"
+              label="Purchase date"
+              required
+              type="date"
+              max={new Date().toISOString().slice(0, 10)}
+              value={asset.purchaseDate || ''}
+              onChange={(e) => onUpdate({ purchaseDate: e.target.value })}
+              helper="Approximate month / year is fine — used for depreciation history"
+            />
           </div>
 
-          {/* Expenses Section */}
-          <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+          {showDepreciation && (
+            <div className="flex items-center justify-between rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/60 dark:to-slate-800/30 px-4 py-3">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Depreciation so far
+                </div>
+                <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                  {formatCurrency(depreciation)}
+                </div>
+              </div>
+              <div
+                className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${
+                  depreciationPct > 0
+                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                }`}
+              >
+                {depreciationPct > 0 ? '−' : '+'}
+                {Math.abs(depreciationPct).toFixed(1)}%
+              </div>
+            </div>
+          )}
+
+          {/* Running costs */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <Receipt className="h-4 w-4" />
-                Running Costs
+              <h5 className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                <Receipt className="h-4 w-4 text-slate-500" />
+                Running costs
               </h5>
               <button
+                type="button"
                 onClick={addExpense}
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               >
-                <Plus className="h-4 w-4" />
-                Add Expense
+                <Plus className="h-3.5 w-3.5" />
+                Add expense
               </button>
             </div>
-
             {asset.expenses.length === 0 ? (
-              <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
+              <p className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 px-4 py-3 text-center text-xs text-slate-500 dark:text-slate-400">
                 {isVehicle
-                  ? 'Add running costs like registration, insurance, and servicing.'
-                  : 'Add any ongoing costs for this asset.'}
-              </div>
+                  ? 'Add registration, insurance, servicing…'
+                  : 'Add any ongoing costs (insurance, maintenance).'}
+              </p>
             ) : (
               <div className="space-y-2">
-                {asset.expenses.map((expense) => (
+                {asset.expenses.map((exp) => (
                   <div
-                    key={expense.id}
-                    className="flex gap-2 items-center bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg"
+                    key={exp.id}
+                    className="grid grid-cols-12 gap-2 rounded-lg bg-amber-50/60 dark:bg-amber-900/10 p-3"
                   >
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2">
-                      {isVehicle ? (
-                        <select
-                          value={expense.name}
-                          onChange={(e) =>
-                            updateExpense(expense.id, { name: e.target.value })
-                          }
-                          className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">Select type</option>
-                          {VEHICLE_EXPENSE_TYPES.map((type) => (
-                            <option key={type} value={type}>
-                              {type}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          value={expense.name}
-                          onChange={(e) =>
-                            updateExpense(expense.id, { name: e.target.value })
-                          }
-                          placeholder="Expense name"
-                          className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      )}
-                      <div className="relative">
-                        <span className="absolute left-3 top-2 text-gray-400">$</span>
-                        <input
-                          type="number"
-                          value={expense.amount || ''}
-                          onChange={(e) =>
-                            updateExpense(expense.id, {
-                              amount: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          placeholder="Amount"
-                          className="wizard-input w-full pl-7 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <select
-                        value={expense.frequency}
+                    <select
+                      value={exp.category}
+                      onChange={(e) =>
+                        updateExpense(exp.id, {
+                          category: e.target.value as ExpenseCategory,
+                          name:
+                            ASSET_EXPENSE_CATEGORIES.find((c) => c.value === e.target.value)
+                              ?.label || exp.name,
+                        })
+                      }
+                      className="wz-input col-span-5 sm:col-span-4"
+                    >
+                      {ASSET_EXPENSE_CATEGORIES.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="wz-input-currency-wrap col-span-4 sm:col-span-3">
+                      <span aria-hidden className="wz-input-currency-prefix">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        value={exp.amount === 0 ? '' : exp.amount}
                         onChange={(e) =>
-                          updateExpense(expense.id, {
-                            frequency: e.target.value as AssetExpenseInput['frequency'],
-                          })
+                          updateExpense(exp.id, { amount: parseFloat(e.target.value) || 0 })
                         }
-                        className="wizard-input w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {FREQUENCIES.map((freq) => (
-                          <option key={freq.value} value={freq.value}>
-                            {freq.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => removeExpense(expense.id)}
-                        className="flex items-center justify-center p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                        placeholder="0"
+                        className="wz-input"
+                      />
                     </div>
+                    <select
+                      value={exp.frequency}
+                      onChange={(e) =>
+                        updateExpense(exp.id, {
+                          frequency: e.target.value as AssetExpenseInput['frequency'],
+                        })
+                      }
+                      className="wz-input col-span-3 sm:col-span-4"
+                    >
+                      {EXPENSE_FREQ_OPTIONS.map((f) => (
+                        <option key={f.value} value={f.value}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeExpense(exp.id)}
+                      aria-label="Remove expense"
+                      className="col-span-12 flex h-9 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20 sm:col-span-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -469,7 +453,7 @@ function AssetCard({
 }
 
 // =============================================================================
-// ASSETS STEP COMPONENT
+// ASSETS STEP
 // =============================================================================
 
 interface AssetsStepProps {
@@ -482,152 +466,73 @@ export function AssetsStep({ data, onUpdate }: AssetsStepProps) {
     data.assets.length > 0 ? data.assets[0].id : null
   );
 
-  const addAsset = (type: AssetType = 'VEHICLE') => {
-    const newAsset = createEmptyAsset(type);
-    onUpdate({
-      assets: [...data.assets, newAsset],
-    });
+  const addAsset = () => {
+    const newAsset = createEmptyAsset();
+    onUpdate({ assets: [...data.assets, newAsset] });
     setExpandedId(newAsset.id);
   };
 
-  const updateAsset = (assetId: string, updates: Partial<AssetInput>) => {
+  const updateAsset = (id: string, updates: Partial<AssetInput>) => {
     onUpdate({
-      assets: data.assets.map((a) =>
-        a.id === assetId ? { ...a, ...updates } : a
-      ),
+      assets: data.assets.map((a) => (a.id === id ? { ...a, ...updates } : a)),
     });
   };
 
-  const removeAsset = (assetId: string) => {
-    onUpdate({
-      assets: data.assets.filter((a) => a.id !== assetId),
-    });
-    if (expandedId === assetId) {
-      setExpandedId(data.assets.length > 1 ? data.assets[0].id : null);
+  const removeAsset = (id: string) => {
+    onUpdate({ assets: data.assets.filter((a) => a.id !== id) });
+    if (expandedId === id) {
+      const remaining = data.assets.filter((a) => a.id !== id);
+      setExpandedId(remaining.length > 0 ? remaining[0].id : null);
     }
   };
 
-  // Calculate totals
   const totalValue = data.assets.reduce((sum, a) => sum + a.currentValue, 0);
 
   return (
-    <div className="space-y-6 wizard-step-enter">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 text-white text-2xl mb-2">
-          <Car className="h-7 w-7" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Personal Assets
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto text-sm">
-          Add valuable personal assets like vehicles, electronics, or collectibles. Track their
-          value and running costs.
-        </p>
-      </div>
-
-      {/* Quick Add Buttons */}
-      {data.assets.length === 0 && (
-        <div className="wizard-card" style={{ '--card-index': 0 } as React.CSSProperties}>
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-4">
-            Select asset type to get started:
-          </p>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-            {ASSET_TYPES.map((type) => (
-              <button
-                key={type.value}
-                onClick={() => addAsset(type.value)}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all"
-              >
-                <div
-                  className={`p-2 rounded-lg ${
-                    type.value === 'VEHICLE'
-                      ? 'bg-blue-100 dark:bg-blue-800/40'
-                      : type.value === 'ELECTRONICS'
-                      ? 'bg-purple-100 dark:bg-purple-800/40'
-                      : type.value === 'EQUIPMENT'
-                      ? 'bg-amber-100 dark:bg-amber-800/40'
-                      : type.value === 'COLLECTIBLE'
-                      ? 'bg-pink-100 dark:bg-pink-800/40'
-                      : 'bg-gray-100 dark:bg-gray-800/40'
-                  }`}
-                >
-                  <span className={type.color}>{type.icon}</span>
-                </div>
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {type.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Asset Cards */}
+    <WizardStepShell
+      icon={<Car className="h-8 w-8" strokeWidth={1.5} />}
+      title="Personal assets"
+      subtitle="Vehicles, electronics, collectibles — anything that holds value and affects your net worth."
+    >
       {data.assets.length > 0 && (
-        <div className="space-y-4">
-          {data.assets.map((asset, index) => (
+        <div className="space-y-3">
+          {data.assets.map((asset) => (
             <AssetCard
               key={asset.id}
               asset={asset}
-              index={index}
+              isExpanded={expandedId === asset.id}
+              onToggleExpand={() => setExpandedId(expandedId === asset.id ? null : asset.id)}
               onUpdate={(updates) => updateAsset(asset.id, updates)}
               onRemove={() => removeAsset(asset.id)}
-              isExpanded={expandedId === asset.id}
-              onToggleExpand={() =>
-                setExpandedId(expandedId === asset.id ? null : asset.id)
-              }
             />
           ))}
         </div>
       )}
 
-      {/* Add Asset Button */}
-      {data.assets.length > 0 && (
-        <button
-          onClick={() => addAsset()}
-          className="wizard-add-button w-full p-4 rounded-xl flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
-        >
-          <Plus className="h-5 w-5" />
-          <span className="font-medium">Add Another Asset</span>
-        </button>
-      )}
+      <WizardAddButton leadingIcon={<Plus className="h-4 w-4" />} onClick={addAsset}>
+        {data.assets.length === 0 ? 'Add your first asset' : 'Add another asset'}
+      </WizardAddButton>
 
-      {/* Summary */}
       {data.assets.length > 0 && (
-        <div
-          className="wizard-card bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 p-4 rounded-xl"
-          style={{ '--card-index': data.assets.length } as React.CSSProperties}
-        >
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Asset Summary
-          </h4>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                {data.assets.length}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {data.assets.length === 1 ? 'Asset' : 'Assets'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(totalValue, { abbreviate: true })}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Total Value</div>
-            </div>
+        <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-white/70 dark:bg-slate-800/40 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Total asset value
+            </span>
+            <span className="text-xl font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+              {formatCurrency(totalValue, { abbreviate: true })}
+            </span>
           </div>
         </div>
       )}
 
-      {/* Skip hint */}
       {data.assets.length === 0 && (
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          No personal assets to track? No problem! Click <strong>Continue</strong> to skip this
-          step.
+        <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+          No assets to track? Click <span className="font-medium">Continue</span> to skip.
         </p>
       )}
-    </div>
+    </WizardStepShell>
   );
 }
+
+export default AssetsStep;

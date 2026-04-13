@@ -43,6 +43,16 @@ const STEP_CONTEXT: Record<WizardStepId, {
       'What property expenses should I track?',
     ],
   },
+  debts: {
+    title: 'Debts & Loans',
+    description: 'I can help you capture non-property debts — car loans, HECS, personal and business loans.',
+    suggestions: [
+      'How does HECS indexation work?',
+      'Should I link my car loan to a vehicle?',
+      'Do I include buy-now-pay-later balances?',
+      'What\'s the difference between a personal loan and a credit card here?',
+    ],
+  },
   accounts: {
     title: 'Bank Accounts',
     description: 'I can explain account types and offset account benefits.',
@@ -59,6 +69,16 @@ const STEP_CONTEXT: Record<WizardStepId, {
       'Should I include my superannuation?',
       'How do I find my average purchase price?',
       'What\'s the difference between brokerage and managed funds?',
+    ],
+  },
+  super: {
+    title: 'Superannuation',
+    description: 'I can help you add your super accounts. We capture the essentials now; deeper details land in Settings later.',
+    suggestions: [
+      'What fields do I need to enter for super?',
+      'Where do I find my super fund name?',
+      'Should I enter my contribution amounts now?',
+      'Can I add multiple super accounts?',
     ],
   },
   assets: {

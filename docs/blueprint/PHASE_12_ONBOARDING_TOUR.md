@@ -988,6 +988,10 @@ interface BulkCreateRequest {
 | v1.1 | 2025-12-05 | Added animated navigation guide specifications |
 | v1.2 | 2025-12-07 | Full implementation complete |
 | v2.0 | 2025-12-09 | Enhanced Wizard v2.0 - comprehensive data entry with AI helper |
+| v2.1 | 2026-04-12 | PR 1 onboarding correctness sweep — see `docs/changelog/CHANGELOG_2026_04_12_ONBOARDING_CORRECTNESS.md`. Fixed frequency double-conversion bug in bulk-create, persisted household data (previously dropped), set `Account.balanceSource=MANUAL`, routed INVESTMENT income to `sourceType=INVESTMENT`, added `UserPreference.taxYear` column, captured purchase dates for Property/Asset, added `onboarding.complete` RBAC permission, added HEALTH/EDUCATION/RENT/GROCERIES/SUBSCRIPTION expense categories, added QUARTERLY frequency to Income/Expenses step, deleted the legacy v1 `InitialSetupWizard` + `steps/*` dead code. PR 2 (draft persistence) and PR 3 (UX redesign) to follow. |
+| v2.2 | 2026-04-12 | PR 2 draft persistence + welcome modal redesign + dead-code sweep — see `docs/changelog/CHANGELOG_2026_04_12_ONBOARDING_DRAFT_PERSISTENCE.md`. Added `UserPreference.onboardingDraft Json?` column for server-persisted draft. Wizard now autosaves every state change (1.2s debounce) via `/api/onboarding/state` and hydrates from the server draft on mount. New `OnboardingResumeBanner` component on `/dashboard` for users with an unfinished wizard — actions: Resume, Start over, Dismiss. `bulk-create` clears the draft on success. Strict "show once / never again" welcome modal contract: X / backdrop / "Not right now" closes session-only; only the "Don't show this again" checkbox persists a permanent dismiss; tour completion no longer suppresses welcome. Premium visual redesign of the welcome modal (rotating aurora hero, floating sparkles, glass-frosted logo mark, gradient CTA, 3-col value-prop grid, reduced-motion support, full keyboard a11y). Matching polish on the resume banner. Dead-code sweep: deleted `components/onboarding/shared/` directory (5 orphaned files, 329 LOC) and 14 unused imports across wizard steps. |
+| v2.3 | 2026-04-12 | PR 3a — full wizard visual overhaul + simplification — see `docs/changelog/CHANGELOG_2026_04_12_WIZARD_VISUAL_OVERHAUL.md`. New dedicated `/app/onboarding` route (deep-linkable, unauth → `/signin?next=/onboarding`, completed → `/dashboard` short-circuit). `WizardContainer` gains a `mode: 'page' \| 'modal'` prop — `'modal'` preserves the existing dashboard modal behaviour exactly as before; `'page'` renders the new full-page experience. New wizard primitives library in `components/onboarding/wizard/primitives/` — `WizardStepShell`, `WizardSection`, `WizardField` (+ currency / percent / select variants), `WizardSegmentedControl`, `WizardPrimaryButton`, `WizardGhostButton`, `WizardAddButton`, `WizardChip` — so every step composes the same building blocks and design language. `styles/wizard-animations.css` extended with ~330 LOC of PR 3a design tokens (buttons, fields, segmented, chips, page layout, reduced-motion). All 8 step files redesigned to compose the primitives. **Welcome step**: removed the 4-card explicit profile picker in favour of 2-question auto-inference (`ownsProperty` + `hasInvestments` → STARTER/HOMEOWNER/INVESTOR/MIXED). **Properties step**: simplified required fields to name + current value; purchase price/date demoted to "Advanced details" disclosure; live equity preview. **Review step**: hero net-worth card, 3-tile metrics row, "what you've added" grid, "what you'll unlock" panel, confetti preserved. No data model changes. See `docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md` §5 for the full PR 3a checklist and §10 for the resolved data-hygiene architectural discussion. |
+| v2.4 | 2026-04-12 | PR 3b — wizard structural additions — see `docs/changelog/CHANGELOG_2026_04_12_WIZARD_STRUCTURAL_ADDITIONS.md`. **Welcome step**: 3-option housing segmented control (Own / Rent / Both) drives the renter path — Properties step is hidden when housing='RENT' via `getStepsForProfile` context. Multi-select debts checkbox row (HECS / Car / Personal / Business) drives visibility of a new conditional **Debts step** which captures CAR / STUDENT / PERSONAL / BUSINESS loans. HECS/STUDENT special case: indexation-rate default 4%, no `minRepayment` (income-contingent; handled by Phase 20 Tax Intelligence Engine). CAR loans can link to a vehicle in the Assets step via `Loan.linkedAssetId`. **New Super step** routes real `SuperannuationAccount` rows with minimum-viable fields (`name`, `fundName`, `currentBalance`); replaces the PR 3a mis-routing of super through `InvestmentAccount(type=SUPERS)`. **Household step** adds a 4th "Your lifestyle" section with `lifestylePreference`, `diningOutFrequency`, `hobbiesWithCosts` fields for the Phase 28 budget AI. **Accounts step**: new three-tier data source picker at the top — Tier 1 Basiq ("Connect your bank", recommended hero card), Tier 2 file import (composes the existing `components/bank/ImportWizard.tsx` from Phase 13/18 — zero duplicate parsing logic), Tier 3 manual (de-ranked fallback). `AccountInput.source: 'BASIQ' \| 'IMPORT' \| 'MANUAL'` + `existingAccountId` point to pre-persisted DB rows for Basiq/Import. **New `/app/onboarding/basiq-callback` route** polls for the ACTIVE connection after the Basiq redirect. **bulk-create** updated to skip Basiq/Import accounts (already in DB), create real `SuperannuationAccount` rows, create non-property `Loan` rows in two passes (second pass after Assets for CAR→Asset linking), write lifestyle fields to `HouseholdProfile`. No schema changes. |
 
 ---
 
@@ -996,14 +1000,14 @@ interface BulkCreateRequest {
 After deployment, run the following migrations:
 
 ```sql
--- Add onboarding fields to users table
+-- Initial onboarding fields (applied 2025-12-07)
 ALTER TABLE "users" ADD COLUMN "onboardingCompleted" BOOLEAN DEFAULT false;
 ALTER TABLE "users" ADD COLUMN "onboardingProfileType" TEXT;
 ALTER TABLE "users" ADD COLUMN "onboardingStartedAt" TIMESTAMP;
 ALTER TABLE "users" ADD COLUMN "onboardingCompletedAt" TIMESTAMP;
 ALTER TABLE "users" ADD COLUMN "onboardingStep" INTEGER DEFAULT 0;
 
--- Create user_preferences table
+-- user_preferences table (applied 2025-12-07)
 CREATE TABLE "user_preferences" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "userId" TEXT NOT NULL UNIQUE,
@@ -1019,8 +1023,251 @@ CREATE TABLE "user_preferences" (
   "updatedAt" TIMESTAMP DEFAULT NOW(),
   FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE
 );
+
+-- PR 1 correctness sweep (2026-04-12)
+ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "taxYear" TEXT;
+
+-- PR 2 draft persistence (2026-04-12)
+ALTER TABLE "user_preferences" ADD COLUMN IF NOT EXISTS "onboardingDraft" JSONB;
 ```
 
 ---
 
-*END OF PHASE 12 BLUEPRINT v1.2*
+## 15. Draft Persistence (PR 2 Contract)
+
+The wizard autosaves every state change (1.2s debounce) to
+`UserPreference.onboardingDraft` via `POST /api/onboarding/state { draft }`
+and hydrates from the same column on mount via `GET /api/onboarding/state`.
+This makes the flow **resumable across devices** and **robust to
+interruption**.
+
+### Show-once / never-again contract
+
+| User action | Welcome modal next login? |
+|---|---|
+| Completed the wizard (bulk-create success) | **Never** |
+| Clicked "Don't show this again" + closed | **Never** |
+| Closed with X / backdrop / "Not right now" (checkbox unchecked) | **Yes, reappears** |
+| Has an unfinished draft saved | **No — resume banner shows instead** |
+| Took or skipped the guided tour | **No effect — still shows** |
+
+Implemented in `hooks/useOnboardingState.ts::shouldShowWelcome`. The
+`dismissWelcomeModal()` mutation is reserved exclusively for the
+"Don't show this again" checkbox path. See the hook's JSDoc for the
+full state diagram.
+
+### Components
+
+| Component | Responsibility |
+|---|---|
+| `OnboardingWelcomeModal` | Premium first-time modal (aurora hero, sparkles, gradient CTAs). Strict dismissal contract per §15 above. |
+| `OnboardingResumeBanner` | Dashboard banner for users with an unfinished draft. Actions: Resume, Start over, Dismiss. Session-scoped dismiss. |
+| `WizardContainer` | Accepts `initialData` / `initialStepIndex` / `onAutoSave` props. Debounces autosave to protect the API. |
+
+### Size guard
+
+The server-side `POST /api/onboarding/state` caps `draft` at 200 KB
+serialized. Payloads above the cap return HTTP 413.
+
+---
+
+## 16. PR 3a Visual Overhaul & Simplification (2026-04-12)
+
+> Full wizard redesign behind the same decisions as PR 2 (draft
+> persistence, strict "show once / never again"). Visual only — no new
+> data capture paths. Structural additions (renter path, non-property
+> loans, super routing, Basiq shortcut, lifestyle fields) ship in PR 3b.
+
+### 16.1 Scope summary
+
+| Area | Change |
+|---|---|
+| Route | New `/app/onboarding/page.tsx` (deep-linkable). `WizardContainer.mode: 'page' \| 'modal'` preserves backwards compatibility. |
+| Shell | Redesigned header, progress bar, footer — gradient rocket mark, gradient progress fill, primitives-based buttons. |
+| Primitives | New `components/onboarding/wizard/primitives/` library — `WizardStepShell`, `WizardSection`, `WizardField` (+ variants), `WizardSegmentedControl`, `WizardPrimaryButton`/`GhostButton`/`AddButton`, `WizardChip`. |
+| CSS tokens | `styles/wizard-animations.css` extended with PR 3a tokens (fields, buttons, segmented, chips, page layout, stagger helper, reduced-motion overrides). |
+| Steps | All 8 step files redesigned to compose the primitives — Welcome, Household, Properties, Accounts, Investments, Assets, Income/Expenses, Review. |
+| Simplification | Welcome: 2-question profile auto-inference replaces the 4-card picker. Properties: purchase price/date pushed behind "Advanced details". Every step: cleaner empty states, inline summaries, annualised previews. |
+
+### 16.2 Step-by-step redesign notes
+
+- **WelcomeStep** — gradient clip-text on "Monitrax"; two
+  `WizardSegmentedControl` questions ("Do you own any property?" +
+  "Do you have investments?") auto-derive `profileType`. Reverse-infers
+  on mount so hydrated drafts show existing answers highlighted.
+  Country / tax year only revealed after both answers are given. Time
+  chip (`~X min`) updates dynamically.
+- **HouseholdStep** — composes three `WizardSection` cards (members,
+  pets, vehicles). Vehicle count now uses `WizardSegmentedControl`
+  (one click instead of a select). Empty states use dashed borders.
+- **PropertiesStep** — expandable property cards with inline live
+  equity preview (`currentValue - loan.principal`). Purchase price
+  and purchase date moved behind an "Advanced details" disclosure so
+  the up-front form is just name + type + address + value. Loan
+  section collapses when "has mortgage" is unticked. 3-tile summary.
+- **AccountsStep** — quick-add tile grid for the empty state (4
+  type options with icon + description). Compact account cards with
+  type-specific accents. Offset→loan linking only surfaces when
+  type=OFFSET. 3-tile summary (cash / credit debt / net).
+- **InvestmentsStep** — expandable cards with live value in the
+  header. Inline 12-col holdings grid with ticker / units / avg
+  price / type / delete. 3-tile summary.
+- **AssetsStep** — expandable cards. Vehicle-specific fields appear
+  inline only for `type=VEHICLE`. Depreciation preview (`purchasePrice
+  - currentValue`) with colour-coded percentage chip. Running-cost
+  expenses reuse the 12-col inline grid pattern from PropertiesStep
+  for consistency.
+- **IncomeExpensesStep** — cleaner tab switcher with live counts and
+  rounded pills. Each row shows an inline "Annualised: $X / year"
+  preview. Salary rows keep their GROSS/NET segmented control. Bottom
+  cashflow summary shows annual income, expenses, surplus/deficit +
+  per-month equivalent.
+- **ReviewStep** — hero net-worth card with gradient background and
+  ambient blur glow. 3-tile metrics row (annual income / outgoings
+  incl. loan repayments / monthly cashflow). "What you've added"
+  section listing per-entity counts. "What you'll unlock" section
+  listing the capabilities about to be enabled. Confetti preserved
+  from PR 2.
+
+### 16.3 What did NOT change in PR 3a
+
+- No schema changes
+- No new API endpoints
+- No new data capture paths (no renter path, no non-property loans,
+  no super routing, no Basiq shortcut, no lifestyle fields — all PR 3b)
+- `DashboardLayout` still renders the wizard as a modal exactly as
+  before (the `mode='modal'` default is a no-op for existing callers)
+- `bulk-create/route.ts` unchanged since PR 1
+- Draft persistence unchanged since PR 2
+
+### 16.4 Design tokens (PR 3a)
+
+Codified so every step uses the same palette, spacing, radii, shadows,
+and motion. Full reference: `docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md` §5.3.
+
+- **Primary gradient**: `from-blue-500 via-indigo-500 to-violet-500`
+- **Success gradient**: `from-emerald-500 to-teal-500`
+- **Danger**: `from-rose-500 to-red-500`
+- **Typography**: `font-semibold tracking-tight` with
+  `letter-spacing: -0.02em` on h1/h2; gradient clip-text on accent
+  words only
+- **Radii**: page card `rounded-3xl`, section card `rounded-2xl`,
+  button `rounded-xl`, chip `rounded-full`
+- **Motion**: `cubic-bezier(0.22, 1, 0.36, 1)` entry; staggered
+  children at `calc(var(--index) * 0.08s)`; hover lift `translateY(-1px)`;
+  every keyframe respects `prefers-reduced-motion`
+
+---
+
+## 17. PR 3b Structural Additions (2026-04-12)
+
+> Fourth PR in the Phase 12 pipeline. Closes the data-capture gaps
+> identified in the original review. No visual changes — PR 3a already
+> handled those. No schema changes — every new field maps to an
+> existing Prisma column.
+
+### 17.1 Renter path
+
+The Welcome step now asks "Do you own or rent?" as a 3-option segmented
+control (`Own` / `Rent` / `Both`). The answer is stored as
+`WizardData.housing`. When `housing === 'RENT'`, `getStepsForProfile`
+hides the Properties step entirely. Rent is modelled as a regular
+`Expense(category=RENT, sourceType=GENERAL)` on the Income/Expenses
+step — **not** as a `Property(type=RENTAL)`. This avoids polluting the
+Properties module with half-populated rows.
+
+### 17.2 Non-property loans (Debts step)
+
+Shown conditionally when the user ticks at least one checkbox on the
+Welcome step's "Do you have any of these debts?" question (HECS / Car /
+Personal / Business). Captures `LoanType` = `CAR` / `STUDENT` /
+`PERSONAL` / `BUSINESS`.
+
+- **HECS/STUDENT** is special-cased: indexation rate defaults to 4%
+  (ATO), `minRepayment` is forced to 0 because HECS is income-contingent.
+  The Phase 20 Tax Intelligence Engine handles HECS repayment from
+  salary.
+- **CAR** loans can link to a vehicle in the Assets step via
+  `Loan.linkedAssetId` — `bulk-create` writes the CAR loans in a second
+  pass after Assets to resolve the wizard temp ID → real DB ID.
+- **LINE_OF_CREDIT** is not captured here. Per plan doc §3 row C, LOC is
+  modelled as a `CREDIT_CARD` Account for PR 3b simplicity. The full
+  `Loan(type=LINE_OF_CREDIT)` + `linkedAccountId` path is deferred.
+- **CREDIT_CARD** stays in the Accounts step as a negative-balance
+  Account (unchanged from PR 1 / 3a).
+
+### 17.3 Super routing
+
+New dedicated `SuperStep` creates real `SuperannuationAccount` rows
+(Phase 20 model). Captures the absolute minimum viable fields:
+
+- `name` — user's nickname for the account (default "My Super")
+- `fundName` — free text (e.g. "AustralianSuper")
+- `currentBalance` — drives net worth
+
+Everything else (`memberNumber`, `fundABN`, tax components, contribution
+YTD, caps, investment option, returns) is deferred to a future
+Settings > Retirement page per plan doc §3 row A. Users don't
+typically have a super statement handy during onboarding.
+
+### 17.4 Household lifestyle fields
+
+The Household step adds a 4th section titled "Your lifestyle" with:
+
+- `lifestylePreference` — segmented control: `FRUGAL` / `MODERATE` /
+  `COMFORTABLE`
+- `diningOutFrequency` — segmented: `NEVER` / `RARELY` / `SOMETIMES` /
+  `OFTEN`
+- `hobbiesWithCosts` — optional free text
+
+These feed the Phase 28 budget AI which previously fell back to
+hard-coded defaults. `bulk-create` writes them into the
+`HouseholdProfile` upsert, and only overwrites existing values when
+the user actually picks one (so re-runs don't clobber Settings data).
+
+### 17.5 Three-tier Accounts data source picker
+
+Per plan doc §3 row F and §6.3. Three tiles at the top of the Accounts
+step, freely mixable:
+
+1. **Tier 1 — Basiq (Recommended)**. Hero card, gradient, "Recommended"
+   chip, CDR compliance note. Calls `POST /api/basiq/connect` → redirects
+   to the returned `consentUrl`. After the user completes consent, Basiq
+   redirects back to a new `/app/onboarding/basiq-callback` page that
+   polls `GET /api/basiq/connections` for up to 30s until the connection
+   shows as `ACTIVE`, then redirects to `/onboarding?step=accounts&basiq=connected`.
+
+2. **Tier 2 — File import**. Mid-weight ghost card. Opens the existing
+   `components/bank/ImportWizard.tsx` (Phase 13/18) in a dialog — **zero
+   duplicate parsing logic**. When the user completes an import,
+   `onAccountCreated` is called, and the wizard records an
+   `AccountInput` with `source='IMPORT'` + `existingAccountId`.
+
+3. **Tier 3 — Manual**. De-ranked dashed-border tile. Opens the
+   existing PR 3a quick-add grid. Only shown after the user picks the
+   Manual tile (or if a resumed draft already has manual accounts).
+
+`AccountInput.source` is persisted in the draft so resumed sessions
+remember which tier was picked. `bulk-create` skips writing rows with
+`source='BASIQ' | 'IMPORT'` since those accounts already exist in the
+DB — it only honours offset-to-loan linking for them.
+
+### 17.6 What did NOT change in PR 3b
+
+- No schema changes (every field maps to existing Prisma columns)
+- No changes to PR 2 draft persistence
+- No changes to PR 2 show-once / never-again contract
+- No changes to PR 3a visual primitives — Debts, Super, and the new
+  Accounts tiles all compose the existing primitives
+- `DashboardLayout` modal behaviour unchanged
+
+### 17.7 Follow-up: PR 3c Data source hygiene
+
+Documented in plan doc §6A. Not in PR 3b. Covers app-wide staleness
+indicators, "upgrade this account" buttons in Settings, the existing-user
+migration modal, `balanceLastUpdatedAt` enforcement audit, and the
+balance age heat-map.
+
+---
+
+*END OF PHASE 12 BLUEPRINT v2.4*

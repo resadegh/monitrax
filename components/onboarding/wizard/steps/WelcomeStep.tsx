@@ -1,107 +1,187 @@
 'use client';
 
-import React from 'react';
-import { Home, TrendingUp, Briefcase, Rocket, Check } from 'lucide-react';
+/**
+ * WelcomeStep — Phase 12 PR 3b
+ *
+ * PR 3a introduced 2-question profile auto-inference (removed the 4-card
+ * explicit picker). PR 3b extends Welcome with TWO MORE pieces of
+ * context, both of which drive runtime step filtering:
+ *
+ *   1. **Housing situation** (3-option segmented control):
+ *      - OWN  → show Properties step (existing PR 3a behaviour)
+ *      - RENT → hide Properties step, rent auto-seeds an Expense later
+ *      - BOTH → show Properties step AND seed a rent expense
+ *
+ *   2. **Debts checkbox** (multi-select chips):
+ *      - HECS / STUDENT loan
+ *      - Car loan
+ *      - Personal loan
+ *      - Business loan
+ *      → if any ticked, the new Debts step becomes visible after Properties.
+ *
+ * The profile label is now inferred from `housing` (as a proxy for
+ * ownsProperty) AND `hasInvestments` from the existing question, so the
+ * existing 4-profile structure still works transparently.
+ *
+ * Docs: docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md §3 rows 3, 6, C, F
+ */
+
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  Sparkles,
+  Clock,
+  Home,
+  TrendingUp,
+  Globe,
+  CreditCard,
+  GraduationCap,
+  Car,
+  Banknote,
+  Briefcase,
+} from 'lucide-react';
 import { OnboardingProfileType } from '@/hooks/useOnboardingState';
-import { WizardData } from '../types';
+import {
+  WizardStepShell,
+  WizardSection,
+  WizardSegmentedControl,
+  WizardSelectField,
+  WizardChip,
+} from '../primitives';
+import { WizardData, HousingSituation, DebtCategory } from '../types';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
-// PROFILE CARD DATA
+// INFERENCE HELPERS
 // =============================================================================
 
-interface ProfileOption {
-  type: OnboardingProfileType;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  color: string;
-  bgGradient: string;
-  features: string[];
-  estimatedTime: string;
+type YesNo = 'YES' | 'NO';
+
+/**
+ * Profile inference from the PR 3a+3b questions.
+ *
+ *   housing        | hasInvestments | inferred profile
+ *   ---------------+----------------+------------------
+ *    RENT          |     false      | STARTER
+ *    RENT          |     true       | INVESTOR  (shares/super only)
+ *    OWN / BOTH    |     false      | HOMEOWNER
+ *    OWN / BOTH    |     true       | MIXED
+ *
+ * The distinction between OWN and BOTH only affects whether a rent
+ * expense is seeded — not the profile label, since the step filter
+ * uses `housing` directly for that.
+ */
+function inferProfile(
+  housing: HousingSituation | null,
+  hasInvestments: YesNo | null
+): OnboardingProfileType | null {
+  if (!housing || !hasInvestments) return null;
+  const owns = housing === 'OWN' || housing === 'BOTH';
+  if (owns && hasInvestments === 'YES') return 'MIXED';
+  if (owns) return 'HOMEOWNER';
+  if (hasInvestments === 'YES') return 'INVESTOR';
+  return 'STARTER';
 }
 
-const PROFILE_OPTIONS: ProfileOption[] = [
-  {
-    type: 'STARTER',
-    title: 'Just Getting Started',
-    description: 'Perfect for tracking basic finances and building wealth awareness',
-    icon: <Rocket className="h-8 w-8" />,
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bgGradient: 'from-emerald-500/10 to-teal-500/10',
-    features: [
-      'Bank account tracking',
-      'Income & expense monitoring',
-      'Basic net worth calculation',
-    ],
-    estimatedTime: '~3 min',
-  },
-  {
-    type: 'HOMEOWNER',
-    title: 'Homeowner',
-    description: 'For those with a home and mortgage to manage',
-    icon: <Home className="h-8 w-8" />,
-    color: 'text-blue-600 dark:text-blue-400',
-    bgGradient: 'from-blue-500/10 to-indigo-500/10',
-    features: [
-      'Property & loan tracking',
-      'Equity monitoring',
-      'Offset account benefits',
-      'Mortgage optimization insights',
-    ],
-    estimatedTime: '~5 min',
-  },
-  {
-    type: 'INVESTOR',
-    title: 'Property Investor',
-    description: 'For investment property owners and share traders',
-    icon: <TrendingUp className="h-8 w-8" />,
-    color: 'text-purple-600 dark:text-purple-400',
-    bgGradient: 'from-purple-500/10 to-pink-500/10',
-    features: [
-      'Multiple property management',
-      'Rental income tracking',
-      'Share portfolio monitoring',
-      'Tax deduction optimization',
-    ],
-    estimatedTime: '~7 min',
-  },
-  {
-    type: 'MIXED',
-    title: 'Wealth Builder',
-    description: 'Comprehensive tracking for diversified portfolios',
-    icon: <Briefcase className="h-8 w-8" />,
-    color: 'text-amber-600 dark:text-amber-400',
-    bgGradient: 'from-amber-500/10 to-orange-500/10',
-    features: [
-      'All property & investment tools',
-      'Personal asset tracking',
-      'Complete financial picture',
-      'Advanced strategy recommendations',
-    ],
-    estimatedTime: '~10 min',
-  },
-];
+function reverseInfer(
+  profile: OnboardingProfileType | null,
+  housing: HousingSituation | null
+): { housing: HousingSituation | null; hasInvestments: YesNo | null } {
+  // Housing is stored directly now — no need to derive it. Only the
+  // hasInvestments Yes/No needs to be reverse-derived.
+  switch (profile) {
+    case 'STARTER':
+      return { housing: housing ?? 'RENT', hasInvestments: 'NO' };
+    case 'HOMEOWNER':
+      return { housing: housing ?? 'OWN', hasInvestments: 'NO' };
+    case 'INVESTOR':
+      return { housing: housing ?? 'RENT', hasInvestments: 'YES' };
+    case 'MIXED':
+      return { housing: housing ?? 'OWN', hasInvestments: 'YES' };
+    default:
+      return { housing, hasInvestments: null };
+  }
+}
+
+// Estimated time labels — keep these loose.
+function estimateMinutes(profile: OnboardingProfileType | null, debtCount: number): string {
+  const base =
+    profile === 'STARTER'
+      ? 3
+      : profile === 'HOMEOWNER'
+      ? 5
+      : profile === 'INVESTOR'
+      ? 6
+      : profile === 'MIXED'
+      ? 8
+      : 5;
+  const debtBonus = debtCount > 0 ? 1 : 0;
+  return `~${base + debtBonus} min`;
+}
 
 // =============================================================================
-// COUNTRY & TAX YEAR OPTIONS
+// CONSTANTS
 // =============================================================================
 
 const COUNTRIES = [
-  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-  { code: 'NZ', name: 'New Zealand', flag: '🇳🇿' },
-  { code: 'US', name: 'United States', flag: '🇺🇸' },
-  { code: 'UK', name: 'United Kingdom', flag: '🇬🇧' },
-];
+  { value: 'AU', label: '🇦🇺  Australia' },
+  { value: 'NZ', label: '🇳🇿  New Zealand' },
+  { value: 'US', label: '🇺🇸  United States' },
+  { value: 'UK', label: '🇬🇧  United Kingdom' },
+] as const;
 
 const currentYear = new Date().getFullYear();
 const TAX_YEARS = [
-  `${currentYear - 1}-${currentYear}`,
-  `${currentYear}-${currentYear + 1}`,
+  { value: `${currentYear - 1}-${currentYear}`, label: `FY ${currentYear - 1}–${currentYear}` },
+  { value: `${currentYear}-${currentYear + 1}`, label: `FY ${currentYear}–${currentYear + 1}` },
+];
+
+const HOUSING_OPTIONS: Array<{ value: HousingSituation; label: string }> = [
+  { value: 'OWN', label: 'Own' },
+  { value: 'RENT', label: 'Rent' },
+  { value: 'BOTH', label: 'Both' },
+];
+
+const YES_NO_OPTIONS: Array<{ value: YesNo; label: string }> = [
+  { value: 'YES', label: 'Yes' },
+  { value: 'NO', label: 'No' },
+];
+
+interface DebtOption {
+  value: DebtCategory;
+  label: string;
+  icon: React.ReactNode;
+  accent: string;
+}
+
+const DEBT_OPTIONS: DebtOption[] = [
+  {
+    value: 'STUDENT',
+    label: 'HECS / student loan',
+    icon: <GraduationCap className="h-4 w-4" />,
+    accent: 'bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400',
+  },
+  {
+    value: 'CAR',
+    label: 'Car loan',
+    icon: <Car className="h-4 w-4" />,
+    accent: 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
+  },
+  {
+    value: 'PERSONAL',
+    label: 'Personal loan',
+    icon: <Banknote className="h-4 w-4" />,
+    accent: 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400',
+  },
+  {
+    value: 'BUSINESS',
+    label: 'Business loan',
+    icon: <Briefcase className="h-4 w-4" />,
+    accent: 'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400',
+  },
 ];
 
 // =============================================================================
-// WELCOME STEP COMPONENT
+// COMPONENT
 // =============================================================================
 
 interface WelcomeStepProps {
@@ -110,145 +190,165 @@ interface WelcomeStepProps {
 }
 
 export function WelcomeStep({ data, onUpdate }: WelcomeStepProps) {
-  const handleProfileSelect = (type: OnboardingProfileType) => {
-    onUpdate({ profileType: type });
+  // Reverse-infer hasInvestments from any hydrated profileType so a
+  // resumed draft shows the user's previous answers still highlighted.
+  // Housing is now stored directly on WizardData so we read it as-is.
+  const initial = useMemo(
+    () => reverseInfer(data.profileType, data.housing),
+    [data.profileType, data.housing]
+  );
+  const [hasInvestments, setHasInvestments] = useState<YesNo | null>(
+    initial.hasInvestments
+  );
+
+  // Whenever the answers fully infer a profile, write it back.
+  useEffect(() => {
+    const inferred = inferProfile(data.housing, hasInvestments);
+    if (inferred && inferred !== data.profileType) {
+      onUpdate({ profileType: inferred });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.housing, hasInvestments]);
+
+  const inferred = inferProfile(data.housing, hasInvestments);
+  const timeLabel = estimateMinutes(inferred, data.debtCategories.length);
+  const hasAllCoreAnswers = data.housing !== null && hasInvestments !== null;
+
+  // Toggle a debt category on the multi-select
+  const toggleDebt = (cat: DebtCategory) => {
+    const current = data.debtCategories;
+    const next = current.includes(cat)
+      ? current.filter((c) => c !== cat)
+      : [...current, cat];
+    onUpdate({ debtCategories: next });
   };
 
   return (
-    <div className="space-y-8 wizard-step-enter">
-      {/* Welcome Header */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl mb-4">
-          👋
+    <WizardStepShell
+      icon={<Sparkles className="h-8 w-8" strokeWidth={1.5} />}
+      title={
+        <>
+          Welcome to{' '}
+          <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400">
+            Monitrax
+          </span>
+        </>
+      }
+      subtitle="Tell us a little about your situation so we can tailor the setup to just what you need."
+      headerTrailing={
+        <WizardChip color="green" icon={<Clock className="h-3 w-3" />}>
+          Setup time: {timeLabel}
+        </WizardChip>
+      }
+    >
+      {/* Q1: Housing situation (3-option, drives renter path) */}
+      <WizardSection
+        icon={<Home className="h-4 w-4" />}
+        iconClassName="bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400"
+        title="Do you own or rent?"
+        description="Pick the one that best describes your situation — we'll tailor the next steps."
+      >
+        <WizardSegmentedControl<HousingSituation>
+          value={data.housing}
+          onChange={(v) => onUpdate({ housing: v })}
+          options={HOUSING_OPTIONS}
+          name="housing"
+          helper={
+            data.housing === 'BOTH'
+              ? 'Got it — you own property AND rent somewhere else. We\u2019ll ask about both.'
+              : data.housing === 'RENT'
+              ? 'We\u2019ll skip property setup and add your rent as a regular expense.'
+              : undefined
+          }
+        />
+      </WizardSection>
+
+      {/* Q2: Investments / super (drives Investments + Super steps) */}
+      <WizardSection
+        icon={<TrendingUp className="h-4 w-4" />}
+        iconClassName="bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400"
+        title="Do you have investments or super?"
+        description="Shares, ETFs, managed funds, superannuation, or crypto."
+      >
+        <WizardSegmentedControl
+          value={hasInvestments}
+          onChange={setHasInvestments}
+          options={YES_NO_OPTIONS}
+          name="has-investments"
+        />
+      </WizardSection>
+
+      {/* Q3: Debts multi-select (drives Debts step visibility) */}
+      <WizardSection
+        icon={<CreditCard className="h-4 w-4" />}
+        iconClassName="bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400"
+        title="Any of these debts?"
+        description="Tick all that apply — we'll add a quick step for them. Credit cards are handled in the Accounts step."
+      >
+        <div className="flex flex-wrap gap-2">
+          {DEBT_OPTIONS.map((opt) => {
+            const selected = data.debtCategories.includes(opt.value);
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="checkbox"
+                aria-checked={selected}
+                onClick={() => toggleDebt(opt.value)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                  selected
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm dark:border-blue-400 dark:bg-blue-900/30 dark:text-blue-300'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200'
+                }`}
+              >
+                <span className={selected ? '' : opt.accent.replace(/bg-\S+/g, '').trim()}>
+                  {opt.icon}
+                </span>
+                {opt.label}
+              </button>
+            );
+          })}
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Welcome to Monitrax
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 max-w-lg mx-auto">
-          Let&apos;s set up your financial dashboard. First, tell us a bit about your situation
-          so we can tailor the experience for you.
+        <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+          None of these? Leave them unticked and the debts step will be skipped.
         </p>
-      </div>
+      </WizardSection>
 
-      {/* Profile Selection */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
-          What best describes you?
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {PROFILE_OPTIONS.map((option, index) => (
-            <button
-              key={option.type}
-              onClick={() => handleProfileSelect(option.type)}
-              className={`profile-card relative p-6 rounded-xl border-2 text-left transition-all ${
-                data.profileType === option.type
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 selected'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-              style={{ '--card-index': index } as React.CSSProperties}
-            >
-              {/* Selected Indicator */}
-              {data.profileType === option.type && (
-                <div className="absolute top-4 right-4 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                  <Check className="h-4 w-4 text-white" />
-                </div>
-              )}
-
-              {/* Icon */}
-              <div className={`mb-4 ${option.color}`}>
-                <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${option.bgGradient}`}>
-                  {option.icon}
-                </div>
-              </div>
-
-              {/* Content */}
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                {option.title}
-              </h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                {option.description}
-              </p>
-
-              {/* Features */}
-              <ul className="space-y-1.5 mb-4">
-                {option.features.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                    <div className={`w-1.5 h-1.5 rounded-full ${option.color.replace('text-', 'bg-').replace('-600', '-500')}`} />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Time Estimate */}
-              <div className="text-xs text-gray-500 dark:text-gray-500">
-                Setup time: {option.estimatedTime}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Country & Tax Year Selection */}
-      {data.profileType && (
-        <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700 wizard-card" style={{ '--card-index': 0 } as React.CSSProperties}>
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
-            Location & Tax Settings
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md mx-auto">
-            {/* Country Selection */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Country
-              </label>
-              <select
-                value={data.country}
-                onChange={(e) => onUpdate({ country: e.target.value })}
-                className="wizard-input w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {COUNTRIES.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.flag} {country.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Tax Year Selection */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                Tax Year
-              </label>
-              <select
-                value={data.taxYear}
-                onChange={(e) => onUpdate({ taxYear: e.target.value })}
-                className="wizard-input w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {TAX_YEARS.map((year) => (
-                  <option key={year} value={year}>
-                    FY {year}
-                  </option>
-                ))}
-              </select>
-            </div>
+      {/* Location & tax year — only revealed once the core questions are answered */}
+      {hasAllCoreAnswers && (
+        <WizardSection
+          icon={<Globe className="h-4 w-4" />}
+          iconClassName="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400"
+          title="Where are you located?"
+          description="We use this to set up tax defaults and local terminology."
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <WizardSelectField
+              name="country"
+              label="Country"
+              value={data.country}
+              onChange={(v) => onUpdate({ country: v })}
+              options={COUNTRIES.map((c) => ({ value: c.value, label: c.label }))}
+            />
+            <WizardSelectField
+              name="tax-year"
+              label="Tax year"
+              value={data.taxYear}
+              onChange={(v) => onUpdate({ taxYear: v })}
+              options={TAX_YEARS}
+            />
           </div>
-
-          {/* Helper Text */}
-          <p className="text-xs text-center text-gray-500 dark:text-gray-500">
-            This helps us tailor tax calculations and default settings for your region.
-          </p>
-        </div>
+        </WizardSection>
       )}
 
-      {/* Ready Message */}
-      {data.profileType && (
-        <div className="text-center text-sm text-gray-500 dark:text-gray-400 wizard-card" style={{ '--card-index': 1 } as React.CSSProperties}>
-          <p>
-            Great choice! Click <strong>Continue</strong> to start adding your financial data.
-          </p>
-        </div>
+      {hasAllCoreAnswers && (
+        <p className="pt-2 text-center text-xs text-slate-500 dark:text-slate-400">
+          You&apos;re all set. Click <span className="font-semibold">Continue</span> to start adding
+          your financial data.
+        </p>
       )}
-    </div>
+    </WizardStepShell>
   );
 }
+
+export default WelcomeStep;

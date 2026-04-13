@@ -1,5 +1,23 @@
 'use client';
 
+/**
+ * ReviewStep — Phase 12 PR 3a visual redesign
+ *
+ * Final summary before submission. Shows the user's net worth, annual
+ * income, annual expenses, and monthly cashflow — all computed via the
+ * shared `calculateSummary()` helper in wizard/types.ts.
+ *
+ * PR 3a redesign adds:
+ *   - Hero net-worth card with gradient background
+ *   - 3-tile metrics row (income / expenses / cashflow)
+ *   - "What you've added" section listing counts per entity type
+ *   - "What you'll unlock" section explaining what the dashboard can now do
+ *   - Confetti on first render (preserved from PR 2)
+ *
+ * No data changes. No submission happens here — that's the footer's
+ * "Launch dashboard" button, which calls `onComplete` in WizardContainer.
+ */
+
 import React, { useEffect, useState } from 'react';
 import {
   Rocket,
@@ -7,98 +25,24 @@ import {
   Landmark,
   TrendingUp,
   Car,
-  DollarSign,
   Check,
-  ChevronRight,
   Sparkles,
+  Building2,
+  PiggyBank,
   ArrowUpCircle,
   ArrowDownCircle,
-  Building2,
-  CreditCard,
-  PiggyBank,
+  Users as UsersIcon,
+  Target,
+  Activity,
+  BarChart3,
 } from 'lucide-react';
 import { WizardData, calculateSummary } from '../types';
+import { WizardStepShell, WizardChip } from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
-// STAT CARD COMPONENT
-// =============================================================================
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  color: string;
-  delay: number;
-}
-
-function StatCard({ label, value, icon, color, delay }: StatCardProps) {
-  return (
-    <div
-      className="wizard-stat-value bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700"
-      style={{ '--stat-delay': `${delay}s` } as React.CSSProperties}
-    >
-      <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-lg ${color}`}>{icon}</div>
-        <div>
-          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{value}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">{label}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// SECTION SUMMARY COMPONENT
-// =============================================================================
-
-interface SectionSummaryProps {
-  title: string;
-  icon: React.ReactNode;
-  items: string[];
-  color: string;
-  count: number;
-  delay: number;
-}
-
-function SectionSummary({ title, icon, items, color, count, delay }: SectionSummaryProps) {
-  if (count === 0) return null;
-
-  return (
-    <div
-      className="wizard-stat-value"
-      style={{ '--stat-delay': `${delay}s` } as React.CSSProperties}
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <span className={color}>{icon}</span>
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {title} ({count})
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {items.slice(0, 5).map((item, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-300"
-          >
-            <Check className="h-3 w-3 text-green-500" />
-            {item}
-          </span>
-        ))}
-        {items.length > 5 && (
-          <span className="px-2 py-0.5 text-xs text-gray-400">
-            +{items.length - 5} more
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// CONFETTI COMPONENT
+// CONFETTI
 // =============================================================================
 
 function Confetti() {
@@ -108,34 +52,36 @@ function Confetti() {
 
   useEffect(() => {
     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-    const newPieces = Array.from({ length: 50 }, (_, i) => ({
+    const newPieces = Array.from({ length: 40 }, (_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
-      delay: `${Math.random() * 2}s`,
+      delay: `${Math.random() * 1.5}s`,
       color: colors[Math.floor(Math.random() * colors.length)],
     }));
     setPieces(newPieces);
   }, []);
 
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {pieces.map((piece) => (
+    <>
+      {pieces.map((p) => (
         <div
-          key={piece.id}
+          key={p.id}
           className="confetti-piece"
-          style={{
-            '--confetti-left': piece.left,
-            '--confetti-delay': piece.delay,
-            '--confetti-color': piece.color,
-          } as React.CSSProperties}
+          style={
+            {
+              '--confetti-left': p.left,
+              '--confetti-delay': p.delay,
+              '--confetti-color': p.color,
+            } as React.CSSProperties
+          }
         />
       ))}
-    </div>
+    </>
   );
 }
 
 // =============================================================================
-// REVIEW STEP COMPONENT
+// COMPONENT
 // =============================================================================
 
 interface ReviewStepProps {
@@ -145,215 +91,228 @@ interface ReviewStepProps {
 
 export function ReviewStep({ data }: ReviewStepProps) {
   const [showConfetti, setShowConfetti] = useState(false);
-  const summary = calculateSummary(data);
 
   useEffect(() => {
-    // Show confetti after a short delay
-    const timer = setTimeout(() => setShowConfetti(true), 500);
-    return () => clearTimeout(timer);
+    setShowConfetti(true);
+    const t = setTimeout(() => setShowConfetti(false), 3500);
+    return () => clearTimeout(t);
   }, []);
 
-  // Prepare section summaries
-  const propertyNames = data.properties.map((p) => p.name || p.address || 'Property');
-  const accountNames = data.accounts.map((a) => a.name || a.type);
-  const investmentNames = data.investments.map((i) => i.name || i.platform || i.type);
-  const assetNames = data.assets.map((a) => a.name || a.type);
-  const incomeNames = data.income.map((i) => i.name || i.type);
-  const expenseCategories = [...new Set(data.expenses.map((e) => e.category))];
+  const summary = calculateSummary(data);
+
+  // Counts
+  const propertyCount = data.properties.length;
+  const loanCount = data.properties.filter((p) => p.hasLoan && p.loan).length;
+  const accountCount = data.accounts.length;
+  const investmentCount = data.investments.length;
+  const holdingCount = data.investments.reduce((sum, inv) => sum + inv.holdings.length, 0);
+  const assetCount = data.assets.length;
+  const incomeCount =
+    data.income.length + data.properties.filter((p) => p.income && p.income.amount > 0).length;
+  const expenseCount =
+    data.expenses.length +
+    data.properties.reduce((sum, p) => sum + p.expenses.length, 0) +
+    data.assets.reduce((sum, a) => sum + a.expenses.length, 0);
+
+  const entityItems: Array<{ icon: React.ReactNode; label: string; count: number }> = [
+    { icon: <Home className="h-3.5 w-3.5" />, label: 'Properties', count: propertyCount },
+    { icon: <Landmark className="h-3.5 w-3.5" />, label: 'Loans', count: loanCount },
+    { icon: <PiggyBank className="h-3.5 w-3.5" />, label: 'Accounts', count: accountCount },
+    {
+      icon: <TrendingUp className="h-3.5 w-3.5" />,
+      label: 'Investment accounts',
+      count: investmentCount,
+    },
+    { icon: <BarChart3 className="h-3.5 w-3.5" />, label: 'Holdings', count: holdingCount },
+    { icon: <Car className="h-3.5 w-3.5" />, label: 'Personal assets', count: assetCount },
+    { icon: <ArrowUpCircle className="h-3.5 w-3.5" />, label: 'Income sources', count: incomeCount },
+    {
+      icon: <ArrowDownCircle className="h-3.5 w-3.5" />,
+      label: 'Expenses',
+      count: expenseCount,
+    },
+    {
+      icon: <UsersIcon className="h-3.5 w-3.5" />,
+      label: 'Household members',
+      count: data.householdMembers.length,
+    },
+  ].filter((item) => item.count > 0);
+
+  const unlockItems = [
+    { icon: <Activity className="h-4 w-4" />, text: 'Real-time net worth tracking' },
+    { icon: <TrendingUp className="h-4 w-4" />, text: 'Cashflow forecasts & surplus analysis' },
+    { icon: <Target className="h-4 w-4" />, text: 'AI-powered strategy recommendations' },
+    { icon: <Activity className="h-4 w-4" />, text: 'Financial health scoring' },
+  ];
 
   return (
-    <div className="space-y-6 wizard-step-enter">
+    <>
       {showConfetti && <Confetti />}
 
-      {/* Header */}
-      <div className="text-center space-y-3">
-        <div className="wizard-success-icon inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-white text-3xl mb-2">
-          <Rocket className="h-8 w-8" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          You&apos;re All Set!
-        </h2>
-        <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-          Here&apos;s a summary of your financial setup. Click <strong>Launch Dashboard</strong> to
-          start tracking your wealth.
-        </p>
-      </div>
-
-      {/* Net Worth Hero */}
-      <div className="wizard-card bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white text-center" style={{ '--card-index': 0 } as React.CSSProperties}>
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <Sparkles className="h-5 w-5 text-yellow-300" />
-          <span className="text-sm font-medium text-blue-100">Your Net Worth</span>
-          <Sparkles className="h-5 w-5 text-yellow-300" />
-        </div>
-        <div className="text-5xl font-bold mb-2">{formatCurrency(summary.netWorth, { abbreviate: true })}</div>
-        <p className="text-sm text-blue-100">
-          Based on {data.properties.length} properties, {data.accounts.length} accounts,
-          {data.investments.length > 0 && ` ${data.investments.length} investment accounts,`}
-          {data.assets.length > 0 && ` ${data.assets.length} assets`}
-        </p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          label="Property Value"
-          value={formatCurrency(summary.totalPropertyValue, { abbreviate: true })}
-          icon={<Home className="h-5 w-5 text-blue-600" />}
-          color="bg-blue-100 dark:bg-blue-800/40"
-          delay={0.1}
-        />
-        <StatCard
-          label="Total Debt"
-          value={formatCurrency(summary.totalLoanBalance, { abbreviate: true })}
-          icon={<Building2 className="h-5 w-5 text-red-600" />}
-          color="bg-red-100 dark:bg-red-800/40"
-          delay={0.2}
-        />
-        <StatCard
-          label="Cash & Savings"
-          value={formatCurrency(summary.totalAccountBalance, { abbreviate: true })}
-          icon={<PiggyBank className="h-5 w-5 text-green-600" />}
-          color="bg-green-100 dark:bg-green-800/40"
-          delay={0.3}
-        />
-        <StatCard
-          label="Investments"
-          value={formatCurrency(summary.totalInvestmentValue, { abbreviate: true })}
-          icon={<TrendingUp className="h-5 w-5 text-purple-600" />}
-          color="bg-purple-100 dark:bg-purple-800/40"
-          delay={0.4}
-        />
-      </div>
-
-      {/* Cashflow Summary */}
-      <div className="wizard-card bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4" style={{ '--card-index': 1 } as React.CSSProperties}>
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 text-center">
-          Annual Cashflow
-        </h4>
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="flex items-center justify-center gap-1 text-green-600 dark:text-green-400">
-              <ArrowUpCircle className="h-4 w-4" />
-              <span className="text-xl font-bold">{formatCurrency(summary.annualIncome, { abbreviate: true })}</span>
+      <WizardStepShell
+        icon={<Rocket className="h-8 w-8" strokeWidth={1.5} />}
+        title={
+          <>
+            You&apos;re all set,{' '}
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400">
+              ready to launch
+            </span>
+          </>
+        }
+        subtitle="Here's a quick snapshot of what Monitrax will track for you. Click Launch dashboard when you're ready."
+      >
+        {/* Hero net worth card */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/70 dark:border-slate-700/50 bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-violet-900/20 p-6 text-center">
+          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-blue-500/10 to-violet-500/10 blur-2xl" />
+          <div className="absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-gradient-to-br from-violet-500/10 to-pink-500/10 blur-2xl" />
+          <div className="relative">
+            <div className="mb-1 text-[11px] font-medium uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              Your net worth
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Income</div>
-          </div>
-          <div>
-            <div className="flex items-center justify-center gap-1 text-orange-600 dark:text-orange-400">
-              <ArrowDownCircle className="h-4 w-4" />
-              <span className="text-xl font-bold">
-                {formatCurrency(summary.annualExpenses + summary.annualLoanRepayments, { abbreviate: true })}
-              </span>
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Outgoings</div>
-          </div>
-          <div>
             <div
-              className={`text-xl font-bold ${
-                summary.monthlyCashflow >= 0
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-red-600 dark:text-red-400'
+              className={`text-5xl font-semibold tabular-nums ${
+                summary.netWorth >= 0
+                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400'
+                  : 'text-rose-600 dark:text-rose-400'
               }`}
+              style={{ letterSpacing: '-0.03em' }}
             >
-              {summary.monthlyCashflow >= 0 ? '+' : ''}
-              {formatCurrency(summary.monthlyCashflow)}/mo
+              {formatCurrency(summary.netWorth, { abbreviate: true })}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Monthly Surplus</div>
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <WizardChip color="blue" icon={<Sparkles className="h-3 w-3" />}>
+                Based on {entityItems.length} data sources
+              </WizardChip>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Items Added Summary */}
-      <div className="space-y-3 bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          What You&apos;ve Added
-        </h4>
+        {/* Metrics row */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <MetricCard
+            icon={<ArrowUpCircle className="h-4 w-4" />}
+            label="Annual income"
+            value={formatCurrency(summary.annualIncome, { abbreviate: true })}
+            accent="emerald"
+          />
+          <MetricCard
+            icon={<ArrowDownCircle className="h-4 w-4" />}
+            label="Annual outgoings"
+            value={formatCurrency(summary.annualExpenses + summary.annualLoanRepayments, {
+              abbreviate: true,
+            })}
+            accent="rose"
+            sublabel={
+              summary.annualLoanRepayments > 0
+                ? `Incl. ${formatCurrency(summary.annualLoanRepayments, { abbreviate: true })} loan repayments`
+                : undefined
+            }
+          />
+          <MetricCard
+            icon={<Activity className="h-4 w-4" />}
+            label="Monthly cashflow"
+            value={`${summary.monthlyCashflow >= 0 ? '+' : ''}${formatCurrency(
+              summary.monthlyCashflow,
+              { abbreviate: true }
+            )}`}
+            accent={summary.monthlyCashflow >= 0 ? 'blue' : 'rose'}
+          />
+        </div>
 
-        <SectionSummary
-          title="Properties"
-          icon={<Home className="h-4 w-4" />}
-          items={propertyNames}
-          color="text-blue-600 dark:text-blue-400"
-          count={data.properties.length}
-          delay={0.5}
-        />
-
-        <SectionSummary
-          title="Bank Accounts"
-          icon={<Landmark className="h-4 w-4" />}
-          items={accountNames}
-          color="text-green-600 dark:text-green-400"
-          count={data.accounts.length}
-          delay={0.6}
-        />
-
-        <SectionSummary
-          title="Investments"
-          icon={<TrendingUp className="h-4 w-4" />}
-          items={investmentNames}
-          color="text-purple-600 dark:text-purple-400"
-          count={data.investments.length}
-          delay={0.7}
-        />
-
-        <SectionSummary
-          title="Assets"
-          icon={<Car className="h-4 w-4" />}
-          items={assetNames}
-          color="text-amber-600 dark:text-amber-400"
-          count={data.assets.length}
-          delay={0.8}
-        />
-
-        <SectionSummary
-          title="Income Sources"
-          icon={<ArrowUpCircle className="h-4 w-4" />}
-          items={incomeNames}
-          color="text-green-600 dark:text-green-400"
-          count={data.income.length}
-          delay={0.9}
-        />
-
-        <SectionSummary
-          title="Expense Categories"
-          icon={<ArrowDownCircle className="h-4 w-4" />}
-          items={expenseCategories}
-          color="text-orange-600 dark:text-orange-400"
-          count={data.expenses.length}
-          delay={1.0}
-        />
-      </div>
-
-      {/* What's Next */}
-      <div className="wizard-card bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-4" style={{ '--card-index': 2 } as React.CSSProperties}>
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          What&apos;s Next?
-        </h4>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <ChevronRight className="h-4 w-4 text-indigo-500" />
-            <span>View your personalized dashboard with real-time insights</span>
+        {/* What you've added */}
+        {entityItems.length > 0 && (
+          <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/50 bg-white/70 dark:bg-slate-800/40 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <Check className="h-4 w-4 text-emerald-500" strokeWidth={3} />
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                What you&apos;ve added
+              </h4>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {entityItems.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300"
+                >
+                  <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                    {item.icon}
+                  </div>
+                  <span>
+                    <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+                      {item.count}
+                    </span>{' '}
+                    {item.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <ChevronRight className="h-4 w-4 text-indigo-500" />
-            <span>Get AI-powered recommendations to optimize your wealth</span>
+        )}
+
+        {/* What you'll unlock */}
+        <div className="rounded-2xl border border-blue-200/60 dark:border-blue-800/40 bg-gradient-to-br from-blue-50/60 to-indigo-50/40 dark:from-blue-900/15 dark:to-indigo-900/10 p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-blue-500" />
+            <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              What you&apos;ll unlock on the dashboard
+            </h4>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <ChevronRight className="h-4 w-4 text-indigo-500" />
-            <span>Track your progress with cashflow forecasting</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <ChevronRight className="h-4 w-4 text-indigo-500" />
-            <span>Explore strategies to grow your net worth faster</span>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {unlockItems.map((item) => (
+              <div
+                key={item.text}
+                className="flex items-center gap-2.5 rounded-lg bg-white/60 dark:bg-slate-900/30 px-3 py-2 text-xs text-slate-700 dark:text-slate-300"
+              >
+                <span className="text-blue-500 dark:text-blue-400">{item.icon}</span>
+                <span>{item.text}</span>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Footer Message */}
-      <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-        You can always add more data or make changes from your dashboard settings.
-      </p>
+        <p className="pt-1 text-center text-xs text-slate-500 dark:text-slate-400">
+          Click <span className="font-semibold">Launch dashboard</span> below to finish — you can
+          always add more data later.
+        </p>
+      </WizardStepShell>
+    </>
+  );
+}
+
+// =============================================================================
+// METRIC CARD
+// =============================================================================
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  sublabel,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sublabel?: string;
+  accent: 'blue' | 'emerald' | 'rose';
+}) {
+  const accentClass = {
+    blue: 'text-blue-600 dark:text-blue-400',
+    emerald: 'text-emerald-600 dark:text-emerald-400',
+    rose: 'text-rose-600 dark:text-rose-400',
+  }[accent];
+  return (
+    <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/50 p-4">
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+        <span className={accentClass}>{icon}</span>
+        {label}
+      </div>
+      <div className={`mt-1.5 text-2xl font-semibold tabular-nums ${accentClass}`}>{value}</div>
+      {sublabel && (
+        <div className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">{sublabel}</div>
+      )}
     </div>
   );
 }
+
+export default ReviewStep;
