@@ -193,24 +193,25 @@ STARTER flow in under 3 minutes and a MIXED flow in under 8 minutes.**
 > Updated continuously as work progresses.
 
 **Setup:**
-- [ ] Create `components/onboarding/wizard/primitives/WizardField.tsx`
-- [ ] Create `components/onboarding/wizard/primitives/WizardSection.tsx`
-- [ ] Create `components/onboarding/wizard/primitives/WizardGhostButton.tsx`
-- [ ] Create `components/onboarding/wizard/primitives/WizardPrimaryButton.tsx`
-- [ ] Create `components/onboarding/wizard/primitives/WizardStepShell.tsx`
-- [ ] Create `components/onboarding/wizard/primitives/index.ts`
-- [ ] Extend `styles/wizard-animations.css` with PR 3a additions
+- [x] Create `components/onboarding/wizard/primitives/WizardField.tsx` *(includes Currency/Percent/Select variants)*
+- [x] Create `components/onboarding/wizard/primitives/WizardSection.tsx`
+- [x] Create `components/onboarding/wizard/primitives/WizardButton.tsx` *(Primary + Ghost + Add)*
+- [x] Create `components/onboarding/wizard/primitives/WizardStepShell.tsx`
+- [x] Create `components/onboarding/wizard/primitives/WizardSegmentedControl.tsx`
+- [x] Create `components/onboarding/wizard/primitives/WizardChip.tsx`
+- [x] Create `components/onboarding/wizard/primitives/index.ts`
+- [x] Extend `styles/wizard-animations.css` with PR 3a additions *(~330 LOC of design tokens)*
 
 **Route:**
-- [ ] Create `app/onboarding/layout.tsx` (minimal, unauth-aware)
-- [ ] Create `app/onboarding/page.tsx` (mounts `WizardContainer` in page mode)
-- [ ] Add `mode: 'page' | 'modal'` prop to `WizardContainer` (modal = existing behaviour)
+- [x] Create `app/onboarding/page.tsx` (mounts `WizardContainer` in page mode)
+- [ ] *Layout file not required — inherits from root `app/layout.tsx`*
+- [x] Add `mode: 'page' | 'modal'` prop to `WizardContainer` (modal = existing behaviour)
 
 **Shell redesign:**
-- [ ] `WizardContainer` header — new gradient, new close button, new step description
-- [ ] `WizardContainer` progress bar — gradient fill, numbered steps, accessible labels
-- [ ] `WizardContainer` footer nav — primary/ghost buttons from primitives
-- [ ] AI helper button — reskin to match design language
+- [x] `WizardContainer` header — new gradient rocket mark, new close button, new step description
+- [x] `WizardContainer` progress bar — gradient fill, numbered steps, emerald gradient on completed, accessible labels
+- [x] `WizardContainer` footer nav — primary/ghost buttons from primitives
+- [ ] AI helper button — reskin to match design language *(deferred to a later batch — AI helper is stable and not blocking step redesigns)*
 
 **Step redesigns (each gets its own commit within PR 3a):**
 - [ ] `WelcomeStep` — aurora header + 2-question profile inference + country/tax
@@ -394,6 +395,50 @@ accepted by Reza without modification:
 
 > Dated entries, most recent first. Update after every meaningful batch of
 > work (not every individual edit).
+
+### 2026-04-12 (evening) — PR 3a foundation checkpoint committed
+
+First PR 3a batch shipped: the shared foundation that every step depends
+on.
+
+**What landed:**
+
+- `styles/wizard-animations.css` — ~330 new lines of PR 3a design tokens
+  (`.wz-step-shell`, `.wz-section`, `.wz-field`, `.wz-input`,
+  `.wz-segmented`, `.wz-btn-primary/ghost/add`, `.wz-chip`, `.wz-page-root`,
+  `.wz-page-card`, `.wz-stagger`, reduced-motion overrides)
+- `components/onboarding/wizard/primitives/` — 6 new files:
+  - `WizardStepShell.tsx` — outer step wrapper with icon/title/subtitle header
+  - `WizardSection.tsx` — labeled card with optional icon + trailing action
+  - `WizardField.tsx` — label+input wrapper with 4 variants
+    (`WizardField`, `WizardCurrencyField`, `WizardPercentField`, `WizardSelectField`)
+  - `WizardButton.tsx` — `WizardPrimaryButton` / `WizardGhostButton` /
+    `WizardAddButton`
+  - `WizardSegmentedControl.tsx` — multi-choice pill selector
+  - `WizardChip.tsx` — small status pills
+  - `index.ts` — barrel export
+- `components/onboarding/wizard/WizardContainer.tsx` — rewritten to
+  support both `mode='modal'` (existing dashboard behaviour, default)
+  and `mode='page'` (new full-page experience for `/app/onboarding`).
+  New shell with gradient rocket mark in the header, gradient progress
+  bar with pulse on active step, green→teal gradient on completed steps,
+  and the new primary/ghost buttons in the footer. Body-scroll lock is
+  modal-only. Escape key closes only in modal mode.
+- `app/onboarding/page.tsx` (new) — dedicated full-page onboarding
+  route. Unauth → `/signin?next=/onboarding`. Completed users →
+  `/dashboard` (short-circuit). Draft hydration + autosave wired up
+  the same way `DashboardLayout` wires the modal.
+
+**What did NOT change:**
+
+- No step files touched yet — they still use their original markup.
+- No new data capture paths (PR 3a out-of-scope).
+- `DashboardLayout` still renders the wizard as a modal exactly as
+  before — the new `mode='modal'` default preserves behaviour.
+
+**Next up:** redesigning each of the 8 step files one batch at a time,
+starting with Welcome (which gets the profile auto-infer change) and
+Household.
 
 ### 2026-04-12 (PM) — PR 3b questions answered; plan doc updated
 

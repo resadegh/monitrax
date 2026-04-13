@@ -678,3 +678,533 @@
     opacity: 1 !important;
   }
 }
+
+/* =============================================================================
+   PHASE 12 PR 3a: DESIGN TOKENS & PRIMITIVE STYLES
+   — Shared by every wizard step via the primitives in
+     components/onboarding/wizard/primitives/*
+   ============================================================================= */
+
+/* --- WizardStepShell ------------------------------------------------------ */
+/* Outer wrapper for every step. Handles entry animation, spacing rhythm,
+   and the two layout modes (page vs modal). */
+.wz-step-shell {
+  animation: welcome-modal-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+.wz-step-shell-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.wz-step-shell-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 1.25rem;
+  background-image: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+  color: white;
+  box-shadow:
+    0 10px 30px -10px rgba(99, 102, 241, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  margin-bottom: 1rem;
+}
+
+.wz-step-shell-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: rgb(15 23 42);
+}
+
+.dark .wz-step-shell-title {
+  color: rgb(248 250 252);
+}
+
+.wz-step-shell-subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: rgb(100 116 139);
+  max-width: 32rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.dark .wz-step-shell-subtitle {
+  color: rgb(148 163 184);
+}
+
+/* --- WizardSection -------------------------------------------------------- */
+/* Reusable content card used inside steps for grouping related fields. */
+.wz-section {
+  position: relative;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark .wz-section {
+  background-color: rgba(15, 23, 42, 0.7);
+  border-color: rgba(51, 65, 85, 0.5);
+}
+
+.wz-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.wz-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.wz-section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+}
+
+.wz-section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: rgb(15 23 42);
+}
+
+.dark .wz-section-title {
+  color: rgb(241 245 249);
+}
+
+.wz-section-description {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgb(100 116 139);
+  margin-top: 0.125rem;
+}
+
+.dark .wz-section-description {
+  color: rgb(148 163 184);
+}
+
+/* --- WizardField ---------------------------------------------------------- */
+/* Standard label+input wrapper used across every step. */
+.wz-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.wz-field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(100 116 139);
+}
+
+.dark .wz-field-label {
+  color: rgb(148 163 184);
+}
+
+.wz-field-label-required::after {
+  content: '*';
+  color: rgb(239 68 68);
+  margin-left: 0.125rem;
+}
+
+.wz-field-helper {
+  font-size: 0.6875rem;
+  color: rgb(148 163 184);
+  margin-top: 0.125rem;
+}
+
+.dark .wz-field-helper {
+  color: rgb(100 116 139);
+}
+
+.wz-field-error {
+  font-size: 0.6875rem;
+  color: rgb(239 68 68);
+  margin-top: 0.125rem;
+}
+
+/* Input base — used by text, number, select. */
+.wz-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: rgb(15 23 42);
+  background-color: white;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.625rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark .wz-input {
+  color: rgb(241 245 249);
+  background-color: rgba(15, 23, 42, 0.8);
+  border-color: rgb(51 65 85);
+}
+
+.wz-input:focus {
+  border-color: rgb(99 102 241);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.wz-input::placeholder {
+  color: rgb(148 163 184);
+}
+
+.dark .wz-input::placeholder {
+  color: rgb(71 85 105);
+}
+
+.wz-input-currency-wrap {
+  position: relative;
+}
+
+.wz-input-currency-wrap .wz-input {
+  padding-left: 1.75rem;
+}
+
+.wz-input-currency-prefix {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.875rem;
+  color: rgb(148 163 184);
+  pointer-events: none;
+}
+
+.dark .wz-input-currency-prefix {
+  color: rgb(100 116 139);
+}
+
+.wz-input-percent-wrap {
+  position: relative;
+}
+
+.wz-input-percent-wrap .wz-input {
+  padding-right: 2rem;
+}
+
+.wz-input-percent-suffix {
+  position: absolute;
+  right: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.875rem;
+  color: rgb(148 163 184);
+  pointer-events: none;
+}
+
+.dark .wz-input-percent-suffix {
+  color: rgb(100 116 139);
+}
+
+/* --- WizardSegmentedControl ---------------------------------------------- */
+/* Used for multi-choice fields (lifestyle, dining frequency, etc.). */
+.wz-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background-color: rgb(241 245 249);
+  border-radius: 0.625rem;
+}
+
+.dark .wz-segmented {
+  background-color: rgba(15, 23, 42, 0.6);
+}
+
+.wz-segmented-option {
+  padding: 0.4375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgb(100 116 139);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.dark .wz-segmented-option {
+  color: rgb(148 163 184);
+}
+
+.wz-segmented-option:hover:not([data-selected="true"]) {
+  color: rgb(51 65 85);
+}
+
+.dark .wz-segmented-option:hover:not([data-selected="true"]) {
+  color: rgb(203 213 225);
+}
+
+.wz-segmented-option[data-selected="true"] {
+  background-color: white;
+  color: rgb(15 23 42);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(99, 102, 241, 0.3);
+}
+
+.dark .wz-segmented-option[data-selected="true"] {
+  background-color: rgba(30, 41, 59, 0.95);
+  color: rgb(241 245 249);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(99, 102, 241, 0.4);
+}
+
+/* --- WizardPrimaryButton -------------------------------------------------- */
+.wz-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  background-image: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+  background-size: 200% 200%;
+  background-position: 0% 50%;
+  border: none;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: background-position 0.6s ease, transform 0.2s ease, box-shadow 0.3s ease;
+  box-shadow:
+    0 10px 30px -10px rgba(99, 102, 241, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+}
+
+.wz-btn-primary:hover:not(:disabled) {
+  background-position: 100% 50%;
+  transform: translateY(-1px);
+  box-shadow:
+    0 14px 38px -8px rgba(99, 102, 241, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+}
+
+.wz-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.wz-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* --- WizardGhostButton ---------------------------------------------------- */
+.wz-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6875rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(51 65 85);
+  background-color: white;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.dark .wz-btn-ghost {
+  color: rgb(203 213 225);
+  background-color: rgba(30, 41, 59, 0.7);
+  border-color: rgb(51 65 85);
+}
+
+.wz-btn-ghost:hover:not(:disabled) {
+  border-color: rgb(203 213 225);
+  background-color: rgb(248 250 252);
+  transform: translateY(-1px);
+}
+
+.dark .wz-btn-ghost:hover:not(:disabled) {
+  border-color: rgb(71 85 105);
+  background-color: rgba(30, 41, 59, 1);
+}
+
+.wz-btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Subtle bordered "add another" action button used across multi-entry steps. */
+.wz-btn-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(100 116 139);
+  background-color: transparent;
+  border: 2px dashed rgb(226 232 240);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dark .wz-btn-add {
+  color: rgb(148 163 184);
+  border-color: rgb(51 65 85);
+}
+
+.wz-btn-add:hover {
+  color: rgb(99 102 241);
+  border-color: rgb(99 102 241);
+  background-color: rgba(99, 102, 241, 0.04);
+}
+
+.dark .wz-btn-add:hover {
+  color: rgb(129 140 248);
+  border-color: rgb(99 102 241);
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+/* --- WizardChip ----------------------------------------------------------- */
+/* Small pill used for time estimates, tags, and inline metadata. */
+.wz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  border: 1px solid;
+}
+
+.wz-chip-blue {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: rgb(37 99 235);
+}
+
+.dark .wz-chip-blue {
+  color: rgb(96 165 250);
+}
+
+.wz-chip-green {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: rgb(5 150 105);
+}
+
+.dark .wz-chip-green {
+  color: rgb(52 211 153);
+}
+
+.wz-chip-amber {
+  background-color: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: rgb(217 119 6);
+}
+
+.dark .wz-chip-amber {
+  color: rgb(251 191 36);
+}
+
+/* --- Page-mode layout (/app/onboarding) ---------------------------------- */
+/* Used when WizardContainer is rendered as a full-page experience
+   rather than as a modal. See components/onboarding/wizard/WizardContainer.tsx. */
+.wz-page-root {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(99, 102, 241, 0.12), transparent 60%),
+    radial-gradient(ellipse at 90% 90%, rgba(139, 92, 246, 0.10), transparent 55%),
+    rgb(248 250 252);
+}
+
+.dark .wz-page-root {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(99, 102, 241, 0.2), transparent 55%),
+    radial-gradient(ellipse at 90% 90%, rgba(139, 92, 246, 0.15), transparent 55%),
+    rgb(2 6 23);
+}
+
+.wz-page-shell {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem 1rem;
+}
+
+@media (min-width: 768px) {
+  .wz-page-shell {
+    padding: 3rem 2rem 4rem 2rem;
+  }
+}
+
+.wz-page-card {
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  border-radius: 1.5rem;
+  box-shadow:
+    0 30px 80px -20px rgba(15, 23, 42, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  overflow: hidden;
+}
+
+.dark .wz-page-card {
+  background-color: rgba(15, 23, 42, 0.85);
+  border-color: rgba(51, 65, 85, 0.5);
+  box-shadow:
+    0 40px 100px -24px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+/* --- Stagger helper ------------------------------------------------------- */
+.wz-stagger > * {
+  opacity: 0;
+  animation: welcome-prop-enter 0.5s ease-out forwards;
+}
+
+.wz-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.wz-stagger > *:nth-child(2) { animation-delay: 0.13s; }
+.wz-stagger > *:nth-child(3) { animation-delay: 0.21s; }
+.wz-stagger > *:nth-child(4) { animation-delay: 0.29s; }
+.wz-stagger > *:nth-child(5) { animation-delay: 0.37s; }
+.wz-stagger > *:nth-child(6) { animation-delay: 0.45s; }
+
+/* --- Reduced motion for PR 3a primitives --------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .wz-step-shell,
+  .wz-stagger > * {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .wz-btn-primary {
+    background-position: 0 50% !important;
+    transition: none !important;
+  }
+}
