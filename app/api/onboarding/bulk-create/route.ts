@@ -88,6 +88,14 @@ interface PropertyInput {
   expenses: PropertyExpenseInput[];
 }
 
+// Phase 12 PR 3b: data source tier for an account entered in the wizard.
+//   MANUAL — user typed the balance; bulk-create writes a new Account row
+//   BASIQ  — account was imported via Basiq consent flow; row already
+//            exists in the DB, bulk-create skips it
+//   IMPORT — account was created by the Phase 18 file-import flow; row
+//            already exists in the DB, bulk-create skips it
+type AccountDataSource = 'BASIQ' | 'IMPORT' | 'MANUAL';
+
 interface AccountInput {
   id: string;
   name: string;
@@ -96,6 +104,9 @@ interface AccountInput {
   currentBalance: number;
   interestRate?: number;
   linkedLoanId?: string;
+  // PR 3b: data source tier + pointer to pre-existing DB row
+  source?: AccountDataSource;
+  existingAccountId?: string;
 }
 
 interface HoldingInput {
@@ -176,17 +187,60 @@ interface HouseholdPetInput {
   breed?: string;
 }
 
+// Phase 12 PR 3b: Housing situation drives renter path + Properties visibility
+type HousingSituation = 'OWN' | 'RENT' | 'BOTH';
+
+// Phase 12 PR 3b: Lifestyle fields for Phase 28 budget AI
+type LifestylePreference = 'FRUGAL' | 'MODERATE' | 'COMFORTABLE';
+type DiningFrequency = 'NEVER' | 'RARELY' | 'SOMETIMES' | 'OFTEN';
+
+// Phase 12 PR 3b: Non-property loans (CAR/STUDENT/PERSONAL/BUSINESS)
+type DebtLoanType = 'CAR' | 'STUDENT' | 'PERSONAL' | 'BUSINESS';
+
+interface DebtInput {
+  id: string;
+  name: string;
+  type: DebtLoanType;
+  lender?: string;
+  principal: number;
+  interestRateAnnual: number; // percentage — converted to decimal below
+  minRepayment: number;
+  repaymentFrequency: RepaymentFrequency;
+  termMonthsRemaining?: number;
+  linkedAssetId?: string;
+  isHecsHelp?: boolean;
+}
+
+// Phase 12 PR 3b: SuperannuationAccount minimum-viable fields
+interface SuperAccountInput {
+  id: string;
+  name: string;
+  fundName: string;
+  currentBalance: number;
+}
+
 interface WizardData {
   profileType: string | null;
   country: string;
   taxYear: string;
+  // PR 3b: Welcome answers driving renter path + step filtering
+  housing?: HousingSituation | null;
+  debtCategories?: string[];
   // Phase 29: Household
   householdMembers?: HouseholdMemberInput[];
   householdPets?: HouseholdPetInput[];
   carsCount?: number;
+  // PR 3b: Household lifestyle fields (Phase 28 budget AI)
+  lifestylePreference?: LifestylePreference | null;
+  diningOutFrequency?: DiningFrequency | null;
+  hobbiesWithCosts?: string;
   properties: PropertyInput[];
+  // PR 3b: Non-property loans
+  debts?: DebtInput[];
   accounts: AccountInput[];
   investments: InvestmentAccountInput[];
+  // PR 3b: Superannuation accounts
+  superAccounts?: SuperAccountInput[];
   assets: AssetInput[];
   income: IncomeInput[];
   expenses: ExpenseInput[];
@@ -237,18 +291,31 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
 
         // =======================================================================
         // 1a. Phase 29 — Household profile, members, pets
+        //                + Phase 12 PR 3b lifestyle fields
         //
-        // The wizard collects members/pets/carsCount but previously discarded
-        // them. The Phase 28 budget AI depends on this data, so we upsert a
-        // HouseholdProfile and its children here. Lifestyle preferences are
-        // not captured by the wizard yet — they fall back to schema defaults
-        // (MODERATE / SOMETIMES) until the redesigned step lands in PR 3.
+        // The wizard collects members/pets/carsCount + (PR 3b) lifestyle
+        // preferences for the Phase 28 budget AI. We upsert a
+        // HouseholdProfile and its children here. Lifestyle fields come
+        // from Welcome step + Household step's "Your lifestyle" section.
+        // Falls back to schema defaults (MODERATE / SOMETIMES) only when
+        // the user hasn't picked one.
         // =======================================================================
         const householdMembers = data.householdMembers ?? [];
         const householdPets = data.householdPets ?? [];
         const carsCount = data.carsCount ?? 0;
+        // PR 3b lifestyle inputs (may be null/undefined if user skipped)
+        const lifestylePreference = data.lifestylePreference ?? undefined;
+        const diningOutFrequency = data.diningOutFrequency ?? undefined;
+        const hobbiesWithCosts = data.hobbiesWithCosts?.trim() || undefined;
+        const hasLifestyleData =
+          !!lifestylePreference || !!diningOutFrequency || !!hobbiesWithCosts;
 
-        if (householdMembers.length > 0 || householdPets.length > 0 || carsCount > 0) {
+        if (
+          householdMembers.length > 0 ||
+          householdPets.length > 0 ||
+          carsCount > 0 ||
+          hasLifestyleData
+        ) {
           const childrenAges: number[] = [];
           let adultsCount = 0;
           let childrenCount = 0;
@@ -285,6 +352,10 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
               petTypes,
               carsCount,
               isComplete: true,
+              // PR 3b: lifestyle fields for Phase 28 budget AI
+              ...(lifestylePreference && { lifestylePreference }),
+              ...(diningOutFrequency && { diningOutFrequency }),
+              ...(hobbiesWithCosts && { hobbiesWithCosts }),
             },
             update: {
               adultsCount,
@@ -294,6 +365,12 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
               petTypes,
               carsCount,
               isComplete: true,
+              // PR 3b: lifestyle fields — only overwrite if the wizard
+              // actually captured them (so we don't clobber existing
+              // Settings values with null on a re-run).
+              ...(lifestylePreference && { lifestylePreference }),
+              ...(diningOutFrequency && { diningOutFrequency }),
+              ...(hobbiesWithCosts && { hobbiesWithCosts }),
             },
           });
 
@@ -427,18 +504,49 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
 
         // =======================================================================
         // 3. Create Bank Accounts
+        //
+        // PR 3b: accounts with source='BASIQ' or 'IMPORT' are already
+        // persisted (by the Basiq sync or the Phase 18 import flow) and
+        // pointed to via `existingAccountId`. We skip writing them here
+        // to avoid duplicates. MANUAL accounts (or untagged legacy rows)
+        // still get created as before.
         // =======================================================================
         const createdAccounts = [];
         for (const acc of data.accounts) {
+          // Skip BASIQ / IMPORT rows — they already exist in the DB
+          if (acc.source === 'BASIQ' || acc.source === 'IMPORT') {
+            // We still honour offset→loan linking for pre-existing
+            // accounts: if the user chose an imported account as the
+            // offset, write the link to the loan now.
+            if (
+              acc.type === 'OFFSET' &&
+              acc.linkedLoanId &&
+              acc.existingAccountId
+            ) {
+              const realLoanId = loanIdMap.get(acc.linkedLoanId);
+              if (realLoanId) {
+                await tx.loan.update({
+                  where: { id: realLoanId },
+                  data: { offsetAccountId: acc.existingAccountId },
+                });
+              }
+            }
+            continue;
+          }
+
           const account = await tx.account.create({
             data: {
               userId,
               name: acc.name || `${acc.type} Account`,
               type: acc.type,
               institution: acc.institution || null,
-              currentBalance: acc.type === 'CREDIT_CARD' ? -Math.abs(acc.currentBalance) : acc.currentBalance,
+              currentBalance:
+                acc.type === 'CREDIT_CARD'
+                  ? -Math.abs(acc.currentBalance)
+                  : acc.currentBalance,
               interestRate: acc.interestRate || null,
-              // Onboarded accounts are always manually entered.
+              // PR 1 + PR 3b: MANUAL is the only source that reaches
+              // this branch now. BASIQ/IMPORT are skipped above.
               balanceSource: 'MANUAL',
               balanceLastUpdatedAt: new Date(),
             },
@@ -489,6 +597,73 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
               });
             }
           }
+        }
+
+        // =======================================================================
+        // 4a. Phase 12 PR 3b — SuperannuationAccount rows
+        //
+        // Super is no longer routed through InvestmentAccount(type=SUPERS).
+        // Creates real SuperannuationAccount rows with the minimum viable
+        // fields (name, fundName, currentBalance). Everything else defers
+        // to a future Settings > Retirement page.
+        // =======================================================================
+        const createdSuper = [];
+        const superInputs = data.superAccounts ?? [];
+        for (const s of superInputs) {
+          if (!s.fundName?.trim() && s.currentBalance <= 0) {
+            // Skip empty rows — user may have clicked "Add" without filling
+            continue;
+          }
+          const superAccount = await tx.superannuationAccount.create({
+            data: {
+              userId,
+              name: s.name?.trim() || 'My Super',
+              fundName: s.fundName?.trim() || null,
+              currentBalance: s.currentBalance,
+            },
+          });
+          createdSuper.push(superAccount);
+        }
+
+        // =======================================================================
+        // 4b. Phase 12 PR 3b — Non-property loans (CAR/STUDENT/PERSONAL/BUSINESS)
+        //
+        // Captured by the new DebtsStep. CAR loans can link to an Asset
+        // (vehicle) via linkedAssetId — the asset is created below in
+        // section 5, so we resolve the wizard temp-ID → real ID via a
+        // second pass after Assets are written. For now, stash the debt
+        // rows to write later.
+        // =======================================================================
+        const debtInputs = data.debts ?? [];
+        // We write the non-CAR debts immediately; CAR debts wait until
+        // after the Assets loop so we can resolve linkedAssetId.
+        const carDebtsToWriteAfterAssets: typeof debtInputs = [];
+        const createdDebts = [];
+        for (const debt of debtInputs) {
+          if (debt.principal <= 0) continue;
+          if (debt.type === 'CAR' && debt.linkedAssetId) {
+            carDebtsToWriteAfterAssets.push(debt);
+            continue;
+          }
+          const loan = await tx.loan.create({
+            data: {
+              userId,
+              name: debt.name?.trim() || debt.type,
+              type: debt.type, // CAR | STUDENT | PERSONAL | BUSINESS
+              principal: debt.principal,
+              interestRateAnnual: (debt.interestRateAnnual || 0) / 100,
+              rateType: 'VARIABLE',
+              isInterestOnly: false,
+              termMonthsRemaining: debt.termMonthsRemaining || 60,
+              // HECS/STUDENT is income-contingent — we record 0 as
+              // minRepayment since there's no fixed amount. The Tax
+              // Intelligence Engine (Phase 20) handles HECS repayment
+              // from the user's salary separately.
+              minRepayment: debt.isHecsHelp ? 0 : debt.minRepayment,
+              repaymentFrequency: debt.repaymentFrequency || 'MONTHLY',
+            },
+          });
+          createdDebts.push(loan);
         }
 
         // =======================================================================
@@ -543,6 +718,42 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         }
 
         // =======================================================================
+        // 5a. Phase 12 PR 3b — CAR debts linked to vehicle Assets
+        //
+        // Second pass after Assets are written, so we can resolve the
+        // wizard temp-ID → real DB Asset ID for linkedAssetId. If the
+        // linked asset doesn't exist (user deleted it mid-flow), we
+        // still write the loan but without the link.
+        // =======================================================================
+        const wizardAssetIdToRealId = new Map<string, string>();
+        data.assets.forEach((asset, i) => {
+          if (createdAssets[i]) {
+            wizardAssetIdToRealId.set(asset.id, createdAssets[i].id);
+          }
+        });
+        for (const debt of carDebtsToWriteAfterAssets) {
+          const realAssetId = debt.linkedAssetId
+            ? wizardAssetIdToRealId.get(debt.linkedAssetId) || null
+            : null;
+          const loan = await tx.loan.create({
+            data: {
+              userId,
+              name: debt.name?.trim() || 'Car loan',
+              type: 'CAR',
+              principal: debt.principal,
+              interestRateAnnual: (debt.interestRateAnnual || 0) / 100,
+              rateType: 'VARIABLE',
+              isInterestOnly: false,
+              termMonthsRemaining: debt.termMonthsRemaining || 60,
+              minRepayment: debt.minRepayment,
+              repaymentFrequency: debt.repaymentFrequency || 'MONTHLY',
+              linkedAssetId: realAssetId,
+            },
+          });
+          createdDebts.push(loan);
+        }
+
+        // =======================================================================
         // 6. Create Income Sources
         // =======================================================================
         // Pick the first investment account (if any) so INVESTMENT-type income
@@ -585,6 +796,16 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
 
         // =======================================================================
         // 7. Create Expenses
+        //
+        // Phase 12 PR 3b — Renter path note:
+        //   When the user picks housing === 'RENT' or 'BOTH' on the
+        //   Welcome step, the Properties step is hidden (see
+        //   getStepsForProfile in wizard/types.ts). Rent is modelled as
+        //   a regular Expense row with category='RENT' — NOT as a
+        //   Property(type=RENTAL). The user adds the rent row themselves
+        //   in the Income/Expenses step UI. We do NOT auto-seed a rent
+        //   expense here because we don't know the amount — a $0 row
+        //   would be worse than none. Plan doc §3 row 3 for details.
         // =======================================================================
         const createdExpenses = [];
         for (const exp of data.expenses) {
@@ -634,6 +855,9 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           properties: createdProperties.length,
           accounts: createdAccounts.length,
           investments: createdInvestments.length,
+          // PR 3b new entity counts
+          superAccounts: createdSuper.length,
+          debts: createdDebts.length,
           assets: createdAssets.length,
           income: createdIncome.length,
           expenses: createdExpenses.length,
