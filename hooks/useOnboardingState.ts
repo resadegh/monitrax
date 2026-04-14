@@ -259,6 +259,18 @@ export function useOnboardingState(): UseOnboardingStateReturn {
   // localStorage (same-device blip protection). Intentionally does NOT
   // refetch state on every save — that would thrash the network. The hook
   // caller (WizardContainer) debounces calls to saveDraft.
+  //
+  // Fix (Phase 12 v3 — bug A.4): saveDraft now also optimistically
+  // mirrors `currentStep` into local hook state after a successful POST.
+  // Previously the caller had to fire a second `setCurrentStep` POST in
+  // parallel to keep the resume-banner label fresh, which produced a
+  // race: the server could end up with the new step index from POST #2
+  // while POST #1's draft body was still in flight (or failed), leaving
+  // the server with an advanced step + a stale draft. Now a single
+  // atomic POST persists both fields, and the hook's in-memory state is
+  // updated from the same arguments the POST succeeded with — so the
+  // banner stays fresh without a second network round-trip.
+  // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.4.
   const saveDraft = useCallback(
     async (draft: unknown, currentStep?: number) => {
       if (!token) return;
@@ -279,6 +291,22 @@ export function useOnboardingState(): UseOnboardingStateReturn {
           const data = await response.json().catch(() => ({}));
           throw new Error(data.error || 'Failed to save draft');
         }
+        // Optimistic local-state update (A.4): mirror the just-persisted
+        // draft + step index into the hook's in-memory state so the
+        // resume banner label, shouldShowResumeBanner, and any other
+        // state-derived UI stay fresh without a second POST or a
+        // fetchState round-trip. Only runs if the POST succeeded and
+        // we already have a hydrated state object.
+        setState((prev) =>
+          prev
+            ? {
+                ...prev,
+                draft,
+                currentStep:
+                  typeof currentStep === 'number' ? currentStep : prev.currentStep,
+              }
+            : prev
+        );
       } catch (err) {
         console.warn('Could not save wizard draft to server (using localStorage fallback):', err);
       }
