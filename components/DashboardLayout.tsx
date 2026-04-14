@@ -158,6 +158,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setCurrentStep,
     saveDraft,
     clearDraft,
+    readLocalDraft,
   } = useOnboardingState();
 
   // Onboarding modal states
@@ -167,18 +168,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Phase 12 PR 2: Hydrated draft + step index passed to WizardContainer.
   // Reads from the server-backed onboardingState; falls back to the local
   // draft if the server returned null (same-device blip safety net).
+  //
+  // Fix (Phase 12 v3 — bug A.2): the previous implementation documented a
+  // localStorage fallback but never actually invoked it — it just returned
+  // `undefined` on the server-null branch. Users who saved a local draft
+  // during a network blip (offline, flaky connection, tab crash between
+  // debounced server writes) silently lost it on resume. We now call
+  // `readLocalDraft()` — which `useOnboardingState` already exposes and
+  // namespaces by userId — so the same-device blip path actually works.
+  // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.2.
   const hydratedDraft = useMemo<Partial<WizardData> | undefined>(() => {
     const serverDraft = onboardingState?.draft;
     if (serverDraft && typeof serverDraft === 'object') {
       return serverDraft as Partial<WizardData>;
     }
-    // Local fallback is only read when server said "no draft". This avoids
-    // the case where a stale localStorage entry from a previous user
-    // leaks into a different session (useOnboardingState namespaces by
-    // userId so this is already safe, but the explicit check keeps intent
-    // readable).
+    // Server said "no draft" → try the same-device local cache. The hook
+    // namespaces by userId, so a stale entry from a previous user cannot
+    // leak in here.
+    const localDraft = readLocalDraft();
+    if (localDraft && typeof localDraft === 'object') {
+      return localDraft as Partial<WizardData>;
+    }
     return undefined;
-  }, [onboardingState?.draft]);
+  }, [onboardingState?.draft, readLocalDraft]);
   const hydratedStepIndex = onboardingState?.currentStep ?? 0;
   // Session-scoped banner dismiss (resets next login). For "never show
   // again" semantics, the user clicks Start over, which wipes the draft.

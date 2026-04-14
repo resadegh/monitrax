@@ -177,7 +177,12 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         userUpdate.onboardingProfileType = profileType;
       }
 
-      if (typeof currentStep === 'number' && currentStep >= 0 && currentStep <= 7) {
+      // Fix: the previous `currentStep <= 7` cap silently dropped writes for
+      // any step past the old 8-step flow. PR 3b added DebtsStep and SuperStep
+      // (10 steps total, indices 0-9), and v3 may add more. Accept any
+      // non-negative integer; a shared TOTAL_WIZARD_STEPS constant will be
+      // plugged in here by a follow-up micro-fix (see PHASE_12_REDESIGN_V3.md §7.1).
+      if (Number.isInteger(currentStep) && currentStep >= 0) {
         userUpdate.onboardingStep = currentStep;
       }
 
