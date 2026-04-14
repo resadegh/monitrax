@@ -26,7 +26,7 @@
  * Docs: docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md §3 rows 3, 6, C, F
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   Sparkles,
   Clock,
@@ -47,14 +47,12 @@ import {
   WizardSelectField,
   WizardChip,
 } from '../primitives';
-import { WizardData, HousingSituation, DebtCategory } from '../types';
+import { WizardData, HousingSituation, DebtCategory, YesNo } from '../types';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
 // INFERENCE HELPERS
 // =============================================================================
-
-type YesNo = 'YES' | 'NO';
 
 /**
  * Profile inference from the PR 3a+3b questions.
@@ -82,25 +80,10 @@ function inferProfile(
   return 'STARTER';
 }
 
-function reverseInfer(
-  profile: OnboardingProfileType | null,
-  housing: HousingSituation | null
-): { housing: HousingSituation | null; hasInvestments: YesNo | null } {
-  // Housing is stored directly now — no need to derive it. Only the
-  // hasInvestments Yes/No needs to be reverse-derived.
-  switch (profile) {
-    case 'STARTER':
-      return { housing: housing ?? 'RENT', hasInvestments: 'NO' };
-    case 'HOMEOWNER':
-      return { housing: housing ?? 'OWN', hasInvestments: 'NO' };
-    case 'INVESTOR':
-      return { housing: housing ?? 'RENT', hasInvestments: 'YES' };
-    case 'MIXED':
-      return { housing: housing ?? 'OWN', hasInvestments: 'YES' };
-    default:
-      return { housing, hasInvestments: null };
-  }
-}
+// Note (Phase 12 v3 bug A.5): the previous `reverseInfer` helper that
+// derived hasInvestments from profileType was deleted in this fix.
+// hasInvestments is now a first-class persisted field on WizardData,
+// so resume reads it back directly — no guesswork needed.
 
 // Estimated time labels — keep these loose.
 function estimateMinutes(profile: OnboardingProfileType | null, debtCount: number): string {
@@ -190,25 +173,23 @@ interface WelcomeStepProps {
 }
 
 export function WelcomeStep({ data, onUpdate }: WelcomeStepProps) {
-  // Reverse-infer hasInvestments from any hydrated profileType so a
-  // resumed draft shows the user's previous answers still highlighted.
-  // Housing is now stored directly on WizardData so we read it as-is.
-  const initial = useMemo(
-    () => reverseInfer(data.profileType, data.housing),
-    [data.profileType, data.housing]
-  );
-  const [hasInvestments, setHasInvestments] = useState<YesNo | null>(
-    initial.hasInvestments
-  );
+  // Phase 12 v3 (bug A.5): hasInvestments is now a persisted field on
+  // WizardData. Read it directly from `data` — no local useState, no
+  // useMemo round-trip through reverseInfer, no resume guesswork. This
+  // fixes the symptom where a resumed session landed on Welcome with
+  // Continue grayed out because the Yes/No pick had been silently
+  // discarded between sessions.
+  // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.5.
+  const hasInvestments = data.hasInvestments;
 
   // Whenever the answers fully infer a profile, write it back.
   useEffect(() => {
-    const inferred = inferProfile(data.housing, hasInvestments);
+    const inferred = inferProfile(data.housing, data.hasInvestments);
     if (inferred && inferred !== data.profileType) {
       onUpdate({ profileType: inferred });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.housing, hasInvestments]);
+  }, [data.housing, data.hasInvestments]);
 
   const inferred = inferProfile(data.housing, hasInvestments);
   const timeLabel = estimateMinutes(inferred, data.debtCategories.length);
@@ -272,7 +253,7 @@ export function WelcomeStep({ data, onUpdate }: WelcomeStepProps) {
       >
         <WizardSegmentedControl
           value={hasInvestments}
-          onChange={setHasInvestments}
+          onChange={(v) => onUpdate({ hasInvestments: v })}
           options={YES_NO_OPTIONS}
           name="has-investments"
         />
