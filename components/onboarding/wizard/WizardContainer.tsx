@@ -108,6 +108,41 @@ export function WizardContainer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
 
+  // ---- Late hydration from server draft --------------------------------
+  // If the wizard mounts BEFORE the parent finishes fetching
+  // onboardingState, `initialData` arrives as undefined and `data` stays
+  // at INITIAL_WIZARD_DATA (profileType: null). When the fetch later
+  // completes, `initialData` transitions from undefined → the real
+  // server draft, but `useState` above only reads it on first mount —
+  // so without this effect the wizard would stay stuck with empty data
+  // and the `steps` array would collapse to [welcome], causing the
+  // footer to show "Launch dashboard" on the Welcome step (see §188
+  // for the full explanation).
+  //
+  // This effect runs ONCE when `initialData` first becomes truthy, and
+  // only if the user hasn't started filling in the wizard yet (so we
+  // never clobber in-progress edits). It upgrades `data` + the step
+  // index atomically.
+  const hasAppliedLateHydrationRef = useRef(false);
+  useEffect(() => {
+    if (hasAppliedLateHydrationRef.current) return;
+    if (!initialData || typeof initialData !== 'object') return;
+    if (Object.keys(initialData).length === 0) return;
+    // Guard against overwriting user edits: only apply if the user has
+    // not changed anything since mount. We detect "untouched" by
+    // checking that profileType and housing are still both null — the
+    // two earliest decisions the user makes in the Welcome step.
+    if (data.profileType !== null || data.housing !== null) {
+      hasAppliedLateHydrationRef.current = true;
+      return;
+    }
+    hasAppliedLateHydrationRef.current = true;
+    setData((prev) => ({ ...prev, ...initialData }));
+    if (typeof initialStepIndex === 'number' && initialStepIndex >= 0) {
+      setCurrentStepIndex(initialStepIndex);
+    }
+  }, [initialData, initialStepIndex, data.profileType, data.housing]);
+
   // ---- Autosave (Phase 12 PR 2) ----------------------------------------
   const autoSaveRef = useRef(onAutoSave);
   useEffect(() => {
@@ -125,6 +160,18 @@ export function WizardContainer({
       return;
     }
     if (!autoSaveRef.current) return;
+    // Do not autosave a completely empty draft — that would persist
+    // `{profileType: null, housing: null, ...}` to the server, which
+    // later hydrates into a wizard that can't show the submit button
+    // on the right step (see isSubmitStep below). We wait until the
+    // user has made at least one meaningful selection.
+    const hasMeaningfulProgress =
+      data.profileType !== null ||
+      data.housing !== null ||
+      data.debtCategories.length > 0 ||
+      data.properties.length > 0 ||
+      data.accounts.length > 0;
+    if (!hasMeaningfulProgress) return;
     const handle = window.setTimeout(() => {
       autoSaveRef.current?.(data, currentStepIndex);
     }, AUTOSAVE_DEBOUNCE_MS);
@@ -158,6 +205,18 @@ export function WizardContainer({
   const currentStep = steps[currentStepIndex];
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === steps.length - 1;
+  // A step is the final "submit + launch" step only when it is literally
+  // the review step. Using just `isLastStep` is UNSAFE: if the steps
+  // array has collapsed to [welcome] because `data.profileType` is still
+  // null (e.g. the user hasn't finished picking housing + investments
+  // yet, or the wizard hydrated before the server draft finished
+  // loading), `isLastStep` evaluates to true on the Welcome step. That
+  // would cause the footer to render a "Launch dashboard" button that
+  // submits an EMPTY draft to /api/onboarding/bulk-create on click.
+  // Gating on `currentStep?.id === 'review'` avoids this footgun
+  // entirely — the submit button can only appear when the wizard is
+  // actually done.
+  const isSubmitStep = currentStep?.id === 'review';
 
   // ---- Handlers --------------------------------------------------------
   const handleUpdate = useCallback((updates: Partial<WizardData>) => {
@@ -417,11 +476,11 @@ export function WizardContainer({
           </button>
         )}
 
-        {isLastStep ? (
+        {isSubmitStep ? (
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !canProceed}
             className="wz-btn-primary"
           >
             {isSubmitting ? (
