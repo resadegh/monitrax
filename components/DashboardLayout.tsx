@@ -635,8 +635,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main Content - Responsive */}
       <div className="lg:pl-64">
-        {/* Add top padding on mobile for the header */}
-        <main className="min-h-screen p-3 pt-16 sm:p-4 sm:pt-20 lg:p-8 lg:pt-8">
+        {/* Add top padding on mobile for the header.
+            `onboarding-active-shell` applies a subtle sky-blue ambient
+            tint while the user has an unfinished wizard draft, giving
+            the dashboard a "still in setup mode" cue that fades back to
+            normal once onboarding completes. Same gating boolean as the
+            persistent resume banner — single source of truth (see
+            useOnboardingState.shouldShowResumeBanner). The CSS lives in
+            styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL". */}
+        <main
+          className={`min-h-screen p-3 pt-16 sm:p-4 sm:pt-20 lg:p-8 lg:pt-8 ${
+            !showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed
+              ? 'onboarding-active-shell'
+              : ''
+          }`}
+        >
           <div className="mx-auto max-w-7xl">
             {/* Phase 12 PR 2: Resume banner for users with an unfinished
                 wizard draft. Persists across ALL dashboard pages while
