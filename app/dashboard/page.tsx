@@ -59,16 +59,12 @@ import { DashboardEmptyStateGrid } from '@/components/dashboard/DashboardEmptySt
 // state, so no parent-side gating is required beyond the feature
 // flag. See docs/blueprint/PHASE_12_REDESIGN_V3.md §2.3.
 import { BasiqHeroCard } from '@/components/dashboard/BasiqHeroCard';
-
-/**
- * Phase 12 v3 feature flag. Mirrors the constant in DashboardLayout
- * so this page can also branch on the v3 experience without a
- * runtime context lookup. NEXT_PUBLIC_* env vars are inlined by
- * Next.js at build, so the bundler dead-code-eliminates the
- * disabled branch — zero bundle-size cost when the flag is off.
- */
-const ONBOARDING_V3_ENABLED =
-  process.env.NEXT_PUBLIC_ONBOARDING_V3 === 'true';
+// Phase 12 v3 (F): shared v3 feature flag helper. Provides the
+// `useV3Enabled` hook which combines the build-time
+// NEXT_PUBLIC_ONBOARDING_V3 default (now ON-by-default per Phase F)
+// with the `?legacy=wizard` URL escape hatch. Single source of
+// truth shared with DashboardLayout (CLAUDE.md §12.2).
+import { useV3Enabled } from '@/lib/setup/v3Flag';
 import { DebtQualityWidget, calculateDebtQuality } from '@/components/dashboard/DebtQualityWidget';
 import { EntityCashflowSummary, calculateEntityCashflow } from '@/components/dashboard/EntityCashflowSummary';
 import {
@@ -351,6 +347,11 @@ type CashflowPeriod = 'monthly' | 'annual';
 
 export default function DashboardPage() {
   const { token } = useAuth();
+  // Phase 12 v3 (F): v3 feature flag with URL escape hatch. Replaces
+  // the module-level build-time constant so we can honour the
+  // `?legacy=wizard` session override. Single source of truth shared
+  // with DashboardLayout via lib/setup/v3Flag.ts (CLAUDE.md §12.2).
+  const ONBOARDING_V3_ENABLED = useV3Enabled();
   const [snapshot, setSnapshot] = useState<PortfolioSnapshot | null>(null);
   const [insights, setInsights] = useState<DashboardInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);

@@ -334,9 +334,9 @@ fully proven.
 | **B. Foundation** | `lib/setup/tasks.ts`, `setupStateService`, `/api/setup/state` | Still live | ✅ **Complete** (B.1–B.3; B.4 deferred — schema change) |
 | **C. Setup Tray** | `SetupTray` component mounted in `DashboardLayout`, reads `/api/setup/state` | Still live, wizard + tray coexist | ✅ **Complete** (C.1–C.3) |
 | **D. Empty-state tiles** | Each tile gets its empty state, shipped one tile per PR | Still live | ✅ **Complete** (D.1–D.3) |
-| **E. Basiq hero** | `BasiqHeroCard` mounted above tile grid | Still live | ⬜ Next |
-| **F. Default flip** | New users land on dashboard v3 flow; wizard only reachable via a legacy `?legacy=wizard` flag | Wizard deprecated, not deleted | ⬜ |
-| **G. Cleanup** | Delete wizard files (§3) | Wizard deleted | ⬜ |
+| **E. Basiq hero** | `BasiqHeroCard` mounted above tile grid | Still live | ✅ **Complete** (E.1, E.2) |
+| **F. Default flip** | New users land on dashboard v3 flow; wizard only reachable via a legacy `?legacy=wizard` flag | Wizard deprecated, not deleted | ✅ **Complete** (shared `lib/setup/v3Flag.ts` helper) |
+| **G. Cleanup** | Delete wizard files (§3) | Wizard deleted | ⏸ **Paused for user testing** |
 
 > **State after Phase D**: setting `NEXT_PUBLIC_ONBOARDING_V3=true`
 > in the deployment env and rebuilding gives every new user the
@@ -609,6 +609,10 @@ good work during Phase G cleanup.
 | 2026-04-14 | **Phase B complete.** Backend pipeline shipped: B.1 (`lib/setup/tasks.ts` registry), B.2 (`lib/services/setupStateService.ts`), B.3 (`app/api/setup/state/route.ts`). Six of seven setup tasks are derivable today; `review-net-worth` and `invite-partner` await B.4's `UserPreference.setupTrayState` JSONB column (deferred — schema change is its own PR class). | Claude |
 | 2026-04-14 | **Phase C complete.** UI pipeline shipped: C.1 (`hooks/useSetupState.ts`), C.2 (`components/setup/SetupTray.tsx`), C.3 (mount in `DashboardLayout` behind `NEXT_PUBLIC_ONBOARDING_V3` build-time flag). Setup Tray renders end-to-end when the flag is on; legacy resume banner + ambient tint suppressed by mutual exclusion. | Claude |
 | 2026-04-14 | **Phase D complete.** Empty-state tiles shipped: D.1 (`components/dashboard/EmptyStateTile.tsx` shell), D.2 (`components/dashboard/DashboardEmptyStateGrid.tsx` — six concrete empty states + responsive grid wrapper), D.3 (mount in `app/dashboard/page.tsx` `isEmpty` branch behind the same v3 flag). The "examples as instruction" pattern (§2.2) is now live: muted slate placeholder shapes + sparkles "what this unlocks" chips + deep-link CTAs that mirror the Setup Tray task registry. **No fake data anywhere.** | Claude |
+| 2026-04-14 | **Phase E complete.** Basiq hero shipped: E.1 (`components/dashboard/BasiqHeroCard.tsx`), E.2 (mount above the empty-state grid in `app/dashboard/page.tsx`). The §2.3 "Basiq as hero connection flow" pillar is now live behind the v3 flag: auto-hides once the user has an ACTIVE Basiq connection (reads the `connect-bank` task state from `useSetupState`). | Claude |
+| 2026-04-14 | **§2.4 Gemini assistance deferred.** Captured in `PHASE_28_AI_INTEGRATION.md` as a post-Phase-G workstream. The scope (10-15 files across service, API, UI, and mounts in 8+ entity dialogs) is too large for the 1-file micro-fix rhythm and would pollute the v3 core testing signal. Gemini Setup Assistant ships after Phase G cleanup is merged and the v3 core has two weeks of stable production traffic. | Claude |
+| 2026-04-14 | **Phase F complete.** Default flip shipped: new shared helper `lib/setup/v3Flag.ts` exports `useV3Enabled()` (combines `NEXT_PUBLIC_ONBOARDING_V3 !== 'false'` build-time default with session-scoped `?legacy=wizard` URL escape hatch). `components/DashboardLayout.tsx` and `app/dashboard/page.tsx` now consume the hook instead of duplicating the flag check. **v3 is the default for all new users**; legacy flow reachable via env-var rollback or URL escape hatch. Wizard and legacy empty-state card still present in code — deletion deferred to Phase G. | Claude |
+| 2026-04-14 | **Phase G paused for user testing.** Per the sequencing agreement, wizard cleanup (delete `WizardContainer`, step files, primitives, `/app/onboarding`, resume banner, ambient tint CSS) will not ship until the user has validated the v3 flow end-to-end against real traffic. Trigger condition: explicit go-ahead after a new-user walkthrough on production. | Claude |
 
 ---
 

@@ -56,20 +56,15 @@ import {
 // Phase 12 v3 (C.3): Setup Tray is the dashboard-as-onboarding
 // replacement for the linear wizard's resume banner. Mounted behind a
 // build-time feature flag so the legacy wizard flow and the v3 tray
-// can coexist during the migration window — flip the flag for a user
-// cohort, validate, then default it on. See PHASE_12_REDESIGN_V3.md
-// §2.1 (Setup Tray) and §5 (migration strategy).
+// can coexist during the migration window.
+//
+// Phase 12 v3 (F): the flag now defaults ON — new users land on the
+// v3 experience unless explicitly rolled back via the env var or the
+// `?legacy=wizard` URL escape hatch. Flag logic lives in the shared
+// helper `lib/setup/v3Flag.ts` so DashboardLayout and the dashboard
+// page cannot drift (CLAUDE.md §12.2 SSOT).
 import SetupTray from '@/components/setup/SetupTray';
-
-/**
- * Feature flag for the v3 Setup Tray (Phase 12). Set
- * `NEXT_PUBLIC_ONBOARDING_V3=true` in the environment to switch the
- * dashboard chrome from the legacy resume banner + ambient tint to
- * the new Setup Tray. While the flag is off, behaviour is exactly as
- * it was before — no caller of DashboardLayout is affected.
- */
-const ONBOARDING_V3_ENABLED =
-  process.env.NEXT_PUBLIC_ONBOARDING_V3 === 'true';
+import { useV3Enabled } from '@/lib/setup/v3Flag';
 
 interface NavItem {
   name: string;
@@ -153,6 +148,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, token, logout, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  // Phase 12 v3 (F): v3 feature flag with URL escape hatch. Replaces
+  // the module-level build-time constant so we can honour the
+  // `?legacy=wizard` session override while keeping the flag a single
+  // source of truth across DashboardLayout and app/dashboard/page.tsx.
+  const ONBOARDING_V3_ENABLED = useV3Enabled();
 
   // Phase 14.5 - Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
