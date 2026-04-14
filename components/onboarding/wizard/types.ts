@@ -445,6 +445,14 @@ export interface HouseholdPetInput {
 //             the Properties step and the rent expense seeding.
 export type HousingSituation = 'OWN' | 'RENT' | 'BOTH';
 
+// Phase 12 v3 (bug A.5): Yes/No answer captured on the Welcome step's
+// "Do you have any investments?" question. Previously this was a
+// local-state-only type inside WelcomeStep, which meant the answer was
+// never persisted to the wizard draft and had to be reverse-inferred from
+// profileType on resume. Promoted to a first-class WizardData field here
+// so it survives resume without guesswork.
+export type YesNo = 'YES' | 'NO';
+
 // =============================================================================
 // PHASE 12 PR 3b: DEBTS STEP (non-property loans)
 // =============================================================================
@@ -515,6 +523,13 @@ export interface WizardData {
   // Phase 12 PR 3b: housing situation drives Properties step visibility
   // and the renter-path expense seed. null until the user answers.
   housing: HousingSituation | null;
+  // Phase 12 v3 (bug A.5): "Do you have any investments?" Yes/No answer.
+  // Previously WelcomeStep-local state, which meant this value was lost
+  // on resume — it had to be reverse-inferred from `profileType` and
+  // returned null whenever the profile wasn't fully inferred yet,
+  // forcing the user to re-pick and keeping Continue grayed out. Now a
+  // persisted field so resumes actually restore the answer.
+  hasInvestments: YesNo | null;
   // Phase 12 PR 3b: which non-property debts the user has. Drives
   // Debts step visibility and the pre-seeded rows.
   debtCategories: DebtCategory[];
@@ -558,6 +573,8 @@ export const INITIAL_WIZARD_DATA: WizardData = {
   taxYear: new Date().getFullYear().toString(),
   // PR 3b new fields
   housing: null,
+  // Phase 12 v3 bug A.5
+  hasInvestments: null,
   debtCategories: [],
   lifestylePreference: null,
   diningOutFrequency: null,
