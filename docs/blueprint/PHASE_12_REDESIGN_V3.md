@@ -334,9 +334,25 @@ fully proven.
 | **B. Foundation** | `lib/setup/tasks.ts`, `setupStateService`, `/api/setup/state` | Still live | ✅ **Complete** (B.1–B.3; B.4 deferred — schema change) |
 | **C. Setup Tray** | `SetupTray` component mounted in `DashboardLayout`, reads `/api/setup/state` | Still live, wizard + tray coexist | ✅ **Complete** (C.1–C.3) |
 | **D. Empty-state tiles** | Each tile gets its empty state, shipped one tile per PR | Still live | ✅ **Complete** (D.1–D.3) |
-| **E. Basiq hero** | `BasiqHeroCard` mounted above tile grid | Still live | ✅ **Complete** (E.1, E.2) |
-| **F. Default flip** | New users land on dashboard v3 flow; wizard only reachable via a legacy `?legacy=wizard` flag | Wizard deprecated, not deleted | ✅ **Complete** (shared `lib/setup/v3Flag.ts` helper) |
+| **E. Basiq hero** | `BasiqHeroCard` mounted above tile grid | Still live | ✅ **Complete** (E.1, E.2 — pivoted to `/dashboard/setup` page) |
+| **F. Default flip** | New users land on dashboard v3 flow; wizard only reachable via a legacy `?legacy=wizard` flag | Wizard deprecated, not deleted | 🔄 **Pivoted** — v3 is no longer a dashboard default flip. Instead, v3 lives on a dedicated `/dashboard/setup` page, and the welcome modal's "Start setup" CTA routes new users there. The `?legacy=wizard` escape hatch is preserved. |
 | **G. Cleanup** | Delete wizard files (§3) | Wizard deleted | ⏸ **Paused for user testing** |
+
+> **⚠ Architectural pivot (2026-04-14):** the original Phase C/D/E
+> plan mounted the Setup Tray in `DashboardLayout` and replaced
+> `/dashboard`'s `isEmpty` branch with a 6-tile grid. This hijacked
+> an existing dashboard surface that had significant investment in
+> its widgets and empty-state design. **The pivot moved the entire
+> v3 experience onto a dedicated `/dashboard/setup` page**, leaving
+> `/dashboard` byte-for-byte identical to its pre-v3 state (with
+> one additive "Set up Monitrax" button inside the legacy Welcome
+> card that routes to the new page). See `app/dashboard/setup/page.tsx`.
+>
+> All Phase B/C/D/E components (SetupTray, BasiqHeroCard,
+> DashboardEmptyStateGrid, EmptyStateTile, useSetupState, registry,
+> service, API) are **preserved and consumed by the new page
+> unchanged** — the pivot is purely about mount location, not
+> component design. No rework, no rebuilds.
 
 > **State after Phase D**: setting `NEXT_PUBLIC_ONBOARDING_V3=true`
 > in the deployment env and rebuilding gives every new user the
@@ -613,6 +629,7 @@ good work during Phase G cleanup.
 | 2026-04-14 | **§2.4 Gemini assistance deferred.** Captured in `PHASE_28_AI_INTEGRATION.md` as a post-Phase-G workstream. The scope (10-15 files across service, API, UI, and mounts in 8+ entity dialogs) is too large for the 1-file micro-fix rhythm and would pollute the v3 core testing signal. Gemini Setup Assistant ships after Phase G cleanup is merged and the v3 core has two weeks of stable production traffic. | Claude |
 | 2026-04-14 | **Phase F complete.** Default flip shipped: new shared helper `lib/setup/v3Flag.ts` exports `useV3Enabled()` (combines `NEXT_PUBLIC_ONBOARDING_V3 !== 'false'` build-time default with session-scoped `?legacy=wizard` URL escape hatch). `components/DashboardLayout.tsx` and `app/dashboard/page.tsx` now consume the hook instead of duplicating the flag check. **v3 is the default for all new users**; legacy flow reachable via env-var rollback or URL escape hatch. Wizard and legacy empty-state card still present in code — deletion deferred to Phase G. | Claude |
 | 2026-04-14 | **Phase G paused for user testing.** Per the sequencing agreement, wizard cleanup (delete `WizardContainer`, step files, primitives, `/app/onboarding`, resume banner, ambient tint CSS) will not ship until the user has validated the v3 flow end-to-end against real traffic. Trigger condition: explicit go-ahead after a new-user walkthrough on production. | Claude |
+| 2026-04-14 | **Architectural pivot — v3 moved to dedicated `/dashboard/setup` page.** The original Phase C/D/E plan mounted the Setup Tray in `DashboardLayout` and replaced `/dashboard`'s `isEmpty` branch with a 6-tile grid. That hijacked an existing dashboard surface that had significant investment in its widgets and empty-state design. The pivot reverted C.3, D.3, E.2, and F mounts from `DashboardLayout.tsx` and `app/dashboard/page.tsx`, restoring `/dashboard` to byte-for-byte pre-v3 state. New `app/dashboard/setup/page.tsx` hosts the v3 experience (BasiqHeroCard + SetupTray + DashboardEmptyStateGrid) as a dedicated surface. The welcome modal's "Start setup" CTA (`DashboardLayout.handleStartSetup`) now routes new users to `/dashboard/setup` instead of opening `WizardContainer`. A "Set up Monitrax" button inside the legacy `/dashboard` Welcome card also routes there. All Phase B/C/D/E components are preserved and consumed by the new page unchanged — the pivot is about mount location only. | Claude |
 
 ---
 
