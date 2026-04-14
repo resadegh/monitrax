@@ -53,6 +53,23 @@ import {
   OnboardingResumeBanner,
   WizardData,
 } from '@/components/onboarding';
+// Phase 12 v3 (C.3): Setup Tray is the dashboard-as-onboarding
+// replacement for the linear wizard's resume banner. Mounted behind a
+// build-time feature flag so the legacy wizard flow and the v3 tray
+// can coexist during the migration window — flip the flag for a user
+// cohort, validate, then default it on. See PHASE_12_REDESIGN_V3.md
+// §2.1 (Setup Tray) and §5 (migration strategy).
+import SetupTray from '@/components/setup/SetupTray';
+
+/**
+ * Feature flag for the v3 Setup Tray (Phase 12). Set
+ * `NEXT_PUBLIC_ONBOARDING_V3=true` in the environment to switch the
+ * dashboard chrome from the legacy resume banner + ambient tint to
+ * the new Setup Tray. While the flag is off, behaviour is exactly as
+ * it was before — no caller of DashboardLayout is affected.
+ */
+const ONBOARDING_V3_ENABLED =
+  process.env.NEXT_PUBLIC_ONBOARDING_V3 === 'true';
 
 interface NavItem {
   name: string;
@@ -662,15 +679,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             normal once onboarding completes. Same gating boolean as the
             persistent resume banner — single source of truth (see
             useOnboardingState.shouldShowResumeBanner). The CSS lives in
-            styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL". */}
+            styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL".
+
+            Phase 12 v3 (C.3): the ambient tint is part of the legacy
+            wizard's "still in setup mode" cue. When the v3 Setup Tray
+            flag is on, the tray itself is the persistent setup cue, so
+            the tint is suppressed to avoid stacking two affordances. */}
         <main
           className={`min-h-screen p-3 pt-16 sm:p-4 sm:pt-20 lg:p-8 lg:pt-8 ${
-            !showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed
+            !ONBOARDING_V3_ENABLED &&
+            !showWizard &&
+            !showWelcomeModal &&
+            shouldShowResumeBanner &&
+            !resumeBannerDismissed
               ? 'onboarding-active-shell'
               : ''
           }`}
         >
           <div className="mx-auto max-w-7xl">
+            {/* Phase 12 v3 (C.3): Setup Tray — the dashboard-as-
+                onboarding replacement for the linear wizard's resume
+                banner. Mounted behind ONBOARDING_V3_ENABLED so the
+                legacy banner and the v3 tray cannot both render at
+                once. The tray reads from useSetupState() internally,
+                handles its own loading/error/empty states, and
+                renders nothing while the welcome modal or wizard is
+                open (matching the legacy banner's hide-when-stacked
+                rule). When all tasks are done it collapses to a
+                "Setup complete" pill. See PHASE_12_REDESIGN_V3.md
+                §2.1. */}
+            {ONBOARDING_V3_ENABLED && !showWizard && !showWelcomeModal && (
+              <div className="mb-4">
+                <SetupTray />
+              </div>
+            )}
+
             {/* Phase 12 PR 2: Resume banner for users with an unfinished
                 wizard draft. Persists across ALL dashboard pages while
                 onboarding is in progress (was previously gated to
@@ -684,17 +727,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   • onboarding completes server-side
                   • the wizard or welcome modal is already open
                     (avoids stacking two onboarding affordances).
+                  • the v3 Setup Tray is enabled (replaces this banner).
                 See useOnboardingState.shouldShowResumeBanner for the
                 full server-side contract. */}
-            {!showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed && (
-              <OnboardingResumeBanner
-                currentStep={onboardingState?.currentStep ?? 0}
-                totalSteps={8}
-                onResume={handleResumeBannerResume}
-                onStartOver={handleResumeBannerStartOver}
-                onDismiss={handleResumeBannerDismiss}
-              />
-            )}
+            {!ONBOARDING_V3_ENABLED &&
+              !showWizard &&
+              !showWelcomeModal &&
+              shouldShowResumeBanner &&
+              !resumeBannerDismissed && (
+                <OnboardingResumeBanner
+                  currentStep={onboardingState?.currentStep ?? 0}
+                  totalSteps={8}
+                  onResume={handleResumeBannerResume}
+                  onStartOver={handleResumeBannerStartOver}
+                  onDismiss={handleResumeBannerDismiss}
+                />
+              )}
             {/* Phase 12: Onboarding Progress Badge */}
             {shouldShowOnboardingBadge && onboardingState && (
               <div className="mb-4" data-tour="dashboard-stats">
