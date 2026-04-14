@@ -71,6 +71,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useSetupState } from '@/hooks/useSetupState';
+import { SETUP_TASKS, getOrderedSetupTasks, type SetupTask } from '@/lib/setup/tasks';
 
 // =============================================================================
 // ICON RESOLUTION
@@ -119,6 +120,28 @@ export interface SetupTrayProps {
   defaultCollapsed?: boolean;
 }
 
+/**
+ * Static fallback rendering of the task list, used when
+ * `useSetupState` has not yet resolved OR when the API call fails.
+ *
+ * When this branch is hit, we know:
+ *   - The user is on the setup page and needs to see the checklist.
+ *   - The registry itself is available locally (it's a static import
+ *     from `lib/setup/tasks.ts`, not an API call).
+ *   - The ONLY thing missing is per-task `isDone` state, which
+ *     normally flows from `setupStateService` on the server.
+ *
+ * Graceful degradation: render every task marked as NOT done. The
+ * user sees the full list and can click into any task; the real
+ * `isDone` state will hydrate in automatically once the API
+ * recovers. This is strictly better than the previous behaviour
+ * (silently rendering nothing, leaving the user looking at a blank
+ * space where the checklist used to be).
+ */
+function buildFallbackTasks(): Array<{ task: SetupTask; isDone: boolean }> {
+  return getOrderedSetupTasks().map((task) => ({ task, isDone: false }));
+}
+
 export function SetupTray({
   className = '',
   defaultCollapsed = false,
@@ -128,13 +151,28 @@ export function SetupTray({
   const headingId = useId();
   const panelId = useId();
 
-  // Fail silently — the dashboard should never be made worse by a
-  // setup-tray fetch error. Logged in the hook already.
-  if (error) return null;
+  // Phase 12 v3 (fix): never silently disappear. When the API is
+  // still loading OR has failed, fall back to a static list built
+  // from the canonical registry (SETUP_TASKS). Users always see
+  // the checklist; per-task done state hydrates in when the API
+  // recovers. Live `progress` takes precedence over the fallback
+  // when available.
+  const effectiveTasks = tasks ?? buildFallbackTasks();
+  const effectiveProgress = progress ?? {
+    done: 0,
+    total: SETUP_TASKS.length,
+    percent: 0,
+    allDone: false,
+  };
 
-  // Initial-load skeleton: stable shape so the dashboard layout
-  // doesn't reflow when the data lands.
-  if (isLoading && !tasks) {
+  // Initial-load skeleton: stable shape so the setup page layout
+  // doesn't reflow when the data lands. Only shown on the VERY
+  // first render before either live data or the static fallback
+  // can settle — with the fallback wired above, this branch is
+  // mostly aspirational; it never actually fires because
+  // effectiveTasks is always populated synchronously. Kept as a
+  // safety net in case the registry is ever made async.
+  if (isLoading && !tasks && effectiveTasks.length === 0) {
     return (
       <section
         aria-busy="true"
@@ -152,12 +190,16 @@ export function SetupTray({
     );
   }
 
-  // Hook hasn't resolved yet (no token, etc.) — render nothing.
-  if (!tasks || !progress) return null;
+  // Log the API error in dev so the fallback path is visible to
+  // engineers, but never block the UI on it.
+  if (error && typeof window !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.warn('[SetupTray] useSetupState error — falling back to static task list:', error);
+  }
 
   // All done → render the celebratory complete pill instead of the
   // full tray. The pill is dismissible by the parent (Phase B.4).
-  if (progress.allDone) {
+  if (effectiveProgress.allDone) {
     return (
       <section
         aria-label="Setup complete"
@@ -199,21 +241,21 @@ export function SetupTray({
               Set up Monitrax
             </h2>
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              {progress.done} of {progress.total} done
+              {effectiveProgress.done} of {effectiveProgress.total} done
             </span>
           </div>
           {/* Progress bar */}
           <div
             className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
             role="progressbar"
-            aria-valuenow={progress.percent}
+            aria-valuenow={effectiveProgress.percent}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`Setup progress: ${progress.percent}%`}
+            aria-label={`Setup progress: ${effectiveProgress.percent}%`}
           >
             <div
               className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 transition-[width] duration-500 ease-out motion-reduce:transition-none"
-              style={{ width: `${progress.percent}%` }}
+              style={{ width: `${effectiveProgress.percent}%` }}
             />
           </div>
         </div>
@@ -233,7 +275,7 @@ export function SetupTray({
           role="list"
           className="border-t border-slate-200/70 px-2 py-2 dark:border-slate-700/50"
         >
-          {tasks.map(({ task, isDone }) => {
+          {effectiveTasks.map(({ task, isDone }) => {
             const Icon = resolveIcon(task.icon);
             return (
               <Link
