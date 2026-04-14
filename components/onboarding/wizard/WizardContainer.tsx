@@ -116,24 +116,34 @@ export function WizardContainer({
   // server draft, but `useState` above only reads it on first mount —
   // so without this effect the wizard would stay stuck with empty data
   // and the `steps` array would collapse to [welcome], causing the
-  // footer to show "Launch dashboard" on the Welcome step (see §188
-  // for the full explanation).
+  // footer to show "Launch dashboard" on the Welcome step.
   //
-  // This effect runs ONCE when `initialData` first becomes truthy, and
-  // only if the user hasn't started filling in the wizard yet (so we
-  // never clobber in-progress edits). It upgrades `data` + the step
-  // index atomically.
+  // Fix (Phase 12 v3 — bug A.6): the previous implementation flipped
+  // `hasAppliedLateHydrationRef` on BOTH the successful-apply branch
+  // AND the user-touched guard branch. That made the effect a one-shot
+  // even when nothing had actually been applied — e.g. the user typed
+  // something before the slow-network fetch returned, the effect ran,
+  // saw non-null profileType/housing, flipped the ref and returned.
+  // When `initialData` later arrived (or the user reverted their edits),
+  // the ref was already true and the effect was permanently locked out,
+  // so the wizard either stayed empty or held a partial draft forever.
+  //
+  // The ref now flips only on a **successful apply**. The user-touched
+  // guard returns without flipping, so the effect stays armed: if the
+  // user clears their edits back to null or if `initialData` changes
+  // reference to richer content, the effect gets another fair attempt.
+  // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.6.
   const hasAppliedLateHydrationRef = useRef(false);
   useEffect(() => {
     if (hasAppliedLateHydrationRef.current) return;
     if (!initialData || typeof initialData !== 'object') return;
     if (Object.keys(initialData).length === 0) return;
-    // Guard against overwriting user edits: only apply if the user has
-    // not changed anything since mount. We detect "untouched" by
-    // checking that profileType and housing are still both null — the
-    // two earliest decisions the user makes in the Welcome step.
+    // Guard against overwriting user edits. "Untouched" = profileType
+    // and housing are both still null (the two earliest decisions in
+    // the Welcome step). We deliberately do NOT flip the ref here —
+    // doing so would permanently disarm the effect and stop a later,
+    // richer `initialData` from ever being applied.
     if (data.profileType !== null || data.housing !== null) {
-      hasAppliedLateHydrationRef.current = true;
       return;
     }
     hasAppliedLateHydrationRef.current = true;
