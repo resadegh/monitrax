@@ -3,9 +3,18 @@
 /**
  * OnboardingResumeBanner — Phase 12 PR 2
  *
- * Shown on the dashboard when a user has an unfinished wizard draft
- * (server-persisted via UserPreference.onboardingDraft, or localStorage
- * fallback). Designed to match the premium feel of OnboardingWelcomeModal.
+ * Persistent in-progress banner shown on EVERY dashboard page when a
+ * user has an unfinished wizard draft (server-persisted via
+ * UserPreference.onboardingDraft, or localStorage fallback). Matches
+ * the premium feel of OnboardingWelcomeModal.
+ *
+ * Persistence rationale: the user is technically still inside the
+ * onboarding workflow even when they navigate from /dashboard to
+ * /dashboard/properties to add their first property. Hiding the
+ * banner the moment they leave /dashboard would lose the visual
+ * anchor and the way back to the wizard. The banner stays put across
+ * all pages until the wizard completes, the user dismisses it, or
+ * the user explicitly clicks "Start over".
  *
  * Actions:
  *   - Resume setup  → reopens the wizard pre-hydrated with the saved draft
@@ -14,7 +23,7 @@
  *   - Dismiss (X)   → hides for this session only (resets next login)
  *
  * See: hooks/useOnboardingState.ts (shouldShowResumeBanner)
- *      components/DashboardLayout.tsx (handler wiring)
+ *      components/DashboardLayout.tsx (handler wiring + render gate)
  */
 
 import React from 'react';

@@ -1208,3 +1208,61 @@
     transition: none !important;
   }
 }
+
+/* =============================================================================
+   ONBOARDING ACTIVE SHELL
+   -----------------------------------------------------------------------------
+   Subtle ambient tint applied to <main> while the user is mid-onboarding.
+   Gives the dashboard a "you're still in setup mode" cue that complements
+   the persistent OnboardingResumeBanner. Both are gated on the same
+   `shouldShowResumeBanner` boolean from useOnboardingState (CLAUDE.md §12.2
+   single source of truth), so they're guaranteed to be in sync.
+
+   Design choices:
+   - Uses --color-info (sky blue) at low opacity — semantically "you are in
+     an informational / in-progress state". Matches the indigo gradient
+     used by the resume banner and the wizard header.
+   - Two soft radial glows (top + bottom-right) instead of a flat wash, so
+     the eye reads "warmer" without consciously detecting a color change.
+   - 600ms ease-out transition so the tint fades in when the banner appears
+     and fades out when onboarding completes — no abrupt snap.
+   - Dark mode bumps opacity slightly so the glow remains visible against
+     the near-black background.
+   - Respects prefers-reduced-motion: the transition is removed but the
+     gradient stays (it's not animated, just a static background).
+   ============================================================================= */
+
+.onboarding-active-shell {
+  background-image:
+    radial-gradient(
+      ellipse 80% 50% at 50% 0%,
+      hsl(var(--color-info) / 0.06),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 100% 100%,
+      hsl(var(--color-info) / 0.04),
+      transparent 60%
+    );
+  transition: background-image 600ms ease-out;
+}
+
+.dark .onboarding-active-shell {
+  background-image:
+    radial-gradient(
+      ellipse 80% 50% at 50% 0%,
+      hsl(var(--color-info) / 0.10),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 100% 100%,
+      hsl(var(--color-info) / 0.06),
+      transparent 60%
+    );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-active-shell {
+    transition: none;
+  }
+}
