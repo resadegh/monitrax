@@ -304,15 +304,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Phase 12 PR 2: Wizard autosave callback. Invoked by WizardContainer
   // after the debounce fires. Persists the in-progress draft + current
   // step to the server so the user can resume on any device.
+  //
+  // Fix (Phase 12 v3 — bug A.4): this used to fire `saveDraft` and
+  // `setCurrentStep` as two independent parallel POSTs, which raced each
+  // other on the server — POST #2 could land before POST #1, leaving the
+  // server with an advanced step index + a stale draft if POST #1 then
+  // failed. `saveDraft` now takes the step index as its second argument
+  // and persists both fields in a single atomic POST, and it also
+  // optimistically updates local hook state so the resume banner label
+  // stays fresh without a second POST. One call, one request, no race.
+  // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.4.
   const handleWizardAutoSave = useCallback(
     (wizardData: WizardData, stepIndex: number) => {
-      // Fire-and-forget; saveDraft already catches and logs its own errors.
+      // Fire-and-forget; saveDraft already catches and logs its own errors,
+      // and now also mirrors `currentStep` into local hook state on success.
       void saveDraft(wizardData, stepIndex);
-      // Also update the step index explicitly so `currentStep` on
-      // useOnboardingState stays in sync for the resume banner label.
-      void setCurrentStep(stepIndex);
     },
-    [saveDraft, setCurrentStep]
+    [saveDraft]
   );
 
   // Phase 12 PR 2: Resume banner actions.
