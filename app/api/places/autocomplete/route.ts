@@ -2,7 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/places/autocomplete
- * Proxy Google Places Autocomplete API to keep API key server-side
+ * Proxy Google Places Autocomplete API to keep API key server-side.
+ *
+ * Response shape:
+ *   { predictions: [...] }                              — happy path
+ *   { predictions: [], errorCode: '<code>',
+ *     errorMessage: '<human>' }                         — config / API error
+ *
+ * errorCode values:
+ *   NOT_CONFIGURED   — GOOGLE_PLACES_API_KEY / GOOGLE_MAPS_API_KEY missing
+ *   REQUEST_DENIED   — key exists but Places API disabled or restricted
+ *   OVER_QUERY_LIMIT — billing / quota exceeded
+ *   INVALID_REQUEST  — malformed request
+ *   API_ERROR        — other upstream failure
+ *
+ * The frontend uses errorCode to surface an actionable message ("Address
+ * search unavailable — you can still enter the address manually") instead
+ * of the misleading "No addresses found" state.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     if (!apiKey) {
       console.warn('Places API: No API key configured (GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_API_KEY)');
-      // In development, return mock suggestions
+      // In development, return mock suggestions so the UI is testable
       if (process.env.NODE_ENV === 'development') {
         return NextResponse.json({
           predictions: [
@@ -48,10 +64,11 @@ export async function GET(request: NextRequest) {
           ],
         });
       }
-      return NextResponse.json(
-        { error: 'Google Places API not configured', predictions: [] },
-        { status: 200 }
-      );
+      return NextResponse.json({
+        predictions: [],
+        errorCode: 'NOT_CONFIGURED',
+        errorMessage: 'Address search is not configured on this deployment.',
+      });
     }
 
     // Build Google Places API URL
@@ -61,8 +78,6 @@ export async function GET(request: NextRequest) {
     url.searchParams.set('components', 'country:au|country:nz'); // Restrict to Australia and New Zealand
     url.searchParams.set('types', 'address'); // Only return addresses
 
-    console.log('Places API request for:', input);
-
     const response = await fetch(url.toString());
     const data = await response.json();
 
@@ -70,18 +85,22 @@ export async function GET(request: NextRequest) {
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
       console.error('Places API error:', data.status, data.error_message);
 
-      // Common error statuses
+      let errorCode = 'API_ERROR';
       if (data.status === 'REQUEST_DENIED') {
+        errorCode = 'REQUEST_DENIED';
         console.error('Places API: Request denied. Check if Places API is enabled and API key has correct permissions.');
       } else if (data.status === 'OVER_QUERY_LIMIT') {
+        errorCode = 'OVER_QUERY_LIMIT';
         console.error('Places API: Over query limit.');
       } else if (data.status === 'INVALID_REQUEST') {
+        errorCode = 'INVALID_REQUEST';
         console.error('Places API: Invalid request.');
       }
 
       return NextResponse.json({
         predictions: [],
-        error: data.error_message || `API returned status: ${data.status}`,
+        errorCode,
+        errorMessage: data.error_message || `Places API returned status ${data.status}`,
       });
     }
 
@@ -91,7 +110,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Places autocomplete error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch address suggestions', predictions: [] },
+      {
+        predictions: [],
+        errorCode: 'API_ERROR',
+        errorMessage: 'Failed to fetch address suggestions',
+      },
       { status: 200 }
     );
   }

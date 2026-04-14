@@ -63,6 +63,10 @@ export function AddressAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  // Set when the server proxy returns a structured error (e.g. Places API
+  // not configured, key denied, over quota). Used to show an actionable
+  // message instead of the misleading "No addresses found" state.
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -71,6 +75,7 @@ export function AddressAutocomplete({
   const fetchSuggestions = useCallback(async (input: string) => {
     if (input.length < 3) {
       setSuggestions([]);
+      setErrorCode(null);
       return;
     }
 
@@ -80,12 +85,20 @@ export function AddressAutocomplete({
       const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
       const data = await response.json();
 
-      if (data.predictions) {
-        setSuggestions(data.predictions);
+      if (data.errorCode) {
+        setErrorCode(data.errorCode);
+        setSuggestions([]);
+        console.warn(
+          `Address autocomplete unavailable: ${data.errorCode} — ${data.errorMessage || ''}`,
+        );
+      } else {
+        setErrorCode(null);
+        setSuggestions(data.predictions || []);
       }
     } catch (error) {
       console.error('Error fetching address suggestions:', error);
       setSuggestions([]);
+      setErrorCode('API_ERROR');
     } finally {
       setIsLoading(false);
     }
@@ -280,8 +293,29 @@ export function AddressAutocomplete({
         </div>
       )}
 
-      {/* No results message */}
-      {showSuggestions && value.length >= 3 && suggestions.length === 0 && !isLoading && (
+      {/* Config / API error state — takes priority over "no results" so
+          the user sees why search isn't working instead of a misleading
+          "No addresses found". The input still accepts free-text entry. */}
+      {showSuggestions && value.length >= 3 && !isLoading && errorCode && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded-md shadow-lg p-3 text-sm">
+          <p className="font-medium text-amber-700 dark:text-amber-400">
+            Address search unavailable
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {errorCode === 'NOT_CONFIGURED'
+              ? 'Google Places API is not configured on this deployment.'
+              : errorCode === 'REQUEST_DENIED'
+              ? 'Google Places API request was denied. Check that the Places API is enabled and the API key is valid.'
+              : errorCode === 'OVER_QUERY_LIMIT'
+              ? 'Google Places API quota exceeded. Please try again later.'
+              : 'Could not reach the address lookup service.'}
+            {' '}You can still type the address manually and save it.
+          </p>
+        </div>
+      )}
+
+      {/* No results message — only shown when there's no error */}
+      {showSuggestions && value.length >= 3 && suggestions.length === 0 && !isLoading && !errorCode && (
         <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg p-4 text-sm text-muted-foreground text-center">
           No addresses found
         </div>
