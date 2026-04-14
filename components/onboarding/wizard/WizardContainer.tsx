@@ -25,7 +25,6 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { X, ChevronLeft, ChevronRight, Rocket, Check, Loader2 } from 'lucide-react';
 import {
   WizardData,
-  WIZARD_STEPS,
   INITIAL_WIZARD_DATA,
   getStepsForProfile,
 } from './types';
@@ -202,11 +201,32 @@ export function WizardContainer({
   // PR 3b: pass runtime context so getStepsForProfile can hide the
   // Properties step for renters and show the Debts step only when the
   // user ticked at least one debt category on Welcome.
+  //
+  // Fix (Phase 12 v3 — bug A.7): previously returned just the welcome
+  // step when `data.profileType` was null, which collapsed `steps.length`
+  // to 1 and trapped navigation. The symptoms:
+  //
+  //   1. handleNext's `Math.min(prev + 1, steps.length - 1)` clamp sent
+  //      the user back to index 0 on any navigation action — the
+  //      "sent back to the property section" report.
+  //   2. `isLastStep` evaluated to true on the welcome step, which made
+  //      the footer try to render the "Launch dashboard" submit button.
+  //      The `isSubmitStep` defensive check below was added as a
+  //      workaround for exactly this symptom.
+  //   3. If profileType went null mid-flow (late hydration race, user
+  //      reverting Welcome answers, etc.) `currentStep = steps[currentStepIndex]`
+  //      could become undefined, rendering a blank body.
+  //
+  // Fix: when profileType is null, fall back to the broadest profile
+  // (MIXED) so the steps array stays stable and indexes remain valid.
+  // The user is still gated from advancing by `canProceed` on the
+  // welcome step (Continue is disabled until they pick housing and
+  // hasInvestments), and `isSubmitStep` stays as belt-and-braces —
+  // the submit button can only ever appear on the real review step.
+  // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.7.
   const steps = useMemo(() => {
-    if (!data.profileType) {
-      return WIZARD_STEPS.filter((s) => s.id === 'welcome');
-    }
-    return getStepsForProfile(data.profileType, {
+    const effectiveProfile = data.profileType ?? 'MIXED';
+    return getStepsForProfile(effectiveProfile, {
       housing: data.housing,
       debtCategories: data.debtCategories,
     });
