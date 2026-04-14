@@ -301,15 +301,23 @@ logic in route handlers** (per CLAUDE.md §12.3).
 Phased, reversible, and additive. The wizard stays live until v3 is
 fully proven.
 
-| Phase | Ships | Wizard status |
-|---|---|---|
-| **A. Micro-fixes** (this phase) | Bug fixes to the existing wizard + state machine that unblock v3 | Still live, still default |
-| **B. Foundation** | `lib/setup/tasks.ts`, `setupStateService`, `/api/setup/state` | Still live |
-| **C. Setup Tray** | `SetupTray` component mounted in `DashboardLayout`, reads `/api/setup/state` | Still live, wizard + tray coexist |
-| **D. Empty-state tiles** | Each tile gets its empty state, shipped one tile per PR | Still live |
-| **E. Basiq hero** | `BasiqHeroCard` mounted above tile grid | Still live |
-| **F. Default flip** | New users land on dashboard v3 flow; wizard only reachable via a legacy `?legacy=wizard` flag | Wizard deprecated, not deleted |
-| **G. Cleanup** | Delete wizard files (§3) | Wizard deleted |
+| Phase | Ships | Wizard status | Status |
+|---|---|---|---|
+| **A. Micro-fixes** | Bug fixes to the existing wizard + state machine that unblock v3 | Still live, still default | ✅ **Complete** (A.1–A.7) |
+| **B. Foundation** | `lib/setup/tasks.ts`, `setupStateService`, `/api/setup/state` | Still live | ✅ **Complete** (B.1–B.3; B.4 deferred — schema change) |
+| **C. Setup Tray** | `SetupTray` component mounted in `DashboardLayout`, reads `/api/setup/state` | Still live, wizard + tray coexist | ✅ **Complete** (C.1–C.3) |
+| **D. Empty-state tiles** | Each tile gets its empty state, shipped one tile per PR | Still live | ✅ **Complete** (D.1–D.3) |
+| **E. Basiq hero** | `BasiqHeroCard` mounted above tile grid | Still live | ⬜ Next |
+| **F. Default flip** | New users land on dashboard v3 flow; wizard only reachable via a legacy `?legacy=wizard` flag | Wizard deprecated, not deleted | ⬜ |
+| **G. Cleanup** | Delete wizard files (§3) | Wizard deleted | ⬜ |
+
+> **State after Phase D**: setting `NEXT_PUBLIC_ONBOARDING_V3=true`
+> in the deployment env and rebuilding gives every new user the
+> full v3 dashboard-as-onboarding experience: Setup Tray in the
+> chrome (Phase C) + empty-state tile grid on the empty dashboard
+> (Phase D) + the Phase A wizard fixes underneath in case they
+> still land on the legacy flow during the migration window. Phase
+> E (Basiq hero card) and Phase F (default flip) are next.
 
 Each phase is multiple PRs. Each PR is one focused thing. See §7.
 
@@ -354,12 +362,12 @@ causes user-visible regressions.
 | # | File:Line | Bug | Impact | Status |
 |---|---|---|---|---|
 | A.1 | `app/api/onboarding/state/route.ts:180` | Server silently caps `currentStep <= 7`. Writes past index 7 are dropped without error. | MIXED-profile users (10 steps) lose progress past step 7 silently. Resume at step 7 even if they were on step 9. | ✅ Shipped — [#489](https://github.com/resadegh/monitrax/pull/489) |
-| A.2 | `components/DashboardLayout.tsx:170-181` | `hydratedDraft` localStorage fallback is a lie. Comment says "local fallback when server returned null" but the code returns `undefined`. | Users who saved a local draft (offline / network blip) lose it on resume. The draft is silently discarded. | ⬜ Queued |
-| A.3 | `components/onboarding/wizard/steps/WelcomeStep.tsx:205-211` | Profile inference doesn't handle reversions. If user picks Own → then Rent without re-picking investments, `profileType` stays at the old value. | Steps show the wrong path. User lands on Properties step after saying they rent. | ⬜ Queued |
-| A.4 | `components/DashboardLayout.tsx:296-304` | Dual-POST autosave race. `saveDraft` + `setCurrentStep` fire as two independent parallel POSTs with no transactional coordination. | Server can end up with a new step index + an old draft. User sees "step 3" on resume but the properties they typed are missing. | ⬜ Queued |
-| A.5 | `components/onboarding/wizard/steps/WelcomeStep.tsx:200-202` | `hasInvestments` is local-state-only. Never persisted to the draft. On resume, rebuilt from `reverseInfer(profileType)` — returns `null` if inference is incomplete. | User has to re-select investments on every resume. Continue stays grayed out until they do. | ⬜ Queued |
-| A.6 | `components/onboarding/wizard/WizardContainer.tsx:117-148` | Late-hydration `useEffect` is one-shot (`hasAppliedLateHydrationRef`). Can't re-fire if `initialData` arrives after the first attempt. | Slow network → wizard stays empty forever. | ⬜ Queued |
-| A.7 | `components/onboarding/wizard/WizardContainer.tsx:148-156` | `steps.filter(welcome)` collapses to `[welcome]` when `profileType` is null. `handleNext` then clamps `currentStepIndex` with `Math.min(prev+1, steps.length-1)` → sends user back to step 0. | **This is the "sent back to property section" symptom.** | ⬜ Queued |
+| A.2 | `components/DashboardLayout.tsx:170-181` | `hydratedDraft` localStorage fallback is a lie. Comment says "local fallback when server returned null" but the code returns `undefined`. | Users who saved a local draft (offline / network blip) lose it on resume. The draft is silently discarded. | ✅ Shipped — [#489](https://github.com/resadegh/monitrax/pull/489) |
+| A.3 | `components/onboarding/wizard/steps/WelcomeStep.tsx:205-211` | Profile inference doesn't handle reversions. If user picks Own → then Rent without re-picking investments, `profileType` stays at the old value. | Steps show the wrong path. User lands on Properties step after saying they rent. | ✅ Shipped — [#490](https://github.com/resadegh/monitrax/pull/490) |
+| A.4 | `components/DashboardLayout.tsx:296-304` | Dual-POST autosave race. `saveDraft` + `setCurrentStep` fire as two independent parallel POSTs with no transactional coordination. | Server can end up with a new step index + an old draft. User sees "step 3" on resume but the properties they typed are missing. | ✅ Shipped — [#491](https://github.com/resadegh/monitrax/pull/491) |
+| A.5 | `components/onboarding/wizard/steps/WelcomeStep.tsx:200-202` | `hasInvestments` is local-state-only. Never persisted to the draft. On resume, rebuilt from `reverseInfer(profileType)` — returns `null` if inference is incomplete. | User has to re-select investments on every resume. Continue stays grayed out until they do. | ✅ Shipped — [#492](https://github.com/resadegh/monitrax/pull/492) |
+| A.6 | `components/onboarding/wizard/WizardContainer.tsx:117-148` | Late-hydration `useEffect` is one-shot (`hasAppliedLateHydrationRef`). Can't re-fire if `initialData` arrives after the first attempt. | Slow network → wizard stays empty forever. | ✅ Shipped — [#493](https://github.com/resadegh/monitrax/pull/493) |
+| A.7 | `components/onboarding/wizard/WizardContainer.tsx:148-156` | `steps.filter(welcome)` collapses to `[welcome]` when `profileType` is null. `handleNext` then clamps `currentStepIndex` with `Math.min(prev+1, steps.length-1)` → sends user back to step 0. | **This is the "sent back to property section" symptom.** | ✅ Shipped — [#494](https://github.com/resadegh/monitrax/pull/494) |
 
 ### 7.2 Phase A follow-up constants + hygiene
 
@@ -570,6 +578,10 @@ good work during Phase G cleanup.
 | 2026-04-14 | Document created. Supersedes v2 wizard plan. | Claude |
 | 2026-04-14 | Added §7 Phase A bug audit (7 bugs), §9 research foundation, §10 5 magic moments, §11 keep/remove/rewire matrix. Patches gaps against previous session's design transcript. | Claude |
 | 2026-04-14 | Added §2.4 fourth pillar: proactive Gemini assistance (assistance-only, never autofill, never CDR data to Gemini). Renamed "three pillars" → "four pillars". Updated §11.1 AI Helper row to point at §2.4. | Claude |
+| 2026-04-14 | **Phase A complete.** All 7 bugs from the code audit shipped: A.1 (currentStep cap), A.2 (lying localStorage fallback), A.3 (profile reversion), A.4 (dual-POST autosave race), A.5 (hasInvestments persistence), A.6 (late-hydration one-shot), A.7 (steps.filter collapse). Wizard state machine is stable across slow networks, reverted answers, and hydration races. | Claude |
+| 2026-04-14 | **Phase B complete.** Backend pipeline shipped: B.1 (`lib/setup/tasks.ts` registry), B.2 (`lib/services/setupStateService.ts`), B.3 (`app/api/setup/state/route.ts`). Six of seven setup tasks are derivable today; `review-net-worth` and `invite-partner` await B.4's `UserPreference.setupTrayState` JSONB column (deferred — schema change is its own PR class). | Claude |
+| 2026-04-14 | **Phase C complete.** UI pipeline shipped: C.1 (`hooks/useSetupState.ts`), C.2 (`components/setup/SetupTray.tsx`), C.3 (mount in `DashboardLayout` behind `NEXT_PUBLIC_ONBOARDING_V3` build-time flag). Setup Tray renders end-to-end when the flag is on; legacy resume banner + ambient tint suppressed by mutual exclusion. | Claude |
+| 2026-04-14 | **Phase D complete.** Empty-state tiles shipped: D.1 (`components/dashboard/EmptyStateTile.tsx` shell), D.2 (`components/dashboard/DashboardEmptyStateGrid.tsx` — six concrete empty states + responsive grid wrapper), D.3 (mount in `app/dashboard/page.tsx` `isEmpty` branch behind the same v3 flag). The "examples as instruction" pattern (§2.2) is now live: muted slate placeholder shapes + sparkles "what this unlocks" chips + deep-link CTAs that mirror the Setup Tray task registry. **No fake data anywhere.** | Claude |
 
 ---
 

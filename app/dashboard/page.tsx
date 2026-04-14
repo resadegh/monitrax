@@ -46,6 +46,22 @@ import {
   ActionableInsights,
   MonthlyBudgetSummary,
 } from '@/components/dashboard/InsightWidgets';
+// Phase 12 v3 (D.3): the v3 dashboard-as-onboarding empty state.
+// When NEXT_PUBLIC_ONBOARDING_V3 is on, the legacy "Welcome to
+// Monitrax" card in the isEmpty branch is replaced with a grid of
+// EmptyStateTile cards using the §2.2 examples-as-instruction
+// pattern. See docs/blueprint/PHASE_12_REDESIGN_V3.md §2.2.
+import { DashboardEmptyStateGrid } from '@/components/dashboard/DashboardEmptyStateGrid';
+
+/**
+ * Phase 12 v3 feature flag. Mirrors the constant in DashboardLayout
+ * so this page can also branch on the v3 experience without a
+ * runtime context lookup. NEXT_PUBLIC_* env vars are inlined by
+ * Next.js at build, so the bundler dead-code-eliminates the
+ * disabled branch — zero bundle-size cost when the flag is off.
+ */
+const ONBOARDING_V3_ENABLED =
+  process.env.NEXT_PUBLIC_ONBOARDING_V3 === 'true';
 import { DebtQualityWidget, calculateDebtQuality } from '@/components/dashboard/DebtQualityWidget';
 import { EntityCashflowSummary, calculateEntityCashflow } from '@/components/dashboard/EntityCashflowSummary';
 import {
@@ -495,65 +511,77 @@ export default function DashboardPage() {
           </div>
         </div>
       ) : isEmpty ? (
-        <div className="space-y-6">
-          {/* Getting Started Card */}
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                Welcome to Monitrax
-              </CardTitle>
-              <CardDescription>
-                Your comprehensive Australian wealth management dashboard. Get started by adding your financial data.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ol className="space-y-3 text-sm mb-6">
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">1</span>
-                  <span>Add your <strong>properties</strong> (home, investment properties)</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">2</span>
-                  <span>Add your <strong>loans</strong> and link them to properties</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">3</span>
-                  <span>Add your <strong>income sources</strong> and <strong>expenses</strong></span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">4</span>
-                  <span>Track your <strong>investments</strong> (shares, ETFs, managed funds)</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">5</span>
-                  <span>Use tools like <strong>Debt Planner</strong> and <strong>Tax Calculator</strong></span>
-                </li>
-              </ol>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/dashboard/properties">
-                  <Button>
-                    <Home className="h-4 w-4 mr-2" />
-                    Add Property
-                  </Button>
-                </Link>
-                <Link href="/dashboard/loans">
-                  <Button variant="outline">
-                    <Banknote className="h-4 w-4 mr-2" />
-                    Add Loan
-                  </Button>
-                </Link>
-                <Link href="/dashboard/investments/accounts">
-                  <Button variant="outline">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Add Investment
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+        // Phase 12 v3 (D.3): the legacy "Welcome to Monitrax" empty
+        // card is the pre-v3 experience. When the v3 flag is on, we
+        // render the DashboardEmptyStateGrid instead — six tiles
+        // using the §2.2 examples-as-instruction pattern, each
+        // deep-linking to the real entity dialog. Both branches
+        // coexist behind the flag so the wizard cohort still gets
+        // the legacy experience until the flag flips for everyone.
+        // See docs/blueprint/PHASE_12_REDESIGN_V3.md §2.2.
+        ONBOARDING_V3_ENABLED ? (
+          <DashboardEmptyStateGrid />
+        ) : (
+          <div className="space-y-6">
+            {/* Getting Started Card (legacy — pre-v3) */}
+            <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  Welcome to Monitrax
+                </CardTitle>
+                <CardDescription>
+                  Your comprehensive Australian wealth management dashboard. Get started by adding your financial data.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-3 text-sm mb-6">
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">1</span>
+                    <span>Add your <strong>properties</strong> (home, investment properties)</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">2</span>
+                    <span>Add your <strong>loans</strong> and link them to properties</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">3</span>
+                    <span>Add your <strong>income sources</strong> and <strong>expenses</strong></span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">4</span>
+                    <span>Track your <strong>investments</strong> (shares, ETFs, managed funds)</span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">5</span>
+                    <span>Use tools like <strong>Debt Planner</strong> and <strong>Tax Calculator</strong></span>
+                  </li>
+                </ol>
+                <div className="flex flex-wrap gap-3">
+                  <Link href="/dashboard/properties">
+                    <Button>
+                      <Home className="h-4 w-4 mr-2" />
+                      Add Property
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/loans">
+                    <Button variant="outline">
+                      <Banknote className="h-4 w-4 mr-2" />
+                      Add Loan
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/investments/accounts">
+                    <Button variant="outline">
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Add Investment
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
 
-        </div>
+          </div>
+        )
       ) : (
         <div className="space-y-6">
           {/* Phase 3: Linkage Health & Quick Actions Bar */}
