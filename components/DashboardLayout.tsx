@@ -213,6 +213,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [shouldShowWelcome, pathname, showWizard]);
 
+  // Phase 12 v3: auto-route incomplete users from /dashboard to the
+  // dedicated /dashboard/setup page. Triggers only when:
+  //   • the user is on /dashboard (not a sub-page — we never redirect
+  //     from /dashboard/properties, /dashboard/accounts, etc.),
+  //   • onboardingState has loaded (not null),
+  //   • onboarding is not marked complete,
+  //   • the user has no real data yet,
+  //   • the user has EITHER dismissed the welcome modal before OR
+  //     has a saved draft (i.e. they've seen the greeting once or
+  //     have in-progress setup to resume),
+  //   • the `?legacy=wizard` support/QA escape hatch is NOT active.
+  //
+  // Truly fresh users (no draft, no dismiss flag) still see the
+  // welcome modal first, click "Start setup", and land on the same
+  // setup page via handleStartSetup. This effect only covers the
+  // "returning incomplete user" case where the welcome modal has
+  // already been dismissed and the resume banner used to be the
+  // only affordance pointing at onboarding.
+  useEffect(() => {
+    if (pathname !== '/dashboard') return;
+    if (!onboardingState) return;
+    if (onboardingState.onboardingCompleted) return;
+    if (onboardingState.hasExistingData) return;
+
+    // Respect the legacy escape hatch: users hitting
+    // /dashboard?legacy=wizard must stay on /dashboard with the
+    // legacy flow for support/QA purposes.
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('legacy') === 'wizard') return;
+    }
+
+    const hasDismissedWelcome =
+      onboardingState.preferences?.dismissedWelcomeModal === true;
+    const hasSavedDraft =
+      onboardingState.draft !== null && onboardingState.draft !== undefined;
+
+    if (hasDismissedWelcome || hasSavedDraft) {
+      router.push('/dashboard/setup');
+    }
+  }, [pathname, onboardingState, router]);
+
   // Onboarding handlers - all wrapped in try-catch to work even if DB not migrated
   //
   // Phase 12 v3: handleStartSetup now routes to the new /dashboard/setup
@@ -332,10 +374,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     [saveDraft]
   );
 
-  // Phase 12 PR 2: Resume banner actions.
+  // Phase 12 v3: Resume banner actions now route to /dashboard/setup
+  // instead of opening the legacy WizardContainer modal. The setup
+  // page is the canonical entry point for any incomplete onboarding —
+  // there is no wizard modal in the v3 flow. Clicking Resume jumps
+  // straight to the setup page with the draft already hydrated via
+  // useSetupState. Start over clears the draft AND routes to the
+  // setup page so the user lands on a fresh checklist. The legacy
+  // wizard remains reachable via /dashboard?legacy=wizard for
+  // support/QA until Phase G cleanup deletes it.
   const handleResumeBannerResume = useCallback(() => {
-    setShowWizard(true);
-  }, []);
+    router.push('/dashboard/setup');
+  }, [router]);
   const handleResumeBannerStartOver = useCallback(async () => {
     try {
       await clearDraft();
@@ -344,9 +394,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       console.warn('Could not fully reset onboarding draft:', e);
     }
     setResumeBannerDismissed(true);
-    // Force a fresh wizard instance on next open.
-    setShowWizard(false);
-  }, [clearDraft, setCurrentStep]);
+    router.push('/dashboard/setup');
+  }, [clearDraft, setCurrentStep, router]);
   const handleResumeBannerDismiss = useCallback(() => {
     setResumeBannerDismissed(true);
   }, []);
