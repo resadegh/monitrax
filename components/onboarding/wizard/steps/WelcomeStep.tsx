@@ -201,10 +201,21 @@ export function WelcomeStep({ data, onUpdate }: WelcomeStepProps) {
     initial.hasInvestments
   );
 
-  // Whenever the answers fully infer a profile, write it back.
+  // Whenever the answers change, re-derive the profile and write it back.
+  //
+  // Fix (Phase 12 v3 — bug A.3): the previous guard was
+  //   `if (inferred && inferred !== data.profileType)`
+  // which silently skipped the update whenever `inferred` was null. That
+  // meant any reversion of an answer (e.g. user clears the housing
+  // segmented control, or toggles hasInvestments back to null) left the
+  // stale prior profileType in place, and the wizard kept rendering
+  // steps for a profile the user's current answers no longer imply.
+  // We now propagate null too, so reverting either answer clears the
+  // profile and forces the user to re-complete Welcome before advancing.
+  // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.3.
   useEffect(() => {
     const inferred = inferProfile(data.housing, hasInvestments);
-    if (inferred && inferred !== data.profileType) {
+    if (inferred !== data.profileType) {
       onUpdate({ profileType: inferred });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
