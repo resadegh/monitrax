@@ -52,6 +52,13 @@ import {
 // EmptyStateTile cards using the §2.2 examples-as-instruction
 // pattern. See docs/blueprint/PHASE_12_REDESIGN_V3.md §2.2.
 import { DashboardEmptyStateGrid } from '@/components/dashboard/DashboardEmptyStateGrid';
+// Phase 12 v3 (E.2): the Basiq hero card — §2.3 "Basiq as hero
+// connection flow" pillar. Sits above the empty-state tile grid on
+// the v3 dashboard for users without an ACTIVE Basiq connection.
+// Auto-hides once the user connects a bank via the Setup Tray task
+// state, so no parent-side gating is required beyond the feature
+// flag. See docs/blueprint/PHASE_12_REDESIGN_V3.md §2.3.
+import { BasiqHeroCard } from '@/components/dashboard/BasiqHeroCard';
 
 /**
  * Phase 12 v3 feature flag. Mirrors the constant in DashboardLayout
@@ -520,7 +527,17 @@ export default function DashboardPage() {
         // the legacy experience until the flag flips for everyone.
         // See docs/blueprint/PHASE_12_REDESIGN_V3.md §2.2.
         ONBOARDING_V3_ENABLED ? (
-          <DashboardEmptyStateGrid />
+          <div className="space-y-6">
+            {/* Phase 12 v3 (E.2): Basiq hero card above the grid.
+                Auto-hides when the connect-bank task is done, so it
+                only shows for users who haven't connected a bank yet.
+                Primary CTA routes to the same href the Setup Tray
+                task and the AccountsEmptyState use, so there is a
+                single source of truth for "where does connecting a
+                bank live" (CLAUDE.md §12.2). See §2.3 in the plan. */}
+            <BasiqHeroCard />
+            <DashboardEmptyStateGrid />
+          </div>
         ) : (
           <div className="space-y-6">
             {/* Getting Started Card (legacy — pre-v3) */}
