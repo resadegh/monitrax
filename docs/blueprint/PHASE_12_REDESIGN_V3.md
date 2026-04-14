@@ -133,6 +133,33 @@ PR 3b "Basiq > Import > Manual" hierarchy from §12.4 of CLAUDE.md.
 
 ### 2.4 Proactive Gemini assistance (not autofill)
 
+> **⏸ Deferred to a post-Phase-G workstream.** The scope of this
+> pillar (canonical assist service, RAG over docs, privacy envelope,
+> rate limiting, API route, UI orb component, AND mounting in every
+> entity dialog — Properties, Accounts, Income, Expenses, Investments,
+> Loans, Household, Super) is materially larger than Phases A–E
+> combined and cannot be delivered as a handful of 1-file micro-fix
+> turns. Shipping it before Phase F/G would also pollute the testing
+> signal for the v3 core (Setup Tray + empty-state tiles + Basiq hero).
+>
+> **Sequencing decision (2026-04-14):** Gemini assistance ships as
+> its own named initiative **after** Phase G cleanup, with its own
+> plan document and its own micro-fix series. It builds on the
+> existing Gemini infrastructure from Phase 27 and Phase 28 — see
+> `docs/blueprint/PHASE_27_GEMINI_AI_MIGRATION.md` and
+> `docs/blueprint/PHASE_28_AI_INTEGRATION.md` for what's already in
+> place (Gemini client, system prompts, model fallback, variable-
+> expense estimator). The new workstream will add a *Setup Assistant*
+> use case on top of that foundation.
+>
+> **Why this is safe to defer:** the three shipping v3 pillars
+> (Setup Tray, empty-state tiles, Basiq hero) stand alone as a
+> complete dashboard-as-onboarding replacement. Gemini assistance
+> is a quality-of-life layer, not a blocker for the §5 migration.
+> The plan below captures the *design* of the pillar so it can be
+> implemented later without re-deriving the scope; the *when* is
+> a follow-up initiative.
+
 The existing AI Helper component (already built, currently passive —
 waits to be asked) is repurposed into a **proactive assistance agent**
 powered by Google Gemini. It narrates each setup task, answers

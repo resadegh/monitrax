@@ -799,6 +799,97 @@ The Planning section in the sidebar was reordered to match the logical data flow
 
 ---
 
-*Status: Complete*
+## Future Work — v3 Setup Assistant (deferred)
+
+**Status:** ⏸ Deferred — tracked as a future workstream against the
+Phase 12 v3 dashboard-as-onboarding redesign.
+**Parent plan:** `docs/blueprint/PHASE_12_REDESIGN_V3.md` §2.4
+
+A new Gemini use case — the **v3 Setup Assistant** — is planned on
+top of the existing Phase 27/28 Gemini infrastructure. It adds
+proactive, in-context assistance to the new dashboard-as-onboarding
+flow (replaces the legacy wizard) **without ever autofilling fields
+or sending CDR-classified data to Gemini**.
+
+### Where it fits
+
+| Existing (Phase 27/28) | New (v3 Setup Assistant) |
+|---|---|
+| Gemini client + model fallback | Reuses the same client |
+| System prompt registry | Extended with setup-task hint templates |
+| Variable-expense estimator (POST → Gemini → estimate) | Dialog-scoped "ask about this step" answerer |
+| Runs at budget-analysis time | Runs while the user fills in Setup Tray tasks & entity dialogs |
+| Data flow: read-only financial context → single JSON estimate out | Data flow: task label + field label + Monitrax doc excerpts (RAG) → one-sentence hint out |
+
+### Hard rules (enforced in the service layer)
+
+The Setup Assistant MUST satisfy every rule below before it ships.
+These are lifted verbatim from `PHASE_12_REDESIGN_V3.md` §2.4 and
+CLAUDE.md §13.3 so Phase 28 / 27 callers can reference the contract
+without cross-reading the v3 plan:
+
+1. **Never autofill.** Gemini does not write a value into any form
+   field. All user input is user-typed.
+2. **Never guess user-specific data.** Balances, property values,
+   income, ownership, dates — all explicitly off-limits as outputs.
+3. **Never send CDR data to Gemini.** Account balances, transaction
+   rows, BSBs, and institution identifiers MUST NOT appear in the
+   prompt body under any circumstances. Prompts contain only: field
+   label, field type, task name, Monitrax doc excerpts (retrieved
+   via RAG over `docs/architecture/*.md` and `docs/blueprint/*.md`),
+   and the user's free-text question if they asked one.
+4. **Never generate financial advice.** Not an ADR function;
+   regulatory landmine. "One common way to think about this" ≠
+   "the right thing for your situation".
+5. **Audit every call.** Every Gemini invocation is logged via
+   `createAuditLog()` with `action: 'AI_HELPER_INVOKED'` and
+   sanitized metadata (CLAUDE.md §13.3).
+6. **Rate-limit the endpoint.** 10 calls per minute per user,
+   enforced by a simple Prisma-backed counter or GCP API Gateway
+   policy.
+7. **Nag-free by construction.** Fire at most one proactive prompt
+   per task per session. No follow-ups unless the user engages.
+
+### Indicative scope (for future planning)
+
+When this initiative is scheduled, expect roughly:
+
+| Layer | Files | Notes |
+|---|---|---|
+| Service | `lib/services/geminiAssistService.ts` | Wraps the existing Gemini client, enforces the privacy envelope, handles RAG lookup, emits audit logs |
+| Static hints | `lib/setup/taskHints.ts` | Fallback hint map keyed by setup task id; shipped before the service is wired up so the UI works even if Gemini is disabled |
+| API | `app/api/ai/assist/route.ts` | Thin wrapper per CLAUDE.md §12.3, `withPermission(req, 'ai.use')`, rate-limited |
+| UI surface | `components/ai/GeminiAssistPanel.tsx` | Orb / chip + expandable side panel, dismissible, keyboard-accessible, dark-mode native |
+| Mounts | ~8 entity dialogs | Properties, Accounts, Income, Expenses, Investments, Loans, Household, Super — one mount per dialog |
+| Docs | New blueprint page | Dedicated plan document covering prompt design, RAG chunking strategy, test cases, and CDR-safety audit trail |
+
+### Why it is not a blocker
+
+The v3 core (Setup Tray + empty-state tiles + Basiq hero) ships in
+Phase C–E and stands alone as a complete dashboard-as-onboarding
+replacement. The Setup Assistant is a quality-of-life layer on top
+of a working flow — a multiplier, not a prerequisite. Shipping it
+before Phase F (default flip) and Phase G (wizard cleanup) would
+also pollute the testing signal for the v3 core, which the team
+has committed to validating first.
+
+### Trigger condition
+
+Kick this initiative off once **all three** of the following are
+true:
+
+1. Phase G cleanup is merged (wizard and all its satellites deleted).
+2. The v3 core has at least two weeks of production traffic with
+   the default flag flipped on, and no major regressions reported.
+3. Product has scheduled the work against a release milestone with
+   a clear success metric (e.g. "increase setup-task completion
+   rate by N% within 30 days of launch").
+
+Until those three are true, this section is intentionally a
+design reference, not an execution target.
+
+---
+
+*Status: Complete (Phase 28), plus Future Work reference for v3 Setup Assistant*
 *Author: Claude Code*
 *Phase: 28.6*
