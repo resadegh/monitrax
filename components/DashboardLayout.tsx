@@ -53,18 +53,6 @@ import {
   OnboardingResumeBanner,
   WizardData,
 } from '@/components/onboarding';
-// Phase 12 v3 (C.3): Setup Tray is the dashboard-as-onboarding
-// replacement for the linear wizard's resume banner. Mounted behind a
-// build-time feature flag so the legacy wizard flow and the v3 tray
-// can coexist during the migration window.
-//
-// Phase 12 v3 (F): the flag now defaults ON — new users land on the
-// v3 experience unless explicitly rolled back via the env var or the
-// `?legacy=wizard` URL escape hatch. Flag logic lives in the shared
-// helper `lib/setup/v3Flag.ts` so DashboardLayout and the dashboard
-// page cannot drift (CLAUDE.md §12.2 SSOT).
-import SetupTray from '@/components/setup/SetupTray';
-import { useV3Enabled } from '@/lib/setup/v3Flag';
 
 interface NavItem {
   name: string;
@@ -149,12 +137,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
 
-  // Phase 12 v3 (F): v3 feature flag with URL escape hatch. Replaces
-  // the module-level build-time constant so we can honour the
-  // `?legacy=wizard` session override while keeping the flag a single
-  // source of truth across DashboardLayout and app/dashboard/page.tsx.
-  const ONBOARDING_V3_ENABLED = useV3Enabled();
-
   // Phase 14.5 - Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -232,15 +214,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [shouldShowWelcome, pathname, showWizard]);
 
   // Onboarding handlers - all wrapped in try-catch to work even if DB not migrated
+  //
+  // Phase 12 v3: handleStartSetup now routes to the new /dashboard/setup
+  // page instead of opening the legacy WizardContainer modal. The setup
+  // page hosts the §2 v3 experience (Setup Tray + Basiq hero + empty-
+  // state tile grid) as a dedicated surface — the main /dashboard page
+  // is left untouched for users who already have data. The legacy
+  // wizard remains reachable via /dashboard?legacy=wizard for support
+  // and QA until Phase G deletes it. See PHASE_12_REDESIGN_V3.md §2.1
+  // and §5 for the architectural pivot.
   const handleStartSetup = useCallback(async () => {
     setShowWelcomeModal(false);
-    setShowWizard(true);
     try {
       await startOnboarding();
     } catch (e) {
       console.warn('Could not save onboarding state:', e);
     }
-  }, [startOnboarding]);
+    router.push('/dashboard/setup');
+  }, [startOnboarding, router]);
 
   const handleTakeTour = useCallback(() => {
     setShowWelcomeModal(false);
@@ -680,41 +671,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             normal once onboarding completes. Same gating boolean as the
             persistent resume banner — single source of truth (see
             useOnboardingState.shouldShowResumeBanner). The CSS lives in
-            styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL".
-
-            Phase 12 v3 (C.3): the ambient tint is part of the legacy
-            wizard's "still in setup mode" cue. When the v3 Setup Tray
-            flag is on, the tray itself is the persistent setup cue, so
-            the tint is suppressed to avoid stacking two affordances. */}
+            styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL". */}
         <main
           className={`min-h-screen p-3 pt-16 sm:p-4 sm:pt-20 lg:p-8 lg:pt-8 ${
-            !ONBOARDING_V3_ENABLED &&
-            !showWizard &&
-            !showWelcomeModal &&
-            shouldShowResumeBanner &&
-            !resumeBannerDismissed
+            !showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed
               ? 'onboarding-active-shell'
               : ''
           }`}
         >
           <div className="mx-auto max-w-7xl">
-            {/* Phase 12 v3 (C.3): Setup Tray — the dashboard-as-
-                onboarding replacement for the linear wizard's resume
-                banner. Mounted behind ONBOARDING_V3_ENABLED so the
-                legacy banner and the v3 tray cannot both render at
-                once. The tray reads from useSetupState() internally,
-                handles its own loading/error/empty states, and
-                renders nothing while the welcome modal or wizard is
-                open (matching the legacy banner's hide-when-stacked
-                rule). When all tasks are done it collapses to a
-                "Setup complete" pill. See PHASE_12_REDESIGN_V3.md
-                §2.1. */}
-            {ONBOARDING_V3_ENABLED && !showWizard && !showWelcomeModal && (
-              <div className="mb-4">
-                <SetupTray />
-              </div>
-            )}
-
             {/* Phase 12 PR 2: Resume banner for users with an unfinished
                 wizard draft. Persists across ALL dashboard pages while
                 onboarding is in progress (was previously gated to
@@ -728,22 +693,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   • onboarding completes server-side
                   • the wizard or welcome modal is already open
                     (avoids stacking two onboarding affordances).
-                  • the v3 Setup Tray is enabled (replaces this banner).
                 See useOnboardingState.shouldShowResumeBanner for the
                 full server-side contract. */}
-            {!ONBOARDING_V3_ENABLED &&
-              !showWizard &&
-              !showWelcomeModal &&
-              shouldShowResumeBanner &&
-              !resumeBannerDismissed && (
-                <OnboardingResumeBanner
-                  currentStep={onboardingState?.currentStep ?? 0}
-                  totalSteps={8}
-                  onResume={handleResumeBannerResume}
-                  onStartOver={handleResumeBannerStartOver}
-                  onDismiss={handleResumeBannerDismiss}
-                />
-              )}
+            {!showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed && (
+              <OnboardingResumeBanner
+                currentStep={onboardingState?.currentStep ?? 0}
+                totalSteps={8}
+                onResume={handleResumeBannerResume}
+                onStartOver={handleResumeBannerStartOver}
+                onDismiss={handleResumeBannerDismiss}
+              />
+            )}
             {/* Phase 12: Onboarding Progress Badge */}
             {shouldShowOnboardingBadge && onboardingState && (
               <div className="mb-4" data-tour="dashboard-stats">
