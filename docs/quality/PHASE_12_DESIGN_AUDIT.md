@@ -285,58 +285,128 @@ that should not be flagged as P0/P1 weaknesses:
 
 ## 11. Open incidents (audit cannot proceed until resolved)
 
-### 11.1 — Data loss reported 2026-04-15
+### 11.1 — Data loss reported 2026-04-15 — ✅ RESOLVED 2026-04-15
 
-**Status:** 🚨 Critical — investigation paused, awaiting user input.
+**Status:** ✅ **CLOSED.** Root cause identified, fix shipped and
+deployed, deploy pipeline hardened so the class of failure cannot
+recur.
 
-**Summary:** A user with prior data on Monitrax appears to have all
-data missing after the recent Phase 12 PRs landed on `main`. The
-root cause has not been established. **No code work proceeds and
-no further audit walkthroughs run until this is resolved.**
+**Investigation summary:**
 
-**Tracked in the plan as:** `PHASE_12_SETUP_AND_ONBOARDING.md`
-§11 R12.
+The user reported that `rayanmehr79@gmail.com`'s dashboard rendered
+blank after the Phase 12 PRs landed. Direct SQL queries against
+both Cloud SQL instances confirmed the user's data was **still
+intact** (3 accounts, 5 properties, 4 loans, 6 income, 57 expenses,
+3 investments, 1 household profile). The audit log showed zero
+`ENTITY_DELETED` events in the prior 14 days. So the symptom was
+a **read-path crash**, not real data loss.
 
-**Possibly-related destructive code shipped in this phase:**
-`upsertHouseholdEstimate` in `lib/services/onboardingEstimateService.ts`
-overwrites `HouseholdProfile.adultsCount` and `childrenCount` for
-existing users when the wizard runs. The function was gated by an
-auth-header bug (PR #521) that prevented it from running until
-that PR merged. So the *timing* of when this could have caused
-data loss matters — if loss was observed *before* #521 merged,
-it cannot be the cause; if *after*, it is the prime suspect.
-Tracked as R11 in the plan.
+**Root cause:**
 
-**Investigation prerequisites before continuing the audit:**
+1. The Phase 12 Track A.0 migration added an `EntrySource` enum
+   and a `source EntrySource @default(MANUAL)` column to 9
+   financial models in `prisma/schema.prisma` and shipped via PRs
+   #511 and #516.
+2. The matching `ALTER TABLE` migration (`1_add_entry_source_enum`)
+   **never ran** against either Cloud SQL instance.
+3. The underlying reason: **neither `monitrax-db-dev` nor
+   `monitrax-db-prod` had a `_prisma_migrations` tracking table**.
+   Both databases were created outside of Prisma's migration
+   workflow (most likely via `prisma db push` during the earlier
+   Render → GCP migration) and had been drifting from
+   `schema.prisma` ever since. As a result, `prisma migrate deploy`
+   was never run in any CI step.
+4. After the A.0 PRs merged, Vercel rebuilt with the new Prisma
+   client that expected the `source` column on 9 tables. Every
+   `findMany` / `findFirst` against those tables generated SQL
+   that included `source` in the SELECT list, which crashed with
+   `column "source" does not exist` at the database layer.
+5. API routes caught the errors and returned empty responses, so
+   the dashboard rendered "no data" for every affected user.
 
-1. Confirm whether the affected user's DB rows are actually gone
-   versus just not displayed. Use Prisma Studio or a direct SQL
-   count query against each financial table for the user's `userId`.
-2. Audit Vercel/deployment logs for the migration command used:
-   - `prisma migrate deploy` — **safe**, additive only
-   - `prisma migrate reset` — **destructive**, drops all tables
-   - `prisma db push` — **possibly destructive** depending on flags
-3. Verify backup status: when was the most recent good backup of
-   the affected user's tables?
-4. Determine when the data was last seen intact (timestamp).
-5. Cross-reference the timestamp against PR #521's merge time to
-   see if R11 destructive code is in scope.
+**Secondary finding (R11):** `upsertHouseholdEstimate` in
+`lib/services/onboardingEstimateService.ts` contained a destructive
+Prisma upsert that would have overwritten
+`HouseholdProfile.adultsCount` / `childrenCount` for any user who
+already had a configured household. It never actually fired in
+prod because the `source` column didn't exist (it would have
+crashed at the DB layer first), but as soon as the column
+existed, the destructive path would become live.
 
-**What the audit will do after the incident closes:**
+**Remediation shipped today:**
 
-- If R11 was the root cause: harden `upsertHouseholdEstimate` so
-  it cannot overwrite a verified `HouseholdProfile` (only update
-  if `source === 'ONBOARDING'` or write to a separate field), then
-  resume the audit walkthroughs.
-- If a destructive migration command was run: triage the recovery
-  path with the user, restore from backup, document the postmortem
-  in this doc.
-- If neither: dig deeper into shipped code paths for any bypass of
-  the auth check that could have triggered the destructive write.
+| PR | Purpose | Status |
+|---|---|---|
+| #523 | CLAUDE.md §12.11 destructive write checklist (non-negotiable rule) | ✅ Merged |
+| #524 | **Hotfix** — revert Phase 12 A.0 `source` fields + stub destructive `upsertHouseholdEstimate` + `setupStateService` count queries | ✅ Merged |
+| #525 | Prisma baseline runbook + deletion of orphaned `1_add_entry_source_enum/` migration folder | ✅ Merged |
+| #526 | `vercel-build` script that runs `prisma migrate deploy` before every Vercel build + CLAUDE.md §12.12 schema change deploy protocol | ✅ Merged |
 
-**Until §11.1 closes:** Track C.2 cleanup remains paused **even if
-the §3-§7 walkthroughs would otherwise pass**. Deleting the legacy
-wizard while a data-loss incident is open would compound the risk.
+**Manual steps executed during the session:**
+
+1. **Baselined both DBs** via direct SQL in Cloud SQL Studio:
+   created `_prisma_migrations` table + inserted a row marking
+   `0_init` as applied on both `monitrax-db-dev` (35.189.31.209)
+   and `monitrax-db-prod` (35.197.180.137).
+2. **Redeployed PR #526** after baselining so the Vercel production
+   build succeeded end-to-end through the new pipeline.
+
+**Permanent guarantees in place:**
+
+1. ✅ **Auto-apply on deploy** — Vercel's `vercel-build` script
+   runs `prisma migrate deploy` against the scoped `DATABASE_URL`
+   before every preview and production build. Drift cannot recur.
+2. ✅ **Fail-closed deploys** — if a migration fails, the build
+   aborts and the previous deployment keeps serving. New code
+   never reaches a database it was not designed for.
+3. ✅ **Both DBs are tracked** by Prisma migration history going
+   forward.
+4. ✅ **Destructive writes gated** — CLAUDE.md §12.11 forces PR
+   authors to fill in a three-question checklist for any
+   `update` / `upsert` / `delete` / raw SQL, and reviewers must
+   reject PRs that skip it.
+5. ✅ **Schema changes gated** — CLAUDE.md §12.12 forbids schema
+   changes without a matching migration file, forbids `db push`
+   and `db execute`, and requires code review enforcement.
+6. ✅ **2-tier DB split handled natively** — Vercel's
+   per-environment `DATABASE_URL` scoping means previews apply
+   migrations to `monitrax-db-dev` and production applies to
+   `monitrax-db-prod` without any extra CI.
+
+**Resumption criteria (§3 audit walkthroughs):**
+
+The audit walkthroughs in §3 can now resume whenever Phase 12 A.0
+is re-applied via a new hardened PR (see "Follow-up plan" below).
+Until then, the `/onboarding` wizard is disabled at the service
+layer — users reaching it will see "Could not save" on any step
+submit, which is the expected disabled-state behaviour. This is
+documented in §10 as an additional caveat going into the audit.
+
+**Follow-up plan (separate PRs, not in scope for this audit):**
+
+When you're ready to restore the wizard's Estimated/Verified
+distinction, ship a single PR that:
+
+1. Creates a new migration folder (e.g. `2_phase12_entry_source_hardened`)
+   containing the `CREATE TYPE EntrySource` enum and the nine
+   `ALTER TABLE ... ADD COLUMN source` statements (additive, safe)
+2. Restores the nine `source EntrySource @default(MANUAL)` fields
+   in `prisma/schema.prisma`
+3. **Hardens** `upsertHouseholdEstimate` with a
+   `source === 'ONBOARDING'` precondition so it cannot overwrite
+   user-entered data
+4. Fills in the CLAUDE.md §12.11 destructive-write checklist in
+   the PR body
+5. Requires explicit user "OK to merge" before the PR is merged
+6. Post-merge, the Vercel pipeline applies the migration to prod
+   automatically (no manual SQL required — that's the point)
+
+**No hardened PR #1 blocker:** The Phase 12 audit walkthroughs
+can run BEFORE this follow-up if you'd rather validate the
+Setup/Refinement flow first. The wizard disabled-state is
+acceptable for §3 Path C (skipping the wizard), and Paths A/B/D
+can be added to the weakness register as "deferred until wizard
+re-enable" rather than blocking the audit close.
 
 ---
 

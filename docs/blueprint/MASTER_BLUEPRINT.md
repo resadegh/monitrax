@@ -53,7 +53,8 @@
 - **26 Phases** defined in the blueprint
 - **14 Phases** fully implemented (including Phase 25 Document Management Engine)
 - **GCP Identity Platform** — sole identity provider (Firebase Auth, MFA, OAuth)
-- **Active Development:** Phase 12 Onboarding Wizard remediation (PR 1 merged, PR 2 in flight, PR 3 pending), Phase 19 (Document Management UI), Phase 21 (Asset Management)
+- **Active Development:** Phase 12 Twin-Track Onboarding — Tracks A/B/C/D shipped, R12 incident remediated 2026-04-15 (auto-migrate pipeline + destructive-write checklist); Phase 19 (Document Management UI); Phase 21 (Asset Management)
+- **Platform hardening (2026-04-15):** `vercel-build` script now runs `prisma migrate deploy` before every Vercel build — schema drift between `prisma/schema.prisma` and the deployed DB is structurally impossible. Both Cloud SQL instances baselined with Prisma migration tracking. See `docs/changelog/CHANGELOG_2026_04_15.md` and `CLAUDE.md` §12.11/§12.12 for full details.
 - **Platform:** Next.js 15, PostgreSQL, Prisma, Vercel, GCP Identity Platform
 
 ---
