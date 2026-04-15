@@ -1,138 +1,64 @@
 'use client';
 
 /**
- * /app/onboarding — Phase 12 PR 3a
+ * /onboarding page — Phase 12 Track B (B.0)
  *
- * Dedicated full-page onboarding route. Users land here from:
- *   - Direct navigation (deep link from marketing emails)
- *   - Registration → redirect (future — PR 3a ships the route but
- *     registration stays routing to /dashboard)
- *   - Resume banner on /dashboard (optional alternative path)
+ * Top-level route for the new linear wizard. Replaces the legacy
+ * WizardContainer page-mode (PR 3a). The legacy wizard remains
+ * reachable as a modal via /dashboard?legacy=wizard for support
+ * and QA until Track C.2 deletes it.
  *
- * The page simply mounts WizardContainer in mode="page" and wires up
- * the same draft persistence + bulk-create flow that the dashboard
- * modal uses. Unauth users redirect to /signin with ?next=/onboarding.
+ * Routing logic:
+ *   - Unauthenticated → /signin?next=/onboarding
+ *   - Already completed → /dashboard/setup (refinement is the next step)
+ *   - Otherwise → render the wizard container, silent-resume from
+ *     User.onboardingStep if set
  *
- * The wizard modal on /dashboard still works exactly as before — this
- * route is purely additive.
- *
- * See: docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md (§3 decision E)
+ * This file is intentionally thin. All step state and rendering
+ * lives in LinearWizardContainer (B.1).
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
-import { WizardContainer, WizardData } from '@/components/onboarding';
-import { Loader2 } from 'lucide-react';
+import { LinearWizardContainer } from '@/components/onboarding/linear/LinearWizardContainer';
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, token, isLoading: authLoading } = useAuth();
-  const {
-    state: onboardingState,
-    isLoading: onboardingLoading,
-    completeOnboarding,
-    saveDraft,
-    clearDraft,
-    setCurrentStep,
-  } = useOnboardingState();
+  const { state: onboardingState } = useOnboardingState();
 
-  // ---- Auth gate -------------------------------------------------------
+  // Auth gate — redirect unauthenticated users to signin with a
+  // ?next=/onboarding return path.
   useEffect(() => {
-    if (!authLoading && !user && !token) {
+    if (authLoading) return;
+    if (!user && !token) {
       router.push('/signin?next=/onboarding');
     }
   }, [authLoading, user, token, router]);
 
-  // ---- Redirect away if onboarding is already complete ----------------
-  // Users who have already finished the wizard shouldn't see it again by
-  // mistake. They get bounced to the dashboard.
+  // Completion gate — if the user has already finished onboarding,
+  // route them to /dashboard/setup where they refine estimates.
   useEffect(() => {
-    if (!onboardingLoading && onboardingState?.onboardingCompleted) {
-      router.push('/dashboard');
+    if (!onboardingState) return;
+    if (onboardingState.onboardingCompleted) {
+      router.replace('/dashboard/setup');
     }
-  }, [onboardingLoading, onboardingState?.onboardingCompleted, router]);
+  }, [onboardingState, router]);
 
-  // ---- Hydrated draft + step index (same pattern as DashboardLayout) --
-  const hydratedDraft = useMemo<Partial<WizardData> | undefined>(() => {
-    const serverDraft = onboardingState?.draft;
-    if (serverDraft && typeof serverDraft === 'object') {
-      return serverDraft as Partial<WizardData>;
-    }
-    return undefined;
-  }, [onboardingState?.draft]);
-  const hydratedStepIndex = onboardingState?.currentStep ?? 0;
+  // Silent resume — for now, always start at Welcome. Legacy
+  // onboardingStep indices do not map cleanly to the new step ids.
+  // A follow-up after B.3-B.8 lands can add real resume logic.
+  const initialStepId = 'welcome';
 
-  // ---- Handlers --------------------------------------------------------
-  const handleAutoSave = useCallback(
-    (wizardData: WizardData, stepIndex: number) => {
-      void saveDraft(wizardData, stepIndex);
-      void setCurrentStep(stepIndex);
-    },
-    [saveDraft, setCurrentStep]
-  );
-
-  const handleComplete = useCallback(
-    async (wizardData: WizardData) => {
-      try {
-        const response = await fetch('/api/onboarding/bulk-create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(wizardData),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('Failed to save wizard data:', errorData);
-          throw new Error(errorData.error || 'Failed to save data');
-        }
-
-        await completeOnboarding();
-        await clearDraft();
-        router.push('/dashboard');
-      } catch (e) {
-        console.error('Could not complete wizard:', e);
-      }
-    },
-    [clearDraft, completeOnboarding, router, token]
-  );
-
-  const handleClose = useCallback(() => {
-    // In page mode the "X" button is hidden, so this is only invoked
-    // from Escape or external triggers. Go to dashboard — the draft is
-    // already saved server-side.
-    router.push('/dashboard');
-  }, [router]);
-
-  // ---- Loading / unauth fallback --------------------------------------
-  if (authLoading || onboardingLoading || (token && !user)) {
+  if (authLoading) {
     return (
-      <div className="wz-page-root flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-blue-500" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Preparing your setup…
-          </p>
-        </div>
-      </div>
+      <section className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent motion-reduce:animate-none" />
+      </section>
     );
   }
 
-  if (!user) return null;
-
-  return (
-    <WizardContainer
-      mode="page"
-      isOpen={true}
-      onClose={handleClose}
-      onComplete={handleComplete}
-      initialData={hydratedDraft}
-      initialStepIndex={hydratedStepIndex}
-      onAutoSave={handleAutoSave}
-    />
-  );
+  return <LinearWizardContainer initialStepId={initialStepId} />;
 }
