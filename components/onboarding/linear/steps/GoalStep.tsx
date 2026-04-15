@@ -9,6 +9,7 @@
 
 import { useCallback, useState } from 'react';
 import { PiggyBank, TrendingDown, TrendingUp } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { LinearStepShell } from '@/components/onboarding/linear/primitives/LinearStepShell';
 import { LinearSegmented } from '@/components/onboarding/linear/primitives/LinearSegmented';
 import { LinearFeedback } from '@/components/onboarding/linear/primitives/LinearFeedback';
@@ -21,6 +22,7 @@ export interface GoalStepProps {
 }
 
 export function GoalStep({ onAdvance, onBack }: GoalStepProps) {
+  const { token } = useAuth();
   const [goal, setGoal] = useState<Goal | null>(null);
   const [saved, setSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,7 +35,10 @@ export function GoalStep({ onAdvance, onBack }: GoalStepProps) {
     try {
       const response = await fetch('/api/onboarding/estimates/goal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ goal }),
       });
       if (!response.ok) throw new Error('failed');
@@ -43,7 +48,7 @@ export function GoalStep({ onAdvance, onBack }: GoalStepProps) {
       setError('Could not save. Please try again.');
       setIsSubmitting(false);
     }
-  }, [goal, onAdvance]);
+  }, [goal, token, onAdvance]);
 
   const feedbackCopy: Record<Goal, string> = {
     SAVE: "Love it — we'll tailor your insights to help you save.",
