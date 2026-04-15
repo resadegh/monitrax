@@ -1115,6 +1115,8 @@ Response: { tasks, moduleProgress, nextBestAction, progress }
 | R8 | `GuidedEntryModal` shell over-abstracted, breaks on per-module needs | **Medium** | A.6 ships with one concrete consumer (A.7 Accounts) as acceptance test. Shell changes if the test breaks. |
 | R9 | Final Reveal animation performance on low-end devices | **Low** | All animations CSS-keyframe based, no JS timing loops. `prefers-reduced-motion` disables them entirely. |
 | R10 | Wizard Q&A decisions drift across sessions without this doc as anchor | **Medium** | This doc is the single source of truth. Every PR body links back to the phase. Plan changes go in the §14 changelog first. |
+| **R11** | **`upsertHouseholdEstimate` overwrites existing `HouseholdProfile.adultsCount` / `childrenCount`** when the wizard runs against a user who already has a configured household. The function is in `lib/services/onboardingEstimateService.ts` (shipped via PR #520). The destructive update branch overwrites the composition fields with whatever the wizard's 3-option picker maps to (`SELF` = 1/0, `PARTNER` = 2/0, `FAMILY` = 2/1). Any extra adults / children / lifestyle preferences a user previously set are lost. | **HIGH** | (1) Auth-header bug from PR #521 prevented this function from being callable in production until the fix landed — so no users have lost household data through this path **yet**. (2) After #521 merged, the function is now reachable. (3) **Fix required before C.2 cleanup**: change the upsert to either (a) only update if the existing row's `source === 'ONBOARDING'`, or (b) write the wizard answer to a new field and leave existing composition untouched. (4) Also update `upsertHousingEstimate`, which currently overwrites `source` to `ONBOARDING` on existing profiles — same defensive guard needed. |
+| **R12** | **Data loss incident reported 2026-04-15** — a user with prior data on Monitrax appears to have all their data missing after the recent merges. Root cause not yet established; investigation paused until user confirms (a) which data is missing, (b) whether DB rows are actually gone vs not displayed, (c) whether `prisma migrate deploy` ran cleanly or a destructive flag was used, (d) backup status. The destructive code in R11 is the most likely candidate from this plan's PRs but was gated by the auth bug, so the timing (data loss observed *before* PR #521 merged) is inconsistent with that being the root cause. | **CRITICAL** | (1) **Halt all code work** until root cause established and recovery path confirmed. (2) Audit Vercel/deploy logs for migration commands. (3) Verify DB row counts directly via Prisma Studio or production console for the affected user. (4) Restore from backup if data is truly gone. (5) Once root cause is known, fix the underlying issue *and* harden the R11 destructive code regardless. |
 
 ---
 
@@ -1200,57 +1202,65 @@ Updated after every merged PR. All phases ⬜ until work begins.
 
 | Phase | Description | Status | PR |
 |---|---|---|---|
-| A.0 | Prisma schema: `EntrySource` enum + `source` column on 9 models | ⬜ Not started | — |
-| A.1 | `SetupProgressService` extension | ⬜ | — |
-| A.2 | `<SetupNextActionPanel />` component | ⬜ | — |
-| A.3 | Card prioritisation visual states | ⬜ | — |
-| A.4 | Why-This-Matters copy layer | ⬜ | — |
-| A.5 | Confidence state badges | ⬜ | — |
-| A.6 | `<GuidedEntryModal />` shell primitive | ⬜ | — |
-| A.7 | Accounts guided flow | ⬜ | — |
-| A.8 | Properties guided flow | ⬜ | — |
-| A.9 | Income guided flow | ⬜ | — |
-| A.10 | Expenses guided flow | ⬜ | — |
-| A.11 | Investments guided flow | ⬜ | — |
-| A.12 | Loans guided flow | ⬜ | — |
+| A.0 | Prisma schema: `EntrySource` enum + `source` column on 9 models | ✅ Merged | #511 |
+| A.1 | `SetupProgressService` extension | ✅ Merged | #512 |
+| A.2 | `<SetupNextActionPanel />` component | ✅ Merged | #513 |
+| A.3 | Card prioritisation visual states | ✅ Merged | #513 |
+| A.4 | Why-This-Matters copy layer | ✅ Merged | #513 |
+| A.5 | Confidence state badges | ✅ Merged | #513 |
+| A.6 | `<GuidedEntryModal />` shell primitive | 🟡 Stacked, not on main | #514 (orphaned — needs rescue PR) |
+| A.7 | Accounts guided flow | 🟡 Stacked, not on main | #514 |
+| A.8 | Properties guided flow | 🟡 Stacked, not on main | #514 |
+| A.9 | Income guided flow | 🟡 Stacked, not on main | #514 |
+| A.10 | Expenses guided flow | 🟡 Stacked, not on main | #514 |
+| A.11 | Investments guided flow | 🟡 Stacked, not on main | #514 |
+| A.12 | Loans guided flow | 🟡 Stacked, not on main | #514 |
 
 ### Track B — `/onboarding` new wizard
 
 | Phase | Description | Status | PR |
 |---|---|---|---|
-| B.0 | Route scaffolding + layout | ⬜ | — |
-| B.1 | Wizard shell + design system (~11 files) | ⬜ | — |
-| B.2 | Step 0: Welcome | ⬜ | — |
-| B.3 | Step 1: Household | ⬜ | — |
-| B.4 | Step 2: Income | ⬜ | — |
-| B.5 | Step 3: Housing | ⬜ | — |
-| B.6 | Step 4: Expenses (optional) | ⬜ | — |
-| B.7 | Step 5: Goal (optional) | ⬜ | — |
-| B.8 | Step 6: Final Reveal | ⬜ | — |
+| B.0 | Route scaffolding + layout | ✅ Merged | #515 |
+| B.1 | Wizard shell + design system (~11 files) | ✅ Merged | #515 |
+| B.2 | Step 0: Welcome | ✅ Merged | #515 |
+| B.3 | Step 1: Household | ✅ Merged | #520 (rescue PR; original #516 was stacked) |
+| B.4 | Step 2: Income | ✅ Merged | #520 |
+| B.5 | Step 3: Housing | ✅ Merged | #520 |
+| B.6 | Step 4: Expenses (optional) | ✅ Merged | #520 |
+| B.7 | Step 5: Goal (optional) | ✅ Merged | #520 |
+| B.8 | Step 6: Final Reveal | ✅ Merged | #520 (rescue PR; original #517 was stacked) |
+| B.x — auth header fix | Add `Authorization: Bearer ${token}` to all 6 step fetches | ✅ Merged | #521 |
 
 ### Track C — Integration + legacy cleanup
 
 | Phase | Description | Status | PR |
 |---|---|---|---|
-| C.0 | Welcome modal CTA → `/onboarding` | ⬜ | — |
-| C.1 | Resume banner + auto-redirect routing | ⬜ | — |
-| C.2 | Legacy `WizardContainer` deletion (⏸ paused until D.0 green) | ⬜ | — |
+| C.0 | Welcome modal CTA → `/onboarding` | ✅ Merged | #518 |
+| C.1 | Resume banner + auto-redirect routing | ✅ Merged | #518 |
+| C.2 | Legacy `WizardContainer` deletion (⏸ paused until D.0 green) | ⏸ Paused | — |
 
 ### Track D — Design QA
 
 | Phase | Description | Status | PR |
 |---|---|---|---|
-| D.0 | §10.6 design quality audit + `docs/quality/PHASE_12_DESIGN_AUDIT.md` | ⬜ | — |
+| D.0 | §10.6 design quality audit + `docs/quality/PHASE_12_DESIGN_AUDIT.md` | ✅ Doc merged (audit walkthrough not yet performed) | #519 |
 
 ### Summary bar
 
 ```
-Total phases:  26
-Completed:     0
-In progress:   0
-Blocked:       0 (C.2 blocked on D.0)
-Not started:   26
+Total phases:        26 (+1 hotfix B.x — auth header)
+On main:             19 (A.0–A.5, B.0–B.8, B.x, C.0–C.1, D.0 doc)
+Stacked, not on main: 7 (A.6–A.12 guided flows — #514 orphaned)
+Paused:               1 (C.2 — blocks on D.0 audit walkthrough sign-off)
+Open incident:        1 (data loss reported 2026-04-15, root cause TBD — see §11 R11)
 ```
+
+### Outstanding work
+
+1. **Resolve #514 stacked-PR orphan** — Track A.6–A.12 (`GuidedEntryModal` + 6 guided flows) was merged into a stacked parent branch instead of `main`, same way #516/#517 were. A rescue PR (similar pattern to #520) needs to bring those 7 phases onto `main`.
+2. **Data loss incident triage** — see §11 R11. Halt all code work until root cause established and recovery path confirmed.
+3. **Audit walkthrough (D.0)** — Reza walks the 4 paths in `docs/quality/PHASE_12_DESIGN_AUDIT.md` end-to-end and signs off in §9, which unblocks Track C.2 cleanup.
+4. **Track C.2 legacy cleanup** — paused until D.0 sign-off.
 
 ---
 
@@ -1260,6 +1270,16 @@ Not started:   26
 |---|---|---|
 | 2026-04-15 | **Plan created.** Twin-track architecture locked in per directive 2026-04-15. Q1–Q11 decisions documented in §2. Q12 (Final Reveal) defaulted to "yes". Option A source enum chosen in §3. Tracks A–D defined in §4–§7. §10 design standards carried over from the prior linear-wizard plan and made binding. | Claude |
 | 2026-04-15 | **Archive:** `docs/blueprint/PHASE_12_REDESIGN_V3.md` moved to `docs/archive/blueprint/` with a SUPERSEDED banner explaining what still applies (Phase A bug fixes, Phase B foundation pipeline, Phase C components, Gemini deferral) vs what was reverted (SetupTray in DashboardLayout chrome, /dashboard isEmpty replacement, NEXT_PUBLIC_ONBOARDING_V3 default flip, Phase G wholesale cleanup). | Claude |
+| 2026-04-15 | **Track A.0 merged (#511).** Prisma schema migration: `EntrySource` enum + `source` column on 9 financial models (Account, Property, Loan, Income, Expense, InvestmentAccount, SuperannuationAccount, Asset, HouseholdProfile). Strictly additive — `NOT NULL DEFAULT 'MANUAL'` on every column, no `DROP`, no `DELETE`, no `UPDATE`. Migration SQL at `prisma/migrations/1_add_entry_source_enum/migration.sql`. Caught one bug pre-commit: `Income` table maps to `"income"` (singular), not `"incomes"`. | Claude |
+| 2026-04-15 | **Track A.1 merged (#512).** `setupStateService` extended with per-module Missing/Estimated/Verified progress. New types: `ModuleKey`, `ModuleState`, `ModuleProgress`. New exports: `buildModuleProgress(userId)` (12 parallel `prisma.count()` calls — 6 modules × 2 counts), `computeModuleProgress(...)` (5-tier percent heuristic). `SetupStateResult.moduleProgress` field added. `useSetupState` hook mirrors the new types and exposes `moduleProgress` to consumers. Pure additive — no breaking changes to existing consumers. | Claude |
+| 2026-04-15 | **Track A.2–A.5 merged (#513).** Visual refinements to `/dashboard/setup`: new `<SetupNextActionPanel />` component (one recommended next action via deterministic priority chain), card prioritisation (one primary tile, 2-3 secondary, rest dimmed), Why-This-Matters copy line on each tile, confidence state badges (Estimated amber / Verified emerald / Missing none). All driven by `useSetupState().moduleProgress`. The 6 concrete tile components (`PropertiesEmptyState`, etc.) gained `priority` + `confidenceState` props forwarded to `EmptyStateTile`. | Claude |
+| 2026-04-15 | **Track A.6–A.12 stacked, NOT on main (#514 orphaned).** `GuidedEntryModal` shell + 6 per-module guided flows (Accounts, Properties, Income, Expenses, Investments, Loans) shipped as PR #514, but the PR was based on the #513 branch and merged into that branch instead of `main`. Same stacked-PR issue that later affected #516/#517. **A rescue PR similar to #520 is required to bring these onto main.** Tracked as outstanding work in §13. | Claude |
+| 2026-04-15 | **Track B.0–B.2 merged (#515).** New `/onboarding` top-level route with hybrid chrome (top bar + Monitrax logotype + Exit, no sidebar, full-height centered). Wizard shell + design system: `LinearStepShell`, `LinearInput`, `LinearFeedback`, `LinearProgressBar`, `LinearSegmented`, `LinearWizardContainer`, `useCountUp` hook, `linear-wizard.css` keyframes. Welcome step (B.2). Replaces the legacy `WizardContainer` page-mode at `app/onboarding/page.tsx`. Legacy wizard still reachable via `/dashboard?legacy=wizard`. | Claude |
+| 2026-04-15 | **Track C.0/C.1 merged (#518).** `DashboardLayout` rewired: `handleStartSetup` → `/onboarding` (was `/dashboard/setup`); `handleResumeBannerResume` → `/onboarding`; `/dashboard` auto-redirect for incomplete users → `/onboarding`. `handleResumeBannerStartOver` intentionally kept pointing at `/dashboard/setup` (opt-out path). | Claude |
+| 2026-04-15 | **Track D.0 doc merged (#519).** `docs/quality/PHASE_12_DESIGN_AUDIT.md` shipped — 287-line audit gate document with 4 walkthrough paths, §10 standards checklist, mobile matrix, CDR + perf checks, weakness register with P0/P1/P2 severity, sign-off section that gates Track C.2 cleanup. **The audit walkthrough has not yet been performed** — only the doc exists in the repo. | Claude |
+| 2026-04-15 | **Track B.3–B.8 merged via rescue PR (#520).** Originally shipped as #516 + #517 but those were stacked and merged into the parent branches instead of `main`. The rescue PR fast-forwards all 6 step components (HouseholdStep, IncomeStep, HousingStep, ExpensesStep, GoalStep, FinalRevealStep) + 6 API routes under `/api/onboarding/estimates/*` + the shared `onboardingEstimateService` onto `main`. **No new code in #520 — same commits as #516/#517, just retargeted.** | Claude |
+| 2026-04-15 | **Auth header hotfix merged (#521).** Bug discovered when user reported "Could not save. Please try again." on the Household step. Root cause: 6 wizard step component fetches were missing `Authorization: Bearer ${token}` header, so every `POST /api/onboarding/estimates/*` returned 401. Fix added `useAuth()` import and the missing header to `HouseholdStep`, `IncomeStep`, `HousingStep`, `ExpensesStep`, `GoalStep`, and `FinalRevealStep` (2 fetches: snapshot + complete). +47 / −14 lines. The Track A.6–A.12 guided flows likely have the same bug pattern but are not on main yet — requires the same fix once #514 is rescued. | Claude |
+| 2026-04-15 | **🚨 Data loss incident reported.** A user with prior data on Monitrax appears to have all data missing after the recent merges. Tracked as **R12** in §11. **All code work halted** until root cause is established and recovery path confirmed. Investigation steps: (1) confirm whether DB rows are actually gone vs not displayed (Prisma Studio direct query), (2) audit Vercel/deploy logs for migration commands (was it `prisma migrate deploy` or `prisma migrate reset`?), (3) check backup status and most recent good snapshot. The destructive `upsertHouseholdEstimate` (R11) is the most likely candidate from this plan's PRs but was gated by the auth bug in #521 — so timing is inconsistent unless data loss happened *after* #521 merged. | Claude |
 
 ---
 
