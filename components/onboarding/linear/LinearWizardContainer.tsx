@@ -35,6 +35,7 @@ import { IncomeStep } from '@/components/onboarding/linear/steps/IncomeStep';
 import { HousingStep } from '@/components/onboarding/linear/steps/HousingStep';
 import { ExpensesStep } from '@/components/onboarding/linear/steps/ExpensesStep';
 import { GoalStep } from '@/components/onboarding/linear/steps/GoalStep';
+import { FinalRevealStep } from '@/components/onboarding/linear/steps/FinalRevealStep';
 import '@/styles/linear-wizard.css';
 
 // =============================================================================
@@ -118,25 +119,7 @@ export function LinearWizardContainer({
       break;
     case 'reveal':
     default:
-      // Final Reveal placeholder — B.8 replaces this with the animated
-      // reveal screen in the next Track B PR.
-      stepContent = (
-        <section className="lw-step-enter mx-auto flex min-h-[60vh] w-full max-w-[520px] flex-col items-center justify-center gap-6 px-6 py-12 text-center sm:py-20">
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            You're all set
-          </h1>
-          <p className="text-base text-slate-600 dark:text-slate-400">
-            Final Reveal coming in the next PR (B.8). For now, head to
-            your dashboard to continue refining.
-          </p>
-          <a
-            href="/dashboard/setup"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 px-6 py-3 text-sm font-semibold text-white shadow-[0_20px_40px_-12px_rgba(99,102,241,0.5)]"
-          >
-            Continue setting up →
-          </a>
-        </section>
-      );
+      stepContent = <FinalRevealStep onBack={goBack} />;
   }
 
   return (
