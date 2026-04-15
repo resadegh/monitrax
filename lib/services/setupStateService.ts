@@ -57,11 +57,67 @@ export interface SetupTaskState {
   isDone: boolean;
 }
 
+// =============================================================================
+// PHASE 12 TWIN-TRACK (A.1) — PER-MODULE COMPLETION TRACKING
+// =============================================================================
+
 /**
- * The shape the future `/api/setup/state` route will return.
- * `tasks` is already ordered by the registry's priority ladder.
- * `progress` is precomputed so the client never has to re-walk the
- * list to render the meter.
+ * Canonical module keys that the refined `/dashboard/setup` page
+ * tracks. Maps 1:1 to the six tiles in `DashboardEmptyStateGrid`.
+ *
+ * Note: the directive §2.2 lists "Assets" generically — here we
+ * split it into `properties` and `investments` because the existing
+ * grid has those as separate tiles. The `Asset` Prisma model (cars,
+ * electronics, etc.) is not tracked separately in A.1; if it becomes
+ * a seventh tile in a future phase, add it to this union.
+ */
+export type ModuleKey =
+  | 'accounts'
+  | 'properties'
+  | 'income'
+  | 'expenses'
+  | 'investments'
+  | 'loans';
+
+/**
+ * Per-module completion state, derived from row counts split by
+ * `source === 'ONBOARDING'`:
+ *
+ *   - `Missing`   → no rows at all
+ *   - `Estimated` → at least one row, all of them written by the
+ *                   `/onboarding` wizard (source = ONBOARDING)
+ *   - `Verified`  → at least one row with source ≠ ONBOARDING
+ *                   (manual, basiq, import, calculated)
+ *
+ * The UI maps these to badge colours in §3.5 of the plan doc.
+ */
+export type ModuleState = 'Missing' | 'Estimated' | 'Verified';
+
+/**
+ * One row in the `moduleProgress` array of `SetupStateResult`.
+ * Consumed by the `<SetupTray />` extension (A.1) and by the
+ * `<DashboardEmptyStateGrid />` card prioritisation logic (A.3).
+ */
+export interface ModuleProgress {
+  module: ModuleKey;
+  state: ModuleState;
+  /** 0–100 integer, ready for direct UI rendering. */
+  percent: number;
+  rowCount: number;
+  estimatedCount: number;
+  verifiedCount: number;
+}
+
+/**
+ * The shape the `/api/setup/state` route returns.
+ *
+ * Phase B (original): `tasks` + `progress` for the Setup Tray checklist.
+ *
+ * Phase 12 twin-track (A.1): `moduleProgress` added as an additive
+ * field. Existing consumers (SetupTray component, useSetupState hook)
+ * ignore it — they read only `tasks` and `progress`. Track A.2+ reads
+ * `moduleProgress` to drive the SetupNextActionPanel, card
+ * prioritisation, and confidence badges.
  */
 export interface SetupStateResult {
   tasks: SetupTaskState[];
@@ -72,6 +128,12 @@ export interface SetupStateResult {
     percent: number;
     allDone: boolean;
   };
+  /**
+   * Per-module Missing/Estimated/Verified state. Added by A.1 for
+   * the `/dashboard/setup` refinement work. One entry per entry in
+   * the `ModuleKey` union.
+   */
+  moduleProgress: ModuleProgress[];
 }
 
 // =============================================================================
@@ -80,17 +142,26 @@ export interface SetupStateResult {
 
 /**
  * Builds the full setup task state for a user. Returns the ordered
- * task list with per-task completion flags and a progress summary.
+ * task list with per-task completion flags, a progress summary,
+ * and (A.1) per-module Missing/Estimated/Verified progress.
  *
  * Throws if the master snapshot fetch fails — callers (route handlers)
  * are responsible for catching and converting to the standard
  * `{ success, error }` response envelope (CLAUDE.md §6.6).
+ *
+ * Phase 12 twin-track (A.1): `buildSetupTaskContext` and
+ * `buildModuleProgress` run in parallel at the top level so the
+ * new per-module queries do not add latency on top of the existing
+ * flag signals. All DB reads complete in a single round-trip wait.
  */
 export async function getSetupState(userId: string): Promise<SetupStateResult> {
-  const ctx = await buildSetupTaskContext(userId);
+  const [ctx, moduleProgress] = await Promise.all([
+    buildSetupTaskContext(userId),
+    buildModuleProgress(userId),
+  ]);
   const tasks = computeSetupTaskState(ctx);
   const progress = getSetupProgress(ctx);
-  return { tasks, progress };
+  return { tasks, progress, moduleProgress };
 }
 
 /**
@@ -163,4 +234,115 @@ async function countHouseholdMembers(userId: string): Promise<number> {
       },
     },
   });
+}
+
+// =============================================================================
+// PHASE 12 TWIN-TRACK (A.1) — MODULE PROGRESS QUERIES
+// =============================================================================
+
+/**
+ * Builds the per-module progress list by counting rows in each of
+ * the six financial entity tables, splitting counts by
+ * `source === 'ONBOARDING'` so the UI can distinguish Estimated
+ * (wizard-written) from Verified (manual/bank/import/calculated).
+ *
+ * All 12 queries run in a single `Promise.all` for minimum latency
+ * (6 modules × 2 counts each = 12 simple `prisma.*.count` calls,
+ * each using an indexed `{ userId }` where clause).
+ *
+ * Returns one `ModuleProgress` entry per `ModuleKey`, in the same
+ * order as the `DashboardEmptyStateGrid` tiles for predictable
+ * consumption by Track A.3 (card prioritisation).
+ */
+export async function buildModuleProgress(userId: string): Promise<ModuleProgress[]> {
+  const [
+    accountsAll, accountsEst,
+    propertiesAll, propertiesEst,
+    incomeAll, incomeEst,
+    expensesAll, expensesEst,
+    investmentsAll, investmentsEst,
+    loansAll, loansEst,
+  ] = await Promise.all([
+    prisma.account.count({ where: { userId } }),
+    prisma.account.count({ where: { userId, source: 'ONBOARDING' } }),
+    prisma.property.count({ where: { userId } }),
+    prisma.property.count({ where: { userId, source: 'ONBOARDING' } }),
+    prisma.income.count({ where: { userId } }),
+    prisma.income.count({ where: { userId, source: 'ONBOARDING' } }),
+    prisma.expense.count({ where: { userId } }),
+    prisma.expense.count({ where: { userId, source: 'ONBOARDING' } }),
+    prisma.investmentAccount.count({ where: { userId } }),
+    prisma.investmentAccount.count({ where: { userId, source: 'ONBOARDING' } }),
+    prisma.loan.count({ where: { userId } }),
+    prisma.loan.count({ where: { userId, source: 'ONBOARDING' } }),
+  ]);
+
+  return [
+    computeModuleProgress('accounts', accountsAll, accountsEst),
+    computeModuleProgress('properties', propertiesAll, propertiesEst),
+    computeModuleProgress('income', incomeAll, incomeEst),
+    computeModuleProgress('expenses', expensesAll, expensesEst),
+    computeModuleProgress('investments', investmentsAll, investmentsEst),
+    computeModuleProgress('loans', loansAll, loansEst),
+  ];
+}
+
+/**
+ * Pure helper: derives `state` and `percent` from raw row counts.
+ *
+ * State rules:
+ *   - `total === 0`                    → Missing
+ *   - `verified === 0 && total > 0`    → Estimated (all rows came from the wizard)
+ *   - `verified >= 1`                  → Verified (at least one real entry)
+ *
+ * Percent heuristic (kept deliberately simple per plan §4.2 A.1):
+ *   - Missing                          → 0%
+ *   - Estimated only                   → 25% (rough first row, not yet verified)
+ *   - 1 verified row                   → 50%
+ *   - 2 verified rows                  → 75%
+ *   - 3+ verified rows                 → 100%
+ *
+ * The heuristic is not meant to be mathematically precise — it
+ * exists to give the Setup Tray progress bar something to render
+ * and to give the Next-Best-Action panel a signal for
+ * prioritisation. Future phases may replace this with a more
+ * nuanced scoring function.
+ */
+export function computeModuleProgress(
+  module: ModuleKey,
+  total: number,
+  estimated: number
+): ModuleProgress {
+  const verified = total - estimated;
+
+  let state: ModuleState;
+  if (total === 0) {
+    state = 'Missing';
+  } else if (verified === 0) {
+    state = 'Estimated';
+  } else {
+    state = 'Verified';
+  }
+
+  let percent: number;
+  if (total === 0) {
+    percent = 0;
+  } else if (verified === 0) {
+    percent = 25;
+  } else if (verified === 1) {
+    percent = 50;
+  } else if (verified === 2) {
+    percent = 75;
+  } else {
+    percent = 100;
+  }
+
+  return {
+    module,
+    state,
+    percent,
+    rowCount: total,
+    estimatedCount: estimated,
+    verifiedCount: verified,
+  };
 }
