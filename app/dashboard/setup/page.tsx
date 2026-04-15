@@ -56,6 +56,10 @@ import { PageHeader } from '@/components/PageHeader';
 import { BasiqHeroCard } from '@/components/dashboard/BasiqHeroCard';
 import { DashboardEmptyStateGrid } from '@/components/dashboard/DashboardEmptyStateGrid';
 import SetupTray from '@/components/setup/SetupTray';
+// Phase 12 twin-track (A.2): top-of-page one-recommended-action panel.
+// Reads moduleProgress from useSetupState and renders the single
+// highest-leverage next step based on the Missing/Estimated state.
+import { SetupNextActionPanel } from '@/components/setup/SetupNextActionPanel';
 
 export default function DashboardSetupPage() {
   return (
@@ -67,6 +71,12 @@ export default function DashboardSetupPage() {
         />
 
         <div className="mt-6 space-y-6">
+          {/* Phase 12 twin-track (A.2) — one recommended next action
+              at the top of the setup page. Computes the highest-
+              leverage action from moduleProgress and routes to the
+              same href as the matching Setup Tray task (SSOT). */}
+          <SetupNextActionPanel />
+
           {/* Phase 12 v3 §2.3 — Basiq hero. Full-width top-of-page
               connection card. Auto-hides once the connect-bank task
               flips to isDone, so users who have already connected a
