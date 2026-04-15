@@ -829,6 +829,9 @@ model Income {
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
+  // Phase 12 twin-track: row provenance for Estimated/Verified UI
+  source                EntrySource       @default(MANUAL)
+
   // Relationships
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   property          Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
@@ -872,6 +875,9 @@ model Expense {
 
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
+
+  // Phase 12 twin-track: row provenance for Estimated/Verified UI
+  source                EntrySource        @default(MANUAL)
 
   // Relationships
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1085,6 +1091,9 @@ model InvestmentAccount {
 
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
+
+  // Phase 12 twin-track: row provenance for Estimated/Verified UI
+  source       EntrySource           @default(MANUAL)
 
   // Relationships
   user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
