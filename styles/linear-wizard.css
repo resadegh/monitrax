@@ -1,0 +1,91 @@
+/**
+ * Linear Wizard animation keyframes — Phase 12 Track B (B.1)
+ *
+ * Animation vocabulary for the /onboarding wizard. Pure CSS — no
+ * JavaScript timing loops, no external libraries. Every animation
+ * respects `prefers-reduced-motion: reduce` via the wrapping
+ * `@media` block.
+ *
+ * Values align with §8.2 of the twin-track plan:
+ *   - Step transitions: 280ms fade + vertical slide
+ *   - Ease-out cubic (no bounce)
+ *   - Hero reveal: longer, staggered
+ */
+
+/* =============================================================== */
+/* Step transitions (fade + vertical slide) */
+/* =============================================================== */
+
+@keyframes lw-step-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lw-step-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.lw-step-enter {
+  animation: lw-step-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.lw-step-exit {
+  animation: lw-step-exit 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+/* =============================================================== */
+/* Final Reveal — larger, staggered entry for the hero metrics */
+/* =============================================================== */
+
+@keyframes lw-hero-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.lw-hero-reveal {
+  animation: lw-hero-reveal 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.lw-hero-reveal-delay-1 {
+  animation-delay: 200ms;
+}
+.lw-hero-reveal-delay-2 {
+  animation-delay: 400ms;
+}
+.lw-hero-reveal-delay-3 {
+  animation-delay: 600ms;
+}
+
+/* =============================================================== */
+/* Reduced motion — disable every animation */
+/* =============================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .lw-step-enter,
+  .lw-step-exit,
+  .lw-hero-reveal {
+    animation: none;
+  }
+}
