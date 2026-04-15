@@ -101,4 +101,115 @@ already built on `/dashboard/setup` is preserved:
 
 ---
 
-*§2 onwards in the next chunk. Committing this file now to keep turns small and avoid stream idle timeouts.*
+## 2. Decisions Locked In
+
+All 11 Q&A from the audit turn, confirmed by user approval
+2026-04-15. These are not re-openable without an explicit
+direction change in this document's changelog.
+
+| # | Decision | Answer | Why |
+|---|---|---|---|
+| **Q1** | Schema strategy for estimated data | **Option A — single `EntrySource` enum column per financial entity** | Minimal migration, solves 80% of the spec, does not preclude future dual-field upgrade. Aligns with existing `Account.balanceSource` pattern. |
+| **Q2** | Fate of `/dashboard/setup` and its v3 components | **KEEP and extend** — do not delete any component built in Phases B–E | Per directive: extend, not rebuild. The dashboard setup page is the refinement workbench, not onboarding. |
+| **Q3** | Fate of legacy `WizardContainer` and 10 step files | **Delete after new `/onboarding` wizard validates** | Avoids duplicate flows. Kept reachable via `/dashboard?legacy=wizard` escape hatch until Track C.2 cleanup. |
+| **Q4** | Route for the new wizard | **`/onboarding`** (top-level, not nested under `/dashboard`) | Per directive §3. Top-level route signals "this is a separate experience from the dashboard workbench". |
+| **Q5** | Resume UX for users who quit mid-wizard | **Silent resume on the last step they completed** | Reads from `User.onboardingStep` + `UserPreference.onboardingDraft`. No "do you want to resume?" modal — just pick up where they left off. |
+| **Q6** | Immediate feedback implementation | **Commit to DB after each step → re-fetch snapshot → show real number** | Correct per CLAUDE.md §12.2 (all financial calculations through `masterFinancialService`). ~200ms round-trip is acceptable for the narrative pace. |
+| **Q7** | Gemini "Need help?" in the first ship | **Deferred** — ship core wizard first, Gemini help as a follow-up once core is proven | Per directive §4, AI assistant is a placeholder, modular, not required to fully implement yet. |
+| **Q8** | Final Reveal insight copy | **Simple math** (`monthlyCashflow * 12`) — no Gemini, no insight engine | The spec text gives a literal template. Simpler is better. |
+| **Q9** | Assets step on the wizard | **Removed from wizard**. The directive's data collection list (household, income, housing, expenses, goal) does not include assets. Assets are captured on `/dashboard/setup` instead. | Directive §3.3 simplified the wizard to 5 data fields. Housing is a single own/rent/family picker, not a property entry. |
+| **Q10** | Fate of `<OnboardingWelcomeModal>` | **Keep** — becomes the greeting beat before routing to `/onboarding` | Existing modal is polished, dismisses-once. Still the right first-contact moment before the wizard begins. |
+| **Q11** | Wizard layout chrome | **Hybrid** — top bar with logotype + progress bar + exit button, no sidebar, full-height centered content | Stripe-style. Gives §10.4 "moment" focus without violating §10.5 "feels integrated". |
+
+### 2.1 One additional decision (made by default)
+
+| # | Decision | Default | Rationale |
+|---|---|---|---|
+| **Q12** | Does the `/onboarding` wizard have a Final Reveal before redirecting to `/dashboard/setup`? | **Yes — Step 6 Final Reveal with animated net worth + monthly savings + health grade, then a "Continue setting up →" CTA that routes to `/dashboard/setup`** | §10.4 identifies the Final Reveal as "the most important moment". Without it, the wizard feels like data harvesting. Overridable by removing Track B phase B.8 if user rejects in review. |
+
+---
+
+## 3. Data Model Strategy — Option A (Source Enum)
+
+### 3.1 Why Option A
+
+The directive requires onboarding data to be stored as **estimated**
+(low confidence, refinable later) without overwriting real financial
+tables. The cleanest way to do this with a minimal migration is to
+add a single enum column to each financial entity tracking where
+the row came from.
+
+**Option A is the minimal viable schema change** that satisfies:
+
+- The directive's "store as estimated, mark with low confidence, allow refinement later" rule
+- CLAUDE.md §12.2 "no parallel data structures" — estimates live in the same tables as verified data
+- `masterFinancialService` continues to work unchanged — it aggregates all rows regardless of source
+- UI can render an "Estimated" badge wherever `source === 'ONBOARDING'`
+
+### 3.2 The `EntrySource` enum
+
+```prisma
+enum EntrySource {
+  ONBOARDING   // written by the /onboarding wizard (estimated, low confidence)
+  MANUAL       // written by the user via /dashboard/setup or entity dialogs (verified)
+  BASIQ        // imported from Basiq Open Banking (verified)
+  IMPORT       // imported from CSV/OFX/QIF (verified)
+  CALCULATED   // derived by a system engine (verified, read-only from the user's perspective)
+}
+```
+
+### 3.3 Where the enum lives
+
+Added as a single column `source EntrySource @default(MANUAL)` to
+each of these Prisma models:
+
+| Model | File | Default | Notes |
+|---|---|---|---|
+| `Account` | `prisma/schema.prisma` | `MANUAL` | Already has `balanceSource` — `source` is **different**: `balanceSource` tracks provenance of the balance value, `source` tracks provenance of the entire row. Both coexist. |
+| `Income` | `prisma/schema.prisma` | `MANUAL` | |
+| `Expense` | `prisma/schema.prisma` | `MANUAL` | |
+| `Loan` | `prisma/schema.prisma` | `MANUAL` | |
+| `Property` | `prisma/schema.prisma` | `MANUAL` | |
+| `InvestmentAccount` | `prisma/schema.prisma` | `MANUAL` | |
+| `SuperannuationAccount` | `prisma/schema.prisma` | `MANUAL` | |
+| `Asset` | `prisma/schema.prisma` | `MANUAL` | |
+| `HouseholdProfile` | `prisma/schema.prisma` | `MANUAL` | |
+
+### 3.4 Backfill plan
+
+All existing rows default to `source: MANUAL`. This is safe
+because every pre-migration row was written through the existing
+manual-entry paths (wizard `bulk-create` or per-entity dialogs).
+No row was ever written by an `/onboarding` wizard, so defaulting
+to `MANUAL` accurately reflects the historical state.
+
+### 3.5 Confidence UI mapping
+
+The UI layer maps the enum to a display state without storing a
+separate `confidence` field:
+
+| `source` value | UI state | Badge label | Badge colour |
+|---|---|---|---|
+| `ONBOARDING` | **Estimated** | "Estimated" | Amber (warning accent) |
+| `MANUAL` | **Verified** | — (no badge) | — |
+| `BASIQ` | **Verified** | "Bank-synced" | Emerald |
+| `IMPORT` | **Verified** | "Imported" | Slate |
+| `CALCULATED` | **Verified** | — (no badge) | — |
+
+For a module where **no rows exist yet**, the setup tile displays
+the **Missing** state directly from the zero row count — no enum
+value needed.
+
+### 3.6 Future escalation path
+
+If reconciliation between estimated and verified values becomes
+necessary (e.g. showing "Estimated $5,000/mo · Bank-synced
+$4,832/mo" side by side), this can be added later by introducing
+a `estimatedAmount` column alongside the existing `amount` column
+on Income / Expense / etc. Option A does not preclude this
+evolution — it is a minimal foundation that a future PR can build
+on without rework.
+
+---
+
+*§4 Track A onwards in the next chunk.*
