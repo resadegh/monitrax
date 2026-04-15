@@ -213,8 +213,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [shouldShowWelcome, pathname, showWizard]);
 
-  // Phase 12 v3: auto-route incomplete users from /dashboard to the
-  // dedicated /dashboard/setup page. Triggers only when:
+  // Phase 12 twin-track (C.1): auto-route incomplete users from
+  // /dashboard to the new /onboarding wizard. Triggers only when:
   //   • the user is on /dashboard (not a sub-page — we never redirect
   //     from /dashboard/properties, /dashboard/accounts, etc.),
   //   • onboardingState has loaded (not null),
@@ -227,10 +227,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   //
   // Truly fresh users (no draft, no dismiss flag) still see the
   // welcome modal first, click "Start setup", and land on the same
-  // setup page via handleStartSetup. This effect only covers the
-  // "returning incomplete user" case where the welcome modal has
-  // already been dismissed and the resume banner used to be the
-  // only affordance pointing at onboarding.
+  // wizard via handleStartSetup. This effect covers the "returning
+  // incomplete user" case where the welcome modal has already been
+  // dismissed. Users who opt out of the wizard entirely go to
+  // /dashboard/setup via the "Start over" button (which clears the
+  // draft) and the auto-redirect respects hasExistingData.
   useEffect(() => {
     if (pathname !== '/dashboard') return;
     if (!onboardingState) return;
@@ -251,20 +252,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       onboardingState.draft !== null && onboardingState.draft !== undefined;
 
     if (hasDismissedWelcome || hasSavedDraft) {
-      router.push('/dashboard/setup');
+      router.push('/onboarding');
     }
   }, [pathname, onboardingState, router]);
 
   // Onboarding handlers - all wrapped in try-catch to work even if DB not migrated
   //
-  // Phase 12 v3: handleStartSetup now routes to the new /dashboard/setup
-  // page instead of opening the legacy WizardContainer modal. The setup
-  // page hosts the §2 v3 experience (Setup Tray + Basiq hero + empty-
-  // state tile grid) as a dedicated surface — the main /dashboard page
-  // is left untouched for users who already have data. The legacy
-  // wizard remains reachable via /dashboard?legacy=wizard for support
-  // and QA until Phase G deletes it. See PHASE_12_REDESIGN_V3.md §2.1
-  // and §5 for the architectural pivot.
+  // Phase 12 twin-track (C.0): handleStartSetup routes to the new
+  // /onboarding linear wizard (Track B). The wizard is the first-time
+  // discovery experience; /dashboard/setup is the refinement engine
+  // that users land on AFTER the wizard completes. The legacy
+  // WizardContainer remains reachable via /dashboard?legacy=wizard
+  // for support and QA until Track C.2 deletes it.
   const handleStartSetup = useCallback(async () => {
     setShowWelcomeModal(false);
     try {
@@ -272,7 +271,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } catch (e) {
       console.warn('Could not save onboarding state:', e);
     }
-    router.push('/dashboard/setup');
+    router.push('/onboarding');
   }, [startOnboarding, router]);
 
   const handleTakeTour = useCallback(() => {
@@ -374,17 +373,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     [saveDraft]
   );
 
-  // Phase 12 v3: Resume banner actions now route to /dashboard/setup
-  // instead of opening the legacy WizardContainer modal. The setup
-  // page is the canonical entry point for any incomplete onboarding —
-  // there is no wizard modal in the v3 flow. Clicking Resume jumps
-  // straight to the setup page with the draft already hydrated via
-  // useSetupState. Start over clears the draft AND routes to the
-  // setup page so the user lands on a fresh checklist. The legacy
-  // wizard remains reachable via /dashboard?legacy=wizard for
-  // support/QA until Phase G cleanup deletes it.
+  // Phase 12 twin-track (C.1): Resume banner Resume routes to the
+  // new /onboarding wizard (Track B) so the user can pick up where
+  // they left off. Start over clears the draft AND routes to
+  // /dashboard/setup (bypassing the wizard entirely — starting over
+  // means the user is opting out of the first-time wizard and going
+  // straight to the refinement engine).
   const handleResumeBannerResume = useCallback(() => {
-    router.push('/dashboard/setup');
+    router.push('/onboarding');
   }, [router]);
   const handleResumeBannerStartOver = useCallback(async () => {
     try {
