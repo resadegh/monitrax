@@ -212,4 +212,225 @@ on without rework.
 
 ---
 
-*§4 Track A onwards in the next chunk.*
+## 4. Track A — `/dashboard/setup` Refinement
+
+**Goal**: transform the existing `/dashboard/setup` page into a
+"Guided Financial Setup Engine" without rebuilding any of its
+components. Every phase is additive or extension-only. No
+component deletions, no layout rewrites, no routing changes.
+
+### 4.1 Scope — what changes, what doesn't
+
+**Changes (additive/extension only):**
+- New component `<SetupNextActionPanel />` above the existing layout
+- Extended `setupStateService` → renamed to `SetupProgressService` with per-module Missing/Estimated/Verified logic
+- New visual states on `<EmptyStateTile />`: priority (primary/secondary/dimmed), confidence badge
+- New copy on each tile: Why-This-Matters line
+- New `<GuidedEntryModal />` shell + 6 per-module guided flows
+- Existing tile CTAs rewired: instead of deep-linking to `/dashboard/{module}?action=add`, they open the new guided modal
+
+**Does NOT change:**
+- Page routing (`app/dashboard/setup/page.tsx` stays)
+- Existing component files (edits only, no deletions)
+- Existing data model beyond the §3 schema addition
+- Welcome modal behaviour
+- Resume banner (handled in Track C)
+
+### 4.2 Phase breakdown — A.0 to A.12
+
+Each phase = 1 file (or occasional 2-file coordinated change) = 1 commit = 1 PR. Same rhythm as Phases A–F earlier.
+
+#### A.0 — Prisma schema migration (blocking prerequisite)
+
+**Scope**: 1 file (`prisma/schema.prisma`) + auto-generated migration.
+**Blocks**: every A.* and B.* phase that writes data.
+**Deliverables**:
+- Add `enum EntrySource { ONBOARDING | MANUAL | BASIQ | IMPORT | CALCULATED }`
+- Add `source EntrySource @default(MANUAL)` column to: Account, Income, Expense, Loan, Property, InvestmentAccount, SuperannuationAccount, Asset, HouseholdProfile
+- Run `prisma migrate dev --name add_entry_source_enum` to generate migration SQL
+- Backfill is a no-op (defaults to MANUAL)
+
+**Risk**: medium. Prisma migrations are hard to reverse. Tagged pre-migration commit for rollback.
+
+#### A.1 — SetupProgressService extension
+
+**Scope**: 2 files (`lib/services/setupStateService.ts` + `lib/setup/tasks.ts`).
+**Depends on**: A.0.
+**Deliverables**:
+- Rename `setupStateService` → `SetupProgressService` (or add new exports alongside existing ones to avoid breaking callers)
+- New return type: `ModuleProgress` per module with fields `{ module, state: 'Missing' | 'Estimated' | 'Verified', percent: number, rowCount: number, estimatedCount: number, verifiedCount: number }`
+- Aggregation rules per module:
+  - **Missing** = `rowCount === 0`
+  - **Estimated** = `rowCount > 0 && estimatedCount > 0 && verifiedCount === 0`
+  - **Verified** = `verifiedCount > 0` (any verified row flips the module to Verified)
+- Percent calculation: simple heuristic based on `rowCount` relative to module-specific target (e.g. Accounts target = 1+, Income target = 1+, etc.) — first row takes the module to 50%, additional rows approach 100%
+- Backward compatible: existing `SetupTray` consumers continue to work
+
+#### A.2 — SetupNextActionPanel component
+
+**Scope**: 2 files (new `components/setup/SetupNextActionPanel.tsx` + mount in `app/dashboard/setup/page.tsx`).
+**Depends on**: A.1.
+**Deliverables**:
+- New `<SetupNextActionPanel />` presentational component
+- Consumes `useSetupState()` (extended by A.1)
+- Computes the one recommended next action using a deterministic rule:
+  1. If no Basiq connection AND no accounts → "Connect your bank" (highest leverage)
+  2. Else if Accounts is Missing → "Add your first account"
+  3. Else if Income is Missing → "Add your income sources"
+  4. Else if Expenses is Missing → "Add your expenses"
+  5. Else if any module is Estimated → "Refine your {module} estimates with real data"
+  6. Else "All set — your dashboard is ready"
+- Prominent card with single CTA, opens the relevant guided flow (from A.7–A.12)
+- Mounted at the TOP of `/dashboard/setup` above existing components
+
+#### A.3 — Card prioritisation visual states
+
+**Scope**: 1 file (`components/dashboard/DashboardEmptyStateGrid.tsx`) + small prop addition to `EmptyStateTile.tsx`.
+**Depends on**: A.1, A.2.
+**Deliverables**:
+- New `priority` prop on `<EmptyStateTile />`: `'primary' | 'secondary' | 'dimmed'`
+- Grid computes per-tile priority from the SetupNextActionPanel's rule:
+  - **Primary (1 tile)** — matches the SetupNextActionPanel recommendation
+  - **Secondary (2–3 tiles)** — next in the priority chain
+  - **Dimmed** — rest
+- Visual treatment:
+  - Primary: gradient border, elevated shadow, larger CTA, subtle blue glow
+  - Secondary: default styling (unchanged from current)
+  - Dimmed: `opacity-60`, smaller font, reduced contrast
+
+#### A.4 — Why-This-Matters copy layer
+
+**Scope**: 1 file (update tile copy map in `DashboardEmptyStateGrid.tsx`).
+**Depends on**: A.3.
+**Deliverables**:
+- Add a `whyThisMatters` field to each tile's copy entry
+- New `<EmptyStateTile />` prop: `whyThisMatters?: string`
+- Renders as a small muted line below the subtitle with a `→` prefix
+
+**Example copy**:
+- Accounts → "See your complete cash position across all institutions"
+- Properties → "Unlock equity, LVR, and real-time net worth"
+- Income → "Calculate your real savings rate"
+- Expenses → "Track your burn and find leaks"
+- Investments → "See your portfolio performance"
+- Loans → "Track debt-quality scoring and refinance opportunities"
+
+#### A.5 — Confidence state badges
+
+**Scope**: 1 file (`components/dashboard/EmptyStateTile.tsx`).
+**Depends on**: A.1, A.3.
+**Deliverables**:
+- New `confidenceState` prop on `<EmptyStateTile />`: `'Missing' | 'Estimated' | 'Verified'`
+- Renders a small badge in the top-right corner of the tile:
+  - Missing: no badge (default visual)
+  - Estimated: amber badge "Estimated"
+  - Verified: emerald badge "Verified"
+- Grid wires `confidenceState` from `SetupProgressService` output
+
+#### A.6 — GuidedEntryModal shell primitive
+
+**Scope**: 1 new file (`components/setup/GuidedEntryModal.tsx`).
+**Depends on**: —
+**Deliverables**:
+- New `<GuidedEntryModal />` presentational shell
+- Props: `open`, `onClose`, `title`, `steps: GuidedEntryStep[]`, `onComplete`
+- Step-based multi-screen modal (same UX as the `/onboarding` wizard but smaller, modal-sized)
+- Internal state machine for step index, back/next navigation, submit
+- Consistent with `/onboarding` wizard design language (see §8 design standards)
+- Mobile-responsive (modal goes full-screen on mobile)
+
+**This is the shell**. The per-module flows (A.7–A.12) plug into it.
+
+#### A.7 — Accounts guided flow
+
+**Scope**: 1 new file (`components/setup/guided/AccountsGuidedFlow.tsx`).
+**Depends on**: A.6.
+**Deliverables**:
+- Composes `<GuidedEntryModal />` with 2–3 steps:
+  1. Connect bank (Basiq) OR Manual entry choice
+  2. If manual: account type + institution + balance
+  3. Confirm and save
+- Writes directly to `/api/accounts` (existing endpoint) with `source: MANUAL`
+- Rewires the Accounts tile's primary CTA to open this modal instead of deep-linking
+
+#### A.8 — Properties guided flow
+
+**Scope**: 1 new file (`components/setup/guided/PropertiesGuidedFlow.tsx`).
+**Depends on**: A.6.
+**Deliverables**:
+- Composes `<GuidedEntryModal />` with steps:
+  1. Property type (Primary / Investment)
+  2. Address (optional)
+  3. Current value (rough OK)
+  4. Loan toggle + minimal loan fields if yes
+- Writes to `/api/properties` + `/api/loans` with `source: MANUAL`
+- Rewires the Properties tile CTA
+
+#### A.9 — Income guided flow
+
+**Scope**: 1 new file (`components/setup/guided/IncomeGuidedFlow.tsx`).
+**Depends on**: A.6.
+**Deliverables**:
+- Steps:
+  1. Income type (Salary / Rental / Other)
+  2. Amount + frequency
+  3. Optional name/description
+- Writes to `/api/income` with `source: MANUAL`
+
+#### A.10 — Expenses guided flow
+
+**Scope**: 1 new file (`components/setup/guided/ExpensesGuidedFlow.tsx`).
+**Depends on**: A.6.
+**Deliverables**:
+- Steps:
+  1. Expense category picker
+  2. Amount + frequency
+  3. Optional name/description
+- Writes to `/api/expenses` with `source: MANUAL`
+
+#### A.11 — Investments guided flow
+
+**Scope**: 1 new file (`components/setup/guided/InvestmentsGuidedFlow.tsx`).
+**Depends on**: A.6.
+**Deliverables**:
+- Steps:
+  1. Account type (Brokerage / Super / Fund / ETF-Crypto)
+  2. Platform + cash balance
+  3. Optional first holding (ticker + units + avg price)
+- Writes to `/api/investments` with `source: MANUAL`
+
+#### A.12 — Loans guided flow
+
+**Scope**: 1 new file (`components/setup/guided/LoansGuidedFlow.tsx`).
+**Depends on**: A.6.
+**Deliverables**:
+- Steps:
+  1. Loan type (Car / Personal / Student / Business)
+  2. Principal + interest rate
+  3. Repayment amount + frequency
+- Writes to `/api/loans` with `source: MANUAL`
+
+### 4.3 Track A dependency graph
+
+```
+A.0 (schema)
+  ├─ A.1 (service)
+  │    ├─ A.2 (NextAction panel)
+  │    │    └─ A.3 (card prioritisation)
+  │    │         └─ A.4 (why-this-matters)
+  │    └─ A.5 (confidence badges)
+  └─ A.6 (guided modal shell)
+       ├─ A.7 (Accounts flow)
+       ├─ A.8 (Properties flow)
+       ├─ A.9 (Income flow)
+       ├─ A.10 (Expenses flow)
+       ├─ A.11 (Investments flow)
+       └─ A.12 (Loans flow)
+```
+
+A.6 is independent of A.1–A.5 and can be built in parallel.
+A.7–A.12 are independent of each other once A.6 lands.
+
+---
+
+*§5 Track B (onboarding wizard) onwards in the next chunk.*
