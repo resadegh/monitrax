@@ -510,6 +510,9 @@ model Property {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  // Phase 12 twin-track: row provenance for Estimated/Verified UI
+  source         EntrySource  @default(MANUAL)
+
   // Location data (Google Maps integration)
   latitude       Float?       // Latitude coordinate
   longitude      Float?       // Longitude coordinate
@@ -554,6 +557,9 @@ model Loan {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
+  // Phase 12 twin-track: row provenance for Estimated/Verified UI
+  source               EntrySource         @default(MANUAL)
+
   // Relationships
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   property       Property?    @relation(fields: [propertyId], references: [id], onDelete: SetNull)
@@ -589,6 +595,11 @@ model Account {
   balanceSource       BalanceSource @default(MANUAL)  // Where the balance came from
   balanceLastUpdatedAt DateTime?                      // When balance was last updated
   lastImportedBalance Float?                          // Balance from most recent import
+
+  // Phase 12 twin-track: row provenance for Estimated/Verified UI.
+  // Distinct from balanceSource: this tracks how the ROW was created
+  // (onboarding wizard vs manual/bank/import), not the balance value.
+  source              EntrySource  @default(MANUAL)
 
   // Basiq Open Banking Integration
   basiqAccountId    String?      @unique  // Basiq account ID (if linked via Open Banking)
