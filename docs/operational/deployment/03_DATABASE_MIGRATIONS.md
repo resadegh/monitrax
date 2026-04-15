@@ -4,6 +4,16 @@
 
 Monitrax uses Prisma ORM with PostgreSQL hosted on GCP Cloud SQL. Schema changes require special care because the database contains legacy tables that are NOT represented in the Prisma schema. Automated schema sync commands would delete those tables.
 
+> **Prerequisite (one-time):** Both `monitrax-db-dev` and
+> `monitrax-db-prod` must be baselined with Prisma before the
+> process below can be used. The baseline creates the
+> `_prisma_migrations` tracking table and marks the `0_init`
+> migration as applied. See
+> [`database/04_PRISMA_MIGRATION_BASELINE.md`](../database/04_PRISMA_MIGRATION_BASELINE.md)
+> for the baseline runbook. Until this one-time step runs,
+> `prisma migrate deploy` and `prisma migrate status` will fail
+> with "relation _prisma_migrations does not exist".
+
 ---
 
 ## CRITICAL Safety Rules
