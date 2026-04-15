@@ -34,12 +34,21 @@ Monitrax uses Prisma ORM with PostgreSQL hosted on GCP Cloud SQL. Schema changes
 
 | Command | Effect | Safe? |
 |---------|--------|-------|
-| `prisma generate` | Generates the Prisma Client from `schema.prisma`. Does NOT touch the database. | Yes -- used in the Vercel build command |
-| `prisma migrate deploy` | Applies pending migrations that have already been created and reviewed. Does NOT generate new migrations. Does NOT drop unmanaged tables. | Yes -- safe for CI/CD, but currently run manually |
+| `prisma generate` | Generates the Prisma Client from `schema.prisma`. Does NOT touch the database. | Yes -- used in `vercel-build` |
+| `prisma migrate deploy` | Applies pending migrations that have already been created and reviewed. Does NOT generate new migrations. Does NOT drop unmanaged tables. | Yes -- **automated via `vercel-build`** (see `02_VERCEL_DEPLOYMENT.md`) |
 
 ---
 
 ## Correct Process for Schema Changes
+
+> **2026-04-15 update (R12 remediation):** Steps 4, 5, and part of
+> Step 6 below are now **automated by the Vercel build pipeline**
+> via the `vercel-build` script in `package.json`. You no longer
+> need to run `prisma migrate deploy` manually. Instead, commit
+> both `schema.prisma` and the new migration file in the same PR,
+> and Vercel applies the migration to the correct environment's
+> database automatically — dev on preview builds, prod on the
+> main-branch build. See CLAUDE.md §12.12 for the full protocol.
 
 ### Step 1: Plan and Review
 
@@ -52,6 +61,7 @@ Monitrax uses Prisma ORM with PostgreSQL hosted on GCP Cloud SQL. Schema changes
 Run locally against the **DEV** database:
 
 ```bash
+export DATABASE_URL="<dev_connection_string>"
 npx prisma migrate dev --name {descriptive-migration-name}
 ```
 
@@ -61,43 +71,48 @@ This command:
 - Applies the migration to the DEV database.
 - Regenerates the Prisma Client.
 
-**Review the generated `migration.sql` file before proceeding.** Ensure it does not contain `DROP TABLE` or `ALTER TABLE ... DROP COLUMN` statements that affect legacy tables.
+**Review the generated `migration.sql` file before proceeding.** Ensure it does not contain `DROP TABLE` or `ALTER TABLE ... DROP COLUMN` statements that affect legacy tables. If it does, fill in the CLAUDE.md §12.11 destructive-write checklist in the PR body.
 
-### Step 3: Test on DEV
+### Step 3: Commit and Open PR
 
-1. Push the branch with the new migration file.
-2. Verify the preview deployment works correctly against the DEV database.
-3. Test all affected features.
+1. Commit **both** `schema.prisma` **and** the new migration folder in the same commit.
+2. Push the branch and open a PR.
+3. Vercel builds a preview deployment automatically. The preview build runs `prisma migrate deploy` against `monitrax-db-dev` as its first step. If the migration is broken, the preview build fails and the PR shows a failed check.
+4. Verify the preview URL works correctly. Test all affected features against the dev database.
 
-### Step 4: Backup PROD Database
+### Step 4: Merge to main (automated migration to PROD)
 
-Before applying any migration to production:
+When you merge the PR:
 
-```bash
-# Via GCP Console or gcloud CLI
-gcloud sql backups create --instance={instance-name} --description="Pre-migration backup YYYY-MM-DD"
-```
+1. Vercel starts a production build from `main`.
+2. The build runs `npm run vercel-build`, which first executes
+   `prisma migrate deploy` against `monitrax-db-prod` (via the
+   Production-scoped `DATABASE_URL`).
+3. If the migration succeeds, Vercel continues with `prisma generate`
+   and `next build`.
+4. If the migration fails, the build aborts, and the previous
+   production deployment keeps serving traffic. Prod stays on old
+   code + old schema — stable.
+5. Once the build succeeds, Vercel routes production traffic to the
+   new deployment.
 
-Alternatively, use the GCP Console: Cloud SQL > Instance > Backups > Create Backup.
+**No manual `prisma migrate deploy` step is required.** It happens
+automatically as part of the deploy.
 
-### Step 5: Apply to PROD
+### Step 5: Verify
 
-Connect to the production database and run:
-
-```bash
-npx prisma migrate deploy
-```
-
-This applies all pending migrations (migrations that exist in `prisma/migrations/` but have not yet been recorded in the `_prisma_migrations` table in PROD).
-
-**This command is safe:** it only runs forward migrations. It does not drop unmanaged tables. It does not generate new migrations.
-
-### Step 6: Verify
-
-1. Confirm the migration completed without errors.
-2. Check migration status (see below).
-3. Deploy the application code (merge PR to `main`).
-4. Verify the application works against the updated PROD schema.
+1. Confirm the Vercel build logs show `prisma migrate deploy`
+   succeeded (look for "Applied the following migration(s)" or
+   "No pending migrations to apply").
+2. Hit `/api/health` to confirm the app is responding.
+3. Spot-check affected features in the UI.
+4. Check `_prisma_migrations` table if desired:
+   ```sql
+   SELECT migration_name, finished_at, rolled_back_at
+   FROM _prisma_migrations
+   ORDER BY finished_at DESC
+   LIMIT 5;
+   ```
 
 ---
 
@@ -164,12 +179,11 @@ Before applying a schema change to production:
 - [ ] `schema.prisma` updated with the change
 - [ ] Migration generated with `prisma migrate dev --name {name}`
 - [ ] Generated `migration.sql` reviewed -- no unexpected `DROP` statements
-- [ ] Migration tested on DEV database
-- [ ] Application tested against DEV with the new schema
-- [ ] PROD database backed up (GCP Cloud SQL backup)
-- [ ] Migration applied to PROD with `prisma migrate deploy`
-- [ ] Migration status verified with `prisma migrate status`
-- [ ] Application deployed (PR merged to `main`)
+- [ ] Migration file **committed alongside `schema.prisma`** in the same PR
+- [ ] Vercel Preview build succeeded (proves dev migration applied cleanly)
+- [ ] §12.11 destructive-write checklist filled in (if applicable)
+- [ ] PR merged to `main` (triggers automated prod migration + deploy)
+- [ ] Vercel Production build logs show `prisma migrate deploy` succeeded
 - [ ] Application verified against PROD with the new schema
 - [ ] Changelog updated with schema change details
 
@@ -183,8 +197,8 @@ The following principles protect legacy tables:
 2. **`prisma migrate dev`** generates additive SQL migrations. It does not drop tables it does not manage.
 3. **`prisma migrate deploy`** only runs forward migrations. It does not inspect or modify unmanaged tables.
 4. **Always review generated SQL** before applying. If a migration contains unexpected `DROP` statements, do not apply it.
-5. **The Vercel build command** (`prisma generate && next build`) deliberately uses `prisma generate`, which never touches the database.
+5. **The Vercel build command** (`npm run vercel-build`) runs `prisma migrate deploy && prisma generate && next build`. `prisma migrate deploy` is forward-only and never drops unmanaged tables.
 
 ---
 
-*Last Updated: 2026-04-09*
+*Last Updated: 2026-04-15*

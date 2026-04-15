@@ -11,13 +11,20 @@ Monitrax is deployed on Vercel as a Next.js 15.2.6 application. Vercel handles b
 | Setting | Value |
 |---------|-------|
 | Framework | Next.js (auto-detected) |
-| Build Command | `prisma generate && next build` |
+| Build Command | `npm run vercel-build` (auto-detected from `package.json`) |
 | Output Directory | `.next` (default) |
 | Install Command | `npm install` (default) |
 | Node.js Version | 18.x or 20.x (check Vercel project settings) |
 | Root Directory | `/` (monorepo root) |
 | Production Branch | `main` |
 | Production Domain | `monitrax.com.au` |
+
+> **2026-04-15 update (R12 remediation):** Vercel now uses the
+> `vercel-build` script from `package.json` instead of the plain
+> `build` script. `vercel-build` runs `prisma migrate deploy` as
+> its first step, which applies any pending migrations to the
+> scoped database BEFORE Prisma client generation and the Next.js
+> build. See `CLAUDE.md` §12.12 for the full protocol.
 
 ---
 
@@ -51,13 +58,60 @@ When Vercel receives a push, it runs:
 
 ```
 npm install
+prisma migrate deploy  # Applies pending migrations to the scoped DATABASE_URL
 prisma generate        # Generates Prisma Client from schema.prisma
 next build             # Compiles Next.js app (pages, API routes, static assets)
 ```
 
-The `prisma generate` step reads `prisma/schema.prisma` and generates the typed Prisma Client into `node_modules/.prisma/client`. This does NOT touch the database.
+This is encoded as the `vercel-build` script in `package.json`.
+Vercel's Framework auto-detection picks up `vercel-build`
+automatically and uses it instead of the default `build` script
+— **no Vercel dashboard change is required** to enable this.
 
-**CRITICAL:** The build process must NEVER run `prisma db push` or `prisma migrate deploy`. These commands modify the database schema and could destroy legacy tables. See `03_DATABASE_MIGRATIONS.md` for details.
+### Step-by-step guarantees
+
+1. **`prisma migrate deploy`** reads `prisma/migrations/*` folders
+   and applies any that have not yet been recorded in the target
+   database's `_prisma_migrations` table. The target database is
+   determined by whichever `DATABASE_URL` Vercel has scoped to
+   this build (Production or Preview).
+2. **If any migration fails**, `prisma migrate deploy` exits with
+   a non-zero code, the build aborts, and Vercel keeps the
+   previous deployment running. The old code continues to serve
+   the old schema. New code never reaches a database it was not
+   designed for.
+3. **`prisma generate`** reads `prisma/schema.prisma` and generates
+   the typed Prisma Client into `node_modules/.prisma/client`.
+   This never touches the database.
+4. **`next build`** compiles the Next.js application.
+
+### Why this is safe (R12 remediation)
+
+The 2026-04-15 incident (R12) was caused by the reverse of this
+setup: new code was deployed that expected new columns, but the
+migration to add those columns was never run against prod. Every
+query crashed with `column "source" does not exist` and the
+dashboard went blank.
+
+The `vercel-build` pipeline prevents this by making migration a
+prerequisite of deployment. It is impossible for the new code to
+go live without the matching schema change having been applied
+to the target database first. If the migration fails, the deploy
+fails, and prod keeps running on the old stable state.
+
+### What is BANNED in the build process
+
+- `prisma db push` — declarative sync, would drop unmanaged
+  tables. BANNED.
+- `prisma migrate reset` — drops and recreates the database.
+  BANNED from any shared environment.
+- `prisma db seed` — may overwrite data. Not permitted in
+  production builds.
+
+The only safe write command in the build is `prisma migrate deploy`,
+which is forward-only and never drops unmanaged tables. See
+`03_DATABASE_MIGRATIONS.md` and CLAUDE.md §12.12 for the full
+protocol.
 
 ---
 
