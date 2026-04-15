@@ -60,11 +60,41 @@ export interface UseSetupStateProgress {
   allDone: boolean;
 }
 
+// Phase 12 twin-track (A.1): per-module progress types mirrored
+// client-side so consumers can import everything they need from this
+// single hook. Kept in sync with `lib/services/setupStateService.ts`
+// — DO NOT let them drift.
+export type UseSetupStateModuleKey =
+  | 'accounts'
+  | 'properties'
+  | 'income'
+  | 'expenses'
+  | 'investments'
+  | 'loans';
+
+export type UseSetupStateModuleState = 'Missing' | 'Estimated' | 'Verified';
+
+export interface UseSetupStateModuleProgress {
+  module: UseSetupStateModuleKey;
+  state: UseSetupStateModuleState;
+  percent: number;
+  rowCount: number;
+  estimatedCount: number;
+  verifiedCount: number;
+}
+
 export interface UseSetupStateReturn {
   /** Ordered task list with per-task `isDone` flags. `null` until the first fetch resolves. */
   tasks: UseSetupStateTask[] | null;
   /** Precomputed progress summary. `null` until the first fetch resolves. */
   progress: UseSetupStateProgress | null;
+  /**
+   * Phase 12 twin-track (A.1): per-module Missing/Estimated/Verified
+   * state for the 6 `/dashboard/setup` tiles. `null` until the first
+   * fetch resolves. Consumed by Track A.3 card prioritisation, A.5
+   * confidence badges, and A.2 `<SetupNextActionPanel />`.
+   */
+  moduleProgress: UseSetupStateModuleProgress[] | null;
   /** True while the first or a refetch is in flight. */
   isLoading: boolean;
   /** Last fetch error message, or `null` on success. */
@@ -82,6 +112,10 @@ interface SetupStateApiSuccess {
   data: {
     tasks: UseSetupStateTask[];
     progress: UseSetupStateProgress;
+    // Phase 12 twin-track (A.1): added as an additive field to the
+    // API response. Existing consumers that only read tasks/progress
+    // are unaffected.
+    moduleProgress: UseSetupStateModuleProgress[];
   };
   error: null;
   meta: { timestamp: string; durationMs: number };
@@ -104,6 +138,10 @@ export function useSetupState(): UseSetupStateReturn {
   const { token } = useAuth();
   const [tasks, setTasks] = useState<UseSetupStateTask[] | null>(null);
   const [progress, setProgress] = useState<UseSetupStateProgress | null>(null);
+  // Phase 12 twin-track (A.1): per-module progress state.
+  const [moduleProgress, setModuleProgress] = useState<
+    UseSetupStateModuleProgress[] | null
+  >(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -147,6 +185,10 @@ export function useSetupState(): UseSetupStateReturn {
       if (abortRef.current === controller) {
         setTasks(json.data.tasks);
         setProgress(json.data.progress);
+        // Phase 12 twin-track (A.1): commit per-module progress.
+        // Defaults to `[]` (empty array) if the server hasn't been
+        // upgraded yet, so older server + newer client cannot crash.
+        setModuleProgress(json.data.moduleProgress ?? []);
       }
     } catch (err) {
       // Aborts are not real errors — just bail without updating state.
@@ -176,6 +218,7 @@ export function useSetupState(): UseSetupStateReturn {
   return {
     tasks,
     progress,
+    moduleProgress,
     isLoading,
     error,
     refetch,
