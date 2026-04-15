@@ -725,7 +725,126 @@ If a GCP service is rejected, document in the changelog:
 | **No N+1 queries** | Fetch related data with Prisma `include`, not in loops |
 | **Fire-and-forget for non-critical ops** | Audit logging uses `.catch(() => {})` pattern — never block responses |
 
-### 12.11 Before Every Session — Code Quality Checklist
+### 12.11 Destructive Write Checklist (NON-NEGOTIABLE)
+
+> **This section was added in response to a 2026-04-15 incident where
+> a destructive `prisma.householdProfile.upsert(...)` shipped without
+> user confirmation and put existing user data at risk. The rule
+> below exists so the same class of mistake cannot recur.**
+
+**ZERO TOLERANCE rule:** Before shipping ANY of the following Prisma
+operations, the engineer MUST stop and answer the three questions
+below in the PR body. If any answer is unsatisfactory, the engineer
+MUST stop coding and ask the user for **explicit confirmation
+before merging**.
+
+#### Operations covered
+
+| Operation | Why it's risky |
+|---|---|
+| `prisma.<model>.update(...)` | Writes to an existing row. Can clobber user-entered data. |
+| `prisma.<model>.upsert(...)` | **Treated as `update` for risk purposes** — the `update` branch fires whenever the `where` clause matches an existing row, even one your code did not create. This is the rule's most common foot-gun. |
+| `prisma.<model>.updateMany(...)` | Bulk update. Higher blast radius. |
+| `prisma.<model>.delete(...)` | Removes a row. Always destructive. |
+| `prisma.<model>.deleteMany(...)` | Bulk delete. Highest blast radius. |
+| Raw SQL `UPDATE` / `DELETE` via `prisma.$executeRaw` / `$executeRawUnsafe` | Bypasses the type system. Treat as the most dangerous category. |
+| Migration files containing `DROP`, `ALTER ... DROP COLUMN`, `TRUNCATE`, or non-default-backfilled `ADD COLUMN NOT NULL` | Schema-level destruction. Always requires user confirmation. |
+
+#### The three questions (mandatory in every PR body that contains the above)
+
+1. **What rows could match my `where` clause besides the ones I intend?**
+   Answer must be specific. "All rows for `userId`" is a yellow flag.
+   "Any existing row owned by this user that my code did not create"
+   is a red flag — STOP and ask.
+2. **What columns am I overwriting and what was their previous value?**
+   List the columns. If any of them could hold user-entered data
+   (balances, names, dates, choices), STOP and ask.
+3. **What guard ensures I only mutate rows my code originally created?**
+   Common patterns:
+     - `where: { source: 'ONBOARDING' }` (only touch rows tagged by
+       this code path)
+     - `findFirst` + check before `update` (verify the row matches
+       expectations)
+     - Synthetic key the row was created with (e.g. a `name` field
+       owned exclusively by this code path)
+   If there is no such guard, STOP and ask.
+
+#### Examples
+
+**❌ Destructive — REQUIRES user confirmation before shipping:**
+
+```ts
+// Overwrites existing HouseholdProfile.adultsCount and childrenCount
+// regardless of who created the row. Could clobber a user's verified
+// household composition.
+await prisma.householdProfile.upsert({
+  where: { userId },
+  create: { userId, adultsCount: 2, childrenCount: 1 },
+  update: { adultsCount: 2, childrenCount: 1 },  // ⚠ DANGER
+});
+```
+
+**✅ Safe — guarded by `source` filter:**
+
+```ts
+const existing = await prisma.householdProfile.findUnique({
+  where: { userId },
+  select: { source: true },
+});
+
+if (!existing) {
+  await prisma.householdProfile.create({
+    data: { userId, adultsCount: 2, childrenCount: 1, source: 'ONBOARDING' },
+  });
+} else if (existing.source === 'ONBOARDING') {
+  // Only update rows we (this code path) originally created.
+  await prisma.householdProfile.update({
+    where: { userId },
+    data: { adultsCount: 2, childrenCount: 1 },
+  });
+}
+// else: existing verified profile — leave it alone.
+```
+
+#### PR body template
+
+Every PR that contains one or more of the operations above MUST
+include this block in the PR description:
+
+```markdown
+## Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows:
+- [file:line] `prisma.<model>.<operation>(...)`
+
+For each operation:
+1. **`where` clause matches:** ___________
+2. **Columns overwritten / rows deleted:** ___________
+3. **Guard ensuring this only mutates rows I created:** ___________
+
+User confirmation: [granted on (date) / NOT REQUIRED — reasoning]
+```
+
+#### Code-review enforcement
+
+- Reviewers MUST reject any PR that contains a destructive write
+  without the §12.11 checklist filled in.
+- If the checklist is filled in but any answer is unsatisfactory,
+  the reviewer MUST request user confirmation before approving.
+- "Confirmation by silence" does NOT count. The user must
+  explicitly say "OK to proceed" in writing.
+
+#### How to find destructive writes in your changes
+
+Before opening a PR, run:
+
+```bash
+git diff main --unified=0 | grep -E "prisma\.[a-zA-Z]+\.(update|upsert|delete|updateMany|deleteMany)\(|\\\$executeRaw"
+```
+
+If anything matches, fill in the §12.11 checklist for each match.
+
+### 12.12 Before Every Session — Code Quality Checklist
 
 Before writing code, ask yourself:
 
@@ -740,6 +859,7 @@ Before writing code, ask yourself:
 - [ ] Does this change touch CDR data? If so, follow CDR compliance rules (§13)
 - [ ] Is CDR data sanitized from logs and error responses? (§13.3)
 - [ ] Does CDR data access verify active consent? (§13.2)
+- [ ] **Does this PR contain any destructive Prisma write? If yes, did I fill in the §12.11 checklist?**
 
 ---
 
