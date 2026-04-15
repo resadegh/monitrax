@@ -86,6 +86,12 @@ export interface EmptyStateTileCta {
   href: string;
 }
 
+// Phase 12 twin-track (A.3/A.5): visual-priority and confidence-state
+// unions. These are optional props so existing callers continue to
+// render with the default "secondary" priority and no badge.
+export type EmptyStateTilePriority = 'primary' | 'secondary' | 'dimmed';
+export type EmptyStateTileConfidence = 'Missing' | 'Estimated' | 'Verified';
+
 export interface EmptyStateTileProps {
   /**
    * The example illustration. Pass an `<Image>`, inline SVG, lucide
@@ -117,6 +123,15 @@ export interface EmptyStateTileProps {
    */
   unlocks?: string;
 
+  /**
+   * Phase 12 twin-track (A.4): "why this matters" explanatory line
+   * with a `→` prefix. Rendered as a small muted line below the
+   * description. Different from `unlocks` — `whyThisMatters` is an
+   * imperative why-the-user-should-care line; `unlocks` is a chip
+   * noting what capability appears. Use either or both.
+   */
+  whyThisMatters?: string;
+
   /** Primary call-to-action. Required — every empty state must have a way out. */
   cta: EmptyStateTileCta;
 
@@ -141,6 +156,26 @@ export interface EmptyStateTileProps {
    * (full-size).
    */
   compact?: boolean;
+
+  /**
+   * Phase 12 twin-track (A.3): visual priority state. Defaults to
+   * `'secondary'` so existing unbranded callers stay unchanged.
+   *   - primary   → gradient border, elevated shadow, blue glow
+   *   - secondary → default (current) appearance
+   *   - dimmed    → opacity-60, reduced visual weight
+   */
+  priority?: EmptyStateTilePriority;
+
+  /**
+   * Phase 12 twin-track (A.5): confidence state badge rendered in
+   * the top-right corner of the tile. Reflects whether the module
+   * has any rows and whether they're from onboarding estimates or
+   * verified data.
+   *   - Missing   → no badge (default visual, tile is empty)
+   *   - Estimated → amber "Estimated" badge
+   *   - Verified  → emerald "Verified" badge
+   */
+  confidenceState?: EmptyStateTileConfidence;
 }
 
 // =============================================================================
@@ -152,22 +187,60 @@ export function EmptyStateTile({
   title,
   description,
   unlocks,
+  whyThisMatters,
   cta,
   secondaryCta,
   className = '',
   compact = false,
+  priority = 'secondary',
+  confidenceState = 'Missing',
 }: EmptyStateTileProps) {
   const padding = compact ? 'p-5' : 'p-6 sm:p-8';
   const titleSize = compact ? 'text-base' : 'text-lg';
   const descriptionSize = compact ? 'text-xs' : 'text-sm';
   const illustrationMargin = compact ? 'mb-3' : 'mb-5';
 
+  // Phase 12 twin-track (A.3): priority visual state classes
+  const priorityClasses: Record<EmptyStateTilePriority, string> = {
+    primary:
+      'border-indigo-300 bg-gradient-to-br from-blue-50/80 via-indigo-50/60 to-violet-50/60 shadow-[0_14px_40px_-12px_rgba(99,102,241,0.35)] dark:border-indigo-700/60 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-violet-950/30',
+    secondary: 'border-slate-200/70 bg-white/95 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/95',
+    dimmed:
+      'border-slate-200/50 bg-white/60 shadow-none opacity-60 dark:border-slate-700/30 dark:bg-slate-900/60',
+  };
+
+  // Phase 12 twin-track (A.5): confidence badge styles. Missing state
+  // renders no badge (undefined).
+  const confidenceBadge =
+    confidenceState === 'Estimated'
+      ? {
+          label: 'Estimated',
+          className:
+            'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+        }
+      : confidenceState === 'Verified'
+      ? {
+          label: 'Verified',
+          className:
+            'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+        }
+      : null;
+
   return (
     <section
       role="region"
       aria-label={title}
-      className={`flex flex-col items-center justify-center rounded-2xl border border-slate-200/70 bg-white/95 text-center shadow-sm backdrop-blur-xl dark:border-slate-700/50 dark:bg-slate-900/95 ${padding} ${className}`}
+      className={`relative flex flex-col items-center justify-center rounded-2xl border text-center backdrop-blur-xl ${priorityClasses[priority]} ${padding} ${className}`}
     >
+      {/* Phase 12 twin-track (A.5): confidence badge in top-right
+          corner. Rendered only when the module has rows. */}
+      {confidenceBadge && (
+        <span
+          className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${confidenceBadge.className}`}
+        >
+          {confidenceBadge.label}
+        </span>
+      )}
       {/* Example illustration slot — purely visual, marked aria-hidden
           so screen readers don't try to interpret a stylised SVG. */}
       {illustration && (
@@ -190,6 +263,15 @@ export function EmptyStateTile({
       >
         {description}
       </p>
+
+      {/* Phase 12 twin-track (A.4): why-this-matters explanatory line.
+          Renders as a small muted line with a → prefix, anchoring the
+          user's reason for filling this tile in. */}
+      {whyThisMatters && (
+        <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-500">
+          → {whyThisMatters}
+        </p>
+      )}
 
       {unlocks && (
         <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
