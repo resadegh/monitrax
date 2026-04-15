@@ -255,35 +255,35 @@ async function countHouseholdMembers(userId: string): Promise<number> {
  * consumption by Track A.3 (card prioritisation).
  */
 export async function buildModuleProgress(userId: string): Promise<ModuleProgress[]> {
+  // 2026-04-15 Phase 12 A.0 revert: the estimated counts are always
+  // zero because the `source` column is not present on prod. Every
+  // row is therefore treated as Verified. Re-enable the per-module
+  // `{ source: 'ONBOARDING' }` filter once prod is baselined with
+  // Prisma migrations and the A.0 schema is applied. See
+  // docs/quality/PHASE_12_DESIGN_AUDIT.md §11 R12.
   const [
-    accountsAll, accountsEst,
-    propertiesAll, propertiesEst,
-    incomeAll, incomeEst,
-    expensesAll, expensesEst,
-    investmentsAll, investmentsEst,
-    loansAll, loansEst,
+    accountsAll,
+    propertiesAll,
+    incomeAll,
+    expensesAll,
+    investmentsAll,
+    loansAll,
   ] = await Promise.all([
     prisma.account.count({ where: { userId } }),
-    prisma.account.count({ where: { userId, source: 'ONBOARDING' } }),
     prisma.property.count({ where: { userId } }),
-    prisma.property.count({ where: { userId, source: 'ONBOARDING' } }),
     prisma.income.count({ where: { userId } }),
-    prisma.income.count({ where: { userId, source: 'ONBOARDING' } }),
     prisma.expense.count({ where: { userId } }),
-    prisma.expense.count({ where: { userId, source: 'ONBOARDING' } }),
     prisma.investmentAccount.count({ where: { userId } }),
-    prisma.investmentAccount.count({ where: { userId, source: 'ONBOARDING' } }),
     prisma.loan.count({ where: { userId } }),
-    prisma.loan.count({ where: { userId, source: 'ONBOARDING' } }),
   ]);
 
   return [
-    computeModuleProgress('accounts', accountsAll, accountsEst),
-    computeModuleProgress('properties', propertiesAll, propertiesEst),
-    computeModuleProgress('income', incomeAll, incomeEst),
-    computeModuleProgress('expenses', expensesAll, expensesEst),
-    computeModuleProgress('investments', investmentsAll, investmentsEst),
-    computeModuleProgress('loans', loansAll, loansEst),
+    computeModuleProgress('accounts', accountsAll, 0),
+    computeModuleProgress('properties', propertiesAll, 0),
+    computeModuleProgress('income', incomeAll, 0),
+    computeModuleProgress('expenses', expensesAll, 0),
+    computeModuleProgress('investments', investmentsAll, 0),
+    computeModuleProgress('loans', loansAll, 0),
   ];
 }
 

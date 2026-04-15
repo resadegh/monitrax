@@ -55,21 +55,18 @@ enum BalanceSource {
   USER_VERIFIED   // User verified balance after import
 }
 
-// Phase 12 twin-track (2026-04-15): provenance of a row itself,
-// distinct from BalanceSource which tracks provenance of the
-// balance value only. Added to 9 financial entity models so the
-// /dashboard/setup page can display Estimated (onboarding) vs
-// Verified (manual / bank / import / calculated) badges, and the
-// new /onboarding wizard can write rows tagged `ONBOARDING` without
-// overwriting real financial data.
-// See docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md §3.
-enum EntrySource {
-  ONBOARDING      // Written by the /onboarding wizard (estimated, low confidence)
-  MANUAL          // Written by the user via /dashboard/setup or entity dialogs
-  BASIQ           // Imported from Basiq Open Banking
-  IMPORT          // Imported from CSV / OFX / QIF file
-  CALCULATED      // Derived by a system engine (read-only for users)
-}
+// NOTE: `EntrySource` enum was removed as part of the 2026-04-15
+// Phase 12 A.0 revert for prod safety. The production database
+// was never migrated to include the `source` columns (no
+// `_prisma_migrations` history on prod), so the generated Prisma
+// client was crashing on every SELECT against accounts / properties
+// / loans / income / expenses / investment_accounts / assets /
+// superannuation_accounts / household_profiles. The enum + fields
+// will be re-introduced once prod is baselined with Prisma and the
+// A.0 migration runs in a maintenance window. See
+// docs/quality/PHASE_12_DESIGN_AUDIT.md §11 (R12) and
+// CLAUDE.md §12.11 for the destructive-write checklist that must
+// ship alongside the re-introduction.
 
 enum IncomeType {
   SALARY
@@ -510,9 +507,6 @@ model Property {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  // Phase 12 twin-track: row provenance for Estimated/Verified UI
-  source         EntrySource  @default(MANUAL)
-
   // Location data (Google Maps integration)
   latitude       Float?       // Latitude coordinate
   longitude      Float?       // Longitude coordinate
@@ -557,9 +551,6 @@ model Loan {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
-  // Phase 12 twin-track: row provenance for Estimated/Verified UI
-  source               EntrySource         @default(MANUAL)
-
   // Relationships
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   property       Property?    @relation(fields: [propertyId], references: [id], onDelete: SetNull)
@@ -595,11 +586,6 @@ model Account {
   balanceSource       BalanceSource @default(MANUAL)  // Where the balance came from
   balanceLastUpdatedAt DateTime?                      // When balance was last updated
   lastImportedBalance Float?                          // Balance from most recent import
-
-  // Phase 12 twin-track: row provenance for Estimated/Verified UI.
-  // Distinct from balanceSource: this tracks how the ROW was created
-  // (onboarding wizard vs manual/bank/import), not the balance value.
-  source              EntrySource  @default(MANUAL)
 
   // Basiq Open Banking Integration
   basiqAccountId    String?      @unique  // Basiq account ID (if linked via Open Banking)
@@ -829,9 +815,6 @@ model Income {
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
-  // Phase 12 twin-track: row provenance for Estimated/Verified UI
-  source                EntrySource       @default(MANUAL)
-
   // Relationships
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   property          Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
@@ -875,9 +858,6 @@ model Expense {
 
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
-
-  // Phase 12 twin-track: row provenance for Estimated/Verified UI
-  source                EntrySource        @default(MANUAL)
 
   // Relationships
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1091,9 +1071,6 @@ model InvestmentAccount {
 
   createdAt    DateTime              @default(now())
   updatedAt    DateTime              @updatedAt
-
-  // Phase 12 twin-track: row provenance for Estimated/Verified UI
-  source       EntrySource           @default(MANUAL)
 
   // Relationships
   user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -2668,9 +2645,6 @@ model SuperannuationAccount {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  // Phase 12 twin-track: row provenance for Estimated/Verified UI
-  source                EntrySource @default(MANUAL)
-
   // Relationships
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   contributions         SuperContribution[]
@@ -2825,9 +2799,6 @@ model Asset {
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
-  // Phase 12 twin-track: row provenance for Estimated/Verified UI
-  source                EntrySource         @default(MANUAL)
-
   // Relationships
   user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses              Expense[]
@@ -2910,11 +2881,6 @@ model HouseholdProfile {
   needsMigration        Boolean  @default(false)  // True if existing user needs to add member details
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-
-  // Phase 12 twin-track: row provenance for Estimated/Verified UI.
-  // ONBOARDING → wizard upserted this profile with rough answers.
-  // MANUAL → user filled it in via /dashboard/household-profile or Track A.
-  source                EntrySource @default(MANUAL)
 
   // Relationships
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
