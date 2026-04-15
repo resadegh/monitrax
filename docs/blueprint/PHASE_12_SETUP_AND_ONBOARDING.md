@@ -1200,57 +1200,65 @@ Updated after every merged PR. All phases ⬜ until work begins.
 
 | Phase | Description | Status | PR |
 |---|---|---|---|
-| A.0 | Prisma schema: `EntrySource` enum + `source` column on 9 models | ⬜ Not started | — |
-| A.1 | `SetupProgressService` extension | ⬜ | — |
-| A.2 | `<SetupNextActionPanel />` component | ⬜ | — |
-| A.3 | Card prioritisation visual states | ⬜ | — |
-| A.4 | Why-This-Matters copy layer | ⬜ | — |
-| A.5 | Confidence state badges | ⬜ | — |
-| A.6 | `<GuidedEntryModal />` shell primitive | ⬜ | — |
-| A.7 | Accounts guided flow | ⬜ | — |
-| A.8 | Properties guided flow | ⬜ | — |
-| A.9 | Income guided flow | ⬜ | — |
-| A.10 | Expenses guided flow | ⬜ | — |
-| A.11 | Investments guided flow | ⬜ | — |
-| A.12 | Loans guided flow | ⬜ | — |
+| A.0 | Prisma schema: `EntrySource` enum + `source` column on 9 models | ✅ Merged | #511 |
+| A.1 | `SetupProgressService` extension | ✅ Merged | #512 |
+| A.2 | `<SetupNextActionPanel />` component | ✅ Merged | #513 |
+| A.3 | Card prioritisation visual states | ✅ Merged | #513 |
+| A.4 | Why-This-Matters copy layer | ✅ Merged | #513 |
+| A.5 | Confidence state badges | ✅ Merged | #513 |
+| A.6 | `<GuidedEntryModal />` shell primitive | 🟡 Stacked, not on main | #514 (orphaned — needs rescue PR) |
+| A.7 | Accounts guided flow | 🟡 Stacked, not on main | #514 |
+| A.8 | Properties guided flow | 🟡 Stacked, not on main | #514 |
+| A.9 | Income guided flow | 🟡 Stacked, not on main | #514 |
+| A.10 | Expenses guided flow | 🟡 Stacked, not on main | #514 |
+| A.11 | Investments guided flow | 🟡 Stacked, not on main | #514 |
+| A.12 | Loans guided flow | 🟡 Stacked, not on main | #514 |
 
 ### Track B — `/onboarding` new wizard
 
 | Phase | Description | Status | PR |
 |---|---|---|---|
-| B.0 | Route scaffolding + layout | ⬜ | — |
-| B.1 | Wizard shell + design system (~11 files) | ⬜ | — |
-| B.2 | Step 0: Welcome | ⬜ | — |
-| B.3 | Step 1: Household | ⬜ | — |
-| B.4 | Step 2: Income | ⬜ | — |
-| B.5 | Step 3: Housing | ⬜ | — |
-| B.6 | Step 4: Expenses (optional) | ⬜ | — |
-| B.7 | Step 5: Goal (optional) | ⬜ | — |
-| B.8 | Step 6: Final Reveal | ⬜ | — |
+| B.0 | Route scaffolding + layout | ✅ Merged | #515 |
+| B.1 | Wizard shell + design system (~11 files) | ✅ Merged | #515 |
+| B.2 | Step 0: Welcome | ✅ Merged | #515 |
+| B.3 | Step 1: Household | ✅ Merged | #520 (rescue PR; original #516 was stacked) |
+| B.4 | Step 2: Income | ✅ Merged | #520 |
+| B.5 | Step 3: Housing | ✅ Merged | #520 |
+| B.6 | Step 4: Expenses (optional) | ✅ Merged | #520 |
+| B.7 | Step 5: Goal (optional) | ✅ Merged | #520 |
+| B.8 | Step 6: Final Reveal | ✅ Merged | #520 (rescue PR; original #517 was stacked) |
+| B.x — auth header fix | Add `Authorization: Bearer ${token}` to all 6 step fetches | ✅ Merged | #521 |
 
 ### Track C — Integration + legacy cleanup
 
 | Phase | Description | Status | PR |
 |---|---|---|---|
-| C.0 | Welcome modal CTA → `/onboarding` | ⬜ | — |
-| C.1 | Resume banner + auto-redirect routing | ⬜ | — |
-| C.2 | Legacy `WizardContainer` deletion (⏸ paused until D.0 green) | ⬜ | — |
+| C.0 | Welcome modal CTA → `/onboarding` | ✅ Merged | #518 |
+| C.1 | Resume banner + auto-redirect routing | ✅ Merged | #518 |
+| C.2 | Legacy `WizardContainer` deletion (⏸ paused until D.0 green) | ⏸ Paused | — |
 
 ### Track D — Design QA
 
 | Phase | Description | Status | PR |
 |---|---|---|---|
-| D.0 | §10.6 design quality audit + `docs/quality/PHASE_12_DESIGN_AUDIT.md` | ⬜ | — |
+| D.0 | §10.6 design quality audit + `docs/quality/PHASE_12_DESIGN_AUDIT.md` | ✅ Doc merged (audit walkthrough not yet performed) | #519 |
 
 ### Summary bar
 
 ```
-Total phases:  26
-Completed:     0
-In progress:   0
-Blocked:       0 (C.2 blocked on D.0)
-Not started:   26
+Total phases:        26 (+1 hotfix B.x — auth header)
+On main:             19 (A.0–A.5, B.0–B.8, B.x, C.0–C.1, D.0 doc)
+Stacked, not on main: 7 (A.6–A.12 guided flows — #514 orphaned)
+Paused:               1 (C.2 — blocks on D.0 audit walkthrough sign-off)
+Open incident:        1 (data loss reported 2026-04-15, root cause TBD — see §11 R11)
 ```
+
+### Outstanding work
+
+1. **Resolve #514 stacked-PR orphan** — Track A.6–A.12 (`GuidedEntryModal` + 6 guided flows) was merged into a stacked parent branch instead of `main`, same way #516/#517 were. A rescue PR (similar pattern to #520) needs to bring those 7 phases onto `main`.
+2. **Data loss incident triage** — see §11 R11. Halt all code work until root cause established and recovery path confirmed.
+3. **Audit walkthrough (D.0)** — Reza walks the 4 paths in `docs/quality/PHASE_12_DESIGN_AUDIT.md` end-to-end and signs off in §9, which unblocks Track C.2 cleanup.
+4. **Track C.2 legacy cleanup** — paused until D.0 sign-off.
 
 ---
 
