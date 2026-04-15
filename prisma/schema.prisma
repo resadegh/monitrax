@@ -2668,6 +2668,9 @@ model SuperannuationAccount {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  // Phase 12 twin-track: row provenance for Estimated/Verified UI
+  source                EntrySource @default(MANUAL)
+
   // Relationships
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   contributions         SuperContribution[]
@@ -2822,6 +2825,9 @@ model Asset {
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
 
+  // Phase 12 twin-track: row provenance for Estimated/Verified UI
+  source                EntrySource         @default(MANUAL)
+
   // Relationships
   user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses              Expense[]
@@ -2904,6 +2910,11 @@ model HouseholdProfile {
   needsMigration        Boolean  @default(false)  // True if existing user needs to add member details
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+
+  // Phase 12 twin-track: row provenance for Estimated/Verified UI.
+  // ONBOARDING → wizard upserted this profile with rough answers.
+  // MANUAL → user filled it in via /dashboard/household-profile or Track A.
+  source                EntrySource @default(MANUAL)
 
   // Relationships
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
