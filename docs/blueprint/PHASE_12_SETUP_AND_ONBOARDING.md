@@ -1118,4 +1118,172 @@ Response: { tasks, moduleProgress, nextBestAction, progress }
 
 ---
 
-*§12 validation checklist + §13 progress tracker + §14 changelog in the next chunk.*
+## 12. Validation Checklist
+
+Per the directive §6, before any phase is considered complete the
+following must all be true. Each PR body links back to this list
+and ticks the boxes relevant to its scope.
+
+### 12.1 System-wide (every PR must satisfy)
+
+- [ ] **No duplicate flows** — the same onboarding action is not reachable from two competing code paths
+- [ ] **No broken navigation** — every link/CTA lands on a real route that renders successfully
+- [ ] **No overwritten data** — existing rows are never clobbered by onboarding writes; estimates are additive, not destructive
+- [ ] **No regression in existing features** — `/dashboard`, entity pages, and Basiq flows all still work as before
+- [ ] **`/dashboard/setup` still fully functional** — every existing component renders and every existing CTA works
+- [ ] **`npm run build` passes** locally or in CI
+- [ ] **No new TypeScript errors**
+- [ ] **No new lint warnings introduced**
+
+### 12.2 Track A-specific (refinement phases)
+
+- [ ] **A.0** — Prisma migration applied cleanly on staging, existing rows backfilled to `MANUAL`, no data loss
+- [ ] **A.1** — `SetupProgressService` returns correct Missing/Estimated/Verified state for every module, verified against test fixtures
+- [ ] **A.2** — `<SetupNextActionPanel />` renders the correct recommendation for all 6 decision branches (no data → connect bank; has accounts, no income → add income; etc.)
+- [ ] **A.3** — Exactly one primary tile, 2–3 secondary, rest dimmed. Primary tile matches the SetupNextActionPanel recommendation.
+- [ ] **A.4** — Every tile has a Why-This-Matters line. Copy is end-user voice, not developer voice.
+- [ ] **A.5** — Confidence badge matches the underlying row data. Missing/Estimated/Verified transitions work.
+- [ ] **A.6** — `<GuidedEntryModal />` shell ships with A.7 as its acceptance test. Keyboard navigation + mobile responsive verified.
+- [ ] **A.7–A.12** — Each guided flow writes to the correct API endpoint with `source: MANUAL`. Cancellation mid-flow does not write partial rows.
+
+### 12.3 Track B-specific (wizard phases)
+
+- [ ] **B.0** — `/onboarding` auth-gates unauthenticated users to `/signin?next=/onboarding`. Completed users redirect to `/dashboard/setup`.
+- [ ] **B.1** — Wizard shell visually passes §8 design standards. No Shadcn defaults leaking through. Design system token module is self-contained.
+- [ ] **B.2–B.7** — Each step:
+  - [ ] Renders one question, one input, one primary CTA, one feedback moment
+  - [ ] Writes data with `source: ONBOARDING`
+  - [ ] Shows immediate feedback with count-up animation (where numeric)
+  - [ ] Updates `User.onboardingStep` atomically with the data write
+  - [ ] Emits `ONBOARDING_STEP_COMPLETED` audit log with sanitized metadata (no CDR data)
+  - [ ] `Back` button returns to the previous step without losing state
+- [ ] **B.8 Final Reveal** —
+  - [ ] Reads fresh `masterFinancialSnapshot` via `GET /api/onboarding/estimates/snapshot`
+  - [ ] Net worth hero animates via count-up (1000–1400ms, ease-out cubic)
+  - [ ] Three secondary metrics stagger in (200ms delay each)
+  - [ ] Insight line renders with correct math (`monthlyCashflow * 12`)
+  - [ ] "Continue setting up →" CTA marks `onboardingCompleted` and redirects to `/dashboard/setup`
+  - [ ] Visibly stronger than every prior step (§10.4 check)
+
+### 12.4 Track C-specific (integration + cleanup)
+
+- [ ] **C.0** — Welcome modal "Start guided setup →" routes to `/onboarding` (not legacy wizard). Legacy wizard still reachable via `/dashboard?legacy=wizard`.
+- [ ] **C.1** — Resume banner Resume CTA routes to `/onboarding`. Start over clears draft + routes to `/dashboard/setup`. `/dashboard` auto-redirect effect routes incomplete users to `/onboarding`.
+- [ ] **C.2** — Legacy wizard deletion:
+  - [ ] Run `grep -r "WizardContainer" --include="*.tsx" --include="*.ts"` — no unresolved references
+  - [ ] Run `tsc --noEmit` — no dangling import errors
+  - [ ] `/dashboard?legacy=wizard` URL no longer reaches anything (the escape hatch expires with the wizard)
+  - [ ] All Phase A bug fixes are preserved in git history for reference
+
+### 12.5 Track D-specific (design QA)
+
+- [ ] **D.0** — Walk-through screenshots captured for all 4 paths (fresh user, returning incomplete, skipper, escape hatch)
+- [ ] **D.0** — Every §8.1–§8.5 standard verified against every step
+- [ ] **D.0** — `docs/quality/PHASE_12_DESIGN_AUDIT.md` produced with P0/P1/P2 severity ratings
+- [ ] **D.0** — All P0 + P1 fixes shipped or explicitly deferred with tracked reason
+- [ ] **D.0** — Full wizard flow completes in ≤ 90 seconds on a fresh user
+
+### 12.6 CDR compliance per CLAUDE.md §13.3
+
+- [ ] Every onboarding write is audited via `createAuditLog` with sanitized metadata (no amounts, no balances, no BSBs)
+- [ ] `onboardingEstimateService` never logs the values the user typed
+- [ ] Gemini "Need help?" (if enabled) never receives CDR-classified data in its prompts
+- [ ] Estimated data written to real tables is clearly marked as `source: ONBOARDING` so downstream consumers can treat it appropriately
+
+---
+
+## 13. Progress Tracker
+
+Updated after every merged PR. All phases ⬜ until work begins.
+
+### Track A — `/dashboard/setup` refinement
+
+| Phase | Description | Status | PR |
+|---|---|---|---|
+| A.0 | Prisma schema: `EntrySource` enum + `source` column on 9 models | ⬜ Not started | — |
+| A.1 | `SetupProgressService` extension | ⬜ | — |
+| A.2 | `<SetupNextActionPanel />` component | ⬜ | — |
+| A.3 | Card prioritisation visual states | ⬜ | — |
+| A.4 | Why-This-Matters copy layer | ⬜ | — |
+| A.5 | Confidence state badges | ⬜ | — |
+| A.6 | `<GuidedEntryModal />` shell primitive | ⬜ | — |
+| A.7 | Accounts guided flow | ⬜ | — |
+| A.8 | Properties guided flow | ⬜ | — |
+| A.9 | Income guided flow | ⬜ | — |
+| A.10 | Expenses guided flow | ⬜ | — |
+| A.11 | Investments guided flow | ⬜ | — |
+| A.12 | Loans guided flow | ⬜ | — |
+
+### Track B — `/onboarding` new wizard
+
+| Phase | Description | Status | PR |
+|---|---|---|---|
+| B.0 | Route scaffolding + layout | ⬜ | — |
+| B.1 | Wizard shell + design system (~11 files) | ⬜ | — |
+| B.2 | Step 0: Welcome | ⬜ | — |
+| B.3 | Step 1: Household | ⬜ | — |
+| B.4 | Step 2: Income | ⬜ | — |
+| B.5 | Step 3: Housing | ⬜ | — |
+| B.6 | Step 4: Expenses (optional) | ⬜ | — |
+| B.7 | Step 5: Goal (optional) | ⬜ | — |
+| B.8 | Step 6: Final Reveal | ⬜ | — |
+
+### Track C — Integration + legacy cleanup
+
+| Phase | Description | Status | PR |
+|---|---|---|---|
+| C.0 | Welcome modal CTA → `/onboarding` | ⬜ | — |
+| C.1 | Resume banner + auto-redirect routing | ⬜ | — |
+| C.2 | Legacy `WizardContainer` deletion (⏸ paused until D.0 green) | ⬜ | — |
+
+### Track D — Design QA
+
+| Phase | Description | Status | PR |
+|---|---|---|---|
+| D.0 | §10.6 design quality audit + `docs/quality/PHASE_12_DESIGN_AUDIT.md` | ⬜ | — |
+
+### Summary bar
+
+```
+Total phases:  26
+Completed:     0
+In progress:   0
+Blocked:       0 (C.2 blocked on D.0)
+Not started:   26
+```
+
+---
+
+## 14. Changelog
+
+| Date | Change | Author |
+|---|---|---|
+| 2026-04-15 | **Plan created.** Twin-track architecture locked in per directive 2026-04-15. Q1–Q11 decisions documented in §2. Q12 (Final Reveal) defaulted to "yes". Option A source enum chosen in §3. Tracks A–D defined in §4–§7. §10 design standards carried over from the prior linear-wizard plan and made binding. | Claude |
+| 2026-04-15 | **Archive:** `docs/blueprint/PHASE_12_REDESIGN_V3.md` moved to `docs/archive/blueprint/` with a SUPERSEDED banner explaining what still applies (Phase A bug fixes, Phase B foundation pipeline, Phase C components, Gemini deferral) vs what was reverted (SetupTray in DashboardLayout chrome, /dashboard isEmpty replacement, NEXT_PUBLIC_ONBOARDING_V3 default flip, Phase G wholesale cleanup). | Claude |
+
+---
+
+*This plan is the source of truth for all Phase 12 twin-track work.
+When reality and this document disagree, fix the document first
+(CLAUDE.md §10.5, §11).*
+
+---
+
+## Plan approval
+
+**This document is the deliverable for the directive.** No code has
+been written. Once approved, work begins with Phase A.0 (the Prisma
+schema migration) which blocks every subsequent phase.
+
+Approval steps:
+1. Review §2 decisions locked in — confirm all 12 Qs are correct
+2. Review §4 Track A scope — confirm refinement-only, no deletions
+3. Review §5 Track B scope — confirm 5 data steps + Welcome + Final Reveal
+4. Review §8 design standards — confirm the §10 quality bar binds
+5. Review §10 files list — confirm nothing on /dashboard/setup gets deleted
+6. Review §11 risks — acknowledge R1 (Prisma migration reversibility)
+7. Say `approved` or flag any decision that needs to change
+
+After approval, I begin Track A.0 and proceed through the phases at
+the same 1-file-1-commit-1-PR rhythm used in Phases A–F earlier this
+session.
