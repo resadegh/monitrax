@@ -841,4 +841,281 @@ If I can't tick every box, I iterate before requesting review.
 
 ---
 
-*§9 data flow diagrams + §10 files list + §11 risk register in the next chunk.*
+## 9. Data Flow Diagrams
+
+### 9.1 First-time user — happy path
+
+```
+┌─────────────┐
+│  Signup     │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────────┐
+│  /dashboard             │
+│  ↓                      │
+│  <OnboardingWelcomeModal│
+│   greets, not wizard>   │
+└──────┬──────────────────┘
+       │ "Start guided setup →"
+       ▼
+┌─────────────────────────────────────────┐
+│  /onboarding (new top-level route)      │
+│                                         │
+│  B.2 Welcome      (intro, no input)     │
+│     ↓                                   │
+│  B.3 Household    → POST estimates/household (source: ONBOARDING)
+│     ↓                                   │
+│  B.4 Income       → POST estimates/income    (source: ONBOARDING)
+│     ↓                                   │
+│  B.5 Housing      → POST estimates/housing   (source: ONBOARDING)
+│     ↓                                   │
+│  B.6 Expenses     → POST estimates/expenses  (source: ONBOARDING)
+│     ↓           (skippable)             │
+│  B.7 Goal         → POST estimates/goal      (UserPreference)
+│     ↓           (skippable)             │
+│  B.8 Final Reveal → GET estimates/snapshot (reads masterFinancialService)
+│     ↓           animated reveal         │
+│     ↓           "Continue setting up →" │
+└──────┬──────────────────────────────────┘
+       │ POST /api/onboarding/complete
+       ▼               (onboardingCompleted = true)
+┌─────────────────────────────────────────┐
+│  /dashboard/setup                       │
+│                                         │
+│  <SetupNextActionPanel />               │
+│   ↓ "Next Step: Connect your bank"     │
+│                                         │
+│  <SetupTray />                          │
+│   Accounts: Estimated 20%               │
+│   Income:   Estimated 30%               │
+│   Expenses: Estimated 25%               │
+│   Loans:    Missing                     │
+│   Assets:   Missing                     │
+│                                         │
+│  <DashboardEmptyStateGrid />            │
+│   [PRIMARY tile]  [secondary] [secondary]│
+│   [dimmed]        [dimmed]    [dimmed]  │
+│                                         │
+│   Each tile shows:                      │
+│     title + why-this-matters            │
+│     confidence badge (Estimated/Missing)│
+│     CTA → opens <GuidedEntryModal />    │
+└─────────────────────────────────────────┘
+```
+
+### 9.2 Returning incomplete user — silent resume
+
+```
+┌─────────────┐
+│  Signin     │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────────────────────────┐
+│  /dashboard                             │
+│                                         │
+│  auto-redirect effect fires if:         │
+│    !onboardingCompleted                 │
+│    && !hasExistingData                  │
+│    && (dismissedWelcomeModal OR draft)  │
+│    && !?legacy=wizard                   │
+└──────┬──────────────────────────────────┘
+       │ router.push('/onboarding')
+       ▼
+┌─────────────────────────────────────────┐
+│  /onboarding                            │
+│                                         │
+│  step router reads User.onboardingStep  │
+│    if step=3, jump to B.5 Housing       │
+│    user resumes silently, no modal      │
+└─────────────────────────────────────────┘
+```
+
+### 9.3 Data write path — `/onboarding` step to database
+
+```
+<HouseholdStep />
+   │
+   │ user picks "Partner"
+   │ clicks Continue
+   ▼
+POST /api/onboarding/estimates/household
+   │
+   │ withPermission('settings.write', ...)
+   ▼
+onboardingEstimateService.upsertHouseholdEstimate(userId, input)
+   │
+   ├──▶ prisma.householdProfile.upsert({
+   │       where: { userId },
+   │       create: { ..., source: 'ONBOARDING' },
+   │       update: { ..., source: 'ONBOARDING' }
+   │    })
+   │
+   ├──▶ prisma.user.update({
+   │       where: { id: userId },
+   │       data: { onboardingStep: 3 }  // silent resume state
+   │    })
+   │
+   └──▶ createAuditLog({
+          action: 'ONBOARDING_STEP_COMPLETED',
+          metadata: { step: 'household' }  // no CDR data
+       })
+   │
+   ▼
+Route handler re-fetches fresh masterFinancialSnapshot
+   │
+   ▼
+Response: { success: true, data: { ...snapshot }, meta }
+   │
+   ▼
+<HouseholdStep /> shows feedback: "Got it — 2 in your household"
+   │ advances to <IncomeStep />
+```
+
+### 9.4 Data read path — `/dashboard/setup` rendering
+
+```
+<DashboardSetupPage />
+   │
+   ▼
+useSetupState() (C.1 hook, extended)
+   │
+   │ GET /api/setup/state
+   ▼
+setupStateService.getSetupState(userId)
+   │
+   ├──▶ getMasterFinancialSnapshot(userId)
+   │        returns counts + live metrics
+   │
+   ├──▶ for each module (accounts/income/expenses/loans/assets):
+   │       countEstimated = count rows where source='ONBOARDING'
+   │       countVerified  = count rows where source IN ('MANUAL','BASIQ','IMPORT')
+   │       derive state:  Missing | Estimated | Verified
+   │       derive percent: heuristic based on rowCount
+   │
+   └──▶ computeNextBestAction(progress):
+          priority chain → single recommendation
+   │
+   ▼
+Response: { tasks, moduleProgress, nextBestAction, progress }
+   │
+   ▼
+<SetupNextActionPanel />  reads .nextBestAction
+<SetupTray />             reads .moduleProgress
+<DashboardEmptyStateGrid /> reads .moduleProgress + derives priority per tile
+```
+
+---
+
+## 10. Files: Stay / Extend / Delete
+
+### 10.1 Files that STAY (no changes, no deletions)
+
+| File | Role | Why it stays |
+|---|---|---|
+| `app/dashboard/setup/page.tsx` | /dashboard/setup page entry | Refined, not rebuilt — per directive §1 |
+| `components/onboarding/OnboardingWelcomeModal.tsx` | First-visit greeting modal | Per Q10 — still the right first-contact beat |
+| `components/setup/SetupTray.tsx` | Collapsible progress checklist | Extended by A.1, not replaced |
+| `components/dashboard/BasiqHeroCard.tsx` | Basiq connect hero on setup page | Auto-hides once connected, unchanged |
+| `components/dashboard/DashboardEmptyStateGrid.tsx` | 6 setup cards | Extended by A.3–A.5, not replaced |
+| `components/dashboard/EmptyStateTile.tsx` | Shared tile shell | Extended by A.3–A.5 with new props |
+| `hooks/useSetupState.ts` | Client hook | Extended output shape, same fetch pattern |
+| `app/api/setup/state/route.ts` | Setup state API | Extended response, same route |
+| `lib/setup/tasks.ts` | Task registry | Extended metadata, same shape |
+| `lib/setup/v3Flag.ts` | Feature flag helper | Kept for `?legacy=wizard` escape hatch |
+| `lib/services/masterFinancialService.ts` | Financial calculation engine | **UNCHANGED** — canonical per §12.2 |
+| `prisma/schema.prisma` | Database schema | Touched only in A.0 for `EntrySource` enum |
+
+### 10.2 Files that get EXTENDED (edits only)
+
+| File | Track | Change |
+|---|---|---|
+| `components/DashboardLayout.tsx` | C.0, C.1 | Wire welcome modal + resume banner to `/onboarding` |
+| `components/dashboard/DashboardEmptyStateGrid.tsx` | A.3, A.4, A.5 | Priority + why-this-matters + confidence props |
+| `components/dashboard/EmptyStateTile.tsx` | A.3, A.4, A.5 | New props for priority state, whyThisMatters, confidenceState |
+| `components/setup/SetupTray.tsx` | A.1 | Per-module Missing/Estimated/Verified rendering |
+| `hooks/useSetupState.ts` | A.1 | Consume extended service response |
+| `lib/services/setupStateService.ts` | A.1 | Extended return type + module progress logic |
+| `lib/setup/tasks.ts` | A.1 | Task metadata extensions |
+| `app/api/setup/state/route.ts` | A.1 | Extended response shape |
+| `app/dashboard/setup/page.tsx` | A.2 | Mount `<SetupNextActionPanel />` at top |
+| `prisma/schema.prisma` | A.0 | Add `EntrySource` enum + `source` column on 9 models |
+
+### 10.3 Files that are NEW
+
+**Track A (new):**
+- `components/setup/SetupNextActionPanel.tsx` (A.2)
+- `components/setup/GuidedEntryModal.tsx` (A.6)
+- `components/setup/guided/AccountsGuidedFlow.tsx` (A.7)
+- `components/setup/guided/PropertiesGuidedFlow.tsx` (A.8)
+- `components/setup/guided/IncomeGuidedFlow.tsx` (A.9)
+- `components/setup/guided/ExpensesGuidedFlow.tsx` (A.10)
+- `components/setup/guided/InvestmentsGuidedFlow.tsx` (A.11)
+- `components/setup/guided/LoansGuidedFlow.tsx` (A.12)
+
+**Track B (new):**
+- `app/onboarding/layout.tsx` (B.0)
+- `app/onboarding/page.tsx` (B.0 — replaces legacy wizard page mode)
+- `components/onboarding/linear/design/tokens.ts` (B.1)
+- `components/onboarding/linear/primitives/LinearStepShell.tsx` (B.1)
+- `components/onboarding/linear/primitives/LinearInput.tsx` (B.1)
+- `components/onboarding/linear/primitives/LinearPrimaryButton.tsx` (B.1)
+- `components/onboarding/linear/primitives/LinearGhostButton.tsx` (B.1)
+- `components/onboarding/linear/primitives/LinearFeedback.tsx` (B.1)
+- `components/onboarding/linear/primitives/LinearProgressBar.tsx` (B.1)
+- `components/onboarding/linear/primitives/LinearSegmented.tsx` (B.1)
+- `components/onboarding/linear/hooks/useCountUp.ts` (B.1)
+- `styles/linear-wizard.css` (B.1)
+- `components/onboarding/linear/steps/WelcomeStep.tsx` (B.2)
+- `components/onboarding/linear/steps/HouseholdStep.tsx` (B.3)
+- `components/onboarding/linear/steps/IncomeStep.tsx` (B.4)
+- `components/onboarding/linear/steps/HousingStep.tsx` (B.5)
+- `components/onboarding/linear/steps/ExpensesStep.tsx` (B.6)
+- `components/onboarding/linear/steps/GoalStep.tsx` (B.7)
+- `components/onboarding/linear/steps/FinalRevealStep.tsx` (B.8)
+- `lib/services/onboardingEstimateService.ts` (new — §5.5)
+- `app/api/onboarding/estimates/household/route.ts` (B.3)
+- `app/api/onboarding/estimates/income/route.ts` (B.4)
+- `app/api/onboarding/estimates/housing/route.ts` (B.5)
+- `app/api/onboarding/estimates/expenses/route.ts` (B.6)
+- `app/api/onboarding/estimates/goal/route.ts` (B.7)
+- `app/api/onboarding/estimates/snapshot/route.ts` (B.8)
+
+**Track D (new):**
+- `docs/quality/PHASE_12_DESIGN_AUDIT.md` (D.0)
+
+### 10.4 Files that get DELETED (C.2 cleanup only)
+
+**Paused until user gives explicit go-ahead after D.0 design QA passes.**
+
+- `components/onboarding/wizard/WizardContainer.tsx`
+- `components/onboarding/wizard/steps/*.tsx` (all 10 files)
+- `components/onboarding/wizard/primitives/*.tsx` (wizard-only primitives)
+- `components/onboarding/wizard/types.ts` (wizard-only types)
+- `components/onboarding/AIHelper.tsx` (if wizard-only)
+- `app/api/onboarding/bulk-create/route.ts` (if no remaining callers)
+- `components/onboarding/OnboardingResumeBanner.tsx` (if unused after C.1)
+- `styles/wizard-animations.css` (if no remaining importers)
+- `app/onboarding/basiq-callback/page.tsx` (if wizard-only)
+
+---
+
+## 11. Risk Register
+
+| # | Risk | Severity | Mitigation |
+|---|---|---|---|
+| R1 | Prisma migration A.0 is hard to reverse | **High** | Tag pre-migration commit; keep migration additive (new enum + nullable-defaulted column); test on staging first |
+| R2 | `source` enum conflicts with existing `Account.balanceSource` enum | **Medium** | The two are semantically different (`balanceSource` = provenance of the **balance value**, `source` = provenance of the **row**). Both coexist on Account. No renaming. |
+| R3 | Partial setup state creates confused users (estimated rows scattered across real tables) | **Medium** | Every estimated row shows a clear "Estimated" badge on `/dashboard/setup` and in entity detail pages. Not hiding — labelling. |
+| R4 | `masterFinancialService` includes `ONBOARDING`-tagged rows in aggregates, skewing net worth on the Final Reveal | **Low** | **Intentional** — those rows ARE the user's best guess. The Final Reveal is explicitly framed as "at your current rate" so estimates are appropriate inputs. |
+| R5 | Legacy `WizardContainer` deletion in C.2 leaves dangling imports | **Medium** | Delete only after D.0 validates. Run `tsc --noEmit` before merge. |
+| R6 | `/app/onboarding/page.tsx` replacement breaks the legacy wizard page mode | **Low** | Legacy wizard accessed via `/dashboard` welcome modal (modal mode) is preserved; only the `/app/onboarding` page mode is replaced. Escape hatch `/dashboard?legacy=wizard` still opens the modal. |
+| R7 | Track A refinements collide with Track B in progress | **Low** | Tracks are independent (different files). Only shared file is `prisma/schema.prisma` (A.0) which blocks both. |
+| R8 | `GuidedEntryModal` shell over-abstracted, breaks on per-module needs | **Medium** | A.6 ships with one concrete consumer (A.7 Accounts) as acceptance test. Shell changes if the test breaks. |
+| R9 | Final Reveal animation performance on low-end devices | **Low** | All animations CSS-keyframe based, no JS timing loops. `prefers-reduced-motion` disables them entirely. |
+| R10 | Wizard Q&A decisions drift across sessions without this doc as anchor | **Medium** | This doc is the single source of truth. Every PR body links back to the phase. Plan changes go in the §14 changelog first. |
+
+---
+
+*§12 validation checklist + §13 progress tracker + §14 changelog in the next chunk.*
