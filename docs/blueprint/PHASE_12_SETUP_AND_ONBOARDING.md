@@ -655,4 +655,190 @@ Each route handler is a thin wrapper per CLAUDE.md §12.3:
 
 ---
 
-*§6 Track C + §7 Track D + §8 Design standards in the next chunk.*
+## 6. Track C — Integration + Legacy Cleanup
+
+**Goal**: wire the new `/onboarding` route into the existing entry
+points (welcome modal, resume banner) and retire the legacy
+`WizardContainer` once the new wizard has been validated against
+real traffic.
+
+### 6.1 Phase breakdown — C.0 to C.2
+
+#### C.0 — Welcome modal CTA → `/onboarding`
+
+**Scope**: 1 file (`components/DashboardLayout.tsx`).
+**Depends on**: B.8 (the new wizard must be functional end-to-end).
+**Deliverables**:
+- `handleStartSetup` already routes to `/dashboard/setup` today — change to route to `/onboarding` instead
+- Welcome modal's primary CTA label: "Start guided setup →" (unchanged)
+- No changes to the modal component itself (per Q10, the welcome modal stays)
+- Legacy wizard still reachable via `/dashboard?legacy=wizard` URL escape hatch
+
+#### C.1 — Resume banner routing
+
+**Scope**: 1 file (`components/DashboardLayout.tsx`).
+**Depends on**: C.0.
+**Deliverables**:
+- `handleResumeBannerResume` — change from `router.push('/dashboard/setup')` to `router.push('/onboarding')`
+  - The wizard's step router (B.0) reads `User.onboardingStep` to determine the resume step — silent resume per Q5
+- `handleResumeBannerStartOver` — already routes to `/dashboard/setup`; keep as-is (start over = abandon wizard, go straight to the workbench)
+- The `/dashboard` auto-redirect effect (added earlier in this session) stays, but redirects to `/onboarding` instead of `/dashboard/setup` for incomplete users with draft or dismissed welcome
+
+#### C.2 — Legacy `WizardContainer` cleanup
+
+**Scope**: delete many files. Multi-file PR, exception noted.
+**Depends on**: **EXPLICIT USER APPROVAL after end-to-end testing of Tracks A + B + C.0/C.1**.
+**Deliverables** (deletions only, no new code):
+- Delete `components/onboarding/wizard/WizardContainer.tsx`
+- Delete all 10 step files under `components/onboarding/wizard/steps/`
+- Delete all wizard primitives under `components/onboarding/wizard/primitives/`
+- Delete `components/onboarding/wizard/types.ts` (wizard-specific types only; shared `WizardData` type preserved if consumed elsewhere)
+- Delete `components/onboarding/AIHelper.tsx` if wizard-only
+- Delete `app/api/onboarding/bulk-create/route.ts` if no other caller (grep confirms)
+- Delete `components/onboarding/OnboardingResumeBanner.tsx` if unused after C.1 (it may still be mounted — verify first)
+- Delete `styles/wizard-animations.css` if nothing else imports it
+- Delete `app/onboarding/basiq-callback/page.tsx` if wizard-only
+- Delete `components/onboarding/index.ts` re-exports that no longer resolve
+
+**CRITICAL**: this phase is paused until:
+1. Track A is merged and production-tested for 1+ week
+2. Track B is merged and production-tested for 1+ week
+3. No rollback reports on the `?legacy=wizard` escape hatch
+4. Explicit user go-ahead in the plan's changelog
+
+---
+
+## 7. Track D — Design QA Pass (Mandatory §10.6)
+
+**Goal**: formal quality audit of the entire twin-surface
+experience before any legacy cleanup ships.
+
+### 7.1 D.0 — Design quality audit
+
+**Scope**: 1 file (`docs/quality/PHASE_12_DESIGN_AUDIT.md` — new audit artefact).
+**Depends on**: all of Track A + Track B merged.
+**Deliverables**:
+
+Walk through the full experience front-to-back on production:
+
+1. **Fresh user signup path**:
+   `/signin → signup → welcome modal → /onboarding → B.2 Welcome → B.3 Household → B.4 Income → B.5 Housing → B.6 Expenses → B.7 Goal → B.8 Final Reveal → /dashboard/setup → refine via guided modals → /dashboard`
+
+2. **Returning incomplete user path**:
+   `/dashboard → auto-redirect to /onboarding (silent resume at last step) → finish → /dashboard/setup`
+
+3. **Skipping the wizard path**:
+   `welcome modal → "Skip for now" → /dashboard/setup (no estimated data) → all tiles show Missing → guided modals capture real data`
+
+4. **Escape hatch path**:
+   `/dashboard?legacy=wizard → legacy WizardContainer → complete → /dashboard`
+
+For each path, evaluate against §10.6's mandatory quality check:
+
+- Does this feel like a premium fintech product?
+- Is there any unnecessary friction?
+- Is any screen visually cluttered?
+- Are transitions smooth and consistent?
+- Does the final reveal feel meaningful?
+- Is the /dashboard/setup refinement flow clear and prioritised?
+
+Compare side-by-side against benchmark captures of Apple, Stripe,
+Wealthfront, Notion onboarding flows. Screenshot every step.
+
+**Produce a written audit** at `docs/quality/PHASE_12_DESIGN_AUDIT.md` listing:
+- Every weakness identified (copy, spacing, motion, hierarchy, clutter)
+- A proposed fix per weakness
+- Severity rating: P0 blocker / P1 must-fix / P2 polish
+
+Then either:
+- Ship the P0 + P1 fixes on a follow-up branch **before** C.2 cleanup
+- OR defer explicitly with a tracked reason and approval
+
+### 7.2 Success criteria for D.0
+
+D.0 passes only when **all of these are true**:
+
+- [ ] Every step in both surfaces renders without clutter
+- [ ] All transitions use ~200–300ms ease-out cubic (no bounce)
+- [ ] Number count-ups fire on Final Reveal and on per-step feedback
+- [ ] Progress bar updates smoothly
+- [ ] Dark mode works across both surfaces
+- [ ] `prefers-reduced-motion: reduce` disables all animations cleanly
+- [ ] Mobile (375px, 414px, 768px) renders without horizontal scroll
+- [ ] No "developer-level UI" — no debug badges, no version pills, no default Shadcn form chrome leaking through
+- [ ] Final Reveal is visibly stronger than every prior step
+- [ ] Entire wizard flow completes in ≤ 90 seconds for a fresh user
+
+---
+
+## 8. Design Standards (§10 — Binding)
+
+These are **binding** constraints on every Track A and Track B
+phase. If I can't tick every box in the per-phase PR, I iterate
+before handing the PR to you.
+
+### 8.1 Visual design
+
+- **Strong typographic hierarchy**: wizard type scale is separate from dashboard tokens. Title ~48px, supporting text ~16px, input label ~14px. Headlines use `tracking-tight` with `letter-spacing: -0.02em`.
+- **Generous spacing**: per-step layout has min ~120px vertical breathing room top and bottom. Content `max-w-[520px]` centered — NOT the dashboard's 7xl container.
+- **Minimal UI per screen**: one title + one supporting line + one input + one feedback moment + one primary CTA. Nothing else.
+- **High-contrast primary actions**: single gradient CTA per screen, `from-blue-500 via-indigo-500 to-violet-500`, `shadow-[0_20px_40px_-12px_rgba(99,102,241,0.5)]`.
+- **Consistent layout grid**: every step composes `<LinearStepShell />`. Individual steps cannot drift.
+- **Clean inputs**: `<LinearInput />` with focus ring, currency/number variants. No default Shadcn form chrome.
+- **Avoid clutter at all costs**: no sidebar in the wizard, no progress badges competing with the primary action.
+
+### 8.2 Motion + transitions
+
+- **Step-to-step transitions**: `~200–300ms` fade + slight vertical slide. Exit: `translateY(-8px) + opacity 0`. Enter: `translateY(8px) + opacity 0 → 0 + 1`. CSS keyframes, no library.
+- **Number count-ups**: custom `useCountUp` hook, `requestAnimationFrame`-based, ease-out cubic. 600–800ms for per-step feedback (responsive), 1000–1400ms for Final Reveal (weighted).
+- **Progress bar**: smooth width transition `400ms cubic-bezier(0.22, 1, 0.36, 1)`.
+- **No bounce**. **No spring**. **No decorative animations.**
+- **`prefers-reduced-motion`** honoured on every animation via Tailwind `motion-reduce:` variants.
+
+### 8.3 Micro-interactions
+
+Every step has at least one micro-feedback moment:
+- Number updates after input (count-up)
+- Confirmation text: "Nice — that's your income sorted", "Got it — we'll refine this later"
+- Progress bar advancement on step change
+
+Feedback must feel **responsive, smooth, satisfying**. Never slow, never skipped.
+
+### 8.4 Final Reveal — most important moment
+
+- Dedicated layout variant (darker ambient background)
+- Hero typography: net worth at 96–120px
+- Two-column metric grid below (monthly savings | debt level | health grade)
+- Insight card at the bottom with subtle indigo glow
+- Staggered entry animation (`~1600ms total`, each metric ~200ms delayed)
+- Visibly different quality step from every prior screen
+- The user must feel: **"This is already useful."**
+
+### 8.5 Consistency
+
+- Inherits Monitrax gradient tokens (blue → indigo → violet) so the wizard feels integrated
+- Reuses Shadcn components **only where they don't leak default developer-level UI** — inputs, buttons, segmented controls on the wizard are bespoke primitives
+- `/dashboard/setup` refinements reuse existing tokens and component library (it's a dashboard surface, not a take-over)
+
+### 8.6 What I will NOT do (§10.7 guardrails)
+
+- ❌ Shadcn defaults in the wizard (dashboard OK)
+- ❌ Multi-column layouts on any wizard step
+- ❌ Icons as decoration (only where they carry meaning)
+- ❌ Bounce / spring easings
+- ❌ Loading spinners on step transitions (pending state keeps the old value visible until new feedback fades in)
+- ❌ Developer chrome (debug labels, tech badges, version pills)
+- ❌ Generic empty-state illustrations — typography only on wizard, bespoke SVG on dashboard tiles (already done)
+
+### 8.7 Per-phase design acceptance gate
+
+Every Track A and Track B UI PR must include, in the PR body:
+- A screenshot or loom of the component rendering
+- A self-review checklist against §8.1–§8.5
+- A section noting any deviation from the standards with justification
+
+If I can't tick every box, I iterate before requesting review.
+
+---
+
+*§9 data flow diagrams + §10 files list + §11 risk register in the next chunk.*
