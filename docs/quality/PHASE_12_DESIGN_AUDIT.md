@@ -283,5 +283,63 @@ that should not be flagged as P0/P1 weaknesses:
 
 ---
 
+## 11. Open incidents (audit cannot proceed until resolved)
+
+### 11.1 — Data loss reported 2026-04-15
+
+**Status:** 🚨 Critical — investigation paused, awaiting user input.
+
+**Summary:** A user with prior data on Monitrax appears to have all
+data missing after the recent Phase 12 PRs landed on `main`. The
+root cause has not been established. **No code work proceeds and
+no further audit walkthroughs run until this is resolved.**
+
+**Tracked in the plan as:** `PHASE_12_SETUP_AND_ONBOARDING.md`
+§11 R12.
+
+**Possibly-related destructive code shipped in this phase:**
+`upsertHouseholdEstimate` in `lib/services/onboardingEstimateService.ts`
+overwrites `HouseholdProfile.adultsCount` and `childrenCount` for
+existing users when the wizard runs. The function was gated by an
+auth-header bug (PR #521) that prevented it from running until
+that PR merged. So the *timing* of when this could have caused
+data loss matters — if loss was observed *before* #521 merged,
+it cannot be the cause; if *after*, it is the prime suspect.
+Tracked as R11 in the plan.
+
+**Investigation prerequisites before continuing the audit:**
+
+1. Confirm whether the affected user's DB rows are actually gone
+   versus just not displayed. Use Prisma Studio or a direct SQL
+   count query against each financial table for the user's `userId`.
+2. Audit Vercel/deployment logs for the migration command used:
+   - `prisma migrate deploy` — **safe**, additive only
+   - `prisma migrate reset` — **destructive**, drops all tables
+   - `prisma db push` — **possibly destructive** depending on flags
+3. Verify backup status: when was the most recent good backup of
+   the affected user's tables?
+4. Determine when the data was last seen intact (timestamp).
+5. Cross-reference the timestamp against PR #521's merge time to
+   see if R11 destructive code is in scope.
+
+**What the audit will do after the incident closes:**
+
+- If R11 was the root cause: harden `upsertHouseholdEstimate` so
+  it cannot overwrite a verified `HouseholdProfile` (only update
+  if `source === 'ONBOARDING'` or write to a separate field), then
+  resume the audit walkthroughs.
+- If a destructive migration command was run: triage the recovery
+  path with the user, restore from backup, document the postmortem
+  in this doc.
+- If neither: dig deeper into shipped code paths for any bypass of
+  the auth check that could have triggered the destructive write.
+
+**Until §11.1 closes:** Track C.2 cleanup remains paused **even if
+the §3-§7 walkthroughs would otherwise pass**. Deleting the legacy
+wizard while a data-loss incident is open would compound the risk.
+
+---
+
 *This document is the §10.6 audit gate. Do not skip. Do not delete
-the legacy wizard until §9 is fully signed off.*
+the legacy wizard until §9 is fully signed off **and** §11 has no
+open incidents.*
