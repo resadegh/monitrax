@@ -55,6 +55,22 @@ enum BalanceSource {
   USER_VERIFIED   // User verified balance after import
 }
 
+// Phase 12 twin-track (2026-04-15): provenance of a row itself,
+// distinct from BalanceSource which tracks provenance of the
+// balance value only. Added to 9 financial entity models so the
+// /dashboard/setup page can display Estimated (onboarding) vs
+// Verified (manual / bank / import / calculated) badges, and the
+// new /onboarding wizard can write rows tagged `ONBOARDING` without
+// overwriting real financial data.
+// See docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md §3.
+enum EntrySource {
+  ONBOARDING      // Written by the /onboarding wizard (estimated, low confidence)
+  MANUAL          // Written by the user via /dashboard/setup or entity dialogs
+  BASIQ           // Imported from Basiq Open Banking
+  IMPORT          // Imported from CSV / OFX / QIF file
+  CALCULATED      // Derived by a system engine (read-only for users)
+}
+
 enum IncomeType {
   SALARY
   RENT
