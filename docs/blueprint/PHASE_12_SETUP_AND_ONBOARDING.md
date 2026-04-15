@@ -1115,8 +1115,8 @@ Response: { tasks, moduleProgress, nextBestAction, progress }
 | R8 | `GuidedEntryModal` shell over-abstracted, breaks on per-module needs | **Medium** | A.6 ships with one concrete consumer (A.7 Accounts) as acceptance test. Shell changes if the test breaks. |
 | R9 | Final Reveal animation performance on low-end devices | **Low** | All animations CSS-keyframe based, no JS timing loops. `prefers-reduced-motion` disables them entirely. |
 | R10 | Wizard Q&A decisions drift across sessions without this doc as anchor | **Medium** | This doc is the single source of truth. Every PR body links back to the phase. Plan changes go in the §14 changelog first. |
-| **R11** | **`upsertHouseholdEstimate` overwrites existing `HouseholdProfile.adultsCount` / `childrenCount`** when the wizard runs against a user who already has a configured household. The function is in `lib/services/onboardingEstimateService.ts` (shipped via PR #520). The destructive update branch overwrites the composition fields with whatever the wizard's 3-option picker maps to (`SELF` = 1/0, `PARTNER` = 2/0, `FAMILY` = 2/1). Any extra adults / children / lifestyle preferences a user previously set are lost. | **HIGH** | (1) Auth-header bug from PR #521 prevented this function from being callable in production until the fix landed — so no users have lost household data through this path **yet**. (2) After #521 merged, the function is now reachable. (3) **Fix required before C.2 cleanup**: change the upsert to either (a) only update if the existing row's `source === 'ONBOARDING'`, or (b) write the wizard answer to a new field and leave existing composition untouched. (4) Also update `upsertHousingEstimate`, which currently overwrites `source` to `ONBOARDING` on existing profiles — same defensive guard needed. |
-| **R12** | **Data loss incident reported 2026-04-15** — a user with prior data on Monitrax appears to have all their data missing after the recent merges. Root cause not yet established; investigation paused until user confirms (a) which data is missing, (b) whether DB rows are actually gone vs not displayed, (c) whether `prisma migrate deploy` ran cleanly or a destructive flag was used, (d) backup status. The destructive code in R11 is the most likely candidate from this plan's PRs but was gated by the auth bug, so the timing (data loss observed *before* PR #521 merged) is inconsistent with that being the root cause. | **CRITICAL** | (1) **Halt all code work** until root cause established and recovery path confirmed. (2) Audit Vercel/deploy logs for migration commands. (3) Verify DB row counts directly via Prisma Studio or production console for the affected user. (4) Restore from backup if data is truly gone. (5) Once root cause is known, fix the underlying issue *and* harden the R11 destructive code regardless. |
+| **R11** | **`upsertHouseholdEstimate` overwrites existing `HouseholdProfile.adultsCount` / `childrenCount`** when the wizard runs against a user who already has a configured household. The function is in `lib/services/onboardingEstimateService.ts` (shipped via PR #520). The destructive update branch overwrites the composition fields with whatever the wizard's 3-option picker maps to (`SELF` = 1/0, `PARTNER` = 2/0, `FAMILY` = 2/1). Any extra adults / children / lifestyle preferences a user previously set are lost. | **HIGH → MITIGATED 2026-04-15** | ✅ PR #524 stubbed the entire `onboardingEstimateService` — every write function now throws `OnboardingDisabledError` instead of calling Prisma. The destructive code path is structurally unreachable. Re-enablement must ship via a new PR that adds a `source === 'ONBOARDING'` guard, fills in the CLAUDE.md §12.11 checklist, and receives explicit user confirmation before merge. |
+| **R12** | **Data loss incident reported 2026-04-15** — `rayanmehr79@gmail.com`'s dashboard rendered blank after the Phase 12 A.0 PRs landed. Row-count queries against both DBs confirmed the data was **still intact** (3 accounts, 5 properties, 4 loans, 6 income, 57 expenses, 3 investments, 1 household). Audit log showed zero `ENTITY_DELETED` events. The symptom was a read-path crash: Phase 12 A.0 added a `source` column to 9 models in `schema.prisma`, but neither Cloud SQL instance had a `_prisma_migrations` table (they were created outside Prisma migrate during the Render→GCP move and had been drifting ever since). `prisma migrate deploy` was never run, so the DB lacked the column the deployed Prisma client expected. Every `findMany` generated `SELECT ..., source FROM accounts` which crashed with `column "source" does not exist`, and API routes caught the error and returned empty responses. | **CRITICAL → RESOLVED 2026-04-15** | ✅ Full remediation shipped in one session: PR #523 (CLAUDE.md §12.11 destructive-write checklist), PR #524 (hotfix — revert `source` columns + stub destructive service), PR #525 (baseline runbook + orphaned migration deletion), PR #526 (`vercel-build` script auto-applies `prisma migrate deploy` on every build + CLAUDE.md §12.12 schema change deploy protocol). Manual one-time SQL baseline executed against both DBs creating `_prisma_migrations` and marking `0_init` applied. Both Vercel builds now succeed end-to-end through the new pipeline. Schema drift is structurally impossible going forward. See `docs/quality/PHASE_12_DESIGN_AUDIT.md` §11.1 for the full post-mortem. |
 
 ---
 
@@ -1202,12 +1202,12 @@ Updated after every merged PR. All phases ⬜ until work begins.
 
 | Phase | Description | Status | PR |
 |---|---|---|---|
-| A.0 | Prisma schema: `EntrySource` enum + `source` column on 9 models | ✅ Merged | #511 |
-| A.1 | `SetupProgressService` extension | ✅ Merged | #512 |
+| A.0 | Prisma schema: `EntrySource` enum + `source` column on 9 models | 🔴 **REVERTED** (#524, see R12) — must be re-applied via a new migration | #511 → #524 |
+| A.1 | `SetupProgressService` extension | 🟡 **Partially reverted** — `buildModuleProgress` source-filter count queries removed in #524 (estimated counts hard-coded to 0 until A.0 re-applies) | #512 → #524 |
 | A.2 | `<SetupNextActionPanel />` component | ✅ Merged | #513 |
 | A.3 | Card prioritisation visual states | ✅ Merged | #513 |
 | A.4 | Why-This-Matters copy layer | ✅ Merged | #513 |
-| A.5 | Confidence state badges | ✅ Merged | #513 |
+| A.5 | Confidence state badges | 🟡 **All rows currently render as Verified/Missing** — Estimated amber badges will return when A.0 is re-applied | #513 |
 | A.6 | `<GuidedEntryModal />` shell primitive | 🟡 Stacked, not on main | #514 (orphaned — needs rescue PR) |
 | A.7 | Accounts guided flow | 🟡 Stacked, not on main | #514 |
 | A.8 | Properties guided flow | 🟡 Stacked, not on main | #514 |
@@ -1223,12 +1223,12 @@ Updated after every merged PR. All phases ⬜ until work begins.
 | B.0 | Route scaffolding + layout | ✅ Merged | #515 |
 | B.1 | Wizard shell + design system (~11 files) | ✅ Merged | #515 |
 | B.2 | Step 0: Welcome | ✅ Merged | #515 |
-| B.3 | Step 1: Household | ✅ Merged | #520 (rescue PR; original #516 was stacked) |
-| B.4 | Step 2: Income | ✅ Merged | #520 |
-| B.5 | Step 3: Housing | ✅ Merged | #520 |
-| B.6 | Step 4: Expenses (optional) | ✅ Merged | #520 |
-| B.7 | Step 5: Goal (optional) | ✅ Merged | #520 |
-| B.8 | Step 6: Final Reveal | ✅ Merged | #520 (rescue PR; original #517 was stacked) |
+| B.3 | Step 1: Household | 🟡 **UI intact, writes disabled** (#524 stubbed `upsertHouseholdEstimate`) | #520 → #524 |
+| B.4 | Step 2: Income | 🟡 **UI intact, writes disabled** | #520 → #524 |
+| B.5 | Step 3: Housing | 🟡 **UI intact, writes disabled** | #520 → #524 |
+| B.6 | Step 4: Expenses (optional) | 🟡 **UI intact, writes disabled** | #520 → #524 |
+| B.7 | Step 5: Goal (optional) | 🟡 **UI intact, writes disabled** | #520 → #524 |
+| B.8 | Step 6: Final Reveal | ✅ Merged — read-only, not affected by the #524 revert | #520 |
 | B.x — auth header fix | Add `Authorization: Bearer ${token}` to all 6 step fetches | ✅ Merged | #521 |
 
 ### Track C — Integration + legacy cleanup
@@ -1245,22 +1245,35 @@ Updated after every merged PR. All phases ⬜ until work begins.
 |---|---|---|---|
 | D.0 | §10.6 design quality audit + `docs/quality/PHASE_12_DESIGN_AUDIT.md` | ✅ Doc merged (audit walkthrough not yet performed) | #519 |
 
+### Track E — R12 incident remediation (2026-04-15, not originally planned)
+
+| Phase | Description | Status | PR |
+|---|---|---|---|
+| E.0 | CLAUDE.md §12.11 destructive-write checklist (non-negotiable rule) | ✅ Merged | #523 |
+| E.1 | **Hotfix** — revert Phase 12 A.0 `source` columns from schema + stub destructive `onboardingEstimateService` + remove source-filter count queries in `setupStateService` | ✅ Merged | #524 |
+| E.2 | Prisma baseline runbook (`docs/operational/database/04_PRISMA_MIGRATION_BASELINE.md`) + `scripts/baseline-prisma-migrations.sh` + orphaned `1_add_entry_source_enum/` migration folder deleted | ✅ Merged | #525 |
+| E.3 | `vercel-build` script in `package.json` that runs `prisma migrate deploy` before every build + CLAUDE.md §12.12 schema change deploy protocol + updated `02_VERCEL_DEPLOYMENT.md` and `03_DATABASE_MIGRATIONS.md` | ✅ Merged | #526 |
+| E.4 | Manual one-time SQL baseline executed in Cloud SQL Studio against both `monitrax-db-dev` (35.189.31.209) and `monitrax-db-prod` (35.197.180.137): `CREATE TABLE "_prisma_migrations" + INSERT row marking 0_init applied with correct SHA256 checksum (`abc16efe...`) | ✅ Executed | (manual, no PR) |
+
 ### Summary bar
 
 ```
-Total phases:        26 (+1 hotfix B.x — auth header)
-On main:             19 (A.0–A.5, B.0–B.8, B.x, C.0–C.1, D.0 doc)
-Stacked, not on main: 7 (A.6–A.12 guided flows — #514 orphaned)
+Total phases:        26 (+1 hotfix B.x) + 5 remediation phases (E.0–E.4)
+On main:             13 active (A.2–A.5, B.0–B.2, B.8, B.x, C.0–C.1, D.0 doc)
+On main but disabled: 5 (B.3–B.7 — UI intact, writes stubbed pending A.0 re-apply)
+Partially reverted:  2 (A.0 schema, A.1 est counts)
+Stacked, not on main: 7 (A.6–A.12 guided flows — #514 orphaned, rescue pending)
 Paused:               1 (C.2 — blocks on D.0 audit walkthrough sign-off)
-Open incident:        1 (data loss reported 2026-04-15, root cause TBD — see §11 R11)
+Open incidents:       0 (R12 closed 2026-04-15)
 ```
 
 ### Outstanding work
 
-1. **Resolve #514 stacked-PR orphan** — Track A.6–A.12 (`GuidedEntryModal` + 6 guided flows) was merged into a stacked parent branch instead of `main`, same way #516/#517 were. A rescue PR (similar pattern to #520) needs to bring those 7 phases onto `main`.
-2. **Data loss incident triage** — see §11 R11. Halt all code work until root cause established and recovery path confirmed.
-3. **Audit walkthrough (D.0)** — Reza walks the 4 paths in `docs/quality/PHASE_12_DESIGN_AUDIT.md` end-to-end and signs off in §9, which unblocks Track C.2 cleanup.
-4. **Track C.2 legacy cleanup** — paused until D.0 sign-off.
+1. **Re-apply Phase 12 A.0** (hardened) — ship a new PR with a fresh migration folder (e.g. `2_phase12_entry_source_hardened/`) containing the additive `CREATE TYPE` + `ALTER TABLE ... ADD COLUMN source` statements, plus the restored `source` fields in `schema.prisma`, plus the §12.11-compliant `source === 'ONBOARDING'` guard on `upsertHouseholdEstimate` and `upsertHousingEstimate`. Must fill in the §12.11 checklist in the PR body and receive explicit user confirmation before merge. Vercel pipeline will auto-apply the migration to prod on merge.
+2. **Re-enable wizard writes** — once A.0 re-applies, remove the `OnboardingDisabledError` stubs in `onboardingEstimateService` and restore the real write logic (with the hardened guards in place).
+3. **Resolve #514 stacked-PR orphan** — Track A.6–A.12 (`GuidedEntryModal` + 6 guided flows) was merged into a stacked parent branch instead of `main`, same way #516/#517 were. A rescue PR (similar pattern to #520) needs to bring those 7 phases onto `main`. Also check the guided flows for the same auth-header bug that #521 fixed in the linear wizard.
+4. **Audit walkthrough (D.0)** — Reza walks the 4 paths in `docs/quality/PHASE_12_DESIGN_AUDIT.md` end-to-end and signs off in §9, which unblocks Track C.2 cleanup. Can run BEFORE the A.0 re-application as long as Path A/B are deferred in the weakness register.
+5. **Track C.2 legacy cleanup** — paused until D.0 sign-off.
 
 ---
 
@@ -1280,6 +1293,14 @@ Open incident:        1 (data loss reported 2026-04-15, root cause TBD — see �
 | 2026-04-15 | **Track B.3–B.8 merged via rescue PR (#520).** Originally shipped as #516 + #517 but those were stacked and merged into the parent branches instead of `main`. The rescue PR fast-forwards all 6 step components (HouseholdStep, IncomeStep, HousingStep, ExpensesStep, GoalStep, FinalRevealStep) + 6 API routes under `/api/onboarding/estimates/*` + the shared `onboardingEstimateService` onto `main`. **No new code in #520 — same commits as #516/#517, just retargeted.** | Claude |
 | 2026-04-15 | **Auth header hotfix merged (#521).** Bug discovered when user reported "Could not save. Please try again." on the Household step. Root cause: 6 wizard step component fetches were missing `Authorization: Bearer ${token}` header, so every `POST /api/onboarding/estimates/*` returned 401. Fix added `useAuth()` import and the missing header to `HouseholdStep`, `IncomeStep`, `HousingStep`, `ExpensesStep`, `GoalStep`, and `FinalRevealStep` (2 fetches: snapshot + complete). +47 / −14 lines. The Track A.6–A.12 guided flows likely have the same bug pattern but are not on main yet — requires the same fix once #514 is rescued. | Claude |
 | 2026-04-15 | **🚨 Data loss incident reported.** A user with prior data on Monitrax appears to have all data missing after the recent merges. Tracked as **R12** in §11. **All code work halted** until root cause is established and recovery path confirmed. Investigation steps: (1) confirm whether DB rows are actually gone vs not displayed (Prisma Studio direct query), (2) audit Vercel/deploy logs for migration commands (was it `prisma migrate deploy` or `prisma migrate reset`?), (3) check backup status and most recent good snapshot. The destructive `upsertHouseholdEstimate` (R11) is the most likely candidate from this plan's PRs but was gated by the auth bug in #521 — so timing is inconsistent unless data loss happened *after* #521 merged. | Claude |
+| 2026-04-15 | **R12 investigation — data is intact.** Direct SQL queries against both Cloud SQL instances (Cloud SQL Studio) confirmed `rayanmehr79@gmail.com` (id `fb06f1d0-cfbc-41fb-8324-ca3aa8327907`) still has all their data: 3 accounts, 5 properties, 4 loans, 6 income, 57 expenses, 3 investments, 1 household profile. Audit log shows zero `ENTITY_DELETED` events in 14 days. The symptom was a **read-path crash**, not real data loss. | Claude |
+| 2026-04-15 | **R12 root cause identified.** Phase 12 A.0 added a `source` column to 9 models in `schema.prisma`, but the matching migration never ran against either DB. Investigation Q5 (`information_schema.columns WHERE column_name='source'`) returned only pre-existing tables (none of the 9 Phase 12 tables). Q6 (`SELECT FROM "_prisma_migrations"`) returned `relation does not exist` — **neither Cloud SQL instance has a Prisma migration tracking table at all**. Both DBs were created outside Prisma migrate during the Render→GCP move and have been drifting ever since. Deployed Prisma client generated `SELECT ..., source FROM accounts` which crashed at the DB layer, API routes caught the error and returned empty responses, dashboard rendered blank. | Claude |
+| 2026-04-15 | **PR #523 merged — CLAUDE.md §12.11 destructive write checklist.** Added a zero-tolerance rule covering `update`, `upsert`, `updateMany`, `delete`, `deleteMany`, raw SQL, and destructive migrations. Requires PR authors to answer three questions for any destructive write, provides ❌/✅ examples, PR body template, grep one-liner, and code-review enforcement. Added in response to the R11 `upsertHouseholdEstimate` antipattern shipping without user confirmation. | Claude |
+| 2026-04-15 | **PR #524 merged — Phase 12 A.0 hotfix revert.** Removed `source EntrySource` field from the 9 models in `schema.prisma` and removed the `EntrySource` enum. Stubbed `onboardingEstimateService` — all 5 write functions now throw `OnboardingDisabledError` (defense in depth). Patched `setupStateService.buildModuleProgress` to not filter by source (estimated counts hard-coded to 0). Zero database changes. Restored the dashboard for every user within one build cycle. | Claude |
+| 2026-04-15 | **PR #525 merged — Prisma baseline runbook + orphaned migration deleted.** New `docs/operational/database/04_PRISMA_MIGRATION_BASELINE.md` with step-by-step instructions for bringing both Cloud SQL instances under Prisma tracking. New `scripts/baseline-prisma-migrations.sh` helper with safety checks. Deleted `prisma/migrations/1_add_entry_source_enum/` (orphaned — schema was reverted in #524). Cross-referenced the new runbook from `03_DATABASE_MIGRATIONS.md` and `00_INDEX.md`. | Claude |
+| 2026-04-15 | **PR #526 merged — Vercel auto-migrate pipeline.** Added a `vercel-build` script to `package.json`: `prisma migrate deploy && prisma generate && next build`. Vercel's framework auto-detection picks this up without any dashboard change. Handles the 2-tier DB split natively via Vercel's per-environment `DATABASE_URL` scoping — previews apply migrations to `monitrax-db-dev`, production applies to `monitrax-db-prod`. If a migration fails, the deploy aborts and the previous deployment keeps serving. Added CLAUDE.md §12.12 "Schema Change Deploy Protocol" (NON-NEGOTIABLE) codifying the rule that every schema change must include a matching migration file, `db push` is banned, etc. Renumbered the existing "Before Every Session" checklist from §12.12 to §12.13. Updated `02_VERCEL_DEPLOYMENT.md` and `03_DATABASE_MIGRATIONS.md` to document the new automated flow. | Claude |
+| 2026-04-15 | **R12 manual baseline step executed.** First Vercel build of #526 failed with Prisma error P3005 (*"The database schema is not empty"*) against dev — Prisma's safety feature refusing to auto-baseline a non-empty DB. Fixed by running a one-time SQL block in Cloud SQL Studio against both DBs: `CREATE TABLE "_prisma_migrations"` + `INSERT` a row for `0_init` with the correct SHA256 checksum `abc16efe3df5a5171a5873aa20ae3d072b54e14ad8c329484e49b4d5d2bde2bd`. Verified both DBs now have one tracked migration. Redeployed #526 successfully end-to-end. | Claude |
+| 2026-04-15 | **R12 CLOSED.** Full remediation shipped across PRs #523 + #524 + #525 + #526 plus the manual SQL baseline. Dashboard verified working for affected users. Vercel build pipeline now structurally prevents schema drift: every merge auto-applies pending migrations to the scoped DB before deploying code. `upsertHouseholdEstimate` destructive path is unreachable until a hardened re-apply ships per CLAUDE.md §12.11. See `docs/quality/PHASE_12_DESIGN_AUDIT.md` §11.1 for the post-mortem and `docs/changelog/CHANGELOG_2026_04_15.md` for the full session log. | Claude |
 
 ---
 
