@@ -1,3 +1,39 @@
+# Phase 12 — Onboarding Redesign v3 (Dashboard-as-Onboarding) — ARCHIVED
+
+> ## ⚠ ARCHIVED — DO NOT USE FOR CURRENT DIRECTION
+>
+> **This document is preserved as historical reference only.**
+>
+> The v3 dashboard-as-onboarding direction (Setup Tray on every
+> dashboard page, replacing `/dashboard` `isEmpty` branch with a tile
+> grid, flipping `NEXT_PUBLIC_ONBOARDING_V3` to default-on) has been
+> **superseded** by the twin-track architecture.
+>
+> **Current source of truth:**
+> 👉 [`docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md`](../../blueprint/PHASE_12_SETUP_AND_ONBOARDING.md)
+>
+> The twin-track plan keeps `/dashboard/setup` as a detailed data
+> capture workbench (refined, not rebuilt) and adds a new top-level
+> `/onboarding` wizard for first-time users. The two surfaces are
+> complementary and do NOT overlap.
+>
+> **What still applies from this v3 doc:**
+> - Phase A bug fixes (A.1–A.7) — merged into main, fixes still in effect
+> - Phase B foundation (registry, service, API route) — kept and extended by the twin-track plan
+> - Phase C components (`SetupTray`, `BasiqHeroCard`, `DashboardEmptyStateGrid`, `EmptyStateTile`) — kept on `/dashboard/setup` and extended per Track A
+> - §2.4 Gemini assistance — still deferred, captured in `docs/blueprint/PHASE_28_AI_INTEGRATION.md`
+>
+> **What was reverted / abandoned from this v3 doc:**
+> - Mounting `SetupTray` in `DashboardLayout` chrome — **reverted** (twin-track puts it on `/dashboard/setup` only)
+> - Replacing `/dashboard` `isEmpty` branch with v3 tile grid — **reverted** (twin-track leaves `/dashboard` untouched)
+> - `NEXT_PUBLIC_ONBOARDING_V3` feature flag — **reverted** (twin-track doesn't flag-gate; the two surfaces are separate routes)
+> - Phase F default flip — **reverted**
+> - Phase G wholesale cleanup of the `/dashboard/setup` page — **cancelled**; the page is kept and refined instead
+>
+> Archived on 2026-04-15. Original content below.
+
+---
+
 # Phase 12 — Onboarding Redesign v3 (Dashboard-as-Onboarding)
 
 > **Living document.** This is the master plan for the v3 onboarding
@@ -6,9 +42,10 @@
 > fix the doc first, then the code.
 
 **Owner:** Claude (engineer) | **Reviewer:** Reza
-**Status:** 🟢 Active — micro-fix phase
+**Status:** 🔴 ARCHIVED — superseded by `docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md`
 **Branch:** `claude/monitrax-wizard-redesign-6jVjX`
 **Supersedes:** `docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md` (v2, PR 3a/3b)
+**Superseded by:** `docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md` (twin-track, 2026-04-15)
 **Related:**
 - `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` (legacy spec, kept for historical reference)
 - `docs/changelog/CHANGELOG_2026_04_12_*.md` (PR 1, 2, 3a, 3b history)
