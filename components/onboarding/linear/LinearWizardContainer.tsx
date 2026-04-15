@@ -30,6 +30,12 @@
 import { useCallback, useState, type ReactElement } from 'react';
 import { LinearProgressBar } from '@/components/onboarding/linear/primitives/LinearProgressBar';
 import { WelcomeStep } from '@/components/onboarding/linear/steps/WelcomeStep';
+import { HouseholdStep } from '@/components/onboarding/linear/steps/HouseholdStep';
+import { IncomeStep } from '@/components/onboarding/linear/steps/IncomeStep';
+import { HousingStep } from '@/components/onboarding/linear/steps/HousingStep';
+import { ExpensesStep } from '@/components/onboarding/linear/steps/ExpensesStep';
+import { GoalStep } from '@/components/onboarding/linear/steps/GoalStep';
+import { FinalRevealStep } from '@/components/onboarding/linear/steps/FinalRevealStep';
 import '@/styles/linear-wizard.css';
 
 // =============================================================================
@@ -80,8 +86,8 @@ export function LinearWizardContainer({
 
   const activeStep: LinearStepId = STEP_ORDER[stepIndex] ?? 'welcome';
 
-  // Render the active step. B.2 ships Welcome; B.3-B.8 will replace the
-  // "coming soon" stubs as each phase lands.
+  // Render the active step. B.2-B.7 all ship; B.8 Final Reveal is the
+  // only remaining placeholder until the next Track B PR lands.
   let stepContent: ReactElement;
   switch (activeStep) {
     case 'welcome':
@@ -96,35 +102,24 @@ export function LinearWizardContainer({
         />
       );
       break;
+    case 'household':
+      stepContent = <HouseholdStep onAdvance={advance} onBack={goBack} />;
+      break;
+    case 'income':
+      stepContent = <IncomeStep onAdvance={advance} onBack={goBack} />;
+      break;
+    case 'housing':
+      stepContent = <HousingStep onAdvance={advance} onBack={goBack} />;
+      break;
+    case 'expenses':
+      stepContent = <ExpensesStep onAdvance={advance} onBack={goBack} />;
+      break;
+    case 'goal':
+      stepContent = <GoalStep onAdvance={advance} onBack={goBack} />;
+      break;
+    case 'reveal':
     default:
-      // Placeholder for B.3-B.8. Each subsequent phase PR will
-      // replace this stub with its real step component.
-      stepContent = (
-        <section className="lw-step-enter mx-auto flex min-h-[60vh] w-full max-w-[520px] flex-col items-center justify-center gap-6 px-6 py-12 text-center sm:py-20">
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-            Step coming soon
-          </h1>
-          <p className="text-base text-slate-600 dark:text-slate-400">
-            This step (`{activeStep}`) is part of a future Track B PR.
-          </p>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={goBack}
-              className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-            >
-              ← Back
-            </button>
-            <button
-              type="button"
-              onClick={advance}
-              className="rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(99,102,241,0.55)]"
-            >
-              Skip ahead →
-            </button>
-          </div>
-        </section>
-      );
+      stepContent = <FinalRevealStep onBack={goBack} />;
   }
 
   return (
