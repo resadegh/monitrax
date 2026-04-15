@@ -433,4 +433,226 @@ A.7–A.12 are independent of each other once A.6 lands.
 
 ---
 
-*§5 Track B (onboarding wizard) onwards in the next chunk.*
+## 5. Track B — `/onboarding` New Wizard
+
+**Goal**: build a new top-level `/onboarding` route that delivers a
+light, fun, mobile-first, 5-step discovery experience with a Welcome
+intro and a Final Reveal payoff. Writes estimated data
+(`source: ONBOARDING`) and redirects to `/dashboard/setup` on
+completion.
+
+### 5.1 Scope — what changes
+
+**New code:**
+- New route tree under `app/onboarding/`
+- New component tree under `components/onboarding/linear/`
+- New API routes under `app/api/onboarding/estimates/`
+- New design-token module under `components/onboarding/linear/design/`
+
+**Does NOT touch:**
+- `/dashboard/setup` (Track A handles that separately)
+- Any existing financial entity dialog
+- The Basiq connect flow (wizard just triggers the existing `POST /api/basiq/connect`)
+- `masterFinancialService` (wizard reads but never writes to it)
+
+**Does touch existing:**
+- `app/onboarding/page.tsx` — **replaced**. The existing file is the legacy `WizardContainer` in page mode (see Phase 12 v2.2). The new linear wizard replaces it. Legacy wizard still reachable via `/dashboard?legacy=wizard`.
+
+### 5.2 Phase breakdown — B.0 to B.8
+
+#### B.0 — Route scaffolding + layout
+
+**Scope**: 2 new files (`app/onboarding/layout.tsx` + `app/onboarding/page.tsx` replacement).
+**Depends on**: A.0 (schema — wizard writes `source: ONBOARDING` rows).
+**Deliverables**:
+- New `app/onboarding/layout.tsx` — hybrid chrome per Q11:
+  - Top bar: Monitrax logotype (left), progress bar (center), exit button (right)
+  - No sidebar, no DashboardLayout nesting
+  - Full-height centered content area
+  - Mobile: top bar collapses to just logotype + progress, exit becomes a small X
+- New `app/onboarding/page.tsx` — step router
+  - Reads `User.onboardingStep` to determine the initial step
+  - Renders the active step component
+  - Auth-gated: unauthenticated → redirect to `/signin?next=/onboarding`
+  - Already-complete users (`onboardingCompleted === true`) → redirect to `/dashboard/setup`
+
+#### B.1 — Wizard shell + design system
+
+**Scope**: ~7 new files in `components/onboarding/linear/`.
+**Depends on**: B.0.
+**Deliverables**:
+- `design/tokens.ts` — typed token constants: `TYPE_SCALE`, `SPACING`, `DURATIONS`, `EASINGS`
+- `primitives/LinearStepShell.tsx` — the one-question-per-screen layout contract
+  - Props: `question`, `supporting`, `children` (the input), `feedback`, `cta`, `onBack`
+  - Enforces: max-w-[520px] centered, 120px vertical breathing room, single primary CTA, ghost back link
+- `primitives/LinearInput.tsx` — premium number/currency/text input with focus ring
+- `primitives/LinearPrimaryButton.tsx` — gradient CTA, single variant (no variants)
+- `primitives/LinearGhostButton.tsx` — ghost back button
+- `primitives/LinearFeedback.tsx` — confirmation line + small emerald checkmark
+- `primitives/LinearProgressBar.tsx` — top-of-page progress bar (smooth width transition)
+- `primitives/LinearSegmented.tsx` — mobile-friendly segmented control (for Housing step)
+- `hooks/useCountUp.ts` — custom requestAnimationFrame-based count-up, ~40 LOC, ease-out cubic, no new dependency
+- `styles/linear-wizard.css` — fade-slide-in / fade-slide-out / hero-reveal keyframes, respects `prefers-reduced-motion`
+
+**Acceptance gate**: B.1 ships with one dummy Welcome step so I can visually validate the design system before other steps land. No B.2+ until B.1 visually passes §10.
+
+#### B.2 — Step 0: Welcome
+
+**Scope**: 1 new file (`components/onboarding/linear/steps/WelcomeStep.tsx`).
+**Depends on**: B.1.
+**Deliverables**:
+- Question: "Let's get a quick picture of your finances"
+- Supporting: "Takes about 90 seconds. You can refine everything later."
+- Primary CTA: "Start guided setup →" (advances to B.3 Household)
+- Ghost link: "Skip for now" (routes to `/dashboard/setup`)
+- No input — just the intro beat
+
+#### B.3 — Step 1: Household
+
+**Scope**: 2 files (new `components/onboarding/linear/steps/HouseholdStep.tsx` + new `app/api/onboarding/estimates/household/route.ts`).
+**Depends on**: B.1, A.0.
+**Deliverables**:
+- Question: "Who shares finances with you?"
+- Input: 3-option segmented control — "Just me" / "Partner" / "Family"
+- Optional: partner toggle (if "Partner" or "Family" picked)
+- Submit → `POST /api/onboarding/estimates/household`
+  - Thin route handler per CLAUDE.md §12.3
+  - Calls `lib/services/onboardingEstimateService.ts::upsertHouseholdEstimate()` (new service)
+  - Upserts `HouseholdProfile` with `source: ONBOARDING`, `adultsCount` inferred from picked option
+  - Audits via `createAuditLog({ action: 'ONBOARDING_STEP_COMPLETED', metadata: { step: 'household' } })`
+- Feedback: "Got it — {N} in your household"
+- Advances to B.4 Income
+
+#### B.4 — Step 2: Income
+
+**Scope**: 2 files (`IncomeStep.tsx` + `app/api/onboarding/estimates/income/route.ts`).
+**Depends on**: B.1, A.0.
+**Deliverables**:
+- Question: "What comes in each month?"
+- Supporting: "Roughly — you can refine this later"
+- Input: single currency input (monthly)
+- Submit → `POST /api/onboarding/estimates/income`
+  - Creates a single Income row: `type: SALARY`, `frequency: MONTHLY`, `source: ONBOARDING`, `amount: <value>`, `name: "Estimated monthly income"`
+- Feedback: "That's about ${amount * 12} per year" (count-up)
+- Advances to B.5 Housing
+
+#### B.5 — Step 3: Housing
+
+**Scope**: 2 files (`HousingStep.tsx` + `app/api/onboarding/estimates/housing/route.ts`).
+**Depends on**: B.1, A.0.
+**Deliverables**:
+- Question: "Where do you live?"
+- Input: 3-option segmented control — "Own" / "Rent" / "With family"
+- Submit → `POST /api/onboarding/estimates/housing`
+  - Updates `HouseholdProfile.housingSituation` (if schema supports) OR writes to `UserPreference.onboardingDraft.housing`
+  - Does NOT create a Property or Expense row at this step — just stores the housing situation for routing decisions
+- Feedback:
+  - "Own" → "Nice — you can add your property details later"
+  - "Rent" → "Got it — we can track your rent as an expense"
+  - "With family" → "No worries — we'll skip housing for now"
+- Advances to B.6 Expenses
+
+#### B.6 — Step 4: Expenses (optional)
+
+**Scope**: 2 files (`ExpensesStep.tsx` + `app/api/onboarding/estimates/expenses/route.ts`).
+**Depends on**: B.1, A.0.
+**Deliverables**:
+- Question: "Roughly how much do you spend each month?"
+- Supporting: "Skip if you're not sure — we can track this from your bank later"
+- Input: single currency input + prominent "Skip this step" ghost link
+- Submit → `POST /api/onboarding/estimates/expenses`
+  - Creates a single Expense row: `category: OTHER`, `frequency: MONTHLY`, `source: ONBOARDING`, `amount: <value>`, `name: "Estimated monthly expenses"`
+  - Skip path: no row written
+- Feedback: "You're saving about ${income - expenses} per month" (count-up, green if positive, red if negative)
+- Advances to B.7 Goal
+
+#### B.7 — Step 5: Goal (optional)
+
+**Scope**: 2 files (`GoalStep.tsx` + `app/api/onboarding/estimates/goal/route.ts`).
+**Depends on**: B.1.
+**Deliverables**:
+- Question: "What matters most to you right now?"
+- Input: 3-option segmented control — "Save more" / "Reduce debt" / "Grow wealth"
+- Optional: "Skip" ghost link
+- Submit → `POST /api/onboarding/estimates/goal`
+  - Writes to `UserPreference.onboardingDraft.goal` — no new Prisma model
+- Feedback: goal-specific affirmation (e.g., "Love it — we'll tailor your insights to help you save")
+- Advances to B.8 Final Reveal
+
+#### B.8 — Step 6: Final Reveal
+
+**Scope**: 2 files (`FinalRevealStep.tsx` + `app/api/onboarding/complete/route.ts` — may already exist, extend if so).
+**Depends on**: B.1, B.2–B.7, A.0.
+**Deliverables**:
+- Dedicated layout variant: darker ambient background, larger type scale
+- Reads fresh `masterFinancialSnapshot` via a thin `GET /api/onboarding/estimates/snapshot` wrapper (pure read, uses existing `masterFinancialService`)
+- Hero metric (huge): **Net worth** (count-up animation, 1400ms, ease-out cubic)
+- Three secondary metrics (count-up, staggered 200ms each):
+  - **Monthly savings** (`quickMetrics.monthlyCashflow`)
+  - **Debt level** (`debt.summary.total` or similar)
+  - **Health grade** (`healthScore.grade` A–F, no count-up — letter reveals with scale + fade)
+- One insight line: *"At your current rate, you could save ${monthlyCashflow * 12} in the next 12 months"* (simple math, no Gemini)
+- CTA: "Continue setting up →" — marks `User.onboardingCompleted = true`, clears draft, redirects to `/dashboard/setup`
+- Fires `createAuditLog({ action: 'ONBOARDING_COMPLETED' })`
+
+**This is the phase with the most design iteration**. Expect 1–2 revision rounds before it's approved.
+
+### 5.3 Track B dependency graph
+
+```
+A.0 (schema) ────┐
+                 │
+B.0 (route) ─────┼─→ B.1 (shell) ──┬─→ B.2 (Welcome)
+                 │                 ├─→ B.3 (Household)
+                 │                 ├─→ B.4 (Income)
+                 │                 ├─→ B.5 (Housing)
+                 │                 ├─→ B.6 (Expenses)
+                 │                 ├─→ B.7 (Goal)
+                 │                 └─→ B.8 (Final Reveal)
+```
+
+B.2–B.7 can ship in any order once B.1 lands. B.8 is last (depends
+on all prior steps being reachable for end-to-end testing).
+
+### 5.4 API route structure
+
+```
+app/api/onboarding/
+├── complete/route.ts             # existing — extended in B.8
+├── state/route.ts                # existing — unchanged
+└── estimates/                    # NEW tree
+    ├── household/route.ts        # B.3
+    ├── income/route.ts           # B.4
+    ├── housing/route.ts          # B.5
+    ├── expenses/route.ts         # B.6
+    ├── goal/route.ts             # B.7
+    └── snapshot/route.ts         # B.8 — thin wrapper around getMasterFinancialSnapshot
+```
+
+Each route handler is a thin wrapper per CLAUDE.md §12.3:
+- `withPermission('settings.write', …)` guard
+- Calls `lib/services/onboardingEstimateService.ts` (new service)
+- Returns the standard `{ success, data, error, meta }` envelope
+- Fire-and-forget audit log via `createAuditLog`
+
+### 5.5 Service layer — `onboardingEstimateService.ts`
+
+**New file**: `lib/services/onboardingEstimateService.ts`
+
+**Responsibilities:**
+- All writes go through this service (never directly from the route handlers)
+- Every row written gets `source: ONBOARDING`
+- Handles idempotency: if the user re-submits a step (e.g. goes back and edits), the service updates the existing row instead of creating a duplicate
+- Emits the audit log entry (the route handler just triggers the service)
+
+**Exported functions:**
+- `upsertHouseholdEstimate(userId, input)`
+- `upsertIncomeEstimate(userId, input)`
+- `upsertHousingEstimate(userId, input)`
+- `upsertExpensesEstimate(userId, input)`
+- `upsertGoalEstimate(userId, input)`
+- `getOnboardingSnapshot(userId)` — thin pass-through to `masterFinancialService`
+
+---
+
+*§6 Track C + §7 Track D + §8 Design standards in the next chunk.*
