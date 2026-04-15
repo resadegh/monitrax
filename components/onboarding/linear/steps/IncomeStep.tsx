@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { LinearStepShell } from '@/components/onboarding/linear/primitives/LinearStepShell';
 import { LinearInput } from '@/components/onboarding/linear/primitives/LinearInput';
 import { LinearFeedback } from '@/components/onboarding/linear/primitives/LinearFeedback';
@@ -27,6 +28,7 @@ function formatAUD(value: number): string {
 }
 
 export function IncomeStep({ onAdvance, onBack }: IncomeStepProps) {
+  const { token } = useAuth();
   const [rawValue, setRawValue] = useState<string>('');
   const [committed, setCommitted] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +45,10 @@ export function IncomeStep({ onAdvance, onBack }: IncomeStepProps) {
     try {
       const response = await fetch('/api/onboarding/estimates/income', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ monthlyAmount: monthly }),
       });
       if (!response.ok) throw new Error('failed');
@@ -54,7 +59,7 @@ export function IncomeStep({ onAdvance, onBack }: IncomeStepProps) {
       setError('Could not save. Please try again.');
       setIsSubmitting(false);
     }
-  }, [monthly, onAdvance]);
+  }, [monthly, token, onAdvance]);
 
   return (
     <LinearStepShell

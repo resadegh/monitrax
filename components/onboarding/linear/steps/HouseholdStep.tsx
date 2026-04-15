@@ -9,6 +9,7 @@
 
 import { useCallback, useState } from 'react';
 import { User, Users, Home } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { LinearStepShell } from '@/components/onboarding/linear/primitives/LinearStepShell';
 import { LinearSegmented } from '@/components/onboarding/linear/primitives/LinearSegmented';
 import { LinearFeedback } from '@/components/onboarding/linear/primitives/LinearFeedback';
@@ -21,6 +22,7 @@ export interface HouseholdStepProps {
 }
 
 export function HouseholdStep({ onAdvance, onBack }: HouseholdStepProps) {
+  const { token } = useAuth();
   const [option, setOption] = useState<Option | null>(null);
   const [saved, setSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,7 +35,10 @@ export function HouseholdStep({ onAdvance, onBack }: HouseholdStepProps) {
     try {
       const response = await fetch('/api/onboarding/estimates/household', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ option }),
       });
       if (!response.ok) throw new Error('failed');
@@ -43,7 +48,7 @@ export function HouseholdStep({ onAdvance, onBack }: HouseholdStepProps) {
       setError('Could not save. Please try again.');
       setIsSubmitting(false);
     }
-  }, [option, onAdvance]);
+  }, [option, token, onAdvance]);
 
   return (
     <LinearStepShell

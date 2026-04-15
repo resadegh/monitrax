@@ -8,6 +8,7 @@
 
 import { useCallback, useState } from 'react';
 import { Home, Key, Users } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { LinearStepShell } from '@/components/onboarding/linear/primitives/LinearStepShell';
 import { LinearSegmented } from '@/components/onboarding/linear/primitives/LinearSegmented';
 import { LinearFeedback } from '@/components/onboarding/linear/primitives/LinearFeedback';
@@ -20,6 +21,7 @@ export interface HousingStepProps {
 }
 
 export function HousingStep({ onAdvance, onBack }: HousingStepProps) {
+  const { token } = useAuth();
   const [situation, setSituation] = useState<Situation | null>(null);
   const [saved, setSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,7 +34,10 @@ export function HousingStep({ onAdvance, onBack }: HousingStepProps) {
     try {
       const response = await fetch('/api/onboarding/estimates/housing', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ situation }),
       });
       if (!response.ok) throw new Error('failed');
@@ -42,7 +47,7 @@ export function HousingStep({ onAdvance, onBack }: HousingStepProps) {
       setError('Could not save. Please try again.');
       setIsSubmitting(false);
     }
-  }, [situation, onAdvance]);
+  }, [situation, token, onAdvance]);
 
   const feedbackCopy: Record<Situation, string> = {
     OWN: 'Nice — you can add your property details later.',

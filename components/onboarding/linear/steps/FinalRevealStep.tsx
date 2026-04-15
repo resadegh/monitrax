@@ -24,6 +24,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, ArrowRight, TrendingUp, TrendingDown, Award } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { useCountUp } from '@/components/onboarding/linear/hooks/useCountUp';
 
 interface SnapshotData {
@@ -50,6 +51,7 @@ export interface FinalRevealStepProps {
 
 export function FinalRevealStep({ onBack }: FinalRevealStepProps) {
   const router = useRouter();
+  const { token } = useAuth();
   const [snapshot, setSnapshot] = useState<SnapshotData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,10 +59,13 @@ export function FinalRevealStep({ onBack }: FinalRevealStepProps) {
 
   // Fetch the fresh snapshot on mount.
   useEffect(() => {
+    if (!token) return;
     let cancelled = false;
     const fetchSnapshot = async () => {
       try {
-        const response = await fetch('/api/onboarding/estimates/snapshot');
+        const response = await fetch('/api/onboarding/estimates/snapshot', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!response.ok) throw new Error('failed');
         const json = await response.json();
         if (!cancelled && json?.data) {
@@ -76,18 +81,21 @@ export function FinalRevealStep({ onBack }: FinalRevealStepProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [token]);
 
   const handleContinue = useCallback(async () => {
     setIsCompleting(true);
     try {
-      await fetch('/api/onboarding/complete', { method: 'POST' });
+      await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
     } catch {
       // Non-blocking — even if the mark-complete fails, route the
       // user to the refinement surface.
     }
     router.push('/dashboard/setup');
-  }, [router]);
+  }, [router, token]);
 
   // Animated count-ups — staggered for impact per §8.4.
   // Target values fall back to 0 until the snapshot loads.
