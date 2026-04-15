@@ -54,6 +54,7 @@ Cloud SQL administration, backups, and monitoring.
 | 01 | [Cloud SQL Operations](database/01_CLOUD_SQL_OPERATIONS.md) | Instance details, status checks, connection management |
 | 02 | [Backup and Restore](database/02_BACKUP_AND_RESTORE.md) | Automated backups, point-in-time recovery, manual backup procedures |
 | 03 | [Monitoring and Alerts](database/03_MONITORING_AND_ALERTS.md) | Cloud SQL monitoring, alerting, performance checks |
+| 04 | [Prisma Migration Baseline](database/04_PRISMA_MIGRATION_BASELINE.md) | One-time runbook to bring both Cloud SQL instances under Prisma migration tracking (prerequisite for `prisma migrate deploy`) |
 
 ### Security
 
@@ -81,7 +82,7 @@ Step-by-step procedures for incident response and common support scenarios.
 |---------|-------|--------|
 | Architecture (01-03) | 3 | Current |
 | Deployment (01-03) | 3 | Current |
-| Database (01-03) | 3 | Current |
+| Database (01-04) | 4 | Current |
 | Security (01-03) | 3 | Current |
 | Runbooks (01) | 1 | Current |
 
