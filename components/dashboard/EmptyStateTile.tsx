@@ -176,6 +176,16 @@ export interface EmptyStateTileProps {
    *   - Verified  → emerald "Verified" badge
    */
   confidenceState?: EmptyStateTileConfidence;
+
+  /**
+   * Phase 12 twin-track (A.7-A.12): optional click interceptor for
+   * the primary CTA. When provided, the CTA renders as a `<button>`
+   * and calls this handler on click instead of navigating to
+   * `cta.href`. Used by `<DashboardEmptyStateGrid />` to open the
+   * lightweight `<GuidedEntryModal />` flow instead of dumping the
+   * user into the full entity page.
+   */
+  onCtaClick?: () => void;
 }
 
 // =============================================================================
@@ -194,6 +204,7 @@ export function EmptyStateTile({
   compact = false,
   priority = 'secondary',
   confidenceState = 'Missing',
+  onCtaClick,
 }: EmptyStateTileProps) {
   const padding = compact ? 'p-5' : 'p-6 sm:p-8';
   const titleSize = compact ? 'text-base' : 'text-lg';
@@ -281,13 +292,24 @@ export function EmptyStateTile({
       )}
 
       <div className="mt-5 flex flex-col items-center gap-2 sm:flex-row">
-        <Link
-          href={cta.href}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(99,102,241,0.55)] transition-all hover:-translate-y-[1px] hover:shadow-[0_14px_36px_-12px_rgba(99,102,241,0.65)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-        >
-          {cta.label}
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
+        {onCtaClick ? (
+          <button
+            type="button"
+            onClick={onCtaClick}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(99,102,241,0.55)] transition-all hover:-translate-y-[1px] hover:shadow-[0_14px_36px_-12px_rgba(99,102,241,0.65)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+          >
+            {cta.label}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        ) : (
+          <Link
+            href={cta.href}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(99,102,241,0.55)] transition-all hover:-translate-y-[1px] hover:shadow-[0_14px_36px_-12px_rgba(99,102,241,0.65)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+          >
+            {cta.label}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        )}
 
         {secondaryCta && (
           <Link

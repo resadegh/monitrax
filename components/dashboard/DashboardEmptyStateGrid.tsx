@@ -78,6 +78,15 @@ import {
   type UseSetupStateModuleKey,
   type UseSetupStateModuleProgress,
 } from '@/hooks/useSetupState';
+// Phase 12 twin-track (A.7-A.12): lightweight per-module guided
+// flows. Each one composes the GuidedEntryModal shell (A.6).
+import { useState } from 'react';
+import { AccountsGuidedFlow } from '@/components/setup/guided/AccountsGuidedFlow';
+import { PropertiesGuidedFlow } from '@/components/setup/guided/PropertiesGuidedFlow';
+import { IncomeGuidedFlow } from '@/components/setup/guided/IncomeGuidedFlow';
+import { ExpensesGuidedFlow } from '@/components/setup/guided/ExpensesGuidedFlow';
+import { InvestmentsGuidedFlow } from '@/components/setup/guided/InvestmentsGuidedFlow';
+import { LoansGuidedFlow } from '@/components/setup/guided/LoansGuidedFlow';
 
 // =============================================================================
 // PLACEHOLDER ILLUSTRATION
@@ -181,13 +190,22 @@ interface ConcreteTileProps {
   compact?: boolean;
   priority?: EmptyStateTilePriority;
   confidenceState?: EmptyStateTileConfidence;
+  /**
+   * Phase 12 twin-track (A.7-A.12): when provided, the tile's
+   * primary CTA renders as a button that calls this handler
+   * instead of navigating. Used by the grid to open the
+   * corresponding GuidedEntryModal flow.
+   */
+  onCtaClick?: () => void;
 }
 
 export function PropertiesEmptyState({
   compact,
   priority,
   confidenceState,
+  onCtaClick,
 }: ConcreteTileProps = {}) {
+
   const t = TILE_COPY.properties;
   return (
     <EmptyStateTile
@@ -200,6 +218,7 @@ export function PropertiesEmptyState({
       compact={compact}
       priority={priority}
       confidenceState={confidenceState}
+      onCtaClick={onCtaClick}
     />
   );
 }
@@ -208,7 +227,9 @@ export function AccountsEmptyState({
   compact,
   priority,
   confidenceState,
+  onCtaClick,
 }: ConcreteTileProps = {}) {
+
   const t = TILE_COPY.accounts;
   return (
     <EmptyStateTile
@@ -222,6 +243,7 @@ export function AccountsEmptyState({
       compact={compact}
       priority={priority}
       confidenceState={confidenceState}
+      onCtaClick={onCtaClick}
     />
   );
 }
@@ -230,7 +252,9 @@ export function IncomeEmptyState({
   compact,
   priority,
   confidenceState,
+  onCtaClick,
 }: ConcreteTileProps = {}) {
+
   const t = TILE_COPY.income;
   return (
     <EmptyStateTile
@@ -243,6 +267,7 @@ export function IncomeEmptyState({
       compact={compact}
       priority={priority}
       confidenceState={confidenceState}
+      onCtaClick={onCtaClick}
     />
   );
 }
@@ -251,7 +276,9 @@ export function ExpensesEmptyState({
   compact,
   priority,
   confidenceState,
+  onCtaClick,
 }: ConcreteTileProps = {}) {
+
   const t = TILE_COPY.expenses;
   return (
     <EmptyStateTile
@@ -264,6 +291,7 @@ export function ExpensesEmptyState({
       compact={compact}
       priority={priority}
       confidenceState={confidenceState}
+      onCtaClick={onCtaClick}
     />
   );
 }
@@ -272,7 +300,9 @@ export function InvestmentsEmptyState({
   compact,
   priority,
   confidenceState,
+  onCtaClick,
 }: ConcreteTileProps = {}) {
+
   const t = TILE_COPY.investments;
   return (
     <EmptyStateTile
@@ -285,6 +315,7 @@ export function InvestmentsEmptyState({
       compact={compact}
       priority={priority}
       confidenceState={confidenceState}
+      onCtaClick={onCtaClick}
     />
   );
 }
@@ -293,7 +324,9 @@ export function LoansEmptyState({
   compact,
   priority,
   confidenceState,
+  onCtaClick,
 }: ConcreteTileProps = {}) {
+
   const t = TILE_COPY.loans;
   return (
     <EmptyStateTile
@@ -306,6 +339,7 @@ export function LoansEmptyState({
       compact={compact}
       priority={priority}
       confidenceState={confidenceState}
+      onCtaClick={onCtaClick}
     />
   );
 }
@@ -401,12 +435,28 @@ function toConfidence(state: UseSetupStateModuleProgress['state']): EmptyStateTi
   return state;
 }
 
+// Phase 12 twin-track (A.7-A.12): which guided flow is open, if any.
+type ActiveFlow = null | UseSetupStateModuleKey;
+
 export function DashboardEmptyStateGrid({
   className = '',
 }: {
   className?: string;
 }) {
-  const { moduleProgress } = useSetupState();
+  const { moduleProgress, refetch } = useSetupState();
+
+  // Phase 12 twin-track (A.7-A.12): active modal state. `null` means
+  // no modal open. On successful save, we refetch the setup state so
+  // the tile's confidence badge + priority update immediately.
+  const [activeFlow, setActiveFlow] = useState<ActiveFlow>(null);
+
+  const openFlow = (flow: UseSetupStateModuleKey) => () => setActiveFlow(flow);
+  const closeFlow = () => setActiveFlow(null);
+  const handleFlowComplete = () => {
+    setActiveFlow(null);
+    // Re-read setup state so module progress reflects the new row.
+    void refetch();
+  };
 
   // When moduleProgress is null (first load, API error, no auth) we
   // default every tile to secondary priority and Missing confidence.
@@ -423,41 +473,84 @@ export function DashboardEmptyStateGrid({
   };
 
   return (
-    <section
-      aria-label="Set up your dashboard"
-      className={`grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 ${className}`}
-    >
-      <AccountsEmptyState
-        compact
-        priority={priorityMap?.accounts}
-        confidenceState={toConfidence(confidenceMap.accounts)}
+    <>
+      <section
+        aria-label="Set up your dashboard"
+        className={`grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 ${className}`}
+      >
+        <AccountsEmptyState
+          compact
+          priority={priorityMap?.accounts}
+          confidenceState={toConfidence(confidenceMap.accounts)}
+          onCtaClick={openFlow('accounts')}
+        />
+        <PropertiesEmptyState
+          compact
+          priority={priorityMap?.properties}
+          confidenceState={toConfidence(confidenceMap.properties)}
+          onCtaClick={openFlow('properties')}
+        />
+        <IncomeEmptyState
+          compact
+          priority={priorityMap?.income}
+          confidenceState={toConfidence(confidenceMap.income)}
+          onCtaClick={openFlow('income')}
+        />
+        <ExpensesEmptyState
+          compact
+          priority={priorityMap?.expenses}
+          confidenceState={toConfidence(confidenceMap.expenses)}
+          onCtaClick={openFlow('expenses')}
+        />
+        <InvestmentsEmptyState
+          compact
+          priority={priorityMap?.investments}
+          confidenceState={toConfidence(confidenceMap.investments)}
+          onCtaClick={openFlow('investments')}
+        />
+        <LoansEmptyState
+          compact
+          priority={priorityMap?.loans}
+          confidenceState={toConfidence(confidenceMap.loans)}
+          onCtaClick={openFlow('loans')}
+        />
+      </section>
+
+      {/* Phase 12 twin-track (A.7-A.12): per-module guided flow
+          modals. Only one is open at a time (activeFlow state). On
+          successful save, the grid refetches setup state so the
+          tile's confidence badge updates immediately. */}
+      <AccountsGuidedFlow
+        open={activeFlow === 'accounts'}
+        onClose={closeFlow}
+        onComplete={handleFlowComplete}
       />
-      <PropertiesEmptyState
-        compact
-        priority={priorityMap?.properties}
-        confidenceState={toConfidence(confidenceMap.properties)}
+      <PropertiesGuidedFlow
+        open={activeFlow === 'properties'}
+        onClose={closeFlow}
+        onComplete={handleFlowComplete}
       />
-      <IncomeEmptyState
-        compact
-        priority={priorityMap?.income}
-        confidenceState={toConfidence(confidenceMap.income)}
+      <IncomeGuidedFlow
+        open={activeFlow === 'income'}
+        onClose={closeFlow}
+        onComplete={handleFlowComplete}
       />
-      <ExpensesEmptyState
-        compact
-        priority={priorityMap?.expenses}
-        confidenceState={toConfidence(confidenceMap.expenses)}
+      <ExpensesGuidedFlow
+        open={activeFlow === 'expenses'}
+        onClose={closeFlow}
+        onComplete={handleFlowComplete}
       />
-      <InvestmentsEmptyState
-        compact
-        priority={priorityMap?.investments}
-        confidenceState={toConfidence(confidenceMap.investments)}
+      <InvestmentsGuidedFlow
+        open={activeFlow === 'investments'}
+        onClose={closeFlow}
+        onComplete={handleFlowComplete}
       />
-      <LoansEmptyState
-        compact
-        priority={priorityMap?.loans}
-        confidenceState={toConfidence(confidenceMap.loans)}
+      <LoansGuidedFlow
+        open={activeFlow === 'loans'}
+        onClose={closeFlow}
+        onComplete={handleFlowComplete}
       />
-    </section>
+    </>
   );
 }
 
