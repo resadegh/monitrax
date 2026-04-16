@@ -37,15 +37,20 @@ import {
   WizardData,
 } from '@/components/onboarding';
 
+interface NavChild {
+  name: string;
+  href: string;
+}
+
 interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   tourId?: string;
-  // REACH stage tag — shown as subtle badge for journey-aligned items
   reachStage?: 'R' | 'E' | 'A' | 'C' | 'H';
-  // Matching routes — additional paths that should highlight this item
   matchRoutes?: string[];
+  // Sub-items shown when this section is active
+  children?: NavChild[];
 }
 
 // =============================================================================
@@ -75,7 +80,6 @@ const reachNavItems: NavItem[] = [
     icon: Wallet,
     tourId: 'nav-accounts',
     reachStage: 'R',
-    // All pages that live under the "My Accounts" tab group
     matchRoutes: [
       '/dashboard/accounts',
       '/dashboard/loans',
@@ -83,6 +87,14 @@ const reachNavItems: NavItem[] = [
       '/dashboard/expenses',
       '/transactions',
       '/recurring',
+    ],
+    children: [
+      { name: 'Accounts', href: '/dashboard/accounts' },
+      { name: 'Loans', href: '/dashboard/loans' },
+      { name: 'Income', href: '/dashboard/income' },
+      { name: 'Spending', href: '/dashboard/expenses' },
+      { name: 'Transactions', href: '/transactions' },
+      { name: 'Recurring', href: '/recurring' },
     ],
   },
   {
@@ -97,6 +109,12 @@ const reachNavItems: NavItem[] = [
       '/dashboard/debt-planner',
       '/dashboard/tax',
     ],
+    children: [
+      { name: 'Budget', href: '/dashboard/budget-analysis' },
+      { name: 'Cashflow', href: '/cashflow' },
+      { name: 'Debt Freedom', href: '/dashboard/debt-planner' },
+      { name: 'Tax', href: '/dashboard/tax' },
+    ],
   },
   {
     name: 'My Wealth',
@@ -109,6 +127,11 @@ const reachNavItems: NavItem[] = [
       '/dashboard/investments',
       '/dashboard/assets',
     ],
+    children: [
+      { name: 'Properties', href: '/dashboard/properties' },
+      { name: 'Investments', href: '/dashboard/investments/accounts' },
+      { name: 'Assets', href: '/dashboard/assets' },
+    ],
   },
   {
     name: 'My CFO',
@@ -119,8 +142,10 @@ const reachNavItems: NavItem[] = [
     matchRoutes: [
       '/dashboard/cfo',
       '/health',
-      // Strategy is redundant with CFO — marked for cleanup
-      // '/strategy',
+    ],
+    children: [
+      { name: 'Actions', href: '/dashboard/cfo' },
+      { name: 'Health', href: '/health' },
     ],
   },
   {
@@ -131,6 +156,10 @@ const reachNavItems: NavItem[] = [
     matchRoutes: [
       '/dashboard/reports',
       '/dashboard/documents',
+    ],
+    children: [
+      { name: 'Reports', href: '/dashboard/reports' },
+      { name: 'Documents', href: '/dashboard/documents' },
     ],
   },
 ];
@@ -547,10 +576,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        {/* Navigation — REACH Framework flat list (docs/blueprint/REACH_FRAMEWORK.md) */}
+        {/* Navigation — REACH Framework (docs/blueprint/REACH_FRAMEWORK.md) */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {reachNavItems.map((item) => {
-            // Active state: exact match for Home, prefix match for others
             const isActive = item.href === '/dashboard'
               ? pathname === '/dashboard' || pathname === '/dashboard/setup'
               : item.matchRoutes
@@ -559,52 +587,86 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             const Icon = item.icon;
 
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-tour={item.tourId}
-                className={`
-                  group flex items-center gap-3 rounded-xl px-3 py-2.5
-                  text-[13px] font-medium tracking-wide
-                  transition-all duration-200 ease-out
-                  ${isActive
-                    ? 'bg-primary/10 text-primary dark:bg-primary/20'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-                  }
-                `}
-              >
-                <div className={`
-                  flex h-8 w-8 items-center justify-center rounded-lg
-                  transition-colors duration-200
-                  ${isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
-                  }
-                `}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <span className="flex-1">{item.name}</span>
-                {/* REACH stage badge */}
-                {item.reachStage && (
-                  <span className={`
-                    text-[10px] font-bold tracking-widest uppercase
-                    px-1.5 py-0.5 rounded-md
+              <div key={item.href}>
+                {/* Parent item */}
+                <Link
+                  href={item.href}
+                  data-tour={item.tourId}
+                  className={`
+                    group flex items-center gap-3 rounded-xl px-3 py-2.5
+                    text-[13px] font-medium tracking-wide
+                    transition-all duration-200 ease-out
                     ${isActive
-                      ? 'bg-primary/20 text-primary'
-                      : 'bg-muted/80 text-muted-foreground/60'
+                      ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                    }
+                  `}
+                >
+                  <div className={`
+                    flex h-8 w-8 items-center justify-center rounded-lg
+                    transition-colors duration-200
+                    ${isActive
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
                     }
                   `}>
-                    {item.reachStage}
-                  </span>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <span className="flex-1">{item.name}</span>
+                  {item.reachStage && (
+                    <span className={`
+                      text-[10px] font-bold tracking-widest uppercase
+                      px-1.5 py-0.5 rounded-md
+                      ${isActive
+                        ? 'bg-primary/20 text-primary'
+                        : 'bg-muted/80 text-muted-foreground/60'
+                      }
+                    `}>
+                      {item.reachStage}
+                    </span>
+                  )}
+                </Link>
+
+                {/* Child items — visible when section is active */}
+                {isActive && item.children && item.children.length > 0 && (
+                  <div className="ml-[22px] mt-0.5 mb-1 pl-4 border-l-2 border-primary/20 space-y-0.5">
+                    {item.children.map((child) => {
+                      const isChildActive = pathname === child.href || pathname.startsWith(child.href + '/');
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={`
+                            block rounded-lg px-3 py-1.5
+                            text-[12px] font-medium
+                            transition-all duration-150
+                            ${isChildActive
+                              ? 'text-primary bg-primary/5'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                            }
+                          `}
+                        >
+                          {child.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
                 )}
-              </Link>
+              </div>
             );
           })}
 
-          {/* Separator before health widget */}
+          {/* ESTABLISH stage — Financial Health widget with E badge */}
           <div className="pt-3">
             <Separator className="mb-3" />
-            <FinancialHealthMiniWidget />
+            <div className="relative">
+              <div className="absolute -top-1 right-2 z-10">
+                <span className="text-[10px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground/60">
+                  E
+                </span>
+              </div>
+              <FinancialHealthMiniWidget />
+            </div>
           </div>
         </nav>
 
