@@ -30,6 +30,7 @@ docs/architecture/04_GRDCS_SPECIFICATION.md
 docs/architecture/06_UI_UX_FOUNDATION.md
 docs/architecture/07_API_STANDARDS.md
 docs/blueprint/MASTER_BLUEPRINT.md
+docs/blueprint/REACH_FRAMEWORK.md
 docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md
 ```
 
@@ -364,6 +365,7 @@ If work is incomplete, document:
 | Architecture Docs | `docs/architecture/` |
 | Phase Docs | `docs/blueprint/PHASE_*.md` |
 | Master Blueprint | `docs/blueprint/MASTER_BLUEPRINT.md` |
+| REACH Framework | `docs/blueprint/REACH_FRAMEWORK.md` |
 | Changelog | `docs/changelog/IMPLEMENTATION_CHANGELOG.md` |
 | Compliance | `docs/compliance/` |
 | Operational | `docs/operational/` |
@@ -1105,6 +1107,63 @@ These GCP services MUST be enabled for CDR compliance (per Basiq §8):
 
 ---
 
+## PART 14: REACH FRAMEWORK — CORE IDENTITY (MANDATORY)
+
+> **REACH is the heart and soul of Monitrax. Every feature, page, recommendation, and
+> interaction MUST align to the REACH framework. This is a PERMANENT, NON-NEGOTIABLE rule.**
+> **Full specification: `docs/blueprint/REACH_FRAMEWORK.md`**
+
+### 14.1 The REACH Framework
+
+REACH is Monitrax's 5-stage financial journey framework:
+
+```
+R — Reveal      "See your full picture"           (Awareness)
+E — Establish   "Build your foundation"            (Safety)
+A — Act         "Take control of your money"       (Control)
+C — Compound    "Grow and compound your wealth"    (Growth)
+H — Harvest     "Reap your financial freedom"      (Freedom)
+```
+
+### 14.2 Sidebar Structure (8 Items)
+
+The sidebar follows the REACH journey:
+
+| Sidebar Item | REACH Stage | Contains (Tabs) |
+|---|---|---|
+| Home | — | Dashboard, REACH stage indicator, CFO top 3 |
+| My Household | — | Family members, pets, categories |
+| My Accounts | **Reveal** | Accounts, Loans, Income, Spending, Transactions, Recurring |
+| My Budget | **Act** | Budget, Cashflow, Debt Freedom, Tax |
+| My Wealth | **Compound** | Properties, Investments, Assets |
+| My CFO | **Harvest** | Health, Actions, Progress |
+| Reports | — | Reports, Documents |
+| Settings | — | Profile, Security, Household, Billing |
+
+**ESTABLISH** (Stage 2) is tracked through Financial Health score + CFO recommendations,
+not a dedicated sidebar section.
+
+### 14.3 Mandatory Design Rules
+
+| Rule | Description |
+|------|-------------|
+| **Every feature maps to REACH** | Before building any feature, identify which REACH stage it serves |
+| **Warm language** | Use "My Accounts" not "Portfolio", "Spending" not "Expenses", "Debt Freedom" not "Debt Planner" |
+| **Journey, not menu** | The sidebar tells a story: Reveal → Act → Compound → Harvest |
+| **Stage-matched CFO** | CFO recommendations MUST adapt to the user's current REACH stage |
+| **No clinical jargon** | "Budget Analysis" → "Budget". "Financial Health" → "Health". "Personal CFO" → "My CFO" |
+| **Barefoot integration** | CFO engine applies Barefoot Investor principles with AI personalisation |
+
+### 14.4 Before Every Feature — REACH Checklist
+
+- [ ] Which REACH stage does this feature serve?
+- [ ] Does the language follow warm naming conventions?
+- [ ] Does the CFO know about this feature and adapt recommendations by stage?
+- [ ] Is this feature accessible from the correct sidebar section?
+- [ ] Does this feature help users progress to the next REACH stage?
+
+---
+
 ## ENFORCEMENT
 
 **This protocol is MANDATORY for every Claude Code session working on Monitrax.**
@@ -1123,5 +1182,5 @@ These GCP services MUST be enabled for CDR compliance (per Basiq §8):
 
 ---
 
-*Last Updated: 2026-02-27*
-*Protocol Version: 1.5*
+*Last Updated: 2026-04-16*
+*Protocol Version: 1.6 — Added REACH Framework (Part 14)*

@@ -82,6 +82,26 @@
 
 > Build the world's first AI-driven wealth engine for everyday investors, with accountant-level precision and advisor-level intelligence.
 
+### The REACH Financial Freedom Framework
+
+> **Full specification: `docs/blueprint/REACH_FRAMEWORK.md`**
+
+REACH is the core identity and user experience framework for Monitrax. Every feature, page, and recommendation aligns to a 5-stage financial journey:
+
+```
+R — Reveal      "See your full picture"           → My Accounts
+E — Establish   "Build your foundation"            → Tracked via Health score + CFO
+A — Act         "Take control of your money"       → My Budget
+C — Compound    "Grow and compound your wealth"    → My Wealth
+H — Harvest     "Reap your financial freedom"      → My CFO
+```
+
+**Evidence base:** Synthesised from Barefoot Investor (2M+ Australian readers), Dave Ramsey's Baby Steps (10M+ users), CFPB Financial Well-Being Framework, Maslow's Financial Hierarchy, Prochaska's Stages of Change, and Bandura's Self-Efficacy Theory.
+
+**Sidebar (8 items):** Home, My Household, My Accounts [R], My Budget [A], My Wealth [C], My CFO [H], Reports, Settings.
+
+**CFO engine:** Integrates Barefoot Investor methodology with AI personalisation. Stage-matched recommendations adapt to the user's current REACH stage.
+
 ---
 
 ## 3. Technical Architecture
