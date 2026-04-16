@@ -7,31 +7,14 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   LayoutDashboard,
   Home,
-  Banknote,
   Wallet,
-  TrendingUp,
-  TrendingDown,
-  Calculator,
-  Receipt,
   LogOut,
   User,
-  PieChart,
-  Activity,
-  ArrowLeftRight,
-  RefreshCw,
-  LineChart,
-  Lightbulb,
   Menu,
   X,
   FileText,
   Brain,
-  FolderOpen,
   Settings,
-  ChevronDown,
-  Briefcase,
-  CreditCard,
-  BarChart3,
-  Car,
   Search,
   Users,
   Target,
@@ -58,68 +41,96 @@ interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  tourId?: string; // For guided tour targeting
+  tourId?: string;
+  // REACH stage tag — shown as subtle badge for journey-aligned items
+  reachStage?: 'R' | 'E' | 'A' | 'C' | 'H';
+  // Matching routes — additional paths that should highlight this item
+  matchRoutes?: string[];
 }
 
-interface NavGroup {
-  name: string;
-  icon: React.ComponentType<{ className?: string }>;
-  items: NavItem[];
-  tourId?: string; // For guided tour targeting
-}
+// =============================================================================
+// REACH SIDEBAR — 8 flat items, no accordion groups
+// Framework: docs/blueprint/REACH_FRAMEWORK.md
+//
+// Home → My Household → My Accounts [R] → My Budget [A] →
+// My Wealth [C] → My CFO [H] → Reports → Settings
+// =============================================================================
 
-// Standalone navigation items (always visible)
-const standaloneItems: NavItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, tourId: 'nav-dashboard' },
-  { name: 'Household', href: '/dashboard/household-profile', icon: Users, tourId: 'nav-household' },
-  { name: 'Personal CFO', href: '/dashboard/cfo', icon: Brain, tourId: 'nav-cfo' },
-];
-
-// Grouped navigation items (collapsible)
-const navGroups: NavGroup[] = [
+const reachNavItems: NavItem[] = [
   {
-    name: 'Portfolio',
-    icon: Briefcase,
-    tourId: 'nav-portfolio',
-    items: [
-      { name: 'Properties', href: '/dashboard/properties', icon: Home, tourId: 'nav-properties' },
-      { name: 'Loans', href: '/dashboard/loans', icon: Banknote, tourId: 'nav-loans' },
-      { name: 'Accounts', href: '/dashboard/accounts', icon: Wallet, tourId: 'nav-accounts' },
-      { name: 'Investments', href: '/dashboard/investments/accounts', icon: PieChart, tourId: 'nav-investments' },
-      { name: 'Assets', href: '/dashboard/assets', icon: Car, tourId: 'nav-assets' },
+    name: 'Home',
+    href: '/dashboard',
+    icon: LayoutDashboard,
+    tourId: 'nav-dashboard',
+  },
+  {
+    name: 'My Household',
+    href: '/dashboard/household-profile',
+    icon: Users,
+    tourId: 'nav-household',
+  },
+  {
+    name: 'My Accounts',
+    href: '/dashboard/accounts',
+    icon: Wallet,
+    tourId: 'nav-accounts',
+    reachStage: 'R',
+    // All pages that live under the "My Accounts" tab group
+    matchRoutes: [
+      '/dashboard/accounts',
+      '/dashboard/loans',
+      '/dashboard/income',
+      '/dashboard/expenses',
+      '/transactions',
+      '/recurring',
     ],
   },
   {
-    name: 'Transactions',
-    icon: CreditCard,
-    tourId: 'nav-transactions',
-    items: [
-      { name: 'Income', href: '/dashboard/income', icon: TrendingUp, tourId: 'nav-income' },
-      { name: 'Expenses', href: '/dashboard/expenses', icon: TrendingDown, tourId: 'nav-expenses' },
-      { name: 'Transactions', href: '/transactions', icon: ArrowLeftRight, tourId: 'nav-all-transactions' },
-      { name: 'Recurring', href: '/recurring', icon: RefreshCw, tourId: 'nav-recurring' },
+    name: 'My Budget',
+    href: '/dashboard/budget-analysis',
+    icon: Target,
+    tourId: 'nav-budget',
+    reachStage: 'A',
+    matchRoutes: [
+      '/dashboard/budget-analysis',
+      '/cashflow',
+      '/dashboard/debt-planner',
+      '/dashboard/tax',
     ],
   },
   {
-    name: 'Planning',
-    icon: Lightbulb,
-    tourId: 'nav-planning',
-    items: [
-      { name: 'Budget Analysis', href: '/dashboard/budget-analysis', icon: Target, tourId: 'nav-budget-analysis' },
-      { name: 'Debt Planner', href: '/dashboard/debt-planner', icon: Calculator, tourId: 'nav-debt' },
-      { name: 'Cashflow', href: '/cashflow', icon: LineChart, tourId: 'nav-cashflow' },
-      { name: 'Financial Health', href: '/health', icon: Activity, tourId: 'nav-health' },
-      { name: 'Tax Calculator', href: '/dashboard/tax', icon: Receipt, tourId: 'nav-tax' },
-      { name: 'Strategy', href: '/strategy', icon: Lightbulb, tourId: 'nav-strategy' },
+    name: 'My Wealth',
+    href: '/dashboard/properties',
+    icon: Home,
+    tourId: 'nav-wealth',
+    reachStage: 'C',
+    matchRoutes: [
+      '/dashboard/properties',
+      '/dashboard/investments',
+      '/dashboard/assets',
     ],
   },
   {
-    name: 'Reporting',
-    icon: BarChart3,
-    tourId: 'nav-reporting',
-    items: [
-      { name: 'Reports', href: '/dashboard/reports', icon: FileText, tourId: 'nav-reports' },
-      { name: 'Documents', href: '/dashboard/documents', icon: FolderOpen, tourId: 'nav-documents' },
+    name: 'My CFO',
+    href: '/dashboard/cfo',
+    icon: Brain,
+    tourId: 'nav-cfo',
+    reachStage: 'H',
+    matchRoutes: [
+      '/dashboard/cfo',
+      '/health',
+      // Strategy is redundant with CFO — marked for cleanup
+      // '/strategy',
+    ],
+  },
+  {
+    name: 'Reports',
+    href: '/dashboard/reports',
+    icon: FileText,
+    tourId: 'nav-reports',
+    matchRoutes: [
+      '/dashboard/reports',
+      '/dashboard/documents',
     ],
   },
 ];
@@ -396,46 +407,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setResumeBannerDismissed(true);
   }, []);
 
-  // Collapsible nav groups state - auto-expand group containing current path
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
-    const initial = new Set<string>();
-    // Auto-expand group containing current route on initial load
-    navGroups.forEach(group => {
-      if (group.items.some(item => pathname === item.href || pathname.startsWith(item.href))) {
-        initial.add(group.name);
-      }
-    });
-    return initial;
-  });
-
-  const toggleGroup = (groupName: string) => {
-    setExpandedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(groupName)) {
-        next.delete(groupName);
-      } else {
-        next.add(groupName);
-      }
-      return next;
-    });
-  };
-
-  // Auto-expand group when navigating to a page within it
-  useEffect(() => {
-    navGroups.forEach(group => {
-      if (group.items.some(item => pathname === item.href || pathname.startsWith(item.href))) {
-        setExpandedGroups(prev => {
-          if (!prev.has(group.name)) {
-            const next = new Set(prev);
-            next.add(group.name);
-            return next;
-          }
-          return prev;
-        });
-      }
-    });
-  }, [pathname]);
-
   // Phase 9.4 - Real-Time Global Health Feed
   const { state: syncState } = useUISyncEngine({
     enabled: true,
@@ -576,134 +547,115 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        {/* Navigation - Scrollable */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {/* Standalone items (Dashboard, Personal CFO) */}
-          {standaloneItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+        {/* Navigation — REACH Framework flat list (docs/blueprint/REACH_FRAMEWORK.md) */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          {reachNavItems.map((item) => {
+            // Active state: exact match for Home, prefix match for others
+            const isActive = item.href === '/dashboard'
+              ? pathname === '/dashboard' || pathname === '/dashboard/setup'
+              : item.matchRoutes
+                ? item.matchRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
+                : pathname === item.href || pathname.startsWith(item.href);
             const Icon = item.icon;
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 data-tour={item.tourId}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
+                className={`
+                  group flex items-center gap-3 rounded-xl px-3 py-2.5
+                  text-[13px] font-medium tracking-wide
+                  transition-all duration-200 ease-out
+                  ${isActive
+                    ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  }
+                `}
               >
-                <Icon className="h-5 w-5 lg:h-4 lg:w-4" />
-                {item.name}
+                <div className={`
+                  flex h-8 w-8 items-center justify-center rounded-lg
+                  transition-colors duration-200
+                  ${isActive
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
+                  }
+                `}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <span className="flex-1">{item.name}</span>
+                {/* REACH stage badge */}
+                {item.reachStage && (
+                  <span className={`
+                    text-[10px] font-bold tracking-widest uppercase
+                    px-1.5 py-0.5 rounded-md
+                    ${isActive
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-muted/80 text-muted-foreground/60'
+                    }
+                  `}>
+                    {item.reachStage}
+                  </span>
+                )}
               </Link>
             );
           })}
 
-          {/* Collapsible nav groups */}
-          {navGroups.map((group) => {
-            const GroupIcon = group.icon;
-            const isExpanded = expandedGroups.has(group.name);
-            const hasActiveChild = group.items.some(
-              item => pathname === item.href || pathname.startsWith(item.href)
-            );
-
-            return (
-              <div key={group.name} className="space-y-1" data-tour={group.tourId}>
-                {/* Group header */}
-                <button
-                  onClick={() => toggleGroup(group.name)}
-                  className={`w-full flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-                    hasActiveChild
-                      ? 'text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <GroupIcon className="h-5 w-5 lg:h-4 lg:w-4" />
-                    {group.name}
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      isExpanded ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-
-                {/* Group items */}
-                <div
-                  className={`overflow-hidden transition-all duration-200 ${
-                    isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <div className="pl-4 space-y-1">
-                    {group.items.map((item) => {
-                      const isActive = pathname === item.href || pathname.startsWith(item.href);
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          data-tour={item.tourId}
-                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
-                            isActive
-                              ? 'bg-primary text-primary-foreground shadow-sm'
-                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                          }`}
-                        >
-                          <Icon className="h-4 w-4" />
-                          {item.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Phase 12 - Financial Health Widget */}
-          <div className="pt-4">
+          {/* Separator before health widget */}
+          <div className="pt-3">
+            <Separator className="mb-3" />
             <FinancialHealthMiniWidget />
           </div>
         </nav>
 
-        {/* User Section - Fixed at bottom */}
-        <div className="border-t border-border p-4 flex-shrink-0 space-y-2">
-          {/* Settings Link */}
+        {/* Bottom Section — Settings + User */}
+        <div className="border-t border-border px-3 py-3 flex-shrink-0 space-y-1.5">
+          {/* Settings */}
           <Link
             href={settingsNavItem.href}
             data-tour={settingsNavItem.tourId}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
-              pathname.startsWith(settingsNavItem.href)
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
+            className={`
+              group flex items-center gap-3 rounded-xl px-3 py-2.5
+              text-[13px] font-medium tracking-wide
+              transition-all duration-200 ease-out
+              ${pathname.startsWith(settingsNavItem.href)
+                ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+              }
+            `}
           >
-            <Settings className="h-5 w-5 lg:h-4 lg:w-4" />
-            {settingsNavItem.name}
+            <div className={`
+              flex h-8 w-8 items-center justify-center rounded-lg
+              transition-colors duration-200
+              ${pathname.startsWith(settingsNavItem.href)
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
+              }
+            `}>
+              <Settings className="h-4 w-4" />
+            </div>
+            <span className="flex-1">Settings</span>
           </Link>
 
-          {/* User Info */}
-          <div className="flex items-center gap-3 rounded-lg bg-muted p-3 border border-border">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          {/* User Info + Sign Out */}
+          <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-sm">
               <User className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              <p className="text-[13px] font-medium truncate">{user.name}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
             </div>
+            <Button
+              onClick={logout}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 rounded-lg hover:bg-destructive/10 hover:text-destructive"
+              title="Sign Out"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
           </div>
-
-          {/* Sign Out Button */}
-          <Button
-            onClick={logout}
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
         </div>
       </aside>
 
