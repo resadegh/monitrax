@@ -33,7 +33,7 @@
 ### What Monitrax Is
 
 - A **portfolio management operating system** for everyday investors
-- An **AI-powered personal CFO** with accountant-level precision
+- An **AI-powered personal financial guide** with accountant-level precision
 - A **unified financial intelligence engine** connecting all aspects of personal wealth
 
 ### What Monitrax Manages
@@ -91,16 +91,16 @@ TRAIL is the core identity and user experience framework for Monitrax. Every fea
 ```
 T — Track        "Track your full picture"              → My Accounts
 R — Reduce       "Reduce the waste, fix the leaks"      → My Budget
-A — Anchor       "Anchor your safety net"               → Tracked via Health score + CFO
+A — Anchor       "Anchor your safety net"               → Tracked via Health score + Guide
 I — Invest       "Invest in your future"                → My Wealth
-L — Live         "Live on your terms"                   → My CFO
+L — Live         "Live on your terms"                   → My Guide
 ```
 
 **Evidence base:** Synthesised from Barefoot Investor (2M+ Australian readers), Dave Ramsey's Baby Steps (10M+ users), CFPB Financial Well-Being Framework, Maslow's Financial Hierarchy, Prochaska's Stages of Change, and Bandura's Self-Efficacy Theory.
 
-**Sidebar (8 items):** Home, My Household, My Accounts [T], My Budget [R], My Wealth [I], My CFO [L], Reports, Settings.
+**Sidebar (8 items):** Home, My Household, My Accounts [T], My Budget [R], My Wealth [I], My Guide [L], Reports, Settings.
 
-**CFO engine:** Integrates Barefoot Investor methodology with AI personalisation. Stage-matched recommendations adapt to the user's current TRAIL stage. Guidance, not gates — CFO recommends the correct order but does not block access.
+**Guide engine:** Integrates Barefoot Investor methodology with AI personalisation. Stage-matched recommendations adapt to the user's current TRAIL stage. Guidance, not gates — your Guide recommends the correct order but does not block access.
 
 ---
 

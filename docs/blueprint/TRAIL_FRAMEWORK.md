@@ -8,7 +8,7 @@
 **Created:** 2026-04-17
 **Replaces:** REACH Framework v1.0 (2026-04-16)
 **Status:** Active — All features must align to this framework
-**Authority:** This document is the PRIMARY design reference for Monitrax's user experience, navigation, feature organisation, and CFO engine logic.
+**Authority:** This document is the PRIMARY design reference for Monitrax's user experience, navigation, feature organisation, and Guide engine logic.
 
 ---
 
@@ -19,7 +19,7 @@
 3. [Evidence Base & Psychology](#3-evidence-base--psychology)
 4. [Monitrax Feature Mapping](#4-monitrax-feature-mapping)
 5. [Sidebar Structure](#5-sidebar-structure)
-6. [Barefoot Investor CFO Integration](#6-barefoot-investor-cfo-integration)
+6. [Barefoot Investor Guide Integration](#6-barefoot-investor-cfo-integration)
 7. [Design Principles](#7-design-principles)
 8. [Stage Progression Logic](#8-stage-progression-logic)
 
@@ -121,7 +121,7 @@ Every trail has a beginning (where you are now), a series of markers (stages you
 | **Emotional shift** | From **fragile** to **stable** |
 | **Milestone** | "I have 3 months of expenses saved. My bills are covered. I can sleep at night." |
 | **Measurable** | Emergency fund reaches 3 months of expenses. Bills paid on time. No new consumer debt. |
-| **Monitrax section** | Tracked through Financial Health score + CFO recommendations |
+| **Monitrax section** | Tracked through Financial Health score + Guide recommendations |
 
 **Why ANCHOR matters:** Maslow's hierarchy applied to finance — you cannot focus on wealth building when survival is threatened. 29% of Australian households can't raise $2,000 for an emergency. An anchor keeps you stable when storms hit. This maps directly to the Barefoot Investor's "Mojo" bucket.
 
@@ -155,7 +155,7 @@ Every trail has a beginning (where you are now), a series of markers (stages you
 | **Emotional shift** | From **building** to **freedom** |
 | **Milestone** | "My passive income covers my expenses. I make choices from abundance." |
 | **Measurable** | Financial Health score consistently high. Passive income growing. Debt minimal or zero. |
-| **Monitrax section** | My CFO (Health, Actions, Progress) |
+| **Monitrax section** | My Guide (Health, Actions, Progress) |
 
 **Why LIVE is the destination:** "Live on your terms" is the most human, most warm destination possible. Not "financial independence" (corporate), not "retire early" (narrow), not "harvest" (agricultural). Just: live. Live the life you want. That's what financial freedom actually means.
 
@@ -188,13 +188,13 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 | Principle | Source | How TRAIL applies it |
 |---|---|---|
 | **Self-efficacy through small wins** | Bandura (1977) | Each stage has a clear, achievable milestone |
-| **Stage-matched interventions** | Prochaska & DiClemente (1983) | CFO adapts recommendations to user's TRAIL stage |
+| **Stage-matched interventions** | Prochaska & DiClemente (1983) | Guide adapts recommendations to user's TRAIL stage |
 | **Automation over willpower** | Thaler & Benartzi (2004) | Basiq auto-populates; buckets auto-categorise |
 | **Financial hierarchy of needs** | Newcomb (2016), Maslow (1943) | TRAIL stages follow Maslow's financial hierarchy |
 | **Behavioural momentum** | Ramsey, Barefoot | Debt snowball in REDUCE stage; smallest debts first |
 | **Progressive disclosure** | NN/Group | Sidebar shows journey stages, not overwhelming feature lists |
 | **Non-judgmental framing** | Financial Therapy Association | "Spending" not "Expenses"; "Debt Freedom" not "Debt Planner" |
-| **Warm language** | SDT: Autonomy, Competence, Relatedness | "My Accounts", "My Wealth", "My CFO" — ownership language |
+| **Warm language** | SDT: Autonomy, Competence, Relatedness | "My Accounts", "My Wealth", "My Guide" — ownership language |
 | **Action before stability** | Barefoot Step 3 before Step 6; Ramsey Step 2 before Step 3 | REDUCE (fix leaks) comes before ANCHOR (fill the bucket) |
 
 ---
@@ -220,11 +220,11 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 | Properties | **Invest** | My Wealth | Tab: Properties |
 | Investments | **Invest** | My Wealth | Tab: Investments |
 | Assets | **Invest** | My Wealth | Tab: Assets |
-| Financial Health | **Live** | My CFO | Tab: Health |
-| Personal CFO | **Live** | My CFO | Tab: Actions |
+| Financial Health | **Live** | My Guide | Tab: Health |
+| Personal Guide | **Live** | My Guide | Tab: Actions |
 | Reports | — | Reports | Tab: Reports |
 | Documents | — | Reports | Tab: Documents |
-| ~~Strategy~~ | — | **Removed** | Redundant with CFO |
+| ~~Strategy~~ | — | **Removed** | Redundant with Guide |
 
 ### Page Renames (Warm Language)
 
@@ -235,7 +235,7 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 | Expenses | **Spending** | "Spending" = human action |
 | Budget Analysis | **Budget** | Remove unnecessary complexity |
 | Debt Planner | **Debt Freedom** | Aspiration over diagnosis |
-| Personal CFO | **My CFO** | Intimate — someone in your corner |
+| Personal Guide | **My Guide** | Intimate — someone in your corner |
 
 ---
 
@@ -244,7 +244,7 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 ### The Final Sidebar (8 Items)
 
 ```
-🏠  Home                         — Your TRAIL stage + snapshot + CFO top 3
+🏠  Home                         — Your TRAIL stage + snapshot + Guide top 3
 👨‍👩‍👧‍👦  My Household                  — Who you're doing this for
 
 🏦  My Accounts    [T]           — Accounts | Loans | Income | Spending |
@@ -254,7 +254,7 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 
 🏘️  My Wealth      [I]           — Properties | Investments | Assets
 
-🧭  My CFO         [L]           — Health | Actions | Progress
+🧭  My Guide         [L]           — Health | Actions | Progress
 
 📁  Reports                      — Reports | Documents
 ⚙️  Settings                     — Profile | Security | Household | Billing
@@ -265,7 +265,7 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 Stage 3 (ANCHOR) does not have a dedicated sidebar section. It represents a **milestone state** — your emergency fund is built, your bills are current, you can handle a shock. Monitrax tracks this through:
 
 - **Financial Health score:** Emergency fund component with "A" badge
-- **My CFO recommendations:** "Your emergency fund covers 1.2 months. Target: 3 months."
+- **My Guide recommendations:** "Your emergency fund covers 1.2 months. Target: 3 months."
 - **My Accounts:** Users see their emergency savings in the Accounts tab
 - **Home dashboard:** TRAIL stage indicator shows when ANCHOR is achieved
 
@@ -277,42 +277,42 @@ MY HOUSEHOLD   → "Remember who you're doing this for."
 MY ACCOUNTS    → "Here's your full picture."                    [TRACK]
 MY BUDGET      → "Here's how you're fixing the leaks."          [REDUCE]
 MY WEALTH      → "Here's what you're building."                 [INVEST]
-MY CFO         → "Here's your path to freedom."                 [LIVE]
+MY Guide         → "Here's your path to freedom."                 [LIVE]
 REPORTS        → "Here's the proof."
 ```
 
 ---
 
-## 6. Barefoot Investor CFO Integration
+## 6. Barefoot Investor Guide Integration
 
 ### Overview
 
-The Monitrax CFO engine integrates the Barefoot Investor methodology with AI-powered personalisation. Where Barefoot stops at general advice, Monitrax's CFO uses the user's ACTUAL data to deliver personalised, stage-matched guidance.
+The Monitrax Guide engine integrates the Barefoot Investor methodology with AI-powered personalisation. Where Barefoot stops at general advice, Monitrax's Guide uses the user's ACTUAL data to deliver personalised, stage-matched guidance.
 
-### Stage-Matched CFO Recommendations
+### Stage-Matched Guide Recommendations
 
-**Stage T (TRACK) — CFO says:**
+**Stage T (TRACK) — Guide says:**
 - "Let's connect your bank and see your full picture."
 - "I've found 4 accounts, 2 loans, and 156 transactions. Here's your snapshot."
 - "Your net worth is $X. Let's build from here."
 
-**Stage R (REDUCE) — CFO says:**
+**Stage R (REDUCE) — Guide says:**
 - "You're spending $340/month more than you earn. Let's fix that."
 - "I've found 6 subscriptions totalling $189/month — want to review them?"
 - "You have 4 debts totalling $28,400. Barefoot's Domino method: attack the $1,200 Afterpay first."
 - "Paying $200 extra on your smallest debt clears it in 6 months."
 
-**Stage A (ANCHOR) — CFO says:**
+**Stage A (ANCHOR) — Guide says:**
 - "Your cashflow is positive! Time to build your safety net."
 - "Your emergency fund covers 0.8 months. Barefoot recommends 3 months in a separate Mojo account."
 - "Auto-transfer $400/month to your Mojo — you'll hit 3 months by October."
 
-**Stage I (INVEST) — CFO says:**
+**Stage I (INVEST) — Guide says:**
 - "Your foundation is solid. Time to grow."
 - "Barefoot recommends super at 15%. You're at 11.5%. Salary sacrificing $200/month saves $1,800 in tax."
 - "Your property equity grew $12,000 this quarter. LVR improved from 78% to 74%."
 
-**Stage L (LIVE) — CFO says:**
+**Stage L (LIVE) — Guide says:**
 - "Your passive income covers 62% of expenses. Target: 100%."
 - "If you maintain current trajectory, you'll reach financial independence in 7.3 years."
 - "Your Financial Health score is 78 — up 12 points since you started."
@@ -341,7 +341,7 @@ The Monitrax CFO engine integrates the Barefoot Investor methodology with AI-pow
 
 ### Guidance, Not Gates
 
-The CFO **recommends** the correct TRAIL order but does **not block** access to later stages. Users are adults — we guide, we don't gatekeep. A user in REDUCE who clicks My Wealth sees a banner: *"I notice you're looking at investments — great ambition! Want me to help optimise your cashflow first so you have more to invest?"*
+The Guide **recommends** the correct TRAIL order but does **not block** access to later stages. Users are adults — we guide, we don't gatekeep. A user in REDUCE who clicks My Wealth sees a banner: *"I notice you're looking at investments — great ambition! Want me to help optimise your cashflow first so you have more to invest?"*
 
 ---
 

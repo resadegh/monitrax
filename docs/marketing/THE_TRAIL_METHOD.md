@@ -188,7 +188,7 @@ Financial freedom is the point where your passive income — from investments, p
 
 At this stage, work becomes optional. Not that you stop working — many people love what they do. But the CHOICE is yours. You work because you want to, not because you have to.
 
-Your Financial Health score is high. Your debts are minimal or gone. Your CFO has shifted from "here's what to fix" to "here's how to optimise." You're not stressed about money anymore. You're making decisions from abundance, not scarcity.
+Your Financial Health score is high. Your debts are minimal or gone. Your Guide has shifted from "here's what to fix" to "here's how to optimise." You're not stressed about money anymore. You're making decisions from abundance, not scarcity.
 
 And here's the part that surprises people: **this stage isn't just about money.** Research on financial well-being by the CFPB found that the ultimate measure isn't your bank balance — it's "the freedom to make choices that allow you to enjoy life."
 
@@ -197,7 +197,7 @@ That's what LIVE means. Not a number. A feeling. The feeling of being free.
 **What LIVE looks like in practice:**
 - Your Financial Health score is consistently high
 - Your passive income is growing toward covering your expenses
-- Your CFO focuses on optimisation and opportunity, not triage
+- Your Guide focuses on optimisation and opportunity, not triage
 - You track your progress toward financial independence
 - You celebrate how far you've come
 
@@ -245,7 +245,7 @@ A book can't track your spending in real time. Monitrax connects to your bank vi
 
 ### 2. It's personalised
 
-A book gives general advice. Monitrax's AI-powered personal CFO gives you advice based on YOUR actual numbers. Not "save 20% of your income" but "based on your income and expenses, here's exactly where to find $400/month you didn't know you had." Not "pay off your smallest debt first" but "your $1,200 Afterpay balance can be cleared in 2 months, saving you $340 in interest."
+A book gives general advice. Monitrax's AI-powered personal financial guide gives you advice based on YOUR actual numbers. Not "save 20% of your income" but "based on your income and expenses, here's exactly where to find $400/month you didn't know you had." Not "pay off your smallest debt first" but "your $1,200 Afterpay balance can be cleared in 2 months, saving you $340 in interest."
 
 ### 3. It knows where you are
 
@@ -272,4 +272,4 @@ The best time to start your TRAIL was years ago. The second best time is right n
 
 ---
 
-*The TRAIL Method is built into every part of Monitrax — Australia's AI-powered personal CFO. Start free at monitrax.com.au.*
+*The TRAIL Method is built into every part of Monitrax — Australia's AI-powered personal financial guide. Start free at monitrax.com.au.*
