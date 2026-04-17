@@ -101,9 +101,9 @@ This is the destination. Your passive income approaches your expenses. Your Fina
 
 This isn't retirement. It's freedom. Freedom to choose how you spend your time and your money.
 
-> "My CFO told me I'm 7 years from financial independence. I've never had a number before. Now I have a target."
+> "My Guide told me I'm 7 years from financial independence. I've never had a number before. Now I have a target."
 
-**What Monitrax does:** Your personal AI CFO tracks your Financial Health score, surfaces your top 3 actions each week, forecasts your path to financial independence, and celebrates your progress.
+**What Monitrax does:** Your personal financial guide tracks your Financial Health score, surfaces your top 3 actions each week, forecasts your path to financial independence, and celebrates your progress.
 
 ---
 
@@ -114,7 +114,7 @@ This isn't retirement. It's freedom. Freedom to choose how you spend your time a
 
 1. **Connect your bank** — Secure, instant, Open Banking. See everything in 60 seconds.
 2. **Discover your TRAIL stage** — Monitrax analyses your finances and tells you where you are.
-3. **Follow your CFO's guidance** — Personalised, AI-powered recommendations matched to your stage.
+3. **Follow your Guide's guidance** — Personalised, AI-powered recommendations matched to your stage.
 4. **Watch your progress** — Your Financial Health score improves. Your net worth grows. Your debt shrinks.
 5. **Live on your terms** — The trail is yours. We just make sure you never walk it alone.
 
@@ -127,7 +127,7 @@ This isn't retirement. It's freedom. Freedom to choose how you spend your time a
 
 TRAIL isn't something we invented from scratch. It's the convergent conclusion of every major financial methodology:
 
-- **The Barefoot Investor** (2M+ Australian readers) — Our CFO engine applies Barefoot principles with AI personalisation
+- **The Barefoot Investor** (2M+ Australian readers) — Our Guide engine applies Barefoot principles with AI personalisation
 - **Dave Ramsey's Baby Steps** (10M+ participants) — Our debt freedom strategy uses the proven snowball method
 - **CFPB Financial Well-Being Framework** (US Government) — Our health score aligns with their validated model
 - **Maslow's Financial Hierarchy** — TRAIL stages follow the evidence-based hierarchy
@@ -153,6 +153,6 @@ Join thousands of Australians who stopped stressing about money and started livi
 
 ## SEO Metadata
 
-**Title:** The TRAIL to Financial Freedom | Monitrax — Your Personal CFO
+**Title:** The TRAIL to Financial Freedom | Monitrax — Your Personal Guide
 **Description:** Follow the TRAIL: Track, Reduce, Anchor, Invest, Live. Monitrax guides you from financial stress to financial freedom in 5 proven steps. Start free today.
-**Keywords:** personal finance Australia, financial freedom, personal CFO, Barefoot Investor app, budget tracker Australia, debt payoff planner, net worth tracker, open banking Australia
+**Keywords:** personal finance Australia, financial freedom, personal Guide, Barefoot Investor app, budget tracker Australia, debt payoff planner, net worth tracker, open banking Australia

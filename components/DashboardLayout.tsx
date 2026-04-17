@@ -134,10 +134,10 @@ const reachNavItems: NavItem[] = [
     ],
   },
   {
-    name: 'My CFO',
+    name: 'My Guide',
     href: '/dashboard/cfo',
     icon: Brain,
-    tourId: 'nav-cfo',
+    tourId: 'nav-guide',
     trailStage: 'L',
     matchRoutes: [
       '/dashboard/cfo',

@@ -1131,12 +1131,12 @@ The sidebar follows the TRAIL journey:
 
 | Sidebar Item | TRAIL Stage | Contains (Tabs) |
 |---|---|---|
-| Home | — | Dashboard, TRAIL stage indicator, CFO top 3 |
+| Home | — | Dashboard, TRAIL stage indicator, Guide top 3 |
 | My Household | — | Family members, pets, categories |
 | My Accounts | **Track** | Accounts, Loans, Income, Spending, Transactions, Recurring |
 | My Budget | **Reduce** | Budget, Cashflow, Debt Freedom, Tax |
 | My Wealth | **Invest** | Properties, Investments, Assets |
-| My CFO | **Live** | Health, Actions, Progress |
+| My Guide | **Live** | Health, Actions, Progress |
 | Reports | — | Reports, Documents |
 | Settings | — | Profile, Security, Household, Billing |
 
@@ -1150,9 +1150,9 @@ not a dedicated sidebar section.
 | **Every feature maps to TRAIL** | Before building any feature, identify which TRAIL stage it serves |
 | **Warm language** | Use "My Accounts" not "Portfolio", "Spending" not "Expenses", "Debt Freedom" not "Debt Planner" |
 | **Journey, not menu** | The sidebar tells a story: Track → Reduce → Invest → Live |
-| **Stage-matched CFO** | CFO recommendations MUST adapt to the user's current TRAIL stage |
-| **No clinical jargon** | "Budget Analysis" → "Budget". "Financial Health" → "Health". "Personal CFO" → "My CFO" |
-| **Barefoot integration** | CFO engine applies Barefoot Investor principles with AI personalisation |
+| **Stage-matched Guide** | Guide recommendations MUST adapt to the user's current TRAIL stage |
+| **No clinical jargon** | "Budget Analysis" → "Budget". "Financial Health" → "Health". "Personal CFO" → "My Guide" |
+| **Barefoot integration** | Guide engine applies Barefoot Investor principles with AI personalisation |
 | **Guidance, not gates** | CFO recommends the TRAIL order but does not block access to later stages |
 
 ### 14.4 Before Every Feature — TRAIL Checklist
