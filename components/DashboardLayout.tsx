@@ -14,6 +14,7 @@ import {
   X,
   FileText,
   Brain,
+  Shield,
   Settings,
   Search,
   Users,
@@ -114,6 +115,16 @@ const reachNavItems: NavItem[] = [
       { name: 'Cashflow', href: '/cashflow' },
       { name: 'Debt Freedom', href: '/dashboard/debt-planner' },
       { name: 'Tax', href: '/dashboard/tax' },
+    ],
+  },
+  {
+    name: 'My Safety Net',
+    href: '/dashboard/safety-net',
+    icon: Shield,
+    tourId: 'nav-safety-net',
+    trailStage: 'A',
+    matchRoutes: [
+      '/dashboard/safety-net',
     ],
   },
   {
@@ -656,17 +667,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
 
-          {/* ANCHOR stage — Financial Health widget with A badge */}
+          {/* Financial Health widget */}
           <div className="pt-3">
             <Separator className="mb-3" />
-            <div className="relative">
-              <div className="absolute -top-1 right-2 z-10">
-                <span className="text-[10px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground/60">
-                  A
-                </span>
-              </div>
-              <FinancialHealthMiniWidget />
-            </div>
+            <FinancialHealthMiniWidget />
           </div>
         </nav>
 

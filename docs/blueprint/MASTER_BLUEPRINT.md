@@ -98,7 +98,7 @@ L — Live         "Live on your terms"                   → My Guide
 
 **Evidence base:** Synthesised from Barefoot Investor (2M+ Australian readers), Dave Ramsey's Baby Steps (10M+ users), CFPB Financial Well-Being Framework, Maslow's Financial Hierarchy, Prochaska's Stages of Change, and Bandura's Self-Efficacy Theory.
 
-**Sidebar (8 items):** Home, My Household, My Accounts [T], My Budget [R], My Wealth [I], My Guide [L], Reports, Settings.
+**Sidebar (9 items):** Home, My Household, My Accounts [T], My Budget [R], My Safety Net [A], My Wealth [I], My Guide [L], Reports, Settings.
 
 **Guide engine:** Integrates Barefoot Investor methodology with AI personalisation. Stage-matched recommendations adapt to the user's current TRAIL stage. Guidance, not gates — your Guide recommends the correct order but does not block access.
 
