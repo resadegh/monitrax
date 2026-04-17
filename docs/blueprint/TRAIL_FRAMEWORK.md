@@ -217,6 +217,7 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 | Cashflow | **Reduce** | My Budget | Tab: Cashflow |
 | Debt Planner | **Reduce** | My Budget | Tab: Debt Freedom |
 | Tax Calculator | **Reduce** | My Budget | Tab: Tax |
+| Safety Net | **Anchor** | My Safety Net | NEW — dedicated page |
 | Properties | **Invest** | My Wealth | Tab: Properties |
 | Investments | **Invest** | My Wealth | Tab: Investments |
 | Assets | **Invest** | My Wealth | Tab: Assets |
@@ -241,7 +242,7 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 
 ## 5. Sidebar Structure
 
-### The Final Sidebar (8 Items)
+### The Final Sidebar (9 Items — All 5 TRAIL Stages Represented)
 
 ```
 🏠  Home                         — Your TRAIL stage + snapshot + Guide top 3
@@ -252,22 +253,30 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 
 🎯  My Budget      [R]           — Budget | Cashflow | Debt Freedom | Tax
 
+🛡️  My Safety Net  [A]           — Emergency Fund | Bills Status | Safety Score
+
 🏘️  My Wealth      [I]           — Properties | Investments | Assets
 
-🧭  My Guide         [L]           — Health | Actions | Progress
+🧭  My Guide       [L]           — Health | Actions | Progress
 
 📁  Reports                      — Reports | Documents
 ⚙️  Settings                     — Profile | Security | Household | Billing
 ```
 
-### Where ANCHOR Lives
+### My Safety Net [A] — Anchor Stage
 
-Stage 3 (ANCHOR) does not have a dedicated sidebar section. It represents a **milestone state** — your emergency fund is built, your bills are current, you can handle a shock. Monitrax tracks this through:
+**Page:** `/dashboard/safety-net`
+**Question it answers:** "If something goes wrong tomorrow, am I OK?"
 
-- **Financial Health score:** Emergency fund component with "A" badge
-- **My Guide recommendations:** "Your emergency fund covers 1.2 months. Target: 3 months."
-- **My Accounts:** Users see their emergency savings in the Accounts tab
-- **Home dashboard:** TRAIL stage indicator shows when ANCHOR is achieved
+**Sections:**
+1. **Emergency Fund Tracker** — Visual progress bar showing months of expenses covered vs 3-month target. Calculated from liquid savings (savings + offset accounts) divided by monthly expenses.
+2. **Bills & Commitments Status** — All recurring obligations with on-track/overdue indicators. Data from recurring payments + loan repayments.
+3. **Safety Score (0-100)** — Weighted score: emergency fund coverage (40%), bills on time (30%), no new consumer debt (15%), positive cashflow (15%).
+4. **Barefoot Mojo Tracker** — Maps user's savings accounts to the Barefoot Mojo bucket concept.
+5. **Guide Recommendations** — Stage-matched advice for building the safety net.
+6. **What-If Scenarios** — "What if your car breaks down ($3,000)?" — shows impact on emergency fund.
+
+**Data sources:** All existing — `/api/master-snapshot` (balances, expenses), `/api/unified-transactions/recurring` (bills), `/api/cfo` (recommendations). No new APIs required.
 
 ### The Journey Story
 

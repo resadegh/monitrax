@@ -1135,6 +1135,7 @@ The sidebar follows the TRAIL journey:
 | My Household | — | Family members, pets, categories |
 | My Accounts | **Track** | Accounts, Loans, Income, Spending, Transactions, Recurring |
 | My Budget | **Reduce** | Budget, Cashflow, Debt Freedom, Tax |
+| My Safety Net | **Anchor** | Emergency Fund, Bills Status, Safety Score |
 | My Wealth | **Invest** | Properties, Investments, Assets |
 | My Guide | **Live** | Health, Actions, Progress |
 | Reports | — | Reports, Documents |
