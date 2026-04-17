@@ -82,25 +82,25 @@
 
 > Build the world's first AI-driven wealth engine for everyday investors, with accountant-level precision and advisor-level intelligence.
 
-### The REACH Financial Freedom Framework
+### The TRAIL to Financial Freedom
 
-> **Full specification: `docs/blueprint/REACH_FRAMEWORK.md`**
+> **Full specification: `docs/blueprint/TRAIL_FRAMEWORK.md`**
 
-REACH is the core identity and user experience framework for Monitrax. Every feature, page, and recommendation aligns to a 5-stage financial journey:
+TRAIL is the core identity and user experience framework for Monitrax. Every feature, page, and recommendation aligns to a 5-stage financial journey:
 
 ```
-R — Reveal      "See your full picture"           → My Accounts
-E — Establish   "Build your foundation"            → Tracked via Health score + CFO
-A — Act         "Take control of your money"       → My Budget
-C — Compound    "Grow and compound your wealth"    → My Wealth
-H — Harvest     "Reap your financial freedom"      → My CFO
+T — Track        "Track your full picture"              → My Accounts
+R — Reduce       "Reduce the waste, fix the leaks"      → My Budget
+A — Anchor       "Anchor your safety net"               → Tracked via Health score + CFO
+I — Invest       "Invest in your future"                → My Wealth
+L — Live         "Live on your terms"                   → My CFO
 ```
 
 **Evidence base:** Synthesised from Barefoot Investor (2M+ Australian readers), Dave Ramsey's Baby Steps (10M+ users), CFPB Financial Well-Being Framework, Maslow's Financial Hierarchy, Prochaska's Stages of Change, and Bandura's Self-Efficacy Theory.
 
-**Sidebar (8 items):** Home, My Household, My Accounts [R], My Budget [A], My Wealth [C], My CFO [H], Reports, Settings.
+**Sidebar (8 items):** Home, My Household, My Accounts [T], My Budget [R], My Wealth [I], My CFO [L], Reports, Settings.
 
-**CFO engine:** Integrates Barefoot Investor methodology with AI personalisation. Stage-matched recommendations adapt to the user's current REACH stage.
+**CFO engine:** Integrates Barefoot Investor methodology with AI personalisation. Stage-matched recommendations adapt to the user's current TRAIL stage. Guidance, not gates — CFO recommends the correct order but does not block access.
 
 ---
 
