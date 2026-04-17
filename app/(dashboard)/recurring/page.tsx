@@ -634,7 +634,7 @@ export default function RecurringPaymentsCenter() {
         setPayments(json.data);
         setSummary(json.summary);
       } else {
-        setError(json.error || 'Failed to load recurring payments');
+        setError(typeof json.error === 'string' ? json.error : json.error?.message || 'Failed to load recurring payments');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error');
