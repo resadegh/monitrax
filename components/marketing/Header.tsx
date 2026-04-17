@@ -8,34 +8,34 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-brand-primary/95 backdrop-blur supports-[backdrop-filter]:bg-brand-primary/90">
+    <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-stone-950/90 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-secondary">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500 to-amber-600 shadow-sm">
               <span className="text-lg font-bold text-white">M</span>
             </div>
-            <span className="text-xl font-bold text-white">Monitrax</span>
+            <span className="text-xl font-bold text-white tracking-tight">Monitrax</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-8">
             <Link
-              href="/#features"
-              className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+              href="/#trail"
+              className="text-sm font-medium text-stone-400 hover:text-white transition-colors"
             >
-              Features
+              The TRAIL
             </Link>
             <Link
               href="/pricing"
-              className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+              className="text-sm font-medium text-stone-400 hover:text-white transition-colors"
             >
               Pricing
             </Link>
             <Link
               href="/security"
-              className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+              className="text-sm font-medium text-stone-400 hover:text-white transition-colors"
             >
               Security
             </Link>
@@ -43,11 +43,11 @@ export function Header() {
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10" asChild>
+            <Button variant="ghost" className="text-stone-300 hover:text-white hover:bg-white/10" asChild>
               <Link href="/signin">Sign in</Link>
             </Button>
-            <Button className="bg-brand-secondary hover:bg-brand-secondary/90 text-white" asChild>
-              <Link href="/pricing">Get started</Link>
+            <Button className="bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white shadow-sm" asChild>
+              <Link href="/register">Start free</Link>
             </Button>
           </div>
 
@@ -71,35 +71,35 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 py-4">
+          <div className="md:hidden border-t border-white/[0.06] py-4">
             <nav className="flex flex-col gap-4">
               <Link
-                href="/#features"
-                className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                href="/#trail"
+                className="text-sm font-medium text-stone-400 hover:text-white transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Features
+                The TRAIL
               </Link>
               <Link
                 href="/pricing"
-                className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                className="text-sm font-medium text-stone-400 hover:text-white transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Pricing
               </Link>
               <Link
                 href="/security"
-                className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                className="text-sm font-medium text-stone-400 hover:text-white transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Security
               </Link>
-              <div className="flex flex-col gap-2 pt-4 border-t border-white/10">
-                <Button variant="outline" className="w-full bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
+              <div className="flex flex-col gap-2 pt-4 border-t border-white/[0.06]">
+                <Button variant="outline" className="w-full bg-transparent border-stone-700 text-stone-300 hover:bg-white/10 hover:text-white" asChild>
                   <Link href="/signin">Sign in</Link>
                 </Button>
-                <Button className="w-full bg-brand-secondary hover:bg-brand-secondary/90 text-white" asChild>
-                  <Link href="/pricing">Get started</Link>
+                <Button className="w-full bg-gradient-to-b from-amber-500 to-amber-600 text-white" asChild>
+                  <Link href="/register">Start free</Link>
                 </Button>
               </div>
             </nav>

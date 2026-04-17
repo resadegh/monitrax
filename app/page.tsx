@@ -6,13 +6,13 @@ import { useAuth } from '@/lib/context/AuthContext';
 import {
   Header,
   Footer,
-  Hero,
-  SocialProof,
-  ValuePillars,
-  FeatureGrid,
-  ForecastSection,
-  Testimonials,
-  SecuritySection,
+  TrailHero,
+  TrailProblem,
+  TrailBridge,
+  TrailJourney,
+  TrailHowItWorks,
+  TrailTestimonials,
+  TrailCTA,
 } from '@/components/marketing';
 
 export default function LandingPage() {
@@ -48,13 +48,13 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1">
-        <Hero />
-        <SocialProof />
-        <ValuePillars />
-        <FeatureGrid />
-        <ForecastSection />
-        <Testimonials />
-        <SecuritySection />
+        <TrailHero />
+        <TrailProblem />
+        <TrailBridge />
+        <TrailJourney />
+        <TrailHowItWorks />
+        <TrailTestimonials />
+        <TrailCTA />
       </main>
       <Footer />
     </div>
