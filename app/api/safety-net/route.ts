@@ -19,6 +19,14 @@ import prisma from '@/lib/db';
 import { toMonthly } from '@/lib/utils/frequencies';
 import type { Frequency } from '@/lib/types/prisma-enums';
 
+function safeToMonthly(amount: number, frequency: string): number {
+  try {
+    return toMonthly(amount, (frequency || 'MONTHLY') as Frequency);
+  } catch {
+    return amount;
+  }
+}
+
 export const GET = withPermission('report.read', async (request, auth) => {
   try {
     const userId = auth.userId;
@@ -43,12 +51,12 @@ export const GET = withPermission('report.read', async (request, auth) => {
     );
 
     const monthlyExpenses = expenses.reduce(
-      (sum, e) => sum + toMonthly(Number(e.amount || 0), (e.frequency || 'MONTHLY') as Frequency),
+      (sum, e) => sum + safeToMonthly(Number(e.amount || 0), e.frequency || 'MONTHLY'),
       0
     );
 
     const monthlyLoanRepayments = loans.reduce(
-      (sum, l) => sum + Number(l.minRepayment || 0),
+      (sum, l) => sum + safeToMonthly(Number(l.minRepayment || 0), l.repaymentFrequency || 'MONTHLY'),
       0
     );
 
@@ -60,7 +68,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
     const monthlyIncome = await prisma.income.findMany({ where: { userId } });
     const totalMonthlyIncome = monthlyIncome.reduce(
-      (sum, i) => sum + toMonthly(Number(i.amount || 0), (i.frequency || 'MONTHLY') as Frequency),
+      (sum, i) => sum + safeToMonthly(Number(i.amount || 0), i.frequency || 'MONTHLY'),
       0
     );
     const monthlySurplus = totalMonthlyIncome - totalMonthlyOutgoings;

@@ -626,11 +626,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <span className="flex-1">{item.name}</span>
                   {item.trailStage && (
                     <span className={`
-                      text-[10px] font-bold tracking-widest uppercase
-                      px-1.5 py-0.5 rounded-md
+                      flex h-7 w-7 items-center justify-center
+                      rounded-lg text-xs font-bold
+                      transition-colors duration-200
                       ${isActive
-                        ? 'bg-primary/20 text-primary'
-                        : 'bg-muted/80 text-muted-foreground/60'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'bg-muted text-muted-foreground/70'
                       }
                     `}>
                       {item.trailStage}
