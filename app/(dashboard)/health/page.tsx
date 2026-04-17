@@ -327,7 +327,8 @@ export default function HealthDashboard() {
       if (response.ok && json.success) {
         setReport(json.data);
       } else {
-        setError(json.error || json.details || 'Failed to load health data');
+        const errMsg = typeof json.error === 'string' ? json.error : json.error?.message || 'Failed to load health data';
+        setError(typeof json.details === 'string' ? `${errMsg}: ${json.details.split('\n')[0]}` : errMsg);
         console.error('Health API error:', json);
       }
     } catch (err) {

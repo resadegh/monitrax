@@ -142,7 +142,7 @@ export default function TaxPage() {
 
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || 'Failed to calculate tax position');
+        throw new Error(typeof err.error === 'string' ? err.error : 'Failed to calculate tax position');
       }
 
       const result = await response.json();

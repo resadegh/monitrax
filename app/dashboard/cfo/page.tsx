@@ -562,9 +562,11 @@ export default function CFODashboardPage() {
   const [data, setData] = useState<CFODashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
+    setLoadError(null);
     try {
       const response = await fetch('/api/cfo', {
         headers: { Authorization: `Bearer ${token}` },
@@ -572,9 +574,13 @@ export default function CFODashboardPage() {
       if (response.ok) {
         const result = await response.json();
         setData(result);
+      } else {
+        const errorJson = await response.json().catch(() => ({}));
+        setLoadError(typeof errorJson.error === 'string' ? errorJson.error : 'Failed to load CFO data. Please try again.');
       }
     } catch (error) {
       console.error('Error loading CFO data:', error);
+      setLoadError(error instanceof Error ? error.message : 'Network error');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -633,7 +639,7 @@ export default function CFODashboardPage() {
         <div className="text-center py-20">
           <AlertTriangle className="h-12 w-12 mx-auto text-amber-500 mb-4" />
           <h3 className="font-semibold text-lg mb-2">Unable to load CFO dashboard</h3>
-          <p className="text-muted-foreground text-sm mb-4">Please try again</p>
+          <p className="text-muted-foreground text-sm mb-4">{loadError || 'Please try again'}</p>
           <Button onClick={() => loadData()} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Try Again
