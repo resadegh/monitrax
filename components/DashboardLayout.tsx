@@ -47,15 +47,15 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   tourId?: string;
-  reachStage?: 'R' | 'E' | 'A' | 'C' | 'H';
+  trailStage?: 'T' | 'R' | 'A' | 'I' | 'L';
   matchRoutes?: string[];
   // Sub-items shown when this section is active
   children?: NavChild[];
 }
 
 // =============================================================================
-// REACH SIDEBAR — 8 flat items, no accordion groups
-// Framework: docs/blueprint/REACH_FRAMEWORK.md
+// TRAIL SIDEBAR — 8 flat items, no accordion groups
+// Framework: docs/blueprint/TRAIL_FRAMEWORK.md
 //
 // Home → My Household → My Accounts [R] → My Budget [A] →
 // My Wealth [C] → My CFO [H] → Reports → Settings
@@ -79,7 +79,7 @@ const reachNavItems: NavItem[] = [
     href: '/dashboard/accounts',
     icon: Wallet,
     tourId: 'nav-accounts',
-    reachStage: 'R',
+    trailStage: 'T',
     matchRoutes: [
       '/dashboard/accounts',
       '/dashboard/loans',
@@ -102,7 +102,7 @@ const reachNavItems: NavItem[] = [
     href: '/dashboard/budget-analysis',
     icon: Target,
     tourId: 'nav-budget',
-    reachStage: 'A',
+    trailStage: 'R',
     matchRoutes: [
       '/dashboard/budget-analysis',
       '/cashflow',
@@ -121,7 +121,7 @@ const reachNavItems: NavItem[] = [
     href: '/dashboard/properties',
     icon: Home,
     tourId: 'nav-wealth',
-    reachStage: 'C',
+    trailStage: 'I',
     matchRoutes: [
       '/dashboard/properties',
       '/dashboard/investments',
@@ -138,7 +138,7 @@ const reachNavItems: NavItem[] = [
     href: '/dashboard/cfo',
     icon: Brain,
     tourId: 'nav-cfo',
-    reachStage: 'H',
+    trailStage: 'L',
     matchRoutes: [
       '/dashboard/cfo',
       '/health',
@@ -576,7 +576,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        {/* Navigation — REACH Framework (docs/blueprint/REACH_FRAMEWORK.md) */}
+        {/* Navigation — REACH Framework (docs/blueprint/TRAIL_FRAMEWORK.md) */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {reachNavItems.map((item) => {
             const isActive = item.href === '/dashboard'
@@ -613,7 +613,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Icon className="h-4 w-4" />
                   </div>
                   <span className="flex-1">{item.name}</span>
-                  {item.reachStage && (
+                  {item.trailStage && (
                     <span className={`
                       text-[10px] font-bold tracking-widest uppercase
                       px-1.5 py-0.5 rounded-md
@@ -622,7 +622,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         : 'bg-muted/80 text-muted-foreground/60'
                       }
                     `}>
-                      {item.reachStage}
+                      {item.trailStage}
                     </span>
                   )}
                 </Link>
@@ -656,13 +656,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
 
-          {/* ESTABLISH stage — Financial Health widget with E badge */}
+          {/* ANCHOR stage — Financial Health widget with A badge */}
           <div className="pt-3">
             <Separator className="mb-3" />
             <div className="relative">
               <div className="absolute -top-1 right-2 z-10">
                 <span className="text-[10px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground/60">
-                  E
+                  A
                 </span>
               </div>
               <FinancialHealthMiniWidget />
