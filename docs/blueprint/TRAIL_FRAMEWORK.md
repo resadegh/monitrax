@@ -89,7 +89,7 @@ Every trail has a beginning (where you are now), a series of markers (stages you
 | **Emotional shift** | From **avoidance** to **awareness** |
 | **Milestone** | "I can see my complete financial picture in one place." |
 | **Measurable** | All accounts connected via Basiq. Net worth calculated. Income and spending visible. |
-| **Monitrax section** | My Accounts (Accounts, Loans, Income, Spending, Transactions, Recurring) |
+| **Monitrax section** | My Accounts (Balances, Activity) — see Phase 36 simplification |
 
 **Why it comes first:** Every proven financial framework starts with awareness. You cannot change what you cannot see. Financial avoidance — not opening bills, not checking balances, not facing debts — is the #1 predictor of low net worth (Klontz, 2011). Simply SEEING your finances reduces anxiety because avoidance amplifies fear of the unknown.
 
@@ -106,7 +106,7 @@ Every trail has a beginning (where you are now), a series of markers (stages you
 | **Emotional shift** | From **overwhelm** to **empowerment** |
 | **Milestone** | "I spend less than I earn. I know where every dollar goes. I've started my debt paydown plan." |
 | **Measurable** | Positive monthly cashflow. Budget set and adherence above 70%. Debt paydown plan active. |
-| **Monitrax section** | My Budget (Budget, Cashflow, Debt Freedom, Tax) |
+| **Monitrax section** | My Budget (Budget, Cashflow, Income, Spending, Debt Freedom, Tax) — Income and Spending are budget intentions, so they live in REDUCE, not TRACK (Phase 36) |
 
 **Why REDUCE comes before ANCHOR:** You can't fill a bucket with a hole in it. If someone is spending more than they earn, telling them to save for an emergency fund is putting the cart before the horse. Fix the leak first, THEN fill the bucket. This aligns with the Barefoot Investor (Domino debts in Step 3, BEFORE building Mojo in Step 6) and Ramsey (Debt Snowball in Step 2, BEFORE full emergency fund in Step 3).
 
@@ -209,12 +209,12 @@ TRAIL:        TRACK  →  REDUCE  →  ANCHOR  → INVEST        →     LIVE
 |---|---|---|---|
 | Dashboard | — | **Home** | Standalone |
 | Household | — | **My Household** | Standalone |
-| Accounts | **Track** | My Accounts | Tab: Accounts |
-| Loans | **Track** | My Accounts | Tab: Loans |
-| Income | **Track** | My Accounts | Tab: Income |
-| Expenses | **Track** | My Accounts | Tab: Spending |
-| Transactions | **Track** | My Accounts | Tab: Transactions |
-| Recurring | **Track** | My Accounts | Tab: Recurring |
+| Accounts | **Track** | My Accounts | Tab: Balances (merged with Loans — Phase 36) |
+| Loans | **Track** | My Accounts | Tab: Balances (merged with Accounts — Phase 36) |
+| Transactions | **Track** | My Accounts | Tab: Activity (merged with Recurring — Phase 36) |
+| Recurring | **Track** | My Accounts | Tab: Activity (merged with Transactions — Phase 36) |
+| Income | **Reduce** | My Budget | Tab: Income (budget intention — moved in Phase 36) |
+| Expenses | **Reduce** | My Budget | Tab: Spending (budget intention — moved in Phase 36) |
 | Budget Analysis | **Reduce** | My Budget | Tab: Budget |
 | Cashflow | **Reduce** | My Budget | Tab: Cashflow |
 | Debt Planner | **Reduce** | My Budget | Tab: Debt Freedom |

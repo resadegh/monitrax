@@ -77,25 +77,24 @@ const reachNavItems: NavItem[] = [
   },
   {
     name: 'My Accounts',
-    href: '/dashboard/accounts',
+    href: '/dashboard/balances',
     icon: Wallet,
     tourId: 'nav-accounts',
     trailStage: 'T',
+    // Phase 36: consolidated from 6 sub-pages to 2 (Balances, Activity).
+    // matchRoutes retains the legacy paths so the nav item stays highlighted
+    // if a user lands on a direct/deep-linked old URL.
     matchRoutes: [
+      '/dashboard/balances',
+      '/dashboard/activity',
       '/dashboard/accounts',
       '/dashboard/loans',
-      '/dashboard/income',
-      '/dashboard/expenses',
       '/transactions',
       '/recurring',
     ],
     children: [
-      { name: 'Accounts', href: '/dashboard/accounts' },
-      { name: 'Loans', href: '/dashboard/loans' },
-      { name: 'Income', href: '/dashboard/income' },
-      { name: 'Spending', href: '/dashboard/expenses' },
-      { name: 'Transactions', href: '/transactions' },
-      { name: 'Recurring', href: '/recurring' },
+      { name: 'Balances', href: '/dashboard/balances' },
+      { name: 'Activity', href: '/dashboard/activity' },
     ],
   },
   {
@@ -104,15 +103,21 @@ const reachNavItems: NavItem[] = [
     icon: Target,
     tourId: 'nav-budget',
     trailStage: 'R',
+    // Phase 36: Income and Spending moved here from My Accounts — they are
+    // budget intentions (planning), which belong to the REDUCE stage.
     matchRoutes: [
       '/dashboard/budget-analysis',
       '/cashflow',
+      '/dashboard/income',
+      '/dashboard/expenses',
       '/dashboard/debt-planner',
       '/dashboard/tax',
     ],
     children: [
       { name: 'Budget', href: '/dashboard/budget-analysis' },
       { name: 'Cashflow', href: '/cashflow' },
+      { name: 'Income', href: '/dashboard/income' },
+      { name: 'Spending', href: '/dashboard/expenses' },
       { name: 'Debt Freedom', href: '/dashboard/debt-planner' },
       { name: 'Tax', href: '/dashboard/tax' },
     ],
