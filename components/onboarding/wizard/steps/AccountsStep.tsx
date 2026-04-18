@@ -393,7 +393,7 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
     <WizardStepShell
       icon={<Landmark className="h-8 w-8" strokeWidth={1.5} />}
       title="Bank accounts"
-      subtitle="Pick how you'd like to add your accounts. We'll keep your balances accurate however you choose."
+      subtitle="Where your money lives. This is the first step on your TRAIL — Track your full picture."
     >
       {/* PR 3b: 3-tier data source picker — always visible above the
           manual quick-add. Tiles are interactive buttons. */}

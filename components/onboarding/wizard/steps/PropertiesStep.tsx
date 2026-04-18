@@ -592,7 +592,7 @@ export function PropertiesStep({ data, onUpdate }: PropertiesStepProps) {
     <WizardStepShell
       icon={<Home className="h-8 w-8" strokeWidth={1.5} />}
       title="Your properties"
-      subtitle="Add any property you own — we'll track equity, leverage, and cashflow for each."
+      subtitle="What you're building. Properties are the foundation of your wealth on the TRAIL."
     >
       {data.properties.map((property, index) => (
         <PropertyCard

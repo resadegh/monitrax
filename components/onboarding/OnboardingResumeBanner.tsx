@@ -88,14 +88,14 @@ export function OnboardingResumeBanner({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-              Pick up where you left off
+              Continue your TRAIL
             </h3>
-            <span className="hidden rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-blue-600 dark:text-blue-400 sm:inline-block">
+            <span className="hidden rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-600 dark:text-amber-400 sm:inline-block">
               {stepLabel}
             </span>
           </div>
           <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
-            Your setup progress is saved. Finish it to unlock your dashboard insights.
+            Your progress is saved. Finish to unlock your Guide and dashboard insights.
           </p>
 
           {/* Progress bar */}

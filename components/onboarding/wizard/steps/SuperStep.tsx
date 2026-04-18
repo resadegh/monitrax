@@ -147,7 +147,7 @@ export function SuperStep({ data, onUpdate }: SuperStepProps) {
     <WizardStepShell
       icon={<Shield className="h-8 w-8" strokeWidth={1.5} />}
       title="Superannuation"
-      subtitle="Your retirement savings. We'll add more detailed tracking (contributions, tax, investment options) later from Settings."
+      subtitle="Your retirement future. Super is a key part of the Invest stage on your TRAIL."
     >
       {data.superAccounts.length > 0 && (
         <div className="space-y-3">

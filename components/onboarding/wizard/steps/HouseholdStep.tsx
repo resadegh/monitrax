@@ -200,7 +200,7 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
     <WizardStepShell
       icon={<Users className="h-8 w-8" strokeWidth={1.5} />}
       title="Your household"
-      subtitle="We'll use this to create personalised budget categories for each member and pet."
+      subtitle="Who are you building this for? We'll personalise your TRAIL journey for your whole family."
     >
       {/* Members */}
       <WizardSection
