@@ -209,13 +209,13 @@ export function WelcomeStep({ data, onUpdate }: WelcomeStepProps) {
       icon={<Sparkles className="h-8 w-8" strokeWidth={1.5} />}
       title={
         <>
-          Welcome to{' '}
-          <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400">
-            Monitrax
+          Start your{' '}
+          <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent dark:from-amber-400 dark:via-orange-400 dark:to-amber-500">
+            TRAIL
           </span>
         </>
       }
-      subtitle="Tell us a little about your situation so we can tailor the setup to just what you need."
+      subtitle="Tell us a little about your situation so we can find your starting point on the TRAIL."
       headerTrailing={
         <WizardChip color="green" icon={<Clock className="h-3 w-3" />}>
           Setup time: {timeLabel}

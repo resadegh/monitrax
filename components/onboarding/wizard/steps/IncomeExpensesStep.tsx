@@ -406,7 +406,7 @@ export function IncomeExpensesStep({ data, onUpdate }: IncomeExpensesStepProps) 
     <WizardStepShell
       icon={<DollarSign className="h-8 w-8" strokeWidth={1.5} />}
       title="Income & expenses"
-      subtitle="Your regular inflows and outflows. We'll compute your cashflow, savings rate, and forecasts from this."
+      subtitle="Where your money comes from and where it goes. This powers your Budget and cashflow tracking."
     >
       {/* Tab switcher */}
       <div className="flex gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 p-1">

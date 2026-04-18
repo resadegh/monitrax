@@ -66,20 +66,20 @@ const VALUE_PROPS: Array<{
 }> = [
   {
     icon: <TrendingUp className="h-5 w-5" />,
-    title: 'See your full picture',
-    description: 'Net worth, cashflow and portfolio health in one place.',
-    accent: 'from-blue-500/15 to-indigo-500/15 text-blue-600 dark:text-blue-400',
+    title: 'Track your full picture',
+    description: 'See every account, loan, and dollar in one place.',
+    accent: 'from-amber-500/15 to-orange-500/15 text-amber-600 dark:text-amber-400',
   },
   {
     icon: <BarChart3 className="h-5 w-5" />,
-    title: 'Forecast the future',
-    description: 'Smart projections show where your money is headed.',
-    accent: 'from-violet-500/15 to-fuchsia-500/15 text-violet-600 dark:text-violet-400',
+    title: 'Reduce the waste',
+    description: 'Find hidden leaks and get your cashflow positive.',
+    accent: 'from-orange-500/15 to-red-500/15 text-orange-600 dark:text-orange-400',
   },
   {
     icon: <PiggyBank className="h-5 w-5" />,
-    title: 'Optimise & grow',
-    description: 'AI recommendations you can actually act on.',
+    title: 'Grow your wealth',
+    description: 'Build your safety net, invest, and live on your terms.',
     accent: 'from-emerald-500/15 to-teal-500/15 text-emerald-600 dark:text-emerald-400',
   },
 ];
@@ -221,17 +221,17 @@ export function OnboardingWelcomeModal({
             className="text-center text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50"
             style={{ letterSpacing: '-0.02em' }}
           >
-            Welcome to{' '}
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400">
-              Monitrax
+            Welcome to your{' '}
+            <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent dark:from-amber-400 dark:via-orange-400 dark:to-amber-500">
+              TRAIL
             </span>
           </h1>
           <p
             id="welcome-modal-subtitle"
             className="mt-2 text-center text-sm leading-relaxed text-slate-600 dark:text-slate-400"
           >
-            Your personal wealth command center. Let&apos;s get you set up — it&apos;s faster than
-            you think.
+            Your personal financial guide. Let&apos;s set up your journey to financial
+            freedom — it takes about 3 minutes.
           </p>
 
           {/* Value props — horizontal on ≥sm, stacked on xs */}
@@ -264,7 +264,7 @@ export function OnboardingWelcomeModal({
               onClick={onStartSetup}
               className="welcome-cta-primary group relative flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold text-white"
             >
-              Start guided setup
+              Start your TRAIL
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </button>
 

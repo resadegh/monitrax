@@ -374,7 +374,7 @@ export function DebtsStep({ data, onUpdate }: DebtsStepProps) {
     <WizardStepShell
       icon={<CreditCard className="h-8 w-8" strokeWidth={1.5} />}
       title="Your debts"
-      subtitle="Non-property loans — car loans, HECS/student debt, personal or business loans. Credit cards are handled in the Accounts step."
+      subtitle="Let's see what you owe. Knowing your debts is the first step to your Debt Freedom plan."
     >
       {data.debts.length > 0 && (
         <div className="space-y-3">
