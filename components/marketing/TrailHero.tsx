@@ -65,16 +65,20 @@ export function TrailHero() {
           </motion.p>
 
           {/* CTA */}
-          <motion.div variants={fadeUp(reduced)} className="mt-10">
+          <motion.div variants={fadeUp(reduced)} className="mt-10 flex flex-col items-center gap-4">
             <Link
               href="/register"
               className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-b from-amber-500 to-amber-600 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-amber-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-600/30"
             >
               Start your TRAIL — it&apos;s free
             </Link>
-            <p className="mt-3 text-sm text-stone-500">
-              No credit card needed. Takes 60 seconds.
-            </p>
+            <Link
+              href="/trail-check"
+              className="inline-flex items-center gap-2 text-sm font-medium text-stone-400 hover:text-amber-400 transition-colors"
+            >
+              Or take the free TRAIL Check — 60 seconds
+              <span aria-hidden="true">&rarr;</span>
+            </Link>
           </motion.div>
         </motion.div>
       </div>

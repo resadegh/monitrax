@@ -10,6 +10,8 @@
 **Supersedes:** `docs/blueprint/PHASE_12_REDESIGN_V3.md` (v3
 dashboard-as-onboarding, pivoted 2026-04-15)
 **Related:**
+- `docs/blueprint/TRAIL_FRAMEWORK.md` §9 (TRAIL Check — pre-signup
+  assessment) and §10 (Guided Setup TRAIL alignment)
 - `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` (v2.2 tour spec —
   historical reference only)
 - `docs/blueprint/PHASE_27_GEMINI_AI_MIGRATION.md` (existing Gemini client)
