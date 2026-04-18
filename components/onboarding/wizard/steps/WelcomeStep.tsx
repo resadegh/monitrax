@@ -173,13 +173,21 @@ interface WelcomeStepProps {
 }
 
 export function WelcomeStep({ data, onUpdate }: WelcomeStepProps) {
-  // Phase 12 v3 (bug A.5): hasInvestments is now a persisted field on
-  // WizardData. Read it directly from `data` — no local useState, no
-  // useMemo round-trip through reverseInfer, no resume guesswork. This
-  // fixes the symptom where a resumed session landed on Welcome with
-  // Continue grayed out because the Yes/No pick had been silently
-  // discarded between sessions.
-  // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.5.
+  // TRAIL Check handoff: if the user completed the TRAIL Check on the
+  // website before signing up, read their results and show a welcome-back
+  // message. The TRAIL Check doesn't pre-fill wizard fields (it's a
+  // self-assessment, not data entry) but it creates continuity.
+  const [trailCheckStage, setTrailCheckStage] = React.useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('monitrax_trail_check');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.stage) setTrailCheckStage(parsed.stage);
+      }
+    } catch {}
+  }, []);
+
   const hasInvestments = data.hasInvestments;
 
   // Whenever the answers fully infer a profile, write it back.
@@ -215,7 +223,10 @@ export function WelcomeStep({ data, onUpdate }: WelcomeStepProps) {
           </span>
         </>
       }
-      subtitle="Tell us a little about your situation so we can find your starting point on the TRAIL."
+      subtitle={trailCheckStage
+        ? `Welcome back! Your TRAIL Check said you're at Stage ${trailCheckStage}. Let's set up the tools for your journey.`
+        : "Tell us a little about your situation so we can find your starting point on the TRAIL."
+      }
       headerTrailing={
         <WizardChip color="green" icon={<Clock className="h-3 w-3" />}>
           Setup time: {timeLabel}
