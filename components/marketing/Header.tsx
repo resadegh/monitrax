@@ -28,6 +28,12 @@ export function Header() {
               The TRAIL
             </Link>
             <Link
+              href="/trail-method"
+              className="text-sm font-medium text-stone-400 hover:text-white transition-colors"
+            >
+              Method
+            </Link>
+            <Link
               href="/pricing"
               className="text-sm font-medium text-stone-400 hover:text-white transition-colors"
             >
@@ -79,6 +85,13 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 The TRAIL
+              </Link>
+              <Link
+                href="/trail-method"
+                className="text-sm font-medium text-stone-400 hover:text-white transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Method
               </Link>
               <Link
                 href="/pricing"

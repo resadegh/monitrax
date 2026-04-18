@@ -59,6 +59,7 @@ import {
   QuickActionsBar,
 } from '@/components/dashboard/Phase2Enhancements';
 import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '@/components/dashboard/NetWorthTrend';
+import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
 
 interface DashboardInsights {
   healthScore: {
@@ -483,9 +484,14 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Dashboard"
-        description="Your complete financial overview at a glance"
+        title="Home"
+        description="Your TRAIL to financial freedom"
       />
+
+      {/* TRAIL Stage Indicator */}
+      <div className="mb-6">
+        <TrailStageIndicator />
+      </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -501,10 +507,10 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-primary" />
-                Welcome to Monitrax
+                Welcome to Your TRAIL
               </CardTitle>
               <CardDescription>
-                Your comprehensive Australian wealth management dashboard. Get started by adding your financial data.
+                Your personal financial guide. Start by connecting your bank or adding your data — each step takes you further on your TRAIL.
               </CardDescription>
             </CardHeader>
             <CardContent>
