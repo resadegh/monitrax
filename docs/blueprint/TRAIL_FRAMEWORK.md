@@ -22,6 +22,8 @@
 6. [Barefoot Investor Guide Integration](#6-barefoot-investor-cfo-integration)
 7. [Design Principles](#7-design-principles)
 8. [Stage Progression Logic](#8-stage-progression-logic)
+9. [TRAIL Check — Pre-Signup Assessment](#9-trail-check--pre-signup-assessment)
+10. [Guided Setup — TRAIL Alignment](#10-guided-setup--trail-alignment)
 
 ---
 
@@ -369,6 +371,109 @@ The Guide **recommends** the correct TRAIL order but does **not block** access t
 ### Users Can Be in Multiple Stages
 
 Financial life is not perfectly linear. A user might be in INVEST (growing investments) while still working on REDUCE (paying off a car loan). The TRAIL stage represents the user's **primary focus**, not a rigid gate.
+
+---
+
+## 9. TRAIL Check — Pre-Signup Assessment
+
+### Overview
+
+The TRAIL Check is a **free, pre-signup assessment** that lives on the public website at `/trail-check`. It requires no login, no bank connection, and no financial data — just 5 self-assessment questions that take ~60 seconds.
+
+**Purpose:** Hook visitors by showing them their TRAIL stage and giving them 3 actionable tips BEFORE asking them to sign up. Value first, signup second.
+
+**Strategy:** This is a lead generation tool disguised as a value-add. The user gets something (their TRAIL stage) before they give anything (their email). Same playbook as Credit Karma (free credit score), Calm (wellness assessment), and YNAB (free workshops).
+
+### The Five Questions
+
+Each question maps to a TRAIL stage. Scored 0-3 per question.
+
+| # | Question | Maps to | Options (score) |
+|---|---|---|---|
+| Q1 | "How well do you know your financial picture?" | **Track** | Know exactly (3), Rough idea (2), I avoid looking (0) |
+| Q2 | "At the end of each month, do you have money left over?" | **Reduce** | Yes, consistently (3), Sometimes (2), Usually run out (0) |
+| Q3 | "If your car broke down ($3,000), could you cover it without borrowing?" | **Anchor** | Yes easily (3), Tight but manageable (2), Would need to borrow (0) |
+| Q4 | "Are you actively growing your wealth?" | **Invest** | Yes, regularly (3), Started but inconsistent (2), Not yet (0) |
+| Q5 | "How would you describe your relationship with money?" | **Live** | Confident and in control (3), Getting there (2), Overwhelmed (0) |
+
+### Scoring Logic
+
+```
+Total score (0-15):
+  0-3   → Stage T (Track)    "Let's start by seeing your full picture"
+  4-6   → Stage R (Reduce)   "Time to fix the leaks and get cashflow positive"
+  7-9   → Stage A (Anchor)   "Build your safety net — you're almost there"
+  10-12 → Stage I (Invest)   "You're ready to grow your wealth seriously"
+  13-15 → Stage L (Live)     "You're on track for financial freedom"
+```
+
+### Results Page
+
+Shows:
+1. **TRAIL stage indicator** — visual T-R-A-I-L progress bar with user's position highlighted
+2. **Stage description** — what this stage means and what to focus on
+3. **3 personalized tips** — stage-matched actionable advice
+4. **CTA:** "Want a personal Guide to walk you through this? Start your TRAIL — it's free"
+5. **Optional email capture:** "Save your results" (lead generation)
+
+### Technical
+
+- **Route:** `/trail-check` (public, no auth)
+- **Backend:** None — all client-side scoring
+- **Data persistence:** Results stored in localStorage for handoff to Guided Setup after signup
+- **Design:** TRAIL-themed, same warm stone/amber palette as landing page, Framer Motion animations
+- **Mobile:** Full responsive, works on all devices
+
+### Connection to Guided Setup
+
+When a user who completed the TRAIL Check signs up and enters the Guided Setup wizard:
+1. Wizard reads TRAIL Check results from localStorage
+2. Skips the Welcome step (profile already inferred)
+3. Shows: "Welcome back! You're at Stage [X]. Let's set up the tools for your journey."
+4. Pre-highlights the relevant sidebar section after setup completes
+
+---
+
+## 10. Guided Setup — TRAIL Alignment
+
+### Current State
+
+The existing Guided Setup wizard (Phase 12, `/onboarding` + `/dashboard/setup`) is documented in `docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md`. It has 10 steps organized by data type (Properties, Accounts, Investments, etc.) with no TRAIL framework connection.
+
+**This section does NOT replace the Phase 12 doc.** It specifies the TRAIL alignment changes to be applied on top of the existing wizard architecture.
+
+### Changes Required
+
+| Current | Change | Impact |
+|---|---|---|
+| Steps organized by data type | Add TRAIL stage badges to each step header | Visual — no logic change |
+| Welcome step: "Set up Monitrax" | Reframe: "Let's start your TRAIL" | Copy change only |
+| Review step: shows stats | Add TRAIL stage indicator + first Guide recommendation | New component on existing step |
+| No TRAIL Check connection | Read TRAIL Check results from localStorage if available | New conditional logic on Welcome step |
+| Generic completion message | "You've started your TRAIL! Your Guide recommends..." | Copy + component change |
+| Step headers: "Properties", "Accounts" | Add warm subtitles: "What are you building?", "Where your money lives" | Copy change only |
+
+### Step-to-TRAIL Mapping
+
+| Wizard Step | TRAIL Stage | Badge | Warm Subtitle |
+|---|---|---|---|
+| Welcome | — | — | "Let's find your starting point" |
+| Household | — | — | "Who you're building this for" |
+| Accounts | **Track** | T | "Where your money lives" |
+| Properties | **Invest** | I | "What you're building" |
+| Investments | **Invest** | I | "How you're growing" |
+| Income & Expenses | **Reduce** | R | "Where your money goes" |
+| Review | — | — | "Your TRAIL starts here" |
+
+### Implementation Priority
+
+1. **Phase 1 (with TRAIL Check):** Copy changes + TRAIL badges on wizard steps — minimal code, high visual impact
+2. **Phase 2 (separate PR):** Guide recommendation on Review step, TRAIL Check result handoff
+3. **Phase 3 (with R12 re-enablement):** Full wizard re-enablement with `source: 'ONBOARDING'` guard + TRAIL alignment
+
+### Reference
+
+For full wizard architecture, step definitions, data flow, and draft persistence: see `docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md`.
 
 ---
 

@@ -34,6 +34,14 @@ export function TrailCTA() {
             <p className="mt-3 text-sm text-stone-500">
               No credit card. No commitment. Just clarity.
             </p>
+            <p className="mt-4">
+              <Link
+                href="/trail-check"
+                className="text-sm font-medium text-stone-400 hover:text-amber-400 transition-colors"
+              >
+                Not ready? Take the free TRAIL Check first &rarr;
+              </Link>
+            </p>
           </div>
         </Reveal>
 
