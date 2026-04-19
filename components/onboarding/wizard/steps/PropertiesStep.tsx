@@ -19,6 +19,7 @@
  */
 
 import React, { useState } from 'react';
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import {
   Home,
   Plus,
@@ -270,14 +271,16 @@ function PropertyCard({
               }}
               options={PROPERTY_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
             />
-            <WizardField
-              className="sm:col-span-2"
-              label="Address"
-              placeholder="Street address (optional)"
-              value={property.address}
-              onChange={(e) => onUpdate({ address: e.target.value })}
-              helper="Approximate is fine — used to enrich tax defaults."
-            />
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Address</label>
+              <AddressAutocomplete
+                value={property.address}
+                onChange={(value) => onUpdate({ address: value })}
+                onAddressSelect={(addr) => onUpdate({ address: addr.formatted_address })}
+                placeholder="Start typing an address..."
+              />
+              <p className="text-xs text-muted-foreground">Approximate is fine — used to enrich tax defaults.</p>
+            </div>
             <WizardCurrencyField
               label="Current value"
               required
