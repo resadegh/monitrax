@@ -225,11 +225,11 @@ export default function TrailCheckPage() {
             </div>
 
             {/* TRAIL progress indicator */}
-            <div className="flex items-center justify-center gap-1.5 mb-10">
+            <div className="flex items-center justify-center gap-1 sm:gap-1.5 mb-10">
               {allStages.map((s, i) => (
                 <div key={s} className="flex items-center">
                   <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-colors ${
+                    className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-xs sm:text-sm font-bold transition-colors ${
                       i <= stageIndex
                         ? 'bg-amber-500 text-white'
                         : 'bg-stone-800 text-stone-500'
