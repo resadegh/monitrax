@@ -1,35 +1,41 @@
 'use client';
 
 /**
- * /onboarding page — RE-ENABLED (2026-04-17 TRAIL alignment)
+ * /onboarding page — TRAIL-aligned wizard (2026-04-18)
  *
- * The wizard was disabled during R12 remediation (2026-04-15) because
- * the per-step onboardingEstimateService used destructive upserts
- * without source guards. The wizard now uses the bulk-create API
- * exclusively (POST /api/onboarding/bulk-create) which writes all
- * entities in a single transaction — the estimate service is NOT used.
+ * Full-page mode of WizardContainer. Renders the onboarding wizard
+ * directly (not as a modal on /dashboard).
  *
- * The bulk-create endpoint creates NEW rows (prisma.create, not upsert)
- * so there is no risk of overwriting existing user data. The old
- * onboardingEstimateService remains disabled as a safety measure.
+ * The wizard uses the bulk-create API exclusively
+ * (POST /api/onboarding/bulk-create) which creates new rows via
+ * prisma.create — no destructive upserts, no overwrite risk.
  *
- * TRAIL alignment: Welcome step says "Start your TRAIL", all step
- * subtitles reference the TRAIL framework, Review step shows
- * "Your TRAIL begins" with Guide recommendation.
+ * The old onboardingEstimateService remains disabled (throws
+ * OnboardingDisabledError) as defence in depth.
  *
  * See: docs/blueprint/TRAIL_FRAMEWORK.md §10
+ *      docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md
  */
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
+import { WizardContainer } from '@/components/onboarding';
+import type { WizardData } from '@/components/onboarding';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
-  const { state: onboardingState } = useOnboardingState();
+  const { user, token, isLoading: authLoading } = useAuth();
+  const {
+    state: onboardingState,
+    saveDraft,
+    completeOnboarding,
+    clearDraft,
+    readLocalDraft,
+  } = useOnboardingState();
 
+  // Auth / completion gates
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -42,6 +48,68 @@ export default function OnboardingPage() {
     }
   }, [user, authLoading, onboardingState, router]);
 
+  // Hydrate draft from server, fall back to localStorage
+  const hydratedDraft = useMemo<Partial<WizardData> | undefined>(() => {
+    const serverDraft = onboardingState?.draft;
+    if (serverDraft && typeof serverDraft === 'object') {
+      return serverDraft as Partial<WizardData>;
+    }
+    const localDraft = readLocalDraft();
+    if (localDraft && typeof localDraft === 'object') {
+      return localDraft as Partial<WizardData>;
+    }
+    return undefined;
+  }, [onboardingState?.draft, readLocalDraft]);
+
+  const hydratedStepIndex = onboardingState?.currentStep ?? 0;
+
+  const handleAutoSave = useCallback(
+    (wizardData: WizardData, stepIndex: number) => {
+      void saveDraft(wizardData, stepIndex);
+    },
+    [saveDraft]
+  );
+
+  const handleComplete = useCallback(
+    async (wizardData: WizardData) => {
+      try {
+        const response = await fetch('/api/onboarding/bulk-create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(wizardData),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Failed to save wizard data:', errorData);
+          throw new Error(
+            typeof errorData.error === 'string'
+              ? errorData.error
+              : 'Failed to save data'
+          );
+        }
+
+        await completeOnboarding();
+        await clearDraft();
+
+        // Full reload so dashboard refetches all client-side data
+        window.location.href = '/dashboard';
+      } catch (e) {
+        console.error('Could not complete wizard:', e);
+        throw e;
+      }
+    },
+    [token, completeOnboarding, clearDraft]
+  );
+
+  const handleClose = useCallback(() => {
+    router.push('/dashboard');
+  }, [router]);
+
+  // Loading state while auth + state resolve
   if (authLoading || !user) {
     return (
       <section className="flex min-h-[60vh] items-center justify-center">
@@ -55,11 +123,14 @@ export default function OnboardingPage() {
   }
 
   return (
-    <section className="flex min-h-[60vh] items-center justify-center">
-      <div className="text-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent mx-auto mb-4 motion-reduce:animate-none" />
-        <p className="text-sm text-muted-foreground">Setting up your TRAIL...</p>
-      </div>
-    </section>
+    <WizardContainer
+      isOpen={true}
+      mode="page"
+      onClose={handleClose}
+      onComplete={handleComplete}
+      initialData={hydratedDraft}
+      initialStepIndex={hydratedStepIndex}
+      onAutoSave={handleAutoSave}
+    />
   );
 }
