@@ -102,11 +102,11 @@ export function TrailStageIndicator() {
       </div>
 
       {/* Stage progress */}
-      <div className="flex items-center gap-1 mb-5">
+      <div className="flex items-center gap-0.5 sm:gap-1 mb-5 overflow-x-auto">
         {stages.map((stage, i) => (
           <div key={stage.letter} className="flex items-center">
             <div
-              className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all ${
+              className={`flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-full text-[10px] sm:text-xs font-bold transition-all ${
                 i < currentStage
                   ? `${stage.bg} text-white`
                   : i === currentStage
@@ -121,7 +121,7 @@ export function TrailStageIndicator() {
               )}
             </div>
             {i < stages.length - 1 && (
-              <div className={`w-full min-w-[12px] h-0.5 mx-0.5 ${i < currentStage ? stage.bg : 'bg-muted'}`} />
+              <div className={`w-full min-w-[8px] sm:min-w-[12px] h-0.5 mx-0.5 ${i < currentStage ? stage.bg : 'bg-muted'}`} />
             )}
           </div>
         ))}

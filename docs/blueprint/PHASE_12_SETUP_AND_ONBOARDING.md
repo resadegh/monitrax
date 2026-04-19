@@ -6,7 +6,11 @@
 > first, then the code (per CLAUDE.md §10.5 / §11).
 
 **Owner:** Claude (engineer) | **Reviewer:** Reza
-**Status:** 🟡 Plan in draft — awaiting approval before any code
+**Status:** ✅ Wizard RE-ENABLED 2026-04-18 with TRAIL alignment
+  (was temporarily disabled 2026-04-15 during R12 remediation).
+  Bulk-create API uses `prisma.create` only (no destructive upserts),
+  so wizard is safe without the `onboardingEstimateService` source guard.
+  Old estimate service remains disabled as defence in depth.
 **Supersedes:** `docs/blueprint/PHASE_12_REDESIGN_V3.md` (v3
 dashboard-as-onboarding, pivoted 2026-04-15)
 **Related:**
