@@ -142,11 +142,52 @@ sidebar, website, onboarding wizard, dashboard, docs.
 - `docs/blueprint/REACH_FRAMEWORK.md` (replaced by TRAIL)
 - `docs/marketing/REACH_WEBSITE_COPY.md` (replaced by TRAIL)
 
+#### Mobile Responsiveness Audit & Fixes (2026-04-19)
+
+**User report:** Onboarding wizard unusable on mobile — Next/Continue
+button pushed off-screen.
+
+**Root cause:** `wz-page-card` had no height constraint, so content
+could grow beyond viewport. `ShellInner` used `flex h-full` but the
+parent had no fixed height reference.
+
+**Wizard fixes (`components/onboarding/wizard/WizardContainer.tsx`
++ `styles/wizard-animations.css`):**
+- Card: full-screen on mobile (100dvh, no border-radius), card layout
+  on desktop. Uses flex to ensure footer always visible.
+- Shell: flex column on mobile, block on desktop
+- Progress bar circles: 32px → 24px on mobile (so 10 steps fit)
+- Header/footer/body: reduced padding on mobile (px-4 vs px-6)
+- Footer: `flex-shrink-0` + opaque bg so it stays pinned at bottom
+- Progress bar container: `overflow-x-auto` fallback
+
+**TrailStageIndicator fixes
+(`components/dashboard/TrailStageIndicator.tsx`):**
+- Progress circles: 36px → 28px on mobile
+- Connecting lines: 12px min → 8px min on mobile
+- Container: `overflow-x-auto` safety net
+
+**Safety Net page fixes (`app/dashboard/safety-net/page.tsx`):**
+- Emergency fund grid: `grid-cols-2` → `grid-cols-1 sm:grid-cols-2`
+  (currency text was overflowing on small phones)
+- Bills header: fixed `gap-6` → `gap-3 sm:gap-6` + `flex-wrap`
+
+**TRAIL Check results fixes (`app/trail-check/page.tsx`):**
+- Progress circles: 40px → 32px on mobile
+- Reduced gaps between circles on mobile
+
+**Audit confirmed OK:**
+- `DashboardLayout.tsx` — mobile drawer works correctly
+- `TrailHero.tsx`, `TrailJourney.tsx` — responsive by design
+- `trail-method/page.tsx` — section-based, scales well
+- `trail-check/page.tsx` question view — answer buttons use `w-full`
+
 ### Build Status
 
 - [x] TypeScript compilation passes across all PRs
 - [x] Vercel build deploys successfully
 - [x] Production deployed (multiple merged PRs)
+- [x] Mobile responsive tested on narrow viewports (< 320px)
 
 ### Commit History (pull requests merged)
 
