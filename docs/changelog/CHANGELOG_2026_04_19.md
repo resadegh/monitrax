@@ -182,6 +182,61 @@ parent had no fixed height reference.
 - `trail-method/page.tsx` — section-based, scales well
 - `trail-check/page.tsx` question view — answer buttons use `w-full`
 
+## Session: claude/review-monitrax-docs-2hNSa — OnboardingWelcomeModal mobile fix
+
+### Changes Made
+
+- **Type:** Fix (mobile responsive)
+- **Scope:** `components/onboarding/OnboardingWelcomeModal.tsx`
+- **Root cause:** The welcome modal card used `overflow-hidden`
+  with no height constraint. The fixed hero (192px), padded body,
+  3 stacked value-prop cards, two full-width CTAs, and the bottom
+  skip row combined to roughly 840px — taller than the visible
+  viewport on any iPhone in portrait with the Safari chrome
+  showing. Because the card was `overflow-hidden` (not scrollable)
+  and centred with `flex items-center justify-center`, the
+  "Start your TRAIL" primary CTA and the "Don't show this again"
+  row were clipped off-screen with no way to reveal them.
+- **Solution:**
+  - Card becomes a flex column with
+    `max-h-[calc(100dvh-1.5rem)]` on mobile (2rem on `sm+`) so it
+    can never exceed the viewport. `100dvh` correctly accounts for
+    the dynamic Safari address bar.
+  - Hero is `flex-shrink-0` and shrinks to 128px on mobile
+    (`h-32 sm:h-48`) so more of the viewport is usable for the
+    CTAs.
+  - Body is `flex-1 min-h-0 overflow-y-auto` — scrolls internally
+    when content exceeds available height instead of being
+    clipped.
+  - Typography + paddings scaled down on mobile: title
+    `text-2xl sm:text-3xl`, body `px-5 sm:px-8`, CTA
+    `py-3 sm:py-3.5`, etc.
+  - Value-prop cards switch to horizontal (icon left, text right)
+    on mobile to reduce vertical footprint, staying grid-columns
+    on `sm+`.
+- **Note on the auto-redirect to `/dashboard`:** the user reported
+  that typing `monitrax.com.au` on mobile sends them to
+  `/dashboard`. This is intentional — `app/page.tsx` redirects
+  authenticated users to the dashboard. The symptom the user saw
+  (no Next button visible) was the welcome modal clipping issue
+  above, not the redirect.
+
+### Files Modified
+
+- `components/onboarding/OnboardingWelcomeModal.tsx` — mobile
+  responsive layout (flex column + scroll, smaller hero/title,
+  horizontal value props on `<sm`)
+
+### Build Status
+
+- [x] `npm run build` passes
+- [x] No new TypeScript errors
+
+### Outstanding
+
+- None for this fix. Desktop rendering unchanged (all `sm:`
+  breakpoints preserve the current look from 640px up).
+
 ### Build Status
 
 - [x] TypeScript compilation passes across all PRs
