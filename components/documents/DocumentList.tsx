@@ -5,7 +5,7 @@
  * Displays a list of documents with preview, metadata, and linked entity chips
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   File,
@@ -52,6 +52,7 @@ interface DocumentListProps {
   loading?: boolean;
   emptyMessage?: string;
   showEntityLinks?: boolean;
+  token?: string; // Auth token for serve endpoint
 }
 
 const CATEGORY_LABELS: Record<DocumentCategory, string> = {
@@ -122,14 +123,20 @@ export function DocumentList({
   loading = false,
   emptyMessage = 'No documents found',
   showEntityLinks = true,
+  token,
 }: DocumentListProps) {
-  const [previewDoc, setPreviewDoc] = useState<{ url: string; doc: DocumentListItem } | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; serveUrl: string; doc: DocumentListItem } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const handleView = async (doc: DocumentListItem) => {
     const result = await onView(doc.id);
     if (result?.signedUrl) {
-      setPreviewDoc({ url: result.signedUrl, doc });
+      // Use serve endpoint for iframe preview (avoids X-Frame-Options from GCS)
+      // Use signed URL for direct download
+      const serveUrl = token
+        ? `/api/documents/${doc.id}/serve`
+        : result.signedUrl;
+      setPreviewDoc({ url: result.signedUrl, serveUrl, doc });
     }
   };
 
@@ -311,10 +318,11 @@ export function DocumentList({
                 className="max-w-full h-auto"
               />
             ) : previewDoc?.doc.mimeType === 'application/pdf' ? (
-              <iframe
-                src={previewDoc.url}
-                className="w-full h-[70vh]"
-                title={previewDoc.doc.originalFilename}
+              <DocumentPreviewFrame
+                docId={previewDoc.doc.id}
+                token={token}
+                fallbackUrl={previewDoc.url}
+                filename={previewDoc.doc.originalFilename}
               />
             ) : (
               <div className="text-center py-8">
@@ -335,5 +343,106 @@ export function DocumentList({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/**
+ * Document Preview Frame component that fetches content via serve endpoint
+ * This avoids X-Frame-Options restrictions from GCS signed URLs
+ */
+function DocumentPreviewFrame({
+  docId,
+  token,
+  fallbackUrl,
+  filename,
+}: {
+  docId: string;
+  token?: string;
+  fallbackUrl: string;
+  filename: string;
+}) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchDocument = async () => {
+      if (!token) {
+        // No token, use fallback URL directly
+        setBlobUrl(fallbackUrl);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/documents/${docId}/serve`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch document');
+        }
+
+        const blob = await response.blob();
+        if (mounted) {
+          const url = URL.createObjectURL(blob);
+          setBlobUrl(url);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Document preview error:', err);
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load preview');
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchDocument();
+
+    return () => {
+      mounted = false;
+      if (blobUrl && blobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [docId, token, fallbackUrl]);
+
+  if (loading) {
+    return (
+      <div className="w-full h-[70vh] flex items-center justify-center bg-muted/20">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Loading preview...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-[70vh] flex items-center justify-center bg-muted/20">
+        <div className="text-center">
+          <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => window.open(fallbackUrl, '_blank')}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open in new tab
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      src={blobUrl || fallbackUrl}
+      className="w-full h-[70vh]"
+      title={filename}
+    />
   );
 }

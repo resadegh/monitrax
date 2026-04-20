@@ -1073,7 +1073,178 @@ function ExpenseForm() {
 
 ---
 
-## 19.16 Future Enhancements
+## 19.16 PHASE 19.4 - INTELLIGENT FOLDER STRUCTURE & EXPORT
+
+**Status:** ✅ IMPLEMENTED
+**Implemented Date:** 2025-12-11
+**Branch:** `claude/continue-session-01BTVc9M2B1mWrWBpgf6N3bM`
+
+### 19.16.1 Overview
+
+Enhanced the Documents page with intelligent folder navigation showing actual entity names and configurable ZIP export functionality.
+
+### 19.16.2 Entity Lookup Service
+
+**File Created:** `lib/documents/entityLookup.ts`
+
+A centralized service for batch-fetching entity information to populate folder trees with real entity names.
+
+#### Functions
+
+| Function | Purpose |
+|----------|---------|
+| `lookupEntities(userId, links)` | Batch lookup entity names by IDs |
+| `getAllUserEntities(userId)` | Get all entities for folder tree |
+
+#### Supported Entities
+
+| Entity Type | Fields | Parent Relationship |
+|-------------|--------|---------------------|
+| Property | name, address | - |
+| Loan | name, type | Property |
+| Expense | name, category | Property |
+| Income | name, type | Property |
+| Account | name, institution, type | - |
+| InvestmentAccount | name, platform | - |
+| InvestmentHolding | name, ticker | InvestmentAccount |
+
+#### EntityInfo Interface
+
+```typescript
+interface EntityInfo {
+  id: string;
+  name: string;
+  type: LinkedEntityType;
+  parentId?: string;
+  parentName?: string;
+  parentType?: LinkedEntityType;
+}
+```
+
+### 19.16.3 Entities API Endpoint
+
+**File Created:** `app/api/documents/entities/route.ts`
+
+**Endpoint:** `GET /api/documents/entities`
+
+Returns all user entities organized by type for folder tree navigation.
+
+**Response:**
+```json
+{
+  "properties": [{ "id": "...", "name": "123 Guildford Rd", "type": "PROPERTY" }],
+  "loans": [{ "id": "...", "name": "Investment Loan", "parentId": "...", "parentName": "123 Guildford Rd" }],
+  "expenses": [...],
+  "income": [...],
+  "accounts": [...],
+  "investmentAccounts": [...]
+}
+```
+
+### 19.16.4 ZIP Export API
+
+**File Created:** `app/api/documents/export/route.ts`
+
+**Endpoint:** `POST /api/documents/export`
+
+Server-side ZIP generation with configurable folder structure.
+
+#### Request Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | string | Current folder path to export from |
+| `documentIds` | string[] | Specific documents to export (optional) |
+| `structure` | string | Folder structure option |
+| `includeSubFolders` | boolean | Include nested folders |
+
+#### Export Structure Options
+
+| Option | Example Path |
+|--------|--------------|
+| `financial-year-first` | `FY24-25/Properties/Guildford/Receipts/doc.pdf` |
+| `entity-first` | `Properties/Guildford/FY24-25/Receipts/doc.pdf` |
+| `category-first` | `Receipts/FY24-25/Properties/Guildford/doc.pdf` |
+
+#### Category Folder Names
+
+```typescript
+const CATEGORY_NAMES = {
+  CONTRACT: 'Contracts',
+  STATEMENT: 'Statements',
+  RECEIPT: 'Receipts',
+  TAX: 'Tax_Documents',
+  PDS: 'Product_Disclosures',
+  VALUATION: 'Valuations',
+  INSURANCE: 'Insurance',
+  MORTGAGE: 'Mortgage',
+  LEASE: 'Leases',
+  INVOICE: 'Invoices',
+  OTHER: 'Other',
+};
+```
+
+### 19.16.5 Storage Provider Download Method
+
+**Files Modified:**
+- `lib/documents/storage/interface.ts`
+- `lib/documents/storage/monitraxProvider.ts`
+- `lib/documents/storage/googleCloudStorageProvider.ts`
+
+Added `download()` method to storage provider interface:
+
+```typescript
+download(storagePath: string): Promise<{
+  success: boolean;
+  data?: Buffer;
+  error?: string;
+}>;
+```
+
+### 19.16.6 Entity Drill-Down Navigation
+
+The folder tree now displays actual entity names:
+
+```
+📁 By Entity
+├── 📁 Properties
+│   ├── 📁 123 Guildford Rd (7)
+│   └── 📁 45 Smith Street (3)
+├── 📁 Expenses
+│   ├── 📁 Insurance Premium (2)
+│   └── 📁 Council Rates (1)
+├── 📁 Loans
+│   └── 📁 Investment Loan (4)
+└── 📁 Accounts
+    └── 📁 CBA Everyday (2)
+```
+
+### 19.16.7 Australian Financial Year
+
+ZIP export uses Australian Financial Year (July 1 - June 30):
+
+```typescript
+function getAustralianFY(date: Date): string {
+  const month = date.getMonth(); // 0-11
+  const year = date.getFullYear();
+  const fyStart = month >= 6 ? year : year - 1;
+  const fyEnd = fyStart + 1;
+  return `FY${fyStart.toString().slice(-2)}-${fyEnd.toString().slice(-2)}`;
+}
+// December 2024 → FY24-25
+// May 2025 → FY24-25
+// July 2025 → FY25-26
+```
+
+### 19.16.8 Dependencies Added
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `jszip` | ^3.10.1 | Server-side ZIP generation |
+
+---
+
+## 19.17 Future Enhancements
 
 The following features are planned for future iterations:
 
@@ -1088,3 +1259,5 @@ The following features are planned for future iterations:
 9. **Local Drive Sync** - Sync documents between local drive and cloud storage
 10. **GCS Lifecycle Policies** - Auto-archive old documents to Nearline storage
 11. **Storage Analytics** - Per-user storage usage dashboard
+12. ~~**Entity Folder Navigation** - Show entity names in folder tree~~ ✅ (Phase 19.4)
+13. ~~**ZIP Export** - Download documents as structured ZIP~~ ✅ (Phase 19.4)

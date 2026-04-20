@@ -5,7 +5,7 @@
  * Displays documents in a grid/folder view with icons and AI analysis status
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   FileImage,
@@ -87,6 +87,7 @@ interface DocumentFolderViewProps {
   onConfirmAnalysis?: (analysisId: string, action: string, data: Record<string, unknown>) => Promise<boolean>; // Phase 26
   loading?: boolean;
   viewMode?: 'grid' | 'list';
+  token?: string; // Auth token for serve endpoint (fixes X-Frame-Options)
 }
 
 // Get icon based on MIME type
@@ -175,8 +176,9 @@ export function DocumentFolderView({
   onConfirmAnalysis,
   loading = false,
   viewMode = 'grid',
+  token,
 }: DocumentFolderViewProps) {
-  const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string } | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; id: string; mimeType: string } | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null); // Phase 26
 
@@ -188,7 +190,7 @@ export function DocumentFolderView({
     if (result?.signedUrl) {
       // For PDFs and images, show preview
       if (doc.mimeType === 'application/pdf' || doc.mimeType.startsWith('image/')) {
-        setPreviewDoc({ url: result.signedUrl, name: doc.originalFilename });
+        setPreviewDoc({ url: result.signedUrl, name: doc.originalFilename, id: doc.id, mimeType: doc.mimeType });
       } else {
         // For other files, open in new tab
         window.open(result.signedUrl, '_blank');
@@ -362,12 +364,21 @@ export function DocumentFolderView({
               </DialogTitle>
             </DialogHeader>
             <div className="h-[70vh] overflow-auto">
-              {previewDoc?.url && (
-                <iframe
-                  src={previewDoc.url}
-                  className="w-full h-full border-0"
-                  title={previewDoc.name}
-                />
+              {previewDoc && (
+                previewDoc.mimeType.startsWith('image/') ? (
+                  <img
+                    src={previewDoc.url}
+                    alt={previewDoc.name}
+                    className="max-w-full h-auto"
+                  />
+                ) : (
+                  <DocumentPreviewFrame
+                    docId={previewDoc.id}
+                    token={token}
+                    fallbackUrl={previewDoc.url}
+                    filename={previewDoc.name}
+                  />
+                )
               )}
             </div>
           </DialogContent>
@@ -512,17 +523,127 @@ export function DocumentFolderView({
             </DialogTitle>
           </DialogHeader>
           <div className="h-[70vh] overflow-auto">
-            {previewDoc?.url && (
-              <iframe
-                src={previewDoc.url}
-                className="w-full h-full border-0"
-                title={previewDoc.name}
-              />
+            {previewDoc && (
+              previewDoc.mimeType.startsWith('image/') ? (
+                <img
+                  src={previewDoc.url}
+                  alt={previewDoc.name}
+                  className="max-w-full h-auto"
+                />
+              ) : (
+                <DocumentPreviewFrame
+                  docId={previewDoc.id}
+                  token={token}
+                  fallbackUrl={previewDoc.url}
+                  filename={previewDoc.name}
+                />
+              )
             )}
           </div>
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/**
+ * Document Preview Frame component that fetches content via serve endpoint
+ * This avoids X-Frame-Options restrictions from GCS signed URLs
+ */
+function DocumentPreviewFrame({
+  docId,
+  token,
+  fallbackUrl,
+  filename,
+}: {
+  docId: string;
+  token?: string;
+  fallbackUrl: string;
+  filename: string;
+}) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchDocument = async () => {
+      if (!token) {
+        // No token, use fallback URL directly
+        setBlobUrl(fallbackUrl);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/documents/${docId}/serve`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch document');
+        }
+
+        const blob = await response.blob();
+        if (mounted) {
+          const url = URL.createObjectURL(blob);
+          setBlobUrl(url);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Document preview error:', err);
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load preview');
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchDocument();
+
+    return () => {
+      mounted = false;
+      if (blobUrl && blobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [docId, token, fallbackUrl]);
+
+  if (loading) {
+    return (
+      <div className="w-full h-[70vh] flex items-center justify-center bg-muted/20">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Loading preview...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-[70vh] flex items-center justify-center bg-muted/20">
+        <div className="text-center">
+          <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => window.open(fallbackUrl, '_blank')}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Open in new tab
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <iframe
+      src={blobUrl || fallbackUrl}
+      className="w-full h-full border-0"
+      title={filename}
+    />
   );
 }
 
