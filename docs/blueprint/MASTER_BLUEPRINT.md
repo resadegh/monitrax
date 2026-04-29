@@ -223,6 +223,7 @@ Every API response follows a standardised format:
 | **28** | Advanced Analytics | 📋 Planned | Enhanced reporting, visualization, export improvements |
 | **34** | CDR Security Hardening | ✅ Complete | RBAC on 70+ routes, MFA enforcement, audit persistence, password hardening. PRs [#438](https://github.com/resadegh/monitrax/pull/438), [#440](https://github.com/resadegh/monitrax/pull/440) |
 | **35** | CDR Data Lifecycle | ✅ Complete | Consent-driven CDR data deletion, de-identification, Cloud Scheduler endpoint |
+| **36** | My Accounts UX Simplification | 🔄 In Progress | Unified `/dashboard/balances` view (Cash + Debt sections); legacy `/dashboard/accounts` and `/dashboard/loans` pages remain reachable for compatibility. Phase 36b (PR #552 + this session) extracted shared `AccountDetailDialog`, `AccountFormDialog`, `LoanFormDialog` so detail view and create/edit forms open inline on Balances. Phase 2 (planned) retires the legacy pages by migrating Connect Bank / Import / LoanDetailDialog and adding redirects. See `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` §7. |
 
 ---
 

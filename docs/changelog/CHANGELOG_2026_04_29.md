@@ -184,3 +184,149 @@ optional strings) and the shared dialog's prop types.
   redirect; same pattern as Phase 1 here would let it open
   inline on Balances.
 - **Standalone loan detail page:** still tracked from PR #550.
+
+## Session: claude/balances-inline-create-forms-2hNSa — Phase 1b of accounts/loans-page retirement (inline create + edit forms)
+
+### Symptom (user report, 2026-04-29)
+
+After Phase 1 shipped (account detail dialog opens inline on
+Balances), the user reported:
+
+> "the same issue exists with adding accounts and loans, they also
+> take me to the accounts and loans page instead of directly opening
+> the dialogue to create a new loan or account."
+
+### Root cause
+
+The `+ Account` and `+ Loan` toolbar buttons on `/dashboard/balances`
+were `router.push('/dashboard/accounts')` and
+`router.push('/dashboard/loans')` respectively. Same problem class as
+Phase 1's account-detail flow: the create/edit form lived only on
+the legacy pages, so Balances had to navigate away to surface it.
+
+The `Edit Account` button inside the new shared `AccountDetailDialog`
+also routed to `/dashboard/accounts#<id>` instead of opening the form
+inline (Phase 1 left it that way explicitly, marked as Phase 2 work).
+
+### Solution
+
+#### 1. `components/accounts/AccountFormDialog.tsx` — **new**
+
+Shared create/edit form. Owns its own form state, validation, and
+submit handler. Body shape matches the legacy `/dashboard/accounts`
+page's POST/PUT contract to `/api/accounts` **exactly**:
+
+- `interestRate` field is the percentage in the UI (e.g. 2.5) —
+  divided by 100 before sending to the server (which stores
+  decimal). Preserves the legacy contract precisely.
+- `institution` empty string coerced to `null` in the body.
+- `currentBalance` cast to `Number(...)` like before.
+
+Edit-mode hydration converts the server-stored decimal back to %
+so the user sees the same number they typed.
+
+#### 2. `components/loans/LoanFormDialog.tsx` — **new**
+
+Shared create/edit form for loans. Includes the Phase 19
+`FormDocumentUpload` auto-fill integration and the post-save
+document-link call to `/api/documents/{id}/link`. Body shape
+matches `/api/loans` POST/PUT exactly:
+
+- `principal`, `interestRateAnnual`, `termMonthsRemaining`,
+  `minRepayment` cast to `Number(...)`.
+- `fixedExpiry`, `extraRepaymentCap`, `propertyId`,
+  `offsetAccountId`, `linkedAssetId`, `linkedAccountId` coerced
+  to `null` when falsy.
+- `interestRateAnnual` UI in % (form divides by 100 on every
+  input change, mirrors legacy).
+- `handleFieldsExtracted` (auto-fill from document analysis)
+  preserved 1:1.
+
+Lookup lists (`properties`, `offsetAccounts`, `allAccounts`,
+`assets`) are passed in via props so the parent decides what to
+populate.
+
+#### 3. `/dashboard/balances` toolbar wired
+
+- **+ Account** → `AccountFormDialog` in create mode.
+- **+ Loan** → `LoanFormDialog` in create mode. Properties +
+  Assets are lazy-fetched on first open (most users won't click
+  `+ Loan`, so we don't bloat the initial page load).
+- **Edit Account** (from `AccountDetailDialog`) → `AccountFormDialog`
+  in edit mode (was: navigated to `/dashboard/accounts#<id>`).
+- Page-level `reloadData()` exposed via `useCallback` so each
+  form's `onSaved` callback can refresh the totals + section
+  rows after a save.
+
+#### 4. `/dashboard/accounts` migrated to shared form
+
+- Replaced ~85 lines of inline `<Dialog>...form...</Dialog>` JSX
+  with the shared `<AccountFormDialog>`.
+- Removed: `formData`, `setFormData`, `editingId`, `setEditingId`,
+  `handleSubmit`, `resetForm` page-level state and handlers.
+- `handleEdit(account)` now just populates `editingAccount`
+  and opens the dialog.
+
+#### 5. `/dashboard/loans` migrated to shared form
+
+- Replaced ~320 lines of inline `<Dialog>...form...</Dialog>` JSX
+  with the shared `<LoanFormDialog>`.
+- Removed: `formData`, `setFormData`, `editingId`, `setEditingId`,
+  `attachedDocumentId`, `autoFilledFields`, `handleSubmit`,
+  `resetForm`, `handleFieldsExtracted` page-level state and
+  handlers — all moved into the shared component.
+- `handleEdit(loan)` now just populates `editingLoan` and opens
+  the dialog.
+- `FormDocumentUpload` + `FieldMapping` imports removed (now used
+  inside the shared component).
+
+### CLAUDE.md compliance
+
+- **§12.1 (No duplicate logic):** ~405 lines of inline dialog JSX
+  + form state + submit handlers deduplicated across the two
+  pages. Single source of truth for both forms.
+- **§12.2 / §12.3 (SSOT, single calc engine):** **no calculations
+  changed**. Form behaviour, validation, and API request bodies
+  are byte-for-byte identical to what the legacy pages sent. No
+  new calc engine added; no existing engine modified.
+- **§6.7 (Entity dialogs):** the create/edit forms preserve the
+  same field structure they always had, no UX regression.
+- **§12.11 (Destructive write checklist):** NOT required — no
+  Prisma writes added or modified. The only write paths
+  (`POST/PUT /api/accounts` and `POST/PUT /api/loans`) are
+  unchanged.
+
+### Files Modified
+
+- `components/accounts/AccountFormDialog.tsx` — **new file**
+  (shared create/edit form for accounts).
+- `components/loans/LoanFormDialog.tsx` — **new file** (shared
+  create/edit form for loans, includes FormDocumentUpload).
+- `app/dashboard/balances/page.tsx` — wire `+ Account` button to
+  open `AccountFormDialog` create mode; wire `+ Loan` button
+  with lazy-fetch of properties/assets; wire detail dialog's
+  Edit button to inline form; expose `reloadData` callback.
+- `app/dashboard/accounts/page.tsx` — replace inline form dialog
+  with shared component; remove form-state code.
+- `app/dashboard/loans/page.tsx` — replace inline form dialog
+  with shared component; remove form-state + auto-fill code.
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` —
+  added §7 documenting Phase 1, 1b, and the planned Phase 2.
+- `docs/blueprint/MASTER_BLUEPRINT.md` — Phase 36 entry added
+  to the phase status table.
+
+### Build Status
+
+- [x] `npm run build` passes (Next.js 15.2.6).
+- [ ] Manual testing pending — user will verify before Phase 2.
+
+### Outstanding (Phase 2, awaiting user go-ahead after testing)
+
+- Inline `LoanDetailDialog` on Balances (replace PR #550's
+  `?focus=` redirect).
+- Migrate `Connect Bank` (Basiq) toolbar action to Balances.
+- Migrate `Import Transactions` toolbar action to Balances.
+- Redirect `/dashboard/accounts` → `/dashboard/balances`.
+- Redirect `/dashboard/loans` → `/dashboard/balances`.
+- Sidebar cleanup if any legacy entries still point at the old
+  pages.

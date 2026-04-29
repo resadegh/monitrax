@@ -20,7 +20,13 @@ import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
-import { FormDocumentUpload, FieldMapping } from '@/components/documents';
+// FormDocumentUpload + FieldMapping are now used inside the shared
+// LoanFormDialog component (Phase 1b extraction). They're not
+// referenced directly here anymore — kept off the import list.
+import {
+  LoanFormDialog,
+  type LoanFormValues,
+} from '@/components/loans/LoanFormDialog';
 
 interface Expense {
   id: string;
@@ -106,78 +112,20 @@ function LoansPageContent() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // `showDialog` opens the shared LoanFormDialog (Phase 1b). The
+  // dialog manages its own form state, document upload state, and
+  // submit handler internally — this page only tracks open/closed
+  // and which row is being edited.
   const [showDialog, setShowDialog] = useState(false);
+  const [editingLoan, setEditingLoan] = useState<LoanFormValues | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
 
   // CMNF navigation handler for LinkedDataPanel
   const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
     setShowDetailDialog(false);
     openLinkedEntity(entity);
-  };
-  const [formData, setFormData] = useState<Partial<Loan>>({
-    name: '',
-    type: 'HOME',
-    principal: 0,
-    interestRateAnnual: 0,
-    rateType: 'VARIABLE',
-    isInterestOnly: false,
-    termMonthsRemaining: 360,
-    minRepayment: 0,
-    repaymentFrequency: 'MONTHLY',
-    fixedExpiry: undefined,
-    extraRepaymentCap: undefined,
-    propertyId: undefined,
-    offsetAccountId: undefined,
-    linkedAssetId: undefined,
-    linkedAccountId: undefined,
-  });
-  const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
-  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
-
-  // Handle auto-fill from document analysis
-  const handleFieldsExtracted = (mappings: Record<string, FieldMapping>) => {
-    const filledFields: string[] = [];
-    const updates: Partial<Loan> = {};
-
-    // Map extracted fields to form data
-    if (mappings.lender?.value && !formData.name) {
-      updates.name = String(mappings.lender.value);
-      filledFields.push('name');
-    }
-
-    if (mappings.principalAmount?.value && !formData.principal) {
-      updates.principal = Number(mappings.principalAmount.value);
-      filledFields.push('principal');
-    }
-
-    if (mappings.interestRate?.value && !formData.interestRateAnnual) {
-      const rate = Number(mappings.interestRate.value);
-      // Convert percentage to decimal if needed
-      updates.interestRateAnnual = rate > 1 ? rate / 100 : rate;
-      filledFields.push('interestRateAnnual');
-    }
-
-    if (mappings.loanTerm?.value && !formData.termMonthsRemaining) {
-      updates.termMonthsRemaining = Number(mappings.loanTerm.value);
-      filledFields.push('termMonthsRemaining');
-    }
-
-    if (mappings.repaymentAmount?.value && !formData.minRepayment) {
-      updates.minRepayment = Number(mappings.repaymentAmount.value);
-      filledFields.push('minRepayment');
-    }
-
-    if (mappings.accountNumber?.value) {
-      filledFields.push('accountNumber');
-    }
-
-    if (Object.keys(updates).length > 0) {
-      setFormData(prev => ({ ...prev, ...updates }));
-      setAutoFilledFields(filledFields);
-    }
   };
 
   useEffect(() => {
@@ -254,94 +202,13 @@ function LoansPageContent() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
 
-    const url = editingId ? `/api/loans/${editingId}` : '/api/loans';
-    const method = editingId ? 'PUT' : 'POST';
-
-    // Clean up the data
-    const submitData = {
-      ...formData,
-      principal: Number(formData.principal),
-      interestRateAnnual: Number(formData.interestRateAnnual),
-      termMonthsRemaining: Number(formData.termMonthsRemaining),
-      minRepayment: Number(formData.minRepayment),
-      fixedExpiry: formData.fixedExpiry || null,
-      extraRepaymentCap: formData.extraRepaymentCap ? Number(formData.extraRepaymentCap) : null,
-      propertyId: formData.propertyId || null,
-      offsetAccountId: formData.offsetAccountId || null,
-      linkedAssetId: formData.linkedAssetId || null,
-      linkedAccountId: formData.linkedAccountId || null,
-    };
-
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(submitData),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const savedLoanId = result.data?.id || result.id || editingId;
-
-        // Link document if one was attached via FormDocumentUpload
-        if (attachedDocumentId && savedLoanId) {
-          try {
-            await fetch(`/api/documents/${attachedDocumentId}/link`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                entityType: 'LOAN',
-                entityId: savedLoanId,
-              }),
-            });
-          } catch (linkError) {
-            console.error('Error linking document to loan:', linkError);
-          }
-        }
-
-        await loadData();
-        setShowDialog(false);
-        setEditingId(null);
-        resetForm();
-      }
-    } catch (error) {
-      console.error('Error saving loan:', error);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      type: 'HOME',
-      principal: 0,
-      interestRateAnnual: 0,
-      rateType: 'VARIABLE',
-      isInterestOnly: false,
-      termMonthsRemaining: 360,
-      minRepayment: 0,
-      repaymentFrequency: 'MONTHLY',
-      fixedExpiry: undefined,
-      extraRepaymentCap: undefined,
-      propertyId: undefined,
-      offsetAccountId: undefined,
-      linkedAssetId: undefined,
-      linkedAccountId: undefined,
-    });
-    setAttachedDocumentId(null);
-    setAutoFilledFields([]);
-  };
-
+  // Phase 1b: form submit + reset are handled inside the shared
+  // LoanFormDialog. This page only opens the dialog (in create
+  // or edit mode) and reloads the list when it reports a save.
   const handleEdit = (loan: Loan) => {
-    setFormData({
+    setEditingLoan({
+      id: loan.id,
       name: loan.name,
       type: loan.type,
       principal: loan.principal,
@@ -358,7 +225,6 @@ function LoansPageContent() {
       linkedAssetId: loan.linkedAssetId,
       linkedAccountId: loan.linkedAccountId,
     });
-    setEditingId(loan.id);
     setShowDialog(true);
   };
 
@@ -460,7 +326,7 @@ function LoansPageContent() {
         title="Loans"
         description={`Manage your loans and debts • Total debt: ${formatCurrency(totalPrincipal)}`}
         action={
-          <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
+          <Button onClick={() => { setEditingLoan(null); setShowDialog(true); }}>
             <Plus className="mr-2 h-4 w-4" />
             Add Loan
           </Button>
@@ -508,7 +374,7 @@ function LoansPageContent() {
           description="Start by adding your first loan to track repayments and interest costs."
           action={{
             label: 'Add Loan',
-            onClick: () => { setShowDialog(true); resetForm(); },
+            onClick: () => { setEditingLoan(null); setShowDialog(true); },
           }}
         />
       ) : viewMode === 'list' ? (
@@ -752,326 +618,17 @@ function LoansPageContent() {
       )}
 
       {/* Add/Edit Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingId ? 'Edit Loan' : 'Add New Loan'}</DialogTitle>
-            <DialogDescription>
-              {editingId ? 'Update the loan details below.' : 'Enter the details for your new loan.'}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Document Auto-Fill */}
-            <FormDocumentUpload
-              formType="loan"
-              propertyId={formData.propertyId || undefined}
-              onFieldsExtracted={handleFieldsExtracted}
-              onDocumentAttached={setAttachedDocumentId}
-              disabled={isLoading}
-            />
-            {autoFilledFields.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Auto-filled {autoFilledFields.length} field(s). Review and adjust if needed.
-              </p>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Loan Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Home Loan"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="type">Type</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value as Loan['type'], propertyId: undefined, linkedAssetId: undefined, linkedAccountId: undefined })}
-                >
-                  <SelectTrigger id="type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="HOME">Home Loan</SelectItem>
-                    <SelectItem value="INVESTMENT">Investment Loan</SelectItem>
-                    <SelectItem value="CAR">Car Loan</SelectItem>
-                    <SelectItem value="PERSONAL">Personal Loan</SelectItem>
-                    <SelectItem value="LINE_OF_CREDIT">Line of Credit</SelectItem>
-                    <SelectItem value="STUDENT">Student / HECS-HELP</SelectItem>
-                    <SelectItem value="BUSINESS">Business Loan</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="principal">Principal Balance</Label>
-                <Input
-                  id="principal"
-                  type="number"
-                  value={formData.principal}
-                  onChange={(e) => setFormData({ ...formData, principal: Number(e.target.value) })}
-                  placeholder="400000"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="interestRateAnnual">Annual Interest Rate (%)</Label>
-                <Input
-                  id="interestRateAnnual"
-                  type="number"
-                  step="0.01"
-                  value={(formData.interestRateAnnual || 0) * 100}
-                  onChange={(e) => setFormData({ ...formData, interestRateAnnual: Number(e.target.value) / 100 })}
-                  placeholder="6.25"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="rateType">Rate Type</Label>
-                <Select
-                  value={formData.rateType}
-                  onValueChange={(value) => setFormData({ ...formData, rateType: value as 'FIXED' | 'VARIABLE' })}
-                >
-                  <SelectTrigger id="rateType">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="VARIABLE">Variable</SelectItem>
-                    <SelectItem value="FIXED">Fixed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Interest-only option only for HOME, INVESTMENT, LINE_OF_CREDIT, BUSINESS loans */}
-              {(formData.type === 'HOME' || formData.type === 'INVESTMENT' || formData.type === 'LINE_OF_CREDIT' || formData.type === 'BUSINESS') ? (
-                <div className="space-y-2">
-                  <Label htmlFor="isInterestOnly">Repayment Type</Label>
-                  <Select
-                    value={formData.isInterestOnly ? 'true' : 'false'}
-                    onValueChange={(value) => setFormData({ ...formData, isInterestOnly: value === 'true' })}
-                  >
-                    <SelectTrigger id="isInterestOnly">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="false">Principal & Interest</SelectItem>
-                      <SelectItem value="true">Interest Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label>Repayment Type</Label>
-                  <div className="h-10 flex items-center text-sm text-muted-foreground">
-                    Principal & Interest (standard for {formData.type?.toLowerCase().replace('_', ' ')} loans)
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {formData.rateType === 'FIXED' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fixedExpiry">Fixed Rate Expiry</Label>
-                  <Input
-                    id="fixedExpiry"
-                    type="date"
-                    value={formData.fixedExpiry ? formData.fixedExpiry.split('T')[0] : ''}
-                    onChange={(e) => setFormData({ ...formData, fixedExpiry: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="extraRepaymentCap">Extra Repayment Cap (Annual)</Label>
-                  <Input
-                    id="extraRepaymentCap"
-                    type="number"
-                    value={formData.extraRepaymentCap || ''}
-                    onChange={(e) => setFormData({ ...formData, extraRepaymentCap: e.target.value ? Number(e.target.value) : undefined })}
-                    placeholder="e.g., 10000"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="termMonthsRemaining">Term Remaining (months)</Label>
-                <Input
-                  id="termMonthsRemaining"
-                  type="number"
-                  value={formData.termMonthsRemaining}
-                  onChange={(e) => setFormData({ ...formData, termMonthsRemaining: Number(e.target.value) })}
-                  placeholder="300"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="minRepayment">Minimum Repayment</Label>
-                <Input
-                  id="minRepayment"
-                  type="number"
-                  value={formData.minRepayment}
-                  onChange={(e) => setFormData({ ...formData, minRepayment: Number(e.target.value) })}
-                  placeholder="2500"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="repaymentFrequency">Repayment Frequency</Label>
-              <Select
-                value={formData.repaymentFrequency}
-                onValueChange={(value) => setFormData({ ...formData, repaymentFrequency: value as Loan['repaymentFrequency'] })}
-              >
-                <SelectTrigger id="repaymentFrequency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="WEEKLY">Weekly</SelectItem>
-                  <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
-                  <SelectItem value="MONTHLY">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Conditional Linking Section based on Loan Type */}
-            {(formData.type === 'HOME' || formData.type === 'INVESTMENT') && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="propertyId">Linked Property (Optional)</Label>
-                  <Select
-                    value={formData.propertyId || 'none'}
-                    onValueChange={(value) => setFormData({ ...formData, propertyId: value === 'none' ? undefined : value })}
-                  >
-                    <SelectTrigger id="propertyId">
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {properties.map((prop) => (
-                        <SelectItem key={prop.id} value={prop.id}>{prop.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="offsetAccountId">Offset Account (Optional)</Label>
-                  <Select
-                    value={formData.offsetAccountId || 'none'}
-                    onValueChange={(value) => setFormData({ ...formData, offsetAccountId: value === 'none' ? undefined : value })}
-                  >
-                    <SelectTrigger id="offsetAccountId">
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {accounts.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.name} ({formatCurrency(acc.currentBalance)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-
-            {/* CAR Loan - Link to Vehicle Asset */}
-            {formData.type === 'CAR' && (
-              <div className="space-y-2">
-                <Label htmlFor="linkedAssetId">Linked Vehicle (Optional)</Label>
-                <Select
-                  value={formData.linkedAssetId || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, linkedAssetId: value === 'none' ? undefined : value })}
-                >
-                  <SelectTrigger id="linkedAssetId">
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {assets.map((asset) => (
-                      <SelectItem key={asset.id} value={asset.id}>
-                        {asset.name} {asset.vehicleMake && asset.vehicleModel && `(${asset.vehicleMake} ${asset.vehicleModel})`} - {formatCurrency(asset.currentValue)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {assets.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No vehicles found. Add a vehicle in Assets first to link it.</p>
-                )}
-              </div>
-            )}
-
-            {/* LINE_OF_CREDIT - Link to Account (e.g., credit card) */}
-            {formData.type === 'LINE_OF_CREDIT' && (
-              <div className="space-y-2">
-                <Label htmlFor="linkedAccountId">Linked Account (Optional)</Label>
-                <Select
-                  value={formData.linkedAccountId || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, linkedAccountId: value === 'none' ? undefined : value })}
-                >
-                  <SelectTrigger id="linkedAccountId">
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {allAccounts.map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        {acc.name} ({acc.type}) - {formatCurrency(acc.currentBalance)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* BUSINESS Loan - May link to property for secured loans */}
-            {formData.type === 'BUSINESS' && properties.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="propertyId">Secured by Property (Optional)</Label>
-                <Select
-                  value={formData.propertyId || 'none'}
-                  onValueChange={(value) => setFormData({ ...formData, propertyId: value === 'none' ? undefined : value })}
-                >
-                  <SelectTrigger id="propertyId">
-                    <SelectValue placeholder="None (Unsecured)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None (Unsecured)</SelectItem>
-                    {properties.map((prop) => (
-                      <SelectItem key={prop.id} value={prop.id}>{prop.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingId ? 'Update Loan' : 'Add Loan'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Phase 1b: shared LoanFormDialog used here AND on /dashboard/balances */}
+      <LoanFormDialog
+        open={showDialog}
+        onOpenChange={setShowDialog}
+        editing={editingLoan}
+        properties={properties.map((p) => ({ id: p.id, name: p.name }))}
+        offsetAccounts={accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, currentBalance: a.currentBalance }))}
+        allAccounts={allAccounts.map((a) => ({ id: a.id, name: a.name, type: a.type, currentBalance: a.currentBalance }))}
+        assets={assets.map((a) => ({ id: a.id, name: a.name, currentValue: a.currentValue, vehicleMake: a.vehicleMake, vehicleModel: a.vehicleModel }))}
+        onSaved={() => { void loadData(); }}
+      />
 
       {/* Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
