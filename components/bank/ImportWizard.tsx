@@ -108,6 +108,16 @@ interface PreviewData {
 interface ImportResult {
   success: boolean;
   fileId?: string;
+  // Populated by the server when no accountId was provided in the
+  // import request and the server auto-created an Account from the
+  // file's closing-balance anchor (see app/api/bank/import/route.ts).
+  createdAccount?: {
+    id: string;
+    name: string;
+    type: string;
+    institution: string | null;
+    currentBalance: number;
+  } | null;
   statistics?: {
     total: number;
     imported: number;
@@ -128,6 +138,11 @@ interface Account {
   id: string;
   name: string;
   type: string;
+  // Account's current balance, when known. Surfaced through
+  // `onAccountCreated` so callers (e.g. the onboarding wizard's
+  // AccountsStep) can show the real balance instead of falling back
+  // to $0 placeholders.
+  currentBalance?: number;
 }
 
 interface ImportWizardProps {
@@ -202,6 +217,14 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
         id: data.id,
         name: data.name,
         type: data.type,
+        // Forward the balance the user just entered so the parent
+        // (e.g. onboarding AccountsStep) can render the imported
+        // account row with the real balance instead of a $0
+        // placeholder.
+        currentBalance:
+          typeof data.currentBalance === 'number'
+            ? data.currentBalance
+            : balanceValue,
       };
       setLocalAccounts([...localAccounts, newAccount]);
       setSelectedAccount(newAccount.id);
@@ -279,7 +302,10 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
       const formData = new FormData();
       formData.append('file', file);
       formData.append('duplicatePolicy', duplicatePolicy);
-      if (selectedAccount && selectedAccount !== 'none') {
+      // Account selection is required by the UI (see Settings step
+      // below — the Import button is disabled when `selectedAccount`
+      // is empty). Defence in depth: only forward a non-empty value.
+      if (selectedAccount) {
         formData.append('accountId', selectedAccount);
       }
       if (preview.suggestedMappings) {
@@ -311,6 +337,22 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
       setImportProgress(100);
       setResult(data);
       setStep('complete');
+
+      // If the server auto-created an account from the file (because
+      // we didn't pass one), surface it to the parent so flows like
+      // the onboarding wizard's AccountsStep can show the new account
+      // alongside any existing ones.
+      if (data?.createdAccount?.id) {
+        const created: Account = {
+          id: data.createdAccount.id,
+          name: data.createdAccount.name,
+          type: data.createdAccount.type,
+        };
+        setLocalAccounts((prev) =>
+          prev.some((a) => a.id === created.id) ? prev : [...prev, created]
+        );
+        onAccountCreated?.(created);
+      }
     } catch (err) {
       setResult({
         success: false,
@@ -521,22 +563,40 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
             {/* Settings */}
             <div className="space-y-4 pt-4 border-t">
               <div>
-                <Label>Link to Account</Label>
+                <Label>
+                  Link to Account <span className="text-red-500">*</span>
+                </Label>
                 {!showCreateAccount ? (
                   <div className="space-y-2">
-                    <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None - Import without account</SelectItem>
-                        {localAccounts.map((account) => (
-                          <SelectItem key={account.id} value={account.id}>
-                            {account.name} ({account.type})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {localAccounts.length > 0 ? (
+                      <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/*
+                           * The previous "None - Import without account"
+                           * option was removed: UnifiedTransaction.accountId
+                           * is a non-nullable FK to Account, so importing
+                           * without an account caused a FK violation
+                           * (`unified_transactions_accountId_fkey`) and
+                           * aborted the import. Users must now either
+                           * pick an existing account or create a new one
+                           * inline.
+                           */}
+                          {localAccounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id}>
+                              {account.name} ({account.type})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400">
+                        No accounts yet — create one below to import these
+                        transactions into.
+                      </p>
+                    )}
                     <Button
                       type="button"
                       variant="outline"
@@ -548,10 +608,23 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
                         if (preview?.metadata?.detectedBank) {
                           setNewAccountInstitution(preview.metadata.detectedBank);
                         }
+                        // Pre-fill the balance field with the file's
+                        // closing balance so the user doesn't have to
+                        // re-type it.
+                        if (
+                          typeof preview?.balanceInfo?.closingBalance === 'number' &&
+                          !newAccountBalance
+                        ) {
+                          setNewAccountBalance(
+                            String(preview.balanceInfo.closingBalance)
+                          );
+                        }
                       }}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Create New Account
+                      {localAccounts.length === 0
+                        ? 'Create account'
+                        : 'Create New Account'}
                     </Button>
                   </div>
                 ) : (
@@ -652,7 +725,7 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
               </div>
 
               {/* Update account balance from file */}
-              {selectedAccount && selectedAccount !== 'none' && preview.balanceInfo?.hasBalance && (
+              {selectedAccount && preview.balanceInfo?.hasBalance && (
                 <div className="flex items-start space-x-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <Checkbox
                     id="updateBalance"
@@ -719,7 +792,18 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
               <Button variant="outline" onClick={() => setStep('upload')}>
                 Back
               </Button>
-              <Button onClick={handleImport} disabled={preview.statistics.validTransactions === 0}>
+              <Button
+                onClick={handleImport}
+                disabled={
+                  preview.statistics.validTransactions === 0 ||
+                  !selectedAccount
+                }
+                title={
+                  !selectedAccount
+                    ? 'Select or create an account first'
+                    : undefined
+                }
+              >
                 {preview.alreadyImported ? 'Re-import' : 'Import'} {preview.statistics.validTransactions} Transactions
               </Button>
             </div>
