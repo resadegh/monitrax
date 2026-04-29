@@ -331,23 +331,38 @@ function BalancesPageContent() {
     setLoansError(null);
 
     /*
-     * Retry-on-5xx wrapper for the primary entity fetches.
+     * Retry-on-transient wrapper for the primary entity fetches.
      *
-     * /api/accounts and /api/loans intermittently 500 on Vercel
-     * cold-starts (the first request after an idle period spins up
-     * a fresh function instance + reopens the Cloud SQL connection,
-     * which can blow past the function timeout the first try).
-     * PR #551 already split the unified_transactions enrichment out
-     * as best-effort, but the primary query itself can still hit the
-     * cold-start window. Retrying once after a short delay catches
-     * those one-shot failures without surfacing the "Couldn't load"
-     * banner to the user.
+     * Two failure modes we want to absorb:
      *
-     * Single retry only — if the second attempt also fails we honour
-     * the per-section error state and show the cached-data hint
-     * (PR #550 behaviour preserved). No exponential backoff because
-     * the user is waiting; a 600ms delay is the upper bound we'll
-     * tolerate.
+     * 1. **5xx / network errors.** /api/accounts and /api/loans
+     *    intermittently 500 on Vercel cold-starts (the first request
+     *    after an idle period spins up a fresh function instance +
+     *    reopens the Cloud SQL connection, which can blow past the
+     *    function timeout the first try). PR #551 already split the
+     *    unified_transactions enrichment out as best-effort, but the
+     *    primary query itself can still hit the cold-start window.
+     *
+     * 2. **Transient 401 from the GCP token verifier.** Every API
+     *    route runs `verifyGCPIdToken()` which is a network call out
+     *    to Firebase/GCP. When that call hiccups (rate limit, brief
+     *    network blip, GCP's edge cache miss) `getAuthContext` returns
+     *    null and the route returns 401 — even though the user's
+     *    Bearer token is perfectly valid. Symptom: /api/accounts,
+     *    /api/loans, /api/basiq/connections ALL return 401 in the same
+     *    second, then succeed on the next request. Reported by user
+     *    via DevTools Network panel 2026-04-29.
+     *
+     * Retry strategy: one retry, after 600ms, on 5xx, on 401, and on
+     * network-level rejections. We don't retry on other 4xx codes
+     * (403 Forbidden, 404 Not Found, 422 Validation) — those are
+     * real and would just delay the user seeing them. A genuinely
+     * stale auth token will also 401 on the retry, so the user sees
+     * the cached-data hint and can sign in again; we're not
+     * masking real auth failures.
+     *
+     * No exponential backoff: the user is waiting; 600ms is the
+     * upper bound on tolerable extra latency.
      */
     const fetchWithRetry = async (url: string, label: string) => {
       const attempt = async () => {
@@ -358,11 +373,12 @@ function BalancesPageContent() {
       try {
         return await attempt();
       } catch (err) {
-        // Only retry on 5xx / network-level failures. 4xx (auth,
-        // forbidden, not found) is a real error — surface it.
         const msg = err instanceof Error ? err.message : String(err);
         const code = Number(msg.match(/\b(\d{3})\b/)?.[1] ?? 0);
-        const isRetryable = code === 0 || code >= 500;
+        // 0 = network/CORS error (no HTTP response)
+        // 401 = transient GCP verifier blip (retry — see comment above)
+        // 5xx = server / cold-start
+        const isRetryable = code === 0 || code === 401 || code >= 500;
         if (!isRetryable) throw err;
         await new Promise((resolve) => setTimeout(resolve, 600));
         return attempt();
