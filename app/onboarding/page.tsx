@@ -85,10 +85,25 @@ export default function OnboardingPage() {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           console.error('Failed to save wizard data:', errorData);
-          throw new Error(
+          // The server returns `{ error, details? }`. For 4xx
+          // user-recoverable errors (validation) `error` is the
+          // human-readable message and `details` is omitted. For
+          // 5xx the route puts the generic "Failed to save…" in
+          // `error` and the actual message in `details`. Without
+          // surfacing `details`, the user only ever sees the
+          // generic fallback in the wizard footer banner — which
+          // is exactly what we don't want, since it hides the
+          // information that lets them (or us) fix the cause.
+          const baseMessage =
             typeof errorData.error === 'string'
               ? errorData.error
-              : 'Failed to save data'
+              : 'Failed to save data';
+          const details =
+            typeof errorData.details === 'string' ? errorData.details : null;
+          throw new Error(
+            details && details !== baseMessage
+              ? `${baseMessage}: ${details}`
+              : baseMessage
           );
         }
 

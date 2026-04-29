@@ -272,9 +272,13 @@ function getLoanType(propertyType: PropertyType): 'HOME' | 'INVESTMENT' {
 // =============================================================================
 
 export const POST = withPermission('onboarding.complete', async (request, auth) => {
+    // Hoisted out of the try block so the catch handler can include
+    // them in the structured error log without scope errors.
+    const userId = auth.userId;
+    let parsedPayload: WizardData | undefined;
     try {
-      const userId = auth.userId;
-      const data: WizardData = await request.json();
+      parsedPayload = (await request.json()) as WizardData;
+      const data = parsedPayload;
 
       // ID mapping for linking (temp ID -> real ID)
       const loanIdMap = new Map<string, string>();
@@ -913,19 +917,117 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         summary: result,
       });
     } catch (error) {
-      console.error('Bulk create error:', error);
-      // Validation errors thrown from inside the transaction (e.g. missing
-      // purchase date) are user-recoverable and should return 400, not 500.
+      // Log a structured snapshot so we can correlate the failure with
+      // the user's payload shape without exposing financial values
+      // (count-only — no balances, names, or addresses leak into the
+      // log). Indispensable when a real user hits a 500 and we need
+      // to reproduce.
+      try {
+        // `parsedPayload` is set after request.json() returns. If we
+        // crashed before that point this snapshot is just the user id
+        // and a null payload — still useful for correlating failures.
+        const p = parsedPayload;
+        const payloadSummary: Record<string, unknown> = {
+          userId,
+          profileType: p?.profileType ?? null,
+          housing: p?.housing ?? null,
+          counts: {
+            properties: p?.properties?.length ?? 0,
+            propertiesWithLoan: p?.properties?.filter((x) => x.hasLoan).length ?? 0,
+            accounts: p?.accounts?.length ?? 0,
+            accountsByType: {
+              MANUAL: p?.accounts?.filter((a) => !a.source || a.source === 'MANUAL').length ?? 0,
+              IMPORT: p?.accounts?.filter((a) => a.source === 'IMPORT').length ?? 0,
+              BASIQ: p?.accounts?.filter((a) => a.source === 'BASIQ').length ?? 0,
+            },
+            investments: p?.investments?.length ?? 0,
+            superAccounts: p?.superAccounts?.length ?? 0,
+            debts: p?.debts?.length ?? 0,
+            assets: p?.assets?.length ?? 0,
+            income: p?.income?.length ?? 0,
+            expenses: p?.expenses?.length ?? 0,
+            householdMembers: p?.householdMembers?.length ?? 0,
+            householdPets: p?.householdPets?.length ?? 0,
+          },
+        };
+        console.error('Bulk create error:', error, payloadSummary);
+      } catch {
+        console.error('Bulk create error:', error);
+      }
+
       const message = error instanceof Error ? error.message : String(error);
+
+      // Validation errors thrown from inside the transaction (e.g.
+      // missing purchase date) are user-recoverable and should
+      // return 400, not 500.
       const isValidationError =
         message.includes('missing a purchase date') ||
         message.includes('invalid purchase date');
+      if (isValidationError) {
+        return NextResponse.json({ error: message }, { status: 400 });
+      }
+
+      // Translate common Prisma error codes into actionable messages
+      // so the user (and we, when reading server logs) get useful
+      // information instead of a generic "Failed to save…".
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const code: string | undefined = (error as any)?.code;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const meta: Record<string, unknown> | undefined = (error as any)?.meta;
+
+      if (code === 'P2028') {
+        // Transaction timeout — the bumped 30s ceiling we set should
+        // already cover real-world onboarding payloads, so this means
+        // either the DB is under load or there's a slow query in the
+        // hot path.
+        return NextResponse.json(
+          {
+            error: 'Saving took too long',
+            details:
+              'The save timed out after 30 seconds. Please try again — your answers are still saved.',
+          },
+          { status: 504 }
+        );
+      }
+
+      if (code === 'P2002') {
+        // Unique constraint
+        const target = Array.isArray(meta?.target)
+          ? (meta!.target as string[]).join(', ')
+          : (meta?.target as string | undefined) ?? 'a field';
+        return NextResponse.json(
+          {
+            error: 'Duplicate value',
+            details: `A record with the same ${target} already exists. Please review your entries and try again.`,
+          },
+          { status: 409 }
+        );
+      }
+
+      if (code === 'P2003') {
+        // Foreign key violation
+        const field =
+          (meta?.field_name as string | undefined) ??
+          (meta?.constraint as string | undefined) ??
+          'a linked record';
+        return NextResponse.json(
+          {
+            error: 'Linked record missing',
+            details: `Couldn't find ${field}. Please go back and check your linked accounts/loans, then try again.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Fallback: 500 with the raw message in `details` so the
+      // client banner can show what actually went wrong instead of
+      // the generic copy.
       return NextResponse.json(
         {
-          error: isValidationError ? message : 'Failed to save onboarding data',
-          details: isValidationError ? undefined : message,
+          error: 'Failed to save onboarding data',
+          details: message,
         },
-        { status: isValidationError ? 400 : 500 }
+        { status: 500 }
       );
     }
 });
