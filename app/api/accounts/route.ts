@@ -5,15 +5,57 @@ import { extractAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
 
 export const GET = withPermission('account.read', async (request, auth) => {
     try {
+      // Step 1 — fetch accounts WITHOUT the unifiedTransactions JOIN.
+      //
+      // Why split this out: when a JOIN target table doesn't exist in
+      // the deployed database (R12 schema-drift, see CLAUDE.md §12.12),
+      // Prisma's generated SQL fails the entire query — accounts and
+      // all. This was making the My Accounts > Balances page show
+      // empty Cash + Debt sections in production every time
+      // unified_transactions hadn't been migrated.
+      //
+      // Splitting the queries lets the primary entity load reliably
+      // and the secondary enrichment (recent transactions) degrade
+      // gracefully when the table is unavailable.
       const accounts = await prisma.account.findMany({
         where: { userId: auth.userId },
         include: {
           linkedLoan: true,
-          unifiedTransactions: {
-            orderBy: { date: 'desc' },
-            take: 50, // Limit to recent 50 transactions
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Step 2 — try to fetch recent transactions for these accounts.
+      // Best-effort: any failure here (table missing, connection blip)
+      // is logged and swallowed so the accounts payload still renders.
+      const accountIds = accounts.map((a) => a.id);
+      const transactionsByAccountId = new Map<
+        string,
+        Array<{
+          id: string;
+          date: string;
+          description: string;
+          amount: number;
+          type: 'CREDIT' | 'DEBIT';
+          category: string | null;
+        }>
+      >();
+
+      if (accountIds.length > 0) {
+        try {
+          // Take 50 per account by fetching ordered, then bucketing.
+          // 50 × N is bounded by the user's account count — fine for
+          // an account-list view. A fancier per-account top-N could be
+          // a window function, but this is simpler and the rows are
+          // narrow (7 selected columns).
+          const recentTxs = await prisma.unifiedTransaction.findMany({
+            where: {
+              userId: auth.userId,
+              accountId: { in: accountIds },
+            },
             select: {
               id: true,
+              accountId: true,
               date: true,
               description: true,
               amount: true,
@@ -21,28 +63,38 @@ export const GET = withPermission('account.read', async (request, auth) => {
               categoryLevel1: true,
               merchantStandardised: true,
             },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+            orderBy: { date: 'desc' },
+            take: 50 * accountIds.length,
+          });
 
-      // Transform unifiedTransactions to match expected format
-      const accountsWithTransactions = accounts.map((account: typeof accounts[number]) => {
-        const transactions = account.unifiedTransactions?.map((tx: typeof account.unifiedTransactions[number]) => ({
-          id: tx.id,
-          date: tx.date.toISOString(),
-          description: tx.merchantStandardised || tx.description,
-          amount: tx.amount,
-          type: tx.direction === 'IN' ? 'CREDIT' : 'DEBIT',
-          category: tx.categoryLevel1,
-        })) || [];
+          for (const tx of recentTxs) {
+            const list = transactionsByAccountId.get(tx.accountId) ?? [];
+            if (list.length < 50) {
+              list.push({
+                id: tx.id,
+                date: tx.date.toISOString(),
+                description: tx.merchantStandardised || tx.description,
+                amount: tx.amount,
+                type: tx.direction === 'IN' ? 'CREDIT' : 'DEBIT',
+                category: tx.categoryLevel1,
+              });
+              transactionsByAccountId.set(tx.accountId, list);
+            }
+          }
+        } catch (txError) {
+          console.warn(
+            'Skipping unifiedTransactions enrichment for accounts ' +
+              '(table may not be migrated in this environment):',
+            txError instanceof Error ? txError.message : txError
+          );
+        }
+      }
 
-        return {
-          ...account,
-          transactions,
-          unifiedTransactions: undefined, // Remove the raw field
-        };
-      });
+      // Merge transactions into accounts, defaulting to []
+      const accountsWithTransactions = accounts.map((account) => ({
+        ...account,
+        transactions: transactionsByAccountId.get(account.id) ?? [],
+      }));
 
       // Apply GRDCS wrapper to each account
       const accountsWithLinks = accountsWithTransactions.map((account: typeof accountsWithTransactions[number]) => {

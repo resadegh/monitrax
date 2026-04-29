@@ -220,3 +220,116 @@ changes. Checklist not required.
   swallows errors silently (intentional — it's secondary metadata).
   If the same intermittent rendering ever surfaces for connections
   we'll extend the `errorHint` pattern.
+
+## Session: claude/api-resilient-transactions-enrichment-2hNSa — make /api/accounts and /api/loans resilient to transactions JOIN failures
+
+### Symptom
+
+After PR #549 + #550 deployed, refreshing `/dashboard/balances` produced
+random results:
+- Sometimes both Cash and Debt rendered.
+- Sometimes only one of them rendered, with the other showing
+  "Couldn't load latest balances. Showing cached data." amber hint
+  (the per-section error hint added in PR #550).
+- Sometimes both failed.
+
+### Root cause
+
+Both `/api/accounts` and `/api/loans` issued a single Prisma query
+that JOIN-ed `unified_transactions`:
+
+```ts
+prisma.account.findMany({
+  include: {
+    linkedLoan: true,
+    unifiedTransactions: { take: 50, ... },  // JOIN
+  },
+});
+
+Promise.all([
+  prisma.loan.findMany({ include: { ... } }),
+  prisma.unifiedTransaction.findMany({ where: { userId, loanId: { not: null } } }),
+]);
+```
+
+Two failure modes converged on the same symptom:
+
+1. **R12 schema drift (CLAUDE.md §12.12).** If the
+   `unified_transactions` table or any of its referenced enums
+   (`TransactionDirection`, `TransactionSource`, `RecurrencePattern`,
+   `AnomalyType`) hadn't been migrated to the deployed DB, the
+   JOIN/companion query failed and Prisma rejected the *entire*
+   `findMany` — no accounts, no loans, just a 500.
+2. **Vercel cold-start timeouts.** On a freshly-warmed serverless
+   function the connection setup + JOIN against `unified_transactions`
+   (which has 8 indexed columns and several enum FKs) can intermittently
+   exceed the function timeout. The user has zero rows in
+   `unified_transactions` post-onboarding, but the query planner still
+   has to hit the table — Postgres cold-cache lookups on an empty
+   indexed table aren't free, and on a slow Cloud SQL connection
+   they push the request past the budget.
+
+The PR #550 banner ("Couldn't load latest balances. Showing cached
+data.") correctly surfaced the failure to the user, but the user
+shouldn't *see* the failure for what is essentially a secondary
+enrichment query — the primary entity (accounts, loans) should
+load reliably and the transactions enrichment should degrade
+gracefully.
+
+### Solution
+
+Split each endpoint into a primary query + best-effort secondary:
+
+**`/api/accounts/route.ts`:**
+- Primary: `prisma.account.findMany` with only the `linkedLoan`
+  include — no `unifiedTransactions` JOIN.
+- Best-effort: a separate `prisma.unifiedTransaction.findMany`
+  bucketed by `accountId` (50 per account, capped). Wrapped in
+  try/catch — any failure logs a `console.warn` and the response
+  ships with empty per-account `transactions` arrays. The accounts
+  list itself always renders.
+
+**`/api/loans/route.ts`:**
+- Primary: `prisma.loan.findMany` with all its relational includes
+  (`property`, `offsetAccount`, `linkedAsset`, `linkedAccount`,
+  `expenses`). These all live in tables that pre-date the R12
+  baseline and load reliably.
+- Best-effort: a separate `prisma.unifiedTransaction.findMany` for
+  repayment-history actuals. Failure → `linkedTransactions` stays
+  `[]`, the per-loan `actuals` map is empty, and each loan ships
+  with `null` for `actualFromTransactions` /
+  `monthlyAverageActual` / `currentMonthActual`. The loans list
+  itself always renders.
+
+This pattern matches the existing fail-soft behaviour for Basiq
+connections in `/dashboard/balances/page.tsx` (PR #550): primary
+data is hard-failure, secondary metadata is best-effort.
+
+### Files Modified
+
+- `app/api/accounts/route.ts` — split the GET handler. Primary
+  `findMany` no longer includes `unifiedTransactions`; transactions
+  fetched separately with try/catch.
+- `app/api/loans/route.ts` — split the GET handler. `Promise.all`
+  removed; `unifiedTransaction.findMany` wrapped in try/catch and
+  defaults `linkedTransactions` to `[]` on failure.
+
+### Build Status
+
+- [x] `npm run build` passes (Next.js 15.2.6).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+No Prisma writes added or modified — pure read-path resilience.
+Checklist not required.
+
+### Outstanding
+
+- The underlying R12 schema drift for `unified_transactions` still
+  needs a proper additive migration (same pattern as PR #549's
+  `user_preferences` sync). Tracked as follow-up — once the cold-
+  start signal stabilises with this PR, we'll know whether the
+  drift was a real cause or just the timeout was.
+- A connection-pool warmup or `pgBouncer` would address the
+  cold-start latency more comprehensively. Tracked separately —
+  out of scope for this PR.
