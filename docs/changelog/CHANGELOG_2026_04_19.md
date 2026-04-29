@@ -237,6 +237,189 @@ parent had no fixed height reference.
 - None for this fix. Desktop rendering unchanged (all `sm:`
   breakpoints preserve the current look from 640px up).
 
+## Session: claude/review-monitrax-docs-2hNSa — Bank import FK violation + UX cleanup
+
+### Changes Made
+
+#### 1. Fix: `/api/bank/import` foreign-key crash
+
+- **Type:** Fix (data integrity)
+- **Scope:** `app/api/bank/import/route.ts`
+- **Symptom:** Uploading a QIF/CSV/OFX file from the onboarding
+  AccountsStep returned:
+  > Invalid `prisma.unifiedTransaction.createMany()` invocation:
+  > Foreign key constraint violated: `unified_transactions_accountId_fkey`
+- **Root cause:** When the request didn't supply an `accountId` (the
+  ImportWizard's "None - Import without account" option, or no
+  selection at all), the server fell back to `tx.bankAccountId ?? accountId ?? ''`.
+  An empty-string `accountId` was written into `UnifiedTransaction`,
+  which is a non-nullable FK to `Account` — Postgres rejected the
+  bulk insert and the whole import aborted.
+- **Solution:**
+  - Auto-create an Account from the parsed file when no `accountId`
+    is supplied (matches the wizard tile copy: *"We'll parse it and
+    create an account with the closing balance as the anchor point."*).
+    The new account uses `metadata.detectedBank` for the institution,
+    `closingBalance` for `currentBalance`, and `balanceSource = 'IMPORT'`.
+  - Backfill the `BankImportFile.accountId` so the audit trail links
+    the upload to the materialised account.
+  - Replace the `?? ''` fallback in the `createMany` map with a
+    defensive guard that throws with a descriptive message if the
+    auto-create branch ever fails to run (it shouldn't, by invariant).
+  - Skip the post-import balance update when we just created the
+    account — the create call already wrote the closing balance.
+  - Return `createdAccount` in the response so the client can
+    update its local state without a follow-up `GET /api/accounts`.
+
+#### 2. UX: remove "Import without account"; require explicit selection
+
+- **Type:** UX / safety
+- **Scope:** `components/bank/ImportWizard.tsx`
+- **Why:** Per user request — the "None - Import without account"
+  option was structurally broken (see above) and is no longer a
+  valid path. Users must either pick an existing account or create
+  one inline before importing.
+- **Solution:**
+  - Removed the `<SelectItem value="none">None - Import without account</SelectItem>`
+    option entirely.
+  - When the user has no existing accounts, the dropdown is
+    replaced by an instructional helper ("No accounts yet — create
+    one below to import these transactions into.").
+  - The "Create account" button auto-prefills the institution from
+    `metadata.detectedBank` and the balance from
+    `balanceInfo.closingBalance` so the user only has to confirm.
+  - Disabled the "Import N Transactions" CTA when no account is
+    selected (with a tooltip hint).
+  - Cleaned up the now-stale `selectedAccount !== 'none'` check
+    in the balance-update toggle.
+
+#### 3. Fix: imported account row showed $0 balance in onboarding
+
+- **Type:** Fix (display)
+- **Scope:** `components/bank/ImportWizard.tsx`,
+  `components/onboarding/wizard/steps/AccountsStep.tsx`
+- **Symptom:** After successfully importing via the inline "Create
+  New Account" panel, the imported account appeared in the
+  onboarding AccountsStep with `$0` balance and the Cash/Net
+  summary tiles read `$0` even though the user had typed a real
+  balance during account creation.
+- **Root cause:** The `onAccountCreated` callback only forwarded
+  `{ id, name, type }`. AccountsStep's `handleImportAccountCreated`
+  defaulted `currentBalance` to `0` because it had nothing else to
+  use.
+- **Solution:**
+  - Added `currentBalance?: number` to ImportWizard's `Account`
+    interface and forwarded the user-entered (or server-returned)
+    balance through `onAccountCreated`.
+  - Updated `AccountsStep.handleImportAccountCreated` to use the
+    forwarded `currentBalance` (falling back to `0` only if the
+    callback omits it).
+  - Passed `currentBalance` through the `accounts` prop list so
+    re-imports into existing IMPORT accounts stay consistent.
+
+### Files Modified
+
+- `app/api/bank/import/route.ts` — auto-create account when no
+  `accountId`; backfill `BankImportFile.accountId`; defensive guard
+  against empty-string FK; return `createdAccount` in response.
+- `components/bank/ImportWizard.tsx` — remove "None" option,
+  require explicit selection, prefill new-account form from file
+  metadata, forward real `currentBalance` through `onAccountCreated`,
+  disable Import CTA without selection.
+- `components/onboarding/wizard/steps/AccountsStep.tsx` — accept
+  and use forwarded `currentBalance` from import; pass balance
+  through to ImportWizard accounts prop.
+
+### Build Status
+
+- [x] `npm run build` passes (Next.js 15.2.6, no new TS errors)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+`prisma.bankImportFile.update(...)` — backfills `accountId` on the
+import file row this same request just created with `accountId: null`.
+
+1. **`where` clause matches:** `{ id: importFile.id }` — the row this
+   request created seconds earlier on line ~135. Cannot match any
+   other row.
+2. **Columns overwritten:** `accountId` only. Previous value was the
+   request-supplied `null`; new value is the `id` of the Account this
+   same code path just created above.
+3. **Guard:** The `where` clause is the synthetic UUID generated for
+   this import file. No other row can hold that id.
+
+User confirmation: NOT REQUIRED — synthetic-key guard, only mutates
+a row created earlier in the same request.
+
+`prisma.account.create(...)` — net new row, not a destructive op.
+
+### Outstanding
+
+- The `<SelectItem value="none">` removal applies to all callers of
+  `ImportWizard`, not just onboarding. Verified by grep: ImportWizard
+  is only used from `AccountsStep` and `app/dashboard/transactions/import`.
+  The post-onboarding import flow benefits from the same fix (the
+  "None" option was equally broken there).
+
+## Session: claude/review-monitrax-docs-2hNSa — Launch dashboard hang + silent failures
+
+### Changes Made
+
+#### 1. Fix: bulk-create transaction timeout
+
+- **Type:** Fix (reliability)
+- **Scope:** `app/api/onboarding/bulk-create/route.ts`
+- **Symptom:** Clicking "Launch dashboard" on the Review step
+  briefly showed a "Launching…" spinner, then quietly returned to
+  the Review screen. Nothing happened, no redirect, no message.
+- **Root cause:** The bulk-create handler wraps every onboarding
+  write in a single `prisma.$transaction(...)`. Prisma's default
+  interactive-transaction timeout is **5 seconds**, but a typical
+  payload (3 properties × [property + loan + rent + expenses],
+  1+ accounts, 9+ general expenses, household profile + members +
+  pets, super accounts, debts, assets) issues 50–80 sequential
+  writes. On a slow Cloud SQL connection, or after a cold start,
+  the cumulative latency easily exceeds 5s and the transaction
+  aborts with `Transaction not found / closed`. The route caught
+  the error and returned 500 — but the client (see #2 below) just
+  swallowed the error.
+- **Solution:** Pass explicit options to `$transaction`:
+  - `timeout: 30_000` — generous ceiling, well below the Vercel
+    function timeout, matches comparable bulk-write endpoints in
+    this codebase.
+  - `maxWait: 10_000` — give the request 10 s to acquire a tx slot
+    during traffic spikes instead of failing fast at 2 s default.
+
+#### 2. Fix: silent submit failures in WizardContainer
+
+- **Type:** Fix (UX)
+- **Scope:** `components/onboarding/wizard/WizardContainer.tsx`
+- **Symptom:** When `onComplete(data)` rejected (e.g. the timeout
+  above, a validation error, a 500), `handleSubmit` only called
+  `console.error(...)` and reset `isSubmitting`. The user saw the
+  spinner stop with **no indication** of what went wrong.
+- **Solution:**
+  - Added `submitError` state. Cleared at the start of every
+    submit attempt; populated from the thrown value's `message`
+    (or a generic fallback when the thrown value isn't an Error).
+  - Rendered an inline error banner above the Back / Launch
+    buttons in the Footer with a clear title ("Couldn't finish
+    setup.") and the server-side message. The banner reassures
+    the user that their answers are still saved (autosave + the
+    draft persistence layer guarantee this), so they can hit
+    Launch dashboard again without redoing the wizard.
+
+### Files Modified
+
+- `app/api/onboarding/bulk-create/route.ts` — pass `{ maxWait,
+  timeout }` to `prisma.$transaction(...)`.
+- `components/onboarding/wizard/WizardContainer.tsx` — track
+  `submitError`, render error banner in Footer.
+
+### Build Status
+
+- [x] `npm run build` passes (Next.js 15.2.6).
+
 ### Build Status
 
 - [x] TypeScript compilation passes across all PRs
