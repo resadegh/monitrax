@@ -424,3 +424,107 @@ existing categorisation rules. No new entry point needed.
   `?focus=` redirect).
 - Redirect `/dashboard/accounts` → `/dashboard/balances`.
 - Redirect `/dashboard/loans` → `/dashboard/balances`.
+
+## Session: claude/balances-add-source-picker-2hNSa (continued) — Delete in detail dialog + retry on intermittent /api/loans
+
+### User report
+
+1. **No delete option for accounts** — only Edit was visible in the
+   `AccountDetailDialog`. The legacy `/dashboard/accounts` page had
+   a tile-row delete button, but the new dialog-first flow on
+   Balances had no way to remove an account.
+2. **Intermittent "Couldn't load loans" banner still appears** on
+   Balances even after PR #551 (which split `unified_transactions`
+   enrichment out as best-effort).
+
+### Changes
+
+#### 1. Delete action in `AccountDetailDialog`
+
+- New `onDelete?` prop. When supplied, a rose-coloured **Delete**
+  button appears on the left of the dialog footer (visually
+  separated from the safe Close / Edit pair on the right).
+- Click → opens a Radix `AlertDialog` with the account name,
+  institution, and an explicit warning about detached transactions
+  and offset relationships. Two-step delete; no `confirm()` prompt.
+- `deletePending` blocks double-clicks while the API call is in
+  flight; both AlertDialog buttons disable; the action button
+  flips to "Deleting…".
+- On success the dialog auto-closes. On failure the error is
+  logged and `deletePending` resets so the user can retry without
+  reopening the confirmation.
+
+Wired on:
+- **`/dashboard/balances`** — `handleDeleteAccount` does
+  `DELETE /api/accounts/{id}` then `reloadData()`.
+- **`/dashboard/accounts`** (legacy) — same handler inline; the
+  tile-row delete buttons stay as a parallel path for now.
+
+The DELETE endpoint, body shape, and behaviour are unchanged —
+this is purely a new UI entry point for the existing API.
+
+#### 2. Retry-on-5xx for primary fetches on Balances
+
+`reloadData()` now wraps `/api/accounts` and `/api/loans` in a
+single-retry helper:
+
+```ts
+const fetchWithRetry = async (url, label) => {
+  try { return await attempt(); }
+  catch (err) {
+    if (status code is < 500) throw;          // 4xx is real, surface
+    await sleep(600);
+    return attempt();                          // one retry only
+  }
+};
+```
+
+Why: PR #551 split `unified_transactions` out as best-effort, but
+the *primary* `prisma.loan.findMany` / `prisma.account.findMany`
+can still timeout on Vercel cold-starts (fresh function instance
++ Cloud SQL reconnect). A single retry after 600ms catches those
+one-shot failures without showing the cached-data banner.
+
+If the second attempt also fails, the existing per-section error
+state takes over (PR #550 behaviour preserved — section renders
+with an amber "Couldn't load latest balances. Showing cached
+data." hint).
+
+Why **single** retry, not exponential backoff: the user is
+waiting for the page to render. 600ms is the upper bound on
+tolerable extra latency. Beyond that we'd rather surface the
+cached-data hint and let the user manually refresh.
+
+Why **only on 5xx / network**: a 401, 403, or 404 is a real
+authorisation/state error and retrying would just delay the user
+seeing it. The status code is parsed back out of the thrown
+Error message rather than re-issuing the fetch — keeps the retry
+helper free of knowledge about the underlying response shape.
+
+### Files Modified
+
+- `components/accounts/AccountDetailDialog.tsx` — `onDelete`
+  prop, Delete button, AlertDialog confirmation, `deletePending`
+  state.
+- `app/dashboard/balances/page.tsx` — `handleDeleteAccount`
+  wired to dialog; `fetchWithRetry` wraps the two primary
+  fetches in `reloadData`.
+- `app/dashboard/accounts/page.tsx` — `onDelete` wired to the
+  shared dialog using the same DELETE call the legacy
+  `handleDelete` always used.
+
+### CLAUDE.md compliance
+
+- **§12.1 / §12.2 / §12.3:** delete logic deduplicated — both
+  pages call DELETE /api/accounts/{id} via the dialog's
+  caller-supplied `onDelete`. **No calc engines added or
+  modified.** `fetchWithRetry` is a presentational/network helper,
+  not a calc engine.
+- **§12.11 (Destructive write checklist):** the new entry point
+  invokes the existing DELETE endpoint. No Prisma writes added or
+  modified in app code; the underlying endpoint already had its
+  destructive-write semantics established.
+
+### Build Status
+
+- [x] `npm run build` passes (Next.js 15.2.6).
