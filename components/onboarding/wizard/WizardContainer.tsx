@@ -315,14 +315,77 @@ export function WizardContainer({
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, mode, isSubmitting, onClose]);
 
-  const canProceed = useMemo(() => {
+  // Per-step validation. A step's `canProceed` returning `false`
+  // disables Continue / Launch dashboard, and `blockedReason`
+  // (computed alongside) is rendered as an inline hint above the
+  // footer buttons so the user knows what's missing.
+  //
+  // We mirror the validation that bulk-create enforces server-side
+  // (see app/api/onboarding/bulk-create/route.ts) so the user can
+  // never reach the Review step in a state that would 400 the
+  // submit. Previously the only validated step was Welcome, which
+  // meant a user could complete the entire wizard, click Launch
+  // dashboard, and only then discover that e.g. a Property was
+  // missing a purchase date.
+  const { canProceed, blockedReason } = useMemo<{
+    canProceed: boolean;
+    blockedReason: string | null;
+  }>(() => {
     switch (currentStep?.id) {
       case 'welcome':
-        return !!data.profileType;
+        if (!data.profileType) {
+          return { canProceed: false, blockedReason: null };
+        }
+        return { canProceed: true, blockedReason: null };
+
+      case 'properties': {
+        // bulk-create rejects properties without a purchase date
+        // (used for CGT, depreciation, equity history). Surface the
+        // first offender's name so the user knows where to look.
+        const missing = data.properties.find(
+          (p) => !p.purchaseDate || !String(p.purchaseDate).trim()
+        );
+        if (missing) {
+          const label =
+            missing.name?.trim() ||
+            missing.address?.trim() ||
+            'one of your properties';
+          return {
+            canProceed: false,
+            blockedReason: `Add a purchase date for "${label}" before continuing.`,
+          };
+        }
+        return { canProceed: true, blockedReason: null };
+      }
+
+      case 'assets': {
+        // Same contract as properties — bulk-create rejects assets
+        // without a purchase date.
+        const missing = data.assets.find(
+          (a) => !a.purchaseDate || !String(a.purchaseDate).trim()
+        );
+        if (missing) {
+          const label =
+            missing.name?.trim() ||
+            missing.type ||
+            'one of your assets';
+          return {
+            canProceed: false,
+            blockedReason: `Add a purchase date for "${label}" before continuing.`,
+          };
+        }
+        return { canProceed: true, blockedReason: null };
+      }
+
       default:
-        return true;
+        return { canProceed: true, blockedReason: null };
     }
-  }, [currentStep?.id, data.profileType]);
+  }, [
+    currentStep?.id,
+    data.profileType,
+    data.properties,
+    data.assets,
+  ]);
 
   // Don't render if closed (modal mode only — page mode is always
   // "open" when routed). MUST be after all hooks.
@@ -512,6 +575,21 @@ export function WizardContainer({
             <strong className="font-semibold">Couldn’t finish setup.</strong>{' '}
             {submitError} Please try again — your answers are still saved.
           </div>
+        </div>
+      )}
+      {/*
+       * Inline hint when the user can't continue because a required
+       * field on the current step is missing. Using amber (not rose)
+       * so it reads as a gentle nudge rather than an error — the
+       * user hasn't done anything wrong, they just haven't finished.
+       */}
+      {!submitError && blockedReason && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="min-w-0">{blockedReason}</span>
         </div>
       )}
 
