@@ -156,6 +156,79 @@ export const POST = withPermission('account.write', async (request, auth) => {
           );
         }
 
+        // Auto-create an account when none was supplied.
+        //
+        // Why: `UnifiedTransaction.accountId` is a non-nullable FK to
+        // `Account` (see prisma/schema.prisma model UnifiedTransaction).
+        // The previous implementation fell back to the empty string
+        // (`tx.bankAccountId ?? accountId ?? ''`) when neither the
+        // transaction nor the request supplied an accountId, which made
+        // `prisma.unifiedTransaction.createMany` fail with
+        // `Foreign key constraint violated: unified_transactions_accountId_fkey`
+        // and abort the entire import.
+        //
+        // The wizard tile copy on /onboarding explicitly promises this
+        // behaviour: "We'll parse it and create an account with the
+        // closing balance as the anchor point." Honour that promise on
+        // the server so callers don't have to make a separate POST to
+        // /api/accounts before importing.
+        let resolvedAccountId: string | null = accountId;
+        let createdAccount: {
+          id: string;
+          name: string;
+          type: string;
+          institution: string | null;
+          currentBalance: number;
+        } | null = null;
+
+        if (!resolvedAccountId && parsedFile.transactions.length > 0) {
+          const detectedBank = parsedFile.metadata?.detectedBank as
+            | string
+            | undefined;
+          const baseName = filename
+            .replace(/\.[^/.]+$/, '')
+            .replace(/[_-]+/g, ' ')
+            .trim();
+          const accountName = detectedBank
+            ? `${detectedBank} (Imported)`
+            : `Imported — ${baseName || 'Account'}`;
+          const openingBalance = parsedFile.closingBalance ?? 0;
+
+          const newAccount = await prisma.account.create({
+            data: {
+              id: randomUUID(),
+              userId,
+              name: accountName,
+              type: 'TRANSACTIONAL',
+              institution: detectedBank ?? null,
+              currentBalance: openingBalance,
+              balanceSource: 'IMPORT',
+              balanceLastUpdatedAt: new Date(),
+              lastImportedBalance:
+                parsedFile.closingBalance ?? null,
+            },
+          });
+          resolvedAccountId = newAccount.id;
+          createdAccount = {
+            id: newAccount.id,
+            name: newAccount.name,
+            type: newAccount.type,
+            institution: newAccount.institution,
+            currentBalance: newAccount.currentBalance,
+          };
+
+          // Backfill the import file's accountId so the audit trail
+          // links the upload to the account it materialised. This is a
+          // §12.11-class write but it only ever touches the row this
+          // request just created (importFile.id), changing accountId
+          // from the request-supplied null to the account we just
+          // created above.
+          await prisma.bankImportFile.update({
+            where: { id: importFile.id },
+            data: { accountId: resolvedAccountId },
+          });
+        }
+
         // Store raw transactions
         const rawTransactionData = parsedFile.transactions.map((tx, index) => ({
           id: randomUUID(),
@@ -183,7 +256,7 @@ export const POST = withPermission('account.write', async (request, auth) => {
         const normalisationResult = normaliseTransactions(
           parsedFile.transactions,
           importFile.id,
-          accountId ?? undefined
+          resolvedAccountId ?? undefined
         );
 
         // Get existing transactions for duplicate detection
@@ -311,8 +384,24 @@ export const POST = withPermission('account.write', async (request, auth) => {
           });
         }
 
-        // Create unified transactions with links
+        // Create unified transactions with links.
+        //
+        // `resolvedAccountId` is guaranteed non-null here whenever
+        // `categorisationResult.transactions.length > 0`: the auto-create
+        // block above runs whenever `parsedFile.transactions` is non-empty
+        // and no account was supplied, and `categorisationResult` is a
+        // strict subset of `parsedFile.transactions`. The defensive
+        // throw below documents that invariant and prevents the
+        // empty-string-FK regression that previously caused
+        // `unified_transactions_accountId_fkey` violations.
         if (categorisationResult.transactions.length > 0) {
+          if (!resolvedAccountId) {
+            throw new Error(
+              'No account available for imported transactions. ' +
+                'This indicates a bug — the auto-create branch should have run.'
+            );
+          }
+          const safeAccountId = resolvedAccountId;
           await prisma.unifiedTransaction.createMany({
             data: categorisationResult.transactions.map((tx, index) => {
               const link = effectiveLinks[index];
@@ -321,7 +410,7 @@ export const POST = withPermission('account.write', async (request, auth) => {
               return {
                 id: tx.id,
                 userId,
-                accountId: tx.bankAccountId ?? accountId ?? '',
+                accountId: tx.bankAccountId ?? safeAccountId,
                 date: tx.date,
                 amount: tx.amount,
                 direction: tx.direction,
@@ -362,8 +451,15 @@ export const POST = withPermission('account.write', async (request, auth) => {
           data: { isProcessed: true },
         });
 
-        // Update account balance if requested and an account was linked
-        if (accountId && updateAccountBalance && parsedFile.closingBalance !== undefined) {
+        // Update account balance if requested and an account was linked.
+        // Skip when we just auto-created the account above — the create
+        // call already wrote the closing balance with source=IMPORT.
+        if (
+          accountId &&
+          !createdAccount &&
+          updateAccountBalance &&
+          parsedFile.closingBalance !== undefined
+        ) {
           // Check if account is Basiq-connected (should not override Basiq balance)
           const account = await prisma.account.findUnique({
             where: { id: accountId },
@@ -387,6 +483,11 @@ export const POST = withPermission('account.write', async (request, auth) => {
         return NextResponse.json({
           success: true,
           fileId: importFile.id,
+          // When the request didn't supply an accountId we auto-created
+          // one above. Return it so the client (e.g. the onboarding
+          // wizard) can update its local state without a follow-up
+          // GET /api/accounts.
+          createdAccount,
           statistics: {
             total: parsedFile.totalRows,
             imported: categorisationResult.transactions.length,
