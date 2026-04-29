@@ -25,6 +25,7 @@ import { formatCurrency } from '@/lib/utils/formatters';
 // canonical `calculateEffectivePrincipal(principal, offsetBalance)`.
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
+import { useBasiqConnect } from '@/hooks/useBasiqConnect';
 import { TransactionImportDialog } from '@/components/bank/TransactionImportDialog';
 import { TransactionReviewPanel } from '@/components/bank/TransactionReviewPanel';
 import { AccountDetailDialog } from '@/components/accounts/AccountDetailDialog';
@@ -118,9 +119,13 @@ function AccountsPageContent() {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
 
-  // Basiq Open Banking state
+  // Basiq Open Banking state. The connect flow itself is owned by
+  // the shared `useBasiqConnect` hook (Phase 1c) so the Balances
+  // page can call the same code path. Sync and disconnect remain
+  // here — they need the per-connection management UI which Phase 2
+  // will migrate to Balances.
   const [basiqConnections, setBasiqConnections] = useState<BasiqConnection[]>([]);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const { isConnecting, connectBank: handleConnectBank } = useBasiqConnect();
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncingConnectionId, setSyncingConnectionId] = useState<string | null>(null);
 
@@ -155,47 +160,9 @@ function AccountsPageContent() {
     }
   };
 
-  const handleConnectBank = async () => {
-    setIsConnecting(true);
-
-    try {
-      // Connect using profile mobile from user settings
-      const response = await fetch('/api/basiq/connect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({}),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Open Basiq consent URL in new window
-        window.open(result.data.consentUrl, '_blank', 'width=600,height=700');
-        // Show message to user
-        alert('A new window has opened for you to connect your bank. After connecting, click "Sync" to import your accounts.');
-      } else {
-        const error = await response.json();
-        // If mobile is required, redirect to profile settings
-        if (error.error?.code === 'MOBILE_REQUIRED') {
-          const shouldRedirect = confirm(
-            'To connect your bank, you need to add your Australian mobile number to your profile.\n\nClick OK to go to Profile Settings.'
-          );
-          if (shouldRedirect) {
-            router.push('/dashboard/settings/profile');
-          }
-        } else {
-          alert(`Failed to connect bank: ${error.error?.message || 'Unknown error'}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error connecting bank:', error);
-      alert('Failed to connect bank. Please try again.');
-    } finally {
-      setIsConnecting(false);
-    }
-  };
+  // `handleConnectBank` provided by the shared useBasiqConnect hook
+  // above — preserves the legacy behaviour byte-for-byte (consent URL
+  // opens in a new window, MOBILE_REQUIRED redirects to profile, etc.).
 
   const handleSyncConnection = async (connectionId?: string) => {
     setSyncingConnectionId(connectionId || 'all');

@@ -173,6 +173,67 @@ existing logic on legacy and current pages is correct — Phase 1b
 is purely visual / flow, no behavioural change to forms,
 validation, API contracts, or document-linking.
 
+### Phase 1c — Source picker + Connect Bank on Balances (this session, 2026-04-29)
+
+User direction:
+> "when the BASIQ is enabled the bank connection will bring accounts
+> and loans, also loans also have transactions so the import should
+> be enabled for the loans as well. also I want the import file to
+> be higher value than the manual create."
+
+**Toolbar layout on `/dashboard/balances`:**
+
+```
+[🏦 Connect Bank]  [+ Account]  [+ Loan]
+   (Basiq, accounts + loans — recommended)
+```
+
+- **Connect Bank** is now a top-level toolbar button. Wired to a
+  new shared `useBasiqConnect()` hook (`hooks/useBasiqConnect.ts`)
+  so the legacy `/dashboard/accounts` page and the new Balances
+  page invoke the same code path. Behaviour, body shape, error
+  handling, and copy preserved EXACTLY from the legacy
+  `handleConnectBank()` implementation.
+- **`+ Account`** opens a 2-tile picker (`AddSourcePicker`):
+  - **Import bank statement** (recommended, emerald) → opens
+    `TransactionImportDialog` (existing component, no changes).
+    Auto-creates the account from the file's closing balance when
+    no account is selected.
+  - **Enter manually** (secondary, blue) → opens
+    `AccountFormDialog` (Phase 1b component).
+- **`+ Loan`** opens a 2-tile picker:
+  - **Upload loan document** (recommended, emerald) → opens
+    `LoanFormDialog`. The form already hosts `FormDocumentUpload`
+    (Phase 19) at the top — drop a PDF statement / contract and
+    Gemini AI auto-fills lender / principal / rate / term /
+    repayment.
+  - **Enter manually** (secondary, blue) → opens the same
+    `LoanFormDialog` without the document-upload affordance
+    emphasised. Same component, no duplication.
+
+**Loans don't get a "Import transaction file" tile** because the
+existing `TransactionImportDialog` only writes into `Account`
+rows (`UnifiedTransaction.accountId` is a non-nullable FK). Loan
+repayments still flow through Basiq syncing the linked payment
+account, or through bank-statement imports that match repayment
+debits to the loan via existing categorisation rules. Neither
+needs a new entry point on Balances.
+
+**Components reused (no recreation, per CLAUDE.md §12.1-§12.3):**
+
+- `TransactionImportDialog` — used as-is.
+- `AccountFormDialog`, `LoanFormDialog` — Phase 1b components,
+  no changes.
+- `useBasiqConnect()` — new hook lifting the legacy connect
+  function. Sync and disconnect remain on the legacy page (Phase
+  2 will migrate them alongside the management UI).
+- `AddSourcePicker` — new generic 2-tile picker primitive in
+  `components/ui/`. Pure presentation; the parent owns the tile
+  callbacks.
+
+**Calculation/contract changes: zero.** Same Basiq endpoints, same
+import body shape, same form submit handlers as Phase 1b.
+
 ### Phase 2 — Retire `/dashboard/accounts` and `/dashboard/loans` (planned)
 
 - Migrate `Connect Bank` (Basiq) toolbar action to

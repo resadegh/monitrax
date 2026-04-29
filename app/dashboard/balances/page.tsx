@@ -32,6 +32,10 @@ import {
   Building,
   Zap,
   ChevronRight,
+  Upload,
+  Pencil,
+  FileText,
+  Loader2,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import {
@@ -47,6 +51,9 @@ import {
   type LoanFormPropertyOption,
   type LoanFormAssetOption,
 } from '@/components/loans/LoanFormDialog';
+import { AddSourcePicker } from '@/components/ui/AddSourcePicker';
+import { TransactionImportDialog } from '@/components/bank/TransactionImportDialog';
+import { useBasiqConnect } from '@/hooks/useBasiqConnect';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
@@ -179,6 +186,24 @@ function BalancesPageContent() {
   >([]);
   const [loanFormAssets, setLoanFormAssets] = useState<LoanFormAssetOption[]>([]);
   const [loanFormLookupsLoaded, setLoanFormLookupsLoaded] = useState(false);
+
+  // Phase 1c: data-source picker state. The "+ Account" / "+ Loan"
+  // toolbar buttons open a small 2-tile picker (Import / Manual) per
+  // user direction (CHANGELOG_2026_04_29). Recommended path is
+  // surfaced first; manual is the secondary tile.
+  const [accountPickerOpen, setAccountPickerOpen] = useState(false);
+  const [loanPickerOpen, setLoanPickerOpen] = useState(false);
+
+  // Phase 1c: TransactionImportDialog inline on Balances. Opened
+  // from the account-source picker's Import tile. Body shape and
+  // submit flow are handled internally by the existing dialog.
+  const [importOpen, setImportOpen] = useState(false);
+
+  // Phase 1c: Basiq Connect Bank, top-level toolbar action. Same
+  // hook used by the legacy /dashboard/accounts page so behaviour
+  // (consent URL, MOBILE_REQUIRED redirect, error copy) is byte-for-
+  // byte identical.
+  const { isConnecting, connectBank } = useBasiqConnect();
 
   const openAccountDetail = (account: AccountRow) => {
     setDetailAccount(account);
@@ -377,10 +402,31 @@ function BalancesPageContent() {
               </h1>
             </div>
             <div className="flex items-center gap-2">
+              {/*
+               * Phase 1c: Connect Bank promoted to a top-level toolbar
+               * button (Basiq returns both deposit/credit accounts AND
+               * loan accounts when the institution exposes them, so
+               * this single action seeds both Cash and Debt sections).
+               * Recommended path — placed first.
+               */}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => void connectBank()}
+                disabled={isConnecting}
+                className="hidden sm:inline-flex bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+              >
+                {isConnecting ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Landmark className="w-4 h-4 mr-1.5" />
+                )}
+                Connect Bank
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={openAccountCreate}
+                onClick={() => setAccountPickerOpen(true)}
                 className="hidden sm:inline-flex"
               >
                 <Plus className="w-4 h-4 mr-1.5" /> Account
@@ -388,7 +434,7 @@ function BalancesPageContent() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => void openLoanCreate()}
+                onClick={() => setLoanPickerOpen(true)}
                 className="hidden sm:inline-flex"
               >
                 <Plus className="w-4 h-4 mr-1.5" /> Loan
@@ -582,6 +628,97 @@ function BalancesPageContent() {
         }))}
         assets={loanFormAssets}
         onSaved={() => {
+          void reloadData();
+        }}
+      />
+
+      {/*
+       * Phase 1c: 2-tile source picker dialogs. Opened by the
+       * "+ Account" / "+ Loan" toolbar buttons. Import is the
+       * recommended (first) tile per user direction; manual entry is
+       * secondary. Connect Bank lives separately at the top of the
+       * toolbar — Basiq covers both accounts and loans, so it doesn't
+       * belong inside either picker.
+       */}
+      <AddSourcePicker
+        open={accountPickerOpen}
+        onOpenChange={setAccountPickerOpen}
+        title="Add an account"
+        description="How would you like to add this account?"
+        tiles={[
+          {
+            icon: Upload,
+            title: 'Import bank statement',
+            description:
+              'Upload a CSV, OFX, or QIF file — we’ll create the account using the closing balance.',
+            recommended: true,
+            accent: 'emerald',
+            onSelect: () => setImportOpen(true),
+          },
+          {
+            icon: Pencil,
+            title: 'Enter manually',
+            description: 'Type the account name, balance, and details yourself.',
+            accent: 'blue',
+            onSelect: () => openAccountCreate(),
+          },
+        ]}
+      />
+
+      <AddSourcePicker
+        open={loanPickerOpen}
+        onOpenChange={setLoanPickerOpen}
+        title="Add a loan"
+        description="How would you like to add this loan?"
+        tiles={[
+          {
+            icon: FileText,
+            title: 'Upload loan document',
+            description:
+              'Drop a PDF statement or contract — we’ll auto-fill rate, principal, and repayment.',
+            recommended: true,
+            accent: 'emerald',
+            // The LoanFormDialog already hosts FormDocumentUpload at
+            // the top of the form (Phase 19). For now this tile just
+            // opens the same dialog — the upload area is the first
+            // thing the user sees. Phase 1d (if needed) can add an
+            // explicit `focusUpload` prop to scroll/highlight it.
+            onSelect: () => void openLoanCreate(),
+          },
+          {
+            icon: Pencil,
+            title: 'Enter manually',
+            description: 'Type the lender, balance, rate, and repayment yourself.',
+            accent: 'blue',
+            onSelect: () => void openLoanCreate(),
+          },
+        ]}
+      />
+
+      {/*
+       * Phase 1c: TransactionImportDialog hosted on Balances.
+       * Opened from the account-source picker's Import tile.
+       * `accounts` prop is the existing-IMPORT-account list so the
+       * import flow can either create a new account from the file
+       * (when none is selected) or import into an existing one.
+       */}
+      <TransactionImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        accounts={accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          institution: a.institution ?? undefined,
+        }))}
+        onImportComplete={() => {
+          setImportOpen(false);
+          void reloadData();
+        }}
+        onAccountCreated={() => {
+          // The import flow may auto-create an account from the
+          // statement's closing balance — refresh so it shows up in
+          // the Cash section immediately.
           void reloadData();
         }}
       />

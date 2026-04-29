@@ -330,3 +330,97 @@ populate.
 - Redirect `/dashboard/loans` → `/dashboard/balances`.
 - Sidebar cleanup if any legacy entries still point at the old
   pages.
+
+## Session: claude/balances-add-source-picker-2hNSa — Phase 1c (Connect Bank toolbar + 2-tile source picker)
+
+### User direction (2026-04-29)
+
+> "when the BASIQ is enabled the bank connection will bring accounts
+> and loans, also loans also have transactions so the import should
+> be enabled for the loans as well. also I want the import file to
+> be higher value than the manual create."
+
+Plus an explicit ask to **mirror the wizard's `AccountsDataSourceTiles`
+hierarchy**: Basiq > Import > Manual. After clarifying with the user
+that "import for loans" maps to **Option A** (upload a PDF
+document → AI auto-fill via the existing `FormDocumentUpload`),
+this session ships:
+
+### Changes
+
+**Toolbar on `/dashboard/balances`:**
+
+```
+[🏦 Connect Bank]  [+ Account]  [+ Loan]
+   ↑ promoted to top-level (Basiq covers accounts AND loans)
+```
+
+**`+ Account` click → 2-tile picker (`AddSourcePicker`):**
+
+1. **Import bank statement** (Recommended, emerald) →
+   `TransactionImportDialog`. Auto-creates account from file's
+   closing balance when none is selected.
+2. **Enter manually** (blue) → `AccountFormDialog` (Phase 1b).
+
+**`+ Loan` click → 2-tile picker:**
+
+1. **Upload loan document** (Recommended, emerald) →
+   `LoanFormDialog` with the existing Phase 19 `FormDocumentUpload`
+   at the top of the form. Drop a PDF, Gemini AI fills lender /
+   principal / rate / term / repayment.
+2. **Enter manually** (blue) → same `LoanFormDialog`.
+
+**No "Import transaction file" tile for loans** — `UnifiedTransaction.accountId`
+is non-nullable, so transactions can't exist standalone against a
+loan. Loan repayment history flows through Basiq sync or through
+bank-statement imports that match repayment debits to the loan via
+existing categorisation rules. No new entry point needed.
+
+### Files Modified
+
+- `hooks/useBasiqConnect.ts` — **new file**. Lifts the legacy
+  `handleConnectBank()` from `/dashboard/accounts/page.tsx` into a
+  shared hook. Used by both the legacy page (replacing its inline
+  function) and the new Balances toolbar button. Behaviour, body
+  shape, MOBILE_REQUIRED redirect, error copy preserved EXACTLY.
+- `components/ui/AddSourcePicker.tsx` — **new file**. Generic
+  2-tile picker primitive. Pure presentation, caller-owned tile
+  callbacks. Closes the picker before invoking the tile's handler
+  so dialogs don't stack.
+- `app/dashboard/balances/page.tsx` — Connect Bank top-level
+  button (`useBasiqConnect`); `+ Account` and `+ Loan` open the
+  source picker; `TransactionImportDialog` mounted on the page
+  with `accounts` prop populated from the existing `accounts`
+  state; reload-on-save / reload-on-account-created callbacks
+  trigger `reloadData()`.
+- `app/dashboard/accounts/page.tsx` — replaced the local
+  `handleConnectBank` function with a call to the shared
+  `useBasiqConnect()` hook. Sync / disconnect / connection-list
+  management UI remain (Phase 2 will migrate them).
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` —
+  added §7's "Phase 1c — Source picker + Connect Bank on
+  Balances" subsection.
+
+### CLAUDE.md compliance
+
+- **§12.1 / §12.2 / §12.3:** `useBasiqConnect()` deduplicates the
+  Basiq connect flow across the two pages. `AddSourcePicker` is a
+  new presentational primitive (no calculation logic). **No calc
+  engine added or modified.**
+- **§6.7 (Entity dialogs):** picker is a 480px focused modal with
+  the same calm visual hierarchy as the wizard's tiles.
+- **§12.11 (Destructive write checklist):** NOT required — pure
+  UI / hook extraction; no Prisma writes added or modified.
+
+### Build Status
+
+- [x] `npm run build` passes (Next.js 15.2.6).
+
+### Outstanding (Phase 2 — when user approves after testing)
+
+- Migrate Basiq sync / disconnect UI to Balances (currently lives
+  on legacy `/dashboard/accounts`).
+- Inline `LoanDetailDialog` on Balances (replace PR #550's
+  `?focus=` redirect).
+- Redirect `/dashboard/accounts` → `/dashboard/balances`.
+- Redirect `/dashboard/loans` → `/dashboard/balances`.
