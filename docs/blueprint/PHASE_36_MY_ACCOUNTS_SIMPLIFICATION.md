@@ -107,9 +107,10 @@ This is a **UI-only refactor**. The data graph in `prisma/schema.prisma` is **no
 - [x] Phase 36 spec doc (this file)
 - [ ] `TRAIL_FRAMEWORK.md` updated to reflect 2-tab My Accounts + Income/Spending under My Budget
 - [x] `/dashboard/balances` page created
-- [x] `/dashboard/activity` page created
+- [x] `/dashboard/activity` page created — first cut (view-only) merged earlier, **rebuilt with full legacy `/transactions` functionality + Apple visuals** in this branch (categorisation, link dialog, import wizard, server-side pagination, all filters); see §8
 - [x] `DashboardLayout.tsx` sidebar updated
 - [ ] Subtle animation utilities added to `globals.css`
+- [x] Legacy `/transactions` URL turned into a permanent redirect to `/dashboard/activity` (preserves bookmarks); see §8
 - [x] Build passes
 - [x] Changelog entry at `docs/changelog/CHANGELOG_2026_04_18.md`
 
@@ -255,3 +256,76 @@ import body shape, same form submit handlers as Phase 1b.
   page — moved as a whole in Phase 2, not piecemeal.
 - Any change to financial calculations — explicitly forbidden in
   Phase 36b per user direction.
+
+## 8. Activity rebuild — full /transactions port + Apple visuals (this PR)
+
+> **Goal:** make `/dashboard/activity` the canonical Transaction Explorer.
+> The first cut of `/dashboard/activity` (merged earlier) was view-only —
+> missing the categorisation workflow (TransactionLinkDialog), the import
+> wizard, server-side pagination, and the full server-side filter set.
+> That is the entire reason `/transactions` exists, and the categorisation
+> loop is the engine behind Phase 29 (recurring matching) and Phase 30
+> (budget vs actual reconciliation). Shipping a nav rename without that
+> workflow would have broken the cleanup loop for every user.
+
+### Approach
+
+Port the **full** legacy `app/(dashboard)/transactions/page.tsx`
+functionality 1:1 into `app/dashboard/activity/page.tsx`, and re-skin the
+result with the same Apple-leaning visual language used by Balances.
+Reduce the legacy `/transactions` URL to a permanent redirect.
+
+### Functionality preserved verbatim
+
+- State, refs, callbacks, dialogs, filters, pagination copied 1:1 from
+  `app/(dashboard)/transactions/page.tsx`
+- Same API surface (`/api/unified-transactions`, `/analytics`, `/api/accounts`)
+- Same `TransactionLinkDialog` and `ImportWizard` imports
+- "Uncategorised first" default preserved — the most important UX nudge
+  in the app; without it, no one categorises and the Phase 29 + 30
+  reconciliation engines starve
+- Navigate-to-next-uncategorised flow inside the dialog still uses
+  `transactionsRef` to avoid stale-closure on the just-refreshed list
+- Server-side pagination (25 / page)
+- Server-side filters: search, account, category, date range, recurring,
+  anomalies, uncategorised, direction, excludeTransfers
+- Linked / Transfer / Recurring / Anomaly indicators
+- AI confidence badges
+
+### Visual layer (Apple-leaning, no behavioural change)
+
+- Hero "What's moving" + warm subtitle
+- 4 click-to-filter summary tiles (Spend / Income / Net / Count) — the
+  click-to-toggle interaction is preserved exactly; only the styling
+  changes (rounded 2xl, soft accent colours, tabular-nums)
+- Filter chip strip with `Recurring` / `Anomalies` / `Advanced` toggles,
+  active-count badge on Advanced
+- Slide-down advanced filter panel for Account / Category / Date range
+- Day-grouped transaction list with day-net subtotals, inside one
+  rounded card per group
+- "Uncategorised first" amber alert downgraded to a calm pill
+- Confidence badge shown ONLY when score < 0.9 — clean rows for the 90%
+  the engine got right, eye drawn to the 10% that need review
+- Pill-style pagination (chevron-left / chevron-right)
+- Subtle `anim-rise-stagger` / `anim-rise` / `anim-fade-in`
+
+### Legacy URL
+
+`app/(dashboard)/transactions/page.tsx` reduced to:
+
+```ts
+import { redirect } from 'next/navigation';
+export default function TransactionsRedirect() {
+  redirect('/dashboard/activity');
+}
+```
+
+This keeps bookmarks, deep links, and any internal `<Link>` to
+`/transactions` working without us tracking down every reference.
+
+### Out of scope for §8
+
+- `/recurring` page — its matching workflow (Phase 29) is non-trivial
+  and deserves its own redesign pass.
+- Sidebar — no change. Activity is already the second My Accounts child
+  from the original Phase 36 PR.
