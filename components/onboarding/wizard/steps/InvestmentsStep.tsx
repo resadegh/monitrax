@@ -389,7 +389,7 @@ export function InvestmentsStep({ data, onUpdate }: InvestmentsStepProps) {
     <WizardStepShell
       icon={<TrendingUp className="h-8 w-8" strokeWidth={1.5} />}
       title="Investments"
-      subtitle="Brokerage accounts, super, managed funds — we'll track performance and yield."
+      subtitle="How you're growing. Track your investments to watch your wealth compound."
     >
       {data.investments.length > 0 && (
         <div className="space-y-3">

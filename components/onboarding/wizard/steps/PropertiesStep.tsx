@@ -19,6 +19,7 @@
  */
 
 import React, { useState } from 'react';
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import {
   Home,
   Plus,
@@ -270,14 +271,16 @@ function PropertyCard({
               }}
               options={PROPERTY_TYPE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
             />
-            <WizardField
-              className="sm:col-span-2"
-              label="Address"
-              placeholder="Street address (optional)"
-              value={property.address}
-              onChange={(e) => onUpdate({ address: e.target.value })}
-              helper="Approximate is fine — used to enrich tax defaults."
-            />
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Address</label>
+              <AddressAutocomplete
+                value={property.address}
+                onChange={(value) => onUpdate({ address: value })}
+                onAddressSelect={(addr) => onUpdate({ address: addr.formatted_address })}
+                placeholder="Start typing an address..."
+              />
+              <p className="text-xs text-muted-foreground">Approximate is fine — used to enrich tax defaults.</p>
+            </div>
             <WizardCurrencyField
               label="Current value"
               required
@@ -303,9 +306,28 @@ function PropertyCard({
                 </div>
               )}
             </div>
+            {/*
+             * Purchase date moved out of the Advanced disclosure.
+             * The bulk-create endpoint rejects properties without a
+             * purchase date (used for CGT, depreciation history) and
+             * users were missing it because the field was hidden
+             * behind the collapsed Advanced section. Surface it as a
+             * primary required field and gate Continue on it via
+             * canProceed in WizardContainer.
+             */}
+            <WizardField
+              className="sm:col-span-2"
+              label="Purchase date"
+              required
+              type="date"
+              max={new Date().toISOString().slice(0, 10)}
+              value={property.purchaseDate || ''}
+              onChange={(e) => onUpdate({ purchaseDate: e.target.value })}
+              helper="Used for CGT and depreciation — approximate month/year is fine"
+            />
           </div>
 
-          {/* Advanced disclosure: purchase price + purchase date */}
+          {/* Advanced disclosure: purchase price (date moved out — required) */}
           <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
             <button
               type="button"
@@ -314,7 +336,7 @@ function PropertyCard({
             >
               <span className="flex items-center gap-1.5">
                 <AdvancedIcon className="h-3.5 w-3.5" />
-                Advanced details (purchase price & date)
+                Advanced details (purchase price)
               </span>
               {showAdvanced ? (
                 <ChevronUp className="h-3.5 w-3.5" />
@@ -329,14 +351,6 @@ function PropertyCard({
                   value={property.purchasePrice}
                   onChange={(v) => onUpdate({ purchasePrice: v })}
                   helper="What you originally paid"
-                />
-                <WizardField
-                  label="Purchase date"
-                  type="date"
-                  max={new Date().toISOString().slice(0, 10)}
-                  value={property.purchaseDate || ''}
-                  onChange={(e) => onUpdate({ purchaseDate: e.target.value })}
-                  helper="Used for CGT and depreciation — approximate month/year is fine"
                 />
               </div>
             )}
@@ -592,7 +606,7 @@ export function PropertiesStep({ data, onUpdate }: PropertiesStepProps) {
     <WizardStepShell
       icon={<Home className="h-8 w-8" strokeWidth={1.5} />}
       title="Your properties"
-      subtitle="Add any property you own — we'll track equity, leverage, and cashflow for each."
+      subtitle="What you're building. Properties are the foundation of your wealth on the TRAIL."
     >
       {data.properties.map((property, index) => (
         <PropertyCard

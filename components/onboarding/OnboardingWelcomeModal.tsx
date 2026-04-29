@@ -66,20 +66,20 @@ const VALUE_PROPS: Array<{
 }> = [
   {
     icon: <TrendingUp className="h-5 w-5" />,
-    title: 'See your full picture',
-    description: 'Net worth, cashflow and portfolio health in one place.',
-    accent: 'from-blue-500/15 to-indigo-500/15 text-blue-600 dark:text-blue-400',
+    title: 'Track your full picture',
+    description: 'See every account, loan, and dollar in one place.',
+    accent: 'from-amber-500/15 to-orange-500/15 text-amber-600 dark:text-amber-400',
   },
   {
     icon: <BarChart3 className="h-5 w-5" />,
-    title: 'Forecast the future',
-    description: 'Smart projections show where your money is headed.',
-    accent: 'from-violet-500/15 to-fuchsia-500/15 text-violet-600 dark:text-violet-400',
+    title: 'Reduce the waste',
+    description: 'Find hidden leaks and get your cashflow positive.',
+    accent: 'from-orange-500/15 to-red-500/15 text-orange-600 dark:text-orange-400',
   },
   {
     icon: <PiggyBank className="h-5 w-5" />,
-    title: 'Optimise & grow',
-    description: 'AI recommendations you can actually act on.',
+    title: 'Grow your wealth',
+    description: 'Build your safety net, invest, and live on your terms.',
     accent: 'from-emerald-500/15 to-teal-500/15 text-emerald-600 dark:text-emerald-400',
   },
 ];
@@ -145,7 +145,7 @@ export function OnboardingWelcomeModal({
       aria-modal="true"
       aria-labelledby="welcome-modal-title"
       aria-describedby="welcome-modal-subtitle"
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4"
     >
       {/* Backdrop */}
       <button
@@ -155,9 +155,19 @@ export function OnboardingWelcomeModal({
         className="welcome-modal-backdrop absolute inset-0 cursor-default"
       />
 
-      {/* Card */}
+      {/*
+       * Card — flex column with a hard height cap so the CTAs are
+       * always reachable on short mobile viewports. The hero stays
+       * pinned at the top (`flex-shrink-0`) while the body scrolls
+       * internally when content exceeds available height.
+       *
+       * Previously used `overflow-hidden` with no max-height, which
+       * clipped the "Start your TRAIL" button off-screen on phones
+       * shorter than ~840px (i.e. every iPhone in portrait with the
+       * Safari address bar visible).
+       */}
       <div
-        className="welcome-modal-card relative w-full max-w-xl overflow-hidden rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl"
+        className="welcome-modal-card relative flex w-full max-w-xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl"
       >
         {/* Close button */}
         <button
@@ -169,8 +179,8 @@ export function OnboardingWelcomeModal({
           <X className="h-4 w-4" />
         </button>
 
-        {/* Hero section */}
-        <div className="relative h-48 overflow-hidden">
+        {/* Hero section — shorter on mobile so the CTAs fit without scroll */}
+        <div className="relative h-32 sm:h-48 flex-shrink-0 overflow-hidden">
           {/* Animated aurora layers */}
           <div className="welcome-hero-aurora" />
           <div className="welcome-hero-aurora-secondary" />
@@ -199,16 +209,20 @@ export function OnboardingWelcomeModal({
 
           {/* Logo mark */}
           <div className="relative z-10 flex h-full items-center justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/30 bg-white/15 text-white shadow-[0_8px_28px_-8px_rgba(0,0,0,0.4)] backdrop-blur-xl">
-              <Sparkles className="h-8 w-8" strokeWidth={1.5} />
+            <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border border-white/30 bg-white/15 text-white shadow-[0_8px_28px_-8px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+              <Sparkles className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={1.5} />
             </div>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="relative px-8 pb-7 pt-5">
+        {/*
+         * Body — scrolls internally when content exceeds available
+         * height. `min-h-0` is required for `flex-1 overflow-y-auto`
+         * to actually scroll inside a flex column.
+         */}
+        <div className="relative flex-1 min-h-0 overflow-y-auto px-5 sm:px-8 pb-5 sm:pb-7 pt-4 sm:pt-5">
           {/* Time chip */}
-          <div className="mb-4 flex justify-center">
+          <div className="mb-3 sm:mb-4 flex justify-center">
             <span className="welcome-time-chip inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
               <Clock className="h-3 w-3" />
               Takes about 5 minutes
@@ -218,60 +232,62 @@ export function OnboardingWelcomeModal({
           {/* Heading */}
           <h1
             id="welcome-modal-title"
-            className="text-center text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50"
+            className="text-center text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-50"
             style={{ letterSpacing: '-0.02em' }}
           >
-            Welcome to{' '}
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400">
-              Monitrax
+            Welcome to your{' '}
+            <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent dark:from-amber-400 dark:via-orange-400 dark:to-amber-500">
+              TRAIL
             </span>
           </h1>
           <p
             id="welcome-modal-subtitle"
-            className="mt-2 text-center text-sm leading-relaxed text-slate-600 dark:text-slate-400"
+            className="mt-1.5 sm:mt-2 text-center text-xs sm:text-sm leading-relaxed text-slate-600 dark:text-slate-400"
           >
-            Your personal wealth command center. Let&apos;s get you set up — it&apos;s faster than
-            you think.
+            Your personal financial guide. Let&apos;s set up your journey to financial
+            freedom — it takes about 3 minutes.
           </p>
 
           {/* Value props — horizontal on ≥sm, stacked on xs */}
-          <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <div className="mt-4 sm:mt-6 grid grid-cols-1 gap-2 sm:gap-2.5 sm:grid-cols-3">
             {VALUE_PROPS.map((prop, i) => (
               <div
                 key={prop.title}
-                className="welcome-prop rounded-xl border border-slate-200/70 bg-slate-50/60 p-3.5 dark:border-slate-700/50 dark:bg-slate-800/40"
+                className="welcome-prop flex items-start gap-3 rounded-xl border border-slate-200/70 bg-slate-50/60 p-3 sm:block sm:p-3.5 dark:border-slate-700/50 dark:bg-slate-800/40"
                 style={{ ['--prop-index' as string]: i }}
               >
                 <div
-                  className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br ${prop.accent}`}
+                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br sm:mb-2 ${prop.accent}`}
                 >
                   {prop.icon}
                 </div>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {prop.title}
-                </h3>
-                <p className="mt-0.5 text-xs leading-snug text-slate-600 dark:text-slate-400">
-                  {prop.description}
-                </p>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {prop.title}
+                  </h3>
+                  <p className="mt-0.5 text-xs leading-snug text-slate-600 dark:text-slate-400">
+                    {prop.description}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
 
           {/* Actions */}
-          <div className="mt-6 space-y-2.5">
+          <div className="mt-5 sm:mt-6 space-y-2 sm:space-y-2.5">
             <button
               type="button"
               onClick={onStartSetup}
-              className="welcome-cta-primary group relative flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold text-white"
+              className="welcome-cta-primary group relative flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 sm:py-3.5 text-sm font-semibold text-white"
             >
-              Start guided setup
+              Start your TRAIL
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </button>
 
             <button
               type="button"
               onClick={onTakeTour}
-              className="welcome-cta-secondary flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-6 py-3 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+              className="welcome-cta-secondary flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-6 py-2.5 sm:py-3 text-sm font-medium text-slate-700 hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
             >
               <Play className="h-4 w-4" />
               Take a quick tour first
@@ -279,7 +295,7 @@ export function OnboardingWelcomeModal({
           </div>
 
           {/* Skip link + "Don't show again" checkbox */}
-          <div className="mt-4 flex items-center justify-between gap-4">
+          <div className="mt-3 sm:mt-4 flex items-center justify-between gap-4">
             <label className="group flex cursor-pointer items-center gap-2 select-none">
               <span
                 className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${

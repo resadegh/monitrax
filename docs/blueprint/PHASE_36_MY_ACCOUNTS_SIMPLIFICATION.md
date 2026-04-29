@@ -105,43 +105,227 @@ This is a **UI-only refactor**. The data graph in `prisma/schema.prisma` is **no
 ## 6. Checklist
 
 - [x] Phase 36 spec doc (this file)
-- [x] `TRAIL_FRAMEWORK.md` updated to reflect 2-tab My Accounts + Income/Spending under My Budget
+- [ ] `TRAIL_FRAMEWORK.md` updated to reflect 2-tab My Accounts + Income/Spending under My Budget
 - [x] `/dashboard/balances` page created
-- [x] `/dashboard/activity` page created — first cut (view-only) on commit 691e5aa, then **rebuilt with full legacy `/transactions` functionality + Apple visuals** in commit 2 (categorisation, link dialog, import wizard, server-side pagination, all filters)
+- [x] `/dashboard/activity` page created — first cut (view-only) merged earlier, **rebuilt with full legacy `/transactions` functionality + Apple visuals** in this branch (categorisation, link dialog, import wizard, server-side pagination, all filters); see §8
 - [x] `DashboardLayout.tsx` sidebar updated
-- [x] Subtle animation utilities added to `globals.css`
-- [x] Legacy `/transactions` URL turned into a permanent redirect to `/dashboard/activity` (preserves bookmarks)
+- [ ] Subtle animation utilities added to `globals.css`
+- [x] Legacy `/transactions` URL turned into a permanent redirect to `/dashboard/activity` (preserves bookmarks); see §8
 - [x] Build passes
 - [x] Changelog entry at `docs/changelog/CHANGELOG_2026_04_18.md`
 
-## 7. Activity rebuild — second iteration
+## 7. Phase 36b — Inline dialogs on Balances (2026-04-29)
 
-After the initial commit landed, the first version of the Activity page was a
-view-only list. It was missing the categorisation workflow (TransactionLinkDialog),
-the import wizard, server-side pagination, and the full filter set — which is
-the entire reason `/transactions` exists. The categorisation loop is the engine
-behind budget reconciliation (Phase 29 + 30).
+> **Goal:** retire `/dashboard/accounts` and `/dashboard/loans` as
+> primary navigation targets. They keep working via direct URL but
+> the canonical entry point is `/dashboard/balances`.
+>
+> **Approach:** extract the detail / create / edit dialogs into
+> shared components in `components/accounts/` and `components/loans/`
+> so any page can render them. Then wire `/dashboard/balances` to
+> open them inline instead of navigating away.
 
-The rebuilt page:
+### Phase 1 — Account detail (PR #552, merged)
 
-- **URL stays** `/dashboard/activity` (warm TRAIL-aligned name kept)
-- **Sidebar stays** `My Accounts → Balances + Activity` (no nav change)
-- **Functionality is verbatim** from `app/(dashboard)/transactions/page.tsx`:
-  - State, callbacks, refs, dialogs, filters, pagination — copied 1:1
-  - Same `/api/unified-transactions` query parameters
-  - Same `TransactionLinkDialog` and `ImportWizard` imports
-  - "Uncategorised first" default preserved (the most important UX nudge in the app)
-- **Visuals only** are restyled:
-  - Hero "What's moving" + subtitle
-  - 4 summary tiles (click-to-filter behaviour preserved) restyled with 2xl rounded cards, soft accent colours, tabular-nums
-  - Filter chip strip (Recurring / Anomalies / Advanced) replaces the legacy "Filters" toggle button
-  - Slide-down advanced filter panel for Account / Category / Date range
-  - Day-grouped transaction list with day-net subtotals, inside one rounded card per group
-  - "Uncategorised first" amber alert downgraded to a calm pill
-  - Confidence badge shown ONLY when AI confidence < 0.9 (less visual noise; draws eye to rows that need review)
-  - Subtle `anim-rise-stagger` on tiles, `anim-rise` on list, `anim-fade-in` on import-wizard backdrop
-- **Legacy `/transactions` URL** is now `redirect('/dashboard/activity')` — bookmarks and any internal links keep working without us tracking down every reference.
+- New `components/accounts/AccountDetailDialog.tsx` (Overview /
+  Transactions / Offset Details / Linked tabs).
+- `/dashboard/balances` row click → opens dialog inline (was:
+  navigated to `/dashboard/accounts#<id>` which didn't auto-open
+  the dialog, forcing a second click).
+- `/dashboard/accounts` migrated to use the same shared component
+  (~307 lines of inline JSX deduplicated).
+- SSOT (CLAUDE.md §12.2): replaced one local helper
+  (`calculateEffectiveLoanBalance`) with the existing canonical
+  `calculateEffectivePrincipal` from `lib/utils/calculations.ts`.
+  Interest-savings formula preserved EXACTLY per user direction
+  (existing calculations are correct, no new engines).
 
-Recurring detail page (`/recurring`) is intentionally left alone in this PR.
-Its matching workflow (Phase 29) is non-trivial and deserves its own redesign
-pass.
+### Phase 1b — Account / Loan create + edit (this session)
+
+- New `components/accounts/AccountFormDialog.tsx` — shared
+  create/edit form. Owns its own form state, validation, and
+  submit handler. Body shape matches the legacy POST/PUT contract
+  to `/api/accounts` exactly (incl. `interestRate / 100` decimal
+  conversion).
+- New `components/loans/LoanFormDialog.tsx` — shared create/edit
+  form for loans. Includes the Phase 19 `FormDocumentUpload`
+  auto-fill integration and the post-save document-link call to
+  `/api/documents/{id}/link`. Body shape matches `/api/loans`
+  POST/PUT exactly.
+- `/dashboard/balances` toolbar wired:
+  - **+ Account** → opens `AccountFormDialog` in create mode
+    (was: `router.push('/dashboard/accounts')`).
+  - **+ Loan** → opens `LoanFormDialog` in create mode (was:
+    `router.push('/dashboard/loans')`). Properties + Assets
+    lookups are lazy-fetched on first open.
+  - **Edit Account** (from detail dialog) → opens
+    `AccountFormDialog` in edit mode inline (was: navigated to
+    `/dashboard/accounts#<id>`).
+- `/dashboard/accounts` migrated to use the shared
+  `AccountFormDialog` — replaces ~85 lines of inline form JSX
+  + the `formData`/`handleSubmit`/`resetForm`/`handleEdit`
+  state/handlers.
+- `/dashboard/loans` migrated to use the shared `LoanFormDialog`
+  — replaces ~320 lines of inline form JSX + the form state +
+  `handleFieldsExtracted` + `handleSubmit` + `resetForm`.
+
+**Calculation/contract changes: zero.** Per user direction the
+existing logic on legacy and current pages is correct — Phase 1b
+is purely visual / flow, no behavioural change to forms,
+validation, API contracts, or document-linking.
+
+### Phase 1c — Source picker + Connect Bank on Balances (this session, 2026-04-29)
+
+User direction:
+> "when the BASIQ is enabled the bank connection will bring accounts
+> and loans, also loans also have transactions so the import should
+> be enabled for the loans as well. also I want the import file to
+> be higher value than the manual create."
+
+**Toolbar layout on `/dashboard/balances`:**
+
+```
+[🏦 Connect Bank]  [+ Account]  [+ Loan]
+   (Basiq, accounts + loans — recommended)
+```
+
+- **Connect Bank** is now a top-level toolbar button. Wired to a
+  new shared `useBasiqConnect()` hook (`hooks/useBasiqConnect.ts`)
+  so the legacy `/dashboard/accounts` page and the new Balances
+  page invoke the same code path. Behaviour, body shape, error
+  handling, and copy preserved EXACTLY from the legacy
+  `handleConnectBank()` implementation.
+- **`+ Account`** opens a 2-tile picker (`AddSourcePicker`):
+  - **Import bank statement** (recommended, emerald) → opens
+    `TransactionImportDialog` (existing component, no changes).
+    Auto-creates the account from the file's closing balance when
+    no account is selected.
+  - **Enter manually** (secondary, blue) → opens
+    `AccountFormDialog` (Phase 1b component).
+- **`+ Loan`** opens a 2-tile picker:
+  - **Upload loan document** (recommended, emerald) → opens
+    `LoanFormDialog`. The form already hosts `FormDocumentUpload`
+    (Phase 19) at the top — drop a PDF statement / contract and
+    Gemini AI auto-fills lender / principal / rate / term /
+    repayment.
+  - **Enter manually** (secondary, blue) → opens the same
+    `LoanFormDialog` without the document-upload affordance
+    emphasised. Same component, no duplication.
+
+**Loans don't get a "Import transaction file" tile** because the
+existing `TransactionImportDialog` only writes into `Account`
+rows (`UnifiedTransaction.accountId` is a non-nullable FK). Loan
+repayments still flow through Basiq syncing the linked payment
+account, or through bank-statement imports that match repayment
+debits to the loan via existing categorisation rules. Neither
+needs a new entry point on Balances.
+
+**Components reused (no recreation, per CLAUDE.md §12.1-§12.3):**
+
+- `TransactionImportDialog` — used as-is.
+- `AccountFormDialog`, `LoanFormDialog` — Phase 1b components,
+  no changes.
+- `useBasiqConnect()` — new hook lifting the legacy connect
+  function. Sync and disconnect remain on the legacy page (Phase
+  2 will migrate them alongside the management UI).
+- `AddSourcePicker` — new generic 2-tile picker primitive in
+  `components/ui/`. Pure presentation; the parent owns the tile
+  callbacks.
+
+**Calculation/contract changes: zero.** Same Basiq endpoints, same
+import body shape, same form submit handlers as Phase 1b.
+
+### Phase 2 — Retire `/dashboard/accounts` and `/dashboard/loans` (planned)
+
+- Migrate `Connect Bank` (Basiq) toolbar action to
+  `/dashboard/balances`.
+- Migrate `Import Transactions` toolbar action to
+  `/dashboard/balances`.
+- Inline the `LoanDetailDialog` on `/dashboard/balances` (replaces
+  PR #550's `?focus=` redirect to `/dashboard/loans`).
+- Redirect `/dashboard/accounts` → `/dashboard/balances`.
+- Redirect `/dashboard/loans` → `/dashboard/balances`.
+- Sidebar: remove any legacy entries still pointing at the old
+  pages.
+
+### Out of scope for Phase 36b
+
+- AI Strategy sub-page at `/dashboard/loans/[id]/strategy` — keeps
+  its own dedicated route. Linked to from the LoanDetailDialog.
+- `TransactionImportDialog` flow on the legacy `/dashboard/accounts`
+  page — moved as a whole in Phase 2, not piecemeal.
+- Any change to financial calculations — explicitly forbidden in
+  Phase 36b per user direction.
+
+## 8. Activity rebuild — full /transactions port + Apple visuals (this PR)
+
+> **Goal:** make `/dashboard/activity` the canonical Transaction Explorer.
+> The first cut of `/dashboard/activity` (merged earlier) was view-only —
+> missing the categorisation workflow (TransactionLinkDialog), the import
+> wizard, server-side pagination, and the full server-side filter set.
+> That is the entire reason `/transactions` exists, and the categorisation
+> loop is the engine behind Phase 29 (recurring matching) and Phase 30
+> (budget vs actual reconciliation). Shipping a nav rename without that
+> workflow would have broken the cleanup loop for every user.
+
+### Approach
+
+Port the **full** legacy `app/(dashboard)/transactions/page.tsx`
+functionality 1:1 into `app/dashboard/activity/page.tsx`, and re-skin the
+result with the same Apple-leaning visual language used by Balances.
+Reduce the legacy `/transactions` URL to a permanent redirect.
+
+### Functionality preserved verbatim
+
+- State, refs, callbacks, dialogs, filters, pagination copied 1:1 from
+  `app/(dashboard)/transactions/page.tsx`
+- Same API surface (`/api/unified-transactions`, `/analytics`, `/api/accounts`)
+- Same `TransactionLinkDialog` and `ImportWizard` imports
+- "Uncategorised first" default preserved — the most important UX nudge
+  in the app; without it, no one categorises and the Phase 29 + 30
+  reconciliation engines starve
+- Navigate-to-next-uncategorised flow inside the dialog still uses
+  `transactionsRef` to avoid stale-closure on the just-refreshed list
+- Server-side pagination (25 / page)
+- Server-side filters: search, account, category, date range, recurring,
+  anomalies, uncategorised, direction, excludeTransfers
+- Linked / Transfer / Recurring / Anomaly indicators
+- AI confidence badges
+
+### Visual layer (Apple-leaning, no behavioural change)
+
+- Hero "What's moving" + warm subtitle
+- 4 click-to-filter summary tiles (Spend / Income / Net / Count) — the
+  click-to-toggle interaction is preserved exactly; only the styling
+  changes (rounded 2xl, soft accent colours, tabular-nums)
+- Filter chip strip with `Recurring` / `Anomalies` / `Advanced` toggles,
+  active-count badge on Advanced
+- Slide-down advanced filter panel for Account / Category / Date range
+- Day-grouped transaction list with day-net subtotals, inside one
+  rounded card per group
+- "Uncategorised first" amber alert downgraded to a calm pill
+- Confidence badge shown ONLY when score < 0.9 — clean rows for the 90%
+  the engine got right, eye drawn to the 10% that need review
+- Pill-style pagination (chevron-left / chevron-right)
+- Subtle `anim-rise-stagger` / `anim-rise` / `anim-fade-in`
+
+### Legacy URL
+
+`app/(dashboard)/transactions/page.tsx` reduced to:
+
+```ts
+import { redirect } from 'next/navigation';
+export default function TransactionsRedirect() {
+  redirect('/dashboard/activity');
+}
+```
+
+This keeps bookmarks, deep links, and any internal `<Link>` to
+`/transactions` working without us tracking down every reference.
+
+### Out of scope for §8
+
+- `/recurring` page — its matching workflow (Phase 29) is non-trivial
+  and deserves its own redesign pass.
+- Sidebar — no change. Activity is already the second My Accounts child
+  from the original Phase 36 PR.

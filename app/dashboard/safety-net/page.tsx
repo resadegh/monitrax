@@ -244,7 +244,7 @@ export default function SafetyNetPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Liquid savings</p>
                     <p className="font-semibold text-lg">{formatCurrency(data.emergencyFund.liquidCash)}</p>
@@ -287,7 +287,7 @@ export default function SafetyNetPage() {
                   {formatCurrency(data.bills.monthlyTotal)}/month
                 </span>
               </div>
-              <div className="flex items-center gap-6 mb-4">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-6 mb-4">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-emerald-500" />
                   <span className="text-sm font-medium">{data.bills.onTime} on time</span>

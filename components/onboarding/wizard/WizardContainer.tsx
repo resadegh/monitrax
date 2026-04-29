@@ -22,7 +22,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, Rocket, Check, Loader2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Rocket, Check, Loader2, AlertCircle } from 'lucide-react';
 import {
   WizardData,
   INITIAL_WIZARD_DATA,
@@ -106,6 +106,10 @@ export function WizardContainer({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+  // Surface submit failures so the user isn't stuck staring at a button
+  // that quietly reverts from "Launching…" to "Launch dashboard" with
+  // no idea what went wrong. Cleared on each new submit attempt.
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // ---- Late hydration from server draft --------------------------------
   // If the wizard mounts BEFORE the parent finishes fetching
@@ -279,10 +283,23 @@ export function WizardContainer({
 
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await onComplete(data);
     } catch (error) {
       console.error('Failed to complete wizard:', error);
+      // Surface a human-readable message in the footer so the user
+      // can decide whether to retry, edit a field, or contact support.
+      // Falls back to a generic message when the thrown value isn't
+      // an Error (e.g. the page-mode handler in /app/onboarding/page.tsx
+      // re-throws the parsed `errorData.error` string).
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+          ? error
+          : 'We couldn’t save your setup. Please try again.';
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -298,14 +315,77 @@ export function WizardContainer({
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, mode, isSubmitting, onClose]);
 
-  const canProceed = useMemo(() => {
+  // Per-step validation. A step's `canProceed` returning `false`
+  // disables Continue / Launch dashboard, and `blockedReason`
+  // (computed alongside) is rendered as an inline hint above the
+  // footer buttons so the user knows what's missing.
+  //
+  // We mirror the validation that bulk-create enforces server-side
+  // (see app/api/onboarding/bulk-create/route.ts) so the user can
+  // never reach the Review step in a state that would 400 the
+  // submit. Previously the only validated step was Welcome, which
+  // meant a user could complete the entire wizard, click Launch
+  // dashboard, and only then discover that e.g. a Property was
+  // missing a purchase date.
+  const { canProceed, blockedReason } = useMemo<{
+    canProceed: boolean;
+    blockedReason: string | null;
+  }>(() => {
     switch (currentStep?.id) {
       case 'welcome':
-        return !!data.profileType;
+        if (!data.profileType) {
+          return { canProceed: false, blockedReason: null };
+        }
+        return { canProceed: true, blockedReason: null };
+
+      case 'properties': {
+        // bulk-create rejects properties without a purchase date
+        // (used for CGT, depreciation, equity history). Surface the
+        // first offender's name so the user knows where to look.
+        const missing = data.properties.find(
+          (p) => !p.purchaseDate || !String(p.purchaseDate).trim()
+        );
+        if (missing) {
+          const label =
+            missing.name?.trim() ||
+            missing.address?.trim() ||
+            'one of your properties';
+          return {
+            canProceed: false,
+            blockedReason: `Add a purchase date for "${label}" before continuing.`,
+          };
+        }
+        return { canProceed: true, blockedReason: null };
+      }
+
+      case 'assets': {
+        // Same contract as properties — bulk-create rejects assets
+        // without a purchase date.
+        const missing = data.assets.find(
+          (a) => !a.purchaseDate || !String(a.purchaseDate).trim()
+        );
+        if (missing) {
+          const label =
+            missing.name?.trim() ||
+            missing.type ||
+            'one of your assets';
+          return {
+            canProceed: false,
+            blockedReason: `Add a purchase date for "${label}" before continuing.`,
+          };
+        }
+        return { canProceed: true, blockedReason: null };
+      }
+
       default:
-        return true;
+        return { canProceed: true, blockedReason: null };
     }
-  }, [currentStep?.id, data.profileType]);
+  }, [
+    currentStep?.id,
+    data.profileType,
+    data.properties,
+    data.assets,
+  ]);
 
   // Don't render if closed (modal mode only — page mode is always
   // "open" when routed). MUST be after all hooks.
@@ -388,7 +468,7 @@ export function WizardContainer({
   const showProgress = !!data.profileType;
 
   const Header = (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/70 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/60">
+    <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200/70 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/60 flex-shrink-0">
       <div className="flex items-center gap-3 min-w-0">
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-white shadow-[0_8px_24px_-6px_rgba(99,102,241,0.45)]">
           <Rocket className="h-5 w-5" />
@@ -425,7 +505,7 @@ export function WizardContainer({
   );
 
   const ProgressBar = showProgress ? (
-    <div className="px-6 py-3 border-b border-slate-200/70 dark:border-slate-700/50 bg-white/40 dark:bg-slate-900/40">
+    <div className="px-3 sm:px-6 py-2 sm:py-3 border-b border-slate-200/70 dark:border-slate-700/50 bg-white/40 dark:bg-slate-900/40 flex-shrink-0 overflow-x-auto">
       <div className="flex items-center gap-1.5" role="list" aria-label="Wizard progress">
         {steps.map((step, index) => {
           const isCompleted = index < currentStepIndex;
@@ -439,7 +519,7 @@ export function WizardContainer({
                 disabled={!isAccessible}
                 aria-current={isCurrent ? 'step' : undefined}
                 title={step.title}
-                className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold border-2 transition-all ${
+                className={`flex h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0 items-center justify-center rounded-full text-[10px] sm:text-xs font-semibold border-2 transition-all ${
                   isCompleted
                     ? 'bg-gradient-to-br from-emerald-500 to-teal-500 border-transparent text-white shadow-[0_4px_12px_-4px_rgba(16,185,129,0.5)]'
                     : isCurrent
@@ -475,7 +555,7 @@ export function WizardContainer({
 
   const Body = (
     <div
-      className={`flex-1 overflow-y-auto px-6 py-8 ${
+      className={`flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-8 ${
         mode === 'modal' ? 'max-h-[60vh]' : ''
       }`}
     >
@@ -484,7 +564,36 @@ export function WizardContainer({
   );
 
   const Footer = (
-    <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-200/70 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/60">
+    <div className="flex flex-col gap-2 border-t border-slate-200/70 dark:border-slate-700/50 bg-white/95 dark:bg-slate-900/95 flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4">
+      {submitError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs text-rose-800 dark:border-rose-800/40 dark:bg-rose-900/30 dark:text-rose-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <strong className="font-semibold">Couldn’t finish setup.</strong>{' '}
+            {submitError} Please try again — your answers are still saved.
+          </div>
+        </div>
+      )}
+      {/*
+       * Inline hint when the user can't continue because a required
+       * field on the current step is missing. Using amber (not rose)
+       * so it reads as a gentle nudge rather than an error — the
+       * user hasn't done anything wrong, they just haven't finished.
+       */}
+      {!submitError && blockedReason && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="min-w-0">{blockedReason}</span>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-3">
       <button
         type="button"
         onClick={handleBack}
@@ -537,11 +646,12 @@ export function WizardContainer({
           </button>
         )}
       </div>
+      </div>
     </div>
   );
 
   const ShellInner = (
-    <div className="relative flex h-full w-full flex-col overflow-hidden">
+    <div className="relative flex h-full w-full flex-col overflow-hidden" style={{ minHeight: '100dvh' }}>
       {Header}
       {ProgressBar}
       {Body}
@@ -557,7 +667,9 @@ export function WizardContainer({
     return (
       <div className="wz-page-root">
         <div className="wz-page-shell">
-          <div className="wz-page-card">{ShellInner}</div>
+          <div className="wz-page-card">
+            {ShellInner}
+          </div>
         </div>
       </div>
     );

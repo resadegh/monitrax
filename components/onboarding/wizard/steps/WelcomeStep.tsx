@@ -173,13 +173,21 @@ interface WelcomeStepProps {
 }
 
 export function WelcomeStep({ data, onUpdate }: WelcomeStepProps) {
-  // Phase 12 v3 (bug A.5): hasInvestments is now a persisted field on
-  // WizardData. Read it directly from `data` — no local useState, no
-  // useMemo round-trip through reverseInfer, no resume guesswork. This
-  // fixes the symptom where a resumed session landed on Welcome with
-  // Continue grayed out because the Yes/No pick had been silently
-  // discarded between sessions.
-  // See docs/blueprint/PHASE_12_REDESIGN_V3.md §7.1 bug A.5.
+  // TRAIL Check handoff: if the user completed the TRAIL Check on the
+  // website before signing up, read their results and show a welcome-back
+  // message. The TRAIL Check doesn't pre-fill wizard fields (it's a
+  // self-assessment, not data entry) but it creates continuity.
+  const [trailCheckStage, setTrailCheckStage] = React.useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('monitrax_trail_check');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.stage) setTrailCheckStage(parsed.stage);
+      }
+    } catch {}
+  }, []);
+
   const hasInvestments = data.hasInvestments;
 
   // Whenever the answers fully infer a profile, write it back.
@@ -209,13 +217,16 @@ export function WelcomeStep({ data, onUpdate }: WelcomeStepProps) {
       icon={<Sparkles className="h-8 w-8" strokeWidth={1.5} />}
       title={
         <>
-          Welcome to{' '}
-          <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400">
-            Monitrax
+          Start your{' '}
+          <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent dark:from-amber-400 dark:via-orange-400 dark:to-amber-500">
+            TRAIL
           </span>
         </>
       }
-      subtitle="Tell us a little about your situation so we can tailor the setup to just what you need."
+      subtitle={trailCheckStage
+        ? `Welcome back! Your TRAIL Check said you're at Stage ${trailCheckStage}. Let's set up the tools for your journey.`
+        : "Tell us a little about your situation so we can find your starting point on the TRAIL."
+      }
       headerTrailing={
         <WizardChip color="green" icon={<Clock className="h-3 w-3" />}>
           Setup time: {timeLabel}

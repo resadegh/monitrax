@@ -13,7 +13,7 @@
  * hover-lift on rows. No form-heavy tiles.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -32,8 +32,30 @@ import {
   Building,
   Zap,
   ChevronRight,
+  Upload,
+  Pencil,
+  FileText,
+  Loader2,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import {
+  AccountDetailDialog,
+  type AccountDetail,
+} from '@/components/accounts/AccountDetailDialog';
+import {
+  AccountFormDialog,
+  type AccountFormValues,
+} from '@/components/accounts/AccountFormDialog';
+import {
+  LoanFormDialog,
+  type LoanFormPropertyOption,
+  type LoanFormAssetOption,
+} from '@/components/loans/LoanFormDialog';
+import { AddSourcePicker } from '@/components/ui/AddSourcePicker';
+import { TransactionImportDialog } from '@/components/bank/TransactionImportDialog';
+import { useBasiqConnect } from '@/hooks/useBasiqConnect';
+import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the server response shape — preserved from existing endpoints)
@@ -48,6 +70,27 @@ interface AccountRow {
   interestRate?: number | null;
   balanceSource?: string | null;
   balanceLastUpdatedAt?: string | null;
+  // Recent transactions enriched server-side (PR #551). Empty
+  // array when /api/accounts couldn't fetch them — the row still
+  // renders, the dialog just shows "No transactions recorded".
+  transactions?: Array<{
+    id: string;
+    date: string;
+    description: string;
+    amount: number;
+    type: 'CREDIT' | 'DEBIT';
+    category?: string | null;
+  }>;
+  // GRDCS metadata from the server response. Used by the
+  // AccountDetailDialog's "Linked" tab.
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
   linkedLoan?: { id: string; name: string } | null;
 }
 
@@ -112,31 +155,271 @@ function relativeTime(iso?: string | null): string {
 // Page
 // ---------------------------------------------------------------------------
 
-export default function BalancesPage() {
+function BalancesPageContent() {
   const { token } = useAuth();
   const router = useRouter();
+  const { openLinkedEntity } = useCrossModuleNavigation();
+
+  // Account-detail dialog state. Phase 1 of "make /dashboard/accounts
+  // redundant" (see CHANGELOG_2026_04_29): clicking an account row now
+  // opens the dialog inline instead of navigating to the accounts page
+  // and forcing a second click.
+  const [detailAccount, setDetailAccount] = useState<AccountRow | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // Phase 1b: account create/edit form is now hosted inline. Opening
+  // the form with `editingAccount = null` runs in create mode (e.g.
+  // the "+ Account" toolbar button); opening it with a populated
+  // value runs in edit mode (e.g. the "Edit Account" button in the
+  // detail dialog).
+  const [accountFormOpen, setAccountFormOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<
+    AccountFormValues | null
+  >(null);
+
+  // Phase 1b: loan create/edit form. Properties + assets are fetched
+  // lazily on first open (most users won't click + Loan) so we don't
+  // bloat the initial Balances page load.
+  const [loanFormOpen, setLoanFormOpen] = useState(false);
+  const [loanFormProperties, setLoanFormProperties] = useState<
+    LoanFormPropertyOption[]
+  >([]);
+  const [loanFormAssets, setLoanFormAssets] = useState<LoanFormAssetOption[]>([]);
+  const [loanFormLookupsLoaded, setLoanFormLookupsLoaded] = useState(false);
+
+  // Phase 1c: data-source picker state. The "+ Account" / "+ Loan"
+  // toolbar buttons open a small 2-tile picker (Import / Manual) per
+  // user direction (CHANGELOG_2026_04_29). Recommended path is
+  // surfaced first; manual is the secondary tile.
+  const [accountPickerOpen, setAccountPickerOpen] = useState(false);
+  const [loanPickerOpen, setLoanPickerOpen] = useState(false);
+
+  // Phase 1c: TransactionImportDialog inline on Balances. Opened
+  // from the account-source picker's Import tile. Body shape and
+  // submit flow are handled internally by the existing dialog.
+  const [importOpen, setImportOpen] = useState(false);
+
+  // Phase 1c: Basiq Connect Bank, top-level toolbar action. Same
+  // hook used by the legacy /dashboard/accounts page so behaviour
+  // (consent URL, MOBILE_REQUIRED redirect, error copy) is byte-for-
+  // byte identical.
+  const { isConnecting, connectBank } = useBasiqConnect();
+
+  const openAccountDetail = (account: AccountRow) => {
+    setDetailAccount(account);
+    setDetailOpen(true);
+  };
+
+  const openAccountCreate = () => {
+    setEditingAccount(null);
+    setAccountFormOpen(true);
+  };
+
+  const openLoanCreate = async () => {
+    // Lazy-fetch properties + assets the first time the dialog opens.
+    // Both endpoints are best-effort — failure leaves the lookup
+    // selects empty rather than blocking the form (the user can
+    // still create an unlinked loan).
+    if (!loanFormLookupsLoaded && token) {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [propsResult, assetsResult] = await Promise.allSettled([
+        fetch('/api/properties', { headers }).then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/assets', { headers }).then((r) => (r.ok ? r.json() : null)),
+      ]);
+      if (propsResult.status === 'fulfilled' && propsResult.value) {
+        const props = propsResult.value.data ?? propsResult.value.properties ?? [];
+        setLoanFormProperties(
+          props.map((p: { id: string; name: string }) => ({
+            id: p.id,
+            name: p.name,
+          }))
+        );
+      }
+      if (assetsResult.status === 'fulfilled' && assetsResult.value) {
+        const ass = assetsResult.value.data ?? assetsResult.value.assets ?? [];
+        setLoanFormAssets(
+          ass.map(
+            (a: {
+              id: string;
+              name: string;
+              currentValue: number;
+              vehicleMake?: string;
+              vehicleModel?: string;
+            }) => ({
+              id: a.id,
+              name: a.name,
+              currentValue: a.currentValue,
+              vehicleMake: a.vehicleMake,
+              vehicleModel: a.vehicleModel,
+            })
+          )
+        );
+      }
+      setLoanFormLookupsLoaded(true);
+    }
+    setLoanFormOpen(true);
+  };
+
+  // Delete handler for the AccountDetailDialog footer. The dialog
+  // already shows the AlertDialog confirmation step before this
+  // fires — by the time we get here the user has typed/clicked
+  // "Delete account". On success we reload so the row drops out of
+  // the Cash section without a page refresh.
+  const handleDeleteAccount = async (account: AccountDetail) => {
+    if (!token) return;
+    const response = await fetch(`/api/accounts/${account.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        typeof errorData.error === 'string'
+          ? errorData.error
+          : `Failed to delete account (${response.status})`
+      );
+    }
+    void reloadData();
+  };
+
+  const openAccountEdit = (account: AccountDetail) => {
+    setEditingAccount({
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      institution: account.institution ?? '',
+      currentBalance: account.currentBalance,
+      // The dialog stores this as a percentage (e.g. 2.5); the form
+      // dialog handles the percent↔decimal conversion internally.
+      interestRate: account.interestRate ?? 0,
+    });
+    setAccountFormOpen(true);
+  };
+
+  const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
+    setDetailOpen(false);
+    openLinkedEntity(entity);
+  };
 
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [loans, setLoans] = useState<LoanRow[]>([]);
   const [connections, setConnections] = useState<BasiqConnection[]>([]);
   const [loading, setLoading] = useState(true);
+  // Per-endpoint error tracking so we can surface "couldn't load X"
+  // hints next to each section instead of silently hiding it.
+  // Previously the page used `Promise.all` + a `.then` that fell back
+  // to `[]` on `r.ok === false` — which made an intermittent 5xx on
+  // /api/accounts indistinguishable from an empty list, so the Cash
+  // section just disappeared. Switching to `Promise.allSettled` plus
+  // explicit error state lets sections render whatever data did
+  // arrive and clearly signal which fetches failed.
+  const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [loansError, setLoansError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Tracks whether a fetch was started by an unmounted effect cleanup,
+  // so the per-section setters can ignore late responses. Refactored
+  // out of the original cancellable-flag pattern so the same logic
+  // is reachable from `reloadData` (called by the form-dialog
+  // `onSaved` callbacks below) without duplicating the fetch+parse
+  // chain.
+  const cancelledRef = useRef(false);
+  const reloadData = useCallback(async () => {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
 
-    Promise.all([
-      fetch('/api/accounts', { headers }).then((r) => r.ok ? r.json() : { data: [] }),
-      fetch('/api/loans', { headers }).then((r) => r.ok ? r.json() : { data: [] }),
-      fetch('/api/basiq/connections', { headers }).then((r) => r.ok ? r.json() : { connections: [] }).catch(() => ({ connections: [] })),
-    ])
-      .then(([accRes, loanRes, connRes]) => {
-        setAccounts(accRes.data ?? accRes.accounts ?? []);
-        setLoans(loanRes.data ?? loanRes.loans ?? []);
-        setConnections(connRes.connections ?? connRes.data ?? []);
-      })
-      .finally(() => setLoading(false));
+    setAccountsError(null);
+    setLoansError(null);
+
+    /*
+     * Retry-on-5xx wrapper for the primary entity fetches.
+     *
+     * /api/accounts and /api/loans intermittently 500 on Vercel
+     * cold-starts (the first request after an idle period spins up
+     * a fresh function instance + reopens the Cloud SQL connection,
+     * which can blow past the function timeout the first try).
+     * PR #551 already split the unified_transactions enrichment out
+     * as best-effort, but the primary query itself can still hit the
+     * cold-start window. Retrying once after a short delay catches
+     * those one-shot failures without surfacing the "Couldn't load"
+     * banner to the user.
+     *
+     * Single retry only — if the second attempt also fails we honour
+     * the per-section error state and show the cached-data hint
+     * (PR #550 behaviour preserved). No exponential backoff because
+     * the user is waiting; a 600ms delay is the upper bound we'll
+     * tolerate.
+     */
+    const fetchWithRetry = async (url: string, label: string) => {
+      const attempt = async () => {
+        const r = await fetch(url, { headers });
+        if (!r.ok) throw new Error(`${label} ${r.status}`);
+        return r.json();
+      };
+      try {
+        return await attempt();
+      } catch (err) {
+        // Only retry on 5xx / network-level failures. 4xx (auth,
+        // forbidden, not found) is a real error — surface it.
+        const msg = err instanceof Error ? err.message : String(err);
+        const code = Number(msg.match(/\b(\d{3})\b/)?.[1] ?? 0);
+        const isRetryable = code === 0 || code >= 500;
+        if (!isRetryable) throw err;
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        return attempt();
+      }
+    };
+
+    const accountsPromise = fetchWithRetry('/api/accounts', 'accounts');
+    const loansPromise = fetchWithRetry('/api/loans', 'loans');
+    const connectionsPromise = fetch('/api/basiq/connections', { headers })
+      .then((r) => (r.ok ? r.json() : { connections: [] }))
+      .catch(() => ({ connections: [] }));
+
+    const [accResult, loanResult, connResult] = await Promise.allSettled([
+      accountsPromise,
+      loansPromise,
+      connectionsPromise,
+    ]);
+
+    if (cancelledRef.current) return;
+
+    if (accResult.status === 'fulfilled') {
+      const r = accResult.value;
+      setAccounts(r.data ?? r.accounts ?? []);
+    } else {
+      setAccountsError(
+        accResult.reason instanceof Error
+          ? accResult.reason.message
+          : String(accResult.reason)
+      );
+    }
+
+    if (loanResult.status === 'fulfilled') {
+      const r = loanResult.value;
+      setLoans(r.data ?? r.loans ?? []);
+    } else {
+      setLoansError(
+        loanResult.reason instanceof Error
+          ? loanResult.reason.message
+          : String(loanResult.reason)
+      );
+    }
+
+    if (connResult.status === 'fulfilled') {
+      const r = connResult.value;
+      setConnections(r.connections ?? r.data ?? []);
+    }
+
+    setLoading(false);
   }, [token]);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    void reloadData();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [reloadData]);
 
   // --- Totals --------------------------------------------------------------
 
@@ -174,10 +457,31 @@ export default function BalancesPage() {
               </h1>
             </div>
             <div className="flex items-center gap-2">
+              {/*
+               * Phase 1c: Connect Bank promoted to a top-level toolbar
+               * button (Basiq returns both deposit/credit accounts AND
+               * loan accounts when the institution exposes them, so
+               * this single action seeds both Cash and Debt sections).
+               * Recommended path — placed first.
+               */}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => void connectBank()}
+                disabled={isConnecting}
+                className="hidden sm:inline-flex bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+              >
+                {isConnecting ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Landmark className="w-4 h-4 mr-1.5" />
+                )}
+                Connect Bank
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push('/dashboard/accounts')}
+                onClick={() => setAccountPickerOpen(true)}
                 className="hidden sm:inline-flex"
               >
                 <Plus className="w-4 h-4 mr-1.5" /> Account
@@ -185,7 +489,7 @@ export default function BalancesPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push('/dashboard/loans')}
+                onClick={() => setLoanPickerOpen(true)}
                 className="hidden sm:inline-flex"
               >
                 <Plus className="w-4 h-4 mr-1.5" /> Loan
@@ -243,21 +547,27 @@ export default function BalancesPage() {
         {/* CONTENT ------------------------------------------------------ */}
         {loading ? (
           <LoadingSections />
-        ) : accounts.length === 0 && loans.length === 0 ? (
+        ) : accounts.length === 0 &&
+          loans.length === 0 &&
+          !accountsError &&
+          !loansError ? (
           <EmptyState />
         ) : (
           <div className="space-y-10">
             {/* CASH */}
-            {totals.cashAccounts.length > 0 && (
+            {(totals.cashAccounts.length > 0 || accountsError) && (
               <Section
                 title="Cash"
                 subtitle="Where your money lives"
                 total={totals.cash}
                 accent="emerald"
+                errorHint={
+                  accountsError ? "Couldn't load latest balances. Showing cached data." : null
+                }
               >
                 <div className="anim-rise-stagger">
                   {totals.cashAccounts.map((a) => (
-                    <AccountRowView key={a.id} account={a} />
+                    <AccountRowView key={a.id} account={a} onClick={() => openAccountDetail(a)} />
                   ))}
                 </div>
               </Section>
@@ -273,19 +583,22 @@ export default function BalancesPage() {
               >
                 <div className="anim-rise-stagger">
                   {totals.creditAccounts.map((a) => (
-                    <AccountRowView key={a.id} account={a} />
+                    <AccountRowView key={a.id} account={a} onClick={() => openAccountDetail(a)} />
                   ))}
                 </div>
               </Section>
             )}
 
             {/* DEBT */}
-            {loans.length > 0 && (
+            {(loans.length > 0 || loansError) && (
               <Section
                 title="Debt"
                 subtitle="Home, investment, and personal loans"
                 total={-totals.debt}
                 accent="rose"
+                errorHint={
+                  loansError ? "Couldn't load loans. Showing cached data." : null
+                }
               >
                 <div className="anim-rise-stagger">
                   {loans.map((l) => (
@@ -297,7 +610,193 @@ export default function BalancesPage() {
           </div>
         )}
       </div>
+
+      {/*
+       * AccountDetailDialog rendered at page level so it survives a
+       * row's hover/focus state. `detailAccount` is typed as the
+       * server-side AccountRow which structurally satisfies AccountDetail
+       * (same id/name/type/currentBalance/transactions/_links/_meta
+       * fields) — see the cast below.
+       *
+       * Phase 1 hides the import button (`onImportClick` omitted): the
+       * Balances page doesn't host a TransactionImportDialog yet.
+       * Phase 2 will lift the import flow over from
+       * /dashboard/accounts as part of retiring that page.
+       */}
+      <AccountDetailDialog
+        account={detailAccount as AccountDetail | null}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={openAccountEdit}
+        onDelete={handleDeleteAccount}
+        onLinkedEntityNavigate={handleLinkedEntityNavigate}
+      />
+
+      {/*
+       * Account create/edit form rendered at page level so it
+       * survives any source row's hover/focus state. Used both by
+       * the "+ Account" toolbar button (create mode) and by the
+       * detail dialog's "Edit Account" button (edit mode). Phase 1b
+       * of accounts-page retirement.
+       */}
+      <AccountFormDialog
+        open={accountFormOpen}
+        onOpenChange={setAccountFormOpen}
+        editing={editingAccount}
+        onSaved={() => {
+          // Refresh balances + reopen-data after a successful save.
+          // No optimistic update — the server is the source of truth
+          // for currentBalance, balanceSource, and interestRate
+          // formatting (decimal vs percentage), so a clean refetch
+          // avoids a brief mismatch in the UI.
+          void reloadData();
+        }}
+      />
+
+      {/*
+       * Loan create form rendered at page level so the "+ Loan"
+       * button on the Balances toolbar opens it inline. Phase 1b of
+       * accounts/loans-page retirement.
+       *
+       * `offsetAccounts` is filtered to non-credit cash accounts —
+       * that's what users link offsets against. `allAccounts`
+       * passes everything including credit cards for LINE_OF_CREDIT
+       * loans.
+       */}
+      <LoanFormDialog
+        open={loanFormOpen}
+        onOpenChange={setLoanFormOpen}
+        editing={null}
+        properties={loanFormProperties}
+        offsetAccounts={accounts
+          .filter((a) => a.type !== 'CREDIT_CARD')
+          .map((a) => ({
+            id: a.id,
+            name: a.name,
+            type: a.type,
+            currentBalance: a.currentBalance,
+          }))}
+        allAccounts={accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          currentBalance: a.currentBalance,
+        }))}
+        assets={loanFormAssets}
+        onSaved={() => {
+          void reloadData();
+        }}
+      />
+
+      {/*
+       * Phase 1c: 2-tile source picker dialogs. Opened by the
+       * "+ Account" / "+ Loan" toolbar buttons. Import is the
+       * recommended (first) tile per user direction; manual entry is
+       * secondary. Connect Bank lives separately at the top of the
+       * toolbar — Basiq covers both accounts and loans, so it doesn't
+       * belong inside either picker.
+       */}
+      <AddSourcePicker
+        open={accountPickerOpen}
+        onOpenChange={setAccountPickerOpen}
+        title="Add an account"
+        description="How would you like to add this account?"
+        tiles={[
+          {
+            icon: Upload,
+            title: 'Import bank statement',
+            description:
+              'Upload a CSV, OFX, or QIF file — we’ll create the account using the closing balance.',
+            recommended: true,
+            accent: 'emerald',
+            onSelect: () => setImportOpen(true),
+          },
+          {
+            icon: Pencil,
+            title: 'Enter manually',
+            description: 'Type the account name, balance, and details yourself.',
+            accent: 'blue',
+            onSelect: () => openAccountCreate(),
+          },
+        ]}
+      />
+
+      <AddSourcePicker
+        open={loanPickerOpen}
+        onOpenChange={setLoanPickerOpen}
+        title="Add a loan"
+        description="How would you like to add this loan?"
+        tiles={[
+          {
+            icon: FileText,
+            title: 'Upload loan document',
+            description:
+              'Drop a PDF statement or contract — we’ll auto-fill rate, principal, and repayment.',
+            recommended: true,
+            accent: 'emerald',
+            // The LoanFormDialog already hosts FormDocumentUpload at
+            // the top of the form (Phase 19). For now this tile just
+            // opens the same dialog — the upload area is the first
+            // thing the user sees. Phase 1d (if needed) can add an
+            // explicit `focusUpload` prop to scroll/highlight it.
+            onSelect: () => void openLoanCreate(),
+          },
+          {
+            icon: Pencil,
+            title: 'Enter manually',
+            description: 'Type the lender, balance, rate, and repayment yourself.',
+            accent: 'blue',
+            onSelect: () => void openLoanCreate(),
+          },
+        ]}
+      />
+
+      {/*
+       * Phase 1c: TransactionImportDialog hosted on Balances.
+       * Opened from the account-source picker's Import tile.
+       * `accounts` prop is the existing-IMPORT-account list so the
+       * import flow can either create a new account from the file
+       * (when none is selected) or import into an existing one.
+       */}
+      <TransactionImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        accounts={accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          institution: a.institution ?? undefined,
+        }))}
+        onImportComplete={() => {
+          setImportOpen(false);
+          void reloadData();
+        }}
+        onAccountCreated={() => {
+          // The import flow may auto-create an account from the
+          // statement's closing balance — refresh so it shows up in
+          // the Cash section immediately.
+          void reloadData();
+        }}
+      />
     </DashboardLayout>
+  );
+}
+
+// Wrap in Suspense for useSearchParams (via useCrossModuleNavigation,
+// Next.js 15 requirement). Mirrors /dashboard/loans/page.tsx.
+export default function BalancesPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="flex items-center justify-center py-12">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <BalancesPageContent />
+    </Suspense>
   );
 }
 
@@ -310,12 +809,17 @@ function Section({
   subtitle,
   total,
   accent,
+  errorHint,
   children,
 }: {
   title: string;
   subtitle: string;
   total: number;
   accent: 'emerald' | 'amber' | 'rose';
+  /** Optional hint shown next to the subtitle when this section's data
+   *  failed to refresh (e.g. /api/accounts hiccupped). Falls back to
+   *  null when everything loaded cleanly. */
+  errorHint?: string | null;
   children: React.ReactNode;
 }) {
   const dotColor =
@@ -330,6 +834,11 @@ function Section({
             {title}
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+          {errorHint && (
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+              {errorHint}
+            </p>
+          )}
         </div>
         <div className={`text-lg font-semibold tabular-nums ${total < 0 ? 'text-rose-600' : 'text-foreground'}`}>
           {formatCurrency(total)}
@@ -346,15 +855,22 @@ function Section({
 // Account row
 // ---------------------------------------------------------------------------
 
-function AccountRowView({ account }: { account: AccountRow }) {
+function AccountRowView({
+  account,
+  onClick,
+}: {
+  account: AccountRow;
+  onClick: () => void;
+}) {
   const meta = ACCOUNT_TYPE_META[account.type];
   const Icon = meta.icon;
   const isBasiq = account.balanceSource === 'BASIQ';
 
   return (
-    <Link
-      href={`/dashboard/accounts#${account.id}`}
-      className="flex items-center gap-4 px-4 sm:px-5 py-4 border-b border-border last:border-0 hover-lift hover:bg-muted/40 group"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-4 px-4 sm:px-5 py-4 border-b border-border last:border-0 hover-lift hover:bg-muted/40 group text-left"
     >
       <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${meta.accent}`}>
         <Icon className="w-5 h-5" />
@@ -392,7 +908,7 @@ function AccountRowView({ account }: { account: AccountRow }) {
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors" />
       </div>
-    </Link>
+    </button>
   );
 }
 

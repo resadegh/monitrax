@@ -335,20 +335,31 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
     setImportDialogOpen(true);
   }, []);
 
-  // ImportWizard's onAccountCreated callback fires with just
-  // { id, name, type } — it doesn't include currentBalance because the
-  // Phase 18 import flow sets the balance from the statement's closing
-  // balance anchor *after* the account is created. We record the row
-  // here as a display pointer with currentBalance=0; bulk-create skips
-  // writing source='IMPORT' accounts (they already exist in the DB with
-  // the correct balance), so the 0 placeholder never persists.
+  // ImportWizard's onAccountCreated callback now forwards the real
+  // currentBalance — either the value the user typed in the inline
+  // "Create New Account" panel or the closing-balance anchor that the
+  // server auto-creates from the file. Either way, we use it instead
+  // of a $0 placeholder so the AccountCard and the Cash/Net summary
+  // tiles reflect what's actually in the DB.
+  //
+  // bulk-create still skips writing source='IMPORT' accounts (they
+  // already exist with the correct balance), so this value is purely
+  // for display in the wizard.
   const handleImportAccountCreated = useCallback(
-    (created: { id: string; name: string; type: string }) => {
+    (created: {
+      id: string;
+      name: string;
+      type: string;
+      currentBalance?: number;
+    }) => {
       const newRow: AccountInput = {
         id: generateId(),
         name: created.name,
         type: (created.type as AccountType) || 'TRANSACTIONAL',
-        currentBalance: 0,
+        currentBalance:
+          typeof created.currentBalance === 'number'
+            ? created.currentBalance
+            : 0,
         source: 'IMPORT',
         existingAccountId: created.id,
       };
@@ -393,7 +404,7 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
     <WizardStepShell
       icon={<Landmark className="h-8 w-8" strokeWidth={1.5} />}
       title="Bank accounts"
-      subtitle="Pick how you'd like to add your accounts. We'll keep your balances accurate however you choose."
+      subtitle="Where your money lives. This is the first step on your TRAIL — Track your full picture."
     >
       {/* PR 3b: 3-tier data source picker — always visible above the
           manual quick-add. Tiles are interactive buttons. */}
@@ -506,6 +517,7 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
                 id: a.existingAccountId!,
                 name: a.name || 'Account',
                 type: a.type,
+                currentBalance: a.currentBalance,
               }))}
             onAccountCreated={handleImportAccountCreated}
             onComplete={handleImportComplete}

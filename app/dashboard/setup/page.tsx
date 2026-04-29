@@ -66,8 +66,8 @@ export default function DashboardSetupPage() {
     <DashboardLayout>
       <div className="mx-auto max-w-7xl">
         <PageHeader
-          title="Set up Monitrax"
-          description="Connect your bank, add your properties, and tell us about your household. Each step unlocks more of what Monitrax can show you."
+          title="Set up your TRAIL"
+          description="Connect your bank, add your properties, and tell us about your household. Each step takes you further on your TRAIL to financial freedom."
         />
 
         <div className="mt-6 space-y-6">

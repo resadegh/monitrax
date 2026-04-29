@@ -492,7 +492,7 @@ export function AssetsStep({ data, onUpdate }: AssetsStepProps) {
     <WizardStepShell
       icon={<Car className="h-8 w-8" strokeWidth={1.5} />}
       title="Personal assets"
-      subtitle="Vehicles, electronics, collectibles — anything that holds value and affects your net worth."
+      subtitle="What you own. Every asset contributes to your net worth and your TRAIL progress."
     >
       {data.assets.length > 0 && (
         <div className="space-y-3">

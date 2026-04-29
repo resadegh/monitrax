@@ -153,13 +153,13 @@ export function ReviewStep({ data }: ReviewStepProps) {
         icon={<Rocket className="h-8 w-8" strokeWidth={1.5} />}
         title={
           <>
-            You&apos;re all set,{' '}
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-indigo-400 dark:to-violet-400">
-              ready to launch
+            Your{' '}
+            <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent dark:from-amber-400 dark:via-orange-400 dark:to-amber-500">
+              TRAIL begins
             </span>
           </>
         }
-        subtitle="Here's a quick snapshot of what Monitrax will track for you. Click Launch dashboard when you're ready."
+        subtitle="Here's your starting point. Your Guide will help you from here — one step at a time."
       >
         {/* Hero net worth card */}
         <div className="relative overflow-hidden rounded-2xl border border-slate-200/70 dark:border-slate-700/50 bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-violet-900/20 p-6 text-center">
@@ -271,7 +271,7 @@ export function ReviewStep({ data }: ReviewStepProps) {
         </div>
 
         <p className="pt-1 text-center text-xs text-slate-500 dark:text-slate-400">
-          Click <span className="font-semibold">Launch dashboard</span> below to finish — you can
+          Click <span className="font-semibold">Start your TRAIL</span> below to meet your Guide — you can
           always add more data later.
         </p>
       </WizardStepShell>
