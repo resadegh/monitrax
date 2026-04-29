@@ -106,9 +106,91 @@ This is a **UI-only refactor**. The data graph in `prisma/schema.prisma` is **no
 
 - [x] Phase 36 spec doc (this file)
 - [ ] `TRAIL_FRAMEWORK.md` updated to reflect 2-tab My Accounts + Income/Spending under My Budget
-- [ ] `/dashboard/balances` page created
-- [ ] `/dashboard/activity` page created
-- [ ] `DashboardLayout.tsx` sidebar updated
+- [x] `/dashboard/balances` page created
+- [x] `/dashboard/activity` page created
+- [x] `DashboardLayout.tsx` sidebar updated
 - [ ] Subtle animation utilities added to `globals.css`
-- [ ] Build passes
-- [ ] Changelog entry at `docs/changelog/CHANGELOG_2026_04_18.md`
+- [x] Build passes
+- [x] Changelog entry at `docs/changelog/CHANGELOG_2026_04_18.md`
+
+## 7. Phase 36b — Inline dialogs on Balances (2026-04-29)
+
+> **Goal:** retire `/dashboard/accounts` and `/dashboard/loans` as
+> primary navigation targets. They keep working via direct URL but
+> the canonical entry point is `/dashboard/balances`.
+>
+> **Approach:** extract the detail / create / edit dialogs into
+> shared components in `components/accounts/` and `components/loans/`
+> so any page can render them. Then wire `/dashboard/balances` to
+> open them inline instead of navigating away.
+
+### Phase 1 — Account detail (PR #552, merged)
+
+- New `components/accounts/AccountDetailDialog.tsx` (Overview /
+  Transactions / Offset Details / Linked tabs).
+- `/dashboard/balances` row click → opens dialog inline (was:
+  navigated to `/dashboard/accounts#<id>` which didn't auto-open
+  the dialog, forcing a second click).
+- `/dashboard/accounts` migrated to use the same shared component
+  (~307 lines of inline JSX deduplicated).
+- SSOT (CLAUDE.md §12.2): replaced one local helper
+  (`calculateEffectiveLoanBalance`) with the existing canonical
+  `calculateEffectivePrincipal` from `lib/utils/calculations.ts`.
+  Interest-savings formula preserved EXACTLY per user direction
+  (existing calculations are correct, no new engines).
+
+### Phase 1b — Account / Loan create + edit (this session)
+
+- New `components/accounts/AccountFormDialog.tsx` — shared
+  create/edit form. Owns its own form state, validation, and
+  submit handler. Body shape matches the legacy POST/PUT contract
+  to `/api/accounts` exactly (incl. `interestRate / 100` decimal
+  conversion).
+- New `components/loans/LoanFormDialog.tsx` — shared create/edit
+  form for loans. Includes the Phase 19 `FormDocumentUpload`
+  auto-fill integration and the post-save document-link call to
+  `/api/documents/{id}/link`. Body shape matches `/api/loans`
+  POST/PUT exactly.
+- `/dashboard/balances` toolbar wired:
+  - **+ Account** → opens `AccountFormDialog` in create mode
+    (was: `router.push('/dashboard/accounts')`).
+  - **+ Loan** → opens `LoanFormDialog` in create mode (was:
+    `router.push('/dashboard/loans')`). Properties + Assets
+    lookups are lazy-fetched on first open.
+  - **Edit Account** (from detail dialog) → opens
+    `AccountFormDialog` in edit mode inline (was: navigated to
+    `/dashboard/accounts#<id>`).
+- `/dashboard/accounts` migrated to use the shared
+  `AccountFormDialog` — replaces ~85 lines of inline form JSX
+  + the `formData`/`handleSubmit`/`resetForm`/`handleEdit`
+  state/handlers.
+- `/dashboard/loans` migrated to use the shared `LoanFormDialog`
+  — replaces ~320 lines of inline form JSX + the form state +
+  `handleFieldsExtracted` + `handleSubmit` + `resetForm`.
+
+**Calculation/contract changes: zero.** Per user direction the
+existing logic on legacy and current pages is correct — Phase 1b
+is purely visual / flow, no behavioural change to forms,
+validation, API contracts, or document-linking.
+
+### Phase 2 — Retire `/dashboard/accounts` and `/dashboard/loans` (planned)
+
+- Migrate `Connect Bank` (Basiq) toolbar action to
+  `/dashboard/balances`.
+- Migrate `Import Transactions` toolbar action to
+  `/dashboard/balances`.
+- Inline the `LoanDetailDialog` on `/dashboard/balances` (replaces
+  PR #550's `?focus=` redirect to `/dashboard/loans`).
+- Redirect `/dashboard/accounts` → `/dashboard/balances`.
+- Redirect `/dashboard/loans` → `/dashboard/balances`.
+- Sidebar: remove any legacy entries still pointing at the old
+  pages.
+
+### Out of scope for Phase 36b
+
+- AI Strategy sub-page at `/dashboard/loans/[id]/strategy` — keeps
+  its own dedicated route. Linked to from the LoanDetailDialog.
+- `TransactionImportDialog` flow on the legacy `/dashboard/accounts`
+  page — moved as a whole in Phase 2, not piecemeal.
+- Any change to financial calculations — explicitly forbidden in
+  Phase 36b per user direction.
