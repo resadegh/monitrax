@@ -37,6 +37,7 @@ import {
   ArrowDownRight,
   Link2,
   Upload,
+  Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Tabs,
   TabsContent,
@@ -121,6 +132,13 @@ interface AccountDetailDialogProps {
   /** Called when the user clicks "Edit Account" in the footer. */
   onEdit?: (account: AccountDetail) => void;
   /**
+   * Called when the user confirms the delete action. Caller is
+   * responsible for the API DELETE call and reloading its list.
+   * When omitted the Delete button is hidden — useful for read-only
+   * surfaces.
+   */
+  onDelete?: (account: AccountDetail) => void | Promise<void>;
+  /**
    * Called when the user clicks the import button in the Transactions
    * tab. When omitted, the import button is hidden — useful for
    * callers (like the dashboard balances page) that don't yet host
@@ -170,10 +188,17 @@ export function AccountDetailDialog({
   open,
   onOpenChange,
   onEdit,
+  onDelete,
   onImportClick,
   onLinkedEntityNavigate,
 }: AccountDetailDialogProps) {
   const [txPage, setTxPage] = useState(1);
+  // Two-step delete: clicking Delete opens an AlertDialog; the
+  // user must explicitly confirm before the parent's onDelete
+  // fires. `deletePending` blocks double-clicks while the API call
+  // is in flight.
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
 
   // Reset pagination when the dialog opens for a different account.
   // (Otherwise switching from a 3-page account to a 1-page one would
@@ -570,23 +595,93 @@ export function AccountDetailDialog({
           </Tabs>
         )}
 
-        <div className="flex justify-end gap-3 pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-          {onEdit && account && (
-            <Button
-              onClick={() => {
-                onOpenChange(false);
-                onEdit(account);
-              }}
-            >
-              <Edit2 className="h-4 w-4 mr-2" />
-              Edit Account
+        <div className="flex justify-between gap-3 pt-4">
+          {/* Delete on the left — destructive action visually
+              separated from the safe Close / Edit pair on the right.
+              Hidden when the parent doesn't supply onDelete. */}
+          <div>
+            {onDelete && account && (
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirmOpen(true)}
+                className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900/40 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                disabled={deletePending}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
             </Button>
-          )}
+            {onEdit && account && (
+              <Button
+                onClick={() => {
+                  onOpenChange(false);
+                  onEdit(account);
+                }}
+              >
+                <Edit2 className="h-4 w-4 mr-2" />
+                Edit Account
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
+
+      {/*
+       * Two-step delete confirmation. AlertDialog (vs the browser's
+       * confirm()) keeps the warning consistent with the app's visual
+       * language and lets us spell out exactly what will be deleted —
+       * e.g. linked transactions and offset relationships.
+       */}
+      {onDelete && account && (
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this account?</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <span className="block">
+                  <strong className="text-foreground">{account.name}</strong>
+                  {account.institution ? ` (${account.institution})` : ''} will
+                  be permanently removed.
+                </span>
+                <span className="block">
+                  Any linked transactions and offset relationships will be
+                  detached. This action cannot be undone.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletePending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async (e) => {
+                  // Prevent the AlertDialog from auto-closing before
+                  // the API call resolves — we'll close it manually
+                  // in the finally block.
+                  e.preventDefault();
+                  setDeletePending(true);
+                  try {
+                    await onDelete(account);
+                    setDeleteConfirmOpen(false);
+                    onOpenChange(false);
+                  } catch (err) {
+                    console.error('Failed to delete account:', err);
+                  } finally {
+                    setDeletePending(false);
+                  }
+                }}
+                disabled={deletePending}
+                className="bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500"
+              >
+                {deletePending ? 'Deleting…' : 'Delete account'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </Dialog>
   );
 }

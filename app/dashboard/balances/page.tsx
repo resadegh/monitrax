@@ -260,6 +260,28 @@ function BalancesPageContent() {
     setLoanFormOpen(true);
   };
 
+  // Delete handler for the AccountDetailDialog footer. The dialog
+  // already shows the AlertDialog confirmation step before this
+  // fires — by the time we get here the user has typed/clicked
+  // "Delete account". On success we reload so the row drops out of
+  // the Cash section without a page refresh.
+  const handleDeleteAccount = async (account: AccountDetail) => {
+    if (!token) return;
+    const response = await fetch(`/api/accounts/${account.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        typeof errorData.error === 'string'
+          ? errorData.error
+          : `Failed to delete account (${response.status})`
+      );
+    }
+    void reloadData();
+  };
+
   const openAccountEdit = (account: AccountDetail) => {
     setEditingAccount({
       id: account.id,
@@ -308,14 +330,47 @@ function BalancesPageContent() {
     setAccountsError(null);
     setLoansError(null);
 
-    const accountsPromise = fetch('/api/accounts', { headers }).then(async (r) => {
-      if (!r.ok) throw new Error(`accounts ${r.status}`);
-      return r.json();
-    });
-    const loansPromise = fetch('/api/loans', { headers }).then(async (r) => {
-      if (!r.ok) throw new Error(`loans ${r.status}`);
-      return r.json();
-    });
+    /*
+     * Retry-on-5xx wrapper for the primary entity fetches.
+     *
+     * /api/accounts and /api/loans intermittently 500 on Vercel
+     * cold-starts (the first request after an idle period spins up
+     * a fresh function instance + reopens the Cloud SQL connection,
+     * which can blow past the function timeout the first try).
+     * PR #551 already split the unified_transactions enrichment out
+     * as best-effort, but the primary query itself can still hit the
+     * cold-start window. Retrying once after a short delay catches
+     * those one-shot failures without surfacing the "Couldn't load"
+     * banner to the user.
+     *
+     * Single retry only — if the second attempt also fails we honour
+     * the per-section error state and show the cached-data hint
+     * (PR #550 behaviour preserved). No exponential backoff because
+     * the user is waiting; a 600ms delay is the upper bound we'll
+     * tolerate.
+     */
+    const fetchWithRetry = async (url: string, label: string) => {
+      const attempt = async () => {
+        const r = await fetch(url, { headers });
+        if (!r.ok) throw new Error(`${label} ${r.status}`);
+        return r.json();
+      };
+      try {
+        return await attempt();
+      } catch (err) {
+        // Only retry on 5xx / network-level failures. 4xx (auth,
+        // forbidden, not found) is a real error — surface it.
+        const msg = err instanceof Error ? err.message : String(err);
+        const code = Number(msg.match(/\b(\d{3})\b/)?.[1] ?? 0);
+        const isRetryable = code === 0 || code >= 500;
+        if (!isRetryable) throw err;
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        return attempt();
+      }
+    };
+
+    const accountsPromise = fetchWithRetry('/api/accounts', 'accounts');
+    const loansPromise = fetchWithRetry('/api/loans', 'loans');
     const connectionsPromise = fetch('/api/basiq/connections', { headers })
       .then((r) => (r.ok ? r.json() : { connections: [] }))
       .catch(() => ({ connections: [] }));
@@ -573,6 +628,7 @@ function BalancesPageContent() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         onEdit={openAccountEdit}
+        onDelete={handleDeleteAccount}
         onLinkedEntityNavigate={handleLinkedEntityNavigate}
       />
 
