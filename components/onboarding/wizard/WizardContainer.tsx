@@ -22,7 +22,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, Rocket, Check, Loader2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Rocket, Check, Loader2, AlertCircle } from 'lucide-react';
 import {
   WizardData,
   INITIAL_WIZARD_DATA,
@@ -106,6 +106,10 @@ export function WizardContainer({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+  // Surface submit failures so the user isn't stuck staring at a button
+  // that quietly reverts from "Launching…" to "Launch dashboard" with
+  // no idea what went wrong. Cleared on each new submit attempt.
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // ---- Late hydration from server draft --------------------------------
   // If the wizard mounts BEFORE the parent finishes fetching
@@ -279,10 +283,23 @@ export function WizardContainer({
 
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await onComplete(data);
     } catch (error) {
       console.error('Failed to complete wizard:', error);
+      // Surface a human-readable message in the footer so the user
+      // can decide whether to retry, edit a field, or contact support.
+      // Falls back to a generic message when the thrown value isn't
+      // an Error (e.g. the page-mode handler in /app/onboarding/page.tsx
+      // re-throws the parsed `errorData.error` string).
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+          ? error
+          : 'We couldn’t save your setup. Please try again.';
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -484,7 +501,21 @@ export function WizardContainer({
   );
 
   const Footer = (
-    <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/70 dark:border-slate-700/50 bg-white/95 dark:bg-slate-900/95 flex-shrink-0">
+    <div className="flex flex-col gap-2 border-t border-slate-200/70 dark:border-slate-700/50 bg-white/95 dark:bg-slate-900/95 flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4">
+      {submitError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs text-rose-800 dark:border-rose-800/40 dark:bg-rose-900/30 dark:text-rose-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <strong className="font-semibold">Couldn’t finish setup.</strong>{' '}
+            {submitError} Please try again — your answers are still saved.
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-3">
       <button
         type="button"
         onClick={handleBack}
@@ -536,6 +567,7 @@ export function WizardContainer({
             <ChevronRight className="h-4 w-4" />
           </button>
         )}
+      </div>
       </div>
     </div>
   );

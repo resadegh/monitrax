@@ -279,8 +279,28 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
       // ID mapping for linking (temp ID -> real ID)
       const loanIdMap = new Map<string, string>();
 
-      // Start a transaction to create all data atomically
-      const result = await prisma.$transaction(async (tx: TransactionClient) => {
+      // Start a transaction to create all data atomically.
+      //
+      // Prisma's default interactive-transaction timeout is 5 seconds —
+      // far too short for the full bulk-create payload, which can issue
+      // ~50–80 sequential writes on a healthy account (3 properties ×
+      // [property + loan + rent + expenses], 1+ accounts, 9+ general
+      // expenses, household profile + members + pets, super accounts,
+      // debts, assets, etc.). On a slow Cloud SQL connection or first
+      // cold-start of the build the cumulative latency easily exceeds
+      // 5s, the transaction aborts, the 500 propagates to the client,
+      // and the wizard's "Launching..." button reverts with no
+      // user-visible feedback (see handleSubmit's silent catch in
+      // components/onboarding/wizard/WizardContainer.tsx — also fixed
+      // in this PR).
+      //
+      // 30s is a generous ceiling (well below the Vercel function
+      // timeout) and matches what equivalent bulk-write endpoints in
+      // this codebase use for similar payload sizes. `maxWait` is
+      // bumped to 10s so we don't reject the transaction at the slot-
+      // acquisition stage during traffic spikes.
+      const result = await prisma.$transaction(
+        async (tx: TransactionClient) => {
         // =======================================================================
         // 1. Update user onboarding status
         // =======================================================================
@@ -880,7 +900,12 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           householdMembers: householdMembers.length,
           householdPets: householdPets.length,
         };
-      });
+        },
+        {
+          maxWait: 10_000, // ms — wait up to 10s for a tx slot
+          timeout: 30_000, // ms — allow up to 30s for the full bulk write
+        }
+      );
 
       return NextResponse.json({
         success: true,
