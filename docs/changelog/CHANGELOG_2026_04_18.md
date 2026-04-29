@@ -81,3 +81,89 @@ All entity relationships are preserved exactly as they existed:
 
 - Branch: `claude/review-monitrax-docs-NWVJk`
 - Status: pushed
+
+---
+
+## Session: NWVJk — Phase 36 follow-up: Activity = full legacy functionality + Apple visuals
+
+### Why a follow-up
+
+The first cut of `/dashboard/activity` was a view-only list — it omitted the
+categorisation workflow (TransactionLinkDialog), the import wizard,
+server-side pagination, and the full server-side filter set. That is the
+entire reason the legacy `/transactions` page exists, and the
+"uncategorise → link to Income/Expense/Loan" loop is the engine behind
+Phase 29 (recurring matching) and Phase 30 (budget vs actual). Shipping a
+nav rename without that workflow would have broken the app for every user
+who relies on tagging their transactions.
+
+### What changed
+
+- **`app/dashboard/activity/page.tsx` rewritten** from view-only list →
+  full Transaction Explorer functionality, with Apple visuals.
+  - State, callbacks, ref, dialogs, filters, pagination copied verbatim
+    from `app/(dashboard)/transactions/page.tsx`.
+  - Same API surface (`/api/unified-transactions`, `/analytics`,
+    `/api/accounts`).
+  - Same `TransactionLinkDialog` + `ImportWizard` imports.
+  - Visual layer fully redesigned (rounded 2xl, tabular-nums, soft accents,
+    day-grouping, chip filters, calm "uncategorised first" pill).
+  - Confidence badge now only renders when score < 0.9 (reduce noise).
+- **`app/(dashboard)/transactions/page.tsx` reduced to a 1-line redirect**
+  to `/dashboard/activity`. All bookmarks + any internal link still works.
+- **Phase 36 spec doc** — section 7 added describing the rebuild.
+- **Sidebar unchanged** — nav still points to `/dashboard/balances` and
+  `/dashboard/activity`. The `matchRoutes` array already included
+  `/transactions`, so the redirect path also keeps the My Accounts nav
+  item highlighted while the redirect takes effect.
+
+### Functionality preserved (1:1, no behaviour changes)
+
+| Legacy feature | Preserved in new Activity? |
+|---|---|
+| Server-side pagination (25/page) | ✅ |
+| Search (server-side) | ✅ |
+| Account filter | ✅ (in advanced panel) |
+| Category filter | ✅ (in advanced panel) |
+| Date range filter | ✅ (in advanced panel) |
+| Recurring-only toggle | ✅ (chip) |
+| Anomalies-only toggle | ✅ (chip) |
+| 4 click-to-filter summary tiles | ✅ (Apple-restyled) |
+| "Uncategorised first" default | ✅ (calmer pill banner) |
+| TransactionLinkDialog (categorise/link) | ✅ |
+| Navigate-to-next-uncategorised flow | ✅ (uses `transactionsRef` to avoid stale closure) |
+| ImportWizard (CSV/QIF/OFX) | ✅ |
+| Linked / Transfer / Recurring / Anomaly indicators | ✅ |
+| AI confidence badges | ✅ (now only shown when < 0.9) |
+
+### Visual changes
+
+- Hero: "What's moving" + warm subtitle
+- 2xl rounded cards, soft category pill colours (50/700 instead of 100/800)
+- Filter chip strip with Recurring / Anomalies / Advanced toggles
+- Slide-down advanced filter panel with active-filter count badge
+- Day-grouped transaction list with day-net subtotals
+- Pagination as pill buttons (chevron-left / chevron-right)
+- Subtle animations: `anim-rise-stagger` on tiles, `anim-rise` on list,
+  `anim-fade-in` on import wizard backdrop
+- "Uncategorised first" pill replaces the legacy amber alert banner
+
+### Build status
+
+| Step | Status | Notes |
+|---|---|---|
+| `npm run build` | PASS | `/dashboard/activity` 15.5 kB, `/transactions` 642 B (redirect) |
+
+### Out of scope for this iteration
+
+- `/recurring` page — left alone. Its matching workflow is non-trivial and
+  warrants its own visual pass.
+- Other pages still using legacy "tile + form" patterns (Income, Spending,
+  Properties, Investments, etc.) — separate follow-ups.
+
+### Files modified
+
+- `app/dashboard/activity/page.tsx` — full rewrite
+- `app/(dashboard)/transactions/page.tsx` — replaced body with redirect
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` — section 7 added
+- `docs/changelog/CHANGELOG_2026_04_18.md` — this entry

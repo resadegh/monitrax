@@ -105,10 +105,43 @@ This is a **UI-only refactor**. The data graph in `prisma/schema.prisma` is **no
 ## 6. Checklist
 
 - [x] Phase 36 spec doc (this file)
-- [ ] `TRAIL_FRAMEWORK.md` updated to reflect 2-tab My Accounts + Income/Spending under My Budget
-- [ ] `/dashboard/balances` page created
-- [ ] `/dashboard/activity` page created
-- [ ] `DashboardLayout.tsx` sidebar updated
-- [ ] Subtle animation utilities added to `globals.css`
-- [ ] Build passes
-- [ ] Changelog entry at `docs/changelog/CHANGELOG_2026_04_18.md`
+- [x] `TRAIL_FRAMEWORK.md` updated to reflect 2-tab My Accounts + Income/Spending under My Budget
+- [x] `/dashboard/balances` page created
+- [x] `/dashboard/activity` page created — first cut (view-only) on commit 691e5aa, then **rebuilt with full legacy `/transactions` functionality + Apple visuals** in commit 2 (categorisation, link dialog, import wizard, server-side pagination, all filters)
+- [x] `DashboardLayout.tsx` sidebar updated
+- [x] Subtle animation utilities added to `globals.css`
+- [x] Legacy `/transactions` URL turned into a permanent redirect to `/dashboard/activity` (preserves bookmarks)
+- [x] Build passes
+- [x] Changelog entry at `docs/changelog/CHANGELOG_2026_04_18.md`
+
+## 7. Activity rebuild — second iteration
+
+After the initial commit landed, the first version of the Activity page was a
+view-only list. It was missing the categorisation workflow (TransactionLinkDialog),
+the import wizard, server-side pagination, and the full filter set — which is
+the entire reason `/transactions` exists. The categorisation loop is the engine
+behind budget reconciliation (Phase 29 + 30).
+
+The rebuilt page:
+
+- **URL stays** `/dashboard/activity` (warm TRAIL-aligned name kept)
+- **Sidebar stays** `My Accounts → Balances + Activity` (no nav change)
+- **Functionality is verbatim** from `app/(dashboard)/transactions/page.tsx`:
+  - State, callbacks, refs, dialogs, filters, pagination — copied 1:1
+  - Same `/api/unified-transactions` query parameters
+  - Same `TransactionLinkDialog` and `ImportWizard` imports
+  - "Uncategorised first" default preserved (the most important UX nudge in the app)
+- **Visuals only** are restyled:
+  - Hero "What's moving" + subtitle
+  - 4 summary tiles (click-to-filter behaviour preserved) restyled with 2xl rounded cards, soft accent colours, tabular-nums
+  - Filter chip strip (Recurring / Anomalies / Advanced) replaces the legacy "Filters" toggle button
+  - Slide-down advanced filter panel for Account / Category / Date range
+  - Day-grouped transaction list with day-net subtotals, inside one rounded card per group
+  - "Uncategorised first" amber alert downgraded to a calm pill
+  - Confidence badge shown ONLY when AI confidence < 0.9 (less visual noise; draws eye to rows that need review)
+  - Subtle `anim-rise-stagger` on tiles, `anim-rise` on list, `anim-fade-in` on import-wizard backdrop
+- **Legacy `/transactions` URL** is now `redirect('/dashboard/activity')` — bookmarks and any internal links keep working without us tracking down every reference.
+
+Recurring detail page (`/recurring`) is intentionally left alone in this PR.
+Its matching workflow (Phase 29) is non-trivial and deserves its own redesign
+pass.
