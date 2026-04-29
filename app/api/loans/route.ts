@@ -8,21 +8,38 @@ export const GET = withPermission('loan.read', async (request, auth) => {
     try {
       const userId = auth.userId;
 
-      // Fetch loans and linked transactions in parallel
-      const [loans, linkedTransactions] = await Promise.all([
-        prisma.loan.findMany({
-          where: { userId },
-          include: {
-            property: true,
-            offsetAccount: true,
-            linkedAsset: true,      // For CAR loans
-            linkedAccount: true,    // For LINE_OF_CREDIT
-            expenses: true,
-          },
-          orderBy: { createdAt: 'desc' },
-        }),
-        // Fetch ALL linked transactions to calculate accurate repayment averages
-        prisma.unifiedTransaction.findMany({
+      // Fetch the loans first as the primary entity. Splitting this
+      // out from the unifiedTransactions enrichment below means a
+      // failure on the secondary query (e.g. unified_transactions
+      // table missing in the deployed DB, R12 schema-drift per
+      // CLAUDE.md §12.12) doesn't take down the whole endpoint and
+      // strand the My Accounts > Balances Debt section with empty
+      // data. Cf. /api/accounts/route.ts which uses the same pattern.
+      const loans = await prisma.loan.findMany({
+        where: { userId },
+        include: {
+          property: true,
+          offsetAccount: true,
+          linkedAsset: true,      // For CAR loans
+          linkedAccount: true,    // For LINE_OF_CREDIT
+          expenses: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Best-effort: fetch linked transactions for repayment averages.
+      // Any failure here (table missing, connection blip on a cold
+      // start) is logged and swallowed so loans still render with
+      // null actuals and the section stays visible.
+      let linkedTransactions: Array<{
+        id: string;
+        date: Date;
+        amount: number;
+        direction: 'IN' | 'OUT';
+        loanId: string | null;
+      }> = [];
+      try {
+        linkedTransactions = await prisma.unifiedTransaction.findMany({
           where: {
             userId,
             loanId: { not: null },
@@ -35,8 +52,15 @@ export const GET = withPermission('loan.read', async (request, auth) => {
             loanId: true,
           },
           orderBy: { date: 'desc' },
-        }),
-      ]);
+        });
+      } catch (txError) {
+        console.warn(
+          'Skipping unifiedTransactions enrichment for loans ' +
+            '(table may not be migrated in this environment, or a ' +
+            'transient connection error):',
+          txError instanceof Error ? txError.message : txError
+        );
+      }
 
       // Group transactions by loanId and calculate totals
       // Track current month vs all-time for display
