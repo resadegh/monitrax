@@ -13,7 +13,7 @@
  * hover-lift on rows. No form-heavy tiles.
  */
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -38,6 +38,15 @@ import {
   AccountDetailDialog,
   type AccountDetail,
 } from '@/components/accounts/AccountDetailDialog';
+import {
+  AccountFormDialog,
+  type AccountFormValues,
+} from '@/components/accounts/AccountFormDialog';
+import {
+  LoanFormDialog,
+  type LoanFormPropertyOption,
+  type LoanFormAssetOption,
+} from '@/components/loans/LoanFormDialog';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
@@ -151,20 +160,98 @@ function BalancesPageContent() {
   const [detailAccount, setDetailAccount] = useState<AccountRow | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // Phase 1b: account create/edit form is now hosted inline. Opening
+  // the form with `editingAccount = null` runs in create mode (e.g.
+  // the "+ Account" toolbar button); opening it with a populated
+  // value runs in edit mode (e.g. the "Edit Account" button in the
+  // detail dialog).
+  const [accountFormOpen, setAccountFormOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<
+    AccountFormValues | null
+  >(null);
+
+  // Phase 1b: loan create/edit form. Properties + assets are fetched
+  // lazily on first open (most users won't click + Loan) so we don't
+  // bloat the initial Balances page load.
+  const [loanFormOpen, setLoanFormOpen] = useState(false);
+  const [loanFormProperties, setLoanFormProperties] = useState<
+    LoanFormPropertyOption[]
+  >([]);
+  const [loanFormAssets, setLoanFormAssets] = useState<LoanFormAssetOption[]>([]);
+  const [loanFormLookupsLoaded, setLoanFormLookupsLoaded] = useState(false);
+
   const openAccountDetail = (account: AccountRow) => {
     setDetailAccount(account);
     setDetailOpen(true);
   };
 
+  const openAccountCreate = () => {
+    setEditingAccount(null);
+    setAccountFormOpen(true);
+  };
+
+  const openLoanCreate = async () => {
+    // Lazy-fetch properties + assets the first time the dialog opens.
+    // Both endpoints are best-effort — failure leaves the lookup
+    // selects empty rather than blocking the form (the user can
+    // still create an unlinked loan).
+    if (!loanFormLookupsLoaded && token) {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [propsResult, assetsResult] = await Promise.allSettled([
+        fetch('/api/properties', { headers }).then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/assets', { headers }).then((r) => (r.ok ? r.json() : null)),
+      ]);
+      if (propsResult.status === 'fulfilled' && propsResult.value) {
+        const props = propsResult.value.data ?? propsResult.value.properties ?? [];
+        setLoanFormProperties(
+          props.map((p: { id: string; name: string }) => ({
+            id: p.id,
+            name: p.name,
+          }))
+        );
+      }
+      if (assetsResult.status === 'fulfilled' && assetsResult.value) {
+        const ass = assetsResult.value.data ?? assetsResult.value.assets ?? [];
+        setLoanFormAssets(
+          ass.map(
+            (a: {
+              id: string;
+              name: string;
+              currentValue: number;
+              vehicleMake?: string;
+              vehicleModel?: string;
+            }) => ({
+              id: a.id,
+              name: a.name,
+              currentValue: a.currentValue,
+              vehicleMake: a.vehicleMake,
+              vehicleModel: a.vehicleModel,
+            })
+          )
+        );
+      }
+      setLoanFormLookupsLoaded(true);
+    }
+    setLoanFormOpen(true);
+  };
+
+  const openAccountEdit = (account: AccountDetail) => {
+    setEditingAccount({
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      institution: account.institution ?? '',
+      currentBalance: account.currentBalance,
+      // The dialog stores this as a percentage (e.g. 2.5); the form
+      // dialog handles the percent↔decimal conversion internally.
+      interestRate: account.interestRate ?? 0,
+    });
+    setAccountFormOpen(true);
+  };
+
   const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
     setDetailOpen(false);
     openLinkedEntity(entity);
-  };
-
-  // Edit still routes to the existing /dashboard/accounts edit form
-  // (Phase 1 keeps the edit flow unchanged — Phase 2 will inline it).
-  const handleEditAccount = (account: AccountDetail) => {
-    router.push(`/dashboard/accounts#${account.id}`);
   };
 
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
@@ -182,72 +269,77 @@ function BalancesPageContent() {
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const [loansError, setLoansError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Tracks whether a fetch was started by an unmounted effect cleanup,
+  // so the per-section setters can ignore late responses. Refactored
+  // out of the original cancellable-flag pattern so the same logic
+  // is reachable from `reloadData` (called by the form-dialog
+  // `onSaved` callbacks below) without duplicating the fetch+parse
+  // chain.
+  const cancelledRef = useRef(false);
+  const reloadData = useCallback(async () => {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
 
-    let cancelled = false;
     setAccountsError(null);
     setLoansError(null);
 
     const accountsPromise = fetch('/api/accounts', { headers }).then(async (r) => {
-      if (!r.ok) {
-        throw new Error(`accounts ${r.status}`);
-      }
+      if (!r.ok) throw new Error(`accounts ${r.status}`);
       return r.json();
     });
     const loansPromise = fetch('/api/loans', { headers }).then(async (r) => {
-      if (!r.ok) {
-        throw new Error(`loans ${r.status}`);
-      }
+      if (!r.ok) throw new Error(`loans ${r.status}`);
       return r.json();
     });
     const connectionsPromise = fetch('/api/basiq/connections', { headers })
       .then((r) => (r.ok ? r.json() : { connections: [] }))
       .catch(() => ({ connections: [] }));
 
-    Promise.allSettled([accountsPromise, loansPromise, connectionsPromise]).then(
-      ([accResult, loanResult, connResult]) => {
-        if (cancelled) return;
+    const [accResult, loanResult, connResult] = await Promise.allSettled([
+      accountsPromise,
+      loansPromise,
+      connectionsPromise,
+    ]);
 
-        if (accResult.status === 'fulfilled') {
-          const r = accResult.value;
-          setAccounts(r.data ?? r.accounts ?? []);
-        } else {
-          // Don't wipe previously-loaded data on a transient failure —
-          // showing stale data with an error hint is friendlier than
-          // collapsing the section entirely.
-          setAccountsError(
-            accResult.reason instanceof Error
-              ? accResult.reason.message
-              : String(accResult.reason)
-          );
-        }
+    if (cancelledRef.current) return;
 
-        if (loanResult.status === 'fulfilled') {
-          const r = loanResult.value;
-          setLoans(r.data ?? r.loans ?? []);
-        } else {
-          setLoansError(
-            loanResult.reason instanceof Error
-              ? loanResult.reason.message
-              : String(loanResult.reason)
-          );
-        }
+    if (accResult.status === 'fulfilled') {
+      const r = accResult.value;
+      setAccounts(r.data ?? r.accounts ?? []);
+    } else {
+      setAccountsError(
+        accResult.reason instanceof Error
+          ? accResult.reason.message
+          : String(accResult.reason)
+      );
+    }
 
-        if (connResult.status === 'fulfilled') {
-          const r = connResult.value;
-          setConnections(r.connections ?? r.data ?? []);
-        }
+    if (loanResult.status === 'fulfilled') {
+      const r = loanResult.value;
+      setLoans(r.data ?? r.loans ?? []);
+    } else {
+      setLoansError(
+        loanResult.reason instanceof Error
+          ? loanResult.reason.message
+          : String(loanResult.reason)
+      );
+    }
 
-        setLoading(false);
-      }
-    );
+    if (connResult.status === 'fulfilled') {
+      const r = connResult.value;
+      setConnections(r.connections ?? r.data ?? []);
+    }
 
-    return () => {
-      cancelled = true;
-    };
+    setLoading(false);
   }, [token]);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    void reloadData();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [reloadData]);
 
   // --- Totals --------------------------------------------------------------
 
@@ -288,7 +380,7 @@ function BalancesPageContent() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push('/dashboard/accounts')}
+                onClick={openAccountCreate}
                 className="hidden sm:inline-flex"
               >
                 <Plus className="w-4 h-4 mr-1.5" /> Account
@@ -296,7 +388,7 @@ function BalancesPageContent() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push('/dashboard/loans')}
+                onClick={() => void openLoanCreate()}
                 className="hidden sm:inline-flex"
               >
                 <Plus className="w-4 h-4 mr-1.5" /> Loan
@@ -434,8 +526,64 @@ function BalancesPageContent() {
         account={detailAccount as AccountDetail | null}
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        onEdit={handleEditAccount}
+        onEdit={openAccountEdit}
         onLinkedEntityNavigate={handleLinkedEntityNavigate}
+      />
+
+      {/*
+       * Account create/edit form rendered at page level so it
+       * survives any source row's hover/focus state. Used both by
+       * the "+ Account" toolbar button (create mode) and by the
+       * detail dialog's "Edit Account" button (edit mode). Phase 1b
+       * of accounts-page retirement.
+       */}
+      <AccountFormDialog
+        open={accountFormOpen}
+        onOpenChange={setAccountFormOpen}
+        editing={editingAccount}
+        onSaved={() => {
+          // Refresh balances + reopen-data after a successful save.
+          // No optimistic update — the server is the source of truth
+          // for currentBalance, balanceSource, and interestRate
+          // formatting (decimal vs percentage), so a clean refetch
+          // avoids a brief mismatch in the UI.
+          void reloadData();
+        }}
+      />
+
+      {/*
+       * Loan create form rendered at page level so the "+ Loan"
+       * button on the Balances toolbar opens it inline. Phase 1b of
+       * accounts/loans-page retirement.
+       *
+       * `offsetAccounts` is filtered to non-credit cash accounts —
+       * that's what users link offsets against. `allAccounts`
+       * passes everything including credit cards for LINE_OF_CREDIT
+       * loans.
+       */}
+      <LoanFormDialog
+        open={loanFormOpen}
+        onOpenChange={setLoanFormOpen}
+        editing={null}
+        properties={loanFormProperties}
+        offsetAccounts={accounts
+          .filter((a) => a.type !== 'CREDIT_CARD')
+          .map((a) => ({
+            id: a.id,
+            name: a.name,
+            type: a.type,
+            currentBalance: a.currentBalance,
+          }))}
+        allAccounts={accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          currentBalance: a.currentBalance,
+        }))}
+        assets={loanFormAssets}
+        onSaved={() => {
+          void reloadData();
+        }}
       />
     </DashboardLayout>
   );
