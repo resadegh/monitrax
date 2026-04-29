@@ -28,6 +28,10 @@ import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import { TransactionImportDialog } from '@/components/bank/TransactionImportDialog';
 import { TransactionReviewPanel } from '@/components/bank/TransactionReviewPanel';
 import { AccountDetailDialog } from '@/components/accounts/AccountDetailDialog';
+import {
+  AccountFormDialog,
+  type AccountFormValues,
+} from '@/components/accounts/AccountFormDialog';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 interface BasiqConnection {
@@ -103,18 +107,16 @@ function AccountsPageContent() {
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // `showDialog` opens the shared AccountFormDialog (Phase 1b).
+  // The dialog manages its own form state internally — this page
+  // only tracks open/closed and which row is being edited.
   const [showDialog, setShowDialog] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<
+    AccountFormValues | null
+  >(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
-  const [formData, setFormData] = useState<Partial<Account>>({
-    name: '',
-    type: 'TRANSACTIONAL',
-    institution: '',
-    currentBalance: 0,
-    interestRate: 0,
-  });
 
   // Basiq Open Banking state
   const [basiqConnections, setBasiqConnections] = useState<BasiqConnection[]>([]);
@@ -265,56 +267,23 @@ function AccountsPageContent() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const url = editingId ? `/api/accounts/${editingId}` : '/api/accounts';
-    const method = editingId ? 'PUT' : 'POST';
-
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          currentBalance: Number(formData.currentBalance),
-          interestRate: formData.interestRate ? Number(formData.interestRate) / 100 : null,
-          institution: formData.institution || null,
-        }),
-      });
-
-      if (response.ok) {
-        await loadAccounts();
-        setShowDialog(false);
-        setEditingId(null);
-        resetForm();
-      }
-    } catch (error) {
-      console.error('Error saving account:', error);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      type: 'TRANSACTIONAL',
-      institution: '',
-      currentBalance: 0,
-      interestRate: 0,
-    });
-  };
-
+  // Phase 1b: form submit + reset are handled inside the shared
+  // AccountFormDialog. This page only opens the dialog (in create
+  // or edit mode) and reloads the list when it reports a save via
+  // its `onSaved` callback.
   const handleEdit = (account: Account) => {
-    setFormData({
+    setEditingAccount({
+      id: account.id,
       name: account.name,
       type: account.type,
-      institution: account.institution || '',
+      institution: account.institution ?? '',
       currentBalance: account.currentBalance,
-      interestRate: account.interestRate ? account.interestRate * 100 : 0,
+      // Server stores interestRate as decimal (e.g. 0.025); the
+      // form expects percentage (2.5). The shared dialog handles
+      // this conversion in its hydration effect — we just pass the
+      // raw decimal through.
+      interestRate: account.interestRate ?? 0,
     });
-    setEditingId(account.id);
     setShowDialog(true);
   };
 
@@ -396,7 +365,7 @@ function AccountsPageContent() {
               )}
               Connect Bank
             </Button>
-            <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
+            <Button onClick={() => { setEditingAccount(null); setShowDialog(true); }}>
               <Plus className="mr-2 h-4 w-4" />
               Add Manually
             </Button>
@@ -528,7 +497,7 @@ function AccountsPageContent() {
           description="Start by adding your first bank account to track your balances and finances."
           action={{
             label: 'Add Account',
-            onClick: () => { setShowDialog(true); resetForm(); },
+            onClick: () => { setEditingAccount(null); setShowDialog(true); },
           }}
         />
       ) : viewMode === 'list' ? (
@@ -698,93 +667,13 @@ function AccountsPageContent() {
       )}
 
       {/* Add/Edit Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{editingId ? 'Edit Account' : 'Add New Account'}</DialogTitle>
-            <DialogDescription>
-              {editingId ? 'Update the account details below.' : 'Enter the details for your new account.'}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Account Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Everyday Account"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Account Type</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value as Account['type'] })}
-                >
-                  <SelectTrigger id="type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="TRANSACTIONAL">Transactional</SelectItem>
-                    <SelectItem value="SAVINGS">Savings</SelectItem>
-                    <SelectItem value="OFFSET">Offset</SelectItem>
-                    <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="institution">Institution</Label>
-                <Input
-                  id="institution"
-                  value={formData.institution || ''}
-                  onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
-                  placeholder="e.g., CBA, Westpac"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentBalance">Current Balance</Label>
-                <Input
-                  id="currentBalance"
-                  type="number"
-                  value={formData.currentBalance}
-                  onChange={(e) => setFormData({ ...formData, currentBalance: Number(e.target.value) })}
-                  placeholder="10000"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="interestRate">Interest Rate (% p.a.)</Label>
-                <Input
-                  id="interestRate"
-                  type="number"
-                  step="0.01"
-                  value={formData.interestRate || ''}
-                  onChange={(e) => setFormData({ ...formData, interestRate: e.target.value ? Number(e.target.value) : undefined })}
-                  placeholder="2.5"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingId ? 'Update Account' : 'Add Account'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Phase 1b of accounts-page retirement: shared AccountFormDialog used here AND on /dashboard/balances */}
+      <AccountFormDialog
+        open={showDialog}
+        onOpenChange={setShowDialog}
+        editing={editingAccount}
+        onSaved={() => { void loadAccounts(); }}
+      />
 
       {/* Phase 1 of accounts-page retirement: shared AccountDetailDialog used here AND on /dashboard/balances */}
       <AccountDetailDialog
