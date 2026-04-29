@@ -120,22 +120,82 @@ export default function BalancesPage() {
   const [loans, setLoans] = useState<LoanRow[]>([]);
   const [connections, setConnections] = useState<BasiqConnection[]>([]);
   const [loading, setLoading] = useState(true);
+  // Per-endpoint error tracking so we can surface "couldn't load X"
+  // hints next to each section instead of silently hiding it.
+  // Previously the page used `Promise.all` + a `.then` that fell back
+  // to `[]` on `r.ok === false` — which made an intermittent 5xx on
+  // /api/accounts indistinguishable from an empty list, so the Cash
+  // section just disappeared. Switching to `Promise.allSettled` plus
+  // explicit error state lets sections render whatever data did
+  // arrive and clearly signal which fetches failed.
+  const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [loansError, setLoansError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
 
-    Promise.all([
-      fetch('/api/accounts', { headers }).then((r) => r.ok ? r.json() : { data: [] }),
-      fetch('/api/loans', { headers }).then((r) => r.ok ? r.json() : { data: [] }),
-      fetch('/api/basiq/connections', { headers }).then((r) => r.ok ? r.json() : { connections: [] }).catch(() => ({ connections: [] })),
-    ])
-      .then(([accRes, loanRes, connRes]) => {
-        setAccounts(accRes.data ?? accRes.accounts ?? []);
-        setLoans(loanRes.data ?? loanRes.loans ?? []);
-        setConnections(connRes.connections ?? connRes.data ?? []);
-      })
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    setAccountsError(null);
+    setLoansError(null);
+
+    const accountsPromise = fetch('/api/accounts', { headers }).then(async (r) => {
+      if (!r.ok) {
+        throw new Error(`accounts ${r.status}`);
+      }
+      return r.json();
+    });
+    const loansPromise = fetch('/api/loans', { headers }).then(async (r) => {
+      if (!r.ok) {
+        throw new Error(`loans ${r.status}`);
+      }
+      return r.json();
+    });
+    const connectionsPromise = fetch('/api/basiq/connections', { headers })
+      .then((r) => (r.ok ? r.json() : { connections: [] }))
+      .catch(() => ({ connections: [] }));
+
+    Promise.allSettled([accountsPromise, loansPromise, connectionsPromise]).then(
+      ([accResult, loanResult, connResult]) => {
+        if (cancelled) return;
+
+        if (accResult.status === 'fulfilled') {
+          const r = accResult.value;
+          setAccounts(r.data ?? r.accounts ?? []);
+        } else {
+          // Don't wipe previously-loaded data on a transient failure —
+          // showing stale data with an error hint is friendlier than
+          // collapsing the section entirely.
+          setAccountsError(
+            accResult.reason instanceof Error
+              ? accResult.reason.message
+              : String(accResult.reason)
+          );
+        }
+
+        if (loanResult.status === 'fulfilled') {
+          const r = loanResult.value;
+          setLoans(r.data ?? r.loans ?? []);
+        } else {
+          setLoansError(
+            loanResult.reason instanceof Error
+              ? loanResult.reason.message
+              : String(loanResult.reason)
+          );
+        }
+
+        if (connResult.status === 'fulfilled') {
+          const r = connResult.value;
+          setConnections(r.connections ?? r.data ?? []);
+        }
+
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   // --- Totals --------------------------------------------------------------
@@ -243,17 +303,23 @@ export default function BalancesPage() {
         {/* CONTENT ------------------------------------------------------ */}
         {loading ? (
           <LoadingSections />
-        ) : accounts.length === 0 && loans.length === 0 ? (
+        ) : accounts.length === 0 &&
+          loans.length === 0 &&
+          !accountsError &&
+          !loansError ? (
           <EmptyState />
         ) : (
           <div className="space-y-10">
             {/* CASH */}
-            {totals.cashAccounts.length > 0 && (
+            {(totals.cashAccounts.length > 0 || accountsError) && (
               <Section
                 title="Cash"
                 subtitle="Where your money lives"
                 total={totals.cash}
                 accent="emerald"
+                errorHint={
+                  accountsError ? "Couldn't load latest balances. Showing cached data." : null
+                }
               >
                 <div className="anim-rise-stagger">
                   {totals.cashAccounts.map((a) => (
@@ -280,12 +346,15 @@ export default function BalancesPage() {
             )}
 
             {/* DEBT */}
-            {loans.length > 0 && (
+            {(loans.length > 0 || loansError) && (
               <Section
                 title="Debt"
                 subtitle="Home, investment, and personal loans"
                 total={-totals.debt}
                 accent="rose"
+                errorHint={
+                  loansError ? "Couldn't load loans. Showing cached data." : null
+                }
               >
                 <div className="anim-rise-stagger">
                   {loans.map((l) => (
@@ -310,12 +379,17 @@ function Section({
   subtitle,
   total,
   accent,
+  errorHint,
   children,
 }: {
   title: string;
   subtitle: string;
   total: number;
   accent: 'emerald' | 'amber' | 'rose';
+  /** Optional hint shown next to the subtitle when this section's data
+   *  failed to refresh (e.g. /api/accounts hiccupped). Falls back to
+   *  null when everything loaded cleanly. */
+  errorHint?: string | null;
   children: React.ReactNode;
 }) {
   const dotColor =
@@ -330,6 +404,11 @@ function Section({
             {title}
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+          {errorHint && (
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+              {errorHint}
+            </p>
+          )}
         </div>
         <div className={`text-lg font-semibold tabular-nums ${total < 0 ? 'text-rose-600' : 'text-foreground'}`}>
           {formatCurrency(total)}
