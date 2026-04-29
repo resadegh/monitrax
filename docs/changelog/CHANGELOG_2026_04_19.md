@@ -361,6 +361,65 @@ a row created earlier in the same request.
   The post-onboarding import flow benefits from the same fix (the
   "None" option was equally broken there).
 
+## Session: claude/review-monitrax-docs-2hNSa — Launch dashboard hang + silent failures
+
+### Changes Made
+
+#### 1. Fix: bulk-create transaction timeout
+
+- **Type:** Fix (reliability)
+- **Scope:** `app/api/onboarding/bulk-create/route.ts`
+- **Symptom:** Clicking "Launch dashboard" on the Review step
+  briefly showed a "Launching…" spinner, then quietly returned to
+  the Review screen. Nothing happened, no redirect, no message.
+- **Root cause:** The bulk-create handler wraps every onboarding
+  write in a single `prisma.$transaction(...)`. Prisma's default
+  interactive-transaction timeout is **5 seconds**, but a typical
+  payload (3 properties × [property + loan + rent + expenses],
+  1+ accounts, 9+ general expenses, household profile + members +
+  pets, super accounts, debts, assets) issues 50–80 sequential
+  writes. On a slow Cloud SQL connection, or after a cold start,
+  the cumulative latency easily exceeds 5s and the transaction
+  aborts with `Transaction not found / closed`. The route caught
+  the error and returned 500 — but the client (see #2 below) just
+  swallowed the error.
+- **Solution:** Pass explicit options to `$transaction`:
+  - `timeout: 30_000` — generous ceiling, well below the Vercel
+    function timeout, matches comparable bulk-write endpoints in
+    this codebase.
+  - `maxWait: 10_000` — give the request 10 s to acquire a tx slot
+    during traffic spikes instead of failing fast at 2 s default.
+
+#### 2. Fix: silent submit failures in WizardContainer
+
+- **Type:** Fix (UX)
+- **Scope:** `components/onboarding/wizard/WizardContainer.tsx`
+- **Symptom:** When `onComplete(data)` rejected (e.g. the timeout
+  above, a validation error, a 500), `handleSubmit` only called
+  `console.error(...)` and reset `isSubmitting`. The user saw the
+  spinner stop with **no indication** of what went wrong.
+- **Solution:**
+  - Added `submitError` state. Cleared at the start of every
+    submit attempt; populated from the thrown value's `message`
+    (or a generic fallback when the thrown value isn't an Error).
+  - Rendered an inline error banner above the Back / Launch
+    buttons in the Footer with a clear title ("Couldn't finish
+    setup.") and the server-side message. The banner reassures
+    the user that their answers are still saved (autosave + the
+    draft persistence layer guarantee this), so they can hit
+    Launch dashboard again without redoing the wizard.
+
+### Files Modified
+
+- `app/api/onboarding/bulk-create/route.ts` — pass `{ maxWait,
+  timeout }` to `prisma.$transaction(...)`.
+- `components/onboarding/wizard/WizardContainer.tsx` — track
+  `submitError`, render error banner in Footer.
+
+### Build Status
+
+- [x] `npm run build` passes (Next.js 15.2.6).
+
 ### Build Status
 
 - [x] TypeScript compilation passes across all PRs
