@@ -1,6 +1,7 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -92,7 +93,13 @@ type ViewMode = 'tiles' | 'list';
 
 function LoansPageContent() {
   const { token } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { openLinkedEntity } = useCrossModuleNavigation();
+  // Tracks whether we've already auto-opened the detail dialog for the
+  // `?focus=<id>` deep-link, so a state update in the dialog (e.g.
+  // editing the loan) doesn't reopen it on every render.
+  const hasAutoOpenedFocusRef = useRef<string | null>(null);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -178,6 +185,36 @@ function LoansPageContent() {
       loadData();
     }
   }, [token]);
+
+  // Deep-link from /dashboard/loans/[id] (and any `?focus=<id>` URL):
+  // when the loans array finishes loading, find the focused loan and
+  // auto-open the detail dialog for it. Strip the `focus` query param
+  // afterward so a refresh doesn't reopen the dialog on every load.
+  useEffect(() => {
+    const focusId = searchParams?.get('focus');
+    if (!focusId) return;
+    if (isLoading) return; // wait for loans to arrive
+    if (hasAutoOpenedFocusRef.current === focusId) return; // already handled
+
+    const target = loans.find((l) => l.id === focusId);
+    if (target) {
+      hasAutoOpenedFocusRef.current = focusId;
+      setSelectedLoan(target);
+      setShowDetailDialog(true);
+    } else {
+      // Loan not found (deleted, wrong id, or not yet visible) — flip
+      // the ref anyway so we don't keep retrying every render.
+      hasAutoOpenedFocusRef.current = focusId;
+    }
+
+    // Strip ?focus= from the URL without adding history. `router.replace`
+    // re-renders this component but `hasAutoOpenedFocusRef` already holds
+    // the focusId, so the guard above prevents an infinite open loop.
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('focus');
+    const queryString = params.toString();
+    router.replace(`/dashboard/loans${queryString ? `?${queryString}` : ''}`);
+  }, [loans, isLoading, searchParams, router]);
 
   const loadData = async () => {
     try {
