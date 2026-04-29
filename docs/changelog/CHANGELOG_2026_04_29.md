@@ -1,335 +1,186 @@
-# Changelog — 2026-04-29
+# Changelog — 2026-04-29 (continued)
 
-## Session: claude/sync-user-preferences-columns-2hNSa — fix UserPreference schema/prod drift
-
-### Symptom
-
-After PR #548 surfaced server `details` to the wizard footer, clicking
-Launch dashboard showed:
-
-> Couldn't finish setup. Failed to save onboarding data: Invalid
-> `prisma.userPreference.upsert()` invocation: The column `taxYear`
-> does not exist in the current database.
-
-So the bug was identified within minutes of #548 merging — the client
-banner did exactly what we needed.
-
-### Root cause
-
-Schema drift between `prisma/schema.prisma` and the production
-database. Per CLAUDE.md §12.12 (R12 incident note), the prod DB was
-originally created outside the Prisma migration workflow. The
-`0_init` migration is a `SELECT 1;` no-op baseline, so any column
-added to `model UserPreference` after the baseline never reached prod.
-
-`taxYear` (added some time after baseline as `String?` on
-`UserPreference`) is the first one to crash because `bulk-create`
-writes it as part of the onboarding upsert. Other columns the
-schema declares but prod might be missing would crash next — see
-the migration body for the full set we sync defensively.
-
-### Solution
-
-New Prisma migration:
-`prisma/migrations/20260429140700_sync_user_preferences_columns/migration.sql`
-
-The migration uses `ADD COLUMN IF NOT EXISTS` for **every column the
-current `UserPreference` schema declares**, so it is fully idempotent:
-
-- On `monitrax-db-dev` (where the columns probably exist already
-  from historical `prisma db push`), every statement is a no-op.
-- On `monitrax-db-prod` (where most/all columns are missing), each
-  statement adds the column with the same default the schema
-  declares.
-
-Every NOT NULL column has a sensible default (`false`, `'AUD'`,
-`'AU'`, etc.) so existing rows are filled in without manual backfill.
-Nullable columns (`tourSkippedAt`, `taxYear`, `onboardingDraft`)
-add no constraint.
-
-### CLAUDE.md compliance
-
-- **§12.11 (Destructive write checklist):** NOT required. Every
-  statement is `ADD COLUMN IF NOT EXISTS ... DEFAULT ...` or
-  nullable. No `DROP`, no `ALTER ... DROP COLUMN`, no `TRUNCATE`,
-  no NOT NULL backfill. Existing rows are unaffected beyond
-  taking the column default.
-- **§12.12 (Schema change deploy protocol):** ✓
-  - Schema-and-migration ship together in this PR.
-  - Migration was *not* generated via `prisma migrate dev` because
-    no dev DB connection is available in this session — it was
-    written by hand to mirror the schema. The `IF NOT EXISTS`
-    pattern makes hand-written safe: dev sees no-ops, prod sees
-    the additions, no manual diffing required.
-  - `prisma migrate deploy` runs in `vercel-build` (per
-    `package.json`), so this migration applies automatically to
-    `monitrax-db-dev` on the preview build and to
-    `monitrax-db-prod` on the production deploy. Either failure
-    aborts the deploy and the previous build keeps serving.
-  - First migrate-deploy run on each DB will create
-    `_prisma_migrations` (which doesn't exist yet per R12) and
-    apply this folder. Subsequent runs no-op.
-
-### Files Modified
-
-- `prisma/migrations/20260429140700_sync_user_preferences_columns/migration.sql`
-  — new migration. Adds 18 columns idempotently.
-
-### Build Status
-
-- [x] `npm run build` passes (Next.js 15.2.6).
-
-### Outstanding
-
-- Other tables likely have the same drift (R12 covered the entire
-  schema). When the *next* user-blocking column-missing error
-  surfaces (now visible thanks to PR #548), we can extend this
-  pattern to the affected table.
-- Long-term: a one-shot full-sync migration would be cleaner than
-  fixing tables piecemeal, but that requires a dev DB session to
-  generate properly via `prisma migrate diff`. Tracked as a
-  follow-up in the next maintenance window.
-
-## Session: claude/balances-loan-detail-navigation-2hNSa — fix loan-detail 404 + balances partial-data rendering
+## Session: claude/balances-account-detail-dialog-2hNSa — Phase 1 of accounts-page retirement (inline detail dialog + SSOT calculations)
 
 ### Symptom (user report)
 
-User landed on `/dashboard/balances` after completing onboarding and
-reported three issues:
+Clicking an account row on `/dashboard/balances` navigated to
+`/dashboard/accounts#<id>` which didn't auto-open the detail dialog
+(no `location.hash` reader was wired up). The user had to click the
+account tile a second time to see the details. Two clicks + a page
+transition for what should be a single click.
 
-1. Duplicate accounts in the Cash section (2× NAB Everyday $900,
-   plus two Guildford Offset accounts with different balances).
-2. Clicking any loan in the Debt section produced a 404 at
-   `/dashboard/loans/<id>`.
-3. The Cash and Debt sections "randomly" appeared together or
-   one-at-a-time across page loads.
+### Root cause + scope
 
-### Root cause
+The `/dashboard/accounts` page hosts the only copy of the
+AccountDetailDialog (Overview / Transactions / Offset / Linked
+tabs). The Balances page can't render the same UI without
+duplicating ~300 lines of JSX, so it linked out instead — but the
+target page didn't auto-open the dialog, leaving users stuck.
 
-**Issue 2 (404 on loan detail).** `app/dashboard/balances/page.tsx`
-links each loan row to `/dashboard/loans/${loan.id}`. The loans
-folder structure was:
-```
-app/dashboard/loans/
-  page.tsx              <- index (renders the detail dialog)
-  [id]/
-    strategy/
-      page.tsx          <- AI strategy sub-route
-```
-i.e. `[id]/strategy` exists but `[id]/page.tsx` does not — so
-Next.js 404'd at the deep-link URL even though the loan existed.
-Activity page (`activity/page.tsx:429`) had the same broken link.
+The user agreed to a phased approach:
 
-**Issue 3 (intermittent section visibility).** The balances page
-used `Promise.all` with this pattern:
-
-```ts
-fetch('/api/accounts').then((r) => r.ok ? r.json() : { data: [] }),
-fetch('/api/loans').then((r) => r.ok ? r.json() : { data: [] }),
-```
-
-- A 5xx on either endpoint silently fell back to `{ data: [] }`,
-  which after the destructure became the empty array — making a
-  transient API failure indistinguishable from "no data".
-- Sections render conditionally on `array.length > 0`, so when one
-  endpoint hiccupped its section just disappeared without any UX
-  signal. That explains the "sometimes only Cash, sometimes only
-  Debt" behaviour the user reported.
-- A network-level rejection on either fetch would also crash
-  `Promise.all` (no `.catch`) and leave the page in an
-  inconsistent half-loaded state.
-
-**Issue 1 (duplicate accounts).** Not a code bug — a data artifact
-from the user's earlier failed Launch dashboard attempts (before
-PR #549 fixed the schema drift). Although bulk-create wraps every
-write in a Prisma `$transaction(...)`, several attempts were tried
-across different fix iterations; some likely committed before the
-transaction-time userPreference upsert errored, or the wizard data
-carried duplicate account rows from re-clicking "Add another
-account" between retries. The duplicates exist in the DB and need
-manual deletion via the My Accounts UI. Long-term the right fix is
-bulk-create idempotency keyed on a wizard-submission ID, tracked
-as follow-up work.
+- **Phase 1 (this PR)** — extract the dialog into a shared
+  component, render it inline on `/dashboard/balances`. Single
+  click → dialog. The `/dashboard/accounts` page keeps working
+  unchanged via the same shared component (no duplicated JSX).
+- **Phase 2 (later PR)** — retire `/dashboard/accounts` entirely.
+  Migrate the toolbar (Connect Bank, Import) to balances. Inline
+  the create / edit dialogs. Redirect `/dashboard/accounts` →
+  `/dashboard/balances`.
 
 ### Solution
 
-#### Issue 2 — `/dashboard/loans/[id]/page.tsx` redirect stub
+#### 1. Shared `AccountDetailDialog` component
 
-Added a thin client-side redirect page at the missing route that
-sends `/dashboard/loans/<id>` → `/dashboard/loans?focus=<id>`.
+New file: `components/accounts/AccountDetailDialog.tsx`. Pure
+presentation — side-effects (edit, import, GRDCS navigation) are
+caller-supplied via props:
 
-The loans index (`/dashboard/loans/page.tsx`) now reads the `focus`
-query param after data loads, finds the matching loan, and
-auto-opens the existing detail dialog. The param is then stripped
-from the URL via `router.replace` so a refresh doesn't reopen the
-dialog. A `useRef` guards against re-firing the effect when the
-dialog itself triggers a state update.
+```ts
+interface AccountDetailDialogProps {
+  account: AccountDetail | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEdit?: (account: AccountDetail) => void;
+  onImportClick?: () => void;
+  onLinkedEntityNavigate?: (entity: GRDCSLinkedEntity) => void;
+}
+```
 
-This preserves deep-linkable URLs (the user can share
-`/dashboard/loans/<id>` and it works) without duplicating the
-loan-detail UI that already lives in the index dialog. A standalone
-detail page is tracked as follow-up.
+When `onImportClick` is omitted (e.g. on the Balances page, which
+doesn't yet host a `TransactionImportDialog`), the import button
+is hidden — the dialog stays useful without forcing every caller
+to wire up an import flow.
 
-#### Issue 3 — `Promise.allSettled` + per-section error hints
+Pagination state (`txPage`) is internal to the component and
+resets when the user opens the dialog for a different account
+(otherwise switching from a 3-page transactions list to a 1-page
+one would strand the user on a non-existent page 3).
 
-Switched the balances page from `Promise.all` to `Promise.allSettled`
-so one fetch's failure doesn't cascade into the others. Added two
-new state slots (`accountsError`, `loansError`) populated when the
-respective endpoint rejects. The Cash and Debt sections now render
-whenever they have data **or** when their endpoint failed (so the
-user never just "loses" the section). When an error is present the
-section header shows an amber hint ("Couldn't load latest balances.
-Showing cached data.") so the inconsistency is explicit instead of
-silent.
+#### 2. SSOT: use only existing canonical engines (CLAUDE.md §12.2)
 
-A `cancelled` flag in the effect cleanup also guards against
-setState after unmount (e.g. fast back-button) which previously
-could surface as a stale-state warning in dev.
+The original dialog had two locally-defined helpers:
+
+```ts
+function calculateInterestSavings(account) { ... }
+function calculateEffectiveLoanBalance(account) { ... }
+```
+
+Per user direction (2026-04-29):
+> "the calculations and relationships on all the legacy and
+> current pages are correct, so don't create new logics without
+> confirmation … use the existing logics and engines for the new
+> changes. for now the changes I am asking are mainly visual and
+> flow related"
+
+So this PR:
+
+- **Replaces** `calculateEffectiveLoanBalance` — structurally
+  identical to the canonical
+  `calculateEffectivePrincipal(principal, offsetBalance)` already
+  in `lib/utils/calculations.ts`. Same math
+  (`Math.max(0, principal - offsetBalance)`), no behavioural
+  change. SSOT-safe deduplication.
+- **Preserves** the legacy interest-savings formula EXACTLY:
+  `offsetBalance × loanAnnualRate`. No new primitive added to
+  `lib/utils/calculations.ts`; no composition that would shift
+  edge-case behaviour. The dialog and the legacy
+  `/dashboard/accounts` page both use the literal formula until
+  the user explicitly directs a calculation change.
+
+Net result on `lib/utils/calculations.ts`: **unchanged**.
+Net result on calculation behaviour anywhere in the app:
+**unchanged**.
+
+#### 3. Wiring on `/dashboard/balances`
+
+- Added dialog state (`detailAccount`, `detailOpen`).
+- Converted the `<Link href="/dashboard/accounts#...">` row into a
+  `<button onClick={...}>` that opens the dialog inline.
+- Added `useCrossModuleNavigation` for the GRDCS Linked tab —
+  forced the page to be wrapped in `<Suspense>` (Next.js 15
+  requires this around any `useSearchParams` consumer). Mirrors
+  the pattern PR #550 introduced on `/dashboard/loans`.
+- "Edit Account" still routes to `/dashboard/accounts#<id>` —
+  Phase 2 will inline the edit form.
+
+#### 4. Migration on `/dashboard/accounts`
+
+The legacy `/dashboard/accounts` page now renders the same shared
+dialog:
+
+```tsx
+<AccountDetailDialog
+  account={selectedAccount}
+  open={showDetailDialog}
+  onOpenChange={setShowDetailDialog}
+  onEdit={handleEdit}
+  onImportClick={() => setShowImportDialog(true)}
+  onLinkedEntityNavigate={handleLinkedEntityNavigate}
+/>
+```
+
+Replaces ~307 lines of inline JSX with the shared component.
+
+`Account.institution` and `Transaction.category` types were
+loosened from `string | undefined` to `string | null | undefined`
+to match the server response shape (Prisma returns `null` for
+optional strings) and the shared dialog's prop types.
 
 ### Files Modified
 
-- `app/dashboard/loans/[id]/page.tsx` — **new file**. Client-side
-  redirect to `/dashboard/loans?focus=<id>`.
-- `app/dashboard/loans/page.tsx` — read `?focus=<id>` query param
-  on data load and auto-open the detail dialog. Strip the param
-  from the URL afterward. `useRef` guard against re-fire.
-- `app/dashboard/balances/page.tsx` — switch to
-  `Promise.allSettled`, track per-endpoint error state, render
-  error hints in section headers, render sections when their
-  endpoint errored even if the cached array is empty.
+- `components/accounts/AccountDetailDialog.tsx` — **new file**.
+  Shared dialog component (Overview / Transactions / Offset /
+  Linked tabs, pagination, GRDCS Linked-tab support).
+- `lib/utils/calculations.ts` — **unchanged**. (Earlier drafts of
+  this PR added a new helper, then composed existing primitives;
+  both reverted per user direction — Phase 1 is purely visual /
+  flow, no calculation changes.)
+- `app/dashboard/balances/page.tsx` — render the shared dialog;
+  convert account-row link to button; add Suspense wrapper for
+  `useSearchParams`; type-extended `AccountRow` to include
+  `transactions` + `_links` + `_meta` (already returned by the
+  server, just newly consumed).
+- `app/dashboard/accounts/page.tsx` — replace inline dialog with
+  shared component; widen `Account.institution` and
+  `Transaction.category` to `string | null | undefined`; replace
+  local `calculateInterestSavings` / `calculateEffectiveLoanBalance`
+  with imports from `lib/utils/calculations.ts`.
 
 ### Build Status
 
 - [x] `npm run build` passes (Next.js 15.2.6).
 
-### Destructive write checklist (CLAUDE.md §12.11)
+### CLAUDE.md compliance
 
-No Prisma writes added or modified in this PR — pure UI / routing
-changes. Checklist not required.
+- **§12.1 (No duplicate logic):** dialog JSX deduplicated; offset
+  calculations deduplicated.
+- **§12.2 (Single Source of Truth):** offset calculations live in
+  `lib/utils/calculations.ts`. Doc comments at every import site
+  forbid redefining locally.
+- **§12.3 (Single Calculation Engine):** no new engine added.
+  No existing engine modified. Calculation behaviour on every
+  page is identical to before this PR.
+- **§6.7 (Entity dialogs):** the dialog has Overview / Linked /
+  (and the existing) Transactions / Offset Details tabs.
+- **§12.11 (Destructive write checklist):** NOT required — no
+  Prisma writes in this PR.
 
-### Outstanding
+### Outstanding (Phase 2)
 
-- **Issue 1 (duplicate accounts):** user can delete the duplicates
-  via the My Accounts UI. Long-term fix is bulk-create idempotency
-  keyed on a wizard-submission ID — tracked separately.
-- **Standalone loan detail page:** the redirect-and-dialog pattern
-  is the minimum viable fix. A real `/dashboard/loans/[id]` page
-  with the Overview / Linked / Insights / Actions tab structure
-  required by CLAUDE.md §6.7 is follow-up work.
-- **Other balances-page error UX:** Basiq connections fetch still
-  swallows errors silently (intentional — it's secondary metadata).
-  If the same intermittent rendering ever surfaces for connections
-  we'll extend the `errorHint` pattern.
-
-## Session: claude/api-resilient-transactions-enrichment-2hNSa — make /api/accounts and /api/loans resilient to transactions JOIN failures
-
-### Symptom
-
-After PR #549 + #550 deployed, refreshing `/dashboard/balances` produced
-random results:
-- Sometimes both Cash and Debt rendered.
-- Sometimes only one of them rendered, with the other showing
-  "Couldn't load latest balances. Showing cached data." amber hint
-  (the per-section error hint added in PR #550).
-- Sometimes both failed.
-
-### Root cause
-
-Both `/api/accounts` and `/api/loans` issued a single Prisma query
-that JOIN-ed `unified_transactions`:
-
-```ts
-prisma.account.findMany({
-  include: {
-    linkedLoan: true,
-    unifiedTransactions: { take: 50, ... },  // JOIN
-  },
-});
-
-Promise.all([
-  prisma.loan.findMany({ include: { ... } }),
-  prisma.unifiedTransaction.findMany({ where: { userId, loanId: { not: null } } }),
-]);
-```
-
-Two failure modes converged on the same symptom:
-
-1. **R12 schema drift (CLAUDE.md §12.12).** If the
-   `unified_transactions` table or any of its referenced enums
-   (`TransactionDirection`, `TransactionSource`, `RecurrencePattern`,
-   `AnomalyType`) hadn't been migrated to the deployed DB, the
-   JOIN/companion query failed and Prisma rejected the *entire*
-   `findMany` — no accounts, no loans, just a 500.
-2. **Vercel cold-start timeouts.** On a freshly-warmed serverless
-   function the connection setup + JOIN against `unified_transactions`
-   (which has 8 indexed columns and several enum FKs) can intermittently
-   exceed the function timeout. The user has zero rows in
-   `unified_transactions` post-onboarding, but the query planner still
-   has to hit the table — Postgres cold-cache lookups on an empty
-   indexed table aren't free, and on a slow Cloud SQL connection
-   they push the request past the budget.
-
-The PR #550 banner ("Couldn't load latest balances. Showing cached
-data.") correctly surfaced the failure to the user, but the user
-shouldn't *see* the failure for what is essentially a secondary
-enrichment query — the primary entity (accounts, loans) should
-load reliably and the transactions enrichment should degrade
-gracefully.
-
-### Solution
-
-Split each endpoint into a primary query + best-effort secondary:
-
-**`/api/accounts/route.ts`:**
-- Primary: `prisma.account.findMany` with only the `linkedLoan`
-  include — no `unifiedTransactions` JOIN.
-- Best-effort: a separate `prisma.unifiedTransaction.findMany`
-  bucketed by `accountId` (50 per account, capped). Wrapped in
-  try/catch — any failure logs a `console.warn` and the response
-  ships with empty per-account `transactions` arrays. The accounts
-  list itself always renders.
-
-**`/api/loans/route.ts`:**
-- Primary: `prisma.loan.findMany` with all its relational includes
-  (`property`, `offsetAccount`, `linkedAsset`, `linkedAccount`,
-  `expenses`). These all live in tables that pre-date the R12
-  baseline and load reliably.
-- Best-effort: a separate `prisma.unifiedTransaction.findMany` for
-  repayment-history actuals. Failure → `linkedTransactions` stays
-  `[]`, the per-loan `actuals` map is empty, and each loan ships
-  with `null` for `actualFromTransactions` /
-  `monthlyAverageActual` / `currentMonthActual`. The loans list
-  itself always renders.
-
-This pattern matches the existing fail-soft behaviour for Basiq
-connections in `/dashboard/balances/page.tsx` (PR #550): primary
-data is hard-failure, secondary metadata is best-effort.
-
-### Files Modified
-
-- `app/api/accounts/route.ts` — split the GET handler. Primary
-  `findMany` no longer includes `unifiedTransactions`; transactions
-  fetched separately with try/catch.
-- `app/api/loans/route.ts` — split the GET handler. `Promise.all`
-  removed; `unifiedTransaction.findMany` wrapped in try/catch and
-  defaults `linkedTransactions` to `[]` on failure.
-
-### Build Status
-
-- [x] `npm run build` passes (Next.js 15.2.6).
-
-### Destructive write checklist (CLAUDE.md §12.11)
-
-No Prisma writes added or modified — pure read-path resilience.
-Checklist not required.
-
-### Outstanding
-
-- The underlying R12 schema drift for `unified_transactions` still
-  needs a proper additive migration (same pattern as PR #549's
-  `user_preferences` sync). Tracked as follow-up — once the cold-
-  start signal stabilises with this PR, we'll know whether the
-  drift was a real cause or just the timeout was.
-- A connection-pool warmup or `pgBouncer` would address the
-  cold-start latency more comprehensively. Tracked separately —
-  out of scope for this PR.
+- **`+ Account` / `+ Loan` toolbar buttons** still navigate to
+  `/dashboard/accounts` and `/dashboard/loans` instead of opening
+  create dialogs inline. Same root issue as the detail dialog
+  before this PR. Tracked for Phase 1b / Phase 2:
+  - Extract the create/edit account form into a shared dialog
+    component (parallel to `AccountDetailDialog`).
+  - Same for the loan create/edit form.
+  - Render both on `/dashboard/balances`.
+- **Retire `/dashboard/accounts`:** migrate Connect Bank / Import
+  toolbar actions to balances; redirect the route to
+  `/dashboard/balances`.
+- **Loan detail dialog inline:** PR #550 used a `?focus=<id>`
+  redirect; same pattern as Phase 1 here would let it open
+  inline on Balances.
+- **Standalone loan detail page:** still tracked from PR #550.
