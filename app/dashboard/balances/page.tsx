@@ -13,7 +13,7 @@
  * hover-lift on rows. No form-heavy tiles.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -34,6 +34,12 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import {
+  AccountDetailDialog,
+  type AccountDetail,
+} from '@/components/accounts/AccountDetailDialog';
+import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
+import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the server response shape — preserved from existing endpoints)
@@ -48,6 +54,27 @@ interface AccountRow {
   interestRate?: number | null;
   balanceSource?: string | null;
   balanceLastUpdatedAt?: string | null;
+  // Recent transactions enriched server-side (PR #551). Empty
+  // array when /api/accounts couldn't fetch them — the row still
+  // renders, the dialog just shows "No transactions recorded".
+  transactions?: Array<{
+    id: string;
+    date: string;
+    description: string;
+    amount: number;
+    type: 'CREDIT' | 'DEBIT';
+    category?: string | null;
+  }>;
+  // GRDCS metadata from the server response. Used by the
+  // AccountDetailDialog's "Linked" tab.
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
   linkedLoan?: { id: string; name: string } | null;
 }
 
@@ -112,9 +139,33 @@ function relativeTime(iso?: string | null): string {
 // Page
 // ---------------------------------------------------------------------------
 
-export default function BalancesPage() {
+function BalancesPageContent() {
   const { token } = useAuth();
   const router = useRouter();
+  const { openLinkedEntity } = useCrossModuleNavigation();
+
+  // Account-detail dialog state. Phase 1 of "make /dashboard/accounts
+  // redundant" (see CHANGELOG_2026_04_29): clicking an account row now
+  // opens the dialog inline instead of navigating to the accounts page
+  // and forcing a second click.
+  const [detailAccount, setDetailAccount] = useState<AccountRow | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const openAccountDetail = (account: AccountRow) => {
+    setDetailAccount(account);
+    setDetailOpen(true);
+  };
+
+  const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
+    setDetailOpen(false);
+    openLinkedEntity(entity);
+  };
+
+  // Edit still routes to the existing /dashboard/accounts edit form
+  // (Phase 1 keeps the edit flow unchanged — Phase 2 will inline it).
+  const handleEditAccount = (account: AccountDetail) => {
+    router.push(`/dashboard/accounts#${account.id}`);
+  };
 
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [loans, setLoans] = useState<LoanRow[]>([]);
@@ -323,7 +374,7 @@ export default function BalancesPage() {
               >
                 <div className="anim-rise-stagger">
                   {totals.cashAccounts.map((a) => (
-                    <AccountRowView key={a.id} account={a} />
+                    <AccountRowView key={a.id} account={a} onClick={() => openAccountDetail(a)} />
                   ))}
                 </div>
               </Section>
@@ -339,7 +390,7 @@ export default function BalancesPage() {
               >
                 <div className="anim-rise-stagger">
                   {totals.creditAccounts.map((a) => (
-                    <AccountRowView key={a.id} account={a} />
+                    <AccountRowView key={a.id} account={a} onClick={() => openAccountDetail(a)} />
                   ))}
                 </div>
               </Section>
@@ -366,7 +417,45 @@ export default function BalancesPage() {
           </div>
         )}
       </div>
+
+      {/*
+       * AccountDetailDialog rendered at page level so it survives a
+       * row's hover/focus state. `detailAccount` is typed as the
+       * server-side AccountRow which structurally satisfies AccountDetail
+       * (same id/name/type/currentBalance/transactions/_links/_meta
+       * fields) — see the cast below.
+       *
+       * Phase 1 hides the import button (`onImportClick` omitted): the
+       * Balances page doesn't host a TransactionImportDialog yet.
+       * Phase 2 will lift the import flow over from
+       * /dashboard/accounts as part of retiring that page.
+       */}
+      <AccountDetailDialog
+        account={detailAccount as AccountDetail | null}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={handleEditAccount}
+        onLinkedEntityNavigate={handleLinkedEntityNavigate}
+      />
     </DashboardLayout>
+  );
+}
+
+// Wrap in Suspense for useSearchParams (via useCrossModuleNavigation,
+// Next.js 15 requirement). Mirrors /dashboard/loans/page.tsx.
+export default function BalancesPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="flex items-center justify-center py-12">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <BalancesPageContent />
+    </Suspense>
   );
 }
 
@@ -425,15 +514,22 @@ function Section({
 // Account row
 // ---------------------------------------------------------------------------
 
-function AccountRowView({ account }: { account: AccountRow }) {
+function AccountRowView({
+  account,
+  onClick,
+}: {
+  account: AccountRow;
+  onClick: () => void;
+}) {
   const meta = ACCOUNT_TYPE_META[account.type];
   const Icon = meta.icon;
   const isBasiq = account.balanceSource === 'BASIQ';
 
   return (
-    <Link
-      href={`/dashboard/accounts#${account.id}`}
-      className="flex items-center gap-4 px-4 sm:px-5 py-4 border-b border-border last:border-0 hover-lift hover:bg-muted/40 group"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-4 px-4 sm:px-5 py-4 border-b border-border last:border-0 hover-lift hover:bg-muted/40 group text-left"
     >
       <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${meta.accent}`}>
         <Icon className="w-5 h-5" />
@@ -471,7 +567,7 @@ function AccountRowView({ account }: { account: AccountRow }) {
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors" />
       </div>
-    </Link>
+    </button>
   );
 }
 
