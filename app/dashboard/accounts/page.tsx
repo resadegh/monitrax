@@ -648,6 +648,25 @@ function AccountsPageContent() {
         open={showDetailDialog}
         onOpenChange={setShowDetailDialog}
         onEdit={handleEdit}
+        onDelete={async (a) => {
+          // Phase 1d: Delete now lives inside the dialog (with a
+          // proper AlertDialog confirmation). The legacy tile-row
+          // delete buttons still call handleDelete directly. Both
+          // paths converge on the same DELETE /api/accounts/{id}.
+          const response = await fetch(`/api/accounts/${a.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(
+              typeof errorData.error === 'string'
+                ? errorData.error
+                : `Failed to delete account (${response.status})`
+            );
+          }
+          await loadAccounts();
+        }}
         onImportClick={() => setShowImportDialog(true)}
         onLinkedEntityNavigate={handleLinkedEntityNavigate}
       />
