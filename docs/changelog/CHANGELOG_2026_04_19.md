@@ -420,6 +420,61 @@ a row created earlier in the same request.
 
 - [x] `npm run build` passes (Next.js 15.2.6).
 
+#### 3. Fix: required-field validation gates Continue / Launch
+
+- **Type:** Fix (UX / data integrity)
+- **Scope:** `components/onboarding/wizard/WizardContainer.tsx`,
+  `components/onboarding/wizard/steps/PropertiesStep.tsx`
+- **Symptom:** A user could complete every step of the wizard,
+  click Launch dashboard on the Review step, and only then see
+  > Couldn't finish setup. Property "Broadbeach" is missing a
+  > purchase date.
+  Even though the Property step had been left behind several steps
+  earlier.
+- **Root cause:** Two issues working together:
+  1. `WizardContainer.canProceed` only validated the Welcome step
+     (`!!data.profileType`). Every other step short-circuited to
+     `true`, so Continue / Launch were always enabled.
+  2. In `PropertiesStep`, the Purchase Date field was hidden inside
+     the collapsed "Advanced details" disclosure and was not marked
+     as required, so users had no signal that it was mandatory —
+     yet bulk-create rejects properties missing a purchase date
+     (correctly, since CGT and depreciation history depend on it).
+- **Solution:**
+  - Promoted Purchase Date out of the Advanced disclosure into the
+    primary fields grid in `PropertiesStep`, marked `required`.
+    Purchase Price stays in Advanced (it's optional and bulk-create
+    accepts it as `0`). Updated the Advanced label accordingly.
+  - Replaced `canProceed` with a `{ canProceed, blockedReason }`
+    tuple. Each step now mirrors the validation that bulk-create
+    enforces server-side:
+    - `properties` — every property must have a non-empty
+      `purchaseDate`.
+    - `assets` — every asset must have a non-empty `purchaseDate`.
+    - other steps short-circuit to `true` (matches existing
+      behaviour).
+  - When `canProceed` is `false`, the Continue / Launch button is
+    disabled (existing behaviour) **and** an amber hint is rendered
+    above the footer buttons naming the offending entity ("Add a
+    purchase date for 'Broadbeach' before continuing.") — gentle
+    nudge tone, not a hard error, since the user hasn't done
+    anything wrong yet.
+  - The amber hint is suppressed while `submitError` is showing so
+    the two banners don't stack.
+
+### Files Modified (continued)
+
+- `components/onboarding/wizard/WizardContainer.tsx` — extended
+  `canProceed` to validate properties + assets, return a
+  `blockedReason` string, render amber hint banner.
+- `components/onboarding/wizard/steps/PropertiesStep.tsx` — promote
+  Purchase Date to a required primary field; Purchase Price stays
+  in Advanced.
+
+### Build Status (post-fix 3)
+
+- [x] `npm run build` passes (Next.js 15.2.6).
+
 ### Build Status
 
 - [x] TypeScript compilation passes across all PRs
