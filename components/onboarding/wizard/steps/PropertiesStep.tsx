@@ -306,9 +306,28 @@ function PropertyCard({
                 </div>
               )}
             </div>
+            {/*
+             * Purchase date moved out of the Advanced disclosure.
+             * The bulk-create endpoint rejects properties without a
+             * purchase date (used for CGT, depreciation history) and
+             * users were missing it because the field was hidden
+             * behind the collapsed Advanced section. Surface it as a
+             * primary required field and gate Continue on it via
+             * canProceed in WizardContainer.
+             */}
+            <WizardField
+              className="sm:col-span-2"
+              label="Purchase date"
+              required
+              type="date"
+              max={new Date().toISOString().slice(0, 10)}
+              value={property.purchaseDate || ''}
+              onChange={(e) => onUpdate({ purchaseDate: e.target.value })}
+              helper="Used for CGT and depreciation — approximate month/year is fine"
+            />
           </div>
 
-          {/* Advanced disclosure: purchase price + purchase date */}
+          {/* Advanced disclosure: purchase price (date moved out — required) */}
           <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
             <button
               type="button"
@@ -317,7 +336,7 @@ function PropertyCard({
             >
               <span className="flex items-center gap-1.5">
                 <AdvancedIcon className="h-3.5 w-3.5" />
-                Advanced details (purchase price & date)
+                Advanced details (purchase price)
               </span>
               {showAdvanced ? (
                 <ChevronUp className="h-3.5 w-3.5" />
@@ -332,14 +351,6 @@ function PropertyCard({
                   value={property.purchasePrice}
                   onChange={(v) => onUpdate({ purchasePrice: v })}
                   helper="What you originally paid"
-                />
-                <WizardField
-                  label="Purchase date"
-                  type="date"
-                  max={new Date().toISOString().slice(0, 10)}
-                  value={property.purchaseDate || ''}
-                  onChange={(e) => onUpdate({ purchaseDate: e.target.value })}
-                  helper="Used for CGT and depreciation — approximate month/year is fine"
                 />
               </div>
             )}
