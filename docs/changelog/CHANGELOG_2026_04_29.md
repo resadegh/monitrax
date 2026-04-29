@@ -1,105 +1,91 @@
 # Changelog — 2026-04-29
 
-## Session: claude/onboarding-bulk-create-error-details-2hNSa — surface real bulk-create errors
+## Session: claude/sync-user-preferences-columns-2hNSa — fix UserPreference schema/prod drift
 
-### Changes Made
+### Symptom
 
-#### Symptom
+After PR #548 surfaced server `details` to the wizard footer, clicking
+Launch dashboard showed:
 
-User clicked Launch dashboard on the Review step and got:
+> Couldn't finish setup. Failed to save onboarding data: Invalid
+> `prisma.userPreference.upsert()` invocation: The column `taxYear`
+> does not exist in the current database.
 
-> Couldn't finish setup. Failed to save onboarding data. Please try
-> again — your answers are still saved.
+So the bug was identified within minutes of #548 merging — the client
+banner did exactly what we needed.
 
-This is the generic 500 fallback. The actual server-side error
-message was hidden in the response's `details` field, which the
-client wasn't reading. Net result: user can't act on the error,
-and we can't easily tell from the screenshot what the underlying
-cause was.
+### Root cause
 
-#### Root cause
+Schema drift between `prisma/schema.prisma` and the production
+database. Per CLAUDE.md §12.12 (R12 incident note), the prod DB was
+originally created outside the Prisma migration workflow. The
+`0_init` migration is a `SELECT 1;` no-op baseline, so any column
+added to `model UserPreference` after the baseline never reached prod.
 
-Two issues working together:
+`taxYear` (added some time after baseline as `String?` on
+`UserPreference`) is the first one to crash because `bulk-create`
+writes it as part of the onboarding upsert. Other columns the
+schema declares but prod might be missing would crash next — see
+the migration body for the full set we sync defensively.
 
-1. **Client (`app/onboarding/page.tsx`)** — the `handleComplete`
-   error path only read `errorData.error` and ignored
-   `errorData.details`. The server's `bulk-create` route puts the
-   *generic* string in `error` for 500s and the *actual* failure
-   message in `details`, so the wizard footer banner only ever
-   showed "Failed to save onboarding data."
+### Solution
 
-2. **Server (`app/api/onboarding/bulk-create/route.ts`)** —
-   - The structured log at the catch block only included
-     `error: <object>`. No payload context (entity counts,
-     profile type, housing path) so we can't correlate failures
-     with the user's wizard state from the logs alone.
-   - All Prisma-level failures (unique constraint, FK violation,
-     transaction timeout) were lumped into the generic 500 with no
-     translation to a user-friendly message.
+New Prisma migration:
+`prisma/migrations/20260429140700_sync_user_preferences_columns/migration.sql`
 
-#### Solution
+The migration uses `ADD COLUMN IF NOT EXISTS` for **every column the
+current `UserPreference` schema declares**, so it is fully idempotent:
 
-**Client (`app/onboarding/page.tsx`):**
+- On `monitrax-db-dev` (where the columns probably exist already
+  from historical `prisma db push`), every statement is a no-op.
+- On `monitrax-db-prod` (where most/all columns are missing), each
+  statement adds the column with the same default the schema
+  declares.
 
-- After a non-OK response, parse `{ error, details }` and assemble
-  a single human-readable message: when both are present and
-  different, format as `"${error}: ${details}"`. Otherwise fall
-  back to whichever is available.
-- The wizard footer banner (added in PR #546) now shows the *real*
-  cause, not the generic fallback.
+Every NOT NULL column has a sensible default (`false`, `'AUD'`,
+`'AU'`, etc.) so existing rows are filled in without manual backfill.
+Nullable columns (`tourSkippedAt`, `taxYear`, `onboardingDraft`)
+add no constraint.
 
-**Server (`app/api/onboarding/bulk-create/route.ts`):**
+### CLAUDE.md compliance
 
-- Hoisted `userId` and the parsed payload (now `parsedPayload:
-  WizardData | undefined`) out of the try block so the catch
-  handler can include them in the error log without scope errors.
-  The `data` reference inside the try body is a local const
-  copy of `parsedPayload`, narrowed to non-undefined, so the
-  rest of the body type-checks unchanged.
-- Added a structured log snapshot in the catch block:
-  `{ userId, profileType, housing, counts: { properties,
-  propertiesWithLoan, accounts, accountsByType, investments,
-  superAccounts, debts, assets, income, expenses,
-  householdMembers, householdPets } }`. Counts only — no
-  balances, names, addresses, or other CDR-classified data
-  enters the log (CLAUDE.md §13.3).
-- Translated common Prisma error codes into actionable responses:
-  - `P2028` (transaction timeout) → 504 with "Saving took too
-    long. Please try again — your answers are still saved."
-  - `P2002` (unique constraint) → 409 with the offending
-    `target` field name.
-  - `P2003` (foreign key violation) → 400 with the offending
-    `field_name`/`constraint`.
-- For everything else, the generic 500 still ships but now with
-  the raw `message` in `details` — which the client now surfaces.
+- **§12.11 (Destructive write checklist):** NOT required. Every
+  statement is `ADD COLUMN IF NOT EXISTS ... DEFAULT ...` or
+  nullable. No `DROP`, no `ALTER ... DROP COLUMN`, no `TRUNCATE`,
+  no NOT NULL backfill. Existing rows are unaffected beyond
+  taking the column default.
+- **§12.12 (Schema change deploy protocol):** ✓
+  - Schema-and-migration ship together in this PR.
+  - Migration was *not* generated via `prisma migrate dev` because
+    no dev DB connection is available in this session — it was
+    written by hand to mirror the schema. The `IF NOT EXISTS`
+    pattern makes hand-written safe: dev sees no-ops, prod sees
+    the additions, no manual diffing required.
+  - `prisma migrate deploy` runs in `vercel-build` (per
+    `package.json`), so this migration applies automatically to
+    `monitrax-db-dev` on the preview build and to
+    `monitrax-db-prod` on the production deploy. Either failure
+    aborts the deploy and the previous build keeps serving.
+  - First migrate-deploy run on each DB will create
+    `_prisma_migrations` (which doesn't exist yet per R12) and
+    apply this folder. Subsequent runs no-op.
 
 ### Files Modified
 
-- `app/onboarding/page.tsx` — client now reads `errorData.details`
-  in addition to `errorData.error` and concatenates them when
-  both are present.
-- `app/api/onboarding/bulk-create/route.ts` — hoisted
-  `userId`/`parsedPayload`, added payload-summary log, translated
-  common Prisma error codes.
+- `prisma/migrations/20260429140700_sync_user_preferences_columns/migration.sql`
+  — new migration. Adds 18 columns idempotently.
 
 ### Build Status
 
 - [x] `npm run build` passes (Next.js 15.2.6).
 
-### CDR compliance
-
-The new error log captures **count-only** payload metadata
-(profileType, housing path, entity counts). No financial values,
-account names, addresses, BSBs, or transaction data is logged.
-Compliant with CLAUDE.md §13.3 ("Never log CDR data").
-
-### Destructive write checklist (CLAUDE.md §12.11)
-
-No Prisma writes added or modified in this PR — pure error-path
-changes. Checklist not required.
-
 ### Outstanding
 
-- Once a real user hits the next bulk-create failure, the new
-  banner will show the actual cause. If it's a recurring class
-  of failure we'll add a targeted fix.
+- Other tables likely have the same drift (R12 covered the entire
+  schema). When the *next* user-blocking column-missing error
+  surfaces (now visible thanks to PR #548), we can extend this
+  pattern to the affected table.
+- Long-term: a one-shot full-sync migration would be cleaner than
+  fixing tables piecemeal, but that requires a dev DB session to
+  generate properly via `prisma migrate diff`. Tracked as a
+  follow-up in the next maintenance window.
