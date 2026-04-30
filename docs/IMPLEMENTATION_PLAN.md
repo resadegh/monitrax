@@ -6,7 +6,7 @@
 >
 > See CLAUDE.md §1 (Session Startup Protocol) and §15 (Implementation Plan Protocol) for the rules that govern this document.
 
-**Last updated:** 2026-04-30 — Reza + Claude
+**Last updated:** 2026-04-30 — Reza + Claude (Phase 8 of WIF shipped — see PR for Phase 9 trigger)
 
 ---
 
@@ -32,10 +32,10 @@
 
 ### 1. Step 1a — DB authentication via Workload Identity Federation (WIF)
 
-- **Status:** 🟡 Phase 8 in progress (code PR being written)
+- **Status:** 🟡 Phase 8 shipped (this PR). Phase 9 next — Reza to flip `USE_CLOUD_SQL_CONNECTOR=true` in Vercel Preview env.
 - **Started:** 2026-04-30
 - **Owner:** Reza (GCP/Vercel ops) + Claude (code)
-- **Last touched:** 2026-04-30 — Phase 7 (Vercel env vars added, OIDC enabled, redeploy completed)
+- **Last touched:** 2026-04-30 — Phase 8 PR opened (`lib/db.ts` refactor + 6 doc updates + 3 new docs)
 - **Why this matters:** Closes CDR `§3.2` compliance gap (no public IP authorized networks). Implements CLAUDE.md `§13.6` (production DB accessible only via GCP IAM). Eliminates the long-lived password-in-URL fragility that broke prod on 2026-04-30.
 
 **Phases:**
@@ -46,9 +46,9 @@
 - [x] 5 — OIDC provider `vercel-oidc` configured with attribute condition `project_id == 'prj_UYQF...'`
 - [x] 6 — WIF principal bound to service account (`roles/iam.workloadIdentityUser`)
 - [x] 7 — Vercel env vars added (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `CLOUD_SQL_CONNECTION_NAME`, `USE_CLOUD_SQL_CONNECTOR=false`); Vercel OIDC enabled at project level
-- [ ] 8 — **Code PR** — `lib/db.ts` refactor with feature-flag branch + `prisma/schema.prisma` `previewFeatures = ["driverAdapters"]` + new packages (`@google-cloud/cloud-sql-connector`, `@prisma/adapter-pg`, `pg`, `google-auth-library`) + 6 doc updates + 3 new docs (see "Docs to update" below)
-- [ ] 9 — Deploy to Preview, flip `USE_CLOUD_SQL_CONNECTOR=true` for Preview env only, verify Balances loads cleanly, then flip in Production
-- [ ] 10 — After 24h of stable production: remove `0.0.0.0/0` from Cloud SQL authorized networks; optionally disable public IP entirely
+- [x] 8 — **Code PR shipped** — `lib/db.ts` refactor with feature-flag branch + `prisma/schema.prisma` `previewFeatures = ["driverAdapters"]` + new packages (`@google-cloud/cloud-sql-connector`, `@prisma/adapter-pg@^5.22.0`, `pg`) + 6 doc updates + 3 new docs (see CHANGELOG_2026_04_30.md). Build green; default flag `false` so merge is zero-risk.
+- [ ] 9 — In Vercel: add `CLOUD_SQL_DB_USER=vercel-monitrax-db@monitrax-479700.iam` and `CLOUD_SQL_DB_NAME=monitrax` to Preview env. Set `USE_CLOUD_SQL_CONNECTOR=true` for Preview. Trigger Preview deploy; load Balances; verify queries succeed; check Cloud Logging for STS + impersonation calls under the SA. Then repeat for Production.
+- [ ] 10 — After 24h of stable production: remove `0.0.0.0/0` from Cloud SQL authorized networks; optionally disable public IP entirely. Then (after 30d): drop the legacy branch from `lib/db.ts`, drop `monitrax_user` Postgres user, remove `DATABASE_URL` from runtime env scope (keep in build env scope for `prisma migrate deploy`).
 
 **Risk:** Low. Feature flag default is `false`, so merging the PR is zero-risk — production keeps using `DATABASE_URL` until the flag is flipped. `DATABASE_URL` stays as fallback through Phase 9.
 
@@ -143,6 +143,8 @@
 | 4 | Old changelog files | `docs/changelog/CHANGELOG_2026_04_*.md` × multiple sessions per day | Accumulated >5 daily files in April; harder to scan. | Consolidate into monthly summaries during Phase 36 Phase 2 |
 | 5 | Unused `_links` / `_meta` GRDCS fields on entities never rendered | Various API responses (e.g. expense, income items not surfaced in UI) | GRDCS wraps every entity by default; some surfaces never use them | Audit at next architecture review |
 | 6 | `DIRECT_URL` env var if it exists in Vercel | Vercel project env vars | If we never run migrations from Vercel runtime, only locally / via `vercel-build`, this might be unused | Audit during WIF Phase 10 cleanup |
+| 7 | Server-only re-exports through client-traversed barrels | Pattern audit across `lib/*/index.ts` (uncovered in `lib/portal/index.ts` during WIF Phase 8) | The barrel pattern `export * from './auth'` — where `auth.ts` imports `@/lib/db` — silently pulls Prisma + GCP packages into client bundles via any client component that consumes the barrel for unrelated symbols. Worked by accident pre-WIF because Prisma alone tree-shook out; broke the build the moment `lib/db.ts` added dynamic imports for the connector. Removed in `lib/portal/index.ts` for this PR. | Audit other `lib/*/index.ts` barrels for the same pattern. Remove `export * from './<server-only-file>'` lines if they exist. Track in next housekeeping pass. |
+| 8 | `lib/portal/auth.ts` itself | `lib/portal/auth.ts` | Zero callers anywhere in the codebase as of 2026-04-30 (`grep -rn "verifyPortalAccess\|getUserPortalOrganizations\|verifyApiKey"` returns nothing outside the file). Was kept in the barrel re-export but the barrel re-export was also unused. Pure dead code per CLAUDE.md §12.1. | Either delete the file, or wire it up to the portal API routes that should be using it. Audit when portal Phase 32 work resumes. |
 
 ---
 
@@ -164,6 +166,8 @@
 > Older items roll into `docs/changelog/IMPLEMENTATION_CHANGELOG.md`.
 
 ### 2026-04-30
+- **Step 1a Phase 8 (this PR)** — `lib/db.ts` Cloud SQL Connector branch behind `USE_CLOUD_SQL_CONNECTOR` flag; `previewFeatures = ["driverAdapters"]`; new packages (`@google-cloud/cloud-sql-connector`, `@prisma/adapter-pg@^5.22.0`, `pg`); 6 doc updates (CLAUDE.md §13.6, CDR matrix §3.2, infra §5.5, MASTER_BLUEPRINT, migration appendix, Cloud SQL ops); 3 new docs (`04_WIF_TROUBLESHOOTING.md`, `CDR_WIF_AUTHENTICATION_EVIDENCE.md`, `CHANGELOG_2026_04_30.md`); incidental dead-barrel removal in `lib/portal/index.ts` to unbreak the client bundle. Build green. Default flag value `false` — zero-risk merge.
+- **PR #559** — `docs/IMPLEMENTATION_PLAN.md` + CLAUDE.md §15 protocol (the live tracker)
 - **Step 1a Phases 4–7** — WIF setup: Workload Identity Pool, OIDC provider, SA binding, Vercel env vars, OIDC federation enabled at project level
 - **Cloud SQL instance-level password policy** enabled (12-char min, complexity, reuse interval, disallow username substring)
 - **Per-user password policy** for `monitrax_user` and `postgres` (failed-attempt lockout)

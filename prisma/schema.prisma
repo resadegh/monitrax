@@ -1,8 +1,20 @@
 // Monitrax Database Schema
 // This is the single source of truth for all financial data
+//
+// Generator + datasource notes:
+//   - `previewFeatures = ["driverAdapters"]` is required so `lib/db.ts` can
+//     supply a `pg`-backed adapter (Prisma 5 driver adapters). The standard
+//     `DATABASE_URL` branch still works — the preview feature is a no-op
+//     until a `PrismaClient({ adapter })` is constructed.
+//   - `DATABASE_URL` is only used by the standard branch and by
+//     `prisma migrate deploy` at build time. When `USE_CLOUD_SQL_CONNECTOR=true`
+//     the runtime ignores it and authenticates via Workload Identity
+//     Federation instead. See `lib/db.ts` and
+//     `docs/operational/security/04_WIF_TROUBLESHOOTING.md`.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {

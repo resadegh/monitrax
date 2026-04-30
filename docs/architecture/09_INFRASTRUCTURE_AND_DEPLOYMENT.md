@@ -222,11 +222,34 @@ GOOGLE_MAPS_API_KEY=<your-api-key>
 Set in **Vercel Dashboard** → **Settings** → **Environment Variables**:
 
 ```
-NEXT_PUBLIC_API_URL=https://monitrax.onrender.com
+NEXT_PUBLIC_API_URL=https://monitrax.onrender.com   # ⚠️ STALE — Render is no longer the API host. App is now self-hosted on Vercel after the 2026-04-10 migration.
 
 # Google Maps API (Phase 20) - Frontend
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your-api-key>
+
+# --- Workload Identity Federation → Cloud SQL (Phase 8 of WIF, 2026-04-30) ---
+# These five vars switch the Prisma client from password-in-DATABASE_URL auth
+# to short-lived OIDC tokens exchanged for GCP credentials. None of them are
+# secrets in their own right — the runtime OIDC token (`VERCEL_OIDC_TOKEN`)
+# is auto-injected by Vercel and is the only thing that grants access.
+USE_CLOUD_SQL_CONNECTOR=true                         # feature flag; defaults to false
+GCP_WORKLOAD_IDENTITY_PROVIDER=projects/<num>/locations/global/workloadIdentityPools/vercel-pool/providers/vercel-oidc
+GCP_SERVICE_ACCOUNT_EMAIL=vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com
+CLOUD_SQL_CONNECTION_NAME=monitrax-479700:australia-southeast1:monitrax-db-prod
+CLOUD_SQL_DB_USER=vercel-monitrax-db@monitrax-479700.iam   # IAM-mapped Postgres user
+CLOUD_SQL_DB_NAME=monitrax
+
+# Optional overrides
+# CLOUD_SQL_IP_TYPE=PUBLIC      # PUBLIC (default) | PRIVATE | PSC
+# CLOUD_SQL_POOL_MAX=5          # pg.Pool max connections (default 5)
+
+# Fallback (kept until Phase 10 of WIF lands):
+DATABASE_URL=postgresql://...   # only used when USE_CLOUD_SQL_CONNECTOR=false
+                                # also used by `prisma migrate deploy` at build time
 ```
+
+> See `lib/db.ts` for the runtime selection logic and
+> `docs/operational/security/04_WIF_TROUBLESHOOTING.md` for the runbook.
 
 ### 5.4 Google Cloud Setup
 
@@ -240,6 +263,60 @@ base64 -i service-account-key.json | tr -d '\n'
 [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("service-account-key.json"))
 ```
 
+### 5.5 Database Authentication Flow (WIF + Cloud SQL Connector)
+
+> **Active flow as of 2026-04-30 (Phase 8 of WIF workstream).** Default
+> behaviour is the legacy `DATABASE_URL` path until `USE_CLOUD_SQL_CONNECTOR=true`
+> is set on Vercel — Phase 9 will flip Preview first, then Production.
+
+```
+                  ┌────────────────────────────────────────────┐
+                  │  Vercel Serverless Function (cold start)   │
+                  │  process.env.VERCEL_OIDC_TOKEN  (auto-     │
+                  │  injected by Vercel; ~1h TTL; per-deploy)  │
+                  └────────────────────┬───────────────────────┘
+                                       │
+                                       ▼
+                  ┌────────────────────────────────────────────┐
+                  │  google-auth-library  IdentityPoolClient   │
+                  │  ─ subject_token_supplier returns the      │
+                  │    Vercel OIDC token                       │
+                  │  ─ exchange via STS for an STS token       │
+                  │  ─ impersonate the service account via     │
+                  │    iamcredentials.googleapis.com           │
+                  │  → returns a short-lived GCP access token  │
+                  └────────────────────┬───────────────────────┘
+                                       │
+                                       ▼
+                  ┌────────────────────────────────────────────┐
+                  │  @google-cloud/cloud-sql-connector         │
+                  │  ─ uses the GCP access token to fetch the  │
+                  │    Cloud SQL instance ephemeral cert       │
+                  │  ─ opens a TLS 1.3 tunnel to the instance  │
+                  │  → returns a node-postgres `stream`        │
+                  │    factory function                        │
+                  └────────────────────┬───────────────────────┘
+                                       │
+                                       ▼
+                  ┌────────────────────────────────────────────┐
+                  │  pg.Pool({ stream, user, database })       │
+                  │  + @prisma/adapter-pg PrismaPg(pool)       │
+                  │  + new PrismaClient({ adapter })           │
+                  │  ─ Postgres-level auth = IAM database      │
+                  │    authentication (no password)            │
+                  └────────────────────────────────────────────┘
+```
+
+**Why this is better than `DATABASE_URL`:**
+
+| Aspect | `DATABASE_URL` (legacy) | WIF + Connector |
+|---|---|---|
+| Credential lifetime | indefinite (until rotated manually) | ~1h (OIDC token) → ~1h (GCP access token) |
+| Stored secret in Vercel | yes, as plaintext password | no — only non-secret identifiers |
+| Network exposure | requires `0.0.0.0/0` authorized network | works with public IP locked down (Phase 10) |
+| Audit trail in GCP Cloud Logging | none | full token-exchange + DB auth audit |
+| Rotation risk | URL-encoding bugs (see 2026-04-30 incident) | rotation is automatic on every cold start |
+
 ---
 
 ## 6. Deployment Process
@@ -247,19 +324,20 @@ base64 -i service-account-key.json | tr -d '\n'
 ### 6.1 Automatic Deployment (Recommended)
 
 1. Push code to `main` branch
-2. Render detects changes and triggers build
-3. Build command executes:
-   - `npm install`
-   - `npx prisma generate`
-   - `npx prisma db push` (syncs database)
-   - `npm run build`
-4. Application restarts with new code
+2. **Vercel** detects changes and triggers a build (Render is no longer in the loop — see migration doc).
+3. Build command executes (`vercel-build` script in `package.json`):
+   - `prisma migrate deploy` (applies any new migration; aborts the deploy on failure — see CLAUDE.md §12.12)
+   - `prisma generate`
+   - `next build`
+4. New deployment is promoted only if the build succeeds.
 
 ### 6.2 Manual Deployment
 
-1. Go to **Render Dashboard** → **Your Web Service**
-2. Click **"Manual Deploy"** → **"Deploy latest commit"**
-3. Monitor build logs for success
+1. Go to **Vercel Dashboard** → **Your Project**
+2. Click **Deployments** → **Promote to Production** on a previous green build, or **Redeploy** on the current commit.
+3. Monitor build logs for success.
+
+> ⚠️ Render-based deployment (the legacy path described in earlier revisions of this doc) was retired during the 2026-04-10 migration. See `docs/migration/MIGRATION_RENDER_TO_GCP_STEPS.md`.
 
 ### 6.3 Deployment Checklist
 

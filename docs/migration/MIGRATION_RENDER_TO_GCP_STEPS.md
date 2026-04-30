@@ -1,7 +1,8 @@
 # Migration Steps: Render PostgreSQL → GCP Cloud SQL
 
 > **Parent Doc:** [MIGRATION_RENDER_TO_GCP_PLAN.md](./MIGRATION_RENDER_TO_GCP_PLAN.md)
-> **Status:** MIGRATION COMPLETE (Phases 0-7, 9). Phase 8 deferred. | Created: 2026-04-09 | Migration Live: 2026-04-10
+> **Status:** ✅ **LEGACY — Migration complete 2026-04-10.** This document is preserved as the historical record of the Render → Cloud SQL migration. For the current DB authentication architecture (Workload Identity Federation + Cloud SQL Connector), see the **WIF Appendix** at the bottom of this file and `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` §5.5.
+> **Original status line:** MIGRATION COMPLETE (Phases 0-7, 9). Phase 8 deferred. | Created: 2026-04-09 | Migration Live: 2026-04-10
 
 ---
 
@@ -433,4 +434,48 @@ These are not required for the migration but recommended:
 
 ---
 
-*Last Updated: 2026-04-09*
+## Appendix A — Workload Identity Federation (WIF) Cutover
+
+> **Added 2026-04-30, Phase 8 of WIF workstream.** This appendix documents the
+> follow-on hardening that was scoped out of the original Render→GCP migration.
+
+### Why WIF was added after the migration
+
+The original migration (April 2026) replicated the Render setup faithfully:
+a `DATABASE_URL` env var on Vercel containing `postgresql://user:password@host`
+with `0.0.0.0/0` authorized on the Cloud SQL instance. This worked, but it
+left two CDR compliance gaps:
+
+1. **Long-lived password in env var** — rotating it required a human to
+   update Vercel and risked downtime (proved on 2026-04-30 when an attempted
+   `?connection_limit=1` URL append broke prod auth for ~10 minutes).
+2. **`0.0.0.0/0` authorized network** — Cloud SQL was reachable from the
+   public internet (SSL-enforced, but the auth surface was still globally
+   exposed). Basiq accreditation §3.2 flags this as a partial control.
+
+WIF closes both gaps by replacing the password with short-lived OIDC tokens
+exchanged for impersonated service account credentials, and (in Phase 10)
+by removing the public authorized network entirely.
+
+### Phase summary (from `docs/IMPLEMENTATION_PLAN.md`)
+
+| Phase | What | Done |
+|---|---|---|
+| 1–3 | Service account + IAM grants + Postgres grants in `public` schema | ✅ 2026-04-30 |
+| 4–6 | Workload Identity Pool + OIDC provider + WIF binding | ✅ 2026-04-30 |
+| 7 | Vercel env vars + project-level OIDC enabled | ✅ 2026-04-30 |
+| **8** | **Code PR — `lib/db.ts` refactor + driver adapter + 6 doc updates + 3 new docs** | **this PR** |
+| 9 | Flip `USE_CLOUD_SQL_CONNECTOR=true` in Preview, verify, then in Production | pending |
+| 10 | Remove `0.0.0.0/0` from Cloud SQL authorized networks | pending |
+
+### Operational references
+
+- **Code path:** `lib/db.ts` (feature-flag branch on `USE_CLOUD_SQL_CONNECTOR`)
+- **Architecture diagram:** `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` §5.5
+- **Runbook:** `docs/operational/security/04_WIF_TROUBLESHOOTING.md`
+- **CDR evidence:** `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md`
+- **CDR matrix:** `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` §3.2
+
+---
+
+*Last Updated: 2026-04-30 (WIF appendix added)*

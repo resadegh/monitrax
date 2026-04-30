@@ -1085,8 +1085,8 @@ export async function GET(request: NextRequest) {
 |------|-------------|
 | **Production only** | Real CDR data MUST only exist in production environment |
 | **Dev/staging** | MUST use synthetic/mock data. NEVER seed with real CDR data |
-| **Database access** | Production database accessible only via GCP Console/IAM. No direct SSH/tunnel from dev machines |
-| **Env variables** | Production secrets managed via GCP Secret Manager (not `.env` files) |
+| **Database access** | Production database authenticated via Workload Identity Federation (no static credentials in env vars). The Vercel runtime exchanges its OIDC token for a short-lived GCP access token, then connects via the Cloud SQL Connector with IAM database authentication. See `lib/db.ts`, `docs/operational/security/04_WIF_TROUBLESHOOTING.md`, and `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md`. The legacy `DATABASE_URL` path is still wired in as a fallback (`USE_CLOUD_SQL_CONNECTOR=false`) and will be removed once Phase 10 of the WIF workstream lands and IAM auth has been stable in production for 30 days. |
+| **Env variables** | Production secrets managed via GCP Secret Manager (not `.env` files). The remaining bootstrap env vars on Vercel (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `CLOUD_SQL_CONNECTION_NAME`, `CLOUD_SQL_DB_USER`, `CLOUD_SQL_DB_NAME`, `USE_CLOUD_SQL_CONNECTOR`) are non-secret identifiers — none of them grant access on their own without the runtime OIDC token. |
 
 ### 13.7 CDR Compliance Checklist — Before Every CDR-Related Change
 

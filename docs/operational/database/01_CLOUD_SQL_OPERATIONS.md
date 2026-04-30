@@ -2,6 +2,13 @@
 
 BAU operations guide for Monitrax PostgreSQL instances on GCP Cloud SQL.
 
+> **2026-04-30 update:** Application runtime now connects via Workload
+> Identity Federation + Cloud SQL Connector + IAM database authentication
+> (`USE_CLOUD_SQL_CONNECTOR=true`). The legacy `DATABASE_URL` password path
+> is still wired in as a fallback and is the path used by
+> `prisma migrate deploy` at build time. See `lib/db.ts` and
+> `docs/operational/security/04_WIF_TROUBLESHOOTING.md`.
+
 ---
 
 ## Instances
@@ -9,9 +16,11 @@ BAU operations guide for Monitrax PostgreSQL instances on GCP Cloud SQL.
 | Property | Production | Development |
 |----------|-----------|-------------|
 | Instance name | `monitrax-db-prod` | `monitrax-db-dev` |
-| Project | `monitrax-prod` | `monitrax-dev` |
-| Region | `us-west1` (Oregon) | `us-west1` (Oregon) |
-| Engine | PostgreSQL 15 | PostgreSQL 15 |
+| Project | `monitrax-479700` | `monitrax-479700` |
+| Region | `australia-southeast1` (Sydney) | `australia-southeast1` (Sydney) |
+| Engine | PostgreSQL 18 | PostgreSQL 18 |
+| Runtime auth | **WIF + Cloud SQL Connector + IAM DB auth** (after Phase 9 of WIF) | same |
+| Build-time auth | `DATABASE_URL` password (used by `prisma migrate deploy`) | same |
 | SSL | Required | Required |
 
 ---
@@ -20,10 +29,10 @@ BAU operations guide for Monitrax PostgreSQL instances on GCP Cloud SQL.
 
 ```bash
 # Production
-gcloud sql instances describe monitrax-db-prod --project=monitrax-prod --format="table(state,settings.tier,settings.dataDiskSizeGb,settings.availabilityType)"
+gcloud sql instances describe monitrax-db-prod --project=monitrax-479700 --format="table(state,settings.tier,settings.dataDiskSizeGb,settings.availabilityType)"
 
 # Development
-gcloud sql instances describe monitrax-db-dev --project=monitrax-dev --format="table(state,settings.tier,settings.dataDiskSizeGb,settings.availabilityType)"
+gcloud sql instances describe monitrax-db-dev --project=monitrax-479700 --format="table(state,settings.tier,settings.dataDiskSizeGb,settings.availabilityType)"
 ```
 
 Via console: **SQL > Instances > monitrax-db-prod > Overview**
@@ -32,21 +41,41 @@ Via console: **SQL > Instances > monitrax-db-prod > Overview**
 
 ## Connect via psql
 
-The application connects through the `DATABASE_URL` environment variable (managed in GCP Secret Manager). For manual access:
+> **DEPRECATION NOTE (2026-04-30):** The password-based examples below are
+> legacy. Prefer the IAM-authenticated Cloud SQL Auth Proxy flow for any
+> manual access to production. The application runtime no longer uses a
+> password (see WIF + Connector path in `lib/db.ts`).
+
+### Preferred — IAM-authenticated Cloud SQL Auth Proxy
 
 ```bash
-# Using Cloud SQL Auth Proxy (preferred)
-cloud-sql-proxy monitrax-prod:us-west1:monitrax-db-prod --port=5432 &
-psql "host=127.0.0.1 port=5432 dbname=monitrax user=monitrax_app sslmode=require"
+# Authenticate as your own GCP identity (must have Cloud SQL Client + Cloud
+# SQL Instance User roles, plus a matching Postgres IAM user inside the DB).
+gcloud auth application-default login
 
-# Direct connection (requires authorized network)
-psql "host=<INSTANCE_IP> port=5432 dbname=monitrax user=monitrax_app sslmode=verify-ca \
+cloud-sql-proxy monitrax-479700:australia-southeast1:monitrax-db-prod \
+  --auto-iam-authn --port=5432 &
+
+# Connect — note: NO password. Username is your IAM-mapped DB user.
+psql "host=127.0.0.1 port=5432 dbname=monitrax user=<your.email>@monitrax-479700.iam sslmode=disable"
+```
+
+### Legacy — password-based (for break-glass only)
+
+```bash
+# Using Cloud SQL Auth Proxy with password
+cloud-sql-proxy monitrax-479700:australia-southeast1:monitrax-db-prod --port=5432 &
+psql "host=127.0.0.1 port=5432 dbname=monitrax user=monitrax_user sslmode=require"
+
+# Direct connection (requires being on an authorized network — being phased
+# out in Phase 10 of WIF; do not rely on this for new tooling)
+psql "host=<INSTANCE_IP> port=5432 dbname=monitrax user=monitrax_user sslmode=verify-ca \
   sslrootcert=server-ca.pem sslcert=client-cert.pem sslkey=client-key.pem"
 ```
 
 Download SSL certs from: **SQL > Instances > monitrax-db-prod > Connections > Security > Manage SSL client certificates**
 
-> **WARNING**: Never connect to production without a valid reason. All connections are logged.
+> **WARNING**: Never connect to production without a valid reason. All connections are logged via `log_connections` / `log_disconnections` flags and surface in Cloud Logging.
 
 ---
 

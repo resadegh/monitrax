@@ -120,16 +120,18 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 | # | Basiq Requirement | Status | Implementation | Gap / Action |
 |---|-------------------|--------|----------------|--------------|
 | 3.1 | Systems are hosted in a secure cloud environment (GCP) | **DONE** | **Frontend:** Vercel (Next.js CDN + edge). **Database:** GCP Cloud SQL PostgreSQL (australia-southeast1, Sydney). **Identity:** GCP Identity Platform (Firebase Auth). **Storage:** Google Cloud Storage. **AI:** Google Vision API, Generative AI. **Migration from Render completed 2026-04-10.** | None — all production on managed cloud platforms. Database now in Australia for CDR data residency. |
-| 3.2 | Network rules are enforced to limit external access | **PARTIAL** | Cloud SQL configured with SSL enforcement. Network: 0.0.0.0/0 (required for Vercel serverless — no fixed IPs). Rate limiting middleware exists (`lib/middleware/apiSecurity.ts`). No Cloud Armor/WAF configured. | **TODO:** Enable Cloud Armor WAF. **Future:** Cloud SQL Auth Proxy on Cloud Run to replace 0.0.0.0/0 with private VPC connection. |
+| 3.2 | Network rules are enforced to limit external access | **DONE (DB) / PARTIAL (HTTP edge)** | **Database:** Workload Identity Federation + Cloud SQL Connector (Phase 8 of WIF workstream, 2026-04-30). The Vercel runtime exchanges its OIDC token for a short-lived GCP access token via STS, then opens a TLS tunnel to the Cloud SQL instance using IAM database authentication. No long-lived password in any env var. The 0.0.0.0/0 authorized-network entry is being kept only as a fallback through Phase 9 verification and will be removed in Phase 10 (24h after IAM auth is stable in prod). Code: `lib/db.ts`. Evidence: `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md`. **HTTP edge:** Rate limiting middleware exists (`lib/middleware/apiSecurity.ts`). Cloud Armor WAF still pending. | **TODO:** Enable Cloud Armor WAF (HTTP edge protection). **Phase 10 (queued):** Remove 0.0.0.0/0 from Cloud SQL authorized networks after 24h of stable IAM auth. |
 | 3.3 | Data in transit is always encrypted | **DONE** | Vercel enforces HTTPS. All Firebase/GCP API calls over TLS. Cloud SQL connection via SSL (`sslmode=require` in DATABASE_URL). Database audit logging enabled (log_connections, log_disconnections, log_statement=ddl). | ✅ Verified during migration 2026-04-10. |
 | 3.4 | Systems are regularly patched for security updates | **PARTIAL** | Modern dependencies (Next.js 15.2.6, Prisma 5.22, Firebase 12.9). Managed services auto-patched by vendors. | **TODO:** Enable Dependabot or `npm audit` in CI. Monthly dependency review. |
 | 3.5 | Systems are regularly tested for security vulnerabilities | **PARTIAL** | Vitest framework with test scripts (`test`, `test:watch`, `test:coverage`, `test:validation`, `test:regression`). No automated security scanning (OWASP, Snyk). | **TODO:** Add `npm audit` to CI. Enable Security Command Center in GCP. Schedule annual pen test. |
 
 ### Basiq Response Guidance (Section 3)
 
-**Can confirm YES today:** 3.1, 3.3
-**Must address:** 3.2 (network hardening), 3.4 (dependency scanning), 3.5 (vulnerability testing)
+**Can confirm YES today:** 3.1, 3.2 (DB tier — WIF + IAM auth), 3.3
+**Must address:** 3.2 (HTTP edge — Cloud Armor WAF), 3.4 (dependency scanning), 3.5 (vulnerability testing)
 **Recommended approach:** GCP provides Cloud Armor, Security Command Center, and automated patching. These should be enabled rather than building custom solutions.
+
+**Evidence pack for 3.2 (DB tier):** `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md` documents the full token flow: Vercel OIDC token → GCP STS → impersonated SA access token → Cloud SQL Connector TLS tunnel → IAM-authenticated Postgres session. No static credential is involved end-to-end.
 
 ---
 
