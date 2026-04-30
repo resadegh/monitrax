@@ -34,6 +34,24 @@ docs/blueprint/TRAIL_FRAMEWORK.md
 docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md
 ```
 
+### Step 1.5: Read the Live Implementation Plan — MANDATORY
+
+> **Critical pre-requirement.** This file is the single source of truth for "what is being worked on, what is queued, what is blocked, what changed recently, what was reverted." It exists so the user does not have to re-explain context every session.
+
+```
+docs/IMPLEMENTATION_PLAN.md
+```
+
+What you MUST do every session:
+
+1. **Read the entire file before doing anything else** — including before reading Phase docs in Step 2.
+2. **Identify the active workstream** that matches the user's request. If the user's request doesn't match anything in `🟡 Active Workstreams`, ask them to confirm whether this is a new workstream (so you can add it) or a continuation of an existing one.
+3. **Honour `↩️ Reversed Decisions`** — if a previous attempt at the user's request was reverted, **do not silently re-attempt it**. Surface the reversal, restate the lesson, and confirm the user wants a different approach before proceeding.
+4. **Honour `🗑️ Dead Code / Tech Debt`** — when working in an area listed there, ask if the housekeeping should be done in the same PR (often yes — single touch).
+5. **Update the file in the same PR** that materially changes any workstream — see CLAUDE.md §15 for the exact rules.
+
+If `docs/IMPLEMENTATION_PLAN.md` does not exist, **stop and create it** before any other work — it is the first prerequisite of every session.
+
 ### Step 2: Read Relevant Phase Documents
 
 If the requested change relates to a specific feature, read the corresponding Phase document:
@@ -54,9 +72,11 @@ Before making changes, explore and understand:
 ### Step 4: Create Session Todo List
 
 Use TodoWrite to create a task list including:
+- [ ] Implementation Plan read (Step 1.5 above)
 - [ ] Blueprint documents read
 - [ ] Codebase reviewed
 - [ ] Implementation tasks (specific to request)
+- [ ] **Update `docs/IMPLEMENTATION_PLAN.md`** (mandatory if PR materially changes any workstream — see §15)
 - [ ] Documentation updates
 - [ ] PR creation
 
@@ -1166,6 +1186,74 @@ not a dedicated sidebar section.
 
 ---
 
+## PART 15: IMPLEMENTATION PLAN PROTOCOL — MANDATORY
+
+> **`docs/IMPLEMENTATION_PLAN.md` is the live single source of truth for "what is being worked on, what is queued, what is blocked, what was reverted." This protocol exists because the user explicitly stated (2026-04-30):**
+>
+> *"I keep changing my mind during this build but we need to keep track of changes so we don't duplicate work, keep track of dead code for housekeeping and hygiene of the code as well."*
+>
+> **The Implementation Plan is a CRITICAL pre-requirement. Failure to read or update it is a process violation.**
+
+### 15.1 Why This Protocol Exists
+
+Every prior session was reconstructing context by re-reading CLAUDE.md, recent changelogs, and the user's prior messages. This works for one session at a time but fails across sessions: queued items get forgotten, reverted decisions get re-attempted, dead code accumulates without a cleanup queue, and the user has to repeat themselves.
+
+`docs/IMPLEMENTATION_PLAN.md` solves this by serving as the **persistent memory** between sessions. It is structured for both human scanning and AI parsing.
+
+### 15.2 What This File Tracks
+
+| Section | Purpose |
+|---|---|
+| `🟡 Active Workstreams` | Work in flight right now, with phase checklists, owner, risk, blocking items |
+| `📋 Up Next` | Agreed, queued, not started — with the trigger condition for starting |
+| `🚧 Blocked` | Items waiting on user decision or external dependency |
+| `❓ Open Questions` | Strategic decisions not yet made |
+| `🗑️ Dead Code / Tech Debt` | Found during work, not yet cleaned — prevents accumulation |
+| `↩️ Reversed Decisions` | Things tried and rolled back, with the lesson — prevents re-attempting dead ends |
+| `✅ Recently Completed` | Rolling 30-day log; older items roll into `IMPLEMENTATION_CHANGELOG.md` |
+
+### 15.3 When You MUST Update This File
+
+The same hygiene rule as the changelog. If your PR does any of the following, the PR MUST update `docs/IMPLEMENTATION_PLAN.md`:
+
+| Trigger | Required update |
+|---|---|
+| Start a new workstream | Add it to `🟡 Active Workstreams` with all fields filled |
+| Advance an existing workstream (tick off a phase) | Update the relevant `[ ]` checkbox; update `Last touched` |
+| Complete a workstream | Move it from `🟡 Active` to `✅ Recently Completed` with date + PR number |
+| Discover dead code / tech debt | Add it to `🗑️ Dead Code / Tech Debt Backlog` with location + why-dead + remove-when |
+| Revert a previous attempt | Add an entry to `↩️ Reversed Decisions` with what + why + lesson |
+| Surface a new strategic question the user hasn't decided | Add it to `❓ Open Questions` |
+| Block on a user decision or external dependency | Move the workstream to `🚧 Blocked` with the blocker named |
+
+### 15.4 What Reviewers Check
+
+A reviewer (human or Claude in a follow-up session) MUST reject any PR that materially changes a workstream without a corresponding update to `docs/IMPLEMENTATION_PLAN.md`.
+
+The file is a **living contract** between the user and any agent working on the codebase. If it's stale, the contract is broken.
+
+### 15.5 Format Discipline
+
+- Keep the file under ~600 lines. When it exceeds that, archive completed items older than 30 days into `IMPLEMENTATION_CHANGELOG.md` and remove from this file.
+- Each `🟡 Active Workstream` entry MUST have: Status, Started date, Owner, Last touched, phase checklist, Risk, Blocking, Why-this-matters.
+- Each `🗑️ Dead Code` entry MUST have: Location (file path), why it's dead, remove-when trigger.
+- Each `↩️ Reversed Decision` entry MUST have: Date, what was tried, why reverted, lesson.
+- Use plain Markdown tables and checkboxes. No exotic formatting that breaks AI parsing.
+
+### 15.6 Relationship to Other Tracking Docs
+
+| Doc | Role | Cadence |
+|---|---|---|
+| `docs/IMPLEMENTATION_PLAN.md` | **Live tracker** — what's now / next / blocked / done in last 30 days | Updated every PR |
+| `docs/blueprint/MASTER_BLUEPRINT.md` §4 | Phase-level status table (Completed / In Progress / Planned) | Updated when a whole phase changes status |
+| `docs/blueprint/PHASE_*.md` | Per-phase spec + acceptance criteria | Updated when phase requirements change |
+| `docs/changelog/CHANGELOG_YYYY_MM_DD.md` | Daily session detail | Append-only, per session |
+| `docs/changelog/IMPLEMENTATION_CHANGELOG.md` | Rolling activity log (older than 30d) | Updated when items roll off the live plan |
+
+The live plan is the **operational** doc. The blueprint is the **strategic** doc. The changelogs are the **historical** doc. Don't conflate them.
+
+---
+
 ## ENFORCEMENT
 
 **This protocol is MANDATORY for every Claude Code session working on Monitrax.**
@@ -1175,14 +1263,17 @@ not a dedicated sidebar section.
 - Missing documentation
 - Untraceable changes
 - Technical debt
+- **Re-attempting reverted approaches** (the most expensive failure mode — direct violation of §15)
+- **The user repeating themselves** because cross-session memory was not maintained
 
 **When in doubt:**
-1. Read the blueprint documents
-2. Ask the user for clarification
-3. Document your decisions
-4. Create smaller, reversible changes
+1. Read `docs/IMPLEMENTATION_PLAN.md` first (Part 1, Step 1.5)
+2. Read the blueprint documents
+3. Ask the user for clarification
+4. Document your decisions in the implementation plan AND the changelog
+5. Create smaller, reversible changes
 
 ---
 
-*Last Updated: 2026-04-17*
-*Protocol Version: 1.7 — TRAIL Framework replaces REACH (Part 14)*
+*Last Updated: 2026-04-30*
+*Protocol Version: 1.8 — Part 15 added (Implementation Plan Protocol)*
