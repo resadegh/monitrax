@@ -111,22 +111,23 @@ L — Live         "Live on your terms"                   → My Guide
 | Layer | Technology |
 |-------|------------|
 | **Frontend** | Next.js 15, React Server Components, TailwindCSS, Shadcn/UI |
-| **Backend** | Next.js API Routes, Prisma ORM |
-| **Database** | PostgreSQL (Render) |
-| **Authentication** | GCP Identity Platform / Firebase Auth (MFA, OAuth, Token Verification) |
-| **Deployment** | Vercel (Frontend), Render (Backend + Database) |
+| **Backend** | Next.js API Routes, Prisma ORM (with `@prisma/adapter-pg` driver adapter when WIF is enabled) |
+| **Database** | PostgreSQL on **GCP Cloud SQL** (`australia-southeast1`, Sydney). Migrated off Render 2026-04-10. |
+| **Authentication (app users)** | GCP Identity Platform / Firebase Auth (MFA, OAuth, Token Verification) |
+| **Authentication (DB)** | **Workload Identity Federation + Cloud SQL Connector + IAM database authentication** (Phase 8 of WIF, 2026-04-30). Vercel runtime OIDC token → STS → impersonated SA access token → IAM-authenticated Postgres session. No long-lived password in env vars. Legacy `DATABASE_URL` path kept as fallback until Phase 10 completes. |
+| **Deployment** | **Vercel** (frontend + API + DB connection runtime). Render fully decommissioned 2026-04-10 — see `docs/migration/MIGRATION_RENDER_TO_GCP_STEPS.md`. |
 | **File Storage** | Google Cloud Storage (primary), Database (fallback), Local Drive (optional) |
 
 ### Build & Deployment
 
-> ⚠️ **CRITICAL SAFETY UPDATE (Feb 2026)**: Build scripts NO LONGER include `prisma db push`. Schema changes are now MANUAL ONLY to prevent accidental data loss.
+> ⚠️ **CRITICAL SAFETY UPDATE (Feb 2026 → Apr 2026):** Build scripts must NEVER include `prisma db push`. Schema changes ship as `prisma migrate deploy` migration files generated locally — see CLAUDE.md §12.12 (Schema Change Deploy Protocol). Vercel runs `prisma migrate deploy` before every build; if it fails, the deploy is aborted and the previous version keeps serving.
 
 | Aspect | Configuration |
 |--------|---------------|
-| **Build Command (Vercel)** | `prisma generate && next build` |
-| **Build Command (Render)** | `npm install && npx prisma generate && npm run build` |
-| **Schema Sync** | **MANUAL ONLY** — via Render Shell |
-| **Migration Strategy** | Manual review required before any schema change |
+| **Build Command (Vercel)** | `prisma migrate deploy && prisma generate && next build` (the `vercel-build` script) |
+| **Schema Sync** | **`prisma migrate deploy`** runs automatically on every Vercel build against Preview (`monitrax-db-dev`) and Production (`monitrax-db-prod`) DBs |
+| **Migration Strategy** | All schema changes go through a `prisma/migrations/<name>/migration.sql` file generated locally with `prisma migrate dev` (CLAUDE.md §12.12) |
+| **Runtime DB Auth** | **Workload Identity Federation** (`USE_CLOUD_SQL_CONNECTOR=true`) — see `lib/db.ts` and `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` §5.5 |
 | **Health Check** | `/api/health` |
 
 **⛔ NEVER ADD `prisma db push` TO BUILD SCRIPTS**
