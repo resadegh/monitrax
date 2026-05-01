@@ -35,7 +35,6 @@ import { useAuth } from '@/lib/context/AuthContext';
 import {
   TrendingUp,
   TrendingDown,
-  Target,
   ArrowRight,
   Loader2,
   Sparkles,
@@ -133,47 +132,6 @@ function SegmentedControl({
         );
       })}
     </div>
-  );
-}
-
-function HeroNumber({
-  label,
-  value,
-  tone,
-  icon,
-  reduced,
-}: {
-  label: string;
-  value: number;
-  tone: 'in' | 'out' | 'net';
-  icon: React.ReactNode;
-  reduced: boolean | null;
-}) {
-  const colorClass =
-    tone === 'in'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : tone === 'out'
-        ? 'text-rose-600 dark:text-rose-400'
-        : value >= 0
-          ? 'text-emerald-600 dark:text-emerald-400'
-          : 'text-rose-600 dark:text-rose-400';
-
-  return (
-    <motion.div
-      initial={reduced ? false : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={reduced ? { duration: 0 } : { duration: 0.55, ease: appleEase }}
-      className="flex flex-col gap-1.5"
-    >
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        <span className="text-muted-foreground/70">{icon}</span>
-        {label}
-      </div>
-      <div className={`text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums ${colorClass}`}>
-        {value < 0 ? '−' : ''}
-        {formatCurrency(Math.abs(value))}
-      </div>
-    </motion.div>
   );
 }
 
@@ -557,16 +515,26 @@ function PlanPageContent() {
   const heroOut = current?.expenses ?? 0;
   const heroNet = current?.net ?? heroIn - heroOut;
 
+  // Empowering Apple-voice supporting copy. Doesn't repeat the dollar amount
+  // (the hero number shows it) — conveys meaning + next step instead.
+  // Reza's note 2026-05-01: must feel engaging and empowering, never warning.
   const headlineSentence = useMemo(() => {
-    if (loading || !current) return 'Loading your plan…';
-    if (heroNet > 0) {
-      return `You're planning to keep ${formatCurrency(heroNet)} this month — nice work.`;
-    }
-    if (heroNet === 0) {
-      return `Your plan is breaking even this month — every dollar accounted for.`;
-    }
-    return `Your plan is ${formatCurrency(Math.abs(heroNet))} short this month — let's find it together.`;
+    if (loading || !current) return 'Reading your plan…';
+    if (heroNet > 0) return 'Your plan keeps money working for you each month.';
+    if (heroNet === 0) return 'Balanced and intentional — every dollar with a job.';
+    return 'Your plan runs short this month — tighten one category below to close the gap.';
   }, [loading, current, heroNet]);
+
+  // Hero number: color isolated to the digits. Apple Wallet pattern.
+  const heroToneClass =
+    heroNet > 0
+      ? 'text-emerald-500 dark:text-emerald-400'
+      : heroNet < 0
+        ? 'text-rose-500 dark:text-rose-400'
+        : 'text-foreground';
+
+  // U+2212 minus / U+002B plus — typographically correct.
+  const heroSign = heroNet < 0 ? '−' : heroNet > 0 ? '+' : '';
 
   return (
     <DashboardLayout>
@@ -579,9 +547,12 @@ function PlanPageContent() {
           </p>
         </div>
 
-        {/* HERO — single warm sentence + the three numbers */}
+        {/* HERO — Apple typography (refined 2026-05-01 evening per Reza
+             feedback): the hero number is the primary visual, not the
+             sentence; the sentence is muted supporting copy. */}
         <GlassCard>
-          {/* Animated atmospheric gradient (matches TRAIL banner v3) */}
+          {/* Atmospheric mesh gradient — softer than v1 to read "calm",
+              not "alert". Tone shifts subtly with surplus/shortfall sign. */}
           <motion.div
             aria-hidden
             className="pointer-events-none absolute inset-0 -z-10"
@@ -590,41 +561,83 @@ function PlanPageContent() {
             transition={reduced ? { duration: 0 } : { duration: 1.4, ease: appleEase }}
             style={{
               background:
-                'radial-gradient(circle at 20% 0%, rgba(16,185,129,0.10), transparent 55%), radial-gradient(circle at 80% 100%, rgba(244,63,94,0.08), transparent 55%)',
+                heroNet >= 0
+                  ? 'radial-gradient(circle at 20% 0%, rgba(16,185,129,0.10), transparent 55%), radial-gradient(circle at 80% 100%, rgba(59,130,246,0.06), transparent 55%)'
+                  : 'radial-gradient(circle at 20% 0%, rgba(244,63,94,0.06), transparent 55%), radial-gradient(circle at 80% 100%, rgba(245,158,11,0.05), transparent 55%)',
             }}
           />
-          <div className="p-6 sm:p-8">
-            <motion.p
-              initial={reduced ? false : { opacity: 0, y: 6 }}
+          <div className="p-6 sm:p-8 md:p-10">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70 mb-4">
+              Your plan · This month
+            </p>
+
+            {/* Hero number — Apple-typography */}
+            <motion.div
+              initial={reduced ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={reduced ? { duration: 0 } : { duration: 0.6, ease: appleEase }}
-              className="text-lg sm:text-xl font-medium leading-snug max-w-2xl"
+              transition={reduced ? { duration: 0 } : { duration: 0.7, ease: appleEase }}
+              className={`text-5xl sm:text-6xl md:text-7xl font-light tracking-[-0.04em] tabular-nums leading-none ${heroToneClass}`}
+            >
+              {heroSign}
+              {formatCurrency(Math.abs(heroNet))}
+            </motion.div>
+
+            {/* Supporting sentence — muted, refined */}
+            <motion.p
+              initial={reduced ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={
+                reduced ? { duration: 0 } : { duration: 0.6, ease: appleEase, delay: 0.18 }
+              }
+              className="mt-5 text-base sm:text-lg text-muted-foreground font-normal leading-relaxed max-w-xl"
             >
               {headlineSentence}
             </motion.p>
 
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-              <HeroNumber
-                label="Money In"
-                value={heroIn}
-                tone="in"
-                icon={<TrendingUp className="h-3.5 w-3.5" />}
-                reduced={reduced}
-              />
-              <HeroNumber
-                label="Money Out"
-                value={heroOut}
-                tone="out"
-                icon={<TrendingDown className="h-3.5 w-3.5" />}
-                reduced={reduced}
-              />
-              <HeroNumber
-                label={heroNet >= 0 ? 'Surplus' : 'Shortfall'}
-                value={heroNet}
-                tone="net"
-                icon={<Target className="h-3.5 w-3.5" />}
-                reduced={reduced}
-              />
+            {/* Money In + Money Out — supporting stats, smaller, neutral
+                weight. Sit below a thin separator. The Surplus/Shortfall
+                slot is removed because the hero number IS that value. */}
+            <div className="mt-8 pt-6 grid grid-cols-2 gap-6 border-t border-border/40">
+              {[
+                {
+                  label: 'Money In',
+                  value: heroIn,
+                  tone: 'in' as const,
+                  icon: <TrendingUp className="h-3 w-3" />,
+                },
+                {
+                  label: 'Money Out',
+                  value: heroOut,
+                  tone: 'out' as const,
+                  icon: <TrendingDown className="h-3 w-3" />,
+                },
+              ].map((stat, idx) => (
+                <motion.div
+                  key={stat.label}
+                  initial={reduced ? false : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={
+                    reduced
+                      ? { duration: 0 }
+                      : { duration: 0.5, ease: appleEase, delay: 0.25 + idx * 0.05 }
+                  }
+                  className="flex flex-col gap-1.5"
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
+                    {stat.icon}
+                    {stat.label}
+                  </div>
+                  <div
+                    className={`text-xl sm:text-2xl font-medium tabular-nums tracking-[-0.02em] ${
+                      stat.tone === 'in'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
+                    {formatCurrency(stat.value)}
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </div>
         </GlassCard>

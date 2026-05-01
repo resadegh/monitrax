@@ -152,19 +152,32 @@ function DebtFreedomHero({
     }
   }, [debtFreeDate]);
 
-  const headline = useMemo(() => {
-    if (!budgetReady) {
-      return "Let's plan your way out of debt — we'll need your budget first.";
+  // Three states drive the hero typography:
+  //   • computed plan with date → "Free by Oct 2031" (date as the hero)
+  //   • budget ready, no plan   → "Choose a strategy" (medium hero)
+  //   • no budget               → "Plot your path" (medium hero)
+  const heroState: 'date' | 'pickStrategy' | 'needBudget' = formattedDate
+    ? 'date'
+    : budgetReady
+      ? 'pickStrategy'
+      : 'needBudget';
+
+  const supportingSentence = useMemo(() => {
+    if (heroState === 'date') {
+      return interestSaved > 0
+        ? 'Stay the course — every repayment moves you closer.'
+        : 'Stay the course — your repayment plan is set.';
     }
-    if (formattedDate) {
-      return `Debt-free by ${formattedDate}.`;
+    if (heroState === 'pickStrategy') {
+      return 'Choose a strategy below — your path emerges instantly.';
     }
-    return "Pick a strategy below — we'll show you the way out.";
-  }, [budgetReady, formattedDate]);
+    return 'Confirm your budget below — then we will plot the way out.';
+  }, [heroState, interestSaved]);
 
   return (
     <div className="relative isolate overflow-hidden rounded-[28px] border border-white/40 dark:border-white/10 bg-card/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl mb-6">
-      {/* Atmospheric mesh gradient — emerald + violet to evoke aspiration */}
+      {/* Atmospheric mesh gradient — emerald + violet, softened. Aspirational
+          rather than alarming. */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
@@ -173,12 +186,12 @@ function DebtFreedomHero({
         transition={reduced ? { duration: 0 } : { duration: 1.4, ease: APPLE_EASE }}
         style={{
           background:
-            'radial-gradient(circle at 18% 0%, rgba(16,185,129,0.12), transparent 60%), radial-gradient(circle at 82% 100%, rgba(139,92,246,0.10), transparent 55%)',
+            'radial-gradient(circle at 18% 0%, rgba(16,185,129,0.10), transparent 60%), radial-gradient(circle at 82% 100%, rgba(139,92,246,0.08), transparent 55%)',
         }}
       />
 
-      {/* Optional subtle shimmer over the date — only when we have one */}
-      {formattedDate && !reduced && (
+      {/* Subtle 6s shimmer sweep — only when we have a date worth celebrating */}
+      {heroState === 'date' && !reduced && (
         <motion.div
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10"
@@ -187,49 +200,78 @@ function DebtFreedomHero({
           transition={{ duration: 6, ease: 'linear', repeat: Infinity, repeatDelay: 4 }}
           style={{
             background:
-              'linear-gradient(110deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%)',
+              'linear-gradient(110deg, transparent 40%, rgba(255,255,255,0.05) 50%, transparent 60%)',
           }}
         />
       )}
 
-      <div className="p-6 sm:p-8">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+      <div className="p-6 sm:p-8 md:p-10">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70 mb-4">
           Debt Freedom
         </p>
-        <motion.h1
-          initial={reduced ? false : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={reduced ? { duration: 0 } : { duration: 0.6, ease: APPLE_EASE }}
-          className="text-2xl sm:text-3xl md:text-[2rem] font-semibold leading-tight tracking-tight max-w-3xl"
+
+        {heroState === 'date' && formattedDate ? (
+          // Date-as-hero — the most aspirational moment in the app
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={reduced ? { duration: 0 } : { duration: 0.7, ease: APPLE_EASE }}
+            className="text-5xl sm:text-6xl md:text-7xl font-light tracking-[-0.04em] leading-none text-foreground"
+          >
+            <span className="text-muted-foreground/60 font-light mr-3">Free by</span>
+            <span>{formattedDate}</span>
+          </motion.div>
+        ) : (
+          // No date yet — softer, smaller hero. Still confident, never warning.
+          <motion.h1
+            initial={reduced ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={reduced ? { duration: 0 } : { duration: 0.7, ease: APPLE_EASE }}
+            className="text-3xl sm:text-4xl md:text-5xl font-light tracking-[-0.03em] leading-tight text-foreground max-w-2xl"
+          >
+            {heroState === 'pickStrategy'
+              ? 'Pick a strategy.'
+              : 'Plot your path out.'}
+          </motion.h1>
+        )}
+
+        {/* Supporting sentence — muted, refined */}
+        <motion.p
+          initial={reduced ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={
+            reduced ? { duration: 0 } : { duration: 0.6, ease: APPLE_EASE, delay: 0.18 }
+          }
+          className="mt-5 text-base sm:text-lg text-muted-foreground font-normal leading-relaxed max-w-xl"
         >
-          {headline}
-        </motion.h1>
+          {supportingSentence}
+        </motion.p>
 
         {(interestSaved > 0 || monthsSaved > 0) && (
           <motion.div
             initial={reduced ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={
-              reduced ? { duration: 0 } : { duration: 0.6, ease: APPLE_EASE, delay: 0.15 }
+              reduced ? { duration: 0 } : { duration: 0.6, ease: APPLE_EASE, delay: 0.28 }
             }
-            className="mt-5 flex flex-wrap items-center gap-3"
+            className="mt-7 flex flex-wrap items-center gap-3"
           >
             {interestSaved > 0 && (
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2">
-                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.06] px-4 py-2 backdrop-blur-md">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-sm">
-                  <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                  <span className="font-medium tabular-nums tracking-[-0.01em] text-emerald-700 dark:text-emerald-300">
                     {formatCurrency(interestSaved)}
                   </span>
-                  <span className="text-muted-foreground"> saved in interest</span>
+                  <span className="text-muted-foreground"> stays yours</span>
                 </span>
               </div>
             )}
             {monthsSaved > 0 && (
-              <div className="inline-flex items-center gap-2 rounded-2xl border border-violet-500/20 bg-violet-500/10 px-4 py-2">
-                <Clock className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-violet-500/15 bg-violet-500/[0.06] px-4 py-2 backdrop-blur-md">
+                <Clock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
                 <span className="text-sm">
-                  <span className="font-semibold tabular-nums text-violet-700 dark:text-violet-300">
+                  <span className="font-medium tabular-nums tracking-[-0.01em] text-violet-700 dark:text-violet-300">
                     {monthsSaved} {monthsSaved === 1 ? 'month' : 'months'}
                   </span>
                   <span className="text-muted-foreground"> earlier than minimum</span>
