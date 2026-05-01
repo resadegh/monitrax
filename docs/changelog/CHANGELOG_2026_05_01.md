@@ -648,3 +648,72 @@ Every visual change extends Home TRAIL banner v3 (`components/dashboard/TrailSta
 ### Sequence
 
 This is a single PR but represents 5 conceptual phases. PR 6 (Tax under My Guide) is folded into PR 1 since it was a sidebar-only move. PR 7 (telemetry/soft-retire) is deferred — see follow-up tracking in `IMPLEMENTATION_PLAN.md` Up Next #9.
+
+---
+
+## Session: claude/phase-38-pr1-vault-ia — Phase 38 PR 1 (My Vault IA + visual uplift)
+
+### Outcome
+
+**My Vault elevated to its own sidebar item.** Documents (evidentiary trail) split from Reports (exports). Apple-typography hero on `/dashboard/documents` matching Phase 37 grammar. Smart Inbox section surfaces docs the AI has finished analysing but the user hasn't verified yet. Pure presentation layer — zero new APIs, zero new calc engines, zero data duplication.
+
+### Context
+
+Reza's brief 2026-05-01 evening: *"Documents is one of the most important pages of the app … these documents can be shared with the accountant for tax return activities and they should be very well structured and organised."* Plus the meta-architectural ask: *"when a document, receipt or related document is attached anywhere in the app the document should be stored in My Vault, organised correctly, tagged with correct meta data."* Audit confirmed the underlying engines (Phase 25 Document Management Engine, Phase 26 Document Intelligence Engine) already implement this canonical-upload-cascade architecture. Phase 38 is the user-facing realisation; engine work is unnecessary.
+
+### Changes
+
+- **`components/DashboardLayout.tsx`** — Reports nav item split into two top-level items:
+  - **My Vault** (`Archive` icon, `href: /dashboard/documents`, `matchRoutes: ['/dashboard/documents','/dashboard/vault']`) — positioned between My Guide and Reports (the natural transition between TRAIL journey and the evidence/outputs cluster, mirroring Apple Health's Browse/Sharing pattern).
+  - **Reports** — own top-level item, no children. `matchRoutes: ['/dashboard/reports']`.
+- **`app/dashboard/vault/page.tsx`** (NEW) — server-side `redirect('/dashboard/documents')` so users who type `/dashboard/vault` arrive at the canonical route. Same deep-link-preservation precedent as Phases 36 / 37.
+- **`app/dashboard/documents/page.tsx`** — replaced `<PageHeader>` + 4-StatCard row with:
+  - **Apple-typography hero** — eyebrow `My Vault · FY 2024–25`, hero number = docs uploaded in current AU FY (`text-7xl font-light tracking-[-0.04em] tabular-nums`), supporting muted sentence that morphs based on state (empty / awaiting-review / all-caught-up), Upload button styled as primary action pill with hover scale.
+  - **Stats footer** — 4-up grid (Total · Storage · Categories · Awaiting review) with Apple typography (uppercase tracked-out labels, font-medium tabular-nums values, muted hints). The "Awaiting review" stat goes amber when > 0 with hint *"tap below"*.
+  - **Smart Inbox card** — surfaces when `awaitingReviewCount > 0`. Glass card with `Inbox` icon, "AI ready" badge, count + sentence. Sets up PR 2 where the inline `AnalysisPreviewCard` accept-and-edit flow will live. PR 1 just makes the surface visible so users know the AI has done work for them.
+- **`docs/IMPLEMENTATION_PLAN.md`** — Phase 38 workstream opened with 4 phases (PR 1 ✅, PRs 2-3 queued, PR 4 deferred). Last-updated banner refreshed.
+- **`docs/changelog/CHANGELOG_2026_05_01.md`** — this entry.
+
+### Why this matters
+
+- **Documents is its own destination, not a sub-tab of Reports.** The audit clarified they're fundamentally different mental modes: Documents = inputs (evidentiary trail, accountant-bound), Reports = outputs (one-page exports for banks/lenders). Bundling them was a category error.
+- **AU FY counter as the hero.** Tax-time stress is real (ATO research: 4–7 hrs hunting docs at EOFY). The FY counter visible at the top transforms hunting into retrieval. Behavioural psychology: visible progress drives engagement spike at exactly the right moment.
+- **Smart Inbox surface.** The Phase 26 AI work already exists — it just wasn't visible. Bringing the analysis suggestions to the top of the page (instead of buried per-document) creates a one-tap acceptance loop in PR 2.
+- **Empowering Apple voice.** Sentence morphs: empty state → *"Drop your first receipt or statement above — your accountant will thank you later."* Awaiting review → *"X documents are waiting for a quick tag — your inbox is below."* All-caught-up → *"Everything filed and ready for your accountant — beautifully organised."* Never warning, always action-forward.
+
+### Hard constraints honoured
+
+- ✅ Zero new calc engines (Phase 25 + Phase 26 engines unchanged)
+- ✅ Zero new APIs (same `/api/documents`, same `/api/documents/analyze`, same `/api/documents/export` for accountant ZIP)
+- ✅ Zero data duplication (Document table is single source of truth; Vault is a unified view of the same rows)
+- ✅ All routes preserved (`/dashboard/documents` stays canonical; `/dashboard/vault` is a friendly alias)
+- ✅ No `prisma/schema.prisma` change (CLAUDE.md §12.12 N/A)
+- ✅ No destructive Prisma writes (CLAUDE.md §12.11 N/A)
+- ✅ Design language extends Home TRAIL banner v3 + Phase 37 heroes — same `appleEase`, same glassmorphic tokens, same framer-motion grammar. Zero new dependencies, zero new design tokens.
+
+### Files modified
+
+- `components/DashboardLayout.tsx` — sidebar split (Reports → My Vault + Reports)
+- `app/dashboard/documents/page.tsx` — Apple-typography hero + Smart Inbox section + FY-counter derivations
+- `app/dashboard/vault/page.tsx` (NEW) — server-side redirect alias
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 38 workstream + last-updated banner
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry
+
+### Build status
+
+- [x] TypeScript: PASS (`npx tsc --noEmit` reports zero errors; only pre-existing tsconfig deprecation warning unrelated to this PR)
+- [x] No schema change
+- [x] No destructive Prisma writes
+- [x] No new APIs or calc engines
+- [ ] `npm run build` not run locally (sandbox env); Vercel preview build will validate
+
+### Risk
+
+**Low.** Pure presentation-layer change. Sidebar split is a config-only edit. Hero is a JSX replacement on one existing page. Smart Inbox is a derived-data card with no API dependencies. All existing FolderTree / Toolbar / Breadcrumb / FolderView machinery untouched. Independently revertable via single `git revert` of this PR.
+
+### Phase 38 sequence (each = independently revertable PR)
+
+- [x] **PR 1 — Vault IA + visual uplift + Smart Inbox surface** (this PR)
+- [ ] PR 2 — AI auto-tagging acceptance UI (inline `AnalysisPreviewCard` + `ExtractionReviewForm` in Smart Inbox) + universal upload-point audit (verify all upload entries route through `DocumentManagementEngine.processUpload()`)
+- [ ] PR 3 — "Send to accountant" modal wrapping the existing `/api/documents/export` endpoint + new `/api/documents/share-link` endpoint for time-limited CDR-audit-logged shareable URLs
+- [ ] PR 4 — Tax-status lens (4th filter on FolderTree: Deductible / Non-deductible / Untagged via `DocumentLink → Expense.isTaxDeductible` join)

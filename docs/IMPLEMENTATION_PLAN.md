@@ -6,7 +6,7 @@
 >
 > See CLAUDE.md §1 (Session Startup Protocol) and §15 (Implementation Plan Protocol) for the rules that govern this document.
 
-**Last updated:** 2026-05-01 (late night) — Reza + Claude (**Phase 37 PRs 1-5 + 6 SHIPPED in mega-PR.** My Budget IA: 6 → 3 tabs (Cashflow / My Plan / Debt Freedom); default landing flipped to `/cashflow`; Tax relocated to My Guide. New `/dashboard/plan` hub built with Apple-style segmented control + AnimatePresence cross-fades. Cashflow + Debt Freedom heroes redesigned with TRAIL banner v3 grammar. Zero calc engines touched, zero APIs touched, zero data sources duplicated. **Session-expiry UX hardening** also shipped on main — `SessionExpiryHandler` (global `window.fetch` wrapper) that catches 401s from `/api/*` after the cached Firebase token has expired, force-refreshes the token + retries once, and falls back to `logout()` + redirect to `/signin?reason=session_expired&next=<path>` if the session is genuinely gone. Companion to the existing 30-min `IdleTimeoutGuard` (CLAUDE.md §13.5). Earlier today: Home TRAIL banner v3 premium redesign shipped; **WIF Phases 9 + 10 closed**; Phase 11 queued for +30d; dead-code audit completed and three surfaces soft-deleted (`/api/auth/login`, `/api/auth/register`, `components/onboarding/linear/`); hard delete queued for ≥ 2026-05-15.)
+**Last updated:** 2026-05-01 (evening) — Reza + Claude (**Phase 38 PR 1 in flight: My Vault.** Sidebar split (Reports unbundled from Documents, "My Vault" new top-level item between My Guide and Reports, `Archive` icon, friendly `/dashboard/vault` alias redirects to canonical `/dashboard/documents`); Apple-typography hero on the Documents page (FY counter as primary number, glassmorphic 28px card, sequenced framer-motion entrance, `prefers-reduced-motion`); Smart Inbox section surfaces docs awaiting user review (existing Phase 26 `DocumentAnalysis.status === 'COMPLETED' && userVerified === false` filter). Zero new APIs, zero new calc engines, zero data duplication — pure presentation layer over existing infrastructure (Phase 25 Document Management Engine, Phase 26 Document Intelligence Engine, `/api/documents/export` ZIP endpoint already exists). Earlier today: **Phase 37 SHIPPED via PR #574** (My Budget IA 6→3 tabs, `/dashboard/plan` hub, Cashflow + Debt Freedom Apple-typography heroes); **Session-expiry UX hardening** shipped (`SessionExpiryHandler`); **WIF Phases 9 + 10 closed** (Phase 11 queued for +30d); dead-code audit + three surface soft-deletes (hard-delete window opens 2026-05-15).)
 
 ---
 
@@ -126,6 +126,36 @@
 
 **Follow-up captured for the queued My Guide simplification session (NOT in scope of Phase 37):**
 - **Tax → Actions de-duplication** — Reza's observation 2026-05-01 (with screenshots): the My Guide → Actions (`/dashboard/cfo`) page already surfaces a "Tax Position" card with *Estimated Position · Days Until EOFY · Effective Tax Rate · Total Deductions · Property Allocation · Neg-Gearing Benefit · Potential Missed Deductions tags*. The full `/dashboard/tax` page adds *tax-rate breakdown bars · full tax-calculation table (Tax on Income · Medicare Levy · Gross Tax · Net Tax Payable) · per-source income detail · Deductions sub-tab · Super sub-tab · full Recommendations list*. **Decision:** in the upcoming My Guide review session, compare both surfaces, fold non-duplicated tax data into Actions, then retire `/dashboard/tax` entirely. **Hard rule:** no calc duplication — Tax engine stays canonical; Actions just renders its outputs (CLAUDE.md §12.2).
+
+---
+
+### 4. Phase 38 — My Vault (document management uplift)
+
+- **Status:** 🟡 PR 1 in flight — sidebar IA + visual uplift + Smart Inbox surface. PR 2 (AI auto-tagging acceptance UI + universal upload-point audit) and PR 3 (accountant-bundle modal + secure share-link) queued.
+- **Started:** 2026-05-01 (evening)
+- **Owner:** Reza (vision/sign-off) + Claude (code)
+- **Last touched:** 2026-05-01 — Audit confirmed extensive existing infrastructure (Phase 25 Document Management Engine, Phase 26 Document Intelligence Engine, `/api/documents/upload`, `/api/documents/analyze`, `/api/documents/export` ZIP endpoint, `FolderTree`, `DocumentFolderView`, `AnalysisPreviewCard`, `ExtractionReviewForm`). Phase 38 is mostly UX polish on top — the engines exist, the canonical upload cascade exists, the accountant ZIP endpoint exists. **Hard constraint: zero new calc engines, zero data duplication.**
+- **Why this matters:** Documents are evidentiary trail for tax filings, refinancing, insurance claims, depreciation schedules. Reza's brief: *"these documents can be shared with the accountant for tax return activities and they should be very well structured and organised."* Tax-time stress (ATO research: 4–7 hrs hunting docs at EOFY) becomes retrieval relief when the vault is well-organised. Behavioural psychology: each upload = mini completion loop / dopamine hit; FY counter visibility drives engagement spike at exactly the right moment.
+
+**Phases:**
+- [ ] 1 — **Sidebar IA + visual uplift + Smart Inbox.** Split "Reports" into two top-level items: "My Vault" (new, `Archive` icon, between My Guide and Reports) + "Reports" (own item). Friendly `/dashboard/vault` alias redirects to canonical `/dashboard/documents`. Replace PageHeader + 4-StatCard row with Apple-typography hero (FY counter as primary number, glassmorphic 28px card, framer-motion sequenced entrance, full prefers-reduced-motion). Smart Inbox section below hero surfaces docs with `analysis.status === 'COMPLETED' && userVerified === false` (Phase 26 AI suggestions awaiting user review). All existing FolderTree / Toolbar / Breadcrumb / FolderView untouched. Same `/api/documents` endpoint — zero new APIs. **THIS PR.**
+- [ ] 2 — **AI auto-tagging acceptance UI + universal upload audit.** Surface `AnalysisPreviewCard` + `ExtractionReviewForm` (existing Phase 26 components) inline within the Smart Inbox so users can one-tap accept the AI's suggested entity / category / tax-status tags without navigating away. Then audit every upload entry point in the app (loan detail dialog, expense form, income form, property tab, asset form, bank import) — confirm all route through `documentUploadService` / `DocumentManagementEngine.processUpload()`. If any bypass it, refactor. Result: every upload, anywhere in the app, automatically lands in the Vault, correctly categorised, polymorphically linked to its source entity, and visible under all four lenses (Year / Entity / Category / Tax Status).
+- [ ] 3 — **Accountant bundle modal + secure share-link.** "Send to accountant" modal wrapping the **existing** `/api/documents/export` endpoint (which already produces FY-first / entity-first / category-first ZIPs — discovered in audit). Three actions: download ZIP · email to accountant (pre-filled recipient) · generate secure shareable link (NEW endpoint `POST /api/documents/share-link` — only truly new piece in Phase 38). Share-link is time-limited (default 30 days), audit-logged via `createAuditLog()` per CLAUDE.md §13 CDR compliance, watermarked on the served-content side ("Generated from Monitrax · {FY} · {user name}"). Accountant lands on a read-only `/share/[token]` page that lists the ZIP'd documents.
+- [ ] 4 — **Tax-status lens.** Adds a 4th filter to FolderTree: Deductible / Non-deductible / Untagged. Joins `DocumentLink → Expense.isTaxDeductible` for the deductibility signal. Small extension; deferred until PR 1-3 ship and Reza confirms the rest works.
+
+**Design language constraint:** Same as Phase 37 — extends Home TRAIL banner v3 (glassmorphic 28px cards, `appleEase` 1.4s, framer-motion v12 springs 320/28, AnimatePresence cross-fades, full `prefers-reduced-motion`). Zero new dependencies. Zero new design tokens.
+
+**Risk:** Low. PR 1 = pure presentation layer (hero + Smart Inbox). PR 2 = UI composition over existing components + an audit-and-refactor pass. PR 3 introduces ONE new API route (share-link). No `prisma/schema.prisma` change in any PR. No calc engine changes. No data duplication.
+
+**Blocking:** None.
+
+**What we're explicitly NOT building (already exists per audit 2026-05-01):**
+- Upload + auto-categorise + entity-link cascade — `DocumentManagementEngine.processUpload()` (Phase 25, `lib/documents/engine/`)
+- OCR + Gemini metadata extraction — `DocumentIntelligenceEngine.analyzeDocument()` (Phase 26)
+- ZIP bundle export — `POST /api/documents/export` already supports `financial-year-first` / `entity-first` / `category-first` structures
+- AI suggestion accept/edit UI primitives — `AnalysisPreviewCard`, `ExtractionReviewForm` in `components/documents/intelligence/`
+- Form auto-fill from receipt — `POST /api/documents/analyze-for-form` + `FormDocumentUpload` component
+- Polymorphic entity linking — `DocumentLink` model + `LinkedEntityType` enum (9 entity types)
 
 ---
 
