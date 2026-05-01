@@ -281,7 +281,136 @@ flip in the same PR that ships Phase 2b.
 - 2f — Sidebar: remove any legacy entries still pointing at the old
   pages.
 
-## 9. Home TRAIL banner redesign (this session, 2026-05-01)
+## 9. Home TRAIL banner redesign (2026-05-01)
+
+> **v3 PREMIUM REDESIGN — same day, second pass.**
+> Reza reviewed v2 (the interactive-tabs redesign below) and approved the
+> functionality but rejected the visual treatment as "too text-based, no
+> artistic transitions, no graphics that engage users visually." He
+> commissioned a v3 with the brief: *"Apple-like, animated transitions,
+> relevant background, world-class. The design of Monitrax should be the
+> selling point."*
+>
+> **v3 ships in the same PR as v2's removal.** v2 only lived in production for
+> a few hours; v3 supersedes it entirely.
+
+### v3 design vocabulary
+
+Built on top of the existing marketing motion vocabulary (`appleEase`,
+`useReducedMotion`, framer-motion v12 — see `components/marketing/TrailHero.tsx`).
+Zero new dependencies introduced.
+
+1. **Glassmorphic card** with rounded `28px` corners, semi-transparent
+   `bg-card/70`, soft layered shadow (`0 1px 2px rgba(15,23,42,0.04),
+   0 8px 30px rgba(15,23,42,0.06)`), and `backdrop-blur-xl`. Sits on top
+   of an animated atmosphere instead of a flat fill.
+
+2. **Stage-coloured atmospheric mesh gradient** — three overlapping
+   radial gradient stops at 12%/-10%, 92%/110%, and 50%/50% of the card.
+   Colours are stage-specific (Track = warm amber/orange/burnt-amber;
+   Reduce = orange/rose/burnt; Anchor = emerald/teal/forest;
+   Invest = sky/indigo/slate; Live = yellow/amber/sunset). When the
+   user changes stages the entire mesh morphs over 1.4s with `appleEase`.
+   Above the active letter, a slow-breathing soft glow (8s loop)
+   provides ambient warmth without distraction.
+
+3. **Hero-scale interactive letters** — `h-16 / sm:h-20` rounded-square
+   tiles with glassy backdrop. Each letter is rendered as
+   `bg-gradient-to-br bg-clip-text text-transparent` so it reads as
+   refined display typography rather than plain text. Springy hover
+   (scale 1 → 1.08, springiness `stiffness: 320, damping: 28`) and
+   tactile press (scale 0.96). On the spotlit letter, a coloured glow
+   halo (blurred `blur-xl`) fades in behind via `AnimatePresence` —
+   the letter literally *glows* in its stage colour.
+
+4. **Animated connecting thread** — the line between letters is
+   actually two layers: a static `bg-foreground/[0.07]` track + an
+   animated gradient overlay that fills from 0 → user's actual stage
+   on first render (1.1s with 0.2s delay). The fill gradient
+   transitions from Track's amber to the user's current stage colour,
+   visualising the journey traversed.
+
+5. **"You" label** — instead of the long "You are here" pill on the
+   spotlight, a tiny pill above the user's actual stage letter says
+   simply "You". Animates in 0.6s after the page loads. Functional
+   reminder that survives even when hovering other letters.
+
+6. **Bespoke per-stage SVG glyphs** — five inline SVGs (no asset
+   files), each with stage-specific micro-motion that respects
+   `prefers-reduced-motion`:
+   - **T (Track)** — concentric awareness rings ("aperture") with a
+     6-second breathing pulse.
+   - **R (Reduce)** — diminishing arcs with a snipping line, slowly
+     rocking left-right (8s loop) like a pair of scissors at rest.
+   - **A (Anchor)** — anchor silhouette with a soft underwater sway
+     (5s loop) over a wave baseline.
+   - **I (Invest)** — sparkline that re-draws itself on a 3.6s loop
+     using `pathLength` animation, with a punctuation dot at the
+     peak.
+   - **L (Live)** — sunrise: a horizon line, a half-sun, and five
+     radiating rays, with the same 6s breathing pulse as Track to
+     bookend the journey.
+   Each glyph uses a per-stage linear gradient so the colours
+   reinforce the atmosphere without being noisy.
+
+7. **Cross-fade content swap** — when the spotlight changes, both the
+   glyph and the text content swap via `AnimatePresence mode="wait"`
+   with a blur-out / blur-in transition (`filter: blur(6px) → 0`,
+   y: 12 → 0, 0.45s). No snap, no flash — content "exhales out" and
+   "inhales in." Glyph rotates 8° on entry/exit for added physicality.
+
+8. **Spotlight content layout** — two-column grid (`auto, 1fr`):
+   - Glyph in a glassy `22px` rounded-square frame.
+   - Stage label (gradient-filled), headline (1.55rem semibold,
+     tight tracking `-0.01em`), description, italic key question +
+     emotion shift line ("From avoidance → awareness").
+   The italic question is the verbatim TRAIL_FRAMEWORK §2 question
+   in serif-italic style — sets it apart as the "voice of the
+   framework" rather than UI copy.
+
+9. **Primary CTA button** — pill-shaped, gradient-filled in the
+   spotlight stage's signature colour, with a sweep-shimmer effect on
+   hover (a translucent white gradient slides across the button in
+   0.9s). Lifts 1px on hover with spring physics.
+
+10. **Reduced-motion mode** — when the user's OS reports
+    `prefers-reduced-motion: reduce`, every animation collapses to
+    instant or static. The mesh gradient stops morphing, the breathing
+    glow stops, the sparkline stays drawn, the glyph swap is a hard
+    crossfade only. The content remains fully usable.
+
+### Functional model (unchanged from v2)
+
+- Default render = user's actual TRAIL stage in the spotlight.
+- Hover/focus = preview that stage in the spotlight (transient).
+- First click = select that stage (sticky; survives mouse leave; small
+  dot below the letter).
+- Second click on the same letter OR clicking the inline "Open Stage"
+  CTA = navigate to that stage's page.
+- All stage hrefs verified against the canonical sidebar nav (Track →
+  `/dashboard/balances`, Reduce → `/dashboard/budget-analysis`,
+  Anchor → `/dashboard/safety-net`, Invest → `/dashboard/properties`,
+  Live → `/dashboard/cfo`).
+
+### Stage copy provenance
+
+Every string visible in the banner is sourced verbatim from
+`docs/blueprint/TRAIL_FRAMEWORK.md` §2 (Headline, narrative description,
+key question, emotional-shift line). If TRAIL_FRAMEWORK changes, the
+strings in `TrailStageIndicator.tsx` must be re-synced — call this out
+in the PR template for any TRAIL_FRAMEWORK edit.
+
+### Performance
+
+- Zero new dependencies (framer-motion was already in use by marketing).
+- All SVG glyphs inline — no extra HTTP requests, no asset bloat.
+- `AnimatePresence mode="wait"` ensures only one child renders at a
+  time; no layout thrash.
+- The mesh gradient is a single CSS background string animated as one
+  property — GPU-friendly, no layout reflow.
+- All animations honour `prefers-reduced-motion`.
+
+### v2 (superseded — kept here for context)
 
 > **Goal:** make the `T R A I L` banner on the Home dashboard
 > communicate the framework rather than just illustrating it.
