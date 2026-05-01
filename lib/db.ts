@@ -39,7 +39,9 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const useConnector = process.env.USE_CLOUD_SQL_CONNECTOR === 'true';
+const useConnector =
+  process.env.USE_CLOUD_SQL_CONNECTOR === 'true' &&
+  process.env.NEXT_PHASE !== 'phase-production-build';
 
 async function buildConnectorPrisma(): Promise<PrismaClient> {
   const provider = process.env.GCP_WORKLOAD_IDENTITY_PROVIDER;
@@ -89,8 +91,15 @@ async function buildConnectorPrisma(): Promise<PrismaClient> {
       getSubjectToken: async () => {
         const token = process.env.VERCEL_OIDC_TOKEN;
         if (!token) {
+          const vercelKeys = Object.keys(process.env)
+            .filter((k) => k.startsWith('VERCEL_'))
+            .sort();
           throw new Error(
-            'VERCEL_OIDC_TOKEN not set; ensure Vercel OIDC federation is enabled at the project level',
+            `VERCEL_OIDC_TOKEN not set; ensure Vercel OIDC federation is enabled at the project level. ` +
+              `Available VERCEL_* env vars: [${vercelKeys.join(', ') || '<none>'}]. ` +
+              `NEXT_PHASE=${process.env.NEXT_PHASE ?? '<unset>'}, ` +
+              `VERCEL_ENV=${process.env.VERCEL_ENV ?? '<unset>'}, ` +
+              `VERCEL_REGION=${process.env.VERCEL_REGION ?? '<unset>'}.`,
           );
         }
         return token;
