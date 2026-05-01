@@ -717,3 +717,73 @@ Reza's brief 2026-05-01 evening: *"Documents is one of the most important pages 
 - [ ] PR 2 — AI auto-tagging acceptance UI (inline `AnalysisPreviewCard` + `ExtractionReviewForm` in Smart Inbox) + universal upload-point audit (verify all upload entries route through `DocumentManagementEngine.processUpload()`)
 - [ ] PR 3 — "Send to accountant" modal wrapping the existing `/api/documents/export` endpoint + new `/api/documents/share-link` endpoint for time-limited CDR-audit-logged shareable URLs
 - [ ] PR 4 — Tax-status lens (4th filter on FolderTree: Deductible / Non-deductible / Untagged via `DocumentLink → Expense.isTaxDeductible` join)
+
+---
+
+## Session: claude/phase-38-pr2-ai-tagging — Phase 38 PR 2 (Smart Inbox interactive + upload audit)
+
+### Outcome
+
+**Smart Inbox is now actionable.** Expandable Apple-style card surfaces every doc the AI has analysed but the user hasn't verified yet, with one-tap confirm and Open per row. Universal upload audit completed; one legacy bypass identified and tracked as PR 2.5 (no refactor in this PR per scope discipline). Pure UI + composition — zero new APIs, zero new engines.
+
+### Context
+
+PR 1 (PR #575) shipped the Smart Inbox count surface — users could see "X documents awaiting review" but not act on them without navigating to the FolderView. Reza directive: continue with PR 2 to make the inbox interactive, plus audit every upload point in the app to confirm they all route through the canonical Phase 25 DME (fulfilling the directive: "when a document, receipt or related document is attached anywhere in the app the document should be stored in My Vault, organised correctly, tagged with correct meta data").
+
+### Changes
+
+**Smart Inbox interactive** (`app/dashboard/documents/page.tsx`):
+- Card header now a `<button>` toggling `inboxExpanded` state (default `true` per Apple's "inbox-zero" pattern: if there's something for you, show it).
+- Header chevron rotates 180° on expand using framer-motion (`appleEase` 0.3s).
+- Expanded list animates open via `AnimatePresence` with height + opacity transition (0.45s, `appleEase`); reduced-motion variant collapses to opacity-only.
+- Per pending doc, one row renders:
+  - **Confidence dot** — colour-tone (`emerald-500` ≥0.9 / `amber-500` ≥0.7 / `rose-500` else) keyed off `analysis.overallConfidence`.
+  - **Doc-type badge** — `formatDocumentTypeLabel` from the existing enum (e.g. "Receipt", "Bank Statement", "Loan Statement").
+  - **AI summary line** — single-line preview built from `analysis.extractedData` via new `summariseExtractedData()` helper (vendor / amount / date / period — pulls common keys, formats AUD currency via `Intl.NumberFormat`).
+  - **Original filename** — secondary, muted.
+  - **Open button** — calls existing `handleView(doc.id)` (signed-URL `/api/documents/[id]` endpoint, 15-min expiry per `documentService.ts`), opens in `_blank` with `noopener`.
+  - **Confirm button** — calls existing `handleConfirmAnalysis(analysisId, action, data)` → `/api/documents/analyze/confirm` endpoint. Picks the highest-confidence suggested action (sorted by `confidence` desc); button label sourced from new `formatActionLabel()` helper (e.g. "Create expense", "Create income", "Link to property"). Spinner shows during the call; row removed from inbox on success (refresh fires).
+- Row entrance staggered 0.04s per item with x-axis slide; reduced-motion variant collapses to instant.
+- Two new helpers: `summariseExtractedData()` (~40 LOC), `formatDocumentTypeLabel()` (~10 LOC), `confidenceTone()` (~5 LOC), `formatActionLabel()` (~25 LOC) — all pure functions, no side effects.
+
+**Upload-path audit (read-only, documented for follow-up)**:
+
+Three codepaths exist for file upload to a `Document` row:
+
+| Codepath | Entry | Routes through Phase 25 DME? |
+|---|---|---|
+| `POST /api/documents/upload` | `useDocumentEngine` hook · `DocumentUploadDropzone` · direct fetch from `/dashboard/documents` | ✅ Canonical |
+| `POST /api/documents/analyze-for-form` | `FormDocumentUpload` (income / loan / property forms) | ✅ Canonical (creates doc via DME, then triggers analysis for form auto-fill) |
+| `POST /api/documents` (legacy) | `useDocumentUpload` hook → `documentService.uploadDocument()` | ❌ **Legacy bypass** |
+
+Bank-import codepaths (`ImportWizard`, `TransactionImportDialog`) target `/api/accounts/[id]/import` — out of scope (transaction CSVs, not Document rows).
+
+The legacy bypass affects two upload sites:
+- `components/ExpenseDialog.tsx` (line 15 imports `useDocumentUpload`)
+- `app/dashboard/expenses/page.tsx` (line 25 imports `useDocumentUpload`)
+
+These uploads still create a `Document` row (visible in My Vault) but skip the RuleEngine-driven storage routing, category inference, auto-linking, and path generation. **Decision in PR 2**: do not refactor in this PR — the affected files are 2,000+ LOC each and a refactor would mix in unrelated form logic, making the PR harder to review and revert. Captured as `IMPLEMENTATION_PLAN.md` Phase 38 PR 2.5 + Tech Debt row #12. Preferred fix path: refactor `lib/documents/documentService.ts:uploadDocument()` to internally invoke `getDocumentManagementEngine().processUpload()` — fix-once-fix-everywhere, no form-page edits needed.
+
+### Why this matters
+
+- **Inbox-zero loop = behavioural reward.** Apple Mail, Reminders, and Health all use the "show pending items at the top, action them inline" pattern. The Smart Inbox closes the gap between "AI has done work for you" (existing) and "User can act on that work in 2 seconds" (new).
+- **One-tap confirm reuses the highest-confidence suggestion.** No fetch, no modal, no navigation — the data is already on the page from `/api/documents`. The action calls the same endpoint the FolderView already uses.
+- **Audit findings preserved as living documentation.** Even though PR 2 doesn't refactor the legacy path, the audit table is now in `IMPLEMENTATION_PLAN.md` so any future contributor sees the canonical-vs-legacy split and the recommended fix.
+
+### Files modified
+
+- `app/dashboard/documents/page.tsx` — Smart Inbox interactive (header button + AnimatePresence list + per-row controls), `summariseExtractedData()` / `formatDocumentTypeLabel()` / `confidenceTone()` / `formatActionLabel()` helpers, `inboxExpanded` + `confirmingRowId` state, `handleInboxConfirm` + `handleInboxOpen` callbacks
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 38 PR 1 marked complete, PR 2 in flight, PR 2.5 added, upload-path audit table inlined under Phase 38, tech-debt row #12 added, last-updated banner refreshed
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry
+
+### Build status
+
+- [x] TypeScript: PASS (`npx tsc --noEmit` reports zero errors; only pre-existing tsconfig deprecation warning unrelated to this PR)
+- [x] No schema change
+- [x] No destructive Prisma writes
+- [x] No new APIs (uses existing `/api/documents`, `/api/documents/[id]`, `/api/documents/analyze/confirm`)
+- [x] No new calc engines
+
+### Risk
+
+**Low.** All UI composition over existing data and existing endpoints. `inboxExpanded` and `confirmingRowId` are local state — no global side effects. `handleInboxConfirm` shares its concurrency flag (`confirmingRowId`) so two rows can't fire at once. Refresh-on-success uses the existing `setRefreshKey` pattern. Independently revertable via single `git revert`.
