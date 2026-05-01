@@ -6,7 +6,7 @@
 >
 > See CLAUDE.md §1 (Session Startup Protocol) and §15 (Implementation Plan Protocol) for the rules that govern this document.
 
-**Last updated:** 2026-05-01 (late night) — Reza + Claude (Home TRAIL banner v3 premium redesign shipped — glassmorphic card, animated mesh-gradient atmosphere, hero letters, bespoke per-stage SVG glyphs with motion, framer-motion cross-fades, full reduced-motion support. **WIF Phases 9 + 10 closed.** Phase 9 cutover complete in Production; Phase 10 closed via Option D — IAM compensating control documented; `0.0.0.0/0` retained intentionally with explicit re-evaluation triggers. Phase 11 queued for +30d. Home dashboard: TRAIL banner redesigned to be interactive; non-Basiq legacy `/dashboard/accounts` references repointed to `/dashboard/balances`. Dead-code audit completed and three surfaces soft-deleted: `/api/auth/login`, `/api/auth/register` (410 Gone stubs), and `components/onboarding/linear/` (`@deprecated` marker on entry file). Hard delete queued for ≥ 2026-05-15 pending production-log verification.)
+**Last updated:** 2026-05-01 (late night) — Reza + Claude (Home TRAIL banner v3 premium redesign shipped — glassmorphic card, animated mesh-gradient atmosphere, hero letters, bespoke per-stage SVG glyphs with motion, framer-motion cross-fades, full reduced-motion support. **WIF Phases 9 + 10 closed.** Phase 9 cutover complete in Production; Phase 10 closed via Option D — IAM compensating control documented; `0.0.0.0/0` retained intentionally with explicit re-evaluation triggers. Phase 11 queued for +30d. Home dashboard: TRAIL banner redesigned to be interactive; non-Basiq legacy `/dashboard/accounts` references repointed to `/dashboard/balances`. Dead-code audit completed and three surfaces soft-deleted: `/api/auth/login`, `/api/auth/register` (410 Gone stubs), and `components/onboarding/linear/` (`@deprecated` marker on entry file). Hard delete queued for ≥ 2026-05-15 pending production-log verification. **NEW workstream opened: Phase 37 — My Budget IA simplification + premium redesign** (6 tabs → 3; default landing → Cashflow; Tax relocates to My Guide; extract-and-compose pattern preserves all existing routes, engines and APIs).)
 
 ---
 
@@ -103,6 +103,34 @@
 
 ---
 
+### 3. Phase 37 — My Budget IA simplification + premium redesign
+
+- **Status:** 🟡 Active — IA confirmed by Reza 2026-05-01. PR sequence agreed. Awaiting go-ahead on PR 1.
+- **Started:** 2026-05-01
+- **Owner:** Reza (vision/sign-off) + Claude (code)
+- **Last touched:** 2026-05-01 — IA agreed: 6 tabs → 3 (Cashflow / My Plan / Debt Freedom). Default landing changes from Budget Analysis → Cashflow. Tax relocates to My Guide as 3rd tab (alongside Actions, Health). Existing routes preserved via extract-and-compose pattern (Phase 36b precedent — see `AccountDetailDialog`/`AccountFormDialog` extractions). **Hard constraint: no calc engines, no data sources, no APIs touched** — this is purely IA + UI uplift, sourcing every number from its existing canonical engine.
+- **Why this matters:** Current My Budget surfaces the same 3 numbers (monthly income, monthly expenses, surplus) on 4 different pages from 3 different endpoints, creating visual + cognitive duplication. The default landing is a "Generate Budget Analysis" CTA instead of the user's actual cashflow — friction at the most important moment. Reduces decision paralysis (psychology), eliminates duplicate displays of the same number (UX), keeps every existing engine + API exactly as-is (engineering safety). Aligns with TRAIL Reduce stage: **answer → intent → action**.
+
+**Design language constraint:** Every visual change extends the Home TRAIL banner v3 grammar shipped 2026-05-01 — glassmorphic 28px cards, `backdrop-blur-xl`, framer-motion v12 springs (`stiffness: 320, damping: 28`), `appleEase` 1.4s, breathing 8s glow loops, AnimatePresence cross-fades (0.45s, blur-in/blur-out), full `prefers-reduced-motion` support, hero-scale gradient-fill type. **Zero new dependencies. Zero new design tokens.**
+
+**Phases (each = its own PR, independently revertable):**
+- [ ] 1 — **Sidebar IA only.** `components/DashboardLayout.tsx`: My Budget = Cashflow / My Plan / Debt Freedom. Tax becomes 3rd tab under My Guide alongside Actions + Health. Default My Budget landing → `/cashflow`. Tiny, pure config change. Risk: tiny.
+- [ ] 2 — **Cashflow uplift.** Redesign `/cashflow` page applying TRAIL banner v3 grammar. Warm-sentence hero ("You're $312 ahead this month — keep going"). Single-leak card (biggest leak only, with Fix-this CTA). Inline tax-tip cards reusing `/api/tax/position` data contextually. Same `/api/cashflow/intelligence` calls — zero calc changes. Health-score ring fills with `appleEase` on mount. Risk: small (visual only).
+- [ ] 3 — **Extract `<IncomePanel>`, `<SpendingPanel>`, `<BudgetPanel>`** from `app/dashboard/income/page.tsx` (2,162 LOC), `app/dashboard/expenses/page.tsx` (2,031 LOC), `app/dashboard/budget-analysis/page.tsx` (785 LOC). Build new `/dashboard/plan` page composing them under Apple-style segmented control with sliding selection pill + cross-fades. Hero: "$X in · $Y planned · $Z left" with morphing numbers. Same APIs, same logic, same Phase 30 budget-vs-actual fields — just one entry point. Risk: medium (touching 5,000 LOC of existing forms).
+- [ ] 4 — **Standalone routes use the extracted panels.** `/dashboard/income`, `/expenses`, `/budget-analysis` rewritten to render the same panels in standalone mode. Zero divergence between `/dashboard/plan` and standalone routes — guaranteed by single component source. Routes stay alive for deep-link compatibility. Risk: small (net-negative LOC).
+- [ ] 5 — **Debt Freedom uplift.** Hero redesign — "Debt-free by Oct 2031 · Save $48,200 in interest" with subtle gradient shimmer. Strategy cards (Avalanche / Snowball / Tax-Aware) with spring-scale on select, halo glow on active. Loan stack visualised as ascending bars filling on render. Existing budget-confirmation gate preserved. Same `/api/calculate/debt-plan`. Risk: small (visual only).
+- [ ] 6 — **Tax tab landing under My Guide.** Add `/dashboard/tax` as 3rd My Guide tab (sidebar only — page itself unchanged). Sidebar removal from My Budget already done in Phase 1. Risk: tiny.
+- [ ] 7 — **Telemetry + soft-retire window.** Log direct hits to `/dashboard/income`, `/expenses`, `/budget-analysis`, `/dashboard/tax` for 30 days. If hits → 0, soft-retire with 410 Gone stubs (precedent: `/api/auth/login` per CHANGELOG_2026_05_01). Add as Tech Debt row for hard-delete window ≥ 2026-06-15. Risk: tiny.
+
+**Risk:** Low overall. Each PR is independently revertable. No `prisma/schema.prisma` changes. No destructive writes. No calc engines touched. Routes preserved → zero broken bookmarks, deep links, marketing URLs, or browser history.
+
+**Blocking:** None. Awaiting Reza go-ahead on PR 1 sequencing.
+
+**Follow-up captured for the queued My Guide simplification session (NOT in scope of Phase 37):**
+- **Tax → Actions de-duplication** — Reza's observation 2026-05-01 (with screenshots): the My Guide → Actions (`/dashboard/cfo`) page already surfaces a "Tax Position" card with *Estimated Position · Days Until EOFY · Effective Tax Rate · Total Deductions · Property Allocation · Neg-Gearing Benefit · Potential Missed Deductions tags*. The full `/dashboard/tax` page adds *tax-rate breakdown bars · full tax-calculation table (Tax on Income · Medicare Levy · Gross Tax · Net Tax Payable) · per-source income detail · Deductions sub-tab · Super sub-tab · full Recommendations list*. **Decision:** in the upcoming My Guide review session, compare both surfaces, fold non-duplicated tax data into Actions, then retire `/dashboard/tax` entirely. For Phase 37 scope, Tax simply becomes a 3rd sibling tab under My Guide so it remains discoverable; consolidation happens later as part of the My Guide pass. **Do not duplicate tax data on Actions today** — same single-source-of-truth rule (CLAUDE.md §12.2).
+
+---
+
 ## 📋 Up Next (queued, agreed, not started)
 
 | # | Item | Phase / area | Trigger to start |
@@ -114,6 +142,7 @@
 | 5 | **Incident Response Plan WIF section** | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Next housekeeping pass — capture Phase 9 cutover lessons formally |
 | 6 | **Apply `connection_limit` via Prisma datasource override (Option α)** instead of URL — only if pool exhaustion still observed after WIF | Perf | Only if needed |
 | 7 | **Onboarding wizard PR 3c** — data source hygiene (staleness indicators, upgrade-this-account button, balance age heat-map) | Phase 12 — see `MASTER_BLUEPRINT.md` line 206 | After current hardening sprint |
+| 8 | **My Guide simplification + Tax → Actions consolidation** — review Actions vs Health vs Tax surfaces; fold non-duplicated `/dashboard/tax` data into Actions (data-comparison table to be produced in that session); retire `/dashboard/tax` route once Actions is the single source. **Hard rule:** no calc duplication — Tax engine stays canonical, Actions just renders its outputs. | UX / TRAIL Live stage | After Phase 37 ships and stabilises (My Budget IA must land first so Tax has a stable home as a 3rd My Guide tab during the migration) |
 
 ---
 
