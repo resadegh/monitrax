@@ -166,10 +166,23 @@ function buildStandardPrisma(): PrismaClient {
 function getOrInitConnectorClient(): Promise<PrismaClient> {
   if (globalForPrisma.prisma) return Promise.resolve(globalForPrisma.prisma);
   if (!globalForPrisma.prismaInitPromise) {
-    globalForPrisma.prismaInitPromise = buildConnectorPrisma().then((c) => {
-      globalForPrisma.prisma = c;
-      return c;
-    });
+    globalForPrisma.prismaInitPromise = buildConnectorPrisma()
+      .then((c) => {
+        globalForPrisma.prisma = c;
+        return c;
+      })
+      .catch((err: unknown) => {
+        // Don't cache the rejection. Without this, a transient cold-start
+        // failure (SQL Admin API jitter, STS throttle, slow auth chain)
+        // would wedge every subsequent query on this warm function
+        // instance — Vercel keeps the instance for ~5-15 min idle, so
+        // the user sees "first navigation broken until I switch pages
+        // and come back" (a different instance handles the retry).
+        // Clearing here lets the next request re-attempt init from
+        // scratch instead of awaiting a permanently-rejected promise.
+        globalForPrisma.prismaInitPromise = undefined;
+        throw err;
+      });
   }
   return globalForPrisma.prismaInitPromise;
 }

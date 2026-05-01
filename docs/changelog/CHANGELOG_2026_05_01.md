@@ -446,3 +446,36 @@ New design vocabulary, all built on `framer-motion` v12 (already in repo, used b
 ### Note on stacking with the soft-delete PR
 
 This commit sits on top of `cb820b3` (the soft-delete PR #568) on the same branch. The same branch is therefore an additive PR sequence: v3 banner + soft-deletes + audit doc updates all roll into PR #568 if it's still open, or split if needed.
+
+---
+
+## Late-night addendum — cold-start init hardening
+
+### Symptom
+
+After Phase 9 cutover, user reported "many of the page data doesn't load first time I navigate to it but when I navigate to another page and go back data will showup. This doesn't happen always but looks like the first time on each page doesn't load the full data." Earlier in the same evening a transient `Failed to calculate safety net status` (500) was observed on `/api/safety-net` that resolved on a single page refresh.
+
+### Root cause
+
+`lib/db.ts` `getOrInitConnectorClient()` cached the connector-init promise on `globalThis` so concurrent requests serialise behind one auth chain. The implementation lacked a `.catch` handler — if the init promise **rejected** (transient SQL Admin API jitter, STS throttle, slow IAM Credentials response on cold start), the rejected promise was cached. Every subsequent query on that warm function instance awaited the same rejected promise and failed instantly. Vercel keeps warm instances ~5-15 min idle, so the bad instance kept failing requests that long.
+
+The "navigate away and back" workaround worked because Vercel's load balancer fanned the retry across multiple function instances — the second navigation often hit a different (healthy) instance.
+
+### Fix
+
+`getOrInitConnectorClient()` now attaches a `.catch` handler that clears `globalForPrisma.prismaInitPromise = undefined` on rejection. Next request on the same warm instance re-attempts init from scratch instead of awaiting a permanently-rejected promise. Original error is re-thrown so route handlers still emit a proper 500 for the request that caused the rejection.
+
+### Files modified
+
+- `lib/db.ts` — `.catch` clearer added to `getOrInitConnectorClient()` with a documented comment block
+- `docs/operational/security/04_WIF_TROUBLESHOOTING.md` — new **§3.K** "First page load doesn't show data, but navigating away and back works" with symptom, root cause, and the fix; also lists future mitigations (Vercel/GCP Cloud Scheduler warm-up cron, raising `maxDuration` on hot routes, pre-constructing `IdentityPoolClient` at module load) for if the symptom recurs after this fix
+- `docs/IMPLEMENTATION_PLAN.md` — Workstream #1 `Last touched` updated with the cold-start hardening note
+
+### Build status
+
+- [x] `npm run build` — PASS
+- [x] No schema change; no destructive Prisma writes
+
+### Risk
+
+Zero at merge. Behaviour change is a strict superset: previously a single rejection wedged the instance forever; now it propagates the same error for the originating request, then allows the next request to retry. No code path that previously succeeded now fails.

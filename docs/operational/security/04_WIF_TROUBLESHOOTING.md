@@ -284,6 +284,43 @@ failed for user "vercel-monitrax-db@monitrax-479700.iam "`
   `scopes: ['https://www.googleapis.com/auth/sqlservice.login']`
   to the `IdentityPoolClient` constructor.
 
+### K. "First page load doesn't show data, but navigating away and back works"
+
+User-visible symptom: pages render but data is missing or stale on
+the first visit after some idle. Switching to a different page and
+returning shows the data correctly. Eventually (5-15 min) the
+broken instance is replaced and the symptom disappears on its own.
+
+- **Where in the chain:** `lib/db.ts` `getOrInitConnectorClient()`.
+  The connector init runs once per Vercel function instance and is
+  cached on `globalThis.prismaInitPromise`. If that single init
+  attempt rejected (e.g. transient SQL Admin API timeout, STS
+  jitter, slow IAM Credentials response on cold start), the
+  **rejected** promise was cached, so every subsequent query on
+  that warm instance awaited the same rejection and failed
+  instantly. Vercel keeps warm instances for ~5-15 min idle.
+- **Why "navigate away and back" worked:** Vercel routes requests
+  across multiple function instances. When you switched pages,
+  the new request likely hit a different (healthy) instance. When
+  you went back, the load balancer might route to either instance —
+  often the healthy one if the unhealthy one is busy.
+- **Fix landed 2026-05-01:** `getOrInitConnectorClient()` now
+  attaches a `.catch` handler that clears
+  `globalForPrisma.prismaInitPromise = undefined` on rejection, so
+  the next request re-attempts init from scratch instead of
+  awaiting a permanently-rejected promise. The error is still
+  re-thrown so the calling route handler can return a proper
+  500 (rather than swallowing it).
+- **If this recurs after the fix:** check Cloud Logging for
+  patterns of failure during cold-start init — STS exchange
+  failures, SQL Admin API throttling, or impersonation failures.
+  Mitigate with one or more of: a Vercel/GCP Cloud Scheduler
+  cron hitting `/api/health` every 5 min to keep instances warm;
+  raise `maxDuration` on routes that do connector init in their
+  hot path; or pre-construct the `IdentityPoolClient` /
+  `Connector` at module load (currently deferred to keep the
+  cold-start cost off function-import).
+
 ### I. `Client network socket disconnected before secure TLS connection was established`
 
 - **Cause:** Transient — usually a concurrent request lost the race
