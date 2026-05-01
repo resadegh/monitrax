@@ -73,13 +73,13 @@ const MODULE_CONFIG: Record<ModuleName, {
   accounts: {
     label: 'Accounts',
     icon: Wallet,
-    href: '/dashboard/accounts',
+    href: '/dashboard/balances',
     color: 'text-emerald-600 dark:text-emerald-400',
   },
   offsetAccounts: {
     label: 'Offset Accounts',
     icon: Wallet,
-    href: '/dashboard/accounts',
+    href: '/dashboard/balances',
     color: 'text-teal-600 dark:text-teal-400',
   },
   income: {

@@ -711,7 +711,7 @@ export default function CFODashboardPage() {
           label="Month-End Balance"
           value={formatCurrency(quickStats.projectedMonthEndBalance)}
           icon={DollarSign}
-          onClick={() => router.push('/dashboard/accounts')}
+          onClick={() => router.push('/dashboard/balances')}
         />
         <MetricCard
           label="Days to Next Bill"
