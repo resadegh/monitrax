@@ -461,21 +461,49 @@ by removing the public authorized network entirely.
 
 | Phase | What | Done |
 |---|---|---|
-| 1–3 | Service account + IAM grants + Postgres grants in `public` schema | ✅ 2026-04-30 |
+| 1–3 | Service account + IAM grants + Postgres grants in `public` schema | ✅ 2026-04-30 (re-verified 2026-05-01 after the Cloud IAM database user step was found missing — see Phase 9 cutover notes) |
 | 4–6 | Workload Identity Pool + OIDC provider + WIF binding | ✅ 2026-04-30 |
 | 7 | Vercel env vars + project-level OIDC enabled | ✅ 2026-04-30 |
-| **8** | **Code PR — `lib/db.ts` refactor + driver adapter + 6 doc updates + 3 new docs** | **this PR** |
-| 9 | Flip `USE_CLOUD_SQL_CONNECTOR=true` in Preview, verify, then in Production | pending |
-| 10 | Remove `0.0.0.0/0` from Cloud SQL authorized networks | pending |
+| 8 | Code PR — `lib/db.ts` refactor + driver adapter + 6 doc updates + 3 new docs | ✅ 2026-04-30 (PR #560) |
+| **9** | **Production cutover (`USE_CLOUD_SQL_CONNECTOR=true`)** | **✅ 2026-05-01 (PRs #563, #564)** |
+| 10 | Remove `0.0.0.0/0` from Cloud SQL authorized networks | queued (24h after stable Phase 9) |
+| 11 | Remove the legacy `DATABASE_URL` runtime path; disable `monitrax_user`; tighten `lib/db.ts` to connector-only | queued (+30 days) |
+
+### Phase 9 cutover notes (2026-05-01)
+
+The cutover surfaced four issues, all resolved within the day:
+
+1. **OIDC token retrieval** — The token is delivered as the per-request
+   `x-vercel-oidc-token` header, NOT `process.env.VERCEL_OIDC_TOKEN`
+   (which only exists at build time). PR #563 switched to
+   `getVercelOidcToken()` and added a Proxy-based lazy init so the auth
+   chain runs inside a request context.
+2. **mTLS handshake (TLS alert 42 / bad_certificate)** — The SA was
+   never registered as a Cloud IAM database user on the instance
+   itself. Fixed via `gcloud sql users create
+   vercel-monitrax-db@monitrax-479700.iam --type=CLOUD_IAM_SERVICE_ACCOUNT`
+   plus public-schema grants from Cloud SQL Studio as `monitrax_user`.
+3. **SCRAM no-password (SASL error)** — In IAM mode the Postgres
+   "password" is the SA's OAuth access token. The Connector wraps the
+   socket but doesn't inject the token; the application must. PR #564
+   added `password: async () => authClient.getAccessToken()` to
+   `pg.Pool`.
+4. **Trailing whitespace on `CLOUD_SQL_DB_USER`** — Postgres treated
+   `...iam` and `...iam ` as different identifiers (28P01). Vercel env
+   var corrected; PR #564 also added defensive `.trim()` on all WIF
+   env-var reads in `lib/db.ts`.
+
+Full failure-mode catalogue with verification commands lives in
+`docs/operational/security/04_WIF_TROUBLESHOOTING.md` §3.A–§3.J.
 
 ### Operational references
 
 - **Code path:** `lib/db.ts` (feature-flag branch on `USE_CLOUD_SQL_CONNECTOR`)
 - **Architecture diagram:** `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` §5.5
 - **Runbook:** `docs/operational/security/04_WIF_TROUBLESHOOTING.md`
-- **CDR evidence:** `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md`
+- **CDR evidence:** `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md` (§7 has the full cutover record)
 - **CDR matrix:** `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` §3.2
 
 ---
 
-*Last Updated: 2026-04-30 (WIF appendix added)*
+*Last Updated: 2026-05-01 (Phase 9 cutover record added)*

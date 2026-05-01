@@ -227,16 +227,21 @@ NEXT_PUBLIC_API_URL=https://monitrax.onrender.com   # ⚠️ STALE — Render is
 # Google Maps API (Phase 20) - Frontend
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your-api-key>
 
-# --- Workload Identity Federation → Cloud SQL (Phase 8 of WIF, 2026-04-30) ---
+# --- Workload Identity Federation → Cloud SQL (Phase 9 of WIF, 2026-05-01) ---
 # These five vars switch the Prisma client from password-in-DATABASE_URL auth
 # to short-lived OIDC tokens exchanged for GCP credentials. None of them are
-# secrets in their own right — the runtime OIDC token (`VERCEL_OIDC_TOKEN`)
-# is auto-injected by Vercel and is the only thing that grants access.
-USE_CLOUD_SQL_CONNECTOR=true                         # feature flag; defaults to false
+# secrets in their own right — the runtime OIDC token (delivered as the
+# `x-vercel-oidc-token` request header) is the only thing that grants access.
+# IMPORTANT: All values must have NO leading or trailing whitespace.
+# `lib/db.ts` defensively `.trim()`s these on read, but Vercel's env-var
+# UI has historically retained pasted whitespace and produced 28P01
+# `password authentication failed for user "...iam "` — see
+# `04_WIF_TROUBLESHOOTING.md` §3.J for the precedent.
+USE_CLOUD_SQL_CONNECTOR=true                         # feature flag; PROD = true since 2026-05-01
 GCP_WORKLOAD_IDENTITY_PROVIDER=projects/<num>/locations/global/workloadIdentityPools/vercel-pool/providers/vercel-oidc
 GCP_SERVICE_ACCOUNT_EMAIL=vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com
 CLOUD_SQL_CONNECTION_NAME=monitrax-479700:australia-southeast1:monitrax-db-prod
-CLOUD_SQL_DB_USER=vercel-monitrax-db@monitrax-479700.iam   # IAM-mapped Postgres user
+CLOUD_SQL_DB_USER=vercel-monitrax-db@monitrax-479700.iam   # IAM-mapped Postgres user (no .gserviceaccount.com suffix)
 CLOUD_SQL_DB_NAME=monitrax
 
 # Optional overrides
@@ -265,15 +270,21 @@ base64 -i service-account-key.json | tr -d '\n'
 
 ### 5.5 Database Authentication Flow (WIF + Cloud SQL Connector)
 
-> **Active flow as of 2026-04-30 (Phase 8 of WIF workstream).** Default
-> behaviour is the legacy `DATABASE_URL` path until `USE_CLOUD_SQL_CONNECTOR=true`
-> is set on Vercel — Phase 9 will flip Preview first, then Production.
+> **Active and serving Production traffic since 2026-05-01.**
+> Phase 9 of the WIF workstream cut over Production to
+> `USE_CLOUD_SQL_CONNECTOR=true`. The legacy `DATABASE_URL` path
+> remains wired in as a fallback (for instant rollback during the
+> 30-day stabilisation window) and as the build-time path for
+> `prisma migrate deploy`. It will be removed in Phase 10 along
+> with the `0.0.0.0/0` Cloud SQL authorized network.
 
 ```
                   ┌────────────────────────────────────────────┐
-                  │  Vercel Serverless Function (cold start)   │
-                  │  process.env.VERCEL_OIDC_TOKEN  (auto-     │
-                  │  injected by Vercel; ~1h TTL; per-deploy)  │
+                  │  Vercel Serverless Function (Node.js)      │
+                  │  Per-request `x-vercel-oidc-token` header  │
+                  │  (NOT an env var — the token only exists   │
+                  │  inside a request context). Read via       │
+                  │  getVercelOidcToken() from @vercel/oidc.   │
                   └────────────────────┬───────────────────────┘
                                        │
                                        ▼
@@ -285,37 +296,68 @@ base64 -i service-account-key.json | tr -d '\n'
                   │  ─ impersonate the service account via     │
                   │    iamcredentials.googleapis.com           │
                   │  → returns a short-lived GCP access token  │
+                  │    (~1h, scoped to the SA)                 │
                   └────────────────────┬───────────────────────┘
                                        │
                                        ▼
                   ┌────────────────────────────────────────────┐
                   │  @google-cloud/cloud-sql-connector         │
-                  │  ─ uses the GCP access token to fetch the  │
-                  │    Cloud SQL instance ephemeral cert       │
+                  │  ─ uses the GCP access token to fetch an   │
+                  │    ephemeral client cert from the          │
+                  │    Cloud SQL Admin API                     │
                   │  ─ opens a TLS 1.3 tunnel to the instance  │
-                  │  → returns a node-postgres `stream`        │
-                  │    factory function                        │
+                  │  → returns pg-compatible socket options    │
                   └────────────────────┬───────────────────────┘
                                        │
                                        ▼
                   ┌────────────────────────────────────────────┐
-                  │  pg.Pool({ stream, user, database })       │
+                  │  pg.Pool({ ...connectorOpts,               │
+                  │            user, database,                 │
+                  │            password: () =>                 │
+                  │              authClient.getAccessToken()   │
+                  │          })                                │
                   │  + @prisma/adapter-pg PrismaPg(pool)       │
                   │  + new PrismaClient({ adapter })           │
-                  │  ─ Postgres-level auth = IAM database      │
-                  │    authentication (no password)            │
+                  │  ─ Postgres-level auth: IAM auth using     │
+                  │    the SA OAuth access token as password   │
+                  │    (per-connection callback, fresh each    │
+                  │    time so token TTL is invisible)         │
                   └────────────────────────────────────────────┘
 ```
 
+**Lazy initialisation note.** `lib/db.ts` constructs the client behind
+a `Proxy` so the auth chain only runs on the first method call inside
+a request handler. This is required because `getVercelOidcToken()`
+reads the token from the request context — it can't be called at
+module load time. The Proxy caches the resulting `PrismaClient` on
+`globalThis` so subsequent requests on the same warm function reuse it.
+
+**Required GCP-side configuration** (one-time, all done as of Phase 9):
+
+1. Service account `vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com`
+   with **both** `roles/cloudsql.client` and `roles/cloudsql.instanceUser`
+   at the project level.
+2. Workload Identity Pool `vercel-pool` with OIDC provider `vercel-oidc`,
+   attribute condition `assertion.project_id == 'prj_UYQF...'`.
+3. WIF principal bound to the SA via `roles/iam.workloadIdentityUser`.
+4. Cloud SQL instance flag `cloudsql.iam_authentication=on`.
+5. SA registered as a Cloud IAM **database** user on the instance via
+   `gcloud sql users create vercel-monitrax-db@monitrax-479700.iam
+   --type=CLOUD_IAM_SERVICE_ACCOUNT`.
+6. Postgres grants on the `public` schema (CONNECT, USAGE,
+   SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER on tables;
+   USAGE/SELECT/UPDATE on sequences; ALTER DEFAULT PRIVILEGES for new
+   objects).
+
 **Why this is better than `DATABASE_URL`:**
 
-| Aspect | `DATABASE_URL` (legacy) | WIF + Connector |
+| Aspect | `DATABASE_URL` (legacy, fallback only) | WIF + Connector (active) |
 |---|---|---|
-| Credential lifetime | indefinite (until rotated manually) | ~1h (OIDC token) → ~1h (GCP access token) |
+| Credential lifetime | indefinite (until rotated manually) | ~1h (OIDC token) → ~1h (GCP access token); rotation invisible to app |
 | Stored secret in Vercel | yes, as plaintext password | no — only non-secret identifiers |
-| Network exposure | requires `0.0.0.0/0` authorized network | works with public IP locked down (Phase 10) |
-| Audit trail in GCP Cloud Logging | none | full token-exchange + DB auth audit |
-| Rotation risk | URL-encoding bugs (see 2026-04-30 incident) | rotation is automatic on every cold start |
+| Network exposure | requires `0.0.0.0/0` authorized network | scheduled to be locked down in Phase 10 (after 24h of stable Phase 9) |
+| Audit trail in GCP Cloud Logging | none | full STS + IAM Credentials + Cloud SQL audit chain under the SA |
+| Rotation risk | URL-encoding bugs (see 2026-04-30 incident) | rotation is automatic per connection |
 
 ---
 
