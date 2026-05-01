@@ -15,7 +15,6 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
-import { PropertyGlyph } from '@/components/wealth/spiritGlyphs';
 
 /**
  * PropertyTile — premium glassmorphic property card.
@@ -71,13 +70,67 @@ function lvrTone(lvr: number): { text: string; bg: string; ring: string; label: 
 }
 
 function typeMeta(type: PropertyTileData['type']) {
+  // Per-type tonal palette — each type gets a distinct emotional
+  // colour identity. Differentiation happens through atmosphere,
+  // icon tone, accent strip, label gradient, and CTA — never through
+  // tile shape (so the grid stays coherent).
   switch (type) {
     case 'HOME':
-      return { label: 'Primary residence', icon: HomeIcon, accent: 'from-sky-500 to-indigo-500' };
+      // Warm hearth — amber + peach. Conveys home, comfort, the room
+      // you live in. Glow positioned bottom-right (fireplace), with a
+      // softer wash top-left (window).
+      return {
+        label: 'Primary residence',
+        icon: HomeIcon,
+        accent: 'from-amber-500 to-orange-500',
+        iconBg: 'from-amber-500/15 to-orange-500/15',
+        iconRing: 'ring-amber-400/25',
+        iconColor: 'text-amber-600 dark:text-amber-400',
+        cta: 'from-amber-500 to-orange-600',
+        ctaShadowDefault: 'shadow-amber-500/15',
+        ctaShadowHover: 'hover:shadow-amber-500/25',
+        atmosphere:
+          'radial-gradient(440px 240px at 100% 100%, rgba(251,146,60,0.15), transparent 65%), radial-gradient(380px 200px at 0% 0%, rgba(251,191,36,0.08), transparent 60%)',
+        hoverShadow:
+          '0 2px 4px rgba(251,146,60,0.10), 0 12px 40px rgba(251,146,60,0.14)',
+      };
     case 'INVESTMENT':
-      return { label: 'Investment property', icon: ArrowUpRight, accent: 'from-indigo-500 to-violet-500' };
+      // Cool growth — sky + indigo. Conveys ambition, future, ascent.
+      // Diagonal sweep from bottom-left to top-right (upward growth).
+      return {
+        label: 'Investment property',
+        icon: ArrowUpRight,
+        accent: 'from-sky-500 to-indigo-500',
+        iconBg: 'from-sky-500/15 to-indigo-500/15',
+        iconRing: 'ring-sky-400/25',
+        iconColor: 'text-sky-600 dark:text-sky-400',
+        cta: 'from-sky-500 to-indigo-600',
+        ctaShadowDefault: 'shadow-sky-500/15',
+        ctaShadowHover: 'hover:shadow-sky-500/25',
+        atmosphere:
+          'radial-gradient(440px 240px at 100% 0%, rgba(14,165,233,0.16), transparent 60%), radial-gradient(420px 220px at 0% 100%, rgba(79,70,229,0.10), transparent 60%)',
+        hoverShadow:
+          '0 2px 4px rgba(14,165,233,0.10), 0 12px 40px rgba(14,165,233,0.14)',
+      };
     case 'RENTAL':
-      return { label: 'Rental (renting)', icon: KeyRound, accent: 'from-cyan-500 to-sky-500' };
+      // Calm transition — teal + cyan. Conveys transient, neutral —
+      // neither owning nor heavy. Soft centred wash, no directional
+      // pull (rentals are temporary by nature).
+      return {
+        label: 'Rental (renting)',
+        icon: KeyRound,
+        accent: 'from-teal-500 to-cyan-500',
+        iconBg: 'from-teal-500/15 to-cyan-500/15',
+        iconRing: 'ring-teal-400/25',
+        iconColor: 'text-teal-600 dark:text-teal-400',
+        cta: 'from-teal-500 to-cyan-600',
+        ctaShadowDefault: 'shadow-teal-500/15',
+        ctaShadowHover: 'hover:shadow-teal-500/25',
+        atmosphere:
+          'radial-gradient(420px 220px at 50% 50%, rgba(20,184,166,0.12), transparent 65%), radial-gradient(320px 180px at 100% 100%, rgba(34,211,238,0.10), transparent 60%)',
+        hoverShadow:
+          '0 2px 4px rgba(20,184,166,0.10), 0 12px 40px rgba(20,184,166,0.14)',
+      };
   }
 }
 
@@ -97,28 +150,17 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
       animate={{ opacity: 1, y: 0 }}
       transition={reduced ? { duration: 0 } : { duration: 0.55, ease: appleEase, delay: 0.04 * index }}
       whileHover={reduced ? undefined : { y: -3 }}
-      className="group relative isolate overflow-hidden rounded-[22px] border border-sky-300/30 dark:border-sky-400/15 bg-card/70 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_2px_4px_rgba(14,165,233,0.08),0_12px_40px_rgba(14,165,233,0.12)]"
+      className="group relative isolate overflow-hidden rounded-[22px] border border-foreground/[0.08] bg-card/70 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] transition-shadow duration-500 hover:shadow-[0_2px_6px_rgba(15,23,42,0.06),0_18px_48px_rgba(15,23,42,0.10)]"
     >
-      {/* Atmosphere — subtle sky/indigo radial behind the tile */}
+      {/* Atmosphere — per-type tonal wash (warm for HOME, cool for
+          INVESTMENT, cyan for RENTAL). Subtle by default, lifts on hover. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10 opacity-70 transition-opacity duration-500 group-hover:opacity-100"
-        style={{
-          background:
-            'radial-gradient(420px 200px at 0% 0%, rgba(14,165,233,0.10), transparent 60%), radial-gradient(420px 200px at 100% 100%, rgba(79,70,229,0.08), transparent 60%)',
-        }}
+        style={{ background: meta.atmosphere }}
       />
 
-      {/* Spirit glyph watermark — type-specific line-art that hints at
-          the tile's nature without breaking the consistent grid shape.
-          Sits behind content (-z-10) at very low opacity, lifts subtly
-          on hover. Bleeds off the right edge for editorial feel. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -z-10 right-[-12%] top-[6%] h-[58%] w-[55%] text-sky-600 dark:text-sky-400 opacity-[0.07] transition-opacity duration-500 group-hover:opacity-[0.13]"
-      >
-        <PropertyGlyph type={property.type} delay={0.04 * index} className="h-full w-full" />
-      </div>      {/* Top accent strip (Invest palette) */}
+      {/* Top accent strip — type-coloured */}
       <div
         aria-hidden
         className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${meta.accent}`}
@@ -127,8 +169,8 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
       <div className="p-5 sm:p-6">
         {/* Header: icon + name + type badge + actions */}
         <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/15 to-indigo-500/15 ring-1 ring-sky-400/20">
-            <Icon className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${meta.iconBg} ring-1 ${meta.iconRing}`}>
+            <Icon className={`h-5 w-5 ${meta.iconColor}`} />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -304,7 +346,7 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
           whileHover={reduced ? undefined : { y: -1 }}
           whileTap={reduced ? undefined : { scale: 0.98 }}
           transition={springy}
-          className="mt-5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-sky-500/15 transition-shadow hover:shadow-lg hover:shadow-sky-500/25"
+          className={`mt-5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br ${meta.cta} px-4 py-2.5 text-sm font-semibold text-white shadow-md ${meta.ctaShadowDefault} transition-shadow hover:shadow-lg ${meta.ctaShadowHover}`}
         >
           <Eye className="h-4 w-4" />
           View details
