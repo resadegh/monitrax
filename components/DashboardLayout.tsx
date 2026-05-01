@@ -19,6 +19,7 @@ import {
   Search,
   Users,
   Target,
+  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -180,17 +181,35 @@ const reachNavItems: NavItem[] = [
     ],
   },
   {
+    // Phase 38 PR 1: My Vault elevated to top-level item — was previously
+    // a sub-tab of "Reports". Documents are inputs (evidentiary trail),
+    // Reports are outputs (exports). Different mental modes; different
+    // mental homes. Position: between My Guide and Reports — sits at the
+    // natural transition between TRAIL journey and the
+    // evidence/outputs cluster (Apple Health uses the same pattern with
+    // "Browse" before "Sharing").
+    //
+    // Canonical route stays at /dashboard/documents (deep-link
+    // preservation, same precedent as Phase 36/37). /dashboard/vault is
+    // a friendly alias that redirects.
+    name: 'My Vault',
+    href: '/dashboard/documents',
+    icon: Archive,
+    tourId: 'nav-vault',
+    matchRoutes: [
+      '/dashboard/documents',
+      '/dashboard/vault',
+    ],
+  },
+  {
+    // Phase 38 PR 1: Reports unbundled from Documents — own top-level
+    // item now. Reports = exports for accountants / banks / you.
     name: 'Reports',
     href: '/dashboard/reports',
     icon: FileText,
     tourId: 'nav-reports',
     matchRoutes: [
       '/dashboard/reports',
-      '/dashboard/documents',
-    ],
-    children: [
-      { name: 'Reports', href: '/dashboard/reports' },
-      { name: 'Documents', href: '/dashboard/documents' },
     ],
   },
 ];
