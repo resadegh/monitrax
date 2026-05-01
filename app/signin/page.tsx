@@ -30,13 +30,25 @@ export default function SignInPage() {
   });
   const { login, loginWithGoogle, user, isGCPEnabled, mfaChallenge, token } = useAuth();
   const router = useRouter();
+  // Read query params via window directly to avoid Next.js's CSR-bailout
+  // that `useSearchParams()` would force; we're already a client component.
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [nextPath, setNextPath] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+    setSessionExpired(sp.get('reason') === 'session_expired');
+    setNextPath(sp.get('next'));
+  }, []);
 
-  // Redirect if already authenticated (including after MFA resolution)
+  // Redirect if already authenticated (including after MFA resolution).
+  // Honour `?next=` so the user lands back where they were when their
+  // session expired.
   useEffect(() => {
     if ((user || token) && !mfaChallenge) {
-      router.push('/dashboard');
+      router.push(nextPath || '/dashboard');
     }
-  }, [user, token, mfaChallenge, router]);
+  }, [user, token, mfaChallenge, router, nextPath]);
 
   // Check which OAuth providers are configured (legacy mode only)
   useEffect(() => {
@@ -146,6 +158,13 @@ export default function SignInPage() {
               </Link>
             </p>
           </div>
+
+          {sessionExpired && !error && (
+            <div className="bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 px-4 py-3 rounded-lg mb-6">
+              Your session expired for security. Please sign in again to
+              continue.
+            </div>
+          )}
 
           {error && (
             <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg mb-6">
