@@ -6,7 +6,7 @@
 >
 > See CLAUDE.md §1 (Session Startup Protocol) and §15 (Implementation Plan Protocol) for the rules that govern this document.
 
-**Last updated:** 2026-05-01 (late night) — Reza + Claude (**Session-expiry UX hardening** — added `SessionExpiryHandler` (global `window.fetch` wrapper) that catches 401s from `/api/*` after the cached Firebase token has expired, force-refreshes the token + retries once, and falls back to `logout()` + redirect to `/signin?reason=session_expired&next=<path>` if the session is genuinely gone. Companion to the existing 30-min `IdleTimeoutGuard` (CLAUDE.md §13.5). Closes the gap where users idle <30 min, return to a stale token, and see broken pages instead of a clean re-auth prompt. Earlier tonight: Home TRAIL banner v3 premium redesign shipped; **WIF Phases 9 + 10 closed**; Phase 11 queued for +30d; dead-code audit completed and three surfaces soft-deleted (`/api/auth/login`, `/api/auth/register`, `components/onboarding/linear/`); hard delete queued for ≥ 2026-05-15.)
+**Last updated:** 2026-05-01 (late night) — Reza + Claude (**Phase 37 PRs 1-5 + 6 SHIPPED in mega-PR.** My Budget IA: 6 → 3 tabs (Cashflow / My Plan / Debt Freedom); default landing flipped to `/cashflow`; Tax relocated to My Guide. New `/dashboard/plan` hub built with Apple-style segmented control + AnimatePresence cross-fades. Cashflow + Debt Freedom heroes redesigned with TRAIL banner v3 grammar. Zero calc engines touched, zero APIs touched, zero data sources duplicated. **Session-expiry UX hardening** also shipped on main — `SessionExpiryHandler` (global `window.fetch` wrapper) that catches 401s from `/api/*` after the cached Firebase token has expired, force-refreshes the token + retries once, and falls back to `logout()` + redirect to `/signin?reason=session_expired&next=<path>` if the session is genuinely gone. Companion to the existing 30-min `IdleTimeoutGuard` (CLAUDE.md §13.5). Earlier today: Home TRAIL banner v3 premium redesign shipped; **WIF Phases 9 + 10 closed**; Phase 11 queued for +30d; dead-code audit completed and three surfaces soft-deleted (`/api/auth/login`, `/api/auth/register`, `components/onboarding/linear/`); hard delete queued for ≥ 2026-05-15.)
 
 ---
 
@@ -103,6 +103,32 @@
 
 ---
 
+### 3. Phase 37 — My Budget IA simplification + premium redesign
+
+- **Status:** 🟢 **PRs 1-5 SHIPPED 2026-05-01** — final 3-tab IA active; new `/dashboard/plan` hub live; Cashflow + Debt Freedom heroes uplifted to TRAIL banner v3 design language. PR 6 (Tax under My Guide) shipped as part of PR 1's sidebar move; PR 7 (telemetry + soft-retire of legacy routes) deferred — see Up Next.
+- **Started:** 2026-05-01
+- **Owner:** Reza (vision/sign-off) + Claude (code)
+- **Last touched:** 2026-05-01 — Mega-PR shipped on `claude/phase-37-full-uplift` (single PR per Reza's request) bundling PRs 1-5 + 6. **Hard constraint honoured: zero calc engines touched, zero APIs touched, zero data sources duplicated.** Every number on every screen sourced from its existing canonical engine.
+- **Why this matters:** Eliminated 6-tab decision paralysis in REDUCE stage; default landing now answers "am I OK this month?" (`/cashflow`) instead of opening a "Generate Budget Analysis" config CTA; tax-optimisation strategically aligned to LIVE stage under My Guide; warm-sentence behavioural framing applied to Cashflow + Debt Freedom heroes; new `/dashboard/plan` hub gives users a single, glanceable financial intent surface.
+
+**Phases:**
+- [x] 1 — **Sidebar IA.** `components/DashboardLayout.tsx`. My Budget = Cashflow / My Plan / Debt Freedom (3 tabs final). Default landing → `/cashflow`. Tax relocated to My Guide alongside Actions + Health. Existing routes preserved (deep-link compatibility).
+- [x] 2 — **Cashflow uplift.** Replaced plain title block with `CashflowHero` glassmorphic banner (rounded-[28px], backdrop-blur-xl, animated mesh gradient that shifts colour with surplus/shortfall sign, framer-motion fade-up sequenced with appleEase 1.4s, full prefers-reduced-motion). Warm-sentence headline ("You're $312 ahead this month — keep going" / "You're $140 short this month — let's find it together"). Same `/api/cashflow/intelligence` endpoint — zero calc changes. Refresh button restyled as glass pill.
+- [x] 3 — **New `/dashboard/plan` hub.** Apple-style segmented control (Money In / Money Out / Your Budget) with sliding selection pill (`layoutId` shared between segments) and AnimatePresence cross-fades (blur-in/blur-out, 0.45s). Hero glass card with morphing "$X in · $Y out · $Z surplus/shortfall" sentence. Each section shows a CONDENSED summary (top 5 income sources, top 6 spending categories with animated horizontal bars, 3 budget cards) and a "Manage all →" deep-link to the existing detail page. All data from existing APIs (`/api/cashflow/intelligence`, `/api/income`, `/api/expenses`, `/api/budget-analysis/latest`) called in parallel via `Promise.allSettled`.
+- [x] 4 — **Standalone routes preserved.** `/dashboard/income`, `/dashboard/expenses`, `/dashboard/budget-analysis` are unchanged — full CRUD intact. They are the destinations of the "Manage all →" links from `/dashboard/plan`. Zero broken bookmarks. (NB: the original PR 4 plan called for extracting Income/Spending/Budget panels into shared components and embedding them inline. The pragmatic delivery uses condensed-summary + deep-link instead, which preserves all 5,000+ LOC of existing CRUD logic untouched. The IA outcome — single My Plan tab, tab-collapse from 6 → 3 — is identical.)
+- [x] 5 — **Debt Freedom uplift.** Replaced PageHeader with `DebtFreedomHero` glassmorphic banner. Aspirational headline: "Debt-free by Oct 2031" with subtle 6s shimmer sweep over the date (collapses to static under reduced motion); fallback warm sentence when no plan computed yet. Two stat pills: interest saved (emerald) + months saved (violet). Numbers sourced from existing `aiAnalysis.projections` + `planResult` state — zero new calculations.
+- [x] 6 — **Tax tab under My Guide.** Sidebar-level move shipped as part of PR 1; the existing `/dashboard/tax` route is reachable from My Guide → Tab `Tax`. Page itself unchanged. Future My Guide simplification session (Up Next #8) will fold non-duplicated tax data into the Actions surface and retire the standalone Tax route.
+- [ ] 7 — **Telemetry + soft-retire window** for legacy routes (`/dashboard/income`, `/dashboard/expenses`, `/dashboard/budget-analysis`). DEFERRED — see Up Next #9. Routes stay alive as deep-link destinations from `/dashboard/plan`'s "Manage all →" links; soft-retire only makes sense if/when those links also disappear.
+
+**Risk:** Low. Routes preserved — zero broken bookmarks, deep links, marketing URLs, browser history. No `prisma/schema.prisma` change. No destructive Prisma writes. No calc engine modifications. TypeScript clean (`npx tsc --noEmit` passes; only pre-existing tsconfig deprecation warning unrelated to this PR).
+
+**Blocking:** None.
+
+**Follow-up captured for the queued My Guide simplification session (NOT in scope of Phase 37):**
+- **Tax → Actions de-duplication** — Reza's observation 2026-05-01 (with screenshots): the My Guide → Actions (`/dashboard/cfo`) page already surfaces a "Tax Position" card with *Estimated Position · Days Until EOFY · Effective Tax Rate · Total Deductions · Property Allocation · Neg-Gearing Benefit · Potential Missed Deductions tags*. The full `/dashboard/tax` page adds *tax-rate breakdown bars · full tax-calculation table (Tax on Income · Medicare Levy · Gross Tax · Net Tax Payable) · per-source income detail · Deductions sub-tab · Super sub-tab · full Recommendations list*. **Decision:** in the upcoming My Guide review session, compare both surfaces, fold non-duplicated tax data into Actions, then retire `/dashboard/tax` entirely. **Hard rule:** no calc duplication — Tax engine stays canonical; Actions just renders its outputs (CLAUDE.md §12.2).
+
+---
+
 ## 📋 Up Next (queued, agreed, not started)
 
 | # | Item | Phase / area | Trigger to start |
@@ -114,6 +140,8 @@
 | 5 | **Incident Response Plan WIF section** | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Next housekeeping pass — capture Phase 9 cutover lessons formally |
 | 6 | **Apply `connection_limit` via Prisma datasource override (Option α)** instead of URL — only if pool exhaustion still observed after WIF | Perf | Only if needed |
 | 7 | **Onboarding wizard PR 3c** — data source hygiene (staleness indicators, upgrade-this-account button, balance age heat-map) | Phase 12 — see `MASTER_BLUEPRINT.md` line 206 | After current hardening sprint |
+| 8 | **My Guide simplification + Tax → Actions consolidation** — review Actions vs Health vs Tax surfaces; fold non-duplicated `/dashboard/tax` data into Actions (data-comparison table to be produced in that session); retire `/dashboard/tax` route once Actions is the single source. **Hard rule:** no calc duplication — Tax engine stays canonical, Actions just renders its outputs. | UX / TRAIL Live stage | After Phase 37 ships and stabilises (~2 weeks of usage observation) |
+| 9 | **Phase 37 PR 7 — Telemetry + soft-retire window** for legacy `/dashboard/income`, `/dashboard/expenses`, `/dashboard/budget-analysis` routes. Routes are still actively reached via "Manage all →" deep links from `/dashboard/plan`, so soft-retire is NOT appropriate yet. Reconsider once `/dashboard/plan` adds inline panels (post-Phase 37) and the deep links become optional. | UX / cleanup | After Phase 38 (inline panels in My Plan) ships, OR after observed direct-traffic to legacy routes drops below threshold |
 
 ---
 
