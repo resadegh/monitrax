@@ -99,27 +99,38 @@ const reachNavItems: NavItem[] = [
   },
   {
     name: 'My Budget',
-    href: '/dashboard/budget-analysis',
+    // Phase 37 PR 1: default landing flipped from `/dashboard/budget-analysis`
+    // → `/cashflow`. The first thing a user should see in REDUCE is the
+    // answer to "am I OK this month?", not a "Generate Budget Analysis"
+    // configuration CTA. Cashflow is the strongest existing surface
+    // (`app/(dashboard)/cashflow/page.tsx`) and is the new default.
+    href: '/cashflow',
     icon: Target,
     tourId: 'nav-budget',
     trailStage: 'R',
     // Phase 36: Income and Spending moved here from My Accounts — they are
     // budget intentions (planning), which belong to the REDUCE stage.
+    // Phase 37 PR 1: Tax removed from My Budget and relocated to My Guide
+    // (alongside Actions + Health) — tax-optimisation lives in the LIVE
+    // stage strategically, and day-to-day tax value is surfaced via Cashflow
+    // tip cards in PR 2. The `/dashboard/tax` route stays alive — only the
+    // sidebar entry moves.
     matchRoutes: [
-      '/dashboard/budget-analysis',
       '/cashflow',
+      '/dashboard/budget-analysis',
       '/dashboard/income',
       '/dashboard/expenses',
       '/dashboard/debt-planner',
-      '/dashboard/tax',
     ],
+    // Phase 37 PR 1: Cashflow promoted to first child (default landing).
+    // Income, Spending, Budget retained for now — they collapse into a
+    // single "My Plan" tab in PR 3 once `/dashboard/plan` is built.
     children: [
-      { name: 'Budget', href: '/dashboard/budget-analysis' },
       { name: 'Cashflow', href: '/cashflow' },
+      { name: 'Budget', href: '/dashboard/budget-analysis' },
       { name: 'Income', href: '/dashboard/income' },
       { name: 'Spending', href: '/dashboard/expenses' },
       { name: 'Debt Freedom', href: '/dashboard/debt-planner' },
-      { name: 'Tax', href: '/dashboard/tax' },
     ],
   },
   {
@@ -155,13 +166,23 @@ const reachNavItems: NavItem[] = [
     icon: Brain,
     tourId: 'nav-guide',
     trailStage: 'L',
+    // Phase 37 PR 1: Tax added as a 3rd sibling tab. Strategic alignment —
+    // tax-optimisation is a LIVE-stage activity (optimise once you're stable
+    // and growing). Day-to-day tax value still surfaces via Cashflow tip
+    // cards in PR 2; the full /dashboard/tax page lives here for the
+    // year-end deep dive. A future My Guide review session will fold any
+    // non-duplicated /dashboard/tax data into the Actions surface (the
+    // Actions page already shows a Tax Position card) and retire the
+    // standalone Tax route — see IMPLEMENTATION_PLAN.md Up Next #8.
     matchRoutes: [
       '/dashboard/cfo',
       '/health',
+      '/dashboard/tax',
     ],
     children: [
       { name: 'Actions', href: '/dashboard/cfo' },
       { name: 'Health', href: '/health' },
+      { name: 'Tax', href: '/dashboard/tax' },
     ],
   },
   {
