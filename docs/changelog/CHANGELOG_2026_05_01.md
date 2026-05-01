@@ -49,20 +49,26 @@ Likely causes (in order of probability):
 
 ### Files Modified
 
-- `lib/db.ts` — wrapped `prisma.<model>.<method>()` and
-  `prisma.$<method>()` calls in the lazy connector Proxy with TLS
-  error detection. When pg surfaces a TLS error
-  (`code` starts with `ERR_SSL_` or message matches
-  `tls alert|bad[_ ]certificate|ssl3_read_bytes`), the original error
-  is wrapped with a clear pointer to
-  `04_WIF_TROUBLESHOOTING.md` §3.G and the three most likely causes.
-  The original error is preserved as `cause` so nothing is lost.
-- `docs/operational/security/04_WIF_TROUBLESHOOTING.md` — added §3.G
-  "TLS bad_certificate" with the verification gcloud commands and the
-  most-common single fix (`patch ... --database-flags=cloudsql.iam_authentication=on`).
-- `docs/IMPLEMENTATION_PLAN.md` — Phase 9 entry expanded with the new
-  blocker, hypothesis, and rollback note (deferred — site has no users
-  yet, flag stays `true` while we diagnose).
+- `lib/db.ts` —
+  (1) wrapped `prisma.<model>.<method>()` and `prisma.$<method>()`
+  calls in the lazy connector Proxy with TLS error detection. When
+  pg surfaces a TLS error, the original is rewrapped with a clear
+  pointer to `04_WIF_TROUBLESHOOTING.md` §3.G + the three most-likely
+  causes; original preserved as `cause`.
+  (2) Added `password: async () => authClient.getAccessToken()` to
+  the `pg.Pool` config in `buildConnectorPrisma()` so pg has the
+  SA's OAuth access token to send during Postgres-level auth. This
+  fixes the `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must
+  be a string` error that surfaced after the TLS layer was unblocked.
+- `docs/operational/security/04_WIF_TROUBLESHOOTING.md` —
+  added §3.G "TLS bad_certificate" with verification gcloud commands
+  + the most-common fix; added §3.H "SASL no-password" documenting
+  the password-callback fix; added §3.I for the transient
+  `socket disconnected before secure TLS` error seen during the
+  instance restart that toggling the IAM flag triggers.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 9 entry expanded with the
+  new blocker, the §3.G GCP-side fix that resolved it, and the §3.H
+  follow-on code fix.
 
 ### Build Status
 
@@ -80,10 +86,25 @@ Likely causes (in order of probability):
 
 - `USE_CLOUD_SQL_CONNECTOR=true` in Vercel Production (kept on per
   Reza's call — no users, debugging in place)
-- Site is currently broken (all API routes 401 → DB connect fails)
-- Next action: Reza runs the §3.G verification commands, fixes whichever
-  GCP-side condition is wrong, and the cold start after that should
-  succeed.
+- Phase 9 progressed two more layers in this session:
+  1. **§3.G TLS bad_cert resolved** — root cause was that the
+     SA was never registered as a Cloud IAM database user on the
+     instance. Fixed via `gcloud sql users create
+     vercel-monitrax-db@monitrax-479700.iam --type=CLOUD_IAM_SERVICE_ACCOUNT`
+     plus the public-schema grants run from Cloud SQL Studio as
+     `monitrax_user`. This contradicted the ✅ tick on Phase 1 of
+     the WIF workstream — the step was either never run or run
+     against the wrong instance. Phase 1 retroactively re-verified.
+  2. **§3.H SASL no-password surfaced and fixed in code** —
+     after TLS, pg fell through to SCRAM and crashed because
+     no password was ever supplied to the pool. In Cloud SQL IAM
+     mode the password is the SA's OAuth access token; the
+     `Connector` wraps the socket but does NOT inject the token
+     into pg config. Added a `password: async () => authClient
+     .getAccessToken()` callback in `lib/db.ts` so pg fetches a
+     fresh token per connection (handles the ~1h token TTL
+     transparently). Documented in §3.H.
+- Next action: redeploy on Vercel, hit `/api/health`, expect 200.
 
 ### Refs
 

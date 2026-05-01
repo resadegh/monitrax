@@ -123,10 +123,26 @@ async function buildConnectorPrisma(): Promise<PrismaClient> {
     authType: AuthTypes.IAM,
   });
 
+  // For Cloud SQL Postgres + IAM auth, the connector handles TLS but pg
+  // still needs a "password" — which in IAM mode is the impersonated SA's
+  // OAuth access token. Provide it as a callback so pg fetches a fresh
+  // token on every connection (tokens expire ~1h; pool may keep a
+  // connection longer than a single token TTL across cold-start cycles).
   const pool = new Pool({
     ...clientOpts,
     user: dbUser,
     database: dbName,
+    password: async () => {
+      const tokenResponse = await authClient.getAccessToken();
+      const token = typeof tokenResponse === 'string' ? tokenResponse : tokenResponse?.token;
+      if (!token) {
+        throw new Error(
+          'IAM auth: authClient.getAccessToken() returned no token. ' +
+            'Verify SA impersonation chain (OIDC → STS → IAM Credentials) is intact.',
+        );
+      }
+      return token;
+    },
     max: Number(process.env.CLOUD_SQL_POOL_MAX ?? 5),
   });
 

@@ -196,6 +196,63 @@ code: 'ERR_SSL_SSL/TLS_ALERT_BAD_CERTIFICATE'
   `USE_CLOUD_SQL_CONNECTOR=false` in Vercel Production env (see §4).
   Site is restored in <30s while you work the GCP side.
 
+### H. `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`
+
+```
+prisma:error SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string
+Health check failed: Error: SASL: SCRAM-SERVER-FIRST-MESSAGE: client password
+must be a string
+```
+
+- **Where in the chain:** TLS handshake succeeded (so §3.G is now
+  green). pg has a live encrypted socket to the instance and is
+  attempting Postgres-level authentication. It tries SCRAM (the
+  default password flow), discovers no password was supplied, and
+  fails before even contacting the IAM auth path.
+- **Cause:** In Cloud SQL IAM-mode auth, the **password** that pg
+  sends to Postgres is the impersonated service account's OAuth
+  access token. The connector sets up TLS and certs but does **not**
+  inject a password into the pg config — that's the caller's job.
+  If `lib/db.ts` constructs `new Pool({ ...clientOpts, user, database })`
+  without also providing `password: async () => authClient.getAccessToken()`,
+  pg has nothing to send and falls through to SCRAM.
+- **Fix:** Provide a `password` callback to `pg.Pool` that calls
+  `authClient.getAccessToken()` on the same `IdentityPoolClient`
+  used to construct the `Connector`. The callback runs per
+  connection, so token expiry (~1h) is handled transparently.
+
+  ```ts
+  const pool = new Pool({
+    ...clientOpts,
+    user: dbUser,
+    database: dbName,
+    password: async () => {
+      const tokenResponse = await authClient.getAccessToken();
+      const token = typeof tokenResponse === 'string'
+        ? tokenResponse
+        : tokenResponse?.token;
+      if (!token) throw new Error('IAM auth: empty access token');
+      return token;
+    },
+  });
+  ```
+
+  This was the missing piece in WIF Phase 9 after §3.G was resolved
+  (2026-05-01). The `Connector` only wraps the socket; the
+  application is responsible for the per-connection token.
+
+### I. `Client network socket disconnected before secure TLS connection was established`
+
+- **Cause:** Transient — usually a concurrent request lost the race
+  against an instance restart (e.g. immediately after toggling
+  `cloudsql.iam_authentication=on`, which restarts the instance).
+- **Fix:** Wait 30-60s for the instance to come back, then retry.
+  If it persists past a minute, check Cloud Monitoring → Cloud SQL
+  → instance state. If the instance is `RUNNABLE` and this still
+  recurs, suspect Vercel function timeout or a network-level issue;
+  check Vercel function region vs Cloud SQL region (should both be
+  in `australia-southeast1` / `syd1`).
+
 ---
 
 ## 4. Rollback procedure
