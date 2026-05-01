@@ -637,16 +637,17 @@ export default function DocumentsLibraryPage() {
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Sidebar - Folder Tree */}
         {showSidebar && (
-          <aside className="w-64 border-r bg-muted/30 p-4 overflow-y-auto hidden lg:block">
+          <aside className="w-64 border-r border-border/40 bg-card/30 backdrop-blur-md p-4 overflow-y-auto hidden lg:block">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+              <h3 className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70">
                 Folders
               </h3>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-7 w-7 rounded-lg"
                 onClick={() => setShowSidebar(false)}
+                title="Hide folders"
               >
                 <PanelLeftClose className="h-4 w-4" />
               </Button>
@@ -954,28 +955,35 @@ export default function DocumentsLibraryPage() {
 
             {/* Upload Section */}
             {showUpload && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Upload className="h-5 w-5" />
-                    Upload Documents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Phase 26: AI Analysis Toggle */}
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <motion.div
+                initial={reduced ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={
+                  reduced ? { duration: 0 } : { duration: 0.45, ease: APPLE_EASE }
+                }
+                className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-md overflow-hidden"
+              >
+                <div className="px-5 py-4 border-b border-border/40 flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-primary" />
+                  <h3 className="text-base font-medium tracking-[-0.01em]">
+                    Upload documents
+                  </h3>
+                </div>
+                <div className="p-5 space-y-4">
+                  {/* AI Analysis toggle — refined glass row */}
+                  <div className="flex items-center justify-between rounded-xl border border-border/40 bg-background/40 px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-primary" />
-                      <Label htmlFor="ai-analysis" className="text-sm font-medium">
-                        AI Document Analysis
+                      <Label
+                        htmlFor="ai-analysis"
+                        className="text-sm font-medium tracking-[-0.01em]"
+                      >
+                        AI auto-tagging
                       </Label>
-                      <Badge variant="secondary" className="text-xs">
-                        Phase 26
-                      </Badge>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {enableAIAnalysis ? 'Enabled' : 'Disabled'}
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {enableAIAnalysis ? 'On' : 'Off'}
                       </span>
                       <Switch
                         id="ai-analysis"
@@ -985,137 +993,137 @@ export default function DocumentsLibraryPage() {
                     </div>
                   </div>
                   {enableAIAnalysis && (
-                    <p className="text-xs text-muted-foreground">
-                      Documents will be automatically analyzed to extract data like vendor, amount, date, and GST.
-                      You can review and confirm extracted data to create expenses or income records.
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Each upload will be analysed for vendor, amount, date, and category
+                      — review and confirm in the Smart Inbox above.
                     </p>
                   )}
                   <DocumentUploadDropzone
                     onUpload={handleUpload}
                     defaultCategory={DocumentCategory.OTHER}
                   />
-                </CardContent>
-              </Card>
+                </div>
+              </motion.div>
             )}
 
-            {/* Toolbar */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  {/* Sidebar toggle (mobile/tablet) */}
-                  {!showSidebar && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setShowSidebar(true)}
-                      className="hidden lg:flex"
-                    >
-                      <PanelLeft className="h-4 w-4" />
-                    </Button>
-                  )}
-
-                  {/* Search */}
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search documents..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-
-                  {/* View mode toggle */}
-                  <div className="flex items-center border rounded-md">
-                    <Button
-                      variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                      size="icon"
-                      onClick={() => setViewMode('grid')}
-                      className="rounded-r-none"
-                    >
-                      <Grid className="h-4 w-4" />
-                    </Button>
-                    <Separator orientation="vertical" className="h-6" />
-                    <Button
-                      variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                      size="icon"
-                      onClick={() => setViewMode('list')}
-                      className="rounded-l-none"
-                    >
-                      <List className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {/* Refresh */}
+            {/* Phase 38 PR 3 — Toolbar (refined). Replaced the dated
+                Card chrome with a glass surface that matches the hero +
+                Smart Inbox grammar. Same controls, refined typography. */}
+            <div className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-md p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Sidebar toggle (desktop) */}
+                {!showSidebar && (
                   <Button
                     variant="outline"
-                    onClick={() => setRefreshKey((k) => k + 1)}
-                    disabled={isLoading}
+                    size="icon"
+                    onClick={() => setShowSidebar(true)}
+                    className="hidden lg:flex h-10 w-10 rounded-xl border-border/60 bg-background/60"
+                    title="Show folders"
                   >
-                    <RefreshCw
-                      className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-                    />
+                    <PanelLeft className="h-4 w-4" />
                   </Button>
+                )}
 
-                  {/* Export Dropdown */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        disabled={isExporting || filteredDocuments.length === 0}
-                      >
-                        {isExporting ? (
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4 mr-2" />
-                        )}
-                        Export
-                        <ChevronDown className="h-4 w-4 ml-2" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem
-                        onClick={() => handleExport('financial-year-first')}
-                      >
-                        <Calendar className="h-4 w-4 mr-2" />
-                        By Financial Year
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleExport('entity-first')}
-                      >
-                        <Building2 className="h-4 w-4 mr-2" />
-                        By Entity
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleExport('category-first')}
-                      >
-                        <FolderTreeIcon className="h-4 w-4 mr-2" />
-                        By Category
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Breadcrumb & Documents */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <DocumentBreadcrumb
-                    path={currentPath}
-                    onNavigate={setCurrentPath}
+                {/* Search */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+                  <Input
+                    placeholder="Search documents…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-10 rounded-xl bg-background/60 border-border/60 focus-visible:ring-1 focus-visible:ring-primary/50"
                   />
-                  {filteredDocuments.length > 0 && (
-                    <Badge variant="secondary">
-                      {filteredDocuments.length} document
-                      {filteredDocuments.length !== 1 ? 's' : ''}
-                    </Badge>
-                  )}
                 </div>
-              </CardHeader>
-              <Separator />
-              <CardContent className="pt-4">
+
+                {/* View mode segmented control */}
+                <div className="inline-flex items-center rounded-xl border border-border/60 bg-background/40 p-1">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`flex h-8 w-9 items-center justify-center rounded-lg transition-colors ${
+                      viewMode === 'grid'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    aria-label="Grid view"
+                  >
+                    <Grid className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`flex h-8 w-9 items-center justify-center rounded-lg transition-colors ${
+                      viewMode === 'list'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    aria-label="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Refresh */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setRefreshKey((k) => k + 1)}
+                  disabled={isLoading}
+                  className="h-10 w-10 rounded-xl border-border/60 bg-background/60"
+                  title="Refresh"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                  />
+                </Button>
+
+                {/* Export Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      disabled={isExporting || filteredDocuments.length === 0}
+                      className="h-10 rounded-xl border-border/60 bg-background/60"
+                    >
+                      {isExporting ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      Export
+                      <ChevronDown className="h-4 w-4 ml-2 opacity-70" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                    <DropdownMenuItem onClick={() => handleExport('financial-year-first')}>
+                      <Calendar className="h-4 w-4 mr-2" />
+                      By financial year
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('entity-first')}>
+                      <Building2 className="h-4 w-4 mr-2" />
+                      By entity
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('category-first')}>
+                      <FolderTreeIcon className="h-4 w-4 mr-2" />
+                      By category
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            {/* Phase 38 PR 3 — Folder header (breadcrumb + count) and
+                folder view. Replaced Card chrome with glass surface that
+                matches the rest of the page. */}
+            <div className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-md overflow-hidden">
+              <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border/40">
+                <DocumentBreadcrumb path={currentPath} onNavigate={setCurrentPath} />
+                {filteredDocuments.length > 0 && (
+                  <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70 tabular-nums">
+                    {filteredDocuments.length}{' '}
+                    {filteredDocuments.length === 1 ? 'document' : 'documents'}
+                  </span>
+                )}
+              </div>
+              <div className="p-4 sm:p-5">
                 <DocumentFolderView
                   documents={filteredDocuments}
                   subFolders={subFolders}
@@ -1127,8 +1135,8 @@ export default function DocumentsLibraryPage() {
                   loading={isLoading}
                   viewMode={viewMode}
                 />
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </main>
       </div>

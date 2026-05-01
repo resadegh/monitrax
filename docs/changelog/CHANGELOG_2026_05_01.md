@@ -887,3 +887,47 @@ Reza decisions captured 2026-05-01: Option C (secure share-link) shipped; Option
 2. Run `prisma generate` (regenerates client with `prisma.sharePackage.*` typings)
 3. Build Next.js (full type-check against generated client)
 4. Deploy preview if all of the above succeed
+
+---
+
+## Session: claude/phase-38-pr3-share-pass — Phase 38 PR 3 follow-up (Folder view restyle)
+
+### Outcome
+
+Brought the Documents page below-the-hero (Toolbar · Breadcrumb · FolderTree sidebar · DocumentFolderView grid + list) into the same Apple typography + glass surface grammar as the hero + Smart Inbox shipped earlier in PR 3. The page now reads as one cohesive design instead of "modern hero on top of a dated card grid."
+
+Reza feedback (2026-05-01 evening): "just to confirm you are redesigning the document folder view as well?" — honest answer: no I hadn't, hero looked Apple but the grid below was still old Card chrome. This commit closes that gap.
+
+### Changes
+
+- `app/dashboard/documents/page.tsx`:
+  - Toolbar `<Card>` chrome replaced with glass surface (`rounded-2xl border-border/40 bg-card/50 backdrop-blur-md`). Search input restyled (`bg-background/60`, soft focus ring). View-mode toggle replaced shadcn `<Button variant>` pair with an Apple-style segmented control (sliding selection feel via inline state). Refresh + Export buttons adopt rounded-xl glass treatment.
+  - Folder header (breadcrumb + count) — `<Card> + <CardHeader>` chrome removed; replaced with a single glass container that wraps the `DocumentBreadcrumb` and the `DocumentFolderView`. Count badge replaced with uppercase tracked-out caption ("12 DOCUMENTS").
+  - Upload section (when `showUpload` is on) — `<Card>` chrome removed; framer-motion entrance added; AI-analysis toggle row simplified (drop the Phase 26 badge — felt internal). Copy edited: "AI Document Analysis" → "AI auto-tagging".
+  - FolderTree sidebar — kept structure, refined to glass (`bg-card/30 backdrop-blur-md`, refined uppercase caption "FOLDERS" with `tracking-[0.18em]`, hide-button refined).
+
+- `components/documents/DocumentFolderView.tsx`:
+  - Added `framer-motion` (already in deps) + `useReducedMotion()` + `appleEase` constant.
+  - Loading state: replaced raw spinner with `Loader2` from lucide.
+  - Empty state: gray Folder icon → primary-tinted glass tile + warmer copy ("Upload a receipt, statement, or contract to see it here").
+  - List view: `<div divide-y>` → `<ul divide-y divide-border/30>` with per-item `<motion.li>` staggered entrance (0.025s/item). File icon now sits in a small glass tile (`flex h-9 w-9 rounded-lg bg-muted/60`) instead of being raw. Filename gets `tracking-[-0.01em]`. Verified badge restyled to emerald outline. Bullet separators changed from `•` to `·`.
+  - Grid view: tiles converted from raw `<button>`/`<div>` to glass cards (`rounded-2xl border-border/40 bg-card/40 backdrop-blur-md`) with framer-motion fade-up entrance + `whileHover={y: -2}` lift. File icon inside small glass tile. Phase 26 analysis-indicator dot kept.
+
+### Files modified
+
+- `app/dashboard/documents/page.tsx` — Toolbar + folder header chrome, sidebar header, upload card
+- `components/documents/DocumentFolderView.tsx` — list + grid restyle, framer-motion entrances
+
+### Build status
+
+- [x] TypeScript: PASS
+- [x] No backend changes; no calc engines; no APIs touched
+
+### Risk
+
+**Low.** Pure styling pass. Same component props, same callbacks, same DropdownMenu structure, same Dialog. Behaviour identical.
+
+### Punted items (intentional, tracked)
+
+- **PR 2.5 — Universal upload migration.** Refactor `lib/documents/documentService.ts:uploadDocument()` to internally route through `getDocumentManagementEngine().processUpload()`. Decided NOT to bundle into PR #577 — the legacy and DME endpoints have different request shapes (legacy: `links: JSON` array; DME: individual `propertyId/expenseId/loanId` form fields), and a translation layer needs its own focused PR. Risk of silently changing ExpenseDialog (2,031 LOC) behaviour is too high to bundle. Already tracked as Phase 38 PR 2.5 + Tech Debt row #12 in `IMPLEMENTATION_PLAN.md`.
+- **PR 4 — Tax-status lens** on FolderTree (Deductible / Non-deductible / Untagged via `DocumentLink → Expense.isTaxDeductible` join). Defer until PR #577 lands and Reza signs off — this one needs an API touch (extending the documents query) which warrants its own review.

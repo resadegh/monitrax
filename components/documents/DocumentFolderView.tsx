@@ -1,11 +1,17 @@
 'use client';
 
 /**
- * DocumentFolderView Component (Phase 19 & 26)
- * Displays documents in a grid/folder view with icons and AI analysis status
+ * DocumentFolderView Component (Phase 19 & 26; restyled Phase 38 PR 3)
+ *
+ * Displays documents in a grid/folder view with icons and AI analysis
+ * status. Phase 38 PR 3 (2026-05-01 evening) restyled the grid tiles +
+ * list rows to match the Apple-typography hero on /dashboard/documents.
+ * No behavioural changes — same callbacks, same dropdowns, same dialogs.
+ * Just typography + glass surfaces + framer-motion entrances.
  */
 
 import { useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   FileText,
   FileImage,
@@ -165,6 +171,10 @@ function formatDocumentType(type: string): string {
   return typeLabels[type] || type;
 }
 
+// Phase 38 PR 3 — design tokens lifted from Home TRAIL banner v3 +
+// Phase 37/38 heroes. Zero new deps, zero new tokens.
+const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
+
 export function DocumentFolderView({
   documents,
   subFolders = [],
@@ -179,6 +189,7 @@ export function DocumentFolderView({
   const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string } | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null); // Phase 26
+  const reduced = useReducedMotion();
 
   const handleView = async (doc: DocumentItem) => {
     setLoadingId(doc.id);
@@ -221,19 +232,23 @@ export function DocumentFolderView({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/70" />
       </div>
     );
   }
 
   if (documents.length === 0 && subFolders.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Folder className="h-16 w-16 text-muted-foreground/30 mb-4" />
-        <p className="text-muted-foreground">This folder is empty</p>
-        <p className="text-sm text-muted-foreground/70">
-          Upload documents to see them here
+      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/8 text-primary">
+          <Folder className="h-6 w-6" />
+        </div>
+        <h3 className="text-base font-medium tracking-[-0.01em] mb-1">
+          This folder is empty
+        </h3>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          Upload a receipt, statement, or contract to see it here.
         </p>
       </div>
     );
@@ -242,24 +257,40 @@ export function DocumentFolderView({
   if (viewMode === 'list') {
     return (
       <>
-        <div className="divide-y">
+        <ul className="divide-y divide-border/30">
           {/* Sub-folders first */}
-          {subFolders.map((folder) => (
-            <button
+          {subFolders.map((folder, idx) => (
+            <motion.li
               key={folder.path}
-              onClick={() => onNavigateFolder?.(folder.path)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left"
+              initial={reduced ? false : { opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={
+                reduced
+                  ? { duration: 0 }
+                  : { duration: 0.3, ease: appleEase, delay: idx * 0.025 }
+              }
             >
-              <Folder className="h-5 w-5 text-yellow-500" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{folder.name}</p>
-              </div>
-              <span className="text-sm text-muted-foreground">{folder.count} items</span>
-            </button>
+              <button
+                onClick={() => onNavigateFolder?.(folder.path)}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-muted/40 transition-colors text-left"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <Folder className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium tracking-[-0.01em] truncate">
+                    {folder.name}
+                  </p>
+                </div>
+                <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/70 tabular-nums">
+                  {folder.count} {folder.count === 1 ? 'item' : 'items'}
+                </span>
+              </button>
+            </motion.li>
           ))}
 
           {/* Documents */}
-          {documents.map((doc) => {
+          {documents.map((doc, idx) => {
             const Icon = getFileIcon(doc.mimeType);
             const color = getFileColor(doc.mimeType);
             const isAnalyzing = analyzingId === doc.id;
@@ -267,24 +298,48 @@ export function DocumentFolderView({
             const canAnalyze = !doc.analysis || doc.analysis.status === 'FAILED';
 
             return (
-              <div
+              <motion.li
                 key={doc.id}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+                initial={reduced ? false : { opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={
+                  reduced
+                    ? { duration: 0 }
+                    : {
+                        duration: 0.3,
+                        ease: appleEase,
+                        delay: (subFolders.length + idx) * 0.025,
+                      }
+                }
+                className="group flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-muted/40 transition-colors"
               >
-                <Icon className={cn('h-5 w-5 flex-shrink-0', color)} />
+                <div
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-lg bg-muted/60',
+                    color
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium truncate">{doc.originalFilename}</p>
-                    {/* Phase 26: Analysis status badge */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium tracking-[-0.01em] truncate">
+                      {doc.originalFilename}
+                    </p>
                     {getAnalysisStatusBadge(doc.analysis)}
                     {doc.analysis?.userVerified && (
-                      <Badge variant="outline" className="text-xs">Verified</Badge>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-medium tracking-[0.06em] border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                      >
+                        Verified
+                      </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formatFileSize(doc.size)} • {formatDate(doc.uploadedAt)}
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {formatFileSize(doc.size)} · {formatDate(doc.uploadedAt)}
                     {hasAnalysis && doc.analysis && (
-                      <> • {formatDocumentType(doc.analysis.documentType)}</>
+                      <> · {formatDocumentType(doc.analysis.documentType)}</>
                     )}
                   </p>
                 </div>
@@ -340,10 +395,10 @@ export function DocumentFolderView({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
+              </motion.li>
             );
           })}
-        </div>
+        </ul>
 
         {/* Preview Dialog */}
         <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
@@ -376,25 +431,39 @@ export function DocumentFolderView({
     );
   }
 
-  // Grid view
+  // Grid view — Phase 38 PR 3 Apple-glass tiles
   return (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
         {/* Sub-folders first */}
-        {subFolders.map((folder) => (
-          <button
+        {subFolders.map((folder, idx) => (
+          <motion.button
             key={folder.path}
             onClick={() => onNavigateFolder?.(folder.path)}
-            className="flex flex-col items-center p-4 rounded-lg hover:bg-muted transition-colors group"
+            initial={reduced ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={
+              reduced
+                ? { duration: 0 }
+                : { duration: 0.35, ease: appleEase, delay: idx * 0.025 }
+            }
+            whileHover={reduced ? undefined : { y: -2 }}
+            className="group flex flex-col items-center p-4 rounded-2xl border border-border/40 bg-card/40 hover:bg-card/70 backdrop-blur-md transition-colors"
           >
-            <Folder className="h-12 w-12 text-yellow-500 mb-2 group-hover:scale-110 transition-transform" />
-            <p className="text-sm font-medium text-center truncate w-full">{folder.name}</p>
-            <p className="text-xs text-muted-foreground">{folder.count} items</p>
-          </button>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/12 text-amber-600 dark:text-amber-400 mb-2 group-hover:scale-105 transition-transform">
+              <Folder className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-medium text-center truncate w-full tracking-[-0.01em]">
+              {folder.name}
+            </p>
+            <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/70 tabular-nums mt-0.5">
+              {folder.count} {folder.count === 1 ? 'item' : 'items'}
+            </p>
+          </motion.button>
         ))}
 
         {/* Documents */}
-        {documents.map((doc) => {
+        {documents.map((doc, idx) => {
           const Icon = getFileIcon(doc.mimeType);
           const color = getFileColor(doc.mimeType);
           const isAnalyzing = analyzingId === doc.id;
@@ -402,9 +471,21 @@ export function DocumentFolderView({
           const canAnalyze = !doc.analysis || doc.analysis.status === 'FAILED';
 
           return (
-            <div
+            <motion.div
               key={doc.id}
-              className="relative flex flex-col items-center p-4 rounded-lg hover:bg-muted transition-colors group"
+              initial={reduced ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={
+                reduced
+                  ? { duration: 0 }
+                  : {
+                      duration: 0.35,
+                      ease: appleEase,
+                      delay: (subFolders.length + idx) * 0.025,
+                    }
+              }
+              whileHover={reduced ? undefined : { y: -2 }}
+              className="group relative flex flex-col items-center p-4 rounded-2xl border border-border/40 bg-card/40 hover:bg-card/70 backdrop-blur-md transition-colors"
             >
               <button
                 onClick={() => handleView(doc)}
@@ -412,32 +493,34 @@ export function DocumentFolderView({
                 disabled={loadingId === doc.id || isAnalyzing}
               >
                 <div className="relative">
-                  <Icon
+                  <div
                     className={cn(
-                      'h-12 w-12 mb-2 group-hover:scale-110 transition-transform',
+                      'flex h-11 w-11 items-center justify-center rounded-xl bg-muted/60 mb-2 group-hover:scale-105 transition-transform',
                       color,
                       (loadingId === doc.id || isAnalyzing) && 'animate-pulse'
                     )}
-                  />
-                  {/* Phase 26: Analysis indicator */}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  {/* Phase 26 — analysis indicator */}
                   {hasAnalysis && (
-                    <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-0.5">
+                    <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-0.5 shadow-sm">
                       <Sparkles className="h-3 w-3 text-primary-foreground" />
                     </div>
                   )}
                   {isAnalyzing && (
-                    <div className="absolute -bottom-1 -right-1 bg-secondary rounded-full p-0.5">
+                    <div className="absolute -bottom-1 -right-1 bg-secondary rounded-full p-0.5 shadow-sm">
                       <Loader2 className="h-3 w-3 animate-spin" />
                     </div>
                   )}
                 </div>
-                <p className="text-sm font-medium text-center truncate w-full">
+                <p className="text-sm font-medium text-center truncate w-full tracking-[-0.01em]">
                   {doc.originalFilename}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
                   {formatFileSize(doc.size)}
                   {hasAnalysis && doc.analysis && (
-                    <span className="block text-primary">
+                    <span className="block text-primary/80 font-medium">
                       {formatDocumentType(doc.analysis.documentType)}
                     </span>
                   )}
@@ -490,7 +573,7 @@ export function DocumentFolderView({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
