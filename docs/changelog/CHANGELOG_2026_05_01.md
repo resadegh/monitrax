@@ -314,3 +314,76 @@ read what each stage means in their own time. This was the
 explicit intent of TRAIL_FRAMEWORK §1 ("People don't need
 another spreadsheet. They need a guide.") that the prior banner
 visually implied but didn't deliver.
+
+---
+
+## Session: claude/review-monitrax-docs-lS5cs (night) — Dead-code audit + soft-delete pass
+
+### Context
+
+Reza requested a dead-code audit across the wizard/onboarding/marketing/trail-* surfaces after PR #566 surfaced concerns about accumulated cruft. The audit (run via Explore agent) covered 22 surfaces and re-verified the 9 existing tech-debt items in `IMPLEMENTATION_PLAN.md`.
+
+Reza explicitly requested a **soft-delete first, hard-delete later** workflow so he can test the app fully and confirm nothing breaks before destructive deletions ship.
+
+### Audit findings (summary)
+
+| Status | Count | Notes |
+|---|---|---|
+| ALIVE | 15 | Marketing TRAIL components on `/`, wizard v2 steps, `OnboardingWelcomeModal`, setup pages |
+| DEAD (verified zero callers) | 4 | `/api/auth/login`, `/api/auth/register`, `components/onboarding/linear/` (~18 files), `lib/cfo/trailStage.ts` |
+| ORPHAN_CHAIN | 1 | `LinearWizardContainer` plus its 17 children — full directory orphaned by v2 wizard |
+| URL_REACHABLE_ONLY | 2 | `/trail-check`, `/trail-method` (intentional public marketing URLs) |
+| INACCURATE PLAN ENTRIES | 1 | tech-debt #1 claimed both snapshot routes were dead — only `/api/financial-snapshot` is dead; `/api/portfolio/snapshot` has 3 live callers |
+
+### Soft-deletes shipped this session
+
+**1. `app/api/auth/login/route.ts` — 410 Gone stub.**
+Replaced 148-line handler with a ~20-line stub that returns HTTP 410 with a JSON deprecation payload. Both `POST` and `GET` are wired so accidental browser navigation also returns the 410. Each hit logs `[deprecated-route] POST /api/auth/login hit after soft-delete. ip=… ua=…` to Vercel function logs. The original imports (`prisma`, `lib/auth`, `lib/session`, `lib/security/accountLockout`) are dropped — those utilities remain in active use elsewhere (OAuth callbacks, magic link, passkey, admin lockout) and continue to work; only this route stops touching them.
+
+**2. `app/api/auth/register/route.ts` — 410 Gone stub.**
+Same pattern. Original imports dropped (`sendVerificationEmail`, `hashPassword`, `generateToken` are still alive in their own modules — used by `verify-email`, `resend-verification`, OAuth callbacks, portal registration, admin tools).
+
+**3. `components/onboarding/linear/LinearWizardContainer.tsx` — `@deprecated` JSDoc marker.**
+No runtime change (already unreachable per audit — zero importers from outside the directory). The marker at the top of the entry file documents the deletion trigger (≥ 2026-05-15) and points at the directory-wide deletion target.
+
+### Why "soft-delete first"
+
+Per Reza's explicit instruction. The 410 stubs convert "silently succeeded against a stale auth path" into "loud failure with diagnostic payload" — if any forgotten frontend caller, external integration, or automation still hits these routes during the 2-week soft-delete window, it will:
+- Fail visibly (not silently)
+- Log the source IP and user-agent in Vercel function logs
+- Tell the caller exactly what to migrate to (Firebase Auth SDK)
+
+If the soft-delete window passes with zero `[deprecated-route]` warnings, the hard-delete PR is a trivial 2-file removal.
+
+### Files Modified
+
+- `app/api/auth/login/route.ts` — full rewrite to 410 stub (~50 lines)
+- `app/api/auth/register/route.ts` — full rewrite to 410 stub (~50 lines)
+- `components/onboarding/linear/LinearWizardContainer.tsx` — `@deprecated` JSDoc header prepended; original header preserved below
+- `docs/IMPLEMENTATION_PLAN.md` — split tech-debt #1 into #1a (`/api/portfolio/snapshot` — needs migration) and #1b (`/api/financial-snapshot` + service); updated #2 with soft-delete state + hard-delete trigger date; added new entries #10 (`components/onboarding/linear/`) and #11 (`lib/cfo/trailStage.ts`); appended Recently Completed entry summarizing audit + soft-delete
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry
+
+### Files NOT Modified
+
+- `app/api/portfolio/snapshot/route.ts` — has 3 live callers; needs migration PR before deletion
+- `app/api/financial-snapshot/route.ts` and `lib/services/financialSnapshot.ts` — service still used by `dashboard/insights`; needs migration PR
+- `lib/cfo/trailStage.ts` — Phase 17 spec placeholder; queued for either Phase 17 wire-up or future deletion
+- All TRAIL marketing components, wizard v2, all onboarding live surfaces — confirmed alive
+- `lib/portal/auth.ts` — already tracked as #8; no change
+
+### Build Status
+
+- [x] `npm run build` — pending verification before commit
+- [⚠] `npm run lint` — repo lacks `.eslintrc*`; same pre-existing state as PR #566
+
+### Hard-delete schedule
+
+| Date | Action |
+|---|---|
+| 2026-05-01 | Soft-delete shipped (this PR) |
+| 2026-05-01 → 2026-05-15 | Reza tests the app + monitors Vercel logs for `[deprecated-route]` warnings |
+| ≥ 2026-05-15 | If logs are clean, hard-delete PR removes `app/api/auth/login/route.ts`, `app/api/auth/register/route.ts`, and `components/onboarding/linear/` directory |
+
+### Risk
+
+**Very low.** The 410 stubs introduce no new runtime behaviour against any code path that is currently used. The linear-wizard `@deprecated` marker is a comment — zero runtime impact. The IMPLEMENTATION_PLAN updates are documentation only. No financial calculations, no DB queries, no schema changes, no destructive Prisma writes (CLAUDE.md §12.11 N/A), no schema migrations (§12.12 N/A).

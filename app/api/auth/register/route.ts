@@ -1,104 +1,55 @@
 /**
- * @deprecated LEGACY — Local password registration route.
+ * @deprecated 2026-05-01 — Soft-deleted. REMOVE AFTER 2026-05-15 if no incidents.
  *
- * Since Feb 2026, GCP Identity Platform (Firebase Auth) is the sole identity
- * provider. The frontend calls Firebase SDK directly for registration, NOT
- * this route. New users are auto-synced to the local DB via syncGCPUser()
- * which logs REGISTER audit events.
+ * This route was the legacy local-password registration path. It
+ * has been superseded by GCP Identity Platform (Firebase Auth),
+ * which the frontend calls directly via the Firebase SDK. New users
+ * are auto-synced to the local DB via `syncGCPUser()` which logs
+ * `REGISTER` audit events at the GCP boundary.
  *
- * This route is retained for backward compatibility only.
- * See: docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md
+ * Per the dead-code audit on 2026-05-01, this route has zero callers
+ * across the entire codebase. It has been replaced with a 410 Gone
+ * stub so that any forgotten caller (frontend code, external
+ * integration, automation) fails loudly rather than silently
+ * creating a non-Firebase user record.
+ *
+ * **Trigger to delete the file entirely:** ≥ 2026-05-15 if Vercel
+ * production logs show ZERO requests to `/api/auth/register`. If any
+ * request is observed, investigate the caller before deleting.
+ *
+ * Tracked in: `docs/IMPLEMENTATION_PLAN.md` tech-debt #2.
+ * See: `docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md`.
  */
+
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db';
-import { hashPassword, generateToken } from '@/lib/auth';
-import { sendVerificationEmail } from '@/lib/security/emailVerification';
+
+const DEPRECATION_PAYLOAD = {
+  error: 'Endpoint removed',
+  message:
+    'POST /api/auth/register was deprecated in Feb 2026 (GCP Identity Platform cutover) and disabled on 2026-05-01. Use the Firebase Auth SDK client-side instead.',
+  deprecatedSince: '2026-02-01',
+  disabledOn: '2026-05-01',
+  removalEarliest: '2026-05-15',
+  migration: 'See docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md',
+} as const;
+
+function logUnexpectedHit(request: NextRequest, method: string) {
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0] ??
+    request.headers.get('x-real-ip') ??
+    'unknown';
+  const ua = request.headers.get('user-agent') ?? 'unknown';
+  console.warn(
+    `[deprecated-route] ${method} /api/auth/register hit after soft-delete. ip=${ip} ua="${ua}"`,
+  );
+}
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { email, password, name } = body;
+  logUnexpectedHit(request, 'POST');
+  return NextResponse.json(DEPRECATION_PAYLOAD, { status: 410 });
+}
 
-    // Validation
-    if (!email || !password || !name) {
-      return NextResponse.json(
-        { error: 'Email, password, and name are required' },
-        { status: 400 }
-      );
-    }
-
-    // Password strength validation (CDR compliance — Phase 34)
-    const passwordErrors: string[] = [];
-    if (password.length < 12) passwordErrors.push('at least 12 characters');
-    if (!/[A-Z]/.test(password)) passwordErrors.push('an uppercase letter');
-    if (!/[a-z]/.test(password)) passwordErrors.push('a lowercase letter');
-    if (!/[0-9]/.test(password)) passwordErrors.push('a number');
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) passwordErrors.push('a special character');
-
-    if (passwordErrors.length > 0) {
-      return NextResponse.json(
-        { error: `Password must contain: ${passwordErrors.join(', ')}` },
-        { status: 400 }
-      );
-    }
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 400 }
-      );
-    }
-
-    // Hash password
-    const hashedPassword = await hashPassword(password);
-
-    // Create user (emailVerified defaults to false)
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        emailVerified: false,
-      },
-    });
-
-    // Send verification email
-    const emailResult = await sendVerificationEmail(email, user.id);
-    if (!emailResult.success) {
-      console.warn('[Registration] Failed to send verification email:', emailResult.message);
-    }
-
-    // Generate token
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-    });
-
-    // Return user (without password) and token
-    return NextResponse.json(
-      {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          emailVerified: user.emailVerified,
-        },
-        token,
-        verificationEmailSent: emailResult.success,
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error('Registration error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+export async function GET(request: NextRequest) {
+  logUnexpectedHit(request, 'GET');
+  return NextResponse.json(DEPRECATION_PAYLOAD, { status: 410 });
 }

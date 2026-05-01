@@ -1,148 +1,60 @@
 /**
- * @deprecated LEGACY — Local password auth route.
+ * @deprecated 2026-05-01 — Soft-deleted. REMOVE AFTER 2026-05-15 if no incidents.
  *
- * Since Feb 2026, GCP Identity Platform (Firebase Auth) is the sole identity
- * provider. The frontend calls Firebase SDK directly for login, NOT this route.
- * The Monitrax JWT this route returns is incompatible with withAuth() middleware
- * which only verifies GCP/Firebase ID tokens.
+ * This route was the legacy local-password login path. It has been
+ * superseded by GCP Identity Platform (Firebase Auth), which the
+ * frontend calls directly via the Firebase SDK. Auth events are now
+ * captured at the GCP boundary in `syncGCPUser()`
+ * (`lib/auth/gcpIdentity.ts`) as `OAUTH_LOGIN` audit events.
  *
- * Auth events are now captured at the GCP boundary in syncGCPUser()
- * (lib/auth/gcpIdentity.ts) as OAUTH_LOGIN audit events.
+ * Per the dead-code audit on 2026-05-01, this route has zero callers
+ * across the entire codebase. It has been replaced with a 410 Gone
+ * stub so that any forgotten caller (frontend code, external
+ * integration, automation) fails loudly rather than silently
+ * succeeding against a stale auth path.
  *
- * This route is retained for backward compatibility only.
- * See: docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md
+ * **Trigger to delete the file entirely:** ≥ 2026-05-15 if Vercel
+ * production logs show ZERO requests to `/api/auth/login`. If any
+ * request is observed, investigate the caller before deleting.
+ *
+ * Tracked in: `docs/IMPLEMENTATION_PLAN.md` tech-debt #2.
+ * See: `docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md`.
  */
+
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db';
-import { verifyPassword, generateToken } from '@/lib/auth';
-import { createTrackedSession } from '@/lib/session';
-import {
-  isAccountLocked,
-  recordFailedLoginAttempt,
-  recordSuccessfulLogin,
-} from '@/lib/security/accountLockout';
+
+const DEPRECATION_PAYLOAD = {
+  error: 'Endpoint removed',
+  message:
+    'POST /api/auth/login was deprecated in Feb 2026 (GCP Identity Platform cutover) and disabled on 2026-05-01. Use the Firebase Auth SDK client-side instead.',
+  deprecatedSince: '2026-02-01',
+  disabledOn: '2026-05-01',
+  removalEarliest: '2026-05-15',
+  migration: 'See docs/blueprint/PHASE_10_AUTH_AND_SECURITY.md',
+} as const;
+
+function logUnexpectedHit(request: NextRequest, method: string) {
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0] ??
+    request.headers.get('x-real-ip') ??
+    'unknown';
+  const ua = request.headers.get('user-agent') ?? 'unknown';
+  // Loud warning so soft-delete period surfaces unexpected callers in
+  // Vercel logs. If this fires during the 2-week soft-delete window,
+  // do NOT proceed with the hard delete — investigate the caller.
+  console.warn(
+    `[deprecated-route] ${method} /api/auth/login hit after soft-delete. ip=${ip} ua="${ua}"`,
+  );
+}
 
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { email, password } = body;
+  logUnexpectedHit(request, 'POST');
+  return NextResponse.json(DEPRECATION_PAYLOAD, { status: 410 });
+}
 
-    // Validation
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required' },
-        { status: 400 }
-      );
-    }
-
-    // Get client info
-    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0] ||
-                      request.headers.get('x-real-ip') ||
-                      'unknown';
-    const userAgent = request.headers.get('user-agent') || 'unknown';
-
-    // Check if account is locked
-    const lockoutStatus = await isAccountLocked(email);
-
-    if (lockoutStatus.isLocked) {
-      const minutesRemaining = lockoutStatus.lockoutExpiresAt
-        ? Math.ceil((lockoutStatus.lockoutExpiresAt.getTime() - Date.now()) / (60 * 1000))
-        : 0;
-
-      return NextResponse.json(
-        {
-          error: `Account locked due to too many failed login attempts. Please try again in ${minutesRemaining} minutes.`,
-          lockoutExpiresAt: lockoutStatus.lockoutExpiresAt,
-        },
-        { status: 423 } // 423 Locked
-      );
-    }
-
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      // Record failed attempt (don't reveal if user exists)
-      await recordFailedLoginAttempt(email, ipAddress, userAgent);
-
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
-
-    // Check if user has a password (not passwordless account)
-    if (!user.password) {
-      return NextResponse.json(
-        { error: 'This account uses passwordless authentication. Please use magic link or OAuth to sign in.' },
-        { status: 401 }
-      );
-    }
-
-    // Verify password
-    const isValidPassword = await verifyPassword(password, user.password);
-
-    if (!isValidPassword) {
-      // Record failed attempt
-      const lockoutResult = await recordFailedLoginAttempt(email, ipAddress, userAgent);
-
-      if (lockoutResult.isLocked) {
-        const minutesRemaining = lockoutResult.lockoutExpiresAt
-          ? Math.ceil((lockoutResult.lockoutExpiresAt.getTime() - Date.now()) / (60 * 1000))
-          : 0;
-
-        return NextResponse.json(
-          {
-            error: `Account locked due to too many failed login attempts. Please try again in ${minutesRemaining} minutes.`,
-            lockoutExpiresAt: lockoutResult.lockoutExpiresAt,
-          },
-          { status: 423 }
-        );
-      }
-
-      return NextResponse.json(
-        {
-          error: 'Invalid email or password',
-          remainingAttempts: lockoutResult.remainingAttempts,
-        },
-        { status: 401 }
-      );
-    }
-
-    // Record successful login
-    await recordSuccessfulLogin(user.id, email, ipAddress, userAgent);
-
-    // Generate token
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-    });
-
-    // Create tracked session
-    await createTrackedSession({
-      userId: user.id,
-      ipAddress,
-      userAgent,
-      deviceName: userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop',
-    });
-
-    // Return user (without password) and token
-    return NextResponse.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-      token,
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+// GET stub catches the common "browser typed the URL" case so the
+// 410 response shows a useful message in DevTools instead of a 405.
+export async function GET(request: NextRequest) {
+  logUnexpectedHit(request, 'GET');
+  return NextResponse.json(DEPRECATION_PAYLOAD, { status: 410 });
 }
