@@ -20,6 +20,7 @@
 | Who has access to what? | [IAM and Permissions](security/02_IAM_AND_PERMISSIONS.md) |
 | CDR compliance questions | [CDR Compliance](security/03_CDR_COMPLIANCE.md) |
 | Security incident | [Incident Response Runbook](runbooks/01_INCIDENT_RESPONSE.md) |
+| Google Maps not loading / API not activated | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) |
 
 ---
 
@@ -73,6 +74,9 @@ Step-by-step procedures for incident response and common support scenarios.
 | # | Document | Description |
 |---|----------|-------------|
 | 01 | [Incident Response](runbooks/01_INCIDENT_RESPONSE.md) | Incident classification, escalation paths, response procedures |
+| 02 | [Common Operations](runbooks/02_COMMON_OPERATIONS.md) | Day-to-day operational tasks |
+| 03 | [Health Checks](runbooks/03_HEALTH_CHECKS.md) | System health verification procedures |
+| 04 | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) | Enabling Maps APIs, verifying key scoping (frontend referrer + backend API restrictions), env vars, troubleshooting, cost monitoring, quarterly review checklist |
 
 ---
 
