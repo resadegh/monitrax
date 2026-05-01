@@ -314,3 +314,135 @@ read what each stage means in their own time. This was the
 explicit intent of TRAIL_FRAMEWORK §1 ("People don't need
 another spreadsheet. They need a guide.") that the prior banner
 visually implied but didn't deliver.
+
+---
+
+## Session: claude/review-monitrax-docs-lS5cs (night) — Dead-code audit + soft-delete pass
+
+### Context
+
+Reza requested a dead-code audit across the wizard/onboarding/marketing/trail-* surfaces after PR #566 surfaced concerns about accumulated cruft. The audit (run via Explore agent) covered 22 surfaces and re-verified the 9 existing tech-debt items in `IMPLEMENTATION_PLAN.md`.
+
+Reza explicitly requested a **soft-delete first, hard-delete later** workflow so he can test the app fully and confirm nothing breaks before destructive deletions ship.
+
+### Audit findings (summary)
+
+| Status | Count | Notes |
+|---|---|---|
+| ALIVE | 15 | Marketing TRAIL components on `/`, wizard v2 steps, `OnboardingWelcomeModal`, setup pages |
+| DEAD (verified zero callers) | 4 | `/api/auth/login`, `/api/auth/register`, `components/onboarding/linear/` (~18 files), `lib/cfo/trailStage.ts` |
+| ORPHAN_CHAIN | 1 | `LinearWizardContainer` plus its 17 children — full directory orphaned by v2 wizard |
+| URL_REACHABLE_ONLY | 2 | `/trail-check`, `/trail-method` (intentional public marketing URLs) |
+| INACCURATE PLAN ENTRIES | 1 | tech-debt #1 claimed both snapshot routes were dead — only `/api/financial-snapshot` is dead; `/api/portfolio/snapshot` has 3 live callers |
+
+### Soft-deletes shipped this session
+
+**1. `app/api/auth/login/route.ts` — 410 Gone stub.**
+Replaced 148-line handler with a ~20-line stub that returns HTTP 410 with a JSON deprecation payload. Both `POST` and `GET` are wired so accidental browser navigation also returns the 410. Each hit logs `[deprecated-route] POST /api/auth/login hit after soft-delete. ip=… ua=…` to Vercel function logs. The original imports (`prisma`, `lib/auth`, `lib/session`, `lib/security/accountLockout`) are dropped — those utilities remain in active use elsewhere (OAuth callbacks, magic link, passkey, admin lockout) and continue to work; only this route stops touching them.
+
+**2. `app/api/auth/register/route.ts` — 410 Gone stub.**
+Same pattern. Original imports dropped (`sendVerificationEmail`, `hashPassword`, `generateToken` are still alive in their own modules — used by `verify-email`, `resend-verification`, OAuth callbacks, portal registration, admin tools).
+
+**3. `components/onboarding/linear/LinearWizardContainer.tsx` — `@deprecated` JSDoc marker.**
+No runtime change (already unreachable per audit — zero importers from outside the directory). The marker at the top of the entry file documents the deletion trigger (≥ 2026-05-15) and points at the directory-wide deletion target.
+
+### Why "soft-delete first"
+
+Per Reza's explicit instruction. The 410 stubs convert "silently succeeded against a stale auth path" into "loud failure with diagnostic payload" — if any forgotten frontend caller, external integration, or automation still hits these routes during the 2-week soft-delete window, it will:
+- Fail visibly (not silently)
+- Log the source IP and user-agent in Vercel function logs
+- Tell the caller exactly what to migrate to (Firebase Auth SDK)
+
+If the soft-delete window passes with zero `[deprecated-route]` warnings, the hard-delete PR is a trivial 2-file removal.
+
+### Files Modified
+
+- `app/api/auth/login/route.ts` — full rewrite to 410 stub (~50 lines)
+- `app/api/auth/register/route.ts` — full rewrite to 410 stub (~50 lines)
+- `components/onboarding/linear/LinearWizardContainer.tsx` — `@deprecated` JSDoc header prepended; original header preserved below
+- `docs/IMPLEMENTATION_PLAN.md` — split tech-debt #1 into #1a (`/api/portfolio/snapshot` — needs migration) and #1b (`/api/financial-snapshot` + service); updated #2 with soft-delete state + hard-delete trigger date; added new entries #10 (`components/onboarding/linear/`) and #11 (`lib/cfo/trailStage.ts`); appended Recently Completed entry summarizing audit + soft-delete
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry
+
+### Files NOT Modified
+
+- `app/api/portfolio/snapshot/route.ts` — has 3 live callers; needs migration PR before deletion
+- `app/api/financial-snapshot/route.ts` and `lib/services/financialSnapshot.ts` — service still used by `dashboard/insights`; needs migration PR
+- `lib/cfo/trailStage.ts` — Phase 17 spec placeholder; queued for either Phase 17 wire-up or future deletion
+- All TRAIL marketing components, wizard v2, all onboarding live surfaces — confirmed alive
+- `lib/portal/auth.ts` — already tracked as #8; no change
+
+### Build Status
+
+- [x] `npm run build` — pending verification before commit
+- [⚠] `npm run lint` — repo lacks `.eslintrc*`; same pre-existing state as PR #566
+
+### Hard-delete schedule
+
+| Date | Action |
+|---|---|
+| 2026-05-01 | Soft-delete shipped (this PR) |
+| 2026-05-01 → 2026-05-15 | Reza tests the app + monitors Vercel logs for `[deprecated-route]` warnings |
+| ≥ 2026-05-15 | If logs are clean, hard-delete PR removes `app/api/auth/login/route.ts`, `app/api/auth/register/route.ts`, and `components/onboarding/linear/` directory |
+
+### Risk
+
+**Very low.** The 410 stubs introduce no new runtime behaviour against any code path that is currently used. The linear-wizard `@deprecated` marker is a comment — zero runtime impact. The IMPLEMENTATION_PLAN updates are documentation only. No financial calculations, no DB queries, no schema changes, no destructive Prisma writes (CLAUDE.md §12.11 N/A), no schema migrations (§12.12 N/A).
+
+---
+
+## Session: claude/review-monitrax-docs-lS5cs (late night) — TRAIL banner v3 premium redesign
+
+### Context
+
+Reza reviewed the v2 banner shipped earlier this evening (PR #566) and gave clear feedback:
+
+> *"The design is better and aligned with what I need, but I am not happy with the design art. I want a clean, modern, Apple-like design with animated transitions and even a relevant background. The app is very text-based and there are no artistic transitions or graphics that engage the users visually. Perform another redesign with these in mind. Give me the best in class world class design both functionally and visually. Go above and beyond. I want the design of Monitrax to be the selling point."*
+
+This session ships v3 — same functional model as v2 (hover-preview, click-to-select, second-click-to-navigate) with a complete visual upgrade.
+
+### What changed
+
+**`components/dashboard/TrailStageIndicator.tsx`** — full rewrite (~440 lines, +260 net).
+
+New design vocabulary, all built on `framer-motion` v12 (already in repo, used by `components/marketing/TrailHero.tsx` — zero new dependencies):
+
+1. **Glassmorphic container** — `28px` rounded card, semi-transparent (`bg-card/70`), `backdrop-blur-xl`, soft layered shadow. Sits on top of an animated atmosphere instead of a flat fill.
+2. **Stage-coloured atmospheric mesh-gradient background** — three radial-gradient stops layered into the card. The entire mesh morphs to the spotlit stage's signature palette over 1.4s with `appleEase`. A second layer is a slow-breathing soft glow (8s `easeInOut` loop) behind the active letter for ambient warmth.
+3. **Hero-scale interactive letters** — `h-16 / sm:h-20` glassy rounded-square tiles. Letters are `bg-gradient-to-br bg-clip-text text-transparent` so they read as refined display type. Spring-based hover (scale 1 → 1.08, `stiffness: 320, damping: 28`), tactile press (scale 0.96). On the spotlit letter, a coloured glow halo (blurred `blur-xl` at the letter's stage colour) fades in via `AnimatePresence`.
+4. **Animated connecting thread** — track + animated gradient overlay that fills from Track to the user's actual stage on first render (1.1s, 0.2s delay). Visualises journey traversed.
+5. **"You" pill** above the user's actual stage letter — small uppercase pill, animates in 0.6s after page load. Stays present even while hovering other letters.
+6. **Bespoke per-stage SVG glyphs** — five inline SVGs:
+   - **T** — concentric awareness rings, 6s breathing pulse.
+   - **R** — diminishing arcs + snipping line, slow rocking (8s).
+   - **A** — anchor over a wave baseline, soft underwater sway (5s).
+   - **I** — sparkline that re-draws itself on a 3.6s `pathLength` loop.
+   - **L** — sunrise: horizon, half-sun, five rays, 6s breathing pulse.
+7. **Cross-fade content swap** — both glyph and text use `AnimatePresence mode="wait"` with blur-out / blur-in (`filter: blur(6px) → 0`), `y: 12 → 0`, 0.45s. Glyph rotates 8° on entry/exit for added physicality.
+8. **Two-column spotlight** — glyph in glassy `22px` rounded frame on the left; stage label (gradient-filled), headline (1.55rem semibold, tracking `-0.01em`), description, italic key question + emotion-shift line on the right.
+9. **Pill-shaped gradient CTA** with sweep-shimmer on hover (translucent white gradient slides across in 0.9s).
+10. **Reduced-motion mode** — when the user's OS reports `prefers-reduced-motion: reduce`, every animation collapses to instant or static. Mesh stops morphing, glow stops breathing, sparkline stays drawn, swaps are instant. Content remains fully usable.
+
+### Files Modified
+
+- `components/dashboard/TrailStageIndicator.tsx` — full rewrite
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` — §9 expanded with v3 spec; v2 preserved below for context
+- `docs/IMPLEMENTATION_PLAN.md` — Recently Completed entry + Last-updated header
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry
+
+### Files NOT Modified
+
+- `package.json` — zero new dependencies introduced
+- All other dashboard pages — banner change is isolated to one component
+- Stage copy strings — sourced verbatim from `TRAIL_FRAMEWORK.md` §2 (no framework drift)
+
+### Build Status
+
+- [x] `npm run build` — PASS
+
+### Risk
+
+**Low.** Single-file UI change, no API contracts touched, no DB queries, no schema changes, no destructive Prisma writes (CLAUDE.md §12.11 N/A), no schema migrations (§12.12 N/A). Default render still mirrors the user's actual TRAIL stage so non-interacting users see the new design without any required interaction. All animations honour `prefers-reduced-motion` so accessibility is preserved.
+
+### Note on stacking with the soft-delete PR
+
+This commit sits on top of `cb820b3` (the soft-delete PR #568) on the same branch. The same branch is therefore an additive PR sequence: v3 banner + soft-deletes + audit doc updates all roll into PR #568 if it's still open, or split if needed.

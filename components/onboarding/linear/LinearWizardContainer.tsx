@@ -1,6 +1,25 @@
 'use client';
 
 /**
+ * @deprecated 2026-05-01 — Soft-deleted. REMOVE ENTIRE DIRECTORY (`components/onboarding/linear/`)
+ * AFTER 2026-05-15 if no incidents.
+ *
+ * Per the dead-code audit on 2026-05-01, `LinearWizardContainer` and
+ * every file under `components/onboarding/linear/` (primitives, hooks,
+ * design tokens, step components) has ZERO importers anywhere in the
+ * codebase. The Phase 12 v2.0 rewrite replaced this entire directory
+ * with `components/onboarding/wizard/` (grid-based `WizardContainer`).
+ *
+ * Nothing renders this code. The deletion is safe today but is being
+ * deferred to give Reza a soft-delete window to confirm full app
+ * functionality before the destructive PR.
+ *
+ * **Trigger to delete the entire directory:** ≥ 2026-05-15.
+ *
+ * Tracked in: `docs/IMPLEMENTATION_PLAN.md` tech-debt #10.
+ *
+ * --- ORIGINAL HEADER PRESERVED BELOW ---
+ *
  * LinearWizardContainer — Phase 12 Track B (B.1)
  *
  * Orchestrator for the /onboarding wizard. Manages step index,
