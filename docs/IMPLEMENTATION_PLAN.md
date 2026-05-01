@@ -102,6 +102,7 @@
 |---|---|---|---|
 | 1 | **CMEK (Customer-Managed Encryption Keys)** for Cloud SQL data-at-rest | CDR §3.3 / §5.7 hardening | After WIF Phase 10 lands and is stable |
 | 2 | **Rotate `monitrax_user` DB password** to one without `@`/`%`/`*` (URL-safe), then re-add `connection_limit=1&pool_timeout=20` to `DATABASE_URL` for the fallback path | Connection pooling cleanup | After WIF Phase 9 (so the URL is just a fallback, not the hot path) |
+| 2a | **Vercel Pro upgrade** — required to unlock `VERCEL_OIDC_TOKEN` injection (Hobby tier confirmed not injecting despite OIDC Federation page being configured + saved). Also unlocks pinning function region to `syd1` (Sydney) — currently functions run in `iad1` (US-East), which adds ~250ms round-trip latency and violates CDR §3.1 data residency. `vercel.json` region pin shipped 2026-05-01 in advance of the upgrade so the next deploy after the upgrade lands in Sydney automatically. | Vercel platform | After Reza upgrades the Vercel account to Pro |
 | 3 | **Phase 36 Phase 2** (above) — full legacy page retirement | UX | After WIF stable + Reza confirms current Phase 1c/1d works in prod |
 | 4 | **Incident Response Plan WIF section** | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | During WIF Phase 8 (folded into the same PR) |
 | 5 | **Apply `connection_limit` via Prisma datasource override (Option α)** instead of URL — only if pool exhaustion still observed after WIF | Perf | Only if needed |
