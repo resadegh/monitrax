@@ -187,6 +187,86 @@ After Phase 11 (30 days after Phase 9 — target ≥ 2026-05-31):
 
 ---
 
+## 8. Compensating control — Phase 10 decision (2026-05-01)
+
+The original WIF roadmap contemplated removing `0.0.0.0/0` from
+Cloud SQL authorized networks 24 hours after Phase 9 stability
+(Phase 10). On 2026-05-01, after Phase 9 went live, this was
+re-evaluated and a different decision was made.
+
+### What was decided
+
+The `0.0.0.0/0` authorized-network entry **is retained**, with
+IAM-based authentication treated as the controlling boundary
+instead of the network ACL.
+
+### Why
+
+| Question | Answer |
+|---|---|
+| What was the network ACL originally protecting? | A long-lived database password in `DATABASE_URL`. The ACL prevented anyone with a copy of that password from connecting from outside known IPs. |
+| Does that password still exist? | **No.** The runtime path (Phase 9) uses no static password. The only authenticator is a Vercel-issued OIDC token presented in the request context, exchanged via STS for an impersonated SA token, used as the per-connection Postgres password. The SA is bound by WIF to the specific Vercel project ID and is registered as a Cloud IAM user on the specific instance. |
+| Could an attacker on any source IP authenticate? | **No.** Without a Vercel-issued OIDC token tied to project `prj_UYQF3GpGAkeFo4ZhMhch4Q0btCAU`, the STS exchange returns nothing usable; without the WIF binding the impersonation fails; without the per-instance Cloud IAM user the cert handshake fails (TLS alert 42, see runbook §3.G). The auth surface is fully IAM-protected. |
+| Why not whitelist Vercel's egress IPs? | Per Vercel's own documentation, runtime function egress IPs are dynamic and not stably whitelistable. The only stable path is the Vercel Static IP add-on (paid, ~AU$30-50/mo). For a pre-launch product with no users, the operational and financial cost of that add-on is not justified by the marginal security benefit (which is small given the auth surface is already locked down). |
+
+### What an attacker could still do with `0.0.0.0/0` open
+
+- **Attempt to authenticate** — fails immediately at TLS or
+  Postgres-level IAM auth without a valid OIDC token chain.
+- **Probe for instance metadata** — Cloud SQL doesn't expose any
+  metadata at the network layer; the connection is rejected
+  before any banner or version info is sent.
+- **Exhaust connection slots** — theoretically possible. Mitigated
+  by Cloud SQL's per-instance connection limits and Cloud
+  Logging alerts on connection-attempt anomalies. If observed,
+  rate limiting via Cloud Armor on the edge or a Cloud SQL
+  per-IP rate limit would be the next step.
+
+### When to revisit
+
+This decision is revisitable. The trigger conditions are:
+
+1. **First paying user lands**, OR
+2. **Before Basiq accreditation submission**, OR
+3. **A Cloud SQL connection-attempt anomaly is observed** in
+   Cloud Logging.
+
+When any of those triggers fires, the migration path is:
+
+1. Enable Vercel Static IP add-on for the `syd1` region (~5 min
+   in Vercel dashboard).
+2. Note the assigned static IP.
+3. `gcloud sql instances patch monitrax-db-prod
+   --project=monitrax-479700
+   --authorized-networks="vercel-syd1=<STATIC_IP>"` (replaces
+   the `0.0.0.0/0` entry; ~30s instance change).
+4. Verify `/api/health` still returns 200.
+5. Update this section to reflect the network-restricted state.
+
+Estimated time end-to-end: 15 minutes.
+
+### How this is documented in GCP
+
+To make the intent visible in the GCP console (so a future Reza
+or auditor doesn't see `0.0.0.0/0` and assume oversight), the
+authorized-network entry is **labelled** with a name that
+encodes the rationale:
+
+```bash
+# Optional one-time annotation (safe to run; preserves the entry
+# but renames its label):
+gcloud sql instances patch monitrax-db-prod \
+  --project=monitrax-479700 \
+  --authorized-networks="public-iam-protected-cdr-3.2-doc=0.0.0.0/0"
+```
+
+When viewing the instance in Console → SQL → `monitrax-db-prod`
+→ Connections → Authorized networks, the entry now reads
+`public-iam-protected-cdr-3.2-doc` with a clear pointer to this
+document.
+
+---
+
 ## 7. Phase 9 cutover record (2026-05-01)
 
 Production cutover from `DATABASE_URL` to WIF + Cloud SQL Connector
