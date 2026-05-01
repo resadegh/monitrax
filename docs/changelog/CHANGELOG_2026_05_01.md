@@ -787,3 +787,147 @@ These uploads still create a `Document` row (visible in My Vault) but skip the R
 ### Risk
 
 **Low.** All UI composition over existing data and existing endpoints. `inboxExpanded` and `confirmingRowId` are local state — no global side effects. `handleInboxConfirm` shares its concurrency flag (`confirmingRowId`) so two rows can't fire at once. Refresh-on-success uses the existing `setRefreshKey` pattern. Independently revertable via single `git revert`.
+
+---
+
+## Session: claude/phase-38-pr3-share-pass — Phase 38 PR 3 (Send to accountant — Share Pass)
+
+### Outcome
+
+**My Vault now shares with accountants via a secure, time-limited link.** Generic "Share Pass" architecture (`SharePackage` model with polymorphic `contentRefs` + `contentType` + `deliveryMethod`) so the same machinery extends to non-document content (Reports, property summaries, net-worth snapshots) and non-link delivery (Xero/MYOB push) without future migrations.
+
+Reza decisions captured 2026-05-01: Option C (secure share-link) shipped; Option E (Xero/MYOB direct push) parked as future expansion; default 30-day expiry; recipient page minimal share-only aesthetic.
+
+### What shipped
+
+**Schema + migration:**
+- `prisma/schema.prisma` — new `SharePackage` model + 3 enums (`SharePackagePurpose`, `SharePackageContentType`, `SharePackageDeliveryMethod`). Foreign-key cascade from User (delete user → delete shares).
+- `prisma/migrations/20260501112526_add_share_package/migration.sql` — CREATE TYPE × 3, CREATE TABLE, 3 indexes (token unique, userId, expiresAt+revokedAt for cleanup queries), foreign key. CLAUDE.md §12.12 honoured (matching schema + migration in same commit).
+- User model gets `sharePackages SharePackage[]` relation field.
+
+**API routes (six new):**
+- `POST /api/share` — auth-required (`withPermission('report.export')`). Validates ownership of every documentId before persisting. Generates 32-byte URL-safe token. Auto-watermark text built server-side. Audit log `entityType='SharePackage'` action `CREATE`.
+- `GET /api/share` — auth-required. Lists owner's shares (active by default; `?includeInactive=true` shows revoked + expired). Returns `shareUrl` annotated.
+- `DELETE /api/share/[id]` — auth-required. Soft-revoke (sets `revokedAt`); ownership check via `updateMany` `where` clause (Prisma returns count: 0 if not owned → 404). Audit log action `DELETE` with optional reason.
+- `GET /api/share/[token]` — **PUBLIC** (no auth). Validates not-revoked + not-expired (410 Gone if either). Increments `viewCount` + sets `lastViewedAt`. Returns owner name, purpose, expiry, watermark, document list. Audit log under owner's userId, action `READ`, with IP + UA from request headers.
+- `GET /api/share/[token]/download` — **PUBLIC**. Re-runs ownership filter on documents, builds JSZip ZIP (folder layout per `contentRefs.structure`), prepends `_README.txt` with provenance manifest. Audit log action `EXPORT`.
+- `GET /api/share/[token]/file/[docId]` — **PUBLIC**. Validates docId is part of the share's contentRefs AND still owned + non-deleted. Streams via existing storage providers (Monitrax DB-stored / GCS download / 410 for LOCAL_DRIVE). Audit log action `READ`.
+
+**Helpers:**
+- `lib/share/tokens.ts` — `generateShareToken()` (32 random bytes → base64url, 43 chars, ≈256 bits entropy), `buildShareUrl(token, origin)`, `computeExpiry(days)`, `getCurrentAUFinancialYearLabel()`, `buildDefaultWatermark(ownerName)`. `DEFAULT_SHARE_EXPIRY_DAYS = 30`.
+- `lib/share/content.ts` — `documentsForShare(ownerId, refs)` resolver. Filters by ownerId AND `deletedAt: null` so revoked/deleted docs disappear from active shares automatically.
+
+**Owner UI:**
+- `components/documents/SendToAccountantDialog.tsx` — Apple-styled modal. Two states (form / result with copy-link). Trust-signal pill row (Audit-logged · Watermarked · Revocable). Two primary actions: `Download ZIP` (existing `/api/documents/export`) + `Generate secure link` (new `/api/share`). Full `prefers-reduced-motion`.
+- `app/dashboard/documents/page.tsx` — added `Send to accountant` button next to `Upload` in the hero, mounted dialog at end of page. Defaults the share content to `filteredDocuments` so the owner can scope by current folder/search before invoking.
+
+**Recipient UI:**
+- `app/share/[token]/page.tsx` — minimal aesthetic (Reza directive). Stripped-down chrome: small Monitrax logo top + "Secure share" tag. Hero with document count, owner name, expiry date, view counter. Primary action card: `Download all as ZIP`. Per-document list with thumbnails (image vs file icon) + per-file `Open` (calls public single-file endpoint). Watermark text in footer. Error states: 404 → "Share not found", 410 → "This link is no longer active". Full `prefers-reduced-motion`.
+
+**Settings UI:**
+- `app/dashboard/settings/shares/page.tsx` — Manage Shares page. Apple-typography hero with active-share count. Filter pills (Active only / All). Per-share row with status badge, doc count, view counter, last-viewed timestamp, expiry, copy-link, revoke (with confirmation alert). Empty state.
+- `app/dashboard/settings/layout.tsx` — added "Shares" nav item next to "Cloud Storage" (data-movement grouping).
+
+### Hard constraints honoured
+
+- ✅ Reuses existing engines: `/api/documents/export` (ZIP), Phase 25 storage providers (`getMonitraxStorageProvider`, `getGoogleCloudStorageProvider`), `createAuditLog()` audit pipeline, `withPermission('report.export')` RBAC pattern, JSZip (already in deps), `Document` table polymorphic ownership filter.
+- ✅ Zero new calc engines.
+- ✅ Zero data duplication (`Document` table is single source of truth; share simply points at IDs).
+- ✅ All existing routes preserved.
+- ✅ Schema + migration shipped together (CLAUDE.md §12.12).
+- ✅ No destructive Prisma writes (CLAUDE.md §12.11 N/A — only INSERTs / soft-update via revokedAt).
+- ✅ CDR §13.5 chain-of-custody: every state transition audit-logged with `entityType='SharePackage'`. Recipient access logged under owner's userId (recipient is anonymous by design; owner's audit trail is preserved).
+- ✅ TypeScript clean (`npx tsc --noEmit` reports zero errors).
+- ✅ Design language extends Home TRAIL banner v3 + Phase 37 + Phase 38 PRs 1-2 — same `appleEase`, glassmorphic 28px tokens, framer-motion grammar. Zero new design tokens, zero new dependencies.
+
+### Future expansion (already accommodated)
+
+- **Option E — direct push to Xero / MYOB / accountant software.** Add `XERO_PUSH` / `MYOB_PUSH` to `SharePackageDeliveryMethod` enum (zero migration impact for existing rows). Implement transport adapters that consume the same `contentRefs`. Audit + revocation + expiry stay identical.
+- **Other content types** — `Reports` exports / property summaries / net-worth snapshots / tax-position snapshots. Add new `SharePackageContentType` values + matching resolver in `lib/share/content.ts` + matching renderer on the recipient page. Same `SharePackage` row shape; same auth model; same audit machinery.
+
+### Files modified / created
+
+- `prisma/schema.prisma` — User relation + `SharePackage` model + 3 enums
+- `prisma/migrations/20260501112526_add_share_package/migration.sql` (NEW)
+- `lib/share/tokens.ts` (NEW)
+- `lib/share/content.ts` (NEW)
+- `app/api/share/route.ts` (NEW — POST + GET)
+- `app/api/share/[id]/route.ts` (NEW — DELETE)
+- `app/api/share/[token]/route.ts` (NEW — public GET)
+- `app/api/share/[token]/download/route.ts` (NEW — public ZIP)
+- `app/api/share/[token]/file/[docId]/route.ts` (NEW — public single file)
+- `components/documents/SendToAccountantDialog.tsx` (NEW)
+- `app/share/[token]/page.tsx` (NEW — public recipient page, minimal aesthetic)
+- `app/dashboard/settings/shares/page.tsx` (NEW — Manage Shares)
+- `app/dashboard/settings/layout.tsx` — added Shares nav item
+- `app/dashboard/documents/page.tsx` — wired `Send to accountant` button + dialog mount
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 38 PR 3 marked complete; status to 🟢
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry
+
+### Build status
+
+- [x] TypeScript: PASS (`npx tsc --noEmit` reports zero errors; only pre-existing tsconfig deprecation warning unrelated to this PR)
+- [x] Schema change shipped with matching migration file (CLAUDE.md §12.12)
+- [x] No destructive Prisma writes (only INSERT + soft-update via `revokedAt`)
+- [x] No new calc engines
+
+### Risk
+
+**Medium-low.** New table + 6 endpoints — but every dangerous edge has a guard:
+- Public endpoints validate token + revocation + expiry on every request (no caching).
+- Document re-fetched on every share access with `userId` + `deletedAt: null` filter — soft-deleted docs disappear from active shares automatically.
+- Ownership invariant on share creation: counted documentIds vs claimed length — 403 if mismatch, prevents ID-guessing attacks.
+- Soft-delete + revocation by default; no hard delete path in PR 3.
+- Default 30-day expiry caps blast radius of leaked tokens.
+- 256-bit token entropy makes enumeration computationally infeasible.
+
+### Vercel preview will
+
+1. Run `prisma migrate deploy` against `monitrax-db-dev` (creates the `SharePackage` table + 3 enums + indexes + FK)
+2. Run `prisma generate` (regenerates client with `prisma.sharePackage.*` typings)
+3. Build Next.js (full type-check against generated client)
+4. Deploy preview if all of the above succeed
+
+---
+
+## Session: claude/phase-38-pr3-share-pass — Phase 38 PR 3 follow-up (Folder view restyle)
+
+### Outcome
+
+Brought the Documents page below-the-hero (Toolbar · Breadcrumb · FolderTree sidebar · DocumentFolderView grid + list) into the same Apple typography + glass surface grammar as the hero + Smart Inbox shipped earlier in PR 3. The page now reads as one cohesive design instead of "modern hero on top of a dated card grid."
+
+Reza feedback (2026-05-01 evening): "just to confirm you are redesigning the document folder view as well?" — honest answer: no I hadn't, hero looked Apple but the grid below was still old Card chrome. This commit closes that gap.
+
+### Changes
+
+- `app/dashboard/documents/page.tsx`:
+  - Toolbar `<Card>` chrome replaced with glass surface (`rounded-2xl border-border/40 bg-card/50 backdrop-blur-md`). Search input restyled (`bg-background/60`, soft focus ring). View-mode toggle replaced shadcn `<Button variant>` pair with an Apple-style segmented control (sliding selection feel via inline state). Refresh + Export buttons adopt rounded-xl glass treatment.
+  - Folder header (breadcrumb + count) — `<Card> + <CardHeader>` chrome removed; replaced with a single glass container that wraps the `DocumentBreadcrumb` and the `DocumentFolderView`. Count badge replaced with uppercase tracked-out caption ("12 DOCUMENTS").
+  - Upload section (when `showUpload` is on) — `<Card>` chrome removed; framer-motion entrance added; AI-analysis toggle row simplified (drop the Phase 26 badge — felt internal). Copy edited: "AI Document Analysis" → "AI auto-tagging".
+  - FolderTree sidebar — kept structure, refined to glass (`bg-card/30 backdrop-blur-md`, refined uppercase caption "FOLDERS" with `tracking-[0.18em]`, hide-button refined).
+
+- `components/documents/DocumentFolderView.tsx`:
+  - Added `framer-motion` (already in deps) + `useReducedMotion()` + `appleEase` constant.
+  - Loading state: replaced raw spinner with `Loader2` from lucide.
+  - Empty state: gray Folder icon → primary-tinted glass tile + warmer copy ("Upload a receipt, statement, or contract to see it here").
+  - List view: `<div divide-y>` → `<ul divide-y divide-border/30>` with per-item `<motion.li>` staggered entrance (0.025s/item). File icon now sits in a small glass tile (`flex h-9 w-9 rounded-lg bg-muted/60`) instead of being raw. Filename gets `tracking-[-0.01em]`. Verified badge restyled to emerald outline. Bullet separators changed from `•` to `·`.
+  - Grid view: tiles converted from raw `<button>`/`<div>` to glass cards (`rounded-2xl border-border/40 bg-card/40 backdrop-blur-md`) with framer-motion fade-up entrance + `whileHover={y: -2}` lift. File icon inside small glass tile. Phase 26 analysis-indicator dot kept.
+
+### Files modified
+
+- `app/dashboard/documents/page.tsx` — Toolbar + folder header chrome, sidebar header, upload card
+- `components/documents/DocumentFolderView.tsx` — list + grid restyle, framer-motion entrances
+
+### Build status
+
+- [x] TypeScript: PASS
+- [x] No backend changes; no calc engines; no APIs touched
+
+### Risk
+
+**Low.** Pure styling pass. Same component props, same callbacks, same DropdownMenu structure, same Dialog. Behaviour identical.
+
+### Punted items (intentional, tracked)
+
+- **PR 2.5 — Universal upload migration.** Refactor `lib/documents/documentService.ts:uploadDocument()` to internally route through `getDocumentManagementEngine().processUpload()`. Decided NOT to bundle into PR #577 — the legacy and DME endpoints have different request shapes (legacy: `links: JSON` array; DME: individual `propertyId/expenseId/loanId` form fields), and a translation layer needs its own focused PR. Risk of silently changing ExpenseDialog (2,031 LOC) behaviour is too high to bundle. Already tracked as Phase 38 PR 2.5 + Tech Debt row #12 in `IMPLEMENTATION_PLAN.md`.
+- **PR 4 — Tax-status lens** on FolderTree (Deductible / Non-deductible / Untagged via `DocumentLink → Expense.isTaxDeductible` join). Defer until PR #577 lands and Reza signs off — this one needs an API touch (extending the documents query) which warrants its own review.
