@@ -483,18 +483,6 @@ export function TrailStageIndicator() {
                     )}
                   </AnimatePresence>
 
-                  {/* "You are here" tiny label below the user's actual stage */}
-                  {isCurrent && (
-                    <motion.span
-                      aria-hidden
-                      className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-foreground/85 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-background shadow"
-                      initial={reduced ? { opacity: 1 } : { opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, ease: appleEase, delay: 0.6 }}
-                    >
-                      You
-                    </motion.span>
-                  )}
                 </motion.button>
               </div>
             );
