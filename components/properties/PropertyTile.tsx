@@ -15,6 +15,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { PropertyGlyph } from '@/components/wealth/spiritGlyphs';
 
 /**
  * PropertyTile — premium glassmorphic property card.
@@ -108,7 +109,16 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
         }}
       />
 
-      {/* Top accent strip (Invest palette) */}
+      {/* Spirit glyph watermark — type-specific line-art that hints at
+          the tile's nature without breaking the consistent grid shape.
+          Sits behind content (-z-10) at very low opacity, lifts subtly
+          on hover. Bleeds off the right edge for editorial feel. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -z-10 right-[-12%] top-[6%] h-[58%] w-[55%] text-sky-600 dark:text-sky-400 opacity-[0.07] transition-opacity duration-500 group-hover:opacity-[0.13]"
+      >
+        <PropertyGlyph type={property.type} delay={0.04 * index} className="h-full w-full" />
+      </div>      {/* Top accent strip (Invest palette) */}
       <div
         aria-hidden
         className={`absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r ${meta.accent}`}
