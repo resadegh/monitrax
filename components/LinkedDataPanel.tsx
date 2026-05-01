@@ -77,7 +77,9 @@ const ADD_LINK_ROUTES: Record<GRDCSEntityType, string> = {
   loan: '/dashboard/loans',
   income: '/dashboard/income',
   expense: '/dashboard/expenses',
-  account: '/dashboard/accounts',
+  // Phase 36: My Accounts now lives at /dashboard/balances; legacy
+  // /dashboard/accounts page is being retired.
+  account: '/dashboard/balances',
   asset: '/dashboard/assets',
   investmentAccount: '/dashboard/investments/accounts',
   investmentHolding: '/dashboard/investments/holdings',

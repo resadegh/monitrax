@@ -205,3 +205,112 @@ Fixed by adding explicit Next.js App Router exports
 - `docs/operational/security/04_WIF_TROUBLESHOOTING.md` §3.G
 - PR #563 (precursor — OIDC header fix)
 - `docs/changelog/CHANGELOG_2026_04_30.md` — Phase 8 ship
+
+---
+
+## Session: claude/review-monitrax-docs-lS5cs (evening)
+
+### Context
+
+User reported two issues on the Home dashboard:
+
+1. The `T R A I L` banner *looks* like an interactive tile with
+   clickable letters but isn't — only the small "Go to <Stage>"
+   link in the top-right does anything.
+2. Clicking that link from Stage T sends the user to the legacy
+   `/dashboard/accounts` page, which Phase 36 is in the middle of
+   retiring. The new canonical page is `/dashboard/balances`.
+
+The user also asked us to leave Basiq-related references (i.e.
+hrefs that carry `?action=connect-basiq` or `?action=add`) in
+place — those depend on the legacy page until Phase 36 Phase 2b
+ports the Connect Bank UI to Balances.
+
+### Changes Made
+
+- **Type**: Enhancement + cleanup
+- **Scope**: Home dashboard TRAIL banner; cross-codebase legacy
+  `/dashboard/accounts` href repoint (Basiq excluded).
+- **Solution**:
+  1. Rewrote `components/dashboard/TrailStageIndicator.tsx` to
+     make the five `T R A I L` circles real interactive tabs:
+     bigger letters, hover/focus previews the stage's full
+     description (sourced from `TRAIL_FRAMEWORK.md` §2 — headline,
+     narrative, key question), first click selects (sticky),
+     second click on the same letter navigates. Added an inline
+     `Open <Stage>` button in the spotlight panel as an explicit
+     nav affordance, plus a "You are here" pill so the user can
+     always see their actual stage even while exploring others.
+  2. Swept the codebase for non-Basiq `/dashboard/accounts`
+     hrefs and repointed them to `/dashboard/balances`:
+     `TrailStageIndicator` Track href, `LinkedDataPanel`
+     `ADD_LINK_ROUTES.account`, `ModuleHealthBlock` `accounts`
+     and `offsetAccounts` drill-downs, `app/dashboard/cfo/page.tsx`
+     Month-End Balance metric card `router.push`,
+     `app/api/cashflow/intelligence/route.ts` Build Emergency
+     Buffer `learnMoreUrl`.
+  3. Documented the remaining Basiq `?action=` hrefs as tech-debt
+     row #9 in `docs/IMPLEMENTATION_PLAN.md` so the next person
+     working on Phase 36 Phase 2b knows to flip them in the same
+     PR.
+
+### Files Modified
+
+- `components/dashboard/TrailStageIndicator.tsx` — full rewrite:
+  interactive tabs, spotlight panel, hover preview, click-to-
+  select, second-click-to-navigate, You-are-here pill, inline
+  Open-stage CTA. Track href swapped to `/dashboard/balances`.
+- `components/LinkedDataPanel.tsx` — `ADD_LINK_ROUTES.account`
+  → `/dashboard/balances`.
+- `components/health/ModuleHealthBlock.tsx` — `accounts.href`
+  and `offsetAccounts.href` → `/dashboard/balances`.
+- `app/dashboard/cfo/page.tsx` — Month-End Balance card
+  `router.push` → `/dashboard/balances`.
+- `app/api/cashflow/intelligence/route.ts` — Build Emergency
+  Buffer `learnMoreUrl` → `/dashboard/balances`.
+- `docs/IMPLEMENTATION_PLAN.md` — ticked Phase 36 Phase 2.0;
+  added tech-debt row #9 (remaining Basiq `?action=` hrefs);
+  added 2026-05-01 entries to Recently Completed.
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` —
+  new §7 Phase 2.0 sub-section, restructured Phase 2 sub-phases
+  to call out 2b's Basiq dependency; new §9 documenting the
+  banner redesign + the rule that stage copy must stay in sync
+  with `TRAIL_FRAMEWORK.md` §2.
+
+### Files Deliberately NOT Modified (per user direction)
+
+- `components/dashboard/BasiqHeroCard.tsx` — `?action=connect-basiq`
+  and `?action=add` hrefs.
+- `components/dashboard/DashboardEmptyStateGrid.tsx` — same.
+- `components/setup/SetupNextActionPanel.tsx` — same.
+- `app/dashboard/accounts/page.tsx` — legacy page, kept alive
+  because Phase 36 Phase 2b/2c haven't shipped yet.
+
+### Documentation Updated
+
+- `docs/IMPLEMENTATION_PLAN.md`
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md`
+- `docs/changelog/CHANGELOG_2026_05_01.md` (this file)
+
+### Build Status
+
+- [x] `npm run build` — PASS (Prisma generate + full Next.js build; all routes compiled, no type errors).
+- [⚠] `npm run lint` — pre-existing repo state: no `.eslintrc*` or `eslint.config*` file present, so `next lint` drops into interactive ESLint setup and can't run non-interactively. Not introduced by this PR. TypeScript checking ran as part of `next build` and passed.
+
+### Risk
+
+Low. UI-only on the Home page + 4 individual href constants in
+non-critical paths. No API contracts touched. No financial
+calculations touched. No DB queries touched. Default render of
+the new banner mirrors today's behaviour for users who never
+interact with the letters, so the change is opt-in from a UX
+standpoint.
+
+### TRAIL Alignment
+
+The redesign makes the home page's primary feature actually teach
+the TRAIL framework — every visitor can hover the letters and
+read what each stage means in their own time. This was the
+explicit intent of TRAIL_FRAMEWORK §1 ("People don't need
+another spreadsheet. They need a guide.") that the prior banner
+visually implied but didn't deliver.

@@ -237,16 +237,88 @@ import body shape, same form submit handlers as Phase 1b.
 
 ### Phase 2 — Retire `/dashboard/accounts` and `/dashboard/loans` (planned)
 
-- Migrate `Connect Bank` (Basiq) toolbar action to
-  `/dashboard/balances`.
-- Migrate `Import Transactions` toolbar action to
-  `/dashboard/balances`.
-- Inline the `LoanDetailDialog` on `/dashboard/balances` (replaces
+#### Phase 2.0 — Non-Basiq cross-references repointed (this session, 2026-05-01)
+
+Cleanup pass triggered by a UX bug on the Home page: the TRAIL banner's
+"Go to Track" button was sending users to the legacy `/dashboard/accounts`
+page even though the sidebar's "My Accounts" item already pointed at
+`/dashboard/balances`. We swept the codebase and repointed every
+non-Basiq href that still targeted the legacy page:
+
+- `components/dashboard/TrailStageIndicator.tsx` — Track stage `href`
+  (also redesigned the banner — see §9 below).
+- `components/LinkedDataPanel.tsx` — `ADD_LINK_ROUTES.account` (the
+  GRDCS cross-module add-link target for missing account links).
+- `components/health/ModuleHealthBlock.tsx` — `accounts` and
+  `offsetAccounts` drill-down hrefs.
+- `app/dashboard/cfo/page.tsx` — Month-End Balance metric card
+  `router.push` target.
+- `app/api/cashflow/intelligence/route.ts` — Build Emergency Buffer
+  recommendation's `learnMoreUrl`.
+
+Deliberately NOT repointed (still depend on the legacy page until
+Phase 2b ports the Connect Bank UI to Balances):
+
+- `components/dashboard/BasiqHeroCard.tsx` — `?action=connect-basiq`
+  and `?action=add` hrefs.
+- `components/dashboard/DashboardEmptyStateGrid.tsx` — same.
+- `components/setup/SetupNextActionPanel.tsx` — same.
+
+Tracked as tech-debt row #9 in `docs/IMPLEMENTATION_PLAN.md`. Will
+flip in the same PR that ships Phase 2b.
+
+#### Phase 2a–2e — Remaining work
+
+- 2a — Inline the `LoanDetailDialog` on `/dashboard/balances` (replaces
   PR #550's `?focus=` redirect to `/dashboard/loans`).
-- Redirect `/dashboard/accounts` → `/dashboard/balances`.
-- Redirect `/dashboard/loans` → `/dashboard/balances`.
-- Sidebar: remove any legacy entries still pointing at the old
+- 2b — Migrate `Connect Bank` (Basiq) toolbar action and disconnect/
+  sync UI to `/dashboard/balances`. Then flip the Basiq `?action=`
+  hrefs listed above.
+- 2c — Migrate `Import Transactions` toolbar action (with
+  `TransactionReviewPanel`) to `/dashboard/balances`.
+- 2d — Redirect `/dashboard/accounts` → `/dashboard/balances`.
+- 2e — Redirect `/dashboard/loans` → `/dashboard/balances`.
+- 2f — Sidebar: remove any legacy entries still pointing at the old
   pages.
+
+## 9. Home TRAIL banner redesign (this session, 2026-05-01)
+
+> **Goal:** make the `T R A I L` banner on the Home dashboard
+> communicate the framework rather than just illustrating it.
+
+**Before.** The banner showed five circles with the letters
+`T R A I L` and a one-line tagline for the user's current stage. The
+circles looked tappable but weren't — the only interactive element
+was a small "Go to <Stage>" link in the top-right corner. Users
+reported that the banner *looked* like a live tile but did nothing
+when clicked.
+
+**After.** The five circles are now real interactive tabs:
+
+1. **Bigger letters** (h-12 / sm:h-14) so they read as primary
+   controls, not decoration.
+2. **Hover** (or keyboard focus) previews that stage's full
+   description in the spotlight panel below — the headline, the
+   narrative, and the key question, sourced verbatim from
+   `TRAIL_FRAMEWORK.md` §2 ("The Five Stages").
+3. **First click** selects the letter (sticky — survives mouse
+   leave). A small dot under the selected letter and a halo ring
+   around it indicate the selection.
+4. **Second click on the same letter** navigates to that stage's
+   page.
+5. The spotlight panel always carries an explicit `Open <Stage>`
+   button so users who don't discover the second-click behaviour
+   still have an obvious nav affordance.
+6. A "**You are here**" pill marks the user's actual TRAIL stage
+   in the spotlight (so the explore-vs-current distinction is
+   never lost when they hover other letters).
+
+Default render still shows the user's actual TRAIL stage — users
+who never interact with the banner see today's behaviour.
+
+Stage descriptions live in the component file (sourced from
+TRAIL_FRAMEWORK §2). If TRAIL_FRAMEWORK.md is updated, the strings
+in `TrailStageIndicator.tsx` must be re-synced.
 
 ### Out of scope for Phase 36b
 

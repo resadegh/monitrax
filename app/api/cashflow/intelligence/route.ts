@@ -345,7 +345,7 @@ function buildSmartActions(
           category: 'SAVE',
           priority: breakdown.score < 30 ? 'CRITICAL' : 'HIGH',
           source: 'HEALTH',
-          learnMoreUrl: '/dashboard/accounts',
+          learnMoreUrl: '/dashboard/balances',
         };
       } else if (breakdown.category === 'Budget Adherence' && breakdown.score < 50) {
         action = {
