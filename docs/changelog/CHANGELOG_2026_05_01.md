@@ -931,3 +931,91 @@ Reza feedback (2026-05-01 evening): "just to confirm you are redesigning the doc
 
 - **PR 2.5 — Universal upload migration.** Refactor `lib/documents/documentService.ts:uploadDocument()` to internally route through `getDocumentManagementEngine().processUpload()`. Decided NOT to bundle into PR #577 — the legacy and DME endpoints have different request shapes (legacy: `links: JSON` array; DME: individual `propertyId/expenseId/loanId` form fields), and a translation layer needs its own focused PR. Risk of silently changing ExpenseDialog (2,031 LOC) behaviour is too high to bundle. Already tracked as Phase 38 PR 2.5 + Tech Debt row #12 in `IMPLEMENTATION_PLAN.md`.
 - **PR 4 — Tax-status lens** on FolderTree (Deductible / Non-deductible / Untagged via `DocumentLink → Expense.isTaxDeductible` join). Defer until PR #577 lands and Reza signs off — this one needs an API touch (extending the documents query) which warrants its own review.
+
+---
+
+## Session: claude/phase-38-pr4-finish — Phase 38 PR 2.5 + PR 4 + FolderTree restyle
+
+### Outcome
+
+Phase 38 closes. Final PR ships three things:
+1. **PR 2.5 — Universal upload migration** (closes Tech Debt #12)
+2. **PR 4 — Tax-status lens** (4th FolderTree filter)
+3. **FolderTree visual redesign** (addresses Reza's review note: "I still don't see any changes in the folder structure design")
+
+### Context
+
+After merging PR #577 (Share Pass + folder-view restyle), Reza flagged that the folder *structure* still looked unchanged. Honest gap: the previous PR restyled the wrapping `<aside>` + the DocumentFolderView grid/list, but never touched the FolderTree component internals — chevrons / indented rows / count badges were still default-shadcn styling. This commit closes that gap as part of the final Phase 38 PR.
+
+### What shipped
+
+**PR 2.5 — Universal upload migration** (`hooks/useDocumentUpload.ts`):
+- Migrated from legacy `POST /api/documents` (which calls `documentService.uploadDocument()` directly, bypassing the Phase 25 RuleEngine) to the canonical `POST /api/documents/upload` (Phase 25 DME).
+- New `LINK_FIELD_BY_ENTITY` translation map: maps `LinkedEntityType` enum values to the DME endpoint's per-entity form-field names (`PROPERTY → propertyId`, `EXPENSE → expenseId`, `LOAN → loanId`, `INCOME → incomeId`, `ACCOUNT → accountId`, `OFFSET_ACCOUNT → offsetAccountId`, `INVESTMENT_ACCOUNT → investmentAccountId`, `INVESTMENT_HOLDING → investmentHoldingId`, `TRANSACTION → transactionId`).
+- New `buildDmeFormData(file, options, extras?)` helper centralises the form-data construction for both the LOCAL_DRIVE path and the server-storage path. Identical request bodies modulo `storagePreference` + `localPath`.
+- **Result:** every document uploaded anywhere in the app — including from `ExpenseDialog` (line 15 imports `useDocumentUpload`) and the 2,031-LOC `app/dashboard/expenses/page.tsx` (line 25) — now flows through the canonical Phase 25 engine. Storage routing, category inference, auto-linking, and path generation all work uniformly. **Zero edits to the 2,031-LOC form code** — solved at the hook layer.
+- Tech Debt row #12 closed.
+
+**PR 4 — Tax-status lens**:
+- `app/dashboard/documents/page.tsx`:
+  - New `expenseTaxMap: Map<string, boolean>` state, populated by a new `fetchExpenseTax()` callback that hits the existing `/api/expenses` endpoint and builds a `Map<expenseId, isTaxDeductible>`. No new API.
+  - New `getDocumentTaxStatus(doc)` derivation: returns `'DEDUCTIBLE'` (any EXPENSE link with `isTaxDeductible === true`), `'NON_DEDUCTIBLE'` (any EXPENSE link with `isTaxDeductible === false` and no DEDUCTIBLE), or `'UNTAGGED'` (no expense link, or links without known flag — partial-data tolerant).
+  - `documentCounts` extended with `tax:DEDUCTIBLE / tax:NON_DEDUCTIBLE / tax:UNTAGGED` keys.
+  - `filteredDocuments` extended with a `pathParts[0] === 'tax-status'` branch.
+- `components/documents/FolderTree.tsx`:
+  - New "By Tax Status" root group with three children (icons `CheckCircle2 / XCircle / HelpCircle` from lucide).
+  - Three filter paths: `/tax-status/DEDUCTIBLE`, `/tax-status/NON_DEDUCTIBLE`, `/tax-status/UNTAGGED`.
+  - Group icon `Scale` (from lucide) — fourth lens alongside Categories / Fiscal Year / Entities.
+
+**FolderTree visual redesign** (`components/documents/FolderTree.tsx`):
+- Top-level lens groups (`type === 'root'`, `depth === 0`) now render as **uppercase tracked-out section headers** (`text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70`) — feels like Apple Settings sections rather than just nested folders.
+- Active row treatment: replaced flat `bg-primary/10 text-primary` with a glass surface `bg-primary/8 text-primary border border-primary/15` — reads as "selected card" rather than "highlighted text".
+- Inactive rows: refined hover (`hover:bg-muted/50`), Apple typography (`tracking-[-0.01em]` on labels).
+- Count badge: glass treatment (`bg-muted/60 group-hover:bg-muted` for inactive, `bg-primary/15 text-primary` for active), `tabular-nums` for clean alignment, smaller `text-[10px]` weight.
+- Chevrons + folder icons: muted-foreground/70 by default, group-hover transition for foreground.
+- Open folder icon: subtle `text-amber-500` for content folders, `text-primary/80` when the folder is itself a top-level lens.
+- Indentation step reduced from 16px to 14px per depth — denser tree.
+
+### Hard constraints honoured
+
+- ✅ Reuses existing engines (Phase 25 DME, Phase 26 DIE, `/api/expenses`).
+- ✅ Zero new API routes.
+- ✅ Zero new calc engines.
+- ✅ Zero data duplication.
+- ✅ All routes preserved.
+- ✅ No `prisma/schema.prisma` change.
+- ✅ TypeScript clean (`npx tsc --noEmit` reports zero errors).
+- ✅ Design language extends Home TRAIL banner v3 + Phase 37 + Phase 38 PRs 1-3 — same `appleEase`, glass tokens, framer-motion grammar. Zero new dependencies, zero new design tokens.
+
+### Files modified
+
+- `hooks/useDocumentUpload.ts` — migrated to DME with hook-level link translation
+- `app/dashboard/documents/page.tsx` — tax-status state + fetch + helper + counts + filter
+- `components/documents/FolderTree.tsx` — "By Tax Status" lens + visual redesign of every row
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 38 marked COMPLETE; PRs 2.5 + 4 ✅; tech-debt #12 closed
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry
+
+### Build status
+
+- [x] TypeScript: PASS
+- [x] No backend changes; no calc engines; no APIs touched
+
+### Risk
+
+**Low.** PR 2.5 is hook-layer only; same outward contract for `ExpenseDialog` + expenses page. PR 4 is additive (new lens, new filter branch, no removals). Folder-tree redesign is pure CSS.
+
+### Phase 38 — final state
+
+| PR | Scope | Status |
+|---|---|---|
+| 1 | Vault IA + visual uplift + Smart Inbox count | ✅ Shipped (PR #575) |
+| 2 | Smart Inbox interactive + upload audit | ✅ Shipped (PR #576) |
+| 3 | Send to accountant — Share Pass | ✅ Shipped (PR #577) |
+| 3 follow-up | Folder view + toolbar redesign | ✅ Shipped (PR #577) |
+| 2.5 | Universal upload migration | ✅ Shipped (this PR) |
+| 4 | Tax-status lens | ✅ Shipped (this PR) |
+| 4 follow-up | FolderTree visual redesign | ✅ Shipped (this PR) |
+
+**Future expansion still accommodated** by the Share Pass schema:
+- Option E (Xero/MYOB direct push) — add to `deliveryMethod` enum.
+- Other content types (Reports, property summaries, net-worth snapshots) — add to `contentType` enum.

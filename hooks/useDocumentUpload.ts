@@ -3,7 +3,15 @@
 /**
  * Unified Document Upload Hook
  * Handles uploading documents to either local drive or server storage
- * based on user's configured preference
+ * based on user's configured preference.
+ *
+ * Phase 38 PR 2.5 (2026-05-01): migrated from legacy `POST /api/documents`
+ * to canonical `POST /api/documents/upload` (Phase 25 Document Management
+ * Engine). All uploads now go through the RuleEngine for storage routing,
+ * category inference, auto-linking, and path generation. Translation
+ * helper `buildDmeFormData` converts the hook's `links: { entityType,
+ * entityId }[]` shape into DME's individual entity form fields
+ * (`propertyId`, `expenseId`, `loanId`, etc.).
  */
 
 import { useState, useCallback } from 'react';
@@ -35,6 +43,64 @@ interface UseDocumentUploadReturn {
   isLocalDriveConfigured: boolean;
 }
 
+/**
+ * Phase 38 PR 2.5 — translation map from `LinkedEntityType` (the polymorphic
+ * enum used throughout the app) to the DME upload endpoint's per-entity
+ * form-field names. The DME endpoint (`app/api/documents/upload/route.ts`)
+ * reads each field individually and forwards them to the RuleEngine for
+ * cascade auto-linking. Single source of truth — keep in sync if the
+ * upload endpoint adds new entity types.
+ */
+const LINK_FIELD_BY_ENTITY: Record<string, string> = {
+  PROPERTY: 'propertyId',
+  LOAN: 'loanId',
+  EXPENSE: 'expenseId',
+  INCOME: 'incomeId',
+  ACCOUNT: 'accountId',
+  OFFSET_ACCOUNT: 'offsetAccountId',
+  INVESTMENT_ACCOUNT: 'investmentAccountId',
+  INVESTMENT_HOLDING: 'investmentHoldingId',
+  TRANSACTION: 'transactionId',
+};
+
+/**
+ * Build the FormData payload for `POST /api/documents/upload` (Phase 25 DME)
+ * from the legacy `UploadOptions` shape. Centralised so both the
+ * LOCAL_DRIVE path and the server-storage path build identical request
+ * bodies (modulo `storagePreference` + `localPath`).
+ */
+function buildDmeFormData(
+  file: File,
+  options: UploadOptions,
+  extras?: { storagePreference?: 'LOCAL_DRIVE' | 'MONITRAX' | 'GOOGLE_CLOUD_STORAGE' }
+): FormData {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('category', options.category);
+  if (options.description) {
+    fd.append('description', options.description);
+  }
+  if (options.tags && options.tags.length > 0) {
+    fd.append('tags', options.tags.join(','));
+  }
+  if (extras?.storagePreference) {
+    fd.append('storagePreference', extras.storagePreference);
+  }
+
+  // Translate each link → its DME entity field. Multiple links of the
+  // same type are uncommon but supported (FormData allows duplicate keys).
+  if (options.links && options.links.length > 0) {
+    for (const link of options.links) {
+      const fieldName = LINK_FIELD_BY_ENTITY[link.entityType];
+      if (fieldName) {
+        fd.append(fieldName, link.entityId);
+      }
+    }
+  }
+
+  return fd;
+}
+
 export function useDocumentUpload(): UseDocumentUploadReturn {
   const { token } = useAuth();
   const localDrive = useLocalDriveStorage();
@@ -47,6 +113,23 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
   const upload = useCallback(async (file: File, options: UploadOptions): Promise<UploadResult> => {
     setIsUploading(true);
     setError(null);
+
+    // Phase 38 PR 2.5 (2026-05-01) — universal upload migration.
+    //
+    // Until now this hook POSTed to `/api/documents` (the legacy Phase 19
+    // path that calls `documentService.uploadDocument()` directly) which
+    // bypasses the Phase 25 Document Management Engine — so uploads from
+    // ExpenseDialog and the expenses page didn't get RuleEngine-driven
+    // storage routing, category inference, auto-linking, or path
+    // generation.
+    //
+    // This commit migrates the hook to the canonical `/api/documents/upload`
+    // endpoint (DME). The DME endpoint expects entity links as INDIVIDUAL
+    // form fields (`propertyId`, `expenseId`, etc.) rather than a JSON
+    // `links` array, so we translate via `appendEntityLinks` below.
+    // Result: every document uploaded anywhere in the app — including from
+    // ExpenseDialog and the expenses page — now flows through the same
+    // canonical engine and lands in My Vault correctly tagged.
 
     try {
       // If local drive is configured, save to local drive first
@@ -67,22 +150,14 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
         }
 
         // Also save metadata to server for tracking/linking
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('category', options.category);
-        formData.append('storageProvider', 'LOCAL_DRIVE');
+        const formData = buildDmeFormData(file, options, {
+          storagePreference: 'LOCAL_DRIVE',
+        });
+        // LOCAL_DRIVE path is supplied via the legacy field name —
+        // /api/documents/upload routes through DME which honours it.
         formData.append('localPath', localResult.path);
-        if (options.description) {
-          formData.append('description', options.description);
-        }
-        if (options.tags && options.tags.length > 0) {
-          formData.append('tags', options.tags.join(','));
-        }
-        if (options.links && options.links.length > 0) {
-          formData.append('links', JSON.stringify(options.links));
-        }
 
-        const response = await fetch('/api/documents', {
+        const response = await fetch('/api/documents/upload', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
@@ -104,23 +179,10 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
           };
         }
       } else {
-        // Use server storage (Monitrax database)
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('category', options.category);
-        // Send MIME type explicitly (Vercel/Next.js can lose file.type)
-        formData.append('mimeType', file.type);
-        if (options.description) {
-          formData.append('description', options.description);
-        }
-        if (options.tags && options.tags.length > 0) {
-          formData.append('tags', options.tags.join(','));
-        }
-        if (options.links && options.links.length > 0) {
-          formData.append('links', JSON.stringify(options.links));
-        }
+        // Use server storage (Monitrax database / GCS — DME picks per RuleEngine)
+        const formData = buildDmeFormData(file, options);
 
-        const response = await fetch('/api/documents', {
+        const response = await fetch('/api/documents/upload', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData,

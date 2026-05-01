@@ -23,6 +23,10 @@ import {
   Files,
   Banknote,
   TrendingUp,
+  Scale,
+  CheckCircle2,
+  XCircle,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DocumentCategory } from '@/lib/documents/types';
@@ -337,6 +341,44 @@ export function FolderTree({
         type: 'root',
         children: generateFiscalYears(documentCounts),
       },
+      // Phase 38 PR 4 — Tax-status lens (Deductible / Non-deductible /
+      // Untagged). The 4th lens accountants asked for. Counts derived
+      // client-side from `expenseTaxMap` in the documents page (see
+      // `getDocumentTaxStatus`). Folder structure mirrors the existing
+      // category/fiscal-year pattern — no special-casing.
+      {
+        id: 'tax-status',
+        name: 'By Tax Status',
+        path: '/tax-status',
+        icon: Scale,
+        type: 'root',
+        children: [
+          {
+            id: 'tax-deductible',
+            name: 'Deductible',
+            path: '/tax-status/DEDUCTIBLE',
+            icon: CheckCircle2,
+            type: 'category' as const,
+            count: documentCounts['tax:DEDUCTIBLE'] || 0,
+          },
+          {
+            id: 'tax-non-deductible',
+            name: 'Non-deductible',
+            path: '/tax-status/NON_DEDUCTIBLE',
+            icon: XCircle,
+            type: 'category' as const,
+            count: documentCounts['tax:NON_DEDUCTIBLE'] || 0,
+          },
+          {
+            id: 'tax-untagged',
+            name: 'Untagged',
+            path: '/tax-status/UNTAGGED',
+            icon: HelpCircle,
+            type: 'category' as const,
+            count: documentCounts['tax:UNTAGGED'] || 0,
+          },
+        ],
+      },
     ];
 
     // Build entities section with drill-down
@@ -492,6 +534,19 @@ export function FolderTree({
     const hasChildren = folder.children && folder.children.length > 0;
     const Icon = folder.icon || Folder;
 
+    // Phase 38 PR 4 (2026-05-01) — folder-tree row redesign:
+    //   • Apple typography (`tracking-[-0.01em]` on labels)
+    //   • Active row: glass surface (`bg-primary/8`, `border-primary/15`)
+    //     instead of flat coloured fill — reads as "selected card"
+    //     rather than "highlighted text"
+    //   • Top-level groups (`type === 'root'`) get an uppercase tracked-out
+    //     label so the four lenses (Category / Year / Entity / Tax) feel
+    //     like section headers rather than just nested folders
+    //   • Count badge: tabular-nums + glass treatment matching the rest
+    //     of the app
+    //   • Subtle scale-in on chevron rotate
+    const isTopLevel = folder.type === 'root' && depth === 0;
+
     return (
       <div key={folder.id}>
         <button
@@ -502,38 +557,57 @@ export function FolderTree({
             onNavigate(folder.path);
           }}
           className={cn(
-            'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
-            'hover:bg-muted',
-            isActive && 'bg-primary/10 text-primary font-medium',
-            !isActive && 'text-foreground'
+            'group w-full flex items-center gap-2 rounded-lg transition-colors',
+            isTopLevel
+              ? 'px-2 py-2 mt-2 first:mt-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70'
+              : 'px-2 py-1.5 text-sm tracking-[-0.01em]',
+            !isActive && !isTopLevel && 'text-foreground hover:bg-muted/50',
+            isActive && 'bg-primary/8 text-primary font-medium border border-primary/15',
+            !isActive && isTopLevel && 'hover:text-foreground hover:bg-muted/30'
           )}
-          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+          style={{ paddingLeft: `${depth * 14 + 8}px` }}
         >
           {hasChildren ? (
-            <span className="w-4 h-4 flex items-center justify-center">
+            <span className="w-4 h-4 flex items-center justify-center text-muted-foreground/70 transition-transform">
               {isExpanded ? (
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-3 w-3 transition-transform" />
               ) : (
-                <ChevronRight className="h-3 w-3" />
+                <ChevronRight className="h-3 w-3 transition-transform" />
               )}
             </span>
           ) : (
             <span className="w-4" />
           )}
           {isExpanded && hasChildren ? (
-            <FolderOpen className="h-4 w-4 text-yellow-500" />
+            <FolderOpen className={cn('h-4 w-4', isTopLevel ? 'text-primary/80' : 'text-amber-500')} />
           ) : (
-            <Icon className={cn('h-4 w-4', isActive ? 'text-primary' : 'text-muted-foreground')} />
+            <Icon
+              className={cn(
+                'h-4 w-4',
+                isActive
+                  ? 'text-primary'
+                  : isTopLevel
+                    ? 'text-primary/60'
+                    : 'text-muted-foreground group-hover:text-foreground'
+              )}
+            />
           )}
           <span className="flex-1 text-left truncate">{folder.name}</span>
           {folder.count !== undefined && folder.count > 0 && (
-            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+            <span
+              className={cn(
+                'text-[10px] font-medium tabular-nums px-1.5 py-0.5 rounded-md transition-colors',
+                isActive
+                  ? 'bg-primary/15 text-primary'
+                  : 'bg-muted/60 text-muted-foreground group-hover:bg-muted'
+              )}
+            >
               {folder.count}
             </span>
           )}
         </button>
         {hasChildren && isExpanded && (
-          <div>
+          <div className="mt-0.5">
             {folder.children!.map((child) => renderFolder(child, depth + 1))}
           </div>
         )}
