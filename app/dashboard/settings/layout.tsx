@@ -10,6 +10,7 @@ import Link from 'next/link';
 import {
   Settings,
   Shield,
+  Send,
   Cloud,
   User,
   Bell,
@@ -60,6 +61,15 @@ const settingsNavItems: SettingsNavItem[] = [
     href: '/dashboard/settings/storage',
     icon: Cloud,
     description: 'Connect Google Drive, iCloud',
+  },
+  {
+    // Phase 38 PR 3 — Manage Shares (accountant share-link revocation +
+    // view tracking). Sits next to Cloud Storage as a "data movement"
+    // grouping in the settings nav.
+    name: 'Shares',
+    href: '/dashboard/settings/shares',
+    icon: Send,
+    description: 'Revoke or check accountant share links',
   },
   {
     name: 'Notifications',

@@ -787,3 +787,103 @@ These uploads still create a `Document` row (visible in My Vault) but skip the R
 ### Risk
 
 **Low.** All UI composition over existing data and existing endpoints. `inboxExpanded` and `confirmingRowId` are local state — no global side effects. `handleInboxConfirm` shares its concurrency flag (`confirmingRowId`) so two rows can't fire at once. Refresh-on-success uses the existing `setRefreshKey` pattern. Independently revertable via single `git revert`.
+
+---
+
+## Session: claude/phase-38-pr3-share-pass — Phase 38 PR 3 (Send to accountant — Share Pass)
+
+### Outcome
+
+**My Vault now shares with accountants via a secure, time-limited link.** Generic "Share Pass" architecture (`SharePackage` model with polymorphic `contentRefs` + `contentType` + `deliveryMethod`) so the same machinery extends to non-document content (Reports, property summaries, net-worth snapshots) and non-link delivery (Xero/MYOB push) without future migrations.
+
+Reza decisions captured 2026-05-01: Option C (secure share-link) shipped; Option E (Xero/MYOB direct push) parked as future expansion; default 30-day expiry; recipient page minimal share-only aesthetic.
+
+### What shipped
+
+**Schema + migration:**
+- `prisma/schema.prisma` — new `SharePackage` model + 3 enums (`SharePackagePurpose`, `SharePackageContentType`, `SharePackageDeliveryMethod`). Foreign-key cascade from User (delete user → delete shares).
+- `prisma/migrations/20260501112526_add_share_package/migration.sql` — CREATE TYPE × 3, CREATE TABLE, 3 indexes (token unique, userId, expiresAt+revokedAt for cleanup queries), foreign key. CLAUDE.md §12.12 honoured (matching schema + migration in same commit).
+- User model gets `sharePackages SharePackage[]` relation field.
+
+**API routes (six new):**
+- `POST /api/share` — auth-required (`withPermission('report.export')`). Validates ownership of every documentId before persisting. Generates 32-byte URL-safe token. Auto-watermark text built server-side. Audit log `entityType='SharePackage'` action `CREATE`.
+- `GET /api/share` — auth-required. Lists owner's shares (active by default; `?includeInactive=true` shows revoked + expired). Returns `shareUrl` annotated.
+- `DELETE /api/share/[id]` — auth-required. Soft-revoke (sets `revokedAt`); ownership check via `updateMany` `where` clause (Prisma returns count: 0 if not owned → 404). Audit log action `DELETE` with optional reason.
+- `GET /api/share/[token]` — **PUBLIC** (no auth). Validates not-revoked + not-expired (410 Gone if either). Increments `viewCount` + sets `lastViewedAt`. Returns owner name, purpose, expiry, watermark, document list. Audit log under owner's userId, action `READ`, with IP + UA from request headers.
+- `GET /api/share/[token]/download` — **PUBLIC**. Re-runs ownership filter on documents, builds JSZip ZIP (folder layout per `contentRefs.structure`), prepends `_README.txt` with provenance manifest. Audit log action `EXPORT`.
+- `GET /api/share/[token]/file/[docId]` — **PUBLIC**. Validates docId is part of the share's contentRefs AND still owned + non-deleted. Streams via existing storage providers (Monitrax DB-stored / GCS download / 410 for LOCAL_DRIVE). Audit log action `READ`.
+
+**Helpers:**
+- `lib/share/tokens.ts` — `generateShareToken()` (32 random bytes → base64url, 43 chars, ≈256 bits entropy), `buildShareUrl(token, origin)`, `computeExpiry(days)`, `getCurrentAUFinancialYearLabel()`, `buildDefaultWatermark(ownerName)`. `DEFAULT_SHARE_EXPIRY_DAYS = 30`.
+- `lib/share/content.ts` — `documentsForShare(ownerId, refs)` resolver. Filters by ownerId AND `deletedAt: null` so revoked/deleted docs disappear from active shares automatically.
+
+**Owner UI:**
+- `components/documents/SendToAccountantDialog.tsx` — Apple-styled modal. Two states (form / result with copy-link). Trust-signal pill row (Audit-logged · Watermarked · Revocable). Two primary actions: `Download ZIP` (existing `/api/documents/export`) + `Generate secure link` (new `/api/share`). Full `prefers-reduced-motion`.
+- `app/dashboard/documents/page.tsx` — added `Send to accountant` button next to `Upload` in the hero, mounted dialog at end of page. Defaults the share content to `filteredDocuments` so the owner can scope by current folder/search before invoking.
+
+**Recipient UI:**
+- `app/share/[token]/page.tsx` — minimal aesthetic (Reza directive). Stripped-down chrome: small Monitrax logo top + "Secure share" tag. Hero with document count, owner name, expiry date, view counter. Primary action card: `Download all as ZIP`. Per-document list with thumbnails (image vs file icon) + per-file `Open` (calls public single-file endpoint). Watermark text in footer. Error states: 404 → "Share not found", 410 → "This link is no longer active". Full `prefers-reduced-motion`.
+
+**Settings UI:**
+- `app/dashboard/settings/shares/page.tsx` — Manage Shares page. Apple-typography hero with active-share count. Filter pills (Active only / All). Per-share row with status badge, doc count, view counter, last-viewed timestamp, expiry, copy-link, revoke (with confirmation alert). Empty state.
+- `app/dashboard/settings/layout.tsx` — added "Shares" nav item next to "Cloud Storage" (data-movement grouping).
+
+### Hard constraints honoured
+
+- ✅ Reuses existing engines: `/api/documents/export` (ZIP), Phase 25 storage providers (`getMonitraxStorageProvider`, `getGoogleCloudStorageProvider`), `createAuditLog()` audit pipeline, `withPermission('report.export')` RBAC pattern, JSZip (already in deps), `Document` table polymorphic ownership filter.
+- ✅ Zero new calc engines.
+- ✅ Zero data duplication (`Document` table is single source of truth; share simply points at IDs).
+- ✅ All existing routes preserved.
+- ✅ Schema + migration shipped together (CLAUDE.md §12.12).
+- ✅ No destructive Prisma writes (CLAUDE.md §12.11 N/A — only INSERTs / soft-update via revokedAt).
+- ✅ CDR §13.5 chain-of-custody: every state transition audit-logged with `entityType='SharePackage'`. Recipient access logged under owner's userId (recipient is anonymous by design; owner's audit trail is preserved).
+- ✅ TypeScript clean (`npx tsc --noEmit` reports zero errors).
+- ✅ Design language extends Home TRAIL banner v3 + Phase 37 + Phase 38 PRs 1-2 — same `appleEase`, glassmorphic 28px tokens, framer-motion grammar. Zero new design tokens, zero new dependencies.
+
+### Future expansion (already accommodated)
+
+- **Option E — direct push to Xero / MYOB / accountant software.** Add `XERO_PUSH` / `MYOB_PUSH` to `SharePackageDeliveryMethod` enum (zero migration impact for existing rows). Implement transport adapters that consume the same `contentRefs`. Audit + revocation + expiry stay identical.
+- **Other content types** — `Reports` exports / property summaries / net-worth snapshots / tax-position snapshots. Add new `SharePackageContentType` values + matching resolver in `lib/share/content.ts` + matching renderer on the recipient page. Same `SharePackage` row shape; same auth model; same audit machinery.
+
+### Files modified / created
+
+- `prisma/schema.prisma` — User relation + `SharePackage` model + 3 enums
+- `prisma/migrations/20260501112526_add_share_package/migration.sql` (NEW)
+- `lib/share/tokens.ts` (NEW)
+- `lib/share/content.ts` (NEW)
+- `app/api/share/route.ts` (NEW — POST + GET)
+- `app/api/share/[id]/route.ts` (NEW — DELETE)
+- `app/api/share/[token]/route.ts` (NEW — public GET)
+- `app/api/share/[token]/download/route.ts` (NEW — public ZIP)
+- `app/api/share/[token]/file/[docId]/route.ts` (NEW — public single file)
+- `components/documents/SendToAccountantDialog.tsx` (NEW)
+- `app/share/[token]/page.tsx` (NEW — public recipient page, minimal aesthetic)
+- `app/dashboard/settings/shares/page.tsx` (NEW — Manage Shares)
+- `app/dashboard/settings/layout.tsx` — added Shares nav item
+- `app/dashboard/documents/page.tsx` — wired `Send to accountant` button + dialog mount
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 38 PR 3 marked complete; status to 🟢
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry
+
+### Build status
+
+- [x] TypeScript: PASS (`npx tsc --noEmit` reports zero errors; only pre-existing tsconfig deprecation warning unrelated to this PR)
+- [x] Schema change shipped with matching migration file (CLAUDE.md §12.12)
+- [x] No destructive Prisma writes (only INSERT + soft-update via `revokedAt`)
+- [x] No new calc engines
+
+### Risk
+
+**Medium-low.** New table + 6 endpoints — but every dangerous edge has a guard:
+- Public endpoints validate token + revocation + expiry on every request (no caching).
+- Document re-fetched on every share access with `userId` + `deletedAt: null` filter — soft-deleted docs disappear from active shares automatically.
+- Ownership invariant on share creation: counted documentIds vs claimed length — 403 if mismatch, prevents ID-guessing attacks.
+- Soft-delete + revocation by default; no hard delete path in PR 3.
+- Default 30-day expiry caps blast radius of leaked tokens.
+- 256-bit token entropy makes enumeration computationally infeasible.
+
+### Vercel preview will
+
+1. Run `prisma migrate deploy` against `monitrax-db-dev` (creates the `SharePackage` table + 3 enums + indexes + FK)
+2. Run `prisma generate` (regenerates client with `prisma.sharePackage.*` typings)
+3. Build Next.js (full type-check against generated client)
+4. Deploy preview if all of the above succeed

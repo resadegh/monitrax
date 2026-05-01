@@ -50,6 +50,7 @@ import {
   ExternalLink,
   Check,
   Loader2,
+  Send,
 } from 'lucide-react';
 import {
   DocumentUploadDropzone,
@@ -57,6 +58,7 @@ import {
   DocumentBreadcrumb,
   DocumentFolderView,
 } from '@/components/documents';
+import { SendToAccountantDialog } from '@/components/documents/SendToAccountantDialog';
 import { DocumentCategory } from '@/lib/documents/types';
 
 // Phase 38 PR 1 — design tokens lifted from Home TRAIL banner v3 +
@@ -543,6 +545,9 @@ export default function DocumentsLibraryPage() {
   const analyzedCount = documents.filter((d) => d.analysis?.status === 'COMPLETED').length;
   const pendingAnalysisCount = documents.filter((d) => d.analysis && d.analysis.status !== 'COMPLETED' && d.analysis.status !== 'FAILED').length;
 
+  // Phase 38 PR 3: "Send to accountant" modal state.
+  const [showSendDialog, setShowSendDialog] = useState(false);
+
   // Phase 38 PR 1: hero + Smart Inbox derivations. All client-side over
   // the existing /api/documents response — no new endpoint, no new query.
   const fy = useMemo(() => getCurrentAUFinancialYearLabel(), []);
@@ -712,15 +717,28 @@ export default function DocumentsLibraryPage() {
                     </motion.p>
                   </div>
 
-                  {/* Primary action — Upload — styled as glass pill so it
-                      doesn't compete with the hero number visually. */}
-                  <Button
-                    onClick={() => setShowUpload(!showUpload)}
-                    className="inline-flex items-center gap-2 rounded-xl shadow-sm shrink-0 hover:scale-[1.02] active:scale-[0.98] transition-transform"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Upload document
-                  </Button>
+                  {/* Primary actions — Upload + Send to accountant.
+                      Apple-pill styling so they don't compete with the
+                      hero number. Send button disabled until docs exist. */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowSendDialog(true)}
+                      disabled={total === 0}
+                      className="inline-flex items-center gap-2 rounded-xl border-border/60 bg-background/60 backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                      title="Send a secure share link to your accountant"
+                    >
+                      <Send className="h-4 w-4" />
+                      Send to accountant
+                    </Button>
+                    <Button
+                      onClick={() => setShowUpload(!showUpload)}
+                      className="inline-flex items-center gap-2 rounded-xl shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Upload
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Stats footer — total · storage · categories · awaiting
@@ -1114,6 +1132,20 @@ export default function DocumentsLibraryPage() {
           </div>
         </main>
       </div>
+
+      {/* Phase 38 PR 3 — Send to accountant modal.
+          Defaults to the full visible doc set (filteredDocuments) so the
+          owner can scope by current folder/search before invoking. */}
+      <SendToAccountantDialog
+        open={showSendDialog}
+        onOpenChange={setShowSendDialog}
+        documentIds={filteredDocuments.map((d) => d.id)}
+        contentLabel={
+          currentPath && currentPath !== '/'
+            ? `Documents in ${currentPath}`
+            : `${fy.label} documents`
+        }
+      />
     </DashboardLayout>
   );
 }

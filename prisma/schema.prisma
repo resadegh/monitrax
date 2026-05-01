@@ -413,6 +413,10 @@ model User {
   cdrComplaints             CDRComplaint[]
   cdrDisclosures            CDRDisclosure[]
 
+  // Phase 38 PR 3: My Vault — Share Pass (accountant share-link, future
+  // generic share engine for Reports / property summaries / net worth).
+  sharePackages             SharePackage[]
+
   @@map("users")
 }
 
@@ -4136,4 +4140,105 @@ model UserCategorizationSettings {
   updatedAt               DateTime  @updatedAt
 
   @@map("user_categorization_settings")
+}
+
+// =============================================================================
+// PHASE 38 PR 3 — SHARE PASS (My Vault accountant-share + generic share engine)
+// =============================================================================
+//
+// Generic, polymorphic share-link engine. v1 wires the DOCUMENT_BUNDLE
+// content-type for "Send to accountant" from My Vault. The same machinery
+// (token, expiry, audit, revocation, recipient tracking) is reused as we
+// add new content types (Reports, property summaries, net-worth statements,
+// tax positions). Future delivery methods (Xero / MYOB direct push) extend
+// the deliveryMethod enum without a schema migration.
+//
+// Reza directives (2026-05-01):
+//   • Option C (secure share-link) for v1; Option E (direct accountant-
+//     software push) parked as future expansion.
+//   • Default expiry 30 days.
+//   • Recipient page: minimal share-only aesthetic (no app shell).
+//
+// CDR alignment: every state transition (CREATE / READ / EXPORT / DELETE)
+// is logged via createAuditLog() with entityType='SharePackage' so we have
+// a full chain-of-custody trail for any data shared externally
+// (CLAUDE.md §13.5).
+// =============================================================================
+
+model SharePackage {
+  id              String                       @id @default(uuid())
+  userId          String
+  user            User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Public access — opaque URL-safe token (≥32 chars, generated server-side).
+  // The token IS the auth — no PII in the URL, no enumerable IDs.
+  token           String                       @unique
+
+  // Recipient (optional — accountant name + email for owner's own records;
+  // not required to create a share).
+  recipientName   String?
+  recipientEmail  String?
+
+  // Why this share exists. Drives sensible defaults in the modal +
+  // appropriate copy on the recipient page.
+  purpose         SharePackagePurpose
+
+  // Polymorphic content reference. Shape varies by contentType:
+  //   DOCUMENT_BUNDLE → { documentIds: string[], structure: 'financial-year-first' | 'entity-first' | 'category-first' }
+  //   (Future) REPORT → { reportType: string, periodStart: ISO, periodEnd: ISO }
+  //   (Future) NET_WORTH_SNAPSHOT → { snapshotId: string }
+  // The recipient page reads this + dispatches to the right renderer.
+  contentType     SharePackageContentType
+  contentRefs     Json
+  contentLabel    String?                      // human-readable, e.g. "FY 2024–25 documents"
+
+  // Delivery transport. v1 supports LINK + DOWNLOAD_ONLY. Future v2+ adds
+  // EMAIL_LINK, XERO_PUSH, MYOB_PUSH without a schema migration — the
+  // enum extends, the share row pattern stays the same.
+  deliveryMethod  SharePackageDeliveryMethod   @default(LINK)
+
+  // Lifecycle
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  revokeReason    String?
+
+  // Tracking — visible on the owner's Manage Shares page so they can
+  // see their share is being used (or not) without external tooling.
+  viewCount       Int                          @default(0)
+  lastViewedAt    DateTime?
+
+  // Watermark text rendered on the recipient page footer + (future) on
+  // ZIP contents. Auto-generated server-side if null:
+  // "Generated from Monitrax · {FY label} · {owner name}".
+  watermarkText   String?
+
+  // Owner's private notes — not shown to recipient.
+  notes           String?
+
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt, revokedAt])
+}
+
+enum SharePackagePurpose {
+  TAX_RETURN
+  LOAN_APPLICATION
+  INSURANCE_CLAIM
+  ADVISER_REVIEW
+  OTHER
+}
+
+enum SharePackageContentType {
+  DOCUMENT_BUNDLE
+  // Future: REPORT, PROPERTY_SUMMARY, NET_WORTH_SNAPSHOT, TAX_POSITION
+}
+
+enum SharePackageDeliveryMethod {
+  LINK            // shareable URL with token (default)
+  EMAIL_LINK      // app emails the link to recipientEmail on creation
+  DOWNLOAD_ONLY   // owner downloads ZIP locally; no public token issued
+  // Future: XERO_PUSH, MYOB_PUSH
 }
