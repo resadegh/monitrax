@@ -233,17 +233,20 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
 }
 
 // =============================================================================
-// PHASE 37 PR 2 — WARM-SENTENCE HERO
+// PHASE 37 PR 2 — APPLE-STYLE HERO (refined 2026-05-01 evening)
 //
-// Replaces the plain "Cashflow Intelligence" title with a glassmorphic
-// banner that answers the only question users open this page to ask:
-// "am I OK this month?". The sentence morphs based on the surplus/
-// shortfall sign. Every number sourced from intelligence.forecast.current
-// — zero recalculation, zero new data sources.
+// Reza's feedback: the all-rose, semibold sentence read as "alert banner",
+// not Apple. Refined hierarchy:
+//   1. Eyebrow      — small uppercase tracked-out muted (context)
+//   2. Hero number  — huge, font-light, tracking-[-0.04em], tabular-nums,
+//                     COLOR ISOLATED to the digits (Apple Wallet pattern)
+//   3. Sentence     — demoted to muted supporting copy, font-normal,
+//                     leading-relaxed, max-w-xl
+//   4. Stats grid   — 3 cards (was 4); the redundant Surplus/Shortfall
+//                     card is removed because the hero number IS that
+//                     value
 //
-// Design language: Home TRAIL banner v3 (TrailStageIndicator.tsx) —
-// rounded-[28px] glassmorphic card, animated atmospheric gradient,
-// framer-motion fade-up, full prefers-reduced-motion support.
+// Same data sources, same calc engines, zero new APIs. Just typography.
 // =============================================================================
 
 function CashflowHero({
@@ -263,18 +266,27 @@ function CashflowHero({
 }) {
   const reduced = useReducedMotion();
 
+  // Apple voice: confident, factual, action-forward. Sentence DOESN'T repeat
+  // the number (the hero shows it) — instead it conveys meaning + next step.
+  // Empowering, never alarming. Reza's note 2026-05-01: must feel engaging
+  // and empowering, never like a warning notification.
   const sentence = useMemo(() => {
-    if (net > 0) return `You're ${formatCurrency(net)} ahead this month — keep going.`;
-    if (net === 0) return `You're breaking even this month — every dollar accounted for.`;
-    return `You're ${formatCurrency(Math.abs(net))} short this month — let's find it together.`;
+    if (net > 0) return 'Money working for you this month — build on it.';
+    if (net === 0) return "Every dollar accounted for — that's intentional.";
+    return 'Spending edged ahead this month — trim a leak below to close it.';
   }, [net]);
 
-  const tone =
+  // Color isolated to the hero number (the one piece of information that
+  // benefits from chromatic encoding). Sentence and stat labels stay neutral.
+  const heroToneClass =
     net > 0
-      ? 'text-emerald-600 dark:text-emerald-400'
+      ? 'text-emerald-500 dark:text-emerald-400'
       : net < 0
-        ? 'text-rose-600 dark:text-rose-400'
+        ? 'text-rose-500 dark:text-rose-400'
         : 'text-foreground';
+
+  // U+2212 minus / U+002B plus — typographically correct (not hyphen).
+  const sign = net < 0 ? '−' : net > 0 ? '+' : '';
 
   return (
     <div className="relative isolate overflow-hidden rounded-[28px] border border-white/40 dark:border-white/10 bg-card/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl mb-6">
@@ -288,24 +300,39 @@ function CashflowHero({
         style={{
           background:
             net >= 0
-              ? 'radial-gradient(circle at 15% 0%, rgba(16,185,129,0.12), transparent 60%), radial-gradient(circle at 85% 100%, rgba(59,130,246,0.08), transparent 55%)'
-              : 'radial-gradient(circle at 15% 0%, rgba(244,63,94,0.10), transparent 60%), radial-gradient(circle at 85% 100%, rgba(245,158,11,0.08), transparent 55%)',
+              ? 'radial-gradient(circle at 15% 0%, rgba(16,185,129,0.10), transparent 60%), radial-gradient(circle at 85% 100%, rgba(59,130,246,0.06), transparent 55%)'
+              : 'radial-gradient(circle at 15% 0%, rgba(244,63,94,0.08), transparent 60%), radial-gradient(circle at 85% 100%, rgba(245,158,11,0.06), transparent 55%)',
         }}
       />
-      <div className="p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-              Cashflow
+      <div className="p-6 sm:p-8 md:p-10">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 mb-8">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70 mb-4">
+              Cashflow · This month
             </p>
-            <motion.h1
-              initial={reduced ? false : { opacity: 0, y: 6 }}
+
+            {/* Hero number — Apple-typography */}
+            <motion.div
+              initial={reduced ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={reduced ? { duration: 0 } : { duration: 0.6, ease: APPLE_EASE }}
-              className={`text-2xl sm:text-3xl md:text-[2rem] font-semibold leading-tight tracking-tight max-w-3xl ${tone}`}
+              transition={reduced ? { duration: 0 } : { duration: 0.7, ease: APPLE_EASE }}
+              className={`text-5xl sm:text-6xl md:text-7xl font-light tracking-[-0.04em] tabular-nums leading-none ${heroToneClass}`}
+            >
+              {sign}
+              {formatCurrency(Math.abs(net))}
+            </motion.div>
+
+            {/* Supporting sentence — muted, refined */}
+            <motion.p
+              initial={reduced ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={
+                reduced ? { duration: 0 } : { duration: 0.6, ease: APPLE_EASE, delay: 0.18 }
+              }
+              className="mt-5 text-base sm:text-lg text-muted-foreground font-normal leading-relaxed max-w-xl"
             >
               {sentence}
-            </motion.h1>
+            </motion.p>
           </div>
           <button
             onClick={onRefresh}
@@ -321,31 +348,31 @@ function CashflowHero({
           </button>
         </div>
 
-        {/* Three numbers — same source as the rest of the page (intelligence.forecast.current) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+        {/* Stats grid — 3 cards (Surplus/Shortfall removed; it's the hero now).
+            Same source: intelligence.forecast.current. */}
+        <div className="grid grid-cols-3 gap-4 sm:gap-8 pt-6 border-t border-border/40">
           {[
-            { label: 'Money In', value: income, tone: 'in', icon: <TrendingUp className="h-3.5 w-3.5" /> },
-            { label: 'Money Out', value: expenses, tone: 'out', icon: <TrendingDown className="h-3.5 w-3.5" /> },
-            { label: net >= 0 ? 'Surplus' : 'Shortfall', value: Math.abs(net), tone: net >= 0 ? 'in' : 'out', icon: null },
-            { label: 'Balance', value: balance, tone: 'neutral', icon: null },
+            { label: 'Money In', value: income, tone: 'in' as const, icon: <TrendingUp className="h-3 w-3" /> },
+            { label: 'Money Out', value: expenses, tone: 'out' as const, icon: <TrendingDown className="h-3 w-3" /> },
+            { label: 'Balance', value: balance, tone: 'neutral' as const, icon: null },
           ].map((stat, idx) => (
             <motion.div
               key={stat.label}
-              initial={reduced ? false : { opacity: 0, y: 8 }}
+              initial={reduced ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={
                 reduced
                   ? { duration: 0 }
-                  : { duration: 0.5, ease: APPLE_EASE, delay: 0.15 + idx * 0.05 }
+                  : { duration: 0.5, ease: APPLE_EASE, delay: 0.22 + idx * 0.05 }
               }
-              className="flex flex-col gap-1"
+              className="flex flex-col gap-1.5"
             >
-              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
                 {stat.icon}
                 {stat.label}
               </div>
               <div
-                className={`text-xl sm:text-2xl font-semibold tabular-nums ${
+                className={`text-xl sm:text-2xl font-medium tabular-nums tracking-[-0.02em] ${
                   stat.tone === 'in'
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : stat.tone === 'out'
