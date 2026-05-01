@@ -30,6 +30,8 @@ import { ListFilter, propertyFilterConfigs } from '@/components/ListFilter';
 import { ExpenseDialog } from '@/components/ExpenseDialog';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import { PropertyMap } from '@/components/google-maps';
+import { PropertiesHero, type PropertiesHeroSegment } from '@/components/properties/PropertiesHero';
+import { PropertyTile } from '@/components/properties/PropertyTile';
 
 interface Loan {
   id: string;
@@ -426,12 +428,46 @@ function PropertiesPageContent() {
   const ownedProperties = properties.filter(p => p.type !== 'RENTAL');
   const totalValue = ownedProperties.reduce((sum, p) => sum + p.currentValue, 0);
   const totalEquity = ownedProperties.reduce((sum, p) => sum + calculateEquity(p), 0);
+  const totalLoans = ownedProperties.reduce(
+    (sum, p) => sum + (p.loans?.reduce((s, l) => s + l.principal, 0) || 0),
+    0,
+  );
+  const averageLvr = totalValue > 0 ? (totalLoans / totalValue) * 100 : 0;
+  const heroSegments: PropertiesHeroSegment[] = (
+    ['HOME', 'INVESTMENT', 'RENTAL'] as const
+  )
+    .map((type) => {
+      const subset = properties.filter((p) => p.type === type);
+      if (subset.length === 0) return null;
+      // For RENTAL we surface the rent-expense annual cost as the "value"
+      // dimension (renters don't own value); for HOME/INVESTMENT use
+      // currentValue. Same logic as the per-tile body below.
+      const value =
+        type === 'RENTAL'
+          ? subset.reduce(
+              (sum, p) =>
+                sum +
+                (p.expenses?.reduce(
+                  (s, e) => s + convertToAnnual(e.amount, e.frequency),
+                  0,
+                ) || 0),
+              0,
+            )
+          : subset.reduce((sum, p) => sum + p.currentValue, 0);
+      return {
+        type,
+        label: type === 'HOME' ? 'Homes' : type === 'INVESTMENT' ? 'Investments' : 'Rentals',
+        count: subset.length,
+        value,
+      };
+    })
+    .filter((s): s is PropertiesHeroSegment => s !== null);
 
   return (
     <DashboardLayout>
       <PageHeader
         title="Properties"
-        description={`Manage your property portfolio • Total value: ${formatCurrency(totalValue)} • Equity: ${formatCurrency(totalEquity)}`}
+        description="What you're building — your homes, investments, and rentals."
         action={
           <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
             <Plus className="mr-2 h-4 w-4" />
@@ -439,6 +475,21 @@ function PropertiesPageContent() {
           </Button>
         }
       />
+
+      {/* Premium hero summary — TRAIL Stage I (Invest) palette */}
+      {!isLoading && properties.length > 0 && (
+        <div className="mb-6">
+          <PropertiesHero
+            totalValue={totalValue}
+            totalEquity={totalEquity}
+            totalLoans={totalLoans}
+            averageLvr={averageLvr}
+            segments={heroSegments}
+            propertyCount={properties.length}
+            ownedCount={ownedProperties.length}
+          />
+        </div>
+      )}
 
       {/* Search and Filter */}
       {properties.length > 0 && (
@@ -583,199 +634,50 @@ function PropertiesPageContent() {
           </CardContent>
         </Card>
       ) : (
-        /* Tiles View */
-        <div className="grid gap-6 md:grid-cols-2">
-          {filteredProperties.map((property) => {
-            const { gain, percentage } = calculateGain(property);
-            const isPositiveGain = gain >= 0;
+        /* Tiles View — premium glassmorphic redesign (Stage I palette) */
+        <div className="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {filteredProperties.map((property, idx) => {
+            const { percentage } = calculateGain(property);
             const lvr = calculateLVR(property);
             const equity = calculateEquity(property);
             const rentalYield = calculateRentalYield(property);
             const cashflow = calculateCashflow(property);
-            const loansCount = property.loans?.length || 0;
-            const incomeCount = property.income?.length || 0;
-            const expenseCount = property.expenses?.length || 0;
-            const depreciationCount = property.depreciationSchedules?.length || 0;
+            const totalRentExpense =
+              property.type === 'RENTAL'
+                ? property.expenses?.reduce(
+                    (sum, exp) => sum + convertToAnnual(exp.amount, exp.frequency),
+                    0,
+                  ) || 0
+                : undefined;
 
             return (
-              <Card key={property.id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        {property.type === 'RENTAL' ? (
-                          <KeyRound className="h-5 w-5 text-muted-foreground" />
-                        ) : (
-                          <Home className="h-5 w-5 text-muted-foreground" />
-                        )}
-                        {property.name}
-                      </CardTitle>
-                      <Badge variant={property.type === 'HOME' ? 'default' : property.type === 'RENTAL' ? 'outline' : 'secondary'}>
-                        {property.type === 'HOME' ? 'Primary Residence' : property.type === 'RENTAL' ? 'Rental' : 'Investment'}
-                      </Badge>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => loadPropertyDetail(property.id)}
-                        title="View details"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(property)}
-                        title="Edit"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(property.id)}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                  <CardDescription className="pt-2">
-                    {property.address}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Rental Property Content */}
-                  {property.type === 'RENTAL' ? (
-                    <>
-                      {/* Rent Expense Summary */}
-                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                        <div className="flex items-center gap-2 mb-2">
-                          <KeyRound className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium text-blue-900">Rental Property</span>
-                        </div>
-                        {expenseCount > 0 ? (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Rent & Expenses</p>
-                            <p className="text-xl font-bold text-red-600">
-                              {formatCurrency(property.expenses?.reduce((sum, exp) =>
-                                sum + convertToAnnual(exp.amount, exp.frequency), 0) || 0)}/yr
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-blue-700">
-                            Add rent expense from the expenses section
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Value Section - for owned properties */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Current Value</p>
-                          <p className="text-xl font-bold">{formatCurrency(property.currentValue)}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Purchased: {formatCurrency(property.purchasePrice)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Equity</p>
-                          <p className="text-xl font-bold text-green-600">{formatCurrency(equity)}</p>
-                        </div>
-                      </div>
-
-                      {/* Metrics Grid */}
-                      <div className="grid grid-cols-3 gap-2">
-                        {/* LVR */}
-                        <div className="p-2 bg-muted/50 rounded-lg text-center">
-                          <Percent className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-                          <p className="text-xs text-muted-foreground">LVR</p>
-                          <p className={`text-sm font-semibold ${lvr > 80 ? 'text-red-600' : lvr > 60 ? 'text-yellow-600' : 'text-green-600'}`}>
-                            {lvr.toFixed(1)}%
-                          </p>
-                        </div>
-
-                        {/* Capital Gain */}
-                        <div className="p-2 bg-muted/50 rounded-lg text-center">
-                          {isPositiveGain ? (
-                            <TrendingUp className="h-4 w-4 mx-auto text-green-600 mb-1" />
-                          ) : (
-                            <TrendingDown className="h-4 w-4 mx-auto text-red-600 mb-1" />
-                          )}
-                          <p className="text-xs text-muted-foreground">Gain</p>
-                          <p className={`text-sm font-semibold ${isPositiveGain ? 'text-green-600' : 'text-red-600'}`}>
-                            {percentage >= 0 ? '+' : ''}{percentage.toFixed(1)}%
-                          </p>
-                        </div>
-
-                        {/* Rental Yield (for investment) */}
-                        {property.type === 'INVESTMENT' && (
-                          <div className="p-2 bg-muted/50 rounded-lg text-center">
-                            <PiggyBank className="h-4 w-4 mx-auto text-purple-500 mb-1" />
-                            <p className="text-xs text-muted-foreground">Yield</p>
-                            <p className="text-sm font-semibold text-purple-600">
-                              {rentalYield.toFixed(2)}%
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Cashflow (for investment) */}
-                        {property.type === 'INVESTMENT' && (
-                          <div className="p-2 bg-muted/50 rounded-lg text-center col-span-3">
-                            <p className="text-xs text-muted-foreground">Annual Cashflow</p>
-                            <p className={`text-sm font-semibold ${cashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {formatCurrency(cashflow)}/yr
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Linked Data Summary */}
-                  <div className="pt-3 border-t">
-                    <div className="flex flex-wrap gap-2">
-                      {loansCount > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          <Landmark className="h-3 w-3 mr-1" />
-                          {loansCount} Loan{loansCount > 1 ? 's' : ''}
-                        </Badge>
-                      )}
-                      {incomeCount > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          <DollarSign className="h-3 w-3 mr-1" />
-                          {incomeCount} Income
-                        </Badge>
-                      )}
-                      {expenseCount > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          <Receipt className="h-3 w-3 mr-1" />
-                          {expenseCount} Expense{expenseCount > 1 ? 's' : ''}
-                        </Badge>
-                      )}
-                      {depreciationCount > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          <FileText className="h-3 w-3 mr-1" />
-                          {depreciationCount} Depreciation
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* View Details Button */}
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => loadPropertyDetail(property.id)}
-                  >
-                    View Full Details
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </CardContent>
-              </Card>
+              <PropertyTile
+                key={property.id}
+                index={idx}
+                property={{
+                  id: property.id,
+                  name: property.name,
+                  address: property.address,
+                  type: property.type as 'HOME' | 'INVESTMENT' | 'RENTAL',
+                  purchasePrice: property.purchasePrice,
+                  currentValue: property.currentValue,
+                  loansCount: property.loans?.length || 0,
+                  incomeCount: property.income?.length || 0,
+                  expenseCount: property.expenses?.length || 0,
+                  depreciationCount: property.depreciationSchedules?.length || 0,
+                  totalRentExpense,
+                }}
+                metrics={{
+                  equity,
+                  lvr,
+                  gainPercentage: percentage,
+                  rentalYield,
+                  cashflow,
+                }}
+                onView={() => loadPropertyDetail(property.id)}
+                onEdit={() => handleEdit(property)}
+                onDelete={() => handleDelete(property.id)}
+              />
             );
           })}
         </div>
