@@ -479,3 +479,59 @@ The "navigate away and back" workaround worked because Vercel's load balancer fa
 ### Risk
 
 Zero at merge. Behaviour change is a strict superset: previously a single rejection wedged the instance forever; now it propagates the same error for the originating request, then allows the next request to retry. No code path that previously succeeded now fails.
+
+---
+
+## Session: claude/phase-37-pr1-sidebar-ia — Phase 37 PR 1 (Sidebar IA)
+
+### Outcome
+
+**My Budget sidebar reorganised; Tax relocated to My Guide; default landing flipped from Budget Analysis → Cashflow.** Pure information-architecture change. No calc engines touched, no APIs touched, no routes deleted, no `prisma/schema.prisma` change.
+
+### Context
+
+Session-long review of the My Budget section against the TRAIL Reduce stage. Diagnosis: 6 sub-tabs (Budget · Cashflow · Income · Spending · Debt Freedom · Tax) surfacing the same 3 numbers from 3 different endpoints, with the default landing on a "Generate Budget Analysis" CTA instead of the user's actual cashflow. New workstream **Phase 37 — My Budget IA simplification + premium redesign** opened in `IMPLEMENTATION_PLAN.md` (committed earlier on `claude/review-monitrax-docs-SIF9q`). Each phase ships as its own independently revertable PR. This is **PR 1**.
+
+### Changes
+
+- **`components/DashboardLayout.tsx`** — `My Budget` nav item:
+  - Default `href` flipped from `/dashboard/budget-analysis` → `/cashflow` so users land on the answer ("am I OK this month?"), not the configuration screen.
+  - Tax child + matchRoute removed (relocated to My Guide).
+  - Children reordered: **Cashflow first** (default), then Budget · Income · Spending · Debt Freedom.
+  - Income/Spending/Budget retained as sidebar children for now — they collapse into a single "My Plan" tab in PR 3 once `/dashboard/plan` exists. Removing them today would orphan the only place users can add income/spending entries.
+- **`components/DashboardLayout.tsx`** — `My Guide` nav item:
+  - Tax child added as 3rd sibling (after Actions + Health).
+  - `/dashboard/tax` added to matchRoutes so the My Guide tab highlights when the user is on the Tax page.
+- All existing routes preserved — `/dashboard/budget-analysis`, `/dashboard/income`, `/dashboard/expenses`, `/dashboard/debt-planner`, `/dashboard/tax`, `/cashflow` — zero broken bookmarks, deep links, or marketing URLs.
+
+### Why this matters
+
+- **Answer before configuration.** Default tab change from `budget-analysis` → `cashflow` is the single biggest behavioural win in Phase 37 — users now land on their actual financial state instead of a setup CTA.
+- **Tax aligns with TRAIL stage strategy.** Tax-optimisation is a LIVE-stage activity (optimise once stable + growing). Day-to-day tax value will surface via Cashflow tip cards in PR 2; the full `/dashboard/tax` page lives under My Guide for the year-end deep dive. A future My Guide review session will fold non-duplicated tax data into the Actions surface and retire the standalone Tax route — see `IMPLEMENTATION_PLAN.md` Up Next #8.
+- **Net tab reduction.** My Budget: 6 → 5 children. Final 3-tab state lands in PR 3.
+
+### Files modified
+
+- `components/DashboardLayout.tsx` — sidebar config for My Budget + My Guide
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry
+
+### Build status
+
+- [x] TypeScript compilation: PASS (`npx tsc --noEmit` reports zero errors; only a pre-existing tsconfig deprecation warning unrelated to this change)
+- [x] No schema change
+- [x] No destructive Prisma writes (CLAUDE.md §12.11 N/A)
+- [x] No `prisma/schema.prisma` modification (CLAUDE.md §12.12 N/A)
+
+### Risk
+
+**Tiny.** Pure config change in the sidebar render array. Zero calc-engine, API, or data-flow surface touched. Independently revertable in seconds. No user can reach a 404 — every existing route stays alive.
+
+### Phase 37 sequence (each = independently revertable PR)
+
+- [x] **PR 1 — Sidebar IA** (this PR)
+- [ ] PR 2 — Cashflow uplift (TRAIL banner v3 design language)
+- [ ] PR 3 — Extract `<IncomePanel>`, `<SpendingPanel>`, `<BudgetPanel>`; build `/dashboard/plan` (final 3-tab state)
+- [ ] PR 4 — Standalone routes use the extracted panels
+- [ ] PR 5 — Debt Freedom uplift
+- [ ] PR 6 — Tax tab landing under My Guide (sidebar already done in PR 1; this is the supporting page-level adjustments)
+- [ ] PR 7 — Telemetry + soft-retire window
