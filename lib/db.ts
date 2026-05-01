@@ -155,6 +155,33 @@ function getOrInitConnectorClient(): Promise<PrismaClient> {
   return globalForPrisma.prismaInitPromise;
 }
 
+// Detects pg/Node TLS errors that almost certainly mean Cloud SQL is
+// rejecting the ephemeral client cert at handshake (TLS alert 42 /
+// bad_certificate). Documented in
+// docs/operational/security/04_WIF_TROUBLESHOOTING.md §3.G.
+function isTlsHandshakeError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const code = (err as { code?: string }).code;
+  const message = (err as { message?: string }).message ?? '';
+  if (typeof code === 'string' && code.startsWith('ERR_SSL_')) return true;
+  return /tls alert|bad[_ ]certificate|ssl3_read_bytes/i.test(message);
+}
+
+function wrapTlsHandshakeError(err: unknown, where: string): Error {
+  const original = err instanceof Error ? err : new Error(String(err));
+  const wrapped = new Error(
+    `Cloud SQL TLS handshake rejected during ${where}. The ephemeral client ` +
+      `cert was minted by SQL Admin but the instance refused it. ` +
+      `Most likely: (1) instance flag cloudsql.iam_authentication is OFF, ` +
+      `(2) SA is missing roles/cloudsql.instanceUser, or ` +
+      `(3) CLOUD_SQL_CONNECTION_NAME doesn't match the actual instance. ` +
+      `See docs/operational/security/04_WIF_TROUBLESHOOTING.md §3.G for ` +
+      `the verification commands. Original: ${original.message}`,
+  );
+  (wrapped as Error & { cause?: unknown }).cause = original;
+  return wrapped;
+}
+
 // Proxy handler that defers all property access until the underlying
 // PrismaClient has been initialised. Matches the two access patterns the
 // codebase uses:
@@ -172,7 +199,14 @@ const lazyConnectorHandler: ProxyHandler<PrismaClient> = {
         if (typeof fn !== 'function') {
           throw new TypeError(`prisma.${String(prop)} is not a function`);
         }
-        return (fn as (...a: unknown[]) => unknown).apply(client, args);
+        try {
+          return await (fn as (...a: unknown[]) => unknown).apply(client, args);
+        } catch (err) {
+          if (isTlsHandshakeError(err)) {
+            throw wrapTlsHandshakeError(err, `prisma.${String(prop)}()`);
+          }
+          throw err;
+        }
       },
       get: (_t, methodProp) => {
         if (typeof methodProp === 'symbol') return undefined;
@@ -186,7 +220,17 @@ const lazyConnectorHandler: ProxyHandler<PrismaClient> = {
           if (typeof fn !== 'function') {
             throw new TypeError(`prisma.${String(prop)}.${String(methodProp)} is not a function`);
           }
-          return (fn as (...a: unknown[]) => unknown).apply(namespace, args);
+          try {
+            return await (fn as (...a: unknown[]) => unknown).apply(namespace, args);
+          } catch (err) {
+            if (isTlsHandshakeError(err)) {
+              throw wrapTlsHandshakeError(
+                err,
+                `prisma.${String(prop)}.${String(methodProp)}()`,
+              );
+            }
+            throw err;
+          }
         };
       },
     });

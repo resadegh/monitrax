@@ -110,6 +110,92 @@ cold start.
 - **Fix:** Import the server-only file directly from API routes /
   server components, never via a barrel that's also used by client code.
 
+### G. `ERR_SSL_SSL/TLS_ALERT_BAD_CERTIFICATE` (TLS alert 42) on `prisma.$queryRaw` / first query
+
+```
+PrismaClientKnownRequestError: ... C0D85FC5...:error:0A000412:SSL routines:
+ssl3_read_bytes:ssl/tls alert bad certificate:ssl/record/rec_layer_s3.c:912:
+SSL alert number 42
+code: 'ERR_SSL_SSL/TLS_ALERT_BAD_CERTIFICATE'
+```
+
+- **Where in the chain:** Token retrieval, STS exchange, SA impersonation,
+  and SQL Admin cert minting **all succeeded**. The failure is at the
+  mutual-TLS handshake between the Cloud SQL Connector and the instance.
+  Specifically, the **server** (the Cloud SQL instance) is sending TLS
+  alert 42, which means it received a client certificate it considers
+  invalid for this kind of connection.
+- **Cause:** With `authType: AuthTypes.IAM`, the connector mints a
+  cert tied to the impersonated SA's IAM identity. The instance rejects
+  that cert at TLS layer if any of the following is true:
+
+  1. The instance flag `cloudsql.iam_authentication` is **OFF**. IAM
+     authentication is opt-in per instance — without it, the instance
+     refuses IAM-issued certs at the handshake.
+  2. The SA is missing `roles/cloudsql.instanceUser` at the project
+     level. `roles/cloudsql.client` alone is enough to mint the cert
+     but not enough for the instance to accept it for IAM-mode auth.
+  3. `CLOUD_SQL_CONNECTION_NAME` env var has a typo — the cert was
+     minted for instance A but the connector is opening a TCP socket
+     to instance B (so the server hostname doesn't match the cert's
+     intended target).
+  4. The Cloud SQL instance was created **before** IAM authentication
+     was supported and never had the flag toggled, OR was restored
+     from a backup that lost the flag.
+
+- **Fix — verification commands** (run all of these; whichever fails or
+  shows an unexpected value is your culprit):
+
+  ```bash
+  PROJECT=monitrax-479700
+  SA=vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com
+  INSTANCE=monitrax-db-prod  # adjust if different
+
+  # 1. Confirm instance name and connection-name format
+  gcloud sql instances describe "$INSTANCE" --project="$PROJECT" \
+    --format="value(connectionName,state,ipAddresses[].ipAddress)"
+  # Expected: matches CLOUD_SQL_CONNECTION_NAME env var EXACTLY,
+  # state=RUNNABLE, has a public IP.
+
+  # 2. Confirm IAM authentication flag is ON
+  gcloud sql instances describe "$INSTANCE" --project="$PROJECT" \
+    --format="value(settings.databaseFlags)" | tr ',' '\n' | grep -i iam
+  # Expected: cloudsql.iam_authentication=on
+  # If empty or =off → fix with:
+  gcloud sql instances patch "$INSTANCE" --project="$PROJECT" \
+    --database-flags=cloudsql.iam_authentication=on
+  # NOTE: this restarts the instance (~30-60s downtime).
+
+  # 3. Confirm both required IAM roles on the SA
+  gcloud projects get-iam-policy "$PROJECT" \
+    --flatten="bindings[].members" \
+    --filter="bindings.members:serviceAccount:$SA" \
+    --format="value(bindings.role)" | sort -u
+  # Expected to include BOTH:
+  #   roles/cloudsql.client
+  #   roles/cloudsql.instanceUser
+
+  # 4. Confirm the SA exists as a Cloud SQL IAM user on the instance
+  gcloud sql users list --instance="$INSTANCE" --project="$PROJECT"
+  # Expected to include a row with type=CLOUD_IAM_SERVICE_ACCOUNT
+  # and name=vercel-monitrax-db@monitrax-479700.iam
+  # (note: .gserviceaccount.com suffix is stripped in the user name)
+
+  # 5. Confirm SQL Admin API enabled
+  gcloud services list --enabled --project="$PROJECT" \
+    --filter="config.name~sqladmin"
+  # Expected: sqladmin.googleapis.com enabled
+  ```
+
+- **Most common single fix:** step 2 — toggling
+  `cloudsql.iam_authentication=on`. The flag must be set on the
+  instance you're connecting to. A `patch` triggers a short instance
+  restart, after which the next cold-start cert handshake succeeds.
+
+- **Rollback while diagnosing:** flip
+  `USE_CLOUD_SQL_CONNECTOR=false` in Vercel Production env (see §4).
+  Site is restored in <30s while you work the GCP side.
+
 ---
 
 ## 4. Rollback procedure
@@ -141,4 +227,4 @@ If the runbook above does not resolve the issue within 15 minutes:
 
 ---
 
-*Last Updated: 2026-04-30*
+*Last Updated: 2026-05-01*
