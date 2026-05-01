@@ -378,22 +378,11 @@ export function TrailStageIndicator() {
       {/* Inner content */}
       <div className="relative px-6 pt-6 pb-7 sm:px-8 sm:pt-7 sm:pb-8">
         {/* === Header === */}
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-foreground/60" aria-hidden />
-            <h3 className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-              Your TRAIL
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={handleCtaClick}
-            className="group/cta inline-flex items-center gap-1.5 rounded-full border border-foreground/10 bg-background/40 px-3 py-1.5 text-xs font-medium text-foreground/80 backdrop-blur transition-colors hover:bg-background/70 hover:text-foreground"
-            aria-label={`Open ${spotlight.name} page`}
-          >
-            Open {spotlight.name}
-            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/cta:translate-x-0.5" />
-          </button>
+        <div className="mb-6 flex items-center gap-3">
+          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-foreground/60" aria-hidden />
+          <h3 className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+            Your TRAIL
+          </h3>
         </div>
 
         {/* === Stage tabs === */}
@@ -426,7 +415,7 @@ export function TrailStageIndicator() {
             const isSelected = selected === i;
 
             return (
-              <div key={stage.letter} className="relative flex flex-1 items-center justify-center">
+              <div key={stage.letter} className="relative flex flex-1 min-w-0 items-center justify-center px-1">
                 <motion.button
                   type="button"
                   role="tab"
@@ -440,7 +429,7 @@ export function TrailStageIndicator() {
                   whileHover={reduced ? undefined : { scale: 1.08 }}
                   whileTap={reduced ? undefined : { scale: 0.96 }}
                   transition={springy}
-                  className="group relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-background/60 backdrop-blur-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:ring-foreground/40"
+                  className="group relative flex h-12 w-12 sm:h-16 sm:w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-background/60 backdrop-blur-md outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:ring-foreground/40"
                 >
                   {/* Glow halo */}
                   <AnimatePresence>
@@ -471,11 +460,10 @@ export function TrailStageIndicator() {
 
                   {/* Letter (or check) */}
                   {isCompleted && !isSpotlit ? (
-                    <CheckCircle2 className="h-6 w-6 text-foreground/60" />
+                    <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-foreground/60" />
                   ) : (
                     <span
-                      className={`select-none bg-gradient-to-br bg-clip-text text-2xl sm:text-3xl font-extrabold tracking-tight text-transparent ${stage.textGradient}`}
-                      style={{ WebkitTextStroke: isSpotlit ? '0px' : undefined }}
+                      className={`select-none bg-gradient-to-br bg-clip-text text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-transparent ${stage.textGradient}`}
                     >
                       {stage.letter}
                     </span>
