@@ -19,6 +19,7 @@
 8. [Troubleshooting](#8-troubleshooting)
 9. [Cost monitoring + budget alerts](#9-cost-monitoring--budget-alerts)
 10. [Quarterly review checklist](#10-quarterly-review-checklist)
+11. [Review history](#11-review-history)
 
 ---
 
@@ -213,6 +214,21 @@ Frontend key's referrer allowlist is missing your current domain. Add the exact 
 
 Frontend key has Maps Embed enabled but Places API is missing from API restrictions, OR Places API isn't enabled on the project. Both must be in place.
 
+### "Maps Platform API Key" reactivation (post-disable rollback)
+
+> **Context:** On 2026-05-02 the legacy *"Maps Platform API Key"* (auto-created 10 Dec 2025, originally unrestricted across 32 APIs) was **soft-disabled by restricting it to only "Cloud Resource Manager API"** — a service Maps doesn't use, effectively killing all Maps calls without deleting the key. This was done because (a) Vercel had no env var referencing it, (b) a `grep` of the codebase found no matches, (c) Maps Platform metrics showed no Maps usage attributable to it. See §11 Review History for the full incident record.
+>
+> **If something Maps-related breaks during the 24-hour observation window**, follow this rollback:
+>
+> 1. GCP Console → Credentials → click into **Maps Platform API Key**
+> 2. **API restrictions** → either:
+>    - Toggle to **"Don't restrict key"** (full reversal — restores all 32 APIs), OR
+>    - Toggle to **Restrict key** + tick the specific API the failure points to (preferred — narrows restoration to only what's needed)
+> 3. **SAVE**. Changes take ~5 minutes to propagate (Google's edge cache).
+> 4. Re-test the failing surface. If still broken after 5 minutes, the issue is unrelated to this key — restore restrictions and investigate elsewhere.
+>
+> **Regardless of rollback**, the goal is: by 2026-05-15 (or once stability is confirmed), the over-permissioned legacy key should be **deleted**, replaced by the properly-scoped frontend + backend split documented in §3 and §5.
+
 ---
 
 ## 9. Cost monitoring + budget alerts
@@ -264,8 +280,12 @@ Document the review by adding a dated line to this file under a **Review history
 
 ---
 
-## Review history
+## 11. Review history
 
-*(Add dated entries here after each quarterly review. Format: `2026-MM-DD — [name] — findings`.)*
+*(Add dated entries here after each quarterly review or material configuration change. Format: `YYYY-MM-DD — [name] — findings`.)*
 
-- *2026-05-02 — Claude — initial runbook created (Phase 38 follow-up after user reported "API not activated" error on property detail page).*
+- **2026-05-02 (initial creation)** — Claude — runbook drafted as Phase 38 follow-up after user reported *"API not activated"* error on property detail page. Established the §5 frontend + backend key split, restriction recipes, and quarterly review checklist.
+- **2026-05-02 (frontend key restrictions confirmed + backend key created)** — Reza + Claude — `Monitrax Maps Frontend` key (`AIzaSy…vrTrNE`) confirmed as `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` with HTTP-referrer restrictions across 4 Maps APIs (Maps Embed + Maps JavaScript + Places + Places New). Property iframe + address autocomplete confirmed working post-API-enablement. **Pending follow-up:** rotate this key once setup is stable — original value was momentarily visible in a Vercel screenshot during this session, so the value is in conversation logs (low risk while pre-launch, must be done before paying users).
+- **2026-05-02 (backend key)** — Created **`Monitrax Maps Backend (Geocoding only)`** with no application restrictions + Geocoding API only. Added to Vercel as `GOOGLE_MAPS_API_KEY` (no `NEXT_PUBLIC_` prefix), all environments. Closes a silent breakage where `/api/geocode` and `lib/google/maps.ts` server functions had been logging `"GOOGLE_MAPS_API_KEY not configured"` — backend Geocoding had never been wired since the codebase moved to GCP.
+- **2026-05-02 (legacy "Maps Platform API Key" soft-disabled)** — Audit found a fifth pre-existing key, *"Maps Platform API Key"*, auto-created 10 Dec 2025 with no restrictions across 32 APIs. Vercel env-var search found no reference; a `grep` of the codebase (`grep -rln "AIza…" . --exclude-dir=node_modules`) found no matches; Maps Platform Metrics dashboard showed zero Maps activity attributable to it (the only Places API traffic — 87/256 month-to-date — is consistent with normal frontend-key autocomplete usage). Decision: **soft-disable rather than hard-delete**, in case a non-obvious caller surfaces during the observation window. Disable mechanism: API restrictions reset to **Restrict key** with **only Cloud Resource Manager API** ticked — a service Maps does not use, which makes the key unable to call any Maps API while leaving the key row intact for instant re-enablement. **Trigger to delete permanently: 24 hours of no Maps regressions (≥ 2026-05-03), OR escalate to ≥ 2026-05-15 hard-delete window if extra caution wanted.** See §8 Troubleshooting for the rollback procedure if anything breaks during the wait.
+- **Open follow-up — `MonitraxGemini` audit.** Same screenshot revealed a separate unrestricted key (warning icon) named `MonitraxGemini`. Same audit pattern recommended: check usage on the Gemini API metrics dashboard, soft-disable if unused, then narrow restrictions to "Generative Language API" only if used. Tracked in `docs/IMPLEMENTATION_PLAN.md` Tech Debt backlog.
