@@ -36,6 +36,7 @@ import {
   INCOME_TYPE_LABELS,
 } from '@/lib/categories/unified';
 import { CategorySelect } from '@/components/categories/CategorySelect';
+import { FormDocumentUpload, type FieldMapping } from '@/components/documents/FormDocumentUpload';
 import { formatCurrency } from '@/lib/utils/formatters';
 
 interface Transaction {
@@ -211,6 +212,18 @@ export function TransactionLinkDialog({
   const [isRecurringInvestment, setIsRecurringInvestment] = useState(false);
   const [investmentFrequency, setInvestmentFrequency] = useState('MONTHLY');
 
+  // Document attachment (Phase 38 follow-up 2026-05-02).
+  // FormDocumentUpload uploads via the canonical /api/documents/analyze-for-form
+  // endpoint (Phase 25 DME-backed), which:
+  //   • creates the Document row (so the receipt lands in My Vault)
+  //   • runs Phase 26 OCR + Gemini analysis
+  //   • returns extracted field mappings we can use to auto-fill the form
+  // After the user submits the Create form and the new expense/income exists,
+  // we link the document to that entity via /api/documents/[id]/link
+  // (entityType: EXPENSE / INCOME). Net effect: receipt is in the Vault,
+  // tagged + linked correctly, and visible from both surfaces.
+  const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
+
   // Link options removed - linking now only tags transactions (budget vs actual model)
 
   // Load matches when dialog opens
@@ -236,6 +249,9 @@ export function TransactionLinkDialog({
       setInvestmentContributionAccountId(null);
       setIsRecurringInvestment(false);
       setInvestmentFrequency('MONTHLY');
+      // Reset doc attachment per-transaction — never carry a stale doc ID
+      // into the next transaction's create flow (would link the wrong receipt).
+      setAttachedDocumentId(null);
       setSameVendorTransactions([]);
       setSelectedVendorTransactions(new Set());
       setLearnedCategory(null);
@@ -500,6 +516,36 @@ export function TransactionLinkDialog({
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
+
+      // Phase 38 follow-up — if the user attached a receipt via
+      // FormDocumentUpload, link it to the newly-created expense/income now
+      // that we have the entity ID. The Document row already exists in the
+      // Vault (created during upload); this only adds the DocumentLink so it
+      // appears under the right entity. Failure is non-fatal — the doc is
+      // still in the Vault, we just surface a soft error to the user.
+      if (attachedDocumentId && data?.created?.id && data?.created?.type) {
+        const linkedEntityType =
+          data.created.type === 'expense' ? 'EXPENSE' : 'INCOME';
+        try {
+          await fetch(`/api/documents/${attachedDocumentId}/link`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              entityType: linkedEntityType,
+              entityId: data.created.id,
+            }),
+          });
+        } catch (linkErr) {
+          // Non-blocking — log but don't reverse the create
+          console.warn(
+            '[TransactionLinkDialog] Document link to entity failed (doc still in Vault):',
+            linkErr
+          );
+        }
+      }
 
       setSuccess(data.message);
 
@@ -1119,6 +1165,60 @@ export function TransactionLinkDialog({
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       placeholder={isIncome ? 'Income name' : 'Expense name'}
+                    />
+                  </div>
+
+                  {/* Phase 38 follow-up (2026-05-02) — Receipt attachment.
+                      Drop a file here, the canonical Phase 25 DME upload
+                      runs (storage routing, category inference, auto-link)
+                      and Phase 26 OCR + Gemini analysis returns extracted
+                      fields we use to auto-fill name/category/etc below.
+                      The Document row lands in My Vault immediately;
+                      after submit, we link it to the newly-created
+                      expense/income via /api/documents/[id]/link. */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      Receipt or document
+                      <span className="text-xs font-normal text-muted-foreground">
+                        Optional — drop one and we&apos;ll auto-fill below
+                      </span>
+                    </Label>
+                    <FormDocumentUpload
+                      formType={isIncome ? 'income' : 'expense'}
+                      onFieldsExtracted={(mappings: Record<string, FieldMapping>) => {
+                        // Auto-fill the form with extracted values. Each
+                        // call setter only fires if the user hasn't already
+                        // typed something — we don't overwrite their input.
+                        const get = (k: string) => mappings[k]?.value;
+                        const vendor = get('vendor') ?? get('payee') ?? get('source');
+                        if (typeof vendor === 'string' && !newName) {
+                          setNewName(vendor);
+                        }
+                        const cat = get('category');
+                        if (typeof cat === 'string' && !newCategory) {
+                          setNewCategory(cat);
+                          setIsCustomCategory(false);
+                        }
+                        // FormDocumentUpload also returns isTaxDeductible
+                        // and isEssential heuristics for receipts; trust
+                        // them only when the user is on the GENERAL source
+                        // (otherwise the source-type defaults take priority).
+                        if (sourceType === 'GENERAL' && !isIncome) {
+                          const taxFlag = get('isTaxDeductible');
+                          if (typeof taxFlag === 'boolean') setIsTaxDeductible(taxFlag);
+                          const essentialFlag = get('isEssential');
+                          if (typeof essentialFlag === 'boolean') setIsEssential(essentialFlag);
+                        }
+                      }}
+                      onDocumentAttached={(documentId: string) => {
+                        setAttachedDocumentId(documentId);
+                      }}
+                      onError={(msg: string) => {
+                        // Non-blocking — surface as info; the user can still
+                        // submit without an attachment.
+                        console.warn('[TransactionLinkDialog] doc upload error:', msg);
+                      }}
+                      compact
                     />
                   </div>
 
