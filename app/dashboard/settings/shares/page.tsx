@@ -112,10 +112,17 @@ export default function ManageSharesPage() {
     if (!revokeTarget || !token) return;
     setRevoking(true);
     try {
-      const res = await fetch(`/api/share/${revokeTarget.id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // Phase 38 PR 3 fix (post-deploy): DELETE endpoint identifies the
+      // share by token (Next.js requires a single slug name per path
+      // segment, so [id] and [token] couldn't coexist under /api/share/).
+      // Auth + the userId clause in the WHERE preserve ownership.
+      const res = await fetch(
+        `/api/share/${encodeURIComponent(revokeTarget.token)}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       if (!res.ok) throw new Error('Revoke failed');
       setRevokeTarget(null);
       await fetchShares();
