@@ -1019,3 +1019,46 @@ After merging PR #577 (Share Pass + folder-view restyle), Reza flagged that the 
 **Future expansion still accommodated** by the Share Pass schema:
 - Option E (Xero/MYOB direct push) — add to `deliveryMethod` enum.
 - Other content types (Reports, property summaries, net-worth snapshots) — add to `contentType` enum.
+
+---
+
+## End-of-day summary — 2026-05-01
+
+**Eight PRs shipped today across Phase 37 + Phase 38 + supporting infrastructure.** Recording in this single block so a future session can skim the day's outcomes without scrolling through every per-PR section above.
+
+### Merged PRs
+
+| # | Title | Phase | Notes |
+|---|---|---|---|
+| **#574** | Phase 37 final — My Budget IA + Apple-typography heroes | 37 | Mega-PR bundling PRs 1-6. Sidebar 6→3 tabs · default landing → `/cashflow` · Tax to My Guide · `/dashboard/plan` hub · Cashflow + Debt Freedom heroes uplifted. Apple-typography refinement landed mid-flight (number-as-hero, isolated colour, muted sentence). |
+| **#575** | Phase 38 PR 1 — My Vault IA + visual uplift + Smart Inbox count | 38 | Documents elevated to top-level "My Vault" sidebar item with `Archive` icon. `/dashboard/vault` alias. Apple-typography hero with FY counter. Smart Inbox glass card surfacing untagged-doc count. |
+| **#576** | Phase 38 PR 2 — Smart Inbox interactive + universal upload audit | 38 | Smart Inbox expandable with one-tap Confirm + Open per row. AI summary line per doc. Upload audit identified ONE legacy bypass; deferred refactor. |
+| **#577** | Phase 38 PR 3 — Send to accountant Share Pass + folder view restyle | 38 | `SharePackage` schema + 6 API routes (auth + public). `SendToAccountantDialog` modal. Public `/share/[token]` page (minimal aesthetic). Manage Shares at `/dashboard/settings/shares`. Folder view + toolbar Card chrome → glass surfaces. Hit Vercel routing conflict mid-deploy (`[id]` vs `[token]` slug); collapsed DELETE into `[token]`. |
+| **#578** | Phase 38 PR 2.5 + PR 4 + FolderTree restyle | 38 | Hook-level upload migration to canonical DME (`buildDmeFormData` + `LINK_FIELD_BY_ENTITY` translation) — closes tech-debt #12 without touching the 2,031-LOC ExpenseDialog. Tax-status lens on FolderTree. FolderTree internals visual redesign (Apple typography, glass active-row, tabular-nums badges). Hit TS TDZ error mid-deploy (state declared after `useCallback` that referenced it); hoisted to top of component. |
+
+Plus the supporting work:
+- **Session-expiry UX hardening** (`SessionExpiryHandler` global fetch wrapper for stale-token 401 recovery — companion to the existing 30-min `IdleTimeoutGuard`).
+- **Home TRAIL banner v3 — premium redesign** (`TrailStageIndicator.tsx` rewritten on framer-motion v12 with Apple grammar — established the design language that every Phase 37 + 38 surface extends).
+- **WIF Phase 9 + 10 closure** — Production DB now serves 100% of traffic via Workload Identity Federation. Phase 11 (legacy `buildStandardPrisma()` removal + `DATABASE_URL` runtime scope removal) queued for ≥ 2026-05-31.
+- **Dead-code audit + soft-delete pass** — 22 surfaces audited, three soft-deleted (`/api/auth/login`, `/api/auth/register`, `components/onboarding/linear/`). Hard-delete window opens 2026-05-15.
+
+### Hard constraints honoured across all PRs
+
+- Zero new calc engines (every Phase 37 + 38 number sourced from existing canonical engines)
+- Zero data duplication (single `Document` row per file; share rows reference IDs)
+- Zero new APIs except those explicitly tracked (Phase 38 PR 3 = 6 new endpoints all share-related; nothing else)
+- All existing routes preserved (deep-link / bookmark / marketing-URL compatibility)
+- TypeScript clean on every PR (`npx tsc --noEmit` zero errors; only pre-existing tsconfig deprecation warning unrelated)
+- Schema + migration shipped together (Phase 38 PR 3 added `SharePackage` per CLAUDE.md §12.12)
+- No destructive Prisma writes (CLAUDE.md §12.11 N/A — only INSERTs and soft-update via `revokedAt` / `deletedAt`)
+- Design language extends Home TRAIL banner v3 — same `appleEase`, glassmorphic 28px tokens, framer-motion v12 grammar. Zero new design tokens, zero new dependencies.
+- CDR §13.5 chain-of-custody on every Share Pass state transition (CREATE / READ / EXPORT / DELETE) audit-logged with `entityType='SharePackage'`.
+
+### Continuation tomorrow
+
+1. **My Guide simplification + Tax → Actions consolidation** (Up Next #8). Compare `/dashboard/cfo` Tax Position card vs `/dashboard/tax` page surfaces. Fold non-duplicated data into Actions; retire standalone Tax route. Hard rule: Tax engine stays canonical; Actions just renders its outputs (CLAUDE.md §12.2). Reza screenshots 2026-05-01 captured the surface comparison.
+2. **Onboarding wizard PR 3c** (Up Next #7). Data source hygiene — staleness indicators, upgrade-this-account button, balance age heat-map.
+3. **Phase 11 — WIF fallback removal** (Up Next #1). Drop `buildStandardPrisma()` from `lib/db.ts`; remove `DATABASE_URL` from runtime env scope (keep build scope for `prisma migrate deploy`); disable / drop `monitrax_user`. Trigger: ≥ 2026-05-31 (30 days of Phase 9 stability).
+4. **Phase 38 future expansion — Option E** (Xero / MYOB direct push). Schema-ready via `SharePackage.deliveryMethod` enum extension. Trigger: post-launch telemetry on share-link usage, pick the platform with highest user-share volume first.
+
+Quiet-state goals for tomorrow: My Guide simplification = primary, the rest queued.
