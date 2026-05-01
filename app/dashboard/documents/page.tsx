@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,6 +46,10 @@ import {
   Building2,
   Sparkles,
   Inbox,
+  ChevronDown as ChevronDownIcon,
+  ExternalLink,
+  Check,
+  Loader2,
 } from 'lucide-react';
 import {
   DocumentUploadDropzone,
@@ -76,6 +80,90 @@ function getCurrentAUFinancialYearLabel(now = new Date()): { label: string; star
     startISO: `${fyStartYear}-07-01T00:00:00.000Z`,
     endISO: `${fyEndYear}-07-01T00:00:00.000Z`,
   };
+}
+
+/**
+ * Phase 38 PR 2 — Smart Inbox helpers.
+ *
+ * Extract a one-line summary of what the AI found in a document, suitable
+ * for a compact list-row preview. Pulls vendor / amount / date / period
+ * from `extractedData` based on the document type. Returns a short string
+ * the user can scan in <500ms (Apple-Health-style row density).
+ *
+ * Tolerant of missing keys — never throws, always returns a string.
+ */
+function summariseExtractedData(
+  documentType: string,
+  extractedData: Record<string, unknown> | null
+): string {
+  if (!extractedData) return formatDocumentTypeLabel(documentType);
+  const get = (key: string): string | null => {
+    const v = extractedData[key];
+    if (v == null) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number') return String(v);
+    if (typeof v === 'object' && v !== null && 'value' in v) {
+      const inner = (v as { value: unknown }).value;
+      return inner == null ? null : String(inner);
+    }
+    return null;
+  };
+
+  const vendor = get('vendor') ?? get('payee') ?? get('issuer') ?? get('lender');
+  const amount = get('amount') ?? get('totalAmount') ?? get('total') ?? get('balance');
+  const date = get('date') ?? get('issueDate') ?? get('statementDate');
+  const period = get('period') ?? get('financialYear');
+
+  const formattedAmount = amount && !Number.isNaN(Number(amount))
+    ? new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 2 }).format(Number(amount))
+    : amount;
+
+  const parts = [vendor, formattedAmount, period, date].filter((p): p is string => !!p);
+  if (parts.length === 0) return formatDocumentTypeLabel(documentType);
+  return parts.slice(0, 3).join(' · ');
+}
+
+function formatDocumentTypeLabel(t: string): string {
+  return t
+    .split('_')
+    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/** Confidence dot colour — green ≥0.9, amber ≥0.7, otherwise rose. */
+function confidenceTone(c: number): string {
+  if (c >= 0.9) return 'bg-emerald-500';
+  if (c >= 0.7) return 'bg-amber-500';
+  return 'bg-rose-500';
+}
+
+/**
+ * Action-type labels used on the Smart Inbox confirm button.
+ * Matches the SuggestedActionType enum from the existing Phase 26
+ * intelligence engine. Falls back to a Title-cased version of the
+ * raw action key for any value we haven't explicitly mapped yet.
+ */
+function formatActionLabel(action: string): string {
+  switch (action) {
+    case 'create_expense':
+      return 'Create expense';
+    case 'create_income':
+      return 'Create income';
+    case 'create_loan':
+      return 'Create loan';
+    case 'create_property':
+      return 'Create property';
+    case 'link_to_property':
+      return 'Link to property';
+    case 'link_to_loan':
+      return 'Link to loan';
+    case 'verify_only':
+      return 'Confirm tags';
+    default: {
+      const cleaned = action.replace(/_/g, ' ');
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    }
+  }
 }
 import {
   DropdownMenu,
@@ -494,6 +582,51 @@ export default function DocumentsLibraryPage() {
 
   const reduced = useReducedMotion();
 
+  // Phase 38 PR 2 — Smart Inbox expansion + per-row pending state.
+  // Default expanded when there's stuff to do — Apple's "inbox zero"
+  // pattern (Mail, Reminders): if there's something for you, show it.
+  const [inboxExpanded, setInboxExpanded] = useState(true);
+  // Track which row is mid-confirm so we can disable the buttons +
+  // show a spinner without blocking the rest of the inbox.
+  const [confirmingRowId, setConfirmingRowId] = useState<string | null>(null);
+
+  // One-tap confirm — calls the EXISTING /api/documents/analyze/confirm
+  // endpoint (the same one the FolderView already uses). Picks the
+  // highest-confidence suggested action; if there isn't one, the row
+  // hides the Confirm button and only shows Open.
+  const handleInboxConfirm = useCallback(
+    async (doc: DocumentListItem) => {
+      if (!doc.analysis || confirmingRowId) return;
+      const top = (doc.analysis.suggestedActions ?? [])
+        .slice()
+        .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
+      if (!top) return;
+      setConfirmingRowId(doc.id);
+      try {
+        // The confirm endpoint expects `data` (the prefilled payload).
+        // Phase 26 stores the payload on the analysis as `extractedData`
+        // — we pass it through verbatim. The endpoint validates server-
+        // side, so user-corrected fields are still safe to update.
+        await handleConfirmAnalysis(doc.analysis.id, top.type, doc.analysis.extractedData ?? {});
+      } finally {
+        setConfirmingRowId(null);
+      }
+    },
+    [confirmingRowId, handleConfirmAnalysis]
+  );
+
+  // Open the source file in a new tab — calls the EXISTING signed-URL
+  // endpoint (15-min expiry per documentService.ts).
+  const handleInboxOpen = useCallback(
+    async (doc: DocumentListItem) => {
+      const result = await handleView(doc.id);
+      if (result?.signedUrl) {
+        window.open(result.signedUrl, '_blank', 'noopener');
+      }
+    },
+    [handleView]
+  );
+
   return (
     <DashboardLayout>
       <div className="flex h-[calc(100vh-4rem)]">
@@ -635,12 +768,14 @@ export default function DocumentsLibraryPage() {
               </div>
             </div>
 
-            {/* Phase 38 PR 1 — SMART INBOX. Surfaces docs the AI has
-                analysed but the user hasn't verified yet. Uses the
-                EXISTING documents data (analysis.status === 'COMPLETED'
-                && userVerified === false) — no new endpoint. The full
-                review-and-confirm flow is in PR 2; PR 1 surfaces the
-                count + a clear CTA so users know action is available. */}
+            {/* Phase 38 PR 2 — SMART INBOX (expanded).
+                Surfaces docs where Phase 26 AI has finished analysing but
+                the user hasn't verified yet (analysis.status='COMPLETED'
+                && userVerified=false). Each row offers one-tap confirm
+                (uses the EXISTING /api/documents/analyze/confirm endpoint
+                via handleConfirmAnalysis — the same one the FolderView
+                already uses) and Open (uses the EXISTING signed-URL
+                handleView). Zero new APIs, zero new components. */}
             {awaitingReviewCount > 0 && (
               <motion.div
                 initial={reduced ? false : { opacity: 0, y: 8 }}
@@ -650,7 +785,14 @@ export default function DocumentsLibraryPage() {
                 }
                 className="relative isolate overflow-hidden rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] backdrop-blur-md"
               >
-                <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                {/* Header — clickable to expand/collapse */}
+                <button
+                  type="button"
+                  onClick={() => setInboxExpanded((v) => !v)}
+                  className="w-full p-5 sm:p-6 flex items-center gap-4 text-left hover:bg-amber-500/[0.03] transition-colors"
+                  aria-expanded={inboxExpanded}
+                  aria-controls="smart-inbox-list"
+                >
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
                     <Inbox className="h-5 w-5" />
                   </div>
@@ -666,14 +808,129 @@ export default function DocumentsLibraryPage() {
                         <Sparkles className="h-3 w-3 mr-1" />
                         AI ready
                       </Badge>
+                      <Badge
+                        variant="secondary"
+                        className="bg-background/60 border-border/50 font-medium text-[11px] tabular-nums"
+                      >
+                        {awaitingReviewCount}
+                      </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground leading-relaxed">
                       {awaitingReviewCount === 1
-                        ? "We've analysed 1 document — open it below to confirm the suggested tags."
-                        : `We've analysed ${awaitingReviewCount} documents — open any one below to confirm the suggested tags.`}
+                        ? "We've extracted the tags for 1 document — confirm or open below."
+                        : `We've extracted the tags for ${awaitingReviewCount} documents — confirm or open below.`}
                     </p>
                   </div>
-                </div>
+                  <motion.div
+                    animate={{ rotate: inboxExpanded ? 180 : 0 }}
+                    transition={reduced ? { duration: 0 } : { duration: 0.3, ease: APPLE_EASE }}
+                    className="shrink-0 text-muted-foreground"
+                  >
+                    <ChevronDownIcon className="h-5 w-5" />
+                  </motion.div>
+                </button>
+
+                {/* Expanded list — one row per pending doc */}
+                <AnimatePresence initial={false}>
+                  {inboxExpanded && (
+                    <motion.div
+                      id="smart-inbox-list"
+                      initial={reduced ? false : { height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={reduced ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                      transition={
+                        reduced
+                          ? { duration: 0 }
+                          : { duration: 0.45, ease: APPLE_EASE }
+                      }
+                      className="overflow-hidden"
+                    >
+                      <div className="border-t border-amber-500/15 px-2 sm:px-3 pb-3">
+                        {awaitingReview.map((doc, idx) => {
+                          const a = doc.analysis!;
+                          const summary = summariseExtractedData(
+                            a.documentType,
+                            a.extractedData
+                          );
+                          const topAction = (a.suggestedActions ?? [])
+                            .slice()
+                            .sort((x, y) => (y.confidence ?? 0) - (x.confidence ?? 0))[0];
+                          const confirmLabel = topAction
+                            ? formatActionLabel(topAction.type)
+                            : null;
+                          const isConfirming = confirmingRowId === doc.id;
+
+                          return (
+                            <motion.div
+                              key={doc.id}
+                              initial={reduced ? false : { opacity: 0, x: -6 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={
+                                reduced
+                                  ? { duration: 0 }
+                                  : { duration: 0.35, ease: APPLE_EASE, delay: idx * 0.04 }
+                              }
+                              className="group flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 px-3 py-3 mt-1 rounded-xl hover:bg-background/60 transition-colors"
+                            >
+                              {/* Confidence dot + filename + summary */}
+                              <div className="min-w-0 flex-1 flex items-start gap-3">
+                                <div
+                                  className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${confidenceTone(a.overallConfidence)}`}
+                                  title={`Confidence ${(a.overallConfidence * 100).toFixed(0)}%`}
+                                  aria-label={`Confidence ${(a.overallConfidence * 100).toFixed(0)} percent`}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[10px] font-medium uppercase tracking-[0.12em] border-border/50 bg-background/40"
+                                    >
+                                      {formatDocumentTypeLabel(a.documentType)}
+                                    </Badge>
+                                    <span className="text-sm font-medium tracking-[-0.01em] truncate">
+                                      {summary}
+                                    </span>
+                                  </div>
+                                  <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                                    {doc.originalFilename}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Action row */}
+                              <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleInboxOpen(doc)}
+                                  className="h-8 text-[12px] gap-1.5 text-muted-foreground hover:text-foreground"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Open
+                                </Button>
+                                {confirmLabel && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleInboxConfirm(doc)}
+                                    disabled={isConfirming}
+                                    className="h-8 text-[12px] gap-1.5 bg-amber-600 hover:bg-amber-600/90 text-white"
+                                  >
+                                    {isConfirming ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Check className="h-3 w-3" />
+                                    )}
+                                    {isConfirming ? 'Saving' : confirmLabel}
+                                  </Button>
+                                )}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
 
