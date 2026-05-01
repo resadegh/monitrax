@@ -51,11 +51,14 @@ const useConnector =
   process.env.NEXT_PHASE !== 'phase-production-build';
 
 async function buildConnectorPrisma(): Promise<PrismaClient> {
-  const provider = process.env.GCP_WORKLOAD_IDENTITY_PROVIDER;
-  const saEmail = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
-  const instance = process.env.CLOUD_SQL_CONNECTION_NAME;
-  const dbUser = process.env.CLOUD_SQL_DB_USER;
-  const dbName = process.env.CLOUD_SQL_DB_NAME;
+  // Trim env vars defensively — pasted values from Vercel UI have
+  // historically arrived with trailing whitespace that Postgres treats
+  // as a distinct identifier (see CHANGELOG_2026_05_01 §3.J / 28P01).
+  const provider = process.env.GCP_WORKLOAD_IDENTITY_PROVIDER?.trim();
+  const saEmail = process.env.GCP_SERVICE_ACCOUNT_EMAIL?.trim();
+  const instance = process.env.CLOUD_SQL_CONNECTION_NAME?.trim();
+  const dbUser = process.env.CLOUD_SQL_DB_USER?.trim();
+  const dbName = process.env.CLOUD_SQL_DB_NAME?.trim();
 
   const missing = [
     ['GCP_WORKLOAD_IDENTITY_PROVIDER', provider],

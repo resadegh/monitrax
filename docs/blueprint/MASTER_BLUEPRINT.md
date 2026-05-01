@@ -114,7 +114,7 @@ L — Live         "Live on your terms"                   → My Guide
 | **Backend** | Next.js API Routes, Prisma ORM (with `@prisma/adapter-pg` driver adapter when WIF is enabled) |
 | **Database** | PostgreSQL on **GCP Cloud SQL** (`australia-southeast1`, Sydney). Migrated off Render 2026-04-10. |
 | **Authentication (app users)** | GCP Identity Platform / Firebase Auth (MFA, OAuth, Token Verification) |
-| **Authentication (DB)** | **Workload Identity Federation + Cloud SQL Connector + IAM database authentication** (Phase 8 of WIF, 2026-04-30). Vercel runtime OIDC token → STS → impersonated SA access token → IAM-authenticated Postgres session. No long-lived password in env vars. Legacy `DATABASE_URL` path kept as fallback until Phase 10 completes. |
+| **Authentication (DB)** | **Workload Identity Federation + Cloud SQL Connector + IAM database authentication — ACTIVE in Production since 2026-05-01 (Phase 9 cutover complete)**. Per-request Vercel OIDC token (read from `x-vercel-oidc-token` header) → STS → impersonated SA access token → Cloud SQL Connector TLS tunnel → Postgres IAM auth using the SA token as per-connection password. No long-lived password in any runtime env var. Legacy `DATABASE_URL` path kept as a fallback for the 30-day stabilisation window (until Phase 11) and as the build-time path for `prisma migrate deploy`. |
 | **Deployment** | **Vercel** (frontend + API + DB connection runtime). Render fully decommissioned 2026-04-10 — see `docs/migration/MIGRATION_RENDER_TO_GCP_STEPS.md`. |
 | **File Storage** | Google Cloud Storage (primary), Database (fallback), Local Drive (optional) |
 

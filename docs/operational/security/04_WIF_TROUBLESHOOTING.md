@@ -241,6 +241,49 @@ must be a string
   (2026-05-01). The `Connector` only wraps the socket; the
   application is responsible for the per-connection token.
 
+### J. `Raw query failed. Code: 28P01. Message: password authentication failed for user "..."`
+
+```
+prisma:error
+Invalid `prisma.$queryRaw()` invocation:
+Raw query failed. Code: `28P01`. Message: `password authentication
+failed for user "vercel-monitrax-db@monitrax-479700.iam "`
+```
+
+- **Where in the chain:** TLS ✓, password sent ✓, instance received
+  the connection. Postgres looked up the user identifier and either
+  didn't find it or the IAM token validation failed for that
+  identifier.
+- **First thing to check — trailing whitespace on `CLOUD_SQL_DB_USER`.**
+  In the error message above, look at the closing quote — `iam "` —
+  there's a space before the `"`. That came directly from the
+  `CLOUD_SQL_DB_USER` env var on Vercel having a trailing space
+  (copy-paste artifact). Postgres treats
+  `vercel-monitrax-db@monitrax-479700.iam` and
+  `vercel-monitrax-db@monitrax-479700.iam ` as different identifiers,
+  so the lookup misses the IAM user we registered.
+- **Fix:**
+  1. Vercel → Settings → Environment Variables → edit
+     `CLOUD_SQL_DB_USER` → ensure value is exactly
+     `vercel-monitrax-db@monitrax-479700.iam` with no leading or
+     trailing whitespace. Same audit for `CLOUD_SQL_DB_NAME` and
+     `CLOUD_SQL_CONNECTION_NAME`.
+  2. Code-side hardening: `lib/db.ts` now trims all
+     WIF-related env vars on read to neutralise this class of bug
+     pre-emptively. Once the fix is deployed, future trailing
+     whitespace in those env vars cannot reproduce this failure.
+- **If the env vars are clean and 28P01 still occurs:** confirm
+  the SA is actually a Cloud IAM user on the instance
+  (`gcloud sql users list ...` per §3.G item #4). If the user
+  exists but auth still fails with 28P01, suspect that the IAM
+  token returned by `authClient.getAccessToken()` lacks the
+  `https://www.googleapis.com/auth/sqlservice.login` scope — Cloud
+  SQL Postgres IAM auth specifically requires that scope on the
+  access token; the connector library normally requests it, but
+  custom SA-impersonation chains can drop it. If suspected, add
+  `scopes: ['https://www.googleapis.com/auth/sqlservice.login']`
+  to the `IdentityPoolClient` constructor.
+
 ### I. `Client network socket disconnected before secure TLS connection was established`
 
 - **Cause:** Transient — usually a concurrent request lost the race

@@ -1,6 +1,14 @@
 # Changelog — 2026-05-01
 
-## Session: claude/review-monitrax-docs-GgeVM (afternoon)
+## Session: claude/review-monitrax-docs-GgeVM
+
+### Outcome
+
+**WIF Phase 9 cutover COMPLETE.** Production database authentication is
+now fully on Workload Identity Federation + Cloud SQL Connector + IAM
+database auth, end-to-end. `/api/health` returns 200 with
+`{"status":"healthy","database":"connected"}`; the dashboard loads;
+all API routes 200. No long-lived password is required at runtime.
 
 ### Context
 
@@ -72,39 +80,66 @@ Likely causes (in order of probability):
 
 ### Build Status
 
-- [ ] `npm run build` — pending verification (run before commit)
-- TypeScript-only changes to `lib/db.ts`; no schema change; no
+- [x] `npm run build` — passes
+- [x] TypeScript-only changes to `lib/db.ts`; no schema change; no
   destructive Prisma writes
+- [x] Manually verified end-to-end against Production:
+  `/api/health` → 200, dashboard loads, balances render
 
 ### Commits
 
 | Hash | Message |
 |---|---|
-| (pending) | fix(db): wrap pg TLS handshake errors with runbook pointer; doc §3.G |
+| `5c0229b` | fix(db): wrap pg TLS handshake errors with runbook pointer; doc §3.G |
+| `a29667a` | fix(db): supply SA OAuth token as pg password for Cloud SQL IAM auth |
+| `34e764c` | fix(db): trim WIF env vars on read; runbook §3.J for 28P01 + trailing whitespace |
+| (this commit) | docs: WIF Phase 9 doc sync — mark complete across all references |
 
 ### Operational status (end of session)
 
-- `USE_CLOUD_SQL_CONNECTOR=true` in Vercel Production (kept on per
-  Reza's call — no users, debugging in place)
-- Phase 9 progressed two more layers in this session:
-  1. **§3.G TLS bad_cert resolved** — root cause was that the
-     SA was never registered as a Cloud IAM database user on the
-     instance. Fixed via `gcloud sql users create
-     vercel-monitrax-db@monitrax-479700.iam --type=CLOUD_IAM_SERVICE_ACCOUNT`
-     plus the public-schema grants run from Cloud SQL Studio as
-     `monitrax_user`. This contradicted the ✅ tick on Phase 1 of
-     the WIF workstream — the step was either never run or run
-     against the wrong instance. Phase 1 retroactively re-verified.
-  2. **§3.H SASL no-password surfaced and fixed in code** —
-     after TLS, pg fell through to SCRAM and crashed because
-     no password was ever supplied to the pool. In Cloud SQL IAM
-     mode the password is the SA's OAuth access token; the
-     `Connector` wraps the socket but does NOT inject the token
-     into pg config. Added a `password: async () => authClient
-     .getAccessToken()` callback in `lib/db.ts` so pg fetches a
-     fresh token per connection (handles the ~1h token TTL
-     transparently). Documented in §3.H.
-- Next action: redeploy on Vercel, hit `/api/health`, expect 200.
+- ✅ `USE_CLOUD_SQL_CONNECTOR=true` in Vercel **Production**
+- ✅ `/api/health` returns 200 with
+  `{"status":"healthy","database":"connected"}`
+- ✅ `/dashboard/balances` loads; all API routes 200
+- ✅ No long-lived password in any runtime env var
+- ✅ Cloud Logging shows STS + IAM Credentials calls under
+  `vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com`
+
+### Layer-by-layer status
+
+| Layer | Status |
+|---|---|
+| OIDC token retrieval (per-request header) | ✅ |
+| STS token exchange | ✅ |
+| Service account impersonation | ✅ |
+| SQL Admin API ephemeral cert minting | ✅ |
+| mTLS handshake to Cloud SQL instance | ✅ |
+| Postgres IAM auth (SA token as password) | ✅ |
+| `public`-schema query authorization | ✅ |
+
+### Phase 9 timeline (single-day cutover)
+
+| When | What |
+|---|---|
+| Morning | Cutover attempt blocked by `VERCEL_OIDC_TOKEN not set`. PR #563 (OIDC header + Proxy lazy init) merged. |
+| Early afternoon | After redeploy, surfaced TLS alert 42 / `bad_certificate`. PR #564 commit `5c0229b` added error wrapper + runbook §3.G. |
+| Mid afternoon | Ran §3.G verification commands; found SA was not a Cloud IAM DB user on the instance. `gcloud sql users create` + GRANTs in Cloud SQL Studio as `monitrax_user`. |
+| Late afternoon | Surfaced SASL no-password. PR #564 commit `a29667a` added `password` callback to `pg.Pool` + runbook §3.H. |
+| Early evening | Surfaced 28P01 with trailing space in error. Vercel env var corrected. PR #564 commit `34e764c` added `.trim()` defence + runbook §3.J. |
+| Evening | `/api/health` 200. Phase 9 complete. Doc sync (this commit). |
+
+### Next steps
+
+- **Phase 10** (queued, +24h): remove `0.0.0.0/0` from Cloud SQL
+  authorized networks. Verify connector path still works (it should —
+  Connector uses SQL Admin API + TLS tunnel, not the public auth
+  surface).
+- **Phase 11** (queued, +30 days): drop legacy `buildStandardPrisma()`
+  branch, remove `DATABASE_URL` from runtime env scope (keep build),
+  disable / drop `monitrax_user`.
+- **Side observation:** `/api/health` log shows Edge → `iad1` despite
+  `vercel.json` `regions: ["syd1"]`. Non-blocking — investigate during
+  Phase 10.
 
 ### Refs
 

@@ -2,12 +2,17 @@
 
 BAU operations guide for Monitrax PostgreSQL instances on GCP Cloud SQL.
 
-> **2026-04-30 update:** Application runtime now connects via Workload
-> Identity Federation + Cloud SQL Connector + IAM database authentication
-> (`USE_CLOUD_SQL_CONNECTOR=true`). The legacy `DATABASE_URL` password path
-> is still wired in as a fallback and is the path used by
-> `prisma migrate deploy` at build time. See `lib/db.ts` and
-> `docs/operational/security/04_WIF_TROUBLESHOOTING.md`.
+> **2026-05-01 update:** Application runtime now serves 100% of
+> Production traffic via Workload Identity Federation + Cloud SQL
+> Connector + IAM database authentication
+> (`USE_CLOUD_SQL_CONNECTOR=true`, Phase 9 cutover complete). The
+> legacy `DATABASE_URL` password path is still wired in as a fallback
+> for the 30-day stabilisation window and is the path used by
+> `prisma migrate deploy` at build time. See `lib/db.ts`,
+> `docs/operational/security/04_WIF_TROUBLESHOOTING.md` (runbook
+> §3.A–§3.J for known failure modes), and
+> `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md` §7 for the
+> cutover record.
 
 ---
 
@@ -41,10 +46,13 @@ Via console: **SQL > Instances > monitrax-db-prod > Overview**
 
 ## Connect via psql
 
-> **DEPRECATION NOTE (2026-04-30):** The password-based examples below are
-> legacy. Prefer the IAM-authenticated Cloud SQL Auth Proxy flow for any
-> manual access to production. The application runtime no longer uses a
-> password (see WIF + Connector path in `lib/db.ts`).
+> **DEPRECATION NOTE (updated 2026-05-01):** The password-based examples
+> below are legacy. Prefer the IAM-authenticated Cloud SQL Auth Proxy
+> flow for any manual access to production. The application runtime no
+> longer uses a password — Production has been on the WIF + Connector
+> path since 2026-05-01 (Phase 9 of the WIF workstream). The legacy
+> `monitrax_user` will be disabled in Phase 11 (~30 days after cutover)
+> — after that, the only supported access path is IAM.
 
 ### Preferred — IAM-authenticated Cloud SQL Auth Proxy
 

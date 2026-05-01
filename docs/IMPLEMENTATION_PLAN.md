@@ -6,7 +6,7 @@
 >
 > See CLAUDE.md §1 (Session Startup Protocol) and §15 (Implementation Plan Protocol) for the rules that govern this document.
 
-**Last updated:** 2026-05-01 (late afternoon) — Reza + Claude (WIF Phase 9: OIDC ✓, TLS handshake ✓ after Cloud IAM DB user added + grants, SASL fix in flight — pg now needs the SA OAuth token as password callback)
+**Last updated:** 2026-05-01 (evening) — Reza + Claude (**WIF Phase 9 COMPLETE** — Production now serving 100% via WIF + Cloud SQL Connector + IAM DB auth. Phase 10 queued for +24h.)
 
 ---
 
@@ -32,11 +32,11 @@
 
 ### 1. Step 1a — DB authentication via Workload Identity Federation (WIF)
 
-- **Status:** 🟡 Phase 8 shipped (this PR). Phase 9 next — Reza to flip `USE_CLOUD_SQL_CONNECTOR=true` in Vercel Preview env.
+- **Status:** 🟢 **Phase 9 COMPLETE 2026-05-01** — Production now serving 100% of traffic via WIF + Cloud SQL Connector + IAM DB auth. Phase 10 (remove `0.0.0.0/0`) queued for +24h after stability is observed; Phase 11 (remove fallback path) queued for +30d.
 - **Started:** 2026-04-30
 - **Owner:** Reza (GCP/Vercel ops) + Claude (code)
-- **Last touched:** 2026-04-30 — Phase 8 PR opened (`lib/db.ts` refactor + 6 doc updates + 3 new docs)
-- **Why this matters:** Closes CDR `§3.2` compliance gap (no public IP authorized networks). Implements CLAUDE.md `§13.6` (production DB accessible only via GCP IAM). Eliminates the long-lived password-in-URL fragility that broke prod on 2026-04-30.
+- **Last touched:** 2026-05-01 — Phase 9 cutover landed via PRs #563 + #564; full doc sync this commit (CLAUDE.md §13.6, CDR matrix §3.2, CDR WIF evidence §7, infrastructure §5.5, MASTER_BLUEPRINT identity stack, Cloud SQL ops, migration appendix, IMPLEMENTATION_PLAN, CHANGELOG_2026_05_01).
+- **Why this matters:** Closed CDR `§3.2` DB-tier compliance gap (no long-lived password in env vars; full GCP audit trail under the SA principal; instance auth surface restricted to authenticated IAM identities). Implements CLAUDE.md `§13.6` (production DB accessible only via GCP IAM). Eliminates the long-lived password-in-URL fragility that broke prod on 2026-04-30.
 
 **Phases:**
 - [x] 1 — Service account `vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com` with `Cloud SQL Client` + `Cloud SQL Instance User` roles
@@ -47,8 +47,14 @@
 - [x] 6 — WIF principal bound to service account (`roles/iam.workloadIdentityUser`)
 - [x] 7 — Vercel env vars added (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `CLOUD_SQL_CONNECTION_NAME`, `USE_CLOUD_SQL_CONNECTOR=false`); Vercel OIDC enabled at project level
 - [x] 8 — **Code PR shipped** — `lib/db.ts` refactor with feature-flag branch + `prisma/schema.prisma` `previewFeatures = ["driverAdapters"]` + new packages (`@google-cloud/cloud-sql-connector`, `@prisma/adapter-pg@^5.22.0`, `pg`) + 6 doc updates + 3 new docs (see CHANGELOG_2026_04_30.md). Build green; default flag `false` so merge is zero-risk.
-- [ ] 9 — In Vercel: add `CLOUD_SQL_DB_USER=vercel-monitrax-db@monitrax-479700.iam` and `CLOUD_SQL_DB_NAME=monitrax` to Preview env. Set `USE_CLOUD_SQL_CONNECTOR=true` for Preview. Trigger Preview deploy; load Balances; verify queries succeed; check Cloud Logging for STS + impersonation calls under the SA. Then repeat for Production. **2026-05-01 update:** Cutover attempt on Production blocked by `VERCEL_OIDC_TOKEN not set` despite OIDC Federation appearing configured at the project level. Build-time issue (connector firing during `next build` page-data collection) and IAM Credentials API not yet enabled were also surfaced and corrected. Diagnostic follow-up PR adds (a) build-phase gate so the connector branch never runs during `next build`, and (b) enriched error message that lists the `VERCEL_*` env vars the function actually receives. The diagnostic confirmed the env var is genuinely never injected — that turns out to be **by design**: Vercel delivers the OIDC token as the `x-vercel-oidc-token` request header, NOT as `process.env.VERCEL_OIDC_TOKEN`, which only exists at build time and in `vercel env pull` output (https://vercel.com/docs/oidc/reference). Fix: switch to `getVercelOidcToken()` from `@vercel/oidc` which transparently reads from request context, and lazy-initialise the connector behind a Proxy so the auth flow runs inside a request handler rather than at module load. Pro upgrade is still required (and now in place) because Hobby tier doesn't allow `vercel.json` `regions` (functions were running in `iad1` US-East — diagnosed via `VERCEL_REGION=iad1` in the same dump) — function region is now `syd1`. **2026-05-01 (afternoon) update — PR #563 shipped, NEXT BLOCKER surfaced:** OIDC token retrieval works, STS exchange works, SA impersonation works, SQL Admin API mints the ephemeral client cert. The cert is then **rejected by the Cloud SQL instance at the mTLS handshake** with `ERR_SSL_SSL/TLS_ALERT_BAD_CERTIFICATE` (TLS alert 42, sent by the server). All API routes 401 because every `withPermission()` call hits the DB and the DB throws on connect. Likely causes (in order): (a) instance flag `cloudsql.iam_authentication=on` is missing — required for IAM-mode certs to be accepted; (b) SA is missing `roles/cloudsql.instanceUser` (has `roles/cloudsql.client` only); (c) `CLOUD_SQL_CONNECTION_NAME` typo. Verification commands + fix added to `04_WIF_TROUBLESHOOTING.md` §3.G. While diagnosing: flip `USE_CLOUD_SQL_CONNECTOR=false` for instant rollback (legacy `DATABASE_URL` path is still wired in). Follow-up code change (this PR) wraps the TLS error with a runbook pointer so the next failure log line is unambiguous; also `iad1` region observation in `/api/health` log — `vercel.json` `regions: ["syd1"]` is honoured for normal API routes but health check appears to route via Edge → iad1; not blocking but to be revisited after Phase 9 unblocks. **2026-05-01 (late afternoon) — §3.G RESOLVED, §3.H surfaced and fixed in code:** Verification of items 1–4 in §3.G found item #3 to be the cause — the SA had project-level `roles/cloudsql.client` AND `roles/cloudsql.instanceUser` (✓), instance flag `cloudsql.iam_authentication=on` (✓), connection name correct (✓), but **the SA was never registered as a Cloud IAM database user on the instance itself** — `gcloud sql users list` showed only the legacy `monitrax_user` and `postgres`. Root-caused as Phase 1 of this workstream having been ✅-ticked without the per-instance step actually running. Fixed via `gcloud sql users create vercel-monitrax-db@monitrax-479700.iam --instance=monitrax-db-prod --type=CLOUD_IAM_SERVICE_ACCOUNT`, then granting CONNECT/USAGE/SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER on `public` schema from Cloud SQL Studio as `monitrax_user`. After redeploy, TLS handshake succeeded; new error: `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`. Cause: in Cloud SQL IAM-auth mode, the `password` pg sends is the impersonated SA's OAuth access token. The `Connector` wraps the socket but does NOT inject the token into pg config — the application must do that. Fix (this PR's second commit): added `password: async () => authClient.getAccessToken()` callback to `pg.Pool` in `buildConnectorPrisma()`. Documented in §3.H.
-- [ ] 10 — After 24h of stable production: remove `0.0.0.0/0` from Cloud SQL authorized networks; optionally disable public IP entirely. Then (after 30d): drop the legacy branch from `lib/db.ts`, drop `monitrax_user` Postgres user, remove `DATABASE_URL` from runtime env scope (keep in build env scope for `prisma migrate deploy`).
+- [x] 9 — **COMPLETE 2026-05-01.** Production cutover to `USE_CLOUD_SQL_CONNECTOR=true` with full IAM DB auth chain working end-to-end. The cutover surfaced four issues, all resolved within the day:
+  1. **OIDC token retrieval (PR #563)** — Vercel delivers the OIDC token as the per-request `x-vercel-oidc-token` HTTP header, NOT as `process.env.VERCEL_OIDC_TOKEN` (that env var only exists at build time / in `vercel env pull` output). Switched to `getVercelOidcToken()` from `@vercel/oidc` and added a Proxy-based lazy init so the auth chain runs inside a request context instead of at module load.
+  2. **mTLS handshake / TLS alert 42 (PR #564 + GCP-side fix)** — Server rejected the ephemeral client cert at handshake. Root cause: the SA was never registered as a Cloud IAM **database** user on the instance (Phase 1 had been ✅-ticked but the per-instance `gcloud sql users create ... --type=CLOUD_IAM_SERVICE_ACCOUNT` step was missed). Fixed by creating the user + running `public`-schema GRANTs from Cloud SQL Studio as `monitrax_user`. Documented in `04_WIF_TROUBLESHOOTING.md` §3.G.
+  3. **SCRAM no-password / SASL error (PR #564)** — The Cloud SQL Connector wraps the TLS socket but does NOT inject a Postgres-level password. In IAM-auth mode the password pg must send is the SA's OAuth access token; the application has to supply it. Added `password: async () => authClient.getAccessToken()` callback to `pg.Pool` in `buildConnectorPrisma()` so pg fetches a fresh token per connection. Documented in §3.H.
+  4. **28P01 / trailing whitespace on `CLOUD_SQL_DB_USER` (PR #564)** — Vercel env var had a trailing space from a copy-paste. Postgres treats `...iam` and `...iam ` as different identifiers. Vercel env var corrected; defensive `.trim()` added on all WIF env-var reads in `lib/db.ts`. Documented in §3.J.
+  Pro plan + region pinning to `syd1` confirmed. Separate observation: `/api/health` still routes via Edge → `iad1` despite `vercel.json` `regions: ["syd1"]` (non-blocking; revisit during Phase 10).
+- [ ] 10 — **Queued for +24h after Phase 9 stability is confirmed (target ≥ 2026-05-02).** Remove `0.0.0.0/0` from Cloud SQL `monitrax-db-prod` authorized networks. Verify the Connector path still works after the change (it should — Connector uses SQL Admin API + TLS tunnel, not the public auth surface). Optionally also disable public IP entirely once stable.
+- [ ] 11 — **Queued for +30d (target ≥ 2026-05-31).** Drop the legacy `buildStandardPrisma()` branch from `lib/db.ts`; remove `DATABASE_URL` from the Vercel **runtime** env scope (keep in **build** env scope so `prisma migrate deploy` keeps working); disable / drop the `monitrax_user` Postgres user.
 
 **Risk:** Low. Feature flag default is `false`, so merging the PR is zero-risk — production keeps using `DATABASE_URL` until the flag is flipped. `DATABASE_URL` stays as fallback through Phase 9.
 
@@ -90,9 +96,9 @@
 
 **Risk:** Medium. Phase 2 touches Basiq sync UI which has more state and side effects than the create/edit dialogs.
 
-**Blocking:** Awaiting user testing of Phase 1c/1d in production after WIF stabilises (don't pile UX changes on an unstable DB).
+**Blocking:** Awaiting user testing of Phase 1c/1d in production. **Unblocked 2026-05-01** — WIF Phase 9 cutover is complete and Production DB auth is stable, so Phase 36 Phase 2 can resume next.
 
-**Why this is paused:** WIF (workstream 1) is the higher-priority hardening. We don't want to ship a UX migration into a DB that's still throwing intermittent 401s.
+**Why this was paused:** WIF (workstream 1) was the higher-priority hardening. With Phase 9 now landed, we can ship the remaining UX migration into a stable, IAM-authenticated DB.
 
 ---
 
@@ -100,12 +106,15 @@
 
 | # | Item | Phase / area | Trigger to start |
 |---|---|---|---|
-| 1 | **CMEK (Customer-Managed Encryption Keys)** for Cloud SQL data-at-rest | CDR §3.3 / §5.7 hardening | After WIF Phase 10 lands and is stable |
-| 2 | **Rotate `monitrax_user` DB password** to one without `@`/`%`/`*` (URL-safe), then re-add `connection_limit=1&pool_timeout=20` to `DATABASE_URL` for the fallback path | Connection pooling cleanup | After WIF Phase 9 (so the URL is just a fallback, not the hot path) |
-| 3 | **Phase 36 Phase 2** (above) — full legacy page retirement | UX | After WIF stable + Reza confirms current Phase 1c/1d works in prod |
-| 4 | **Incident Response Plan WIF section** | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | During WIF Phase 8 (folded into the same PR) |
-| 5 | **Apply `connection_limit` via Prisma datasource override (Option α)** instead of URL — only if pool exhaustion still observed after WIF | Perf | Only if needed |
-| 6 | **Onboarding wizard PR 3c** — data source hygiene (staleness indicators, upgrade-this-account button, balance age heat-map) | Phase 12 — see `MASTER_BLUEPRINT.md` line 206 | After current hardening sprint |
+| 1 | **WIF Phase 10** — remove `0.0.0.0/0` from Cloud SQL `monitrax-db-prod` authorized networks; verify Connector path still works | WIF | +24h after Phase 9 stability is confirmed (target ≥ 2026-05-02) |
+| 2 | **WIF Phase 11** — drop legacy `buildStandardPrisma()` branch from `lib/db.ts`; remove `DATABASE_URL` from runtime env scope (keep build scope); disable / drop `monitrax_user` | WIF | +30 days after Phase 9 (target ≥ 2026-05-31) |
+| 3 | **CMEK (Customer-Managed Encryption Keys)** for Cloud SQL data-at-rest | CDR §3.3 / §5.7 hardening | After WIF Phase 10 lands and is stable |
+| 4 | **Rotate `monitrax_user` DB password** to one without `@`/`%`/`*` (URL-safe) — only relevant if we re-enable the fallback path before Phase 11 | Connection pooling cleanup | Optional; default plan is to skip and disable the user in Phase 11 |
+| 5 | **Phase 36 Phase 2** (above) — full legacy page retirement | UX | Now unblocked — Reza confirms current Phase 1c/1d works in prod |
+| 6 | **Incident Response Plan WIF section** | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Next housekeeping pass — capture the Phase 9 cutover lessons formally |
+| 7 | **Apply `connection_limit` via Prisma datasource override (Option α)** instead of URL — only if pool exhaustion still observed after WIF | Perf | Only if needed |
+| 8 | **Onboarding wizard PR 3c** — data source hygiene (staleness indicators, upgrade-this-account button, balance age heat-map) | Phase 12 — see `MASTER_BLUEPRINT.md` line 206 | After current hardening sprint |
+| 9 | **Investigate `/api/health` Edge → `iad1` routing** despite `vercel.json` `regions: ["syd1"]` | WIF Phase 10 follow-up | During Phase 10 work — check if `/api/health` is being statically optimised / Edge-routed |
 
 ---
 
@@ -165,8 +174,11 @@
 
 > Older items roll into `docs/changelog/IMPLEMENTATION_CHANGELOG.md`.
 
+### 2026-05-01
+- **Step 1a Phase 9 — WIF Production cutover COMPLETE.** Production now serves 100% of traffic via Workload Identity Federation + Cloud SQL Connector + IAM database authentication. Four issues surfaced and resolved within the day: (1) PR #563 — OIDC token reading switched to per-request header via `getVercelOidcToken()` + Proxy lazy init; (2) GCP-side fix — created the missing Cloud IAM database user on the instance + ran `public`-schema GRANTs as `monitrax_user`; (3) PR #564 commit `a29667a` — added `password: async () => authClient.getAccessToken()` callback to `pg.Pool` for IAM-mode Postgres auth; (4) PR #564 commit `34e764c` — defensive `.trim()` on all WIF env vars after a trailing-space copy-paste artifact triggered 28P01. Doc sync (this commit): CLAUDE.md §13.6, CDR matrix §3.2, CDR WIF evidence §7 (cutover record), infrastructure §5.5, MASTER_BLUEPRINT identity stack, Cloud SQL ops, migration appendix, IMPLEMENTATION_PLAN, CHANGELOG_2026_05_01, runbook §3.G/§3.H/§3.I/§3.J.
+
 ### 2026-04-30
-- **Step 1a Phase 8 (this PR)** — `lib/db.ts` Cloud SQL Connector branch behind `USE_CLOUD_SQL_CONNECTOR` flag; `previewFeatures = ["driverAdapters"]`; new packages (`@google-cloud/cloud-sql-connector`, `@prisma/adapter-pg@^5.22.0`, `pg`); 6 doc updates (CLAUDE.md §13.6, CDR matrix §3.2, infra §5.5, MASTER_BLUEPRINT, migration appendix, Cloud SQL ops); 3 new docs (`04_WIF_TROUBLESHOOTING.md`, `CDR_WIF_AUTHENTICATION_EVIDENCE.md`, `CHANGELOG_2026_04_30.md`); incidental dead-barrel removal in `lib/portal/index.ts` to unbreak the client bundle. Build green. Default flag value `false` — zero-risk merge.
+- **Step 1a Phase 8 (PR #560)** — `lib/db.ts` Cloud SQL Connector branch behind `USE_CLOUD_SQL_CONNECTOR` flag; `previewFeatures = ["driverAdapters"]`; new packages (`@google-cloud/cloud-sql-connector`, `@prisma/adapter-pg@^5.22.0`, `pg`); 6 doc updates (CLAUDE.md §13.6, CDR matrix §3.2, infra §5.5, MASTER_BLUEPRINT, migration appendix, Cloud SQL ops); 3 new docs (`04_WIF_TROUBLESHOOTING.md`, `CDR_WIF_AUTHENTICATION_EVIDENCE.md`, `CHANGELOG_2026_04_30.md`); incidental dead-barrel removal in `lib/portal/index.ts` to unbreak the client bundle. Build green. Default flag value `false` — zero-risk merge.
 - **PR #559** — `docs/IMPLEMENTATION_PLAN.md` + CLAUDE.md §15 protocol (the live tracker)
 - **Step 1a Phases 4–7** — WIF setup: Workload Identity Pool, OIDC provider, SA binding, Vercel env vars, OIDC federation enabled at project level
 - **Cloud SQL instance-level password policy** enabled (12-char min, complexity, reuse interval, disallow username substring)
