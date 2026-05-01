@@ -6,7 +6,7 @@
 >
 > See CLAUDE.md §1 (Session Startup Protocol) and §15 (Implementation Plan Protocol) for the rules that govern this document.
 
-**Last updated:** 2026-05-01 (evening) — Reza + Claude (**WIF Phase 9 COMPLETE** — Production now serving 100% via WIF + Cloud SQL Connector + IAM DB auth. Phase 10 queued for +24h.)
+**Last updated:** 2026-05-01 (late evening) — Reza + Claude (**WIF Phases 9 + 10 closed.** Phase 9 cutover complete in Production; Phase 10 closed via Option D — IAM compensating control documented; `0.0.0.0/0` retained intentionally with explicit re-evaluation triggers. Phase 11 queued for +30d.)
 
 ---
 
@@ -53,7 +53,7 @@
   3. **SCRAM no-password / SASL error (PR #564)** — The Cloud SQL Connector wraps the TLS socket but does NOT inject a Postgres-level password. In IAM-auth mode the password pg must send is the SA's OAuth access token; the application has to supply it. Added `password: async () => authClient.getAccessToken()` callback to `pg.Pool` in `buildConnectorPrisma()` so pg fetches a fresh token per connection. Documented in §3.H.
   4. **28P01 / trailing whitespace on `CLOUD_SQL_DB_USER` (PR #564)** — Vercel env var had a trailing space from a copy-paste. Postgres treats `...iam` and `...iam ` as different identifiers. Vercel env var corrected; defensive `.trim()` added on all WIF env-var reads in `lib/db.ts`. Documented in §3.J.
   Pro plan + region pinning to `syd1` confirmed. Separate observation: `/api/health` still routes via Edge → `iad1` despite `vercel.json` `regions: ["syd1"]` (non-blocking; revisit during Phase 10).
-- [ ] 10 — **Queued for +24h after Phase 9 stability is confirmed (target ≥ 2026-05-02).** Remove `0.0.0.0/0` from Cloud SQL `monitrax-db-prod` authorized networks. Verify the Connector path still works after the change (it should — Connector uses SQL Admin API + TLS tunnel, not the public auth surface). Optionally also disable public IP entirely once stable.
+- [x] 10 — **CLOSED 2026-05-01 via "Option D" — IAM compensating control documented; `0.0.0.0/0` retained intentionally.** Re-evaluation discovered that removing `0.0.0.0/0` is not as simple as the original plan implied: Cloud SQL Connector with public IP still requires the source IP to be in authorized networks (the connector provides cert-based mTLS *over* the TCP layer the ACL gate-keeps; it does not bypass the ACL). Vercel does not publish a stable egress IP range to whitelist (per Vercel docs); the only stable path is the paid Vercel Static IP add-on (~AU$30-50/mo). Decision: at zero users, the marginal security improvement vs the operational/financial cost is not justified. Without a static credential, the network ACL is no longer protecting anything an attacker could exploit — IAM auth is the controlling boundary. Documented in `CDR_WIF_AUTHENTICATION_EVIDENCE.md` §8 with the explicit migration path to Vercel Static IP + restricted networks when triggered (first paying user / pre-Basiq submission / anomalous connection attempts). Optional one-time annotation: rename the authorized-network entry label to `public-iam-protected-cdr-3.2-doc` so the GCP console makes the intent visible to future operators / auditors.
 - [ ] 11 — **Queued for +30d (target ≥ 2026-05-31).** Drop the legacy `buildStandardPrisma()` branch from `lib/db.ts`; remove `DATABASE_URL` from the Vercel **runtime** env scope (keep in **build** env scope so `prisma migrate deploy` keeps working); disable / drop the `monitrax_user` Postgres user.
 
 **Risk:** Low. Feature flag default is `false`, so merging the PR is zero-risk — production keeps using `DATABASE_URL` until the flag is flipped. `DATABASE_URL` stays as fallback through Phase 9.
@@ -106,15 +106,13 @@
 
 | # | Item | Phase / area | Trigger to start |
 |---|---|---|---|
-| 1 | **WIF Phase 10** — remove `0.0.0.0/0` from Cloud SQL `monitrax-db-prod` authorized networks; verify Connector path still works | WIF | +24h after Phase 9 stability is confirmed (target ≥ 2026-05-02) |
-| 2 | **WIF Phase 11** — drop legacy `buildStandardPrisma()` branch from `lib/db.ts`; remove `DATABASE_URL` from runtime env scope (keep build scope); disable / drop `monitrax_user` | WIF | +30 days after Phase 9 (target ≥ 2026-05-31) |
-| 3 | **CMEK (Customer-Managed Encryption Keys)** for Cloud SQL data-at-rest | CDR §3.3 / §5.7 hardening | After WIF Phase 10 lands and is stable |
-| 4 | **Rotate `monitrax_user` DB password** to one without `@`/`%`/`*` (URL-safe) — only relevant if we re-enable the fallback path before Phase 11 | Connection pooling cleanup | Optional; default plan is to skip and disable the user in Phase 11 |
-| 5 | **Phase 36 Phase 2** (above) — full legacy page retirement | UX | Now unblocked — Reza confirms current Phase 1c/1d works in prod |
-| 6 | **Incident Response Plan WIF section** | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Next housekeeping pass — capture the Phase 9 cutover lessons formally |
-| 7 | **Apply `connection_limit` via Prisma datasource override (Option α)** instead of URL — only if pool exhaustion still observed after WIF | Perf | Only if needed |
-| 8 | **Onboarding wizard PR 3c** — data source hygiene (staleness indicators, upgrade-this-account button, balance age heat-map) | Phase 12 — see `MASTER_BLUEPRINT.md` line 206 | After current hardening sprint |
-| 9 | **Investigate `/api/health` Edge → `iad1` routing** despite `vercel.json` `regions: ["syd1"]` | WIF Phase 10 follow-up | During Phase 10 work — check if `/api/health` is being statically optimised / Edge-routed |
+| 1 | **WIF Phase 11** — drop legacy `buildStandardPrisma()` branch from `lib/db.ts`; remove `DATABASE_URL` from runtime env scope (keep build scope so `prisma migrate deploy` works); disable / drop `monitrax_user` | WIF | +30 days after Phase 9 (target ≥ 2026-05-31) |
+| 2 | **WIF Phase 12 (conditional)** — switch from `0.0.0.0/0` to Vercel Static IP + restricted authorized networks. Trigger: first paying user OR pre-Basiq-submission OR anomalous connection attempts in Cloud Logging. Migration path documented in `CDR_WIF_AUTHENTICATION_EVIDENCE.md` §8 (~15 min end-to-end) | WIF | Trigger-based (see triggers ↑) |
+| 3 | **CMEK (Customer-Managed Encryption Keys)** for Cloud SQL data-at-rest | CDR §3.3 / §5.7 hardening | After Phase 11 lands and is stable |
+| 4 | **Phase 36 Phase 2** — full legacy page retirement | UX | Now unblocked — Reza confirms current Phase 1c/1d works in prod |
+| 5 | **Incident Response Plan WIF section** | `docs/policy/INCIDENT_RESPONSE_PLAN.md` | Next housekeeping pass — capture Phase 9 cutover lessons formally |
+| 6 | **Apply `connection_limit` via Prisma datasource override (Option α)** instead of URL — only if pool exhaustion still observed after WIF | Perf | Only if needed |
+| 7 | **Onboarding wizard PR 3c** — data source hygiene (staleness indicators, upgrade-this-account button, balance age heat-map) | Phase 12 — see `MASTER_BLUEPRINT.md` line 206 | After current hardening sprint |
 
 ---
 

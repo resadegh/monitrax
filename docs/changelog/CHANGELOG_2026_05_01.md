@@ -128,18 +128,76 @@ Likely causes (in order of probability):
 | Early evening | Surfaced 28P01 with trailing space in error. Vercel env var corrected. PR #564 commit `34e764c` added `.trim()` defence + runbook §3.J. |
 | Evening | `/api/health` 200. Phase 9 complete. Doc sync (this commit). |
 
+### Phase 10 decision (same evening)
+
+The original WIF roadmap had Phase 10 = "remove `0.0.0.0/0` from
+authorized networks 24h after stable Phase 9". On re-evaluation
+this evening, that turns out to be more nuanced than originally
+documented:
+
+- Cloud SQL Connector with **public IP** still requires the source
+  IP to be in authorized networks. The connector provides cert-based
+  mTLS *over* the TCP layer the ACL gate-keeps; it does not bypass
+  the ACL.
+- Vercel **does not publish a stable egress IP range** for runtime
+  functions ([Vercel docs explicitly state this](https://vercel.com/docs/security/secure-backend-access/static-ip)).
+  The pool is shared across all Vercel customers and changes
+  without notice.
+- The only stable path to a restricted authorized-networks list is
+  Vercel Static IP (paid Pro add-on, ~AU$30-50/mo per region).
+
+Decision: **keep `0.0.0.0/0`, document IAM as the compensating
+control.** Rationale documented in
+`docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md` §8:
+
+> The network ACL was historically protecting a long-lived
+> database password. That password no longer exists. Without a
+> Vercel-issued OIDC token tied to project `prj_UYQF...` plus
+> the WIF binding plus the per-instance Cloud IAM user, no
+> source IP can authenticate. The auth surface is fully
+> IAM-protected.
+
+Re-evaluation triggers documented for future sessions:
+- First paying user lands
+- Before Basiq accreditation submission
+- Anomalous connection attempts in Cloud Logging
+
+Migration path to Vercel Static IP + restricted networks documented
+in §8 (~15 min end-to-end when triggered).
+
+Files updated for the Phase 10 decision (this commit):
+
+- `CLAUDE.md` §13.6 — Phase 10 decision noted; Phase 11 timeline
+- `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` §3.2 —
+  reworded as "DONE (DB tier — restricted by IAM as compensating
+  control)"; full rationale inline
+- `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md` — new §8
+  with the decision, the question/answer table, attacker-model
+  analysis, re-evaluation triggers, and the migration path
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 10 ✅; Phase 12
+  conditional entry added to Up Next; Phase 11 still queued for
+  +30d
+
+### `/api/health` region pin (same evening)
+
+Side observation from earlier in the day — GCP uptime check showed
+`/api/health` running in `iad1` despite project default `syd1`.
+Fixed by adding explicit Next.js App Router exports
+(`runtime = 'nodejs'`, `dynamic = 'force-dynamic'`,
+`preferredRegion = 'syd1'`) to `app/api/health/route.ts`. Commit
+`2d0f68e` on PR #565.
+
 ### Next steps
 
-- **Phase 10** (queued, +24h): remove `0.0.0.0/0` from Cloud SQL
-  authorized networks. Verify connector path still works (it should —
-  Connector uses SQL Admin API + TLS tunnel, not the public auth
-  surface).
-- **Phase 11** (queued, +30 days): drop legacy `buildStandardPrisma()`
-  branch, remove `DATABASE_URL` from runtime env scope (keep build),
+- **Phase 11** (queued, +30 days, target ≥ 2026-05-31): drop legacy
+  `buildStandardPrisma()` branch, remove `DATABASE_URL` from runtime
+  env scope (keep build scope for `prisma migrate deploy`),
   disable / drop `monitrax_user`.
-- **Side observation:** `/api/health` log shows Edge → `iad1` despite
-  `vercel.json` `regions: ["syd1"]`. Non-blocking — investigate during
-  Phase 10.
+- **Phase 12** (conditional): Vercel Static IP migration when one
+  of the documented triggers fires.
+- **Optional today:** annotate the GCP authorized-network entry
+  label (one gcloud command — see PR description) so the GCP
+  console makes the intent visible to future operators.
 
 ### Refs
 
