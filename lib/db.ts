@@ -5,29 +5,35 @@
  *
  *  - **Standard branch (default, flag unset or `false`):**
  *    `PrismaClient` reads `DATABASE_URL` directly. Same behaviour as before
- *    this PR. Used in dev, in CI, and as the production fallback while
- *    Phase 9 of WIF is being verified.
+ *    the WIF workstream landed. Used in dev, in CI, and as the production
+ *    fallback while WIF is being verified. Eager init at module load — the
+ *    same shape Monitrax has had since day one.
  *
  *  - **Cloud SQL Connector branch (`USE_CLOUD_SQL_CONNECTOR=true`):**
  *    Authenticates to Cloud SQL via Workload Identity Federation (no
- *    long-lived password in the connection string). The Vercel runtime
- *    OIDC token (`VERCEL_OIDC_TOKEN`) is exchanged via STS for a
- *    short-lived GCP access token, which the Cloud SQL Connector uses to
- *    open a TLS tunnel to the instance. Postgres-level auth is IAM
- *    database authentication — the service account is a Cloud SQL IAM
- *    user with `CONNECT` + `USAGE` + table grants in the `public` schema.
+ *    long-lived password). The Vercel runtime OIDC token is delivered as
+ *    the `x-vercel-oidc-token` request header (NOT as an env var — see
+ *    https://vercel.com/docs/oidc), which means token retrieval can only
+ *    happen inside a request context.
+ *
+ *    Consequence: the connector branch is **lazy-initialised** behind a
+ *    Proxy. Module load only constructs the Proxy (no GCP calls). On the
+ *    first prisma method call inside a request handler, the Proxy
+ *    triggers `buildConnectorPrisma()` once, caches the resulting client
+ *    on `globalThis`, and forwards all subsequent calls.
+ *
+ *    Token reading uses `getVercelOidcToken()` from `@vercel/oidc`,
+ *    which checks the request context header first and falls back to the
+ *    `VERCEL_OIDC_TOKEN` env var (build/local-dev only).
  *
  * Required env vars when `USE_CLOUD_SQL_CONNECTOR=true`:
  *  - `GCP_WORKLOAD_IDENTITY_PROVIDER` — full resource path
- *    (`projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>`)
  *  - `GCP_SERVICE_ACCOUNT_EMAIL` — SA to impersonate
  *  - `CLOUD_SQL_CONNECTION_NAME` — `<project>:<region>:<instance>`
- *  - `CLOUD_SQL_DB_USER` — Postgres username (for IAM auth this is the
- *    SA email with `.gserviceaccount.com` stripped, e.g.
- *    `vercel-monitrax-db@monitrax-479700.iam`)
+ *  - `CLOUD_SQL_DB_USER` — IAM-mapped Postgres user
  *  - `CLOUD_SQL_DB_NAME` — database name
- *  - `VERCEL_OIDC_TOKEN` — auto-injected by Vercel runtime when OIDC
- *    federation is enabled at the project level
+ *  - OIDC Federation must be enabled at the Vercel project level so the
+ *    runtime injects the `x-vercel-oidc-token` header per request.
  *
  * See `docs/operational/security/04_WIF_TROUBLESHOOTING.md` and
  * `docs/IMPLEMENTATION_PLAN.md` (Step 1a / WIF) for context.
@@ -37,6 +43,7 @@ import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  prismaInitPromise: Promise<PrismaClient> | undefined;
 };
 
 const useConnector =
@@ -71,11 +78,13 @@ async function buildConnectorPrisma(): Promise<PrismaClient> {
     { IdentityPoolClient },
     pgModule,
     { PrismaPg },
+    { getVercelOidcToken },
   ] = await Promise.all([
     import('@google-cloud/cloud-sql-connector'),
     import('google-auth-library'),
     import('pg'),
     import('@prisma/adapter-pg'),
+    import('@vercel/oidc'),
   ]);
 
   const Pool = (pgModule as { Pool?: typeof import('pg').Pool; default?: { Pool: typeof import('pg').Pool } }).Pool
@@ -89,20 +98,16 @@ async function buildConnectorPrisma(): Promise<PrismaClient> {
     service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${saEmail}:generateAccessToken`,
     subject_token_supplier: {
       getSubjectToken: async () => {
-        const token = process.env.VERCEL_OIDC_TOKEN;
-        if (!token) {
-          const vercelKeys = Object.keys(process.env)
-            .filter((k) => k.startsWith('VERCEL_'))
-            .sort();
+        try {
+          return await getVercelOidcToken();
+        } catch (err) {
+          const cause = err instanceof Error ? err.message : String(err);
           throw new Error(
-            `VERCEL_OIDC_TOKEN not set; ensure Vercel OIDC federation is enabled at the project level. ` +
-              `Available VERCEL_* env vars: [${vercelKeys.join(', ') || '<none>'}]. ` +
-              `NEXT_PHASE=${process.env.NEXT_PHASE ?? '<unset>'}, ` +
-              `VERCEL_ENV=${process.env.VERCEL_ENV ?? '<unset>'}, ` +
-              `VERCEL_REGION=${process.env.VERCEL_REGION ?? '<unset>'}.`,
+            `Failed to retrieve Vercel OIDC token (cause: ${cause}). ` +
+              `Ensure OIDC Federation is enabled at the Vercel project level and the function ` +
+              `runs in a request context (Node.js runtime, not middleware, not at module top-level).`,
           );
         }
-        return token;
       },
     },
   });
@@ -139,9 +144,66 @@ function buildStandardPrisma(): PrismaClient {
   });
 }
 
-export const prisma: PrismaClient =
-  globalForPrisma.prisma ?? (useConnector ? await buildConnectorPrisma() : buildStandardPrisma());
+function getOrInitConnectorClient(): Promise<PrismaClient> {
+  if (globalForPrisma.prisma) return Promise.resolve(globalForPrisma.prisma);
+  if (!globalForPrisma.prismaInitPromise) {
+    globalForPrisma.prismaInitPromise = buildConnectorPrisma().then((c) => {
+      globalForPrisma.prisma = c;
+      return c;
+    });
+  }
+  return globalForPrisma.prismaInitPromise;
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+// Proxy handler that defers all property access until the underlying
+// PrismaClient has been initialised. Matches the two access patterns the
+// codebase uses:
+//   prisma.<model>.<method>(...)   → handled by the inner `get` trap
+//   prisma.$<method>(...)          → handled by the inner `apply` trap
+const lazyConnectorHandler: ProxyHandler<PrismaClient> = {
+  get(_target, prop) {
+    if (prop === 'then') return undefined; // never appear thenable
+    if (typeof prop === 'symbol') return undefined;
 
-export default prisma;
+    return new Proxy(function () {} as unknown as object, {
+      apply: async (_t, _thisArg, args: unknown[]) => {
+        const client = await getOrInitConnectorClient();
+        const fn = (client as unknown as Record<string, unknown>)[prop as string];
+        if (typeof fn !== 'function') {
+          throw new TypeError(`prisma.${String(prop)} is not a function`);
+        }
+        return (fn as (...a: unknown[]) => unknown).apply(client, args);
+      },
+      get: (_t, methodProp) => {
+        if (typeof methodProp === 'symbol') return undefined;
+        return async (...args: unknown[]) => {
+          const client = await getOrInitConnectorClient();
+          const namespace = (client as unknown as Record<string, unknown>)[prop as string];
+          if (!namespace || typeof namespace !== 'object') {
+            throw new TypeError(`Unknown prisma namespace: ${String(prop)}`);
+          }
+          const fn = (namespace as Record<string, unknown>)[methodProp as string];
+          if (typeof fn !== 'function') {
+            throw new TypeError(`prisma.${String(prop)}.${String(methodProp)} is not a function`);
+          }
+          return (fn as (...a: unknown[]) => unknown).apply(namespace, args);
+        };
+      },
+    });
+  },
+};
+
+let exportedClient: PrismaClient;
+
+if (useConnector) {
+  // Connector branch: defer init until the first method call (must run
+  // inside a request context to read the OIDC token from the request header).
+  exportedClient = new Proxy({} as PrismaClient, lazyConnectorHandler);
+} else {
+  // Standard branch: eager init, identical to the original implementation.
+  exportedClient = globalForPrisma.prisma ?? buildStandardPrisma();
+  if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = exportedClient;
+}
+
+export const prisma = exportedClient;
+export default exportedClient;
