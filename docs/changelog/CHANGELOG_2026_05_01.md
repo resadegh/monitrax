@@ -1019,3 +1019,64 @@ After merging PR #577 (Share Pass + folder-view restyle), Reza flagged that the 
 **Future expansion still accommodated** by the Share Pass schema:
 - Option E (Xero/MYOB direct push) — add to `deliveryMethod` enum.
 - Other content types (Reports, property summaries, net-worth snapshots) — add to `contentType` enum.
+
+---
+
+## Session: claude/my-wealth-redesign-lS5cs — Phase 39 Properties premium redesign
+
+### Brief
+
+> *"Review the visual design of the sections under my wealth (property, investment and asset) to match the new design for My Account and My Budget page. Also as this is the heart of the app, the user should feel good and warm to see its wealth. So redesign the pages from the view of a world class financial adviser, graphic designer and a human behaviour psychologist. Give me a clean Apple-glass-like tiles with interactive buttons, transitions and animations. Don't make it childish but cool and engaging. Make sure you consider mobile view as well as most users will be using mobile."* — Reza, 2026-05-01 (night)
+
+This session covers Properties only (Phase 39.1). Investments and Assets are queued for follow-up PRs (Phase 39.2, 39.3).
+
+### Audit (~520 lines, run via Explore subagent)
+
+Compared the existing My Accounts (Balances) + My Budget references against Properties / Investments / Assets. Confirmed `framer-motion` v12, `recharts` v3, `tailwindcss-animate` already in `package.json` — **zero new dependencies needed.** Identified design token reuse opportunities from `components/dashboard/TrailStageIndicator.tsx` (`appleEase`, `springy`, Stage I sky/indigo palette, glassmorphic `bg-card/70 backdrop-blur-xl` + 1px sky border + `rounded-[28px]`).
+
+### Changes shipped (Properties)
+
+**New components:**
+
+- `components/properties/PropertiesHero.tsx` — glassmorphic hero summary card. Sky/indigo Stage I atmospheric mesh gradient (radial stops at 12%/-10%, 92%/110%, 50%/50%). Slow-breathing soft glow (8s loop). Eyebrow row with `Stage I — Invest` pill. Gradient-text total portfolio value. Three KPIs (Equity / Loans / Avg LVR) with semantic colour tones. Animated equity-vs-debt bar (1.1s appleEase fill on first paint). Type allocation segment bar (Home / Investment / Rental) with stagger fill + colour-coded chips. Honours `prefers-reduced-motion`.
+- `components/properties/PropertyTile.tsx` — premium glassmorphic tile. Per-tile sky/indigo radial atmosphere (intensifies on hover). Top accent strip (gradient per type). Glassy icon tile with sky/indigo gradient ring. Type-aware body:
+  - **HOME / INVESTMENT** — hero current value with gradient gain/loss pill; equity + LVR row (LVR has a mini animated progress bar coloured by tone — emerald < 60%, amber 60-80%, amber-warm ≥ 80%); investment adds yield + cashflow row.
+  - **RENTAL** — annual rent expense surfaced front and centre.
+  Linked-data pills (loans / income / expenses / depreciation) above the bottom border. Hero gradient CTA `View details` button (`from-sky-500 to-indigo-600`) with springy hover-lift. Hover-revealed edit / delete cluster (always visible on `sm:` to support touch). Stagger entry via `motion.div` index. Honours `prefers-reduced-motion`.
+
+**Page wiring (`app/dashboard/properties/page.tsx`):**
+
+- Imports added for `PropertiesHero`, `PropertyTile`.
+- Hero wired in after `PageHeader` (visible only when `properties.length > 0` and not loading).
+- Tile rendering loop (lines ~600-779 in old version, ~190 lines) replaced with single `<PropertyTile />` component call (~38 lines).
+- New computed values fed to hero: `totalLoans`, `averageLvr`, `heroSegments` (deriving annual rent for RENTAL segments).
+- `PageHeader` description reworded: stat-stuffed line `"Manage your property portfolio • Total value: $X • Equity: $Y"` → warm narrative `"What you're building — your homes, investments, and rentals."` (the stats live in the hero card now).
+- Tile grid: changed from `md:grid-cols-2` to `md:grid-cols-2 xl:grid-cols-3` (room for 3-up on wide screens).
+- Gap shrunk from `gap-6` to `gap-5 sm:gap-6` to tighten the rhythm without breaking on mobile.
+
+**Files NOT modified (intentional scope cap):**
+
+- All dialogs (Add/Edit Property, Detail view tabs, Income/Expense/Depreciation forms) — current visual treatment kept. Scope: page-level surface only.
+- List view (table) — unchanged. Hidden behind the `viewMode === 'list'` toggle.
+- Calculation helpers (`calculateGain`, `calculateLVR`, `calculateEquity`, `calculateRentalYield`, `calculateCashflow`) — unchanged. Used as before; results now passed into the new tile component as `metrics` prop.
+- All data fetching, search/filter, address autocomplete, Google Maps integration — unchanged.
+
+### Documentation
+
+- `docs/blueprint/PHASE_39_MY_WEALTH_REDESIGN.md` — new phase doc (brief, design tokens, page-by-page plan, acceptance criteria).
+- `docs/IMPLEMENTATION_PLAN.md` — Recently Completed entry + Last-updated header. Investments + Assets noted as queued (Phase 39.2 / 39.3).
+- `docs/changelog/CHANGELOG_2026_05_01.md` — this entry.
+
+### Build status
+
+- [x] `npm run build` — PASS
+
+### Risk
+
+**Low.** Two new self-contained presentational components introduced. Existing Properties page logic untouched (data fetching, dialogs, calculations, list view, filters all preserved). Default behaviour unchanged when `properties.length === 0` (still shows the existing `EmptyState`). Honours `prefers-reduced-motion`. No financial calculations touched (CLAUDE.md §6.1 / §12.2 N/A). No DB queries. No schema changes. No destructive Prisma writes (CLAUDE.md §12.11 N/A). No schema migrations (§12.12 N/A).
+
+### What's next (queued, not in this PR)
+
+- Phase 39.2 — `/dashboard/investments/accounts` + `/dashboard/investments/holdings` redesign with `InvestmentsHero` + `InvestmentAccountTile` + `HoldingTile`.
+- Phase 39.3 — `/dashboard/assets` redesign with `AssetsHero` + `AssetTile`.
+- Optional Phase 39.4 — overhaul of detail dialogs (out of scope for this phase).
