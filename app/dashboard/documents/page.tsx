@@ -236,6 +236,15 @@ export default function DocumentsLibraryPage() {
   const [entities, setEntities] = useState<UserEntities | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [enableAIAnalysis, setEnableAIAnalysis] = useState(true); // Phase 26: Auto-analyze uploads
+  // Phase 38 PR 3: "Send to accountant" modal state.
+  const [showSendDialog, setShowSendDialog] = useState(false);
+  // Phase 38 PR 4: tax-status lens.
+  // Map<expenseId, isTaxDeductible> — used by `getDocumentTaxStatus()` to
+  // bucket each document into DEDUCTIBLE / NON_DEDUCTIBLE / UNTAGGED.
+  // Declared early (before the useCallbacks below) so it's in scope for
+  // their dependency arrays — Next.js linter / strict TDZ check enforces
+  // declaration order.
+  const [expenseTaxMap, setExpenseTaxMap] = useState<Map<string, boolean>>(new Map());
 
   // Fetch documents with entity names
   const fetchDocuments = useCallback(async () => {
@@ -612,16 +621,6 @@ export default function DocumentsLibraryPage() {
   // Phase 26: Count analyzed documents
   const analyzedCount = documents.filter((d) => d.analysis?.status === 'COMPLETED').length;
   const pendingAnalysisCount = documents.filter((d) => d.analysis && d.analysis.status !== 'COMPLETED' && d.analysis.status !== 'FAILED').length;
-
-  // Phase 38 PR 3: "Send to accountant" modal state.
-  const [showSendDialog, setShowSendDialog] = useState(false);
-
-  // Phase 38 PR 4: tax-status lens.
-  // Map<expenseId, isTaxDeductible> derived from /api/expenses on mount.
-  // Used to bucket each document into DEDUCTIBLE / NON_DEDUCTIBLE / UNTAGGED
-  // for the FolderTree's "By Tax Status" filter. No new endpoint —
-  // /api/expenses already returns isTaxDeductible per row.
-  const [expenseTaxMap, setExpenseTaxMap] = useState<Map<string, boolean>>(new Map());
 
   // Phase 38 PR 1: hero + Smart Inbox derivations. All client-side over
   // the existing /api/documents response — no new endpoint, no new query.
