@@ -108,28 +108,22 @@ const reachNavItems: NavItem[] = [
     icon: Target,
     tourId: 'nav-budget',
     trailStage: 'R',
-    // Phase 36: Income and Spending moved here from My Accounts — they are
-    // budget intentions (planning), which belong to the REDUCE stage.
-    // Phase 37 PR 1: Tax removed from My Budget and relocated to My Guide
-    // (alongside Actions + Health) — tax-optimisation lives in the LIVE
-    // stage strategically, and day-to-day tax value is surfaced via Cashflow
-    // tip cards in PR 2. The `/dashboard/tax` route stays alive — only the
-    // sidebar entry moves.
+    // Phase 37 final state: 3 tabs — Cashflow (the answer) · My Plan (the
+    // intent — Money In / Money Out / Your Budget) · Debt Freedom (the
+    // action). Tax relocated to My Guide. Income/Spending/Budget legacy
+    // routes still resolve (deep-link compatibility) and the My Budget
+    // tab highlights when the user lands on any of them.
     matchRoutes: [
       '/cashflow',
+      '/dashboard/plan',
       '/dashboard/budget-analysis',
       '/dashboard/income',
       '/dashboard/expenses',
       '/dashboard/debt-planner',
     ],
-    // Phase 37 PR 1: Cashflow promoted to first child (default landing).
-    // Income, Spending, Budget retained for now — they collapse into a
-    // single "My Plan" tab in PR 3 once `/dashboard/plan` is built.
     children: [
       { name: 'Cashflow', href: '/cashflow' },
-      { name: 'Budget', href: '/dashboard/budget-analysis' },
-      { name: 'Income', href: '/dashboard/income' },
-      { name: 'Spending', href: '/dashboard/expenses' },
+      { name: 'My Plan', href: '/dashboard/plan' },
       { name: 'Debt Freedom', href: '/dashboard/debt-planner' },
     ],
   },

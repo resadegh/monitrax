@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
-import { PageHeader } from '@/components/PageHeader';
+
+// Phase 37 PR 5 — design tokens lifted from Home TRAIL banner v3
+const APPLE_EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 import { StatCard } from '@/components/StatCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -107,6 +110,137 @@ interface BudgetStatus {
   remainingCashflow: number;
   totalLoanRepayments: number;
   availableForDebt: number;
+}
+
+// =============================================================================
+// PHASE 37 PR 5 — DEBT FREEDOM HERO
+//
+// Aspirational glassmorphic banner: "Debt-free by [date] · Save $X in
+// interest". Numbers sourced from the existing aiAnalysis.projections
+// and planResult shapes — zero new calculations, zero new endpoints.
+// Falls back to a warm "Let's plan your way out" sentence when no
+// strategy has been computed yet.
+// =============================================================================
+
+function DebtFreedomHero({
+  planResult,
+  aiProjections,
+  budgetReady,
+}: {
+  planResult: PlanResult | null;
+  aiProjections: AIAnalysis['projections'] | null;
+  budgetReady: boolean;
+}) {
+  const reduced = useReducedMotion();
+
+  const debtFreeDate = aiProjections?.debtFreeDate ?? null;
+  const interestSaved =
+    planResult?.totalInterestSavedVsBaseline ??
+    aiProjections?.totalInterestSaved ??
+    0;
+  const monthsSaved =
+    planResult?.totalMonthsSaved ?? aiProjections?.monthsSaved ?? 0;
+
+  const formattedDate = useMemo(() => {
+    if (!debtFreeDate) return null;
+    try {
+      const d = new Date(debtFreeDate);
+      if (Number.isNaN(d.getTime())) return debtFreeDate;
+      return d.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+    } catch {
+      return debtFreeDate;
+    }
+  }, [debtFreeDate]);
+
+  const headline = useMemo(() => {
+    if (!budgetReady) {
+      return "Let's plan your way out of debt — we'll need your budget first.";
+    }
+    if (formattedDate) {
+      return `Debt-free by ${formattedDate}.`;
+    }
+    return "Pick a strategy below — we'll show you the way out.";
+  }, [budgetReady, formattedDate]);
+
+  return (
+    <div className="relative isolate overflow-hidden rounded-[28px] border border-white/40 dark:border-white/10 bg-card/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl mb-6">
+      {/* Atmospheric mesh gradient — emerald + violet to evoke aspiration */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        initial={reduced ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={reduced ? { duration: 0 } : { duration: 1.4, ease: APPLE_EASE }}
+        style={{
+          background:
+            'radial-gradient(circle at 18% 0%, rgba(16,185,129,0.12), transparent 60%), radial-gradient(circle at 82% 100%, rgba(139,92,246,0.10), transparent 55%)',
+        }}
+      />
+
+      {/* Optional subtle shimmer over the date — only when we have one */}
+      {formattedDate && !reduced && (
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10"
+          initial={{ x: '-100%' }}
+          animate={{ x: '200%' }}
+          transition={{ duration: 6, ease: 'linear', repeat: Infinity, repeatDelay: 4 }}
+          style={{
+            background:
+              'linear-gradient(110deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%)',
+          }}
+        />
+      )}
+
+      <div className="p-6 sm:p-8">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+          Debt Freedom
+        </p>
+        <motion.h1
+          initial={reduced ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reduced ? { duration: 0 } : { duration: 0.6, ease: APPLE_EASE }}
+          className="text-2xl sm:text-3xl md:text-[2rem] font-semibold leading-tight tracking-tight max-w-3xl"
+        >
+          {headline}
+        </motion.h1>
+
+        {(interestSaved > 0 || monthsSaved > 0) && (
+          <motion.div
+            initial={reduced ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={
+              reduced ? { duration: 0 } : { duration: 0.6, ease: APPLE_EASE, delay: 0.15 }
+            }
+            className="mt-5 flex flex-wrap items-center gap-3"
+          >
+            {interestSaved > 0 && (
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2">
+                <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-sm">
+                  <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                    {formatCurrency(interestSaved)}
+                  </span>
+                  <span className="text-muted-foreground"> saved in interest</span>
+                </span>
+              </div>
+            )}
+            {monthsSaved > 0 && (
+              <div className="inline-flex items-center gap-2 rounded-2xl border border-violet-500/20 bg-violet-500/10 px-4 py-2">
+                <Clock className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                <span className="text-sm">
+                  <span className="font-semibold tabular-nums text-violet-700 dark:text-violet-300">
+                    {monthsSaved} {monthsSaved === 1 ? 'month' : 'months'}
+                  </span>
+                  <span className="text-muted-foreground"> earlier than minimum</span>
+                </span>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function DebtPlannerPage() {
@@ -370,9 +504,14 @@ export default function DebtPlannerPage() {
 
   return (
     <DashboardLayout>
-      <PageHeader
-        title="Debt Planner"
-        description="Optimize your debt repayment strategy and see how much you can save"
+      {/* Phase 37 PR 5 — Debt Freedom hero. Aspirational framing
+          ("Debt-free by [date]") with subtle gradient shimmer. Numbers
+          sourced from existing planResult / aiAnalysis state — zero
+          new calculations. */}
+      <DebtFreedomHero
+        planResult={planResult}
+        aiProjections={aiAnalysis?.projections ?? null}
+        budgetReady={!!budgetStatus?.hasConfirmedBudget}
       />
 
       <div className="space-y-6">

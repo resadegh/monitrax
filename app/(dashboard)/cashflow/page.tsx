@@ -18,7 +18,8 @@
  * - Transaction-level drill-down for accountability
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
@@ -26,7 +27,14 @@ import {
   Loader2,
   AlertCircle,
   LineChart,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
+
+// Phase 37 PR 2 — design tokens lifted from Home TRAIL banner v3
+// (components/dashboard/TrailStageIndicator.tsx). No new deps.
+const APPLE_EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 // Intelligence Center Components
 import {
@@ -225,6 +233,137 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
 }
 
 // =============================================================================
+// PHASE 37 PR 2 — WARM-SENTENCE HERO
+//
+// Replaces the plain "Cashflow Intelligence" title with a glassmorphic
+// banner that answers the only question users open this page to ask:
+// "am I OK this month?". The sentence morphs based on the surplus/
+// shortfall sign. Every number sourced from intelligence.forecast.current
+// — zero recalculation, zero new data sources.
+//
+// Design language: Home TRAIL banner v3 (TrailStageIndicator.tsx) —
+// rounded-[28px] glassmorphic card, animated atmospheric gradient,
+// framer-motion fade-up, full prefers-reduced-motion support.
+// =============================================================================
+
+function CashflowHero({
+  income,
+  expenses,
+  net,
+  balance,
+  refreshing,
+  onRefresh,
+}: {
+  income: number;
+  expenses: number;
+  net: number;
+  balance: number;
+  refreshing: boolean;
+  onRefresh: () => void;
+}) {
+  const reduced = useReducedMotion();
+
+  const sentence = useMemo(() => {
+    if (net > 0) return `You're ${formatCurrency(net)} ahead this month — keep going.`;
+    if (net === 0) return `You're breaking even this month — every dollar accounted for.`;
+    return `You're ${formatCurrency(Math.abs(net))} short this month — let's find it together.`;
+  }, [net]);
+
+  const tone =
+    net > 0
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : net < 0
+        ? 'text-rose-600 dark:text-rose-400'
+        : 'text-foreground';
+
+  return (
+    <div className="relative isolate overflow-hidden rounded-[28px] border border-white/40 dark:border-white/10 bg-card/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl mb-6">
+      {/* Atmospheric mesh gradient — colour shifts with surplus/shortfall */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        initial={reduced ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={reduced ? { duration: 0 } : { duration: 1.4, ease: APPLE_EASE }}
+        style={{
+          background:
+            net >= 0
+              ? 'radial-gradient(circle at 15% 0%, rgba(16,185,129,0.12), transparent 60%), radial-gradient(circle at 85% 100%, rgba(59,130,246,0.08), transparent 55%)'
+              : 'radial-gradient(circle at 15% 0%, rgba(244,63,94,0.10), transparent 60%), radial-gradient(circle at 85% 100%, rgba(245,158,11,0.08), transparent 55%)',
+        }}
+      />
+      <div className="p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+              Cashflow
+            </p>
+            <motion.h1
+              initial={reduced ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={reduced ? { duration: 0 } : { duration: 0.6, ease: APPLE_EASE }}
+              className={`text-2xl sm:text-3xl md:text-[2rem] font-semibold leading-tight tracking-tight max-w-3xl ${tone}`}
+            >
+              {sentence}
+            </motion.h1>
+          </div>
+          <button
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-xl border border-border/50 bg-background/60 px-4 py-2 text-sm font-medium text-muted-foreground backdrop-blur-md transition-all hover:bg-background/80 hover:text-foreground hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shrink-0"
+          >
+            {refreshing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            {refreshing ? 'Updating' : 'Refresh'}
+          </button>
+        </div>
+
+        {/* Three numbers — same source as the rest of the page (intelligence.forecast.current) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+          {[
+            { label: 'Money In', value: income, tone: 'in', icon: <TrendingUp className="h-3.5 w-3.5" /> },
+            { label: 'Money Out', value: expenses, tone: 'out', icon: <TrendingDown className="h-3.5 w-3.5" /> },
+            { label: net >= 0 ? 'Surplus' : 'Shortfall', value: Math.abs(net), tone: net >= 0 ? 'in' : 'out', icon: null },
+            { label: 'Balance', value: balance, tone: 'neutral', icon: null },
+          ].map((stat, idx) => (
+            <motion.div
+              key={stat.label}
+              initial={reduced ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={
+                reduced
+                  ? { duration: 0 }
+                  : { duration: 0.5, ease: APPLE_EASE, delay: 0.15 + idx * 0.05 }
+              }
+              className="flex flex-col gap-1"
+            >
+              <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                {stat.icon}
+                {stat.label}
+              </div>
+              <div
+                className={`text-xl sm:text-2xl font-semibold tabular-nums ${
+                  stat.tone === 'in'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : stat.tone === 'out'
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : 'text-foreground'
+                }`}
+              >
+                {formatCurrency(stat.value)}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 
@@ -376,29 +515,18 @@ export default function CashflowPage() {
   return (
     <DashboardLayout>
       <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Cashflow Intelligence
-            </h1>
-            <p className="text-gray-500 mt-1">
-              Your complete financial picture in one place
-            </p>
-          </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className={`${componentClasses.buttonSecondary} min-w-[120px]`}
-          >
-            {refreshing ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            {refreshing ? 'Updating...' : 'Refresh'}
-          </button>
-        </div>
+        {/* Phase 37 PR 2 — TRAIL banner v3 hero. Warm-sentence answer
+            ("am I OK this month?") sourced ENTIRELY from existing
+            intelligence.forecast.current values — no new calculations,
+            no new endpoints. */}
+        <CashflowHero
+          income={intelligence.forecast.current.income}
+          expenses={intelligence.forecast.current.expenses}
+          net={intelligence.forecast.current.net}
+          balance={intelligence.forecast.current.balance}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+        />
 
         {/* Section 1: AI Summary (Hero) */}
         {summary && (
