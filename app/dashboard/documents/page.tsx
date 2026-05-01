@@ -236,6 +236,15 @@ export default function DocumentsLibraryPage() {
   const [entities, setEntities] = useState<UserEntities | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [enableAIAnalysis, setEnableAIAnalysis] = useState(true); // Phase 26: Auto-analyze uploads
+  // Phase 38 PR 3: "Send to accountant" modal state.
+  const [showSendDialog, setShowSendDialog] = useState(false);
+  // Phase 38 PR 4: tax-status lens.
+  // Map<expenseId, isTaxDeductible> — used by `getDocumentTaxStatus()` to
+  // bucket each document into DEDUCTIBLE / NON_DEDUCTIBLE / UNTAGGED.
+  // Declared early (before the useCallbacks below) so it's in scope for
+  // their dependency arrays — Next.js linter / strict TDZ check enforces
+  // declaration order.
+  const [expenseTaxMap, setExpenseTaxMap] = useState<Map<string, boolean>>(new Map());
 
   // Fetch documents with entity names
   const fetchDocuments = useCallback(async () => {
@@ -282,10 +291,68 @@ export default function DocumentsLibraryPage() {
     }
   }, [token]);
 
+  // Phase 38 PR 4: fetch expense isTaxDeductible flags so we can bucket
+  // documents in the FolderTree's "By Tax Status" lens. Uses the existing
+  // /api/expenses endpoint — no new API. Tolerant of variations in
+  // response envelope (`expenses`, `data`, or bare array).
+  const fetchExpenseTax = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/expenses', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const list: Array<{ id: string; isTaxDeductible?: boolean }> = Array.isArray(json)
+        ? json
+        : (json?.expenses ?? json?.data ?? []);
+      const map = new Map<string, boolean>();
+      for (const e of list) {
+        if (e?.id && typeof e.isTaxDeductible === 'boolean') {
+          map.set(e.id, e.isTaxDeductible);
+        }
+      }
+      setExpenseTaxMap(map);
+    } catch (err) {
+      console.error('[Documents] expense tax fetch failed:', err);
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchDocuments();
     fetchEntities();
-  }, [fetchDocuments, fetchEntities, refreshKey]);
+    fetchExpenseTax();
+  }, [fetchDocuments, fetchEntities, fetchExpenseTax, refreshKey]);
+
+  /**
+   * Phase 38 PR 4 — derive a document's tax-status bucket.
+   *
+   *   • DEDUCTIBLE     — at least one EXPENSE link where isTaxDeductible === true
+   *   • NON_DEDUCTIBLE — at least one EXPENSE link where isTaxDeductible === false
+   *                       AND no DEDUCTIBLE expense link
+   *   • UNTAGGED       — no EXPENSE link, OR expense link(s) without a known flag
+   *
+   * Tolerant of partial data — if a doc has expense links we don't have
+   * tax data for yet (e.g. expense was created after the page mounted),
+   * it falls into UNTAGGED rather than throwing.
+   */
+  const getDocumentTaxStatus = useCallback(
+    (doc: DocumentListItem): 'DEDUCTIBLE' | 'NON_DEDUCTIBLE' | 'UNTAGGED' => {
+      let anyDeductible = false;
+      let anyNonDeductible = false;
+      for (const link of doc.links) {
+        if (link.entityType !== 'EXPENSE') continue;
+        const flag = expenseTaxMap.get(link.entityId);
+        if (flag === true) anyDeductible = true;
+        else if (flag === false) anyNonDeductible = true;
+      }
+      if (anyDeductible) return 'DEDUCTIBLE';
+      if (anyNonDeductible) return 'NON_DEDUCTIBLE';
+      return 'UNTAGGED';
+    },
+    [expenseTaxMap]
+  );
 
   // Calculate document counts for folder tree
   const documentCounts = useMemo(() => {
@@ -309,6 +376,10 @@ export default function DocumentsLibraryPage() {
         // Count by specific entity ID (for individual entity counts)
         counts[`entity:${link.entityType}:${link.entityId}`] = (counts[`entity:${link.entityType}:${link.entityId}`] || 0) + 1;
       });
+
+      // Phase 38 PR 4 — tax-status bucket counts (DEDUCTIBLE / NON_DEDUCTIBLE / UNTAGGED)
+      const taxStatus = getDocumentTaxStatus(doc);
+      counts[`tax:${taxStatus}`] = (counts[`tax:${taxStatus}`] || 0) + 1;
     });
 
     return counts;
@@ -354,8 +425,14 @@ export default function DocumentsLibraryPage() {
       }
     }
 
+    // Phase 38 PR 4 — Tax-status lens. Path: /tax-status/{DEDUCTIBLE|NON_DEDUCTIBLE|UNTAGGED}
+    if (pathParts[0] === 'tax-status' && pathParts[1]) {
+      const target = pathParts[1] as 'DEDUCTIBLE' | 'NON_DEDUCTIBLE' | 'UNTAGGED';
+      return documents.filter((doc) => getDocumentTaxStatus(doc) === target);
+    }
+
     return documents;
-  }, [documents, currentPath]);
+  }, [documents, currentPath, getDocumentTaxStatus]);
 
   // Get sub-folders for current path
   const subFolders = useMemo(() => {
@@ -544,9 +621,6 @@ export default function DocumentsLibraryPage() {
   // Phase 26: Count analyzed documents
   const analyzedCount = documents.filter((d) => d.analysis?.status === 'COMPLETED').length;
   const pendingAnalysisCount = documents.filter((d) => d.analysis && d.analysis.status !== 'COMPLETED' && d.analysis.status !== 'FAILED').length;
-
-  // Phase 38 PR 3: "Send to accountant" modal state.
-  const [showSendDialog, setShowSendDialog] = useState(false);
 
   // Phase 38 PR 1: hero + Smart Inbox derivations. All client-side over
   // the existing /api/documents response — no new endpoint, no new query.
