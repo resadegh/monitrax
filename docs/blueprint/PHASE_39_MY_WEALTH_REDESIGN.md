@@ -113,10 +113,48 @@ No new dependencies introduced. `framer-motion` v12, `recharts` v3, `lucide-reac
 
 **Transactions:** stays nested inside the holdings detail dialog; not promoted to a standalone page in this phase.
 
-### 3.3 `/dashboard/assets` — QUEUED
+### 3.3 `/dashboard/assets` — SHIPPED (Phase 39.3)
 
-- `AssetsHero` — total asset value + count by type + active-vs-sold split.
-- `AssetTile` — type-coloured icon (Vehicle / Electronics / Furniture / etc.), purchase + current value, depreciation %, optional vehicle-specific readout (make/model/odometer).
+**New components introduced:**
+
+| Component | Path | Purpose |
+|---|---|---|
+| `AssetsHero` | `components/assets/AssetsHero.tsx` | Glassmorphic hero summary. Stage I (Invest) but **warm sub-palette** (amber + rose + peach mesh, orange-amber breathing glow) — assets are tangible objects, not financial growth. Total value (gradient text), active/sold split subtitle, KPI cells (purchase cost, annual costs, active count), allocation segment bar with type colour codes. |
+| `AssetTile` | `components/assets/AssetTile.tsx` | Per-type tile with **six warm sub-palettes** within Stage I: VEHICLE amber/orange, ELECTRONICS rose/pink, FURNITURE stone/amber, EQUIPMENT slate/zinc, COLLECTIBLE fuchsia/violet, OTHER orange/amber. Hero `currentValue` with depreciation pill (rose for loss, emerald for gain), depreciation $ + annual cost KPI row, vehicle subtitle (Make Model Year) when applicable, status pill (Sold / Written off) for inactive assets, tile dimmed to 75% opacity when inactive. |
+
+**Glyph library expansion:** `components/wealth/wealthGlyphs.tsx` got 6 new filled silhouette glyphs + an `AssetGlyph` resolver:
+
+| Glyph | Composition |
+|---|---|
+| VEHICLE | car silhouette (body + sloped roof + two wheels + ground line) |
+| ELECTRONICS | laptop silhouette (screen + base wedge) |
+| FURNITURE | sofa silhouette (back + seat + arms + legs) |
+| EQUIPMENT | wrench silhouette (single closed path) |
+| COLLECTIBLE | cut-diamond silhouette (crown + tapered pavilion) |
+| OTHER | generic package / box silhouette |
+
+Same design rules as the rest of `wealthGlyphs` (filled paths, fill="currentColor", viewBox 0 0 120 120, no decorative micro-details).
+
+**Wiring in `app/dashboard/assets/page.tsx`:**
+
+- 4-card summary block (Total Assets / Total Value / Vehicles / Other Assets) replaced with a single `<AssetsHero />` — fewer surfaces, more visual impact.
+- `renderAssetCard` (the inline tile renderer) replaced with `<AssetTile />` calls. The original function remains in the file but is now unused for the tile view (still referenced by list view; kept for now to minimise diff surface).
+- Hero segments computed from `summary.byType` per-type counts and values.
+- New aggregates: `totalPurchaseCost`, `totalAnnualCosts` (passed as KPI cells).
+- `PageHeader` description reworded from *"Track your personal assets, vehicles, and their costs"* to *"What you own — vehicles, electronics, furniture, and more."*
+- Tile grid: `md:grid-cols-2 xl:grid-cols-3` (was `md:grid-cols-2 lg:grid-cols-3`).
+
+**Status handling:**
+
+ACTIVE / SOLD / WRITTEN_OFF assets all render as tiles. Inactive (sold/written-off) tiles get an explicit status pill (next to the type label) and a 75% opacity wrapper so they read as "no longer current" without being rejected from the layout.
+
+**Untouched (intentional scope cap):**
+
+- All dialogs (Add/Edit Asset, Detail view tabs).
+- List view (table rendered via `renderListView()` behind the `viewMode` toggle).
+- Asset expense templates (the per-type expense quick-pick UI in the dialog).
+- Calculation helpers (`asset._computed`) — used as before; results passed in as tile props.
+- Filter / search (`ListFilter` with `assetFilterConfigs`).
 
 ## 4. Mobile sticky-stack scroll pattern
 
