@@ -337,3 +337,131 @@ export function HoldingGlyph({
       return <CryptoFilledGlyph className={className} delay={delay} />;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Phase 39.3 — Assets glyphs
+// Six glyphs (VEHICLE / ELECTRONICS / FURNITURE / EQUIPMENT /
+// COLLECTIBLE / OTHER) plus an AssetGlyph resolver.
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * VEHICLE — silhouette of a car profile (sedan-ish).
+ * Body + roof + two wheels. Reads instantly even at 4% opacity.
+ */
+export function VehicleFilledGlyph({ className, delay = 0 }: GlyphProps) {
+  const entry = useEntry(delay);
+  return (
+    <motion.svg {...SHARED_SVG_PROPS} className={className} {...entry}>
+      {/* Body — flat-bottom rounded rectangle with a sloped roof line */}
+      <path d="M 8 78 L 8 64 Q 8 56 18 56 L 32 56 L 44 36 Q 48 30 56 30 L 80 30 Q 88 30 92 36 L 104 56 L 110 56 Q 118 56 118 64 L 118 78 Q 118 84 112 84 L 14 84 Q 8 84 8 78 Z" />
+      {/* Wheels (solid discs) */}
+      <circle cx="32" cy="92" r="12" />
+      <circle cx="92" cy="92" r="12" />
+      {/* Ground line */}
+      <rect x="6" y="106" width="108" height="3" rx="1" />
+    </motion.svg>
+  );
+}
+
+/**
+ * ELECTRONICS — laptop silhouette (screen + base, side-on).
+ */
+export function ElectronicsFilledGlyph({ className, delay = 0 }: GlyphProps) {
+  const entry = useEntry(delay);
+  return (
+    <motion.svg {...SHARED_SVG_PROPS} className={className} {...entry}>
+      {/* Screen */}
+      <rect x="20" y="18" width="80" height="58" rx="3" />
+      {/* Base/keyboard wedge */}
+      <path d="M 8 80 L 112 80 L 102 92 L 18 92 Z" />
+    </motion.svg>
+  );
+}
+
+/**
+ * FURNITURE — sofa silhouette (back + seat + arms).
+ */
+export function FurnitureFilledGlyph({ className, delay = 0 }: GlyphProps) {
+  const entry = useEntry(delay);
+  return (
+    <motion.svg {...SHARED_SVG_PROPS} className={className} {...entry}>
+      {/* Back cushion */}
+      <rect x="14" y="32" width="92" height="36" rx="6" />
+      {/* Seat cushion */}
+      <rect x="22" y="64" width="76" height="22" rx="4" />
+      {/* Left arm */}
+      <rect x="8" y="50" width="14" height="40" rx="3" />
+      {/* Right arm */}
+      <rect x="98" y="50" width="14" height="40" rx="3" />
+      {/* Legs */}
+      <rect x="18" y="92" width="6" height="14" rx="1" />
+      <rect x="96" y="92" width="6" height="14" rx="1" />
+    </motion.svg>
+  );
+}
+
+/**
+ * EQUIPMENT — wrench silhouette. Reads as "tools, equipment."
+ */
+export function EquipmentFilledGlyph({ className, delay = 0 }: GlyphProps) {
+  const entry = useEntry(delay);
+  return (
+    <motion.svg {...SHARED_SVG_PROPS} className={className} {...entry}>
+      {/* Wrench head — rotated rectangle with rounded inner notch
+          approximated as a single closed silhouette. */}
+      <path d="M 22 22 Q 32 12 46 18 L 58 30 Q 64 36 58 42 L 50 50 L 110 110 Q 116 116 110 122 L 102 130 Q 96 136 90 130 L 30 70 L 22 78 Q 16 84 10 78 L 4 72 Q -2 66 4 60 Z" />
+    </motion.svg>
+  );
+}
+
+/**
+ * COLLECTIBLE — gem silhouette (cut diamond, round-brilliant outline).
+ */
+export function CollectibleFilledGlyph({ className, delay = 0 }: GlyphProps) {
+  const entry = useEntry(delay);
+  return (
+    <motion.svg {...SHARED_SVG_PROPS} className={className} {...entry}>
+      {/* Diamond — top crown band + tapered pavilion */}
+      <path d="M 24 38 L 60 8 L 96 38 L 78 38 L 60 116 L 42 38 Z" />
+    </motion.svg>
+  );
+}
+
+/**
+ * OTHER — generic package / box silhouette.
+ */
+export function OtherFilledGlyph({ className, delay = 0 }: GlyphProps) {
+  const entry = useEntry(delay);
+  return (
+    <motion.svg {...SHARED_SVG_PROPS} className={className} {...entry}>
+      {/* Box body (front face filled) */}
+      <path d="M 12 36 L 60 14 L 108 36 L 108 100 L 60 122 L 12 100 Z" />
+    </motion.svg>
+  );
+}
+
+/** Resolver — asset types. */
+export function AssetGlyph({
+  type,
+  className,
+  delay,
+}: {
+  type: 'VEHICLE' | 'ELECTRONICS' | 'FURNITURE' | 'EQUIPMENT' | 'COLLECTIBLE' | 'OTHER';
+  className?: string;
+  delay?: number;
+}) {
+  switch (type) {
+    case 'VEHICLE':
+      return <VehicleFilledGlyph className={className} delay={delay} />;
+    case 'ELECTRONICS':
+      return <ElectronicsFilledGlyph className={className} delay={delay} />;
+    case 'FURNITURE':
+      return <FurnitureFilledGlyph className={className} delay={delay} />;
+    case 'EQUIPMENT':
+      return <EquipmentFilledGlyph className={className} delay={delay} />;
+    case 'COLLECTIBLE':
+      return <CollectibleFilledGlyph className={className} delay={delay} />;
+    case 'OTHER':
+      return <OtherFilledGlyph className={className} delay={delay} />;
+  }
+}

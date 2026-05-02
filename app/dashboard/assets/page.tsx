@@ -23,6 +23,8 @@ import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ListFilter, assetFilterConfigs } from '@/components/ListFilter';
+import { AssetsHero, type AssetsHeroSegment } from '@/components/assets/AssetsHero';
+import { AssetTile } from '@/components/assets/AssetTile';
 
 type AssetType = 'VEHICLE' | 'ELECTRONICS' | 'FURNITURE' | 'EQUIPMENT' | 'COLLECTIBLE' | 'OTHER';
 type AssetStatus = 'ACTIVE' | 'SOLD' | 'WRITTEN_OFF';
@@ -587,7 +589,7 @@ function AssetsPageContent() {
       <div className="space-y-6">
         <PageHeader
           title="Assets"
-          description="Track your personal assets, vehicles, and their costs"
+          description="What you own — vehicles, electronics, furniture, and more."
           action={
             <Button onClick={() => { resetForm(); setShowDialog(true); }}>
               <Plus className="h-4 w-4 mr-2" /> Add Asset
@@ -595,63 +597,44 @@ function AssetsPageContent() {
           }
         />
 
-        {/* Summary Cards */}
-        {summary && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Assets
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{summary.activeCount}</p>
-                <p className="text-xs text-muted-foreground">
-                  {summary.totalCount - summary.activeCount} sold/written off
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Value
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{formatCurrency(summary.totalValue)}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Vehicles
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">
-                  {summary.byType['VEHICLE']?.count || 0}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(summary.byType['VEHICLE']?.totalValue || 0)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Other Assets
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">
-                  {Object.entries(summary.byType)
-                    .filter(([type]) => type !== 'VEHICLE')
-                    .reduce((sum, [, data]) => sum + data.count, 0)}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Premium hero summary — Stage I (Invest), warm sub-palette */}
+        {summary && summary.totalCount > 0 && (() => {
+          const HERO_SEGMENT_STYLE: Record<AssetType, { label: string; barClass: string; dotClass: string; chipClass: string }> = {
+            VEHICLE: { label: 'Vehicles', barClass: 'bg-gradient-to-r from-amber-400 to-orange-500', dotClass: 'bg-amber-500', chipClass: 'text-amber-700 dark:text-amber-300' },
+            ELECTRONICS: { label: 'Electronics', barClass: 'bg-gradient-to-r from-rose-400 to-pink-500', dotClass: 'bg-rose-500', chipClass: 'text-rose-700 dark:text-rose-300' },
+            FURNITURE: { label: 'Furniture', barClass: 'bg-gradient-to-r from-stone-400 to-amber-500', dotClass: 'bg-stone-500', chipClass: 'text-stone-700 dark:text-stone-300' },
+            EQUIPMENT: { label: 'Equipment', barClass: 'bg-gradient-to-r from-slate-400 to-zinc-500', dotClass: 'bg-slate-500', chipClass: 'text-slate-700 dark:text-slate-300' },
+            COLLECTIBLE: { label: 'Collectibles', barClass: 'bg-gradient-to-r from-fuchsia-400 to-violet-500', dotClass: 'bg-fuchsia-500', chipClass: 'text-fuchsia-700 dark:text-fuchsia-300' },
+            OTHER: { label: 'Other', barClass: 'bg-gradient-to-r from-orange-400 to-amber-500', dotClass: 'bg-orange-500', chipClass: 'text-orange-700 dark:text-orange-300' },
+          };
+          const segments: AssetsHeroSegment[] = [];
+          for (const type of ['VEHICLE', 'ELECTRONICS', 'FURNITURE', 'EQUIPMENT', 'COLLECTIBLE', 'OTHER'] as const) {
+            const data = summary.byType[type];
+            if (!data || data.count === 0) continue;
+            const style = HERO_SEGMENT_STYLE[type];
+            segments.push({
+              id: type,
+              label: style.label,
+              count: data.count,
+              value: data.totalValue,
+              barClass: style.barClass,
+              dotClass: style.dotClass,
+              chipClass: style.chipClass,
+            });
+          }
+          const totalPurchaseCost = assets.reduce((sum, a) => sum + a.purchasePrice, 0);
+          const totalAnnualCosts = assets.reduce((sum, a) => sum + (a._computed?.annualExpenses ?? 0), 0);
+          return (
+            <AssetsHero
+              totalValue={summary.totalValue}
+              activeCount={summary.activeCount}
+              totalCount={summary.totalCount}
+              totalPurchaseCost={totalPurchaseCost}
+              totalAnnualCosts={totalAnnualCosts}
+              segments={segments}
+            />
+          );
+        })()}
 
         {/* View Toggle */}
         {/* Search and Filter */}
@@ -697,8 +680,41 @@ function AssetsPageContent() {
             }}
           />
         ) : viewMode === 'tiles' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredAssets.map(renderAssetCard)}
+          /* Tiles — premium glassmorphic redesign (Phase 39.3, warm sub-palette) */
+          <div className="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {filteredAssets.map((asset, idx) => {
+              const computed = asset._computed || {
+                annualExpenses: 0,
+                depreciation: 0,
+                depreciationPercent: 0,
+              } as NonNullable<Asset['_computed']>;
+              return (
+                <AssetTile
+                  key={asset.id}
+                  index={idx}
+                  asset={{
+                    id: asset.id,
+                    name: asset.name,
+                    type: asset.type,
+                    status: asset.status,
+                    vehicleSubtitle:
+                      asset.type === 'VEHICLE'
+                        ? [asset.vehicleMake, asset.vehicleModel, asset.vehicleYear]
+                            .filter(Boolean)
+                            .join(' ') || undefined
+                        : undefined,
+                    purchasePrice: asset.purchasePrice,
+                    currentValue: asset.currentValue,
+                    depreciation: computed.depreciation,
+                    depreciationPercent: computed.depreciationPercent,
+                    annualExpenses: computed.annualExpenses,
+                  }}
+                  onView={() => handleViewDetail(asset)}
+                  onEdit={() => handleEdit(asset)}
+                  onDelete={() => handleDelete(asset.id)}
+                />
+              );
+            })}
           </div>
         ) : (
           renderListView()
