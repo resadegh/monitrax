@@ -18,6 +18,8 @@ import { formatCurrency } from '@/lib/utils/formatters';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
+import { InvestmentsHero, type InvestmentsHeroSegment } from '@/components/investments/InvestmentsHero';
+import { InvestmentAccountTile } from '@/components/investments/InvestmentAccountTile';
 
 interface InvestmentHolding {
   id: string;
@@ -273,6 +275,39 @@ function InvestmentAccountsPageContent() {
   // Calculate total portfolio value
   const totalPortfolioValue = accounts.reduce((sum, a) => sum + calculateTotalValue(a), 0);
 
+  // Aggregates for the InvestmentsHero (Phase 39.2)
+  const totalCash = accounts.reduce((sum, a) => sum + (a.cashBalance ?? 0), 0);
+  const totalHoldingsValue = totalPortfolioValue - totalCash;
+  const totalHoldingsCount = accounts.reduce((sum, a) => sum + (a.holdings?.length ?? 0), 0);
+
+  const HERO_SEGMENT_STYLE: Record<
+    InvestmentAccount['type'],
+    { label: string; barClass: string; dotClass: string; chipClass: string }
+  > = {
+    BROKERAGE: { label: 'Brokerage', barClass: 'bg-gradient-to-r from-sky-400 to-cyan-500', dotClass: 'bg-sky-500', chipClass: 'text-sky-700 dark:text-sky-300' },
+    SUPERS: { label: 'Super', barClass: 'bg-gradient-to-r from-indigo-400 to-violet-500', dotClass: 'bg-indigo-500', chipClass: 'text-indigo-700 dark:text-indigo-300' },
+    FUND: { label: 'Fund', barClass: 'bg-gradient-to-r from-blue-400 to-sky-500', dotClass: 'bg-blue-500', chipClass: 'text-blue-700 dark:text-blue-300' },
+    TRUST: { label: 'Trust', barClass: 'bg-gradient-to-r from-violet-400 to-purple-500', dotClass: 'bg-violet-500', chipClass: 'text-violet-700 dark:text-violet-300' },
+    ETF_CRYPTO: { label: 'ETF / Crypto', barClass: 'bg-gradient-to-r from-cyan-400 to-teal-500', dotClass: 'bg-cyan-500', chipClass: 'text-cyan-700 dark:text-cyan-300' },
+  };
+
+  const heroSegments: InvestmentsHeroSegment[] = [];
+  for (const type of ['BROKERAGE', 'SUPERS', 'FUND', 'TRUST', 'ETF_CRYPTO'] as const) {
+    const subset = accounts.filter((a) => a.type === type);
+    if (subset.length === 0) continue;
+    const value = subset.reduce((sum, a) => sum + calculateTotalValue(a), 0);
+    const style = HERO_SEGMENT_STYLE[type];
+    heroSegments.push({
+      id: type,
+      label: style.label,
+      count: subset.length,
+      value,
+      barClass: style.barClass,
+      dotClass: style.dotClass,
+      chipClass: style.chipClass,
+    });
+  }
+
   const getAccountTypeBadge = (type: InvestmentAccount['type']) => {
     switch (type) {
       case 'BROKERAGE':
@@ -327,7 +362,7 @@ function InvestmentAccountsPageContent() {
     <DashboardLayout>
       <PageHeader
         title="Investment Accounts"
-        description={`Manage your investment accounts • ${accounts.length} account(s) • Total: ${formatInvestmentCurrency(totalPortfolioValue)}`}
+        description="Where your money is invested — brokerage, super, funds, and more."
         action={
           <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }}>
             <Plus className="mr-2 h-4 w-4" />
@@ -335,6 +370,24 @@ function InvestmentAccountsPageContent() {
           </Button>
         }
       />
+
+      {/* Premium hero summary — TRAIL Stage I (Invest) palette */}
+      {!isLoading && accounts.length > 0 && (
+        <div className="mb-6">
+          <InvestmentsHero
+            title="Your investment accounts"
+            total={totalPortfolioValue}
+            subtitle={`${accounts.length} ${accounts.length === 1 ? 'account' : 'accounts'} · ${totalHoldingsCount} ${totalHoldingsCount === 1 ? 'holding' : 'holdings'}`}
+            kpis={[
+              { label: 'Holdings value', value: formatCurrency(totalHoldingsValue) },
+              { label: 'Cash on hand', value: formatCurrency(totalCash), accent: 'emerald' },
+              { label: 'Accounts', value: String(accounts.length) },
+            ]}
+            segments={heroSegments}
+            segmentsLabel="Allocation by account type"
+          />
+        </div>
+      )}
 
       {/* View Mode Toggle */}
       {accounts.length > 0 && !isLoading && (
@@ -448,84 +501,31 @@ function InvestmentAccountsPageContent() {
           </CardContent>
         </Card>
       ) : (
-        /* Tiles View */
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {accounts.map((account) => {
+        /* Tiles View — premium glassmorphic redesign (Stage I palette) */
+        <div className="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {accounts.map((account, idx) => {
             const totalValue = calculateTotalValue(account);
-            const holdingsCount = account.holdings?.length || 0;
-            const transactionsCount = account.transactions?.length || 0;
-            const linkedIncome = account.incomes?.length || 0;
-            const linkedExpenses = account.expenses?.length || 0;
-
             return (
-              <Card key={account.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => handleViewDetails(account)}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                        {account.name}
-                      </CardTitle>
-                      <div className="flex gap-2 flex-wrap">
-                        {getAccountTypeBadge(account.type)}
-                        <Badge variant="outline">{account.currency}</Badge>
-                      </div>
-                    </div>
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(account)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(account)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(account.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Total Value</p>
-                    <p className="text-2xl font-bold">{formatInvestmentCurrency(totalValue, account.currency)}</p>
-                  </div>
-
-                  {account.platform && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Platform</p>
-                      <p className="font-medium">{account.platform}</p>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4 pt-2 border-t">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Holdings</p>
-                      <p className="font-semibold">{holdingsCount}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Transactions</p>
-                      <p className="font-semibold">{transactionsCount}</p>
-                    </div>
-                  </div>
-
-                  {(linkedIncome > 0 || linkedExpenses > 0) && (
-                    <div className="flex gap-4 text-sm pt-2 border-t">
-                      {linkedIncome > 0 && (
-                        <div className="flex items-center gap-1 text-green-600">
-                          <DollarSign className="h-3 w-3" />
-                          <span>{linkedIncome} income</span>
-                        </div>
-                      )}
-                      {linkedExpenses > 0 && (
-                        <div className="flex items-center gap-1 text-red-600">
-                          <Receipt className="h-3 w-3" />
-                          <span>{linkedExpenses} expense</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <InvestmentAccountTile
+                key={account.id}
+                index={idx}
+                account={{
+                  id: account.id,
+                  name: account.name,
+                  type: account.type as 'BROKERAGE' | 'SUPERS' | 'FUND' | 'TRUST' | 'ETF_CRYPTO',
+                  platform: account.platform,
+                  currency: account.currency,
+                  totalValue,
+                  cashBalance: account.cashBalance ?? 0,
+                  holdingsCount: account.holdings?.length || 0,
+                  transactionsCount: account.transactions?.length || 0,
+                  incomeCount: account.incomes?.length || 0,
+                  expenseCount: account.expenses?.length || 0,
+                }}
+                onView={() => handleViewDetails(account)}
+                onEdit={() => handleEdit(account)}
+                onDelete={() => handleDelete(account.id)}
+              />
             );
           })}
         </div>
