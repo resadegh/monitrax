@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import {
   ArrowUpRight,
   Edit2,
@@ -92,12 +92,14 @@ function typeMeta(type: PropertyTileData['type']) {
         cta: 'from-amber-500 to-orange-600',
         ctaShadowDefault: 'shadow-amber-500/15',
         ctaShadowHover: 'hover:shadow-amber-500/25',
-        // Tile surface tint — v4: shade jump on hover (50 → 100 light,
-        // 950 → 900 dark) so the colour change is actually visible.
-        // v3 only bumped opacity within the same shade and the difference
-        // was imperceptible.
+        // Tile surface tint —
+        //   Mobile (default): OPAQUE bg so sticky-stacked tiles fully
+        //     cover each other when overlapping (no see-through chaos).
+        //   Desktop (md:): translucent for the glassmorphic feel.
+        //   Hover: shade jump (50 → 100 light, 950 → 900 dark) for
+        //     visible warming.
         tileBg:
-          'bg-amber-50/60 dark:bg-amber-950/25 group-hover:bg-amber-100/80 dark:group-hover:bg-amber-900/40',
+          'bg-amber-50 dark:bg-amber-950 md:bg-amber-50/60 dark:md:bg-amber-950/25 group-hover:bg-amber-100 dark:group-hover:bg-amber-900 md:group-hover:bg-amber-100/80 dark:md:group-hover:bg-amber-900/40',
         tileBorder:
           'border-amber-300/40 dark:border-amber-700/30 group-hover:border-amber-400/70 dark:group-hover:border-amber-500/55',
         // Silhouette tint — same family, slightly muted vs the icon
@@ -119,7 +121,7 @@ function typeMeta(type: PropertyTileData['type']) {
         ctaShadowDefault: 'shadow-sky-500/15',
         ctaShadowHover: 'hover:shadow-sky-500/25',
         tileBg:
-          'bg-sky-50/60 dark:bg-sky-950/25 group-hover:bg-sky-100/80 dark:group-hover:bg-sky-900/40',
+          'bg-sky-50 dark:bg-sky-950 md:bg-sky-50/60 dark:md:bg-sky-950/25 group-hover:bg-sky-100 dark:group-hover:bg-sky-900 md:group-hover:bg-sky-100/80 dark:md:group-hover:bg-sky-900/40',
         tileBorder:
           'border-sky-300/40 dark:border-sky-700/30 group-hover:border-sky-400/70 dark:group-hover:border-sky-500/55',
         glyphColor: 'text-sky-600 dark:text-sky-400',
@@ -141,7 +143,7 @@ function typeMeta(type: PropertyTileData['type']) {
         ctaShadowDefault: 'shadow-teal-500/15',
         ctaShadowHover: 'hover:shadow-teal-500/25',
         tileBg:
-          'bg-teal-50/60 dark:bg-teal-950/25 group-hover:bg-teal-100/80 dark:group-hover:bg-teal-900/40',
+          'bg-teal-50 dark:bg-teal-950 md:bg-teal-50/60 dark:md:bg-teal-950/25 group-hover:bg-teal-100 dark:group-hover:bg-teal-900 md:group-hover:bg-teal-100/80 dark:md:group-hover:bg-teal-900/40',
         tileBorder:
           'border-teal-300/40 dark:border-teal-700/30 group-hover:border-teal-400/70 dark:group-hover:border-teal-500/55',
         glyphColor: 'text-teal-600 dark:text-teal-400',
@@ -161,26 +163,41 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
   const isInvestment = property.type === 'INVESTMENT';
   const isRental = property.type === 'RENTAL';
 
-  // Mobile sticky-stack scroll pattern (Phase 39 mobile interaction):
-  // each tile uses position:sticky on mobile so the next tile rises
-  // up and visually OVERLAYS the current one (Apple Wallet card-deck
-  // feel) instead of a flat list scroll. As the next tile covers
-  // this one, scrollYProgress ramps from 0→1 and we apply a subtle
-  // scale + opacity dim to give a depth/parallax cue ("the receding
-  // tile is moving back while the new one comes forward").
-  // Disabled on desktop (md+) where the grid is multi-column, and
-  // disabled when prefers-reduced-motion is set.
-  const stackRef = useRef<HTMLDivElement>(null);
+  // Mobile sticky-stack scroll pattern (v2):
+  //   On mobile, each tile uses position:sticky with top-16 so that
+  //   as the user scrolls, the next tile naturally rises up from below
+  //   and overlays the current one (Apple Wallet card-deck feel).
+  //   Disabled on desktop (md+) and with prefers-reduced-motion.
+  //
+  // v1 → v2 lessons:
+  //   - `top-3` (12px) was hidden behind the 56px fixed mobile header
+  //     in DashboardLayout.tsx:550. `top-16` (64px) clears it cleanly.
+  //   - `bg-{color}-50/60` was translucent, so stacked tiles bled
+  //     through each other → see-through chaos. v2 uses opaque bg on
+  //     mobile (`bg-{color}-50`) and translucent only on md:+ (where
+  //     no overlap exists).
+  //   - `useScroll({ target })` on a sticky element doesn't update
+  //     once it pins. Solution: track scroll on the OUTER non-sticky
+  //     wrapper (whose rect IS moving with the document), then apply
+  //     the scroll-driven scale/opacity to the INNER sticky layer.
+  //
+  // Smooth "premium" feel:
+  //   `useSpring` smooths scrollYProgress so the dim feels organic
+  //   rather than 1:1-tied-to-scroll-jitter. Subtle spring config
+  //   (low stiffness, high damping) — no bounce, just easing.
   const stackEnabled = isMobile && !reduced;
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
-    target: stackRef,
+    target: wrapperRef,
     offset: ['start start', 'end start'],
   });
-  // Subtle variant — pairs with v4 atmosphere/hue treatment.
-  // Tweak these two lines to dial drama later (e.g. 0.92 / 0.5 for
-  // a more cinematic Apple-iOS-product-page feel).
-  const stackScale = useTransform(scrollYProgress, [0, 1], [1, 0.96]);
-  const stackOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.7]);
+  // Subtle variant. Receding tile: scale 1 → 0.96, opacity 1 → 0.78.
+  // Tweak by changing two numbers.
+  const rawScale = useTransform(scrollYProgress, [0, 1], [1, 0.96]);
+  const rawOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.78]);
+  const springConfig = { stiffness: 110, damping: 30, mass: 0.5 } as const;
+  const stackScale = useSpring(rawScale, springConfig);
+  const stackOpacity = useSpring(rawOpacity, springConfig);
 
   const tile = (
     <motion.div
@@ -416,15 +433,21 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
   }
 
   return (
-    <motion.div
-      ref={stackRef}
-      // sticky on mobile, normal flow on md+ (desktop's multi-column
-      // grid handles layout there — no stacking).
-      className="sticky top-3 md:static md:top-auto"
-      style={{ scale: stackScale, opacity: stackOpacity, willChange: 'transform, opacity' }}
-    >
-      {tile}
-    </motion.div>
+    // Outer wrapper: NOT sticky. Holds the tile's natural document
+    // position so useScroll has a moving rect to track. Without this
+    // layer, the sticky element below would freeze useScroll.
+    <div ref={wrapperRef}>
+      <motion.div
+        // Middle layer: sticky positioning + scroll-driven scale/opacity
+        // for the receding-tile depth cue.
+        // top-16 = 64px, clears the 56px fixed mobile header in
+        // DashboardLayout.tsx:550 with an 8px gap.
+        className="sticky top-16 md:static md:top-auto"
+        style={{ scale: stackScale, opacity: stackOpacity, transformOrigin: 'top center' }}
+      >
+        {tile}
+      </motion.div>
+    </div>
   );
 }
 
