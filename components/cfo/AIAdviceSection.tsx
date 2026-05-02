@@ -18,6 +18,7 @@ const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 interface AIAdviceSectionProps {
   token: string | null;
+  userName?: string | null;
 }
 
 interface ScenarioState {
@@ -40,7 +41,7 @@ interface ScenarioState {
  * explicit user-triggered refresh swaps it. See `lib/cfo/aiAdvisor.ts`
  * findFreshCache() for the server-side guarantee.
  */
-export function AIAdviceSection({ token }: AIAdviceSectionProps) {
+export function AIAdviceSection({ token, userName }: AIAdviceSectionProps) {
   const reduced = useReducedMotion() ?? false;
   const [advice, setAdvice] = useState<AIAdviceDocument | null>(null);
   const [loading, setLoading] = useState(true);
@@ -216,6 +217,7 @@ export function AIAdviceSection({ token }: AIAdviceSectionProps) {
         advice={advice}
         isRefreshing={refreshing}
         onRefresh={() => fetchAdvice(true)}
+        userName={userName}
       />
 
       {advice.recommendations.length === 0 ? (
