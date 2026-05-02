@@ -76,50 +76,122 @@ Transactions stays nested inside the holdings detail dialog; not promoted to a s
 - `AssetsHero` — total asset value + count by type + active-vs-sold split.
 - `AssetTile` — type-coloured icon (Vehicle / Electronics / Furniture / etc.), purchase + current value, depreciation %, optional vehicle-specific readout (make/model/odometer).
 
-## 4. Mobile sticky-stack scroll pattern
+## 4. Mobile view redesign & uplift
 
-> **Status as of 39.1d (mock):** prototyped on Properties only via PR #58? for visual review. Pattern queued for app-wide replication once Reza approves (see IMPLEMENTATION_PLAN queued items).
+> **Status as of 2026-05-02:** PARKED. Two attempts (sticky-stack v1 PR #587, sticky-stack v2 PR #590) shipped to production and were rolled back. The desired UX is documented below in full so a future session can pick this up cleanly without re-explaining requirements from scratch.
+>
+> **Action when revisiting:** read this section in full, then choose a *different* implementation approach from the candidate list (§4.5). Do not re-attempt sticky-stack with `useScroll/useTransform` — the same browser-quirk + sticky-tracking issues will recur.
 
-### Brief from Reza (2026-05-02)
+### 4.1 The brief (Reza, verbatim)
 
 > *"Is it possible to change the design for the mobile to show a transition between tiles when I scroll down rather than one tile after another? So I want to feel the new tile overlays the current one like a transition instead of scroll down feel."*
+>
+> *"Most probably I would like the same effect for all other pages on mobile view, so keep the design in the plan, document it. If I like what I see for assets, I will ask you to replicate for all of the app. Start with subtle for now and we can tweak as we go."*
+>
+> *"The transitions should be very smooth and clean so it feels premium and modern."*
 
-Apple Wallet card-deck feel — as the user scrolls down a list of tiles on mobile, each tile pins to the top and the next tile rises up and **overlays** it (instead of pushing it off-screen in a flat list). The receding tile gets a subtle scale + opacity dim to give a depth/parallax cue.
+### 4.2 Desired UX (the target, in plain words)
 
-### Implementation (v2 — current)
+When a user scrolls a vertical list of tiles on mobile:
 
-| Layer | What |
-|---|---|
-| **Positioning** | `position: sticky; top: 16` (64px) on each tile on mobile. The `top: 16` clears the 56px fixed mobile header at `DashboardLayout.tsx:550`. `md:static md:top-auto` reverts to normal flow on desktop where the multi-column grid takes over. |
-| **Stack order** | Default DOM stack order is sufficient — later siblings naturally render above earlier ones. No `z-index` needed. |
-| **Tile background** | **Opaque on mobile** (`bg-{color}-50`), **translucent on desktop** (`md:bg-{color}-50/60`). Mobile must be opaque so sticky-stacked tiles fully cover each other when overlapping; if they're translucent the lower tile bleeds through and creates visible chaos. The desktop grid never overlaps so it can keep the glassmorphic feel. |
-| **Mobile detection** | `hooks/useIsMobile.ts` — `matchMedia('(max-width: 767px)')`, SSR-safe (returns `false` on first render, updates on hydrate). |
-| **Reduced motion** | Pattern fully disabled when `prefers-reduced-motion: reduce` — falls back to standard scroll. |
+1. The currently-visible tile pins to the top of the visible content area (just below the page header chrome).
+2. As the user keeps scrolling, the *next* tile rises up from below and **overlays** the current one — like sliding a fresh card onto a stack.
+3. Once the new tile fully covers the previous, the previous is hidden and the new tile takes the foreground role.
+4. The receding tile gets a *subtle* depth cue (slight scale-down + slight opacity dim) so the user senses depth, not abruptness.
+5. The whole thing must feel **premium, smooth, and modern** — Apple Wallet / iOS Stocks card-deck feel, not "fancy CSS demo."
+6. Desktop (multi-column grid) is unaffected — only mobile (single-column) gets this behaviour.
+7. `prefers-reduced-motion` collapses to plain scroll.
 
-### v1 → v2 lessons (do not repeat)
+### 4.3 The right starting list of pages to apply it to
 
-1. **`top-3` (12px) is hidden behind the 56px mobile header.** The dashboard layout has a `lg:hidden fixed top-0 z-40 h-14` header; sticky tiles must use `top-16` or higher to clear it.
-2. **Translucent backgrounds break sticky-stacking.** When tile B pins on top of tile A, B's bg must be opaque or A bleeds through. `bg-amber-50/60` looks beautiful in isolation but is unusable for stacked overlap. Solution: opaque on mobile, translucent on desktop.
-3. **`useScroll({ target })` does not track sticky elements.** Once the element pins, its bounding rect freezes, and `scrollYProgress` stops updating. Any scroll-driven scale/opacity dim using a sticky target will silently fail. The opaque overlap itself provides the "new rising over old" visual cue without needing scroll-driven transforms — keep it simple.
+Once a working pattern is approved, these are the surfaces to apply it to **in order**:
 
-### Where this pattern should be replicated next
+| # | Surface | Component | Notes |
+|---|---|---|---|
+| 1 | `/dashboard/properties` | `PropertyTile` | Approval ground for the pattern |
+| 2 | `/dashboard/investments/accounts` | `InvestmentAccountTile` (Phase 39.2) | Per-type palette + glyph already defined |
+| 3 | `/dashboard/investments/holdings` | `HoldingTile` (Phase 39.2) | Same |
+| 4 | `/dashboard/assets` | `AssetTile` (Phase 39.3) | Different palette family (warmer for tangible objects) |
+| 5 | Phase 40 — app-wide replication | Balances, Budget, Safety Net, Reports/Vault, etc. | Pending approval across all of My Wealth |
 
-App-wide, queued behind Reza's approval of the Properties mock. Concretely:
+### 4.4 What we tried & why it didn't work
 
-| Surface | Owner |
-|---|---|
-| `/dashboard/properties` (PropertyTile) | Phase 39.1d (this mock) |
-| `/dashboard/investments/accounts` (InvestmentAccountTile — TBD) | Phase 39.2 |
-| `/dashboard/investments/holdings` (HoldingTile — TBD) | Phase 39.2 |
-| `/dashboard/assets` (AssetTile — TBD) | Phase 39.3 |
-| All other tile-list pages app-wide (Balances, Budget, Safety Net, Reports, etc.) | Phase 40+ — queued pending Reza's reaction across My Wealth |
+#### Attempt 1 — sticky-stack v1 (PR #587, merged 2026-05-02)
 
-### Reusable hook
+Approach: each tile wrapped in `<motion.div className="sticky top-3 md:static">`, with `useScroll({ target })` + `useTransform` driving a scale (1 → 0.96) and opacity (1 → 0.7) dim on the tile being covered. `useIsMobile` hook gated the behaviour to mobile + non-reduced-motion.
 
-`hooks/useIsMobile.ts` is intentionally generic so any future tile component can opt in by:
-1. Wrapping its existing motion.div in a sticky container (`<div className="sticky top-16 md:static md:top-auto">`).
-2. Switching its bg classes from `bg-{color}-{shade}/{opacity}` to `bg-{color}-{shade} md:bg-{color}-{shade}/{opacity}` (opaque mobile, translucent desktop).
-3. Conditionally opting out via `if (!isMobile || reduced) return tile;` to keep the desktop grid layout untouched.
+What broke (Reza, on iPhone Safari):
+- The first pinned tile was cut off at the top — the pinned position landed *behind* the dashboard's mobile header (`fixed top-0 z-40 h-14`, 56px) at `DashboardLayout.tsx:550`. `top-3` (12px) put the tile under the header.
+- Tile contents from the receding tile bled through the rising tile because `bg-{color}-50/60` is translucent. The user saw two equity values, two LVR readings, two addresses overlapping on screen.
+- Transitions felt jarring, not premium.
+
+#### Attempt 2 — sticky-stack v2 (PR #590, merged 2026-05-02)
+
+Three structural fixes layered on top of v1:
+1. `top-16` (64px) to clear the mobile header.
+2. Opaque tile bg on mobile (`bg-{color}-50`), translucent only on `md:+` (`md:bg-{color}-50/60`) — so stacked tiles cover each other cleanly.
+3. Restructured into 3 nested layers (outer ref div for scroll tracking + middle sticky div with `useScroll → useSpring → useTransform`-driven scale/opacity + inner motion.div with the existing tile content), so `useScroll` could track scroll progress against the *outer non-sticky wrapper's* moving rect (the sticky inner element's rect freezes once pinned, which silently breaks `useScroll`).
+
+What still broke (Reza, on iPhone Safari):
+- "Mobile transitions work once and then it goes back to scroll." Likely cause: iOS Safari's URL-bar resize behaviour disturbs the sticky pin reference; once the URL bar collapses (on first scroll), the sticky-pinned offset is computed against a different viewport and breaks for subsequent tiles.
+- "Still overlays and the previous tile is still visible." The opaque bg fix worked locally but apparently not in the user's actual production environment — possibly the `dark:md:bg-{color}-{shade}/{opacity}` Tailwind variant chain wasn't being correctly extracted by JIT, leaving the runtime bg as the translucent dark-mode variant.
+- "Not sure if the effects are shown on my mobile." Production rendering diverged from local — a sign the implementation has fragile assumptions.
+
+### 4.5 What to try next time (do NOT re-attempt sticky-stack)
+
+`position: sticky` + scroll-driven transforms on iOS Safari has too many edge cases (URL-bar viewport resize, sticky bounding-rect freezing, transparent stacking, JIT class extraction) for a "premium feel" target. Pick one of these alternatives:
+
+#### Candidate A — CSS scroll-driven animations (modern, ideal)
+
+Use the modern CSS `animation-timeline: scroll()` / `view-timeline-name` properties. Each tile has a CSS animation tied to its own viewport entry/exit. No JS scroll listeners, no sticky positioning, no `useScroll` quirks.
+
+- **Pros:** native, performant, no main-thread cost, no SSR pitfalls.
+- **Cons:** Chromium 115+ and Safari 17+ only. Need a fallback for older browsers (could be plain scroll — acceptable given target audience is iOS + recent Android).
+- **Risk:** low if browser support matches user base.
+
+#### Candidate B — Snap scroll with full-viewport tiles
+
+`scroll-snap-type: y mandatory` on the tile list container, `scroll-snap-align: start` on each tile, each tile sized to ~`100dvh` (or `90dvh` for a peek of the next). Each tile becomes a "page". Scrolling snaps to the next.
+
+- **Pros:** native, predictable, well-supported, no JS.
+- **Cons:** doesn't give the "overlay" feel — new tile slides in *below*, old slides up *above*. More like Stories / iPhone home screen than Wallet card-deck.
+- **Risk:** Reza may say "this is just paged scroll, not what I wanted." Worth confirming with him before building.
+
+#### Candidate C — Swipe deck (gesture-driven, framer-motion native)
+
+Vertical swipe with framer-motion's `drag` prop. Each tile is absolutely positioned; only the top tile is interactive. Swipe up to throw it away (translateY off-screen + fade), reveal the next.
+
+- **Pros:** very smooth, premium feel, full control over animation curve.
+- **Cons:** swipe ≠ scroll; users instinctively scroll to navigate lists. Discoverability issue.
+- **Risk:** medium — diverges from "scroll" mental model.
+
+#### Candidate D — IntersectionObserver-driven overlay
+
+Each tile uses `position: relative` (no sticky). An `IntersectionObserver` on each tile watches for when the *next* tile enters the viewport at the top. When triggered, the current tile gets a CSS class that animates a scale + opacity dim. Plus the next tile gets `position: fixed; top: <header>` for the duration it's "active."
+
+- **Pros:** no sticky, full control over the moment of transition, no `useScroll` tracking issues.
+- **Cons:** more code. Need careful state machine for "which tile is currently active" + cleanup on scroll back.
+- **Risk:** medium — more state to manage.
+
+#### Recommendation when revisiting
+
+Try **Candidate A** first. If browser support is acceptable, it's the cleanest possible implementation. If not, **Candidate D** is the most flexible fallback. Avoid `position: sticky` on the tile element itself — every variation of that approach we tried has a quirk that surfaces on production iOS Safari.
+
+### 4.6 Reusable building blocks already in the codebase
+
+These survive the revert and can be used by whichever approach is chosen next:
+
+- `hooks/useIsMobile.ts` — `matchMedia('(max-width: 767px)')`, SSR-safe. Drop-in for any tile component that needs to gate behaviour by viewport.
+- `components/properties/PropertyTile.tsx` — clean, no sticky-stack code. Pattern is: `motion.div` with `whileHover`, atmosphere layer, hue layer, glyph layer, content. Easy to wrap in a different mobile-only behaviour later.
+- `framer-motion` v12 + `useScroll` / `useSpring` / `useTransform` — these all work fine for *non-sticky* targets. They were the wrong tool for sticky-stacked elements specifically.
+
+### 4.7 Files removed during the revert
+
+- The mobile sticky-stack wrapper code in `PropertyTile.tsx` (the outer ref div, middle sticky motion.div, scroll-driven transforms, useSpring smoothing). Reverted to direct `motion.div` return.
+- Translucent → opaque mobile bg switch on `bg-amber-50/60` etc. Reverted to plain translucent `/60` because there's no overlap problem when sticky-stack isn't active.
+- The `useIsMobile` import from `PropertyTile.tsx` (the hook itself remains for future use).
+
+The file is now back to "plain v4 visual treatment, no mobile-specific scroll behaviour."
 
 ## 5. Out of scope (explicitly)
 
