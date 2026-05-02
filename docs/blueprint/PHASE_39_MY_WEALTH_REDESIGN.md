@@ -76,14 +76,51 @@ Transactions stays nested inside the holdings detail dialog; not promoted to a s
 - `AssetsHero` — total asset value + count by type + active-vs-sold split.
 - `AssetTile` — type-coloured icon (Vehicle / Electronics / Furniture / etc.), purchase + current value, depreciation %, optional vehicle-specific readout (make/model/odometer).
 
-## 4. Out of scope (explicitly)
+## 4. Mobile sticky-stack scroll pattern
+
+> **Status as of 39.1d (mock):** prototyped on Properties only via PR #58? for visual review. Pattern queued for app-wide replication once Reza approves (see IMPLEMENTATION_PLAN queued items).
+
+### Brief from Reza (2026-05-02)
+
+> *"Is it possible to change the design for the mobile to show a transition between tiles when I scroll down rather than one tile after another? So I want to feel the new tile overlays the current one like a transition instead of scroll down feel."*
+
+Apple Wallet card-deck feel — as the user scrolls down a list of tiles on mobile, each tile pins to the top and the next tile rises up and **overlays** it (instead of pushing it off-screen in a flat list). The receding tile gets a subtle scale + opacity dim to give a depth/parallax cue.
+
+### Implementation
+
+| Layer | What |
+|---|---|
+| **Positioning** | `position: sticky; top: 12px` on each tile on mobile. `md:static md:top-auto` reverts to normal flow on desktop where the grid layout takes over. |
+| **Stack order** | Default DOM stack order is sufficient — later siblings naturally render above earlier ones. No `z-index` needed. |
+| **Scroll-driven dim** | Each tile uses `framer-motion` `useScroll({ target: ref, offset: ['start start', 'end start'] })`. Two `useTransform` calls produce `scale` (`1 → 0.96`) and `opacity` (`1 → 0.7`) as the next tile rises to cover this one. |
+| **Mobile detection** | `hooks/useIsMobile.ts` — `matchMedia('(max-width: 767px)')`, SSR-safe (returns `false` on first render, updates on hydrate). |
+| **Reduced motion** | Pattern fully disabled when `prefers-reduced-motion: reduce` — falls back to standard scroll, no transforms. |
+| **Variant** | **Subtle** by default — pairs well with v4 atmosphere/hue treatment. **Dramatic** variant (`scale 0.92 / opacity 0.5`) is one-line tweak if a more cinematic Apple-iOS-product-page feel is wanted later. |
+
+### Where this pattern should be replicated next
+
+App-wide, queued behind Reza's approval of the Properties mock. Concretely:
+
+| Surface | Owner |
+|---|---|
+| `/dashboard/properties` (PropertyTile) | Phase 39.1d (this mock) |
+| `/dashboard/investments/accounts` (InvestmentAccountTile — TBD) | Phase 39.2 |
+| `/dashboard/investments/holdings` (HoldingTile — TBD) | Phase 39.2 |
+| `/dashboard/assets` (AssetTile — TBD) | Phase 39.3 |
+| All other tile-list pages app-wide (Balances, Budget, Safety Net, Reports, etc.) | Phase 40+ — queued pending Reza's reaction across My Wealth |
+
+### Reusable hook
+
+`hooks/useIsMobile.ts` is intentionally generic so any future tile component can opt in by adding a `motion.div` wrapper with the same `useScroll` + `useTransform` pattern. The wrapper pattern (separating sticky+scroll from the inner tile content) keeps the existing tile's hover/animation/layout props untouched — drop-in.
+
+## 5. Out of scope (explicitly)
 
 - Dialogs for property/investment/asset detail views — they keep their current layout for now. A separate phase can redesign them once the page-level patterns are settled.
 - Strategy tab visuals (`EntityStrategyTab` component).
 - Linked-data panel (`LinkedDataPanel`) styling — still uses the existing GRDCS-aware component.
 - New chart engine choice — sticking with `recharts` v3 (already installed) where charts are needed.
 
-## 5. Acceptance criteria
+## 6. Acceptance criteria
 
 - [x] Build green (`npm run build`)
 - [x] Stage I palette consistent across hero + tile
