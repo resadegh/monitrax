@@ -28,3 +28,32 @@ export { calculateCFOTaxInsights } from './decisionSupport/taxIntegration';
 export { calculateCFOLoanInsights } from './decisionSupport/loanDecisionSupport';
 export { calculateCFOPropertyInsights } from './decisionSupport/propertyDecisionSupport';
 export { calculateCFOInvestmentInsights } from './decisionSupport/investmentDecisionSupport';
+
+// Phase 40 — AI Financial Advisor + scenario engine
+export { generateOrFetchAdvice } from './aiAdvisor';
+export type {
+  AIAdviceDocument,
+  AIAdviceRecommendation,
+  AIAdviceEvidence,
+  AIAdviceSuggestedScenario,
+  AIAdviceHeadline,
+} from './aiAdvisor';
+export { runScenario, SCENARIO_TYPES } from './scenarios';
+export type {
+  ScenarioContext,
+  ScenarioResult,
+  ScenarioType,
+  ScenarioImpact,
+  ScenarioWarning,
+  AnyScenarioParams,
+  LoanView,
+} from './scenarios';
+
+// TRAIL stage detection (Phase 17 spec — wired up in Phase 40).
+export {
+  determineTrailStage,
+  getTrailStageInfo,
+  actionCategoryToTrailStage,
+  isActionRelevantToStage,
+} from './trailStage';
+export type { TrailStage, TrailStageInfo, TrailStageInput } from './trailStage';

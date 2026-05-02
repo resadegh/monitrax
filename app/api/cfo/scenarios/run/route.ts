@@ -1,0 +1,126 @@
+/**
+ * Phase 40 — POST /api/cfo/scenarios/run
+ *
+ * Runs a deterministic "what-if" scenario against the user's current
+ * canonical snapshot and returns the projected impact. The AI advisor
+ * suggests scenarios but does NOT compute their numbers — this endpoint
+ * is the single place where scenario projections are produced, and it
+ * uses pure functions in `lib/cfo/scenarios/`.
+ *
+ * Auth: requires `report.read` permission.
+ */
+
+import { NextResponse, type NextRequest } from 'next/server';
+import { withPermission } from '@/lib/auth/guards';
+import { prisma } from '@/lib/db';
+import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import {
+  runScenario,
+  SCENARIO_TYPES,
+  type AnyScenarioParams,
+  type LoanView,
+  type ScenarioType,
+} from '@/lib/cfo';
+import { createAuditLog } from '@/lib/security/auditLog';
+import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
+
+async function fetchLoanViews(userId: string): Promise<LoanView[]> {
+  const loans = await prisma.loan.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      name: true,
+      principal: true,
+      interestRateAnnual: true,
+      termMonthsRemaining: true,
+      minRepayment: true,
+      type: true,
+      repaymentFrequency: true,
+      offsetAccount: { select: { currentBalance: true } },
+    },
+  });
+  return loans.map((l) => {
+    const remaining = Number(l.termMonthsRemaining ?? 360);
+    const minMonthlyRepayment =
+      l.repaymentFrequency === 'WEEKLY'
+        ? Number(l.minRepayment ?? 0) * (52 / 12)
+        : l.repaymentFrequency === 'FORTNIGHTLY'
+          ? Number(l.minRepayment ?? 0) * (26 / 12)
+          : Number(l.minRepayment ?? 0);
+    return {
+      id: l.id,
+      name: l.name,
+      principal: Number(l.principal),
+      interestRate: Number(l.interestRateAnnual ?? 0),
+      termMonths: remaining,
+      remainingMonths: remaining,
+      monthlyRepayment: minMonthlyRepayment,
+      loanType: String(l.type ?? ''),
+      offsetBalance: Number(l.offsetAccount?.currentBalance ?? 0),
+    };
+  });
+}
+
+export const POST = withPermission('report.read', async (request: NextRequest, auth) => {
+  let body: { type?: string; params?: Record<string, unknown> };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: { code: 'INVALID_BODY', message: 'Body must be JSON.' } },
+      { status: 400 }
+    );
+  }
+
+  const type = String(body?.type ?? '');
+  if (!SCENARIO_TYPES.includes(type as ScenarioType)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_SCENARIO_TYPE',
+          message: `Unknown scenario type "${type}". Valid: ${SCENARIO_TYPES.join(', ')}.`,
+        },
+      },
+      { status: 400 }
+    );
+  }
+
+  const params =
+    body?.params && typeof body.params === 'object' ? (body.params as Record<string, unknown>) : {};
+
+  try {
+    const [snapshot, loans] = await Promise.all([
+      getMasterFinancialSnapshot(auth.userId),
+      fetchLoanViews(auth.userId),
+    ]);
+
+    const result = runScenario({ snapshot, loans }, {
+      type,
+      params,
+    } as unknown as AnyScenarioParams);
+
+    createAuditLog({
+      userId: auth.userId,
+      action: 'CFO_SCENARIO_RUN',
+      entityType: 'CFOScenario',
+      entityId: result.type,
+      metadata: sanitizeCdrMetadata({
+        scenarioType: result.type,
+        warningCount: result.warnings.length,
+        impactCount: result.impacts.length,
+      }),
+    }).catch(() => {});
+
+    return NextResponse.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[/api/cfo/scenarios/run] failed:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: 'SCENARIO_FAILED', message: 'Could not run the scenario.' },
+      },
+      { status: 500 }
+    );
+  }
+});
