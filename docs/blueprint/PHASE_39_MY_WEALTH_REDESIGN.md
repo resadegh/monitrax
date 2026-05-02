@@ -86,16 +86,21 @@ Transactions stays nested inside the holdings detail dialog; not promoted to a s
 
 Apple Wallet card-deck feel — as the user scrolls down a list of tiles on mobile, each tile pins to the top and the next tile rises up and **overlays** it (instead of pushing it off-screen in a flat list). The receding tile gets a subtle scale + opacity dim to give a depth/parallax cue.
 
-### Implementation
+### Implementation (v2 — current)
 
 | Layer | What |
 |---|---|
-| **Positioning** | `position: sticky; top: 12px` on each tile on mobile. `md:static md:top-auto` reverts to normal flow on desktop where the grid layout takes over. |
+| **Positioning** | `position: sticky; top: 16` (64px) on each tile on mobile. The `top: 16` clears the 56px fixed mobile header at `DashboardLayout.tsx:550`. `md:static md:top-auto` reverts to normal flow on desktop where the multi-column grid takes over. |
 | **Stack order** | Default DOM stack order is sufficient — later siblings naturally render above earlier ones. No `z-index` needed. |
-| **Scroll-driven dim** | Each tile uses `framer-motion` `useScroll({ target: ref, offset: ['start start', 'end start'] })`. Two `useTransform` calls produce `scale` (`1 → 0.96`) and `opacity` (`1 → 0.7`) as the next tile rises to cover this one. |
+| **Tile background** | **Opaque on mobile** (`bg-{color}-50`), **translucent on desktop** (`md:bg-{color}-50/60`). Mobile must be opaque so sticky-stacked tiles fully cover each other when overlapping; if they're translucent the lower tile bleeds through and creates visible chaos. The desktop grid never overlaps so it can keep the glassmorphic feel. |
 | **Mobile detection** | `hooks/useIsMobile.ts` — `matchMedia('(max-width: 767px)')`, SSR-safe (returns `false` on first render, updates on hydrate). |
-| **Reduced motion** | Pattern fully disabled when `prefers-reduced-motion: reduce` — falls back to standard scroll, no transforms. |
-| **Variant** | **Subtle** by default — pairs well with v4 atmosphere/hue treatment. **Dramatic** variant (`scale 0.92 / opacity 0.5`) is one-line tweak if a more cinematic Apple-iOS-product-page feel is wanted later. |
+| **Reduced motion** | Pattern fully disabled when `prefers-reduced-motion: reduce` — falls back to standard scroll. |
+
+### v1 → v2 lessons (do not repeat)
+
+1. **`top-3` (12px) is hidden behind the 56px mobile header.** The dashboard layout has a `lg:hidden fixed top-0 z-40 h-14` header; sticky tiles must use `top-16` or higher to clear it.
+2. **Translucent backgrounds break sticky-stacking.** When tile B pins on top of tile A, B's bg must be opaque or A bleeds through. `bg-amber-50/60` looks beautiful in isolation but is unusable for stacked overlap. Solution: opaque on mobile, translucent on desktop.
+3. **`useScroll({ target })` does not track sticky elements.** Once the element pins, its bounding rect freezes, and `scrollYProgress` stops updating. Any scroll-driven scale/opacity dim using a sticky target will silently fail. The opaque overlap itself provides the "new rising over old" visual cue without needing scroll-driven transforms — keep it simple.
 
 ### Where this pattern should be replicated next
 
@@ -111,7 +116,10 @@ App-wide, queued behind Reza's approval of the Properties mock. Concretely:
 
 ### Reusable hook
 
-`hooks/useIsMobile.ts` is intentionally generic so any future tile component can opt in by adding a `motion.div` wrapper with the same `useScroll` + `useTransform` pattern. The wrapper pattern (separating sticky+scroll from the inner tile content) keeps the existing tile's hover/animation/layout props untouched — drop-in.
+`hooks/useIsMobile.ts` is intentionally generic so any future tile component can opt in by:
+1. Wrapping its existing motion.div in a sticky container (`<div className="sticky top-16 md:static md:top-auto">`).
+2. Switching its bg classes from `bg-{color}-{shade}/{opacity}` to `bg-{color}-{shade} md:bg-{color}-{shade}/{opacity}` (opaque mobile, translucent desktop).
+3. Conditionally opting out via `if (!isMobile || reduced) return tile;` to keep the desktop grid layout untouched.
 
 ## 5. Out of scope (explicitly)
 
