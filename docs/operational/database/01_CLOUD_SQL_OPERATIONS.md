@@ -24,9 +24,12 @@ BAU operations guide for Monitrax PostgreSQL instances on GCP Cloud SQL.
 | Project | `monitrax-479700` | `monitrax-479700` |
 | Region | `australia-southeast1` (Sydney) | `australia-southeast1` (Sydney) |
 | Engine | PostgreSQL 18 | PostgreSQL 18 |
+| Edition | **Cloud SQL Enterprise Plus** (upgraded 2026-05-02) | same |
 | Runtime auth | **WIF + Cloud SQL Connector + IAM DB auth** (after Phase 9 of WIF) | same |
 | Build-time auth | `DATABASE_URL` password (used by `prisma migrate deploy`) | same |
 | SSL | Required | Required |
+
+> **Edition note (2026-05-02):** Production was upgraded from `db-g1-small` (Cloud SQL **Standard** edition, shared 1 vCPU / 1.7 GB) to **Cloud SQL Enterprise Plus**. Enterprise Plus gives us: (a) dedicated machine resources (no noisy-neighbour); (b) faster failover (under 60s); (c) integrated near-zero-downtime maintenance; (d) data cache (transparent in-memory layer for read performance); (e) point-in-time recovery with finer granularity. Run `gcloud sql instances describe monitrax-db-prod --format="value(settings.edition,settings.tier)"` to confirm the live edition + tier flags.
 
 ---
 

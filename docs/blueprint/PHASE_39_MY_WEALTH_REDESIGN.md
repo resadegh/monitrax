@@ -215,6 +215,38 @@ App-wide, queued behind Reza's approval of the Properties mock. Concretely:
 - [x] All TRAIL_FRAMEWORK §2 emotional brief honoured (warm tone, no shame language)
 - [x] `prefers-reduced-motion` honoured throughout
 - [x] Mobile breakpoints verified (1 col → 2 col `md` → 3 col `xl`)
-- [ ] Dark mode visually verified (sky borders, gradient text, mesh gradients all need a dark-mode pass — tile classes use `dark:` variants but production verification pending)
-- [ ] Investments redesign shipped (queued — Phase 39.2)
-- [ ] Assets redesign shipped (queued — Phase 39.3)
+- [x] **Phase 39.2 — Investments redesign shipped** (PR #592, merged 2026-05-02)
+- [x] **Phase 39.3 — Assets redesign shipped** (PR #593, merged 2026-05-02)
+- [ ] Dark mode visually verified across all three pages — tile classes use `dark:` variants but production verification pending
+
+## 7. App-wide propagation — DECISION (2026-05-02)
+
+> **Decision:** the v4 tile pattern stays scoped to **My Wealth only** for now. NOT propagated to other entity-list pages.
+
+Reza's call after reviewing all three Phase 39 pages in production:
+
+> *"For now I decided to keep the design and not propagate to other entity list pages (maybe that changes in future)."*
+
+### What this means
+
+- **My Accounts (Balances)**, **My Budget (categories)**, **My Safety Net**, and any other tile-list surface keep their current visual treatment.
+- The TRAIL-rainbow proposal (per-stage tonal palettes — warm amber for Track, orange/rose for Reduce, emerald/teal for Anchor, sky/indigo for Invest, sunset for Live) is **parked**, not rejected. Re-evaluate when the My Wealth experience has bedded in and Reza signals interest.
+
+### Why this is a good call (post-mortem)
+
+Phase 39 took 3 PRs across Properties, Investments accounts + holdings, and Assets. Propagating to the remaining 5+ entity-list surfaces would have been ~3–4 more PRs of similar scope (~9–12 hours of work), each introducing more per-section palette variation across the app. That risks visual fragmentation (many sections, many palettes — the page-by-page coherence we have within My Wealth might not extend to a sweep across the whole app without further design work on what unifies the experience). Better to validate the My Wealth experience under real use first, then decide whether/how to extend the language.
+
+### Reusable building blocks left in place for the future
+
+If propagation is reactivated:
+
+- **Glyph library** `components/wealth/wealthGlyphs.tsx` is the canonical home for new filled silhouettes. It already houses 18 glyphs across Properties / Investments / Assets and can absorb more (e.g. bank-account types for Balances) without restructure.
+- **Tile pattern** is documented in §3.1–§3.3 of this doc — atmosphere mesh + per-type hue + filled glyph + top accent strip + gradient CTA + spring hover-lift. Drop-in for any new tile component.
+- **Hero pattern** is in `PropertiesHero` / `InvestmentsHero` / `AssetsHero`. The InvestmentsHero is parameterised (title, total, subtitle, kpis, segments) and could be promoted to a generic `WealthHero` if propagation kicks off.
+
+### When to revisit
+
+Triggers that would justify reopening this decision:
+1. User feedback that the My Accounts / My Budget / My Safety Net pages feel visually "left behind" the My Wealth experience.
+2. Onboarding research showing the visual contrast between sections is confusing rather than purposeful.
+3. A larger-scale design refresh (e.g. an internal brand evolution) that wants section-level unification anyway.
