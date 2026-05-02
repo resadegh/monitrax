@@ -1,6 +1,7 @@
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
+import { useRef } from 'react';
+import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import {
   ArrowUpRight,
   Edit2,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { PropertyGlyph } from '@/components/wealth/wealthGlyphs';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 /**
  * PropertyTile — premium glassmorphic property card.
@@ -151,6 +153,7 @@ function typeMeta(type: PropertyTileData['type']) {
 
 export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onDelete }: PropertyTileProps) {
   const reduced = useReducedMotion() ?? false;
+  const isMobile = useIsMobile();
   const meta = typeMeta(property.type);
   const Icon = meta.icon;
   const lvr = lvrTone(metrics.lvr);
@@ -158,7 +161,28 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
   const isInvestment = property.type === 'INVESTMENT';
   const isRental = property.type === 'RENTAL';
 
-  return (
+  // Mobile sticky-stack scroll pattern (Phase 39 mobile interaction):
+  // each tile uses position:sticky on mobile so the next tile rises
+  // up and visually OVERLAYS the current one (Apple Wallet card-deck
+  // feel) instead of a flat list scroll. As the next tile covers
+  // this one, scrollYProgress ramps from 0→1 and we apply a subtle
+  // scale + opacity dim to give a depth/parallax cue ("the receding
+  // tile is moving back while the new one comes forward").
+  // Disabled on desktop (md+) where the grid is multi-column, and
+  // disabled when prefers-reduced-motion is set.
+  const stackRef = useRef<HTMLDivElement>(null);
+  const stackEnabled = isMobile && !reduced;
+  const { scrollYProgress } = useScroll({
+    target: stackRef,
+    offset: ['start start', 'end start'],
+  });
+  // Subtle variant — pairs with v4 atmosphere/hue treatment.
+  // Tweak these two lines to dial drama later (e.g. 0.92 / 0.5 for
+  // a more cinematic Apple-iOS-product-page feel).
+  const stackScale = useTransform(scrollYProgress, [0, 1], [1, 0.96]);
+  const stackOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.7]);
+
+  const tile = (
     <motion.div
       layout
       initial={reduced ? { opacity: 1 } : { opacity: 0, y: 18 }}
@@ -380,6 +404,26 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
           View details
         </motion.button>
       </div>
+    </motion.div>
+  );
+
+  // On desktop (or when motion is reduced), return the tile as-is.
+  // On mobile, wrap in a sticky-positioned container with scroll-driven
+  // scale/opacity so each tile pins and gets visually overlaid by the
+  // next as the user scrolls — the "card-deck" feel.
+  if (!stackEnabled) {
+    return tile;
+  }
+
+  return (
+    <motion.div
+      ref={stackRef}
+      // sticky on mobile, normal flow on md+ (desktop's multi-column
+      // grid handles layout there — no stacking).
+      className="sticky top-3 md:static md:top-auto"
+      style={{ scale: stackScale, opacity: stackOpacity, willChange: 'transform, opacity' }}
+    >
+      {tile}
     </motion.div>
   );
 }
