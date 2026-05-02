@@ -417,6 +417,9 @@ model User {
   // generic share engine for Reports / property summaries / net worth).
   sharePackages             SharePackage[]
 
+  // Phase 40: My Guide — AI Financial Advice (cached advice docs + chat).
+  aiAdviceDocuments         AIAdviceDocument[]
+
   @@map("users")
 }
 
@@ -4241,4 +4244,72 @@ enum SharePackageDeliveryMethod {
   EMAIL_LINK      // app emails the link to recipientEmail on creation
   DOWNLOAD_ONLY   // owner downloads ZIP locally; no public token issued
   // Future: XERO_PUSH, MYOB_PUSH
+}
+
+// =============================================================================
+// Phase 40 — My Guide AI Financial Advice
+//
+// `AIAdviceDocument` is the canonical persisted output of the AI advisor for a
+// given user. Cached with a 24h TTL (`expiresAt`) to cap Gemini Pro spend and
+// because the underlying snapshot doesn't change minute-to-minute.
+// `fingerprint` is a stable hash of the snapshot inputs that drove the advice
+// — when those inputs change materially (new transactions imported, balances
+// updated, properties added/removed), the fingerprint changes and a fresh
+// advice doc is generated on next request.
+//
+// CDR alignment per CLAUDE.md §13.3: the `document` JSON contains aggregates
+// + AI-generated narrative ONLY. No account numbers, BSBs, transaction-level
+// descriptions, or payee names are ever written here. The advisor service
+// sanitises the snapshot before sending to Gemini AND before persisting.
+//
+// `AIAdviceChatMessage` holds follow-up Q&A scoped to a specific advice doc.
+// Cascade-deletes with the advice doc, so chat lifetime = advice cache lifetime.
+// =============================================================================
+
+model AIAdviceDocument {
+  id            String                @id @default(uuid())
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Stable hash of the snapshot inputs (net worth, cashflow, debt, properties,
+  // emergency fund, health score, etc.). When this changes, a fresh advice
+  // doc is generated on next request. See `lib/cfo/aiAdvisor.ts:fingerprintSnapshot`.
+  fingerprint   String
+
+  // The user's TRAIL stage at the time of generation — drives stage-aware
+  // prompt context and ranks recommendations.
+  trailStage    String                // T | R | A | I | L
+
+  // Full structured advice document. Shape defined by `AIAdviceDocument`
+  // TypeScript interface in lib/cfo/aiAdvisor.ts. Stored as Json so the
+  // shape can evolve without a migration.
+  document      Json
+
+  // Telemetry — kept for cost/quality observability.
+  modelUsed     String?
+  tokensUsed    Int?
+  estimatedCost Float?
+
+  // True when Gemini failed and we returned the rule-engine fallback advice.
+  isFallback    Boolean               @default(false)
+
+  // 24h TTL. A nightly job (or a lazy check on read) evicts expired docs.
+  expiresAt     DateTime
+  createdAt     DateTime              @default(now())
+
+  chatMessages  AIAdviceChatMessage[]
+
+  @@index([userId, expiresAt])
+  @@index([userId, fingerprint])
+}
+
+model AIAdviceChatMessage {
+  id          String           @id @default(uuid())
+  adviceId    String
+  advice      AIAdviceDocument @relation(fields: [adviceId], references: [id], onDelete: Cascade)
+  role        String           // "user" | "assistant" | "system"
+  content     String           @db.Text
+  createdAt   DateTime         @default(now())
+
+  @@index([adviceId, createdAt])
 }
