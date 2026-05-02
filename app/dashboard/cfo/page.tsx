@@ -558,7 +558,7 @@ function RiskBadge({
 }
 
 export default function CFODashboardPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const [data, setData] = useState<CFODashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -655,8 +655,8 @@ export default function CFODashboardPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Personal CFO"
-        description="Your AI-powered financial advisor monitoring your wealth 24/7"
+        title="Your Guide"
+        description="Where you are right now, what's worth focusing on, and how each move would shift the picture."
         action={
           <Button
             variant="outline"
@@ -682,7 +682,7 @@ export default function CFODashboardPage() {
        * surfaced as recommendations within this section.
        */}
       <div className="mb-8">
-        <AIAdviceSection token={token} />
+        <AIAdviceSection token={token} userName={user?.name ?? null} />
       </div>
 
       {/* Financial Health Score Hero Section */}
