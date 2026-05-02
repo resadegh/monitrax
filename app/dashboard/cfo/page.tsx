@@ -41,6 +41,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { AIAdviceSection } from '@/components/cfo/AIAdviceSection';
 
 interface CFOScore {
   overall: number;
@@ -670,6 +671,20 @@ export default function CFODashboardPage() {
         }
       />
 
+      {/*
+       * Phase 40 — AI Financial Advice (highlight surface).
+       *
+       * The narrative-led, scenario-aware advice section. Sits at the top of
+       * the page as the headline — the existing Health Hero, Quick Stats,
+       * insight tiles, and risk radar below are SUPPORTING context. The old
+       * deterministic "Prioritised Actions" tabs have been removed; their
+       * findings are now fed into the AI advisor as ground truth and
+       * surfaced as recommendations within this section.
+       */}
+      <div className="mb-8">
+        <AIAdviceSection token={token} />
+      </div>
+
       {/* Financial Health Score Hero Section */}
       <div className="mb-8">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-6 md:p-8">
@@ -1112,98 +1127,16 @@ export default function CFODashboardPage() {
         </Card>
       </div>
 
-      {/* Prioritised Actions */}
-      <div id="actions-section">
-        <Card className="border-0 shadow-sm bg-white dark:bg-gray-900">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/50">
-                  <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                </div>
-                Prioritised Actions
-              </CardTitle>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {actions.totalActions} actions • Start with "Do Now"
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="do_now" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                <TabsTrigger value="do_now" className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 rounded-md">
-                  Do Now ({actions.doNow.length})
-                </TabsTrigger>
-                <TabsTrigger value="upcoming" className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 rounded-md">
-                  Upcoming ({actions.upcoming.length})
-                </TabsTrigger>
-                <TabsTrigger value="consider" className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 rounded-md">
-                  Consider ({actions.considerSoon.length})
-                </TabsTrigger>
-                <TabsTrigger value="background" className="text-xs data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 rounded-md">
-                  Background ({actions.background.length})
-                </TabsTrigger>
-              </TabsList>
-
-              {['do_now', 'upcoming', 'consider', 'background'].map((tab) => {
-                const tabActions = tab === 'do_now' ? actions.doNow
-                  : tab === 'upcoming' ? actions.upcoming
-                  : tab === 'consider' ? actions.considerSoon
-                  : actions.background;
-
-                return (
-                  <TabsContent key={tab} value={tab === 'consider' ? 'consider' : tab} className="space-y-3 mt-0">
-                    {tabActions.length === 0 ? (
-                      <div className="text-center py-12">
-                        <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500 mb-3" />
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">All clear!</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">No actions in this category</div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {tabActions.map((action) => (
-                          <div
-                            key={action.id}
-                            className="group p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30
-                              hover:bg-white dark:hover:bg-gray-800 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700
-                              transition-all duration-200 cursor-pointer"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="mt-0.5">{getPriorityIcon(action.priority)}</div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium text-gray-900 dark:text-gray-100">{action.title}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {action.category}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                                  {action.explanation}
-                                </p>
-                                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                  <span className="flex items-center gap-1">
-                                    <DollarSign className="h-3 w-3" />
-                                    {formatCurrency(action.expectedImpact.amount)} {action.expectedImpact.timeframe}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    {action.timeRequired}
-                                  </span>
-                                </div>
-                              </div>
-                              <ChevronRight className="h-5 w-5 text-gray-300 dark:text-gray-600 group-hover:text-gray-400 dark:group-hover:text-gray-500 transition-colors" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
-                );
-              })}
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+      {/*
+       * NOTE: The legacy "Prioritised Actions" tabs were removed in Phase 40.
+       * Their deterministic findings (from the rule-engine in
+       * `lib/cfo/actionEngine.ts`) are now consumed by the AI advisor as
+       * ground truth and surfaced inside <AIAdviceSection /> at the top of
+       * this page. The rule engine itself is still running — it remains the
+       * fallback when the AI is unavailable (see `lib/cfo/aiAdvisor.ts`
+       * `buildFallbackDoc`) and the data source for the existing Risk Radar
+       * + Insight Tiles above.
+       */}
     </DashboardLayout>
   );
 }
