@@ -90,12 +90,14 @@ function typeMeta(type: PropertyTileData['type']) {
         cta: 'from-amber-500 to-orange-600',
         ctaShadowDefault: 'shadow-amber-500/15',
         ctaShadowHover: 'hover:shadow-amber-500/25',
-        // Tile surface tint — subtle by default, intensifies on hover.
-        // Both classes must appear as literals so Tailwind JIT picks them up.
+        // Tile surface tint — v4: shade jump on hover (50 → 100 light,
+        // 950 → 900 dark) so the colour change is actually visible.
+        // v3 only bumped opacity within the same shade and the difference
+        // was imperceptible.
         tileBg:
-          'bg-amber-50/50 dark:bg-amber-950/20 group-hover:bg-amber-50/80 dark:group-hover:bg-amber-950/35',
+          'bg-amber-50/60 dark:bg-amber-950/25 group-hover:bg-amber-100/80 dark:group-hover:bg-amber-900/40',
         tileBorder:
-          'border-amber-300/35 dark:border-amber-700/25 group-hover:border-amber-400/50 dark:group-hover:border-amber-600/40',
+          'border-amber-300/40 dark:border-amber-700/30 group-hover:border-amber-400/70 dark:group-hover:border-amber-500/55',
         // Silhouette tint — same family, slightly muted vs the icon
         glyphColor: 'text-amber-600 dark:text-amber-400',
         atmosphere:
@@ -115,9 +117,9 @@ function typeMeta(type: PropertyTileData['type']) {
         ctaShadowDefault: 'shadow-sky-500/15',
         ctaShadowHover: 'hover:shadow-sky-500/25',
         tileBg:
-          'bg-sky-50/50 dark:bg-sky-950/20 group-hover:bg-sky-50/80 dark:group-hover:bg-sky-950/35',
+          'bg-sky-50/60 dark:bg-sky-950/25 group-hover:bg-sky-100/80 dark:group-hover:bg-sky-900/40',
         tileBorder:
-          'border-sky-300/35 dark:border-sky-700/25 group-hover:border-sky-400/50 dark:group-hover:border-sky-600/40',
+          'border-sky-300/40 dark:border-sky-700/30 group-hover:border-sky-400/70 dark:group-hover:border-sky-500/55',
         glyphColor: 'text-sky-600 dark:text-sky-400',
         atmosphere:
           'radial-gradient(440px 240px at 100% 0%, rgba(14,165,233,0.16), transparent 60%), radial-gradient(420px 220px at 0% 100%, rgba(79,70,229,0.10), transparent 60%)',
@@ -137,9 +139,9 @@ function typeMeta(type: PropertyTileData['type']) {
         ctaShadowDefault: 'shadow-teal-500/15',
         ctaShadowHover: 'hover:shadow-teal-500/25',
         tileBg:
-          'bg-teal-50/50 dark:bg-teal-950/20 group-hover:bg-teal-50/80 dark:group-hover:bg-teal-950/35',
+          'bg-teal-50/60 dark:bg-teal-950/25 group-hover:bg-teal-100/80 dark:group-hover:bg-teal-900/40',
         tileBorder:
-          'border-teal-300/35 dark:border-teal-700/25 group-hover:border-teal-400/50 dark:group-hover:border-teal-600/40',
+          'border-teal-300/40 dark:border-teal-700/30 group-hover:border-teal-400/70 dark:group-hover:border-teal-500/55',
         glyphColor: 'text-teal-600 dark:text-teal-400',
         atmosphere:
           'radial-gradient(420px 220px at 50% 50%, rgba(20,184,166,0.12), transparent 65%), radial-gradient(320px 180px at 100% 100%, rgba(34,211,238,0.10), transparent 60%)',
@@ -173,13 +175,15 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
         style={{ background: meta.atmosphere }}
       />
 
-      {/* Filled silhouette watermark — type-specific iconic shape
-          (house / house+arrow / key) at very low opacity. Lifts on
-          hover. Sits above atmosphere, below tile content. Bleeds off
-          the right edge for editorial feel. */}
+      {/* Filled silhouette watermark — v4: nearly fills the whole tile
+          (was 58% × 64% in a corner; now ~110% × full height with a
+          right-bleed). The SVG's preserveAspectRatio="xMaxYMid meet"
+          aligns the silhouette to the right edge of the container, so
+          the visible composition leans right while the left half
+          fades into the atmosphere. */}
       <div
         aria-hidden
-        className={`pointer-events-none absolute -z-10 right-[-14%] top-[8%] h-[64%] w-[58%] ${meta.glyphColor} opacity-[0.05] transition-opacity duration-500 group-hover:opacity-[0.10]`}
+        className={`pointer-events-none absolute -z-10 inset-y-0 left-0 right-[-12%] ${meta.glyphColor} opacity-[0.06] transition-opacity duration-500 group-hover:opacity-[0.12]`}
       >
         <PropertyGlyph type={property.type} delay={0.04 * index} className="h-full w-full" />
       </div>
