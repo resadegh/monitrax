@@ -19,6 +19,8 @@ import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
+import { InvestmentsHero, type InvestmentsHeroSegment } from '@/components/investments/InvestmentsHero';
+import { HoldingTile } from '@/components/investments/HoldingTile';
 
 interface InvestmentAccount {
   id: string;
@@ -248,11 +250,41 @@ function HoldingsPageContent() {
     return acc;
   }, {} as Record<string, number>);
 
+  // Hero segments — allocation by holding type (Phase 39.2)
+  const HOLDING_SEGMENT_STYLE: Record<
+    InvestmentHolding['type'],
+    { label: string; barClass: string; dotClass: string; chipClass: string }
+  > = {
+    SHARE: { label: 'Shares', barClass: 'bg-gradient-to-r from-sky-400 to-blue-500', dotClass: 'bg-sky-500', chipClass: 'text-sky-700 dark:text-sky-300' },
+    ETF: { label: 'ETFs', barClass: 'bg-gradient-to-r from-violet-400 to-sky-500', dotClass: 'bg-violet-500', chipClass: 'text-violet-700 dark:text-violet-300' },
+    MANAGED_FUND: { label: 'Managed funds', barClass: 'bg-gradient-to-r from-indigo-400 to-blue-500', dotClass: 'bg-indigo-500', chipClass: 'text-indigo-700 dark:text-indigo-300' },
+    CRYPTO: { label: 'Crypto', barClass: 'bg-gradient-to-r from-amber-400 to-orange-500', dotClass: 'bg-amber-500', chipClass: 'text-amber-700 dark:text-amber-300' },
+  };
+
+  const holdingsSegments: InvestmentsHeroSegment[] = [];
+  for (const type of ['SHARE', 'ETF', 'MANAGED_FUND', 'CRYPTO'] as const) {
+    const subset = holdings.filter((h) => h.type === type);
+    if (subset.length === 0) continue;
+    const value = subset.reduce((sum, h) => sum + h.units * h.averagePrice, 0);
+    const style = HOLDING_SEGMENT_STYLE[type];
+    holdingsSegments.push({
+      id: type,
+      label: style.label,
+      count: subset.length,
+      value,
+      barClass: style.barClass,
+      dotClass: style.dotClass,
+      chipClass: style.chipClass,
+    });
+  }
+
+  const distinctAccounts = new Set(holdings.map((h) => h.investmentAccountId)).size;
+
   return (
     <DashboardLayout>
       <PageHeader
         title="Investment Holdings"
-        description={`Manage your holdings • ${holdings.length} position(s) • Total: ${formatHoldingCurrency(totalValue)}`}
+        description="What you own — every share, ETF, fund, and coin in your portfolio."
         action={
           <Button onClick={() => { setShowDialog(true); setEditingId(null); resetForm(); }} disabled={accounts.length === 0}>
             <Plus className="mr-2 h-4 w-4" />
@@ -260,6 +292,28 @@ function HoldingsPageContent() {
           </Button>
         }
       />
+
+      {/* Premium hero summary — TRAIL Stage I (Invest) palette */}
+      {!isLoading && holdings.length > 0 && (
+        <div className="mb-6">
+          <InvestmentsHero
+            title="Your holdings"
+            total={totalValue}
+            subtitle={
+              distinctAccounts > 1
+                ? `${holdings.length} ${holdings.length === 1 ? 'position' : 'positions'} across ${distinctAccounts} accounts`
+                : `${holdings.length} ${holdings.length === 1 ? 'position' : 'positions'}`
+            }
+            kpis={[
+              { label: 'Positions', value: String(holdings.length) },
+              { label: 'Asset classes', value: String(holdingsSegments.length) },
+              { label: 'Accounts', value: String(distinctAccounts) },
+            ]}
+            segments={holdingsSegments}
+            segmentsLabel="Allocation by asset class"
+          />
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -279,86 +333,32 @@ function HoldingsPageContent() {
           }}
         />
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {holdings.map((holding) => {
+        /* Tiles — premium glassmorphic redesign (Stage I palette) */
+        <div className="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {holdings.map((holding, idx) => {
             const value = holding.units * holding.averagePrice;
             const allocation = calculateAllocation(holding);
             const currency = holding.investmentAccount?.currency || 'AUD';
-
             return (
-              <Card key={holding.id} className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => handleViewDetails(holding)}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-muted-foreground" />
-                        {holding.ticker}
-                      </CardTitle>
-                      <div className="flex gap-2 flex-wrap">
-                        {getHoldingTypeBadge(holding.type)}
-                        {holding.frankingPercentage !== null && (
-                          <Badge variant="outline" className="text-green-600">
-                            {holding.frankingPercentage}% franked
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(holding)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(holding)}>
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(holding.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Market Value</p>
-                    <p className="text-2xl font-bold">{formatHoldingCurrency(value, currency)}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Units</p>
-                      <p className="font-medium">{holding.units.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Avg Price</p>
-                      <p className="font-medium">{formatHoldingCurrency(holding.averagePrice, currency)}</p>
-                    </div>
-                  </div>
-
-                  <div className="pt-2">
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>Portfolio</span>
-                      <span>{allocation.toFixed(1)}%</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full"
-                        style={{ width: `${Math.min(allocation, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {holding.investmentAccount && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-muted-foreground">{holding.investmentAccount.name}</p>
-                    </div>
-                  )}
-
-                  {holding.transactions && holding.transactions.length > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      {holding.transactions.length} transaction(s)
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <HoldingTile
+                key={holding.id}
+                index={idx}
+                holding={{
+                  id: holding.id,
+                  ticker: holding.ticker,
+                  type: holding.type,
+                  units: holding.units,
+                  averagePrice: holding.averagePrice,
+                  value,
+                  allocation,
+                  frankingPercentage: holding.frankingPercentage,
+                  accountName: holding.investmentAccount?.name,
+                  currency,
+                }}
+                onView={() => handleViewDetails(holding)}
+                onEdit={() => handleEdit(holding)}
+                onDelete={() => handleDelete(holding.id)}
+              />
             );
           })}
         </div>

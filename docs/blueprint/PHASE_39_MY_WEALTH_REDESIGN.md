@@ -61,15 +61,57 @@ No new dependencies introduced. `framer-motion` v12, `recharts` v3, `lucide-reac
 - Tile grid: 1 col by default, 2 col `md`, 3 col `xl`.
 - Action cluster on tiles is hover-revealed on desktop but always present on mobile via `sm:flex`.
 
-### 3.2 `/dashboard/investments/*` — QUEUED
+### 3.2 `/dashboard/investments/*` — SHIPPED (Phase 39.2)
 
-Apply the same `WealthHero` + `WealthTile` patterns. Likely component shape:
+**New components introduced:**
 
-- `InvestmentsHero` — total portfolio value + asset-class allocation pie (`recharts`) + cash balance.
-- `InvestmentAccountTile` — type-coloured icon, total holdings + cash, account-level KPIs.
-- `HoldingTile` — ticker / name, units / avg price / current value, allocation %, optional micro-sparkline (52-week price using framer-motion `pathLength`).
+| Component | Path | Purpose |
+|---|---|---|
+| `InvestmentsHero` | `components/investments/InvestmentsHero.tsx` | Shared glassmorphic hero summary used by both pages. Stage I sky/indigo atmosphere; gradient-text total; up to 3 KPI cells; optional allocation segment bar with colour-coded type legend; slow-breathing soft glow. Honours `prefers-reduced-motion`. |
+| `InvestmentAccountTile` | `components/investments/InvestmentAccountTile.tsx` | Per-type tile for investment accounts. Five Stage-I-family palettes: BROKERAGE (sky/cyan), SUPERS (indigo/violet), FUND (blue/sky), TRUST (violet/purple), ETF_CRYPTO (cyan/teal). Hero `totalValue`, holdings/cash split, linked transactions/income/expenses pills, gradient `View details` CTA. |
+| `HoldingTile` | `components/investments/HoldingTile.tsx` | Per-type tile for individual holdings. Four palettes: SHARE (sky/blue), ETF (violet/sky), MANAGED_FUND (indigo/blue), CRYPTO (warm amber/orange — "digital gold"). Hero `currentValue` with allocation % gradient pill, units + avg price KPI row, franking pill if applicable. |
 
-Transactions stays nested inside the holdings detail dialog; not promoted to a standalone page in this phase.
+**Glyph library expansion:** `components/wealth/wealthGlyphs.tsx` got 9 new filled silhouette glyphs + 2 resolvers (`AccountGlyph`, `HoldingGlyph`). Same design rules as the property glyphs (single closed silhouettes, fill="currentColor", viewBox 0 0 120 120, no negative-space tricks).
+
+| Account glyph | Composition |
+|---|---|
+| BROKERAGE | three-bar candlestick skeleton (rising sequence) |
+| SUPERS | classical column / pillar |
+| FUND | three layered waves |
+| TRUST | shield silhouette |
+| ETF_CRYPTO | hexagonal lattice |
+
+| Holding glyph | Composition |
+|---|---|
+| SHARE | single dominant candlestick on a baseline |
+| ETF | diamond lattice (4 diamonds in a 2×2 grid) |
+| MANAGED_FUND | braided rope (three twisting filled lines) |
+| CRYPTO | single large hexagon (universal blockchain symbol) |
+
+**Wiring in `app/dashboard/investments/accounts/page.tsx`:**
+
+- Hero card inserted after `PageHeader` (visible only when `accounts.length > 0` and not loading).
+- Tile rendering loop replaced with `<InvestmentAccountTile />` calls.
+- New computed values fed to hero: `totalCash`, `totalHoldingsValue`, `totalHoldingsCount`, `heroSegments` (allocation by account type).
+- `PageHeader` description reworded from stat-stuffed line to warm narrative *"Where your money is invested — brokerage, super, funds, and more."*
+- Tile grid: `md:grid-cols-2 xl:grid-cols-3` (was `md:grid-cols-2 lg:grid-cols-3`).
+
+**Wiring in `app/dashboard/investments/holdings/page.tsx`:**
+
+- Hero card inserted after `PageHeader` with allocation-by-asset-class segment bar.
+- Tile rendering loop replaced with `<HoldingTile />` calls.
+- New computed values fed to hero: `holdingsSegments`, `distinctAccounts`.
+- `PageHeader` description reworded to *"What you own — every share, ETF, fund, and coin in your portfolio."*
+- Tile grid: `md:grid-cols-2 xl:grid-cols-3`.
+
+**Untouched (intentional scope cap):**
+
+- All dialogs (Add/Edit Account, Add/Edit Holding, Detail view tabs).
+- List view (table behind the `viewMode` toggle on accounts page).
+- Calculation helpers (`calculateTotalValue`, `calculateAllocation`, etc.) — used as before; results passed in as tile props.
+- All data fetching, search/filter, account-holding linkage, transactions sub-table.
+
+**Transactions:** stays nested inside the holdings detail dialog; not promoted to a standalone page in this phase.
 
 ### 3.3 `/dashboard/assets` — QUEUED
 
