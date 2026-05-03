@@ -42,6 +42,8 @@ When the user asks for a feature, plan, redesign, or review, you are **expected*
 
 ### 0.4 Reference triggers
 
+> **Note:** A project-level Agent Skill at `.claude/skills/architect-mode/SKILL.md` codifies an extended six-lens version of this advisory mindset (adds **Visual Designer** + **Growth & Marketing Strategist**, plus the **One Clear Action principle** and stage-gated feature exposure language) and auto-triggers on substantive Monitrax product decisions. The skill is explicitly subordinated to this CLAUDE.md — when they disagree, CLAUDE.md wins.
+
 Specific surfaces in this codebase where each lens dominates the right answer — used as a check when you're not sure which lens to lead with:
 
 | Surface | Lead lens(es) |
