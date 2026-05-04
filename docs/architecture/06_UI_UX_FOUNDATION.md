@@ -323,7 +323,28 @@ All components must:
 
 ---
 
-# **14. Acceptance Criteria**
+# **14. Practice (B2B2C) Surface — Phase 32B**
+
+The professional surface (`/portal/*`) inherits the **same design tokens** as the consumer dashboard. No separate component library, no slate-900 admin look, no parallel typography stack.
+
+**Commitments (added 2026-05-04):**
+
+- **Tokens.** Brand primary (deep navy `#0B1220`), secondary (emerald `#16A34A`), accent (amber `#F59E0B`), warm-ivory background. Same as consumer.
+- **Glass tile pattern.** `PracticeGlassCard` mirrors the Phase 39 Apple-Wallet tile language — 22px radius, 1px ring border at low opacity, white/85 backdrop-blur, soft inner highlight, hover lift via shadow + translate (skipped on `prefers-reduced-motion`).
+- **TRAIL chip parity.** `TrailStageChip` uses the same stage-coloured palette as the consumer TRAIL banner (TRACK slate, REDUCE amber, ANCHOR indigo, INVEST emerald, LIVE violet). When a professional shares screen with a client, both literally see the same component.
+- **Severity accents.** Critical = warm rose (`rose-400/80`), opportunity = mint (`emerald-400/80`), milestone = sky (`sky-400/80`). Applied as a 3px left strip on alert cards, not as a fill.
+- **Tabular numerics.** Every numeric column uses `tabular-nums` so columns align across rows.
+- **Drill-in is the consumer dashboard.** Professional drilling into a client renders `app/dashboard/*` verbatim with a `viewerContext` prop tree and an adviser overlay docked right (desktop) / bottom-sheet (mobile). NOT a separate `ClientDetail.tsx`. This commitment lands in PR3; PR1 ships the primitives + demo dataset only.
+- **AFSL boundary in copy.** Alert text NEVER recommends a specific product or action. The platform surfaces the *trigger*; the professional generates the *recommendation*. Reviewers must reject any future copy that crosses this line.
+
+**Where this pattern should be replicated next (per CLAUDE.md §3.1 design-system-change row):**
+- Repaint of `components/portal/layout/PortalSidebar.tsx` and `app/portal/PortalLayoutClient.tsx` to brand tokens (PR2).
+- Apply `PracticeGlassCard` + `TrailStageChip` to `app/portal/clients/page.tsx` and `components/portal/clients/ClientList.tsx` once the dashboard ships and validates the language (PR2/PR3).
+- Retire `components/portal/ui/PortalCard.tsx` + `PortalButton.tsx` after the Practice surface stabilises (queued under `IMPLEMENTATION_PLAN.md` 🗑️ Dead Code if zero callers remain).
+
+---
+
+# **15. Acceptance Criteria**
 
 Monitrax UI/UX foundation is correct when:
 

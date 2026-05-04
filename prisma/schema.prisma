@@ -1314,6 +1314,13 @@ model Organization {
   name                  String
   slug                  String               @unique
   description           String?
+  // Profession is the canonical "what kind of firm is this?" field. Drives the
+  // Practice dashboard layout, alert library defaults, scope presets, and
+  // AFSL/credit-licence guardrails. Must be chosen at registration (force; no
+  // MULTI). Re-uses the existing `OrganizationType` enum so the legacy
+  // `OrganizationPortalSettings.organizationType` becomes a shadow — see
+  // `docs/IMPLEMENTATION_PLAN.md` 🗑️ Dead Code for the dedup follow-up.
+  profession            OrganizationType     @default(FINANCIAL_ADVISOR)
   mfaEnforced           Boolean              @default(false)
   sessionDurationHours  Int                  @default(168) // 7 days
   allowedDomains        String[]             // Email domain restrictions
