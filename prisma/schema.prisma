@@ -236,6 +236,12 @@ enum AuditAction {
   CDR_CONSENT_EXPIRED
   CDR_CONSENT_REVOKED
   CDR_DATA_ANONYMIZED
+
+  // Phase 32B PR3 — B2B2C drill-in (canonical consumer dashboard rendered
+  // through a professional viewer context). Per-view detail also lands in
+  // ClientAccessLog; this top-level row makes the access discoverable from
+  // the user's audit trail too.
+  PRO_DASHBOARD_VIEW
 }
 
 enum AuditStatus {

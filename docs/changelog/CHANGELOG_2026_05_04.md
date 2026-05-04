@@ -973,6 +973,42 @@ Docs updated:
 
 None. This PR is a focused revision to one skill plus the supporting docs the §16 protocol mandates.
 
+
+---
+
+## Session: phase-32b-pr3-drill-in (drill-in canonical client view + adviser overlay + plan-tier gating)
+
+### Changes Made
+- **Type**: Feature
+- **Scope**: Phase 32B PR3 — B2B2C drill-in. First Demo-Complete Critical Path week-1 deliverable (per `🎯 Demo-Complete Critical Path` in IMPLEMENTATION_PLAN.md).
+- **Description**: Wires `viewerContext` through `getMasterFinancialSnapshot()` so the canonical engine can be safely invoked by a professional viewing a client's dashboard. Adds the drill-in page that renders the consumer dashboard primitives with an adviser overlay, deletes the legacy `ClientDetail.tsx`, and ships plan-tier gating as a composable middleware on top of `lib/auth/guards.ts`.
+
+### Files Modified / Added / Deleted
+- **Schema** — `prisma/schema.prisma` adds `PRO_DASHBOARD_VIEW` to the `AuditAction` enum.
+- **Migration** — `prisma/migrations/20260504160000_add_pro_dashboard_view_action/migration.sql` (additive `ALTER TYPE ... ADD VALUE IF NOT EXISTS`; §12.11 N/A).
+- **Service** — `lib/services/masterFinancialService.ts` gains:
+  - `ViewerContext` interface (seatId + clientUserId + accessScopes + ipAddress? + userAgent?).
+  - `assertValidViewerContext()` — rejects malformed contexts (missing fields, mismatched userId).
+  - `loadOrganizationClient()` — verifies an ACTIVE+GRANTED `OrganizationClient` row owned by the seat's organisation; returns the canonical DB-stored `accessScopes` (the caller-asserted array is treated as informational only).
+  - `applyScopeFilter()` — service-layer scope filter. `LOANS / PROPERTIES / INVESTMENTS / TAX / FINANCIAL` each gate the corresponding slice; `FULL` bypasses. Honours the canonical type shapes for `LoanAggregation`, `DebtMetrics`, `LiabilitySummary`, `EmergencyFundMetrics`, `MasterExpenseBreakdown`, `MasterIncomeBreakdown`, `CashflowResult`, `InvestmentMetrics`, `TaxSummary`.
+  - `logProDashboardView()` — fire-and-forget per CLAUDE.md §12.10. Writes BOTH `AuditLog` (top-level `PRO_DASHBOARD_VIEW`) and `ClientAccessLog` (per-view, free-form action) so the 3-layer consent model in `docs/architecture/03_DATA_MODEL.md` §9.2 (CDR / professional / per-view) is preserved end-to-end. Also bumps `OrganizationClient.lastAccessedAt`.
+  - `getMasterFinancialSnapshot(userId, viewerContext?)` — viewerContext is OPTIONAL; calling without it preserves the original consumer-facing behaviour byte-for-byte. Per CLAUDE.md §0 architect lens: ONE canonical engine, viewerContext is a parameter, NOT a fork.
+  - `MasterFinancialSnapshot.viewer` echo (informational only — UX uses it to render scope badges and locked tiles).
+- **API route** — `app/api/portal/clients/[id]/snapshot/route.ts` (NEW). Resolves the OrganizationClient by id, verifies the caller's seat is on the same org + has `clients:view_data` portal permission + (for PORTAL_ADVISOR) is the assigned member. Calls `getMasterFinancialSnapshot()` with the canonical viewerContext. Returns snapshot + client + recent notes + tasks + lastReviewedAt + organization metadata in one round-trip.
+- **Plan-tier registry** — `lib/portal/planTier.ts` (NEW). Maps `OrganizationPlan` (legacy enum: STARTER / PROFESSIONAL / BUSINESS / ENTERPRISE) to canonical `PlanTier` (STUDIO / PRACTICE / ENTERPRISE). `PLAN_FEATURES` registry encodes Reza's monetisation matrix (locked 2026-05-04): SSO is ENTERPRISE-only; white-label + API key creation unlock at PRACTICE; audit-log retention is 90 / 365 / 365×7 days respectively. `customDomain` reserved for ENTERPRISE per pricing matrix. Companion `mapPlanToTier()`, `planAllowsFeature()`, `TIER_LABEL`.
+- **Guard** — `lib/auth/guards.ts` adds `withPortalFeatureGate(feature, handler)`. Reads the caller's portal org, looks up `OrganizationPortalSettings.plan`, maps via `mapPlanToTier`, returns 402 (`PLAN_TIER_REQUIRED`) when the feature is gated. Composable with the existing role/permission middleware — call sites stack them.
+- **Page** — `app/portal/clients/[id]/view/page.tsx` (NEW). Client component. Fetches `/api/portal/clients/[id]/snapshot`, composes `<ClientCanonicalDashboard>` (left) with `<AdviserOverlay>` (docked-right ≥md, bottom-sheet <md). Sticky page header keeps client identity + back link visible while scrolling.
+- **Components** — `components/portal/clients/ClientCanonicalDashboard.tsx` (NEW) renders the canonical primitives (KPI strip, Health, Cashflow, Properties, Loans, Investments, Tax, Emergency Fund) directly from `MasterFinancialSnapshot`. Tiles outside granted scope render as locked placeholders rather than disappearing — surfaces the next consent extension as a next-best-action (CLAUDE.md §0 behaviour-psychology lens). `components/portal/clients/AdviserOverlay.tsx` (NEW) — scope summary, last-review timestamp, notes panel, tasks panel, profession-aware AFSL / credit-licence / TPB compliance footer. Mobile bottom-sheet collapses to a 4.5rem peek bar with task-count badge.
+- **Index updates** — `components/portal/clients/index.ts` re-exports `ClientCanonicalDashboard` + `AdviserOverlay`; the old `ClientDetail` re-export removed. `components/portal/index.ts` JSDoc updated.
+- **Delete** — `components/portal/clients/ClientDetail.tsx` removed. Zero callers re-verified at delete time. Closes the Phase 32B "retire `ClientDetail.tsx`" hard constraint.
+
+### Documentation Updated
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #12 marked SHIPPED; new entry at the top of `✅ Recently Completed → 2026-05-04`; Dead Code rows #14 (OrganizationPlan enum naming) + #15 (ClientDetail.tsx — closed in same PR for traceability) appended.
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Steps 2 (drill into a client) + 3 (alert stream + adviser overlay) populated with the canonical demo flow now that the surface exists.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
 ---
 
 ## Session: claude/phase-41a-legal-entity (Phase 41a — LegalEntity schema + ownership backfill SHIPPED)
@@ -1109,6 +1145,35 @@ Surfaces changed:
 - [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
 - [ ] identity / auth
 - [ ] deployment / build
+- [x] security / CDR posture (new audit action `PRO_DASHBOARD_VIEW`; service-layer scope filter making CDR data leaks impossible at the UI layer; per-view `ClientAccessLog` row preserves 3-layer consent model)
+- [ ] operational procedure
+- [x] strategic decision (none reopened — Phase 32B PR3 closes Up Next #12 as queued; Reversed Decisions untouched)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #12 closed; new Recently Completed row; Dead Code rows #14 + #15 added
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` Steps 2 + 3 populated (per Phase 32B PR3 directive)
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows:
+- `lib/services/masterFinancialService.ts:logProDashboardView` — `prisma.organizationClient.update({ where: { id }, data: { lastAccessedAt: new Date() } })`
+
+For that operation:
+1. **`where` clause matches:** the OrganizationClient row resolved earlier in the request; only one row.
+2. **Columns overwritten / rows deleted:** `lastAccessedAt` only. The existing column already serves this purpose (set by other portal flows — see `app/api/portal/organizations/[orgId]/clients/route.ts`); we are not overwriting user-entered data.
+3. **Guard ensuring this only mutates rows I created:** the `id` is taken from the verified `loadOrganizationClient()` result inside the request; the call follows successful seat-ownership + ACTIVE+GRANTED checks.
+
+User confirmation: NOT REQUIRED — overwriting a system-managed timestamp on a row already verified to belong to the calling seat; reasoning matches CLAUDE.md §12.11 "system-managed timestamp" pattern.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean (project-wide; no new errors introduced)
+- [ ] `npm run build` (deferred — environment npm registry blocks `@firebase/storage` per `npm ci`; `npm install --legacy-peer-deps` succeeded for typecheck)
+- [x] Manual schema review of the migration file (additive `ADD VALUE IF NOT EXISTS`)
+
+### PR
+- PR URL: (to be filled when opened)
+- Status: Open
 - [ ] security / CDR posture — *No code change. The articles document existing posture for an external compliance audience; they do not change rules. Light yes; the canonical sources-of-truth they derive from are unchanged.*
 - [x] operational procedure — *Adds five new external-facing operational documents (the help articles themselves) that compliance officers and auditors will read. The canonical operational policies are unchanged; these summarise them for an external audience.*
 - [x] strategic decision (Open Question resolved / workstream parked or revived) — *Up Next #22 (Phase 33d compliance pack content) flipped from queued → shipped.*

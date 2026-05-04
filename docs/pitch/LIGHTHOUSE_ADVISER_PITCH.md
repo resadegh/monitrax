@@ -4,7 +4,7 @@
 >
 > **Audience:** Reza (or future Monitrax founder/sales person) walking a single Australian financial adviser through a 25–30 minute screen-share demo, with the goal of converting them into Monitrax's first design partner.
 >
-> **Last updated:** 2026-05-04 (initial scaffold, no feature sections populated yet).
+> **Last updated:** 2026-05-04 — Steps 2 + 3 populated as Phase 32B PR3 (drill-in canonical client view + adviser overlay) ships. Step 3 still gates on Phase 41a–c (entity schema + tree); Step 2 is fully demonstrable today.
 
 ---
 
@@ -59,20 +59,32 @@ This playbook codifies the demo into a runnable script so:
 - **TO BE WRITTEN AS BUILD COMPLETES:** screenshot reference + verbatim narration script + adviser-observed reactions to populate
 
 ### Step 2 — Drill into a client (4 min)
-- Click Sarah Kim's row
-- The canonical consumer dashboard renders with the adviser overlay docked right
-- Frame: *"This is exactly what Sarah sees when she logs in. You're looking at the same thing, side-by-side. That's why I built it this way — when you're on a Zoom with her, you both have the same picture."*
-- Walk the TRAIL banner → Health hero → My Wealth tiles → AI Guide output
-- Highlight the adviser overlay strip (notes, scope, ROA prep)
-- Highlight the AFSL disclaimer at the bottom: *"The AI doesn't give advice. It gives you context. Recommendations are yours."*
-- **TO BE WRITTEN AS BUILD COMPLETES:** specific overlay walkthrough + which features to highlight first / second
+- From the Practice dashboard, click **Sarah Kim's** row in the alert stream (or her row in the client book table)
+- The route flips to `/portal/clients/[id]/view`. The canonical consumer dashboard renders left, with the **adviser overlay** docked right on desktop / collapsed to a bottom-sheet "Adviser view" peek bar on mobile (tap to expand)
+- **Frame the parity moment first:** *"This is exactly what Sarah sees when she logs in. You're looking at the same thing, side-by-side. That's why I built it this way — when you're on a Zoom with her, you both have the same picture, the same numbers, the same recommendations. There is no second admin app for you."*
+- **Walk the canonical primitives in this order, narrating as you go (90 seconds total):**
+  1. **KPI strip** (Net worth / Cashflow / Liquid cash / Savings rate) — *"Headline numbers. Colour-coded by tone — emerald positive, rose negative."* Pause briefly on cashflow if it's negative.
+  2. **Health card** — *"Composite 0–100 with a letter grade. Four drivers underneath."* Read the lowest driver out loud.
+  3. **Cashflow tile** — *"Income / Expenses / Cashflow at a glance. Net inside gross. Same engine that runs her dashboard."*
+  4. **Property portfolio list** — *"Each property with current value, LVR, yield, and monthly cashflow on the right. Click-through opens the property detail."*
+  5. **Debt card** — *"DTI prominent in the badge. Total debt, monthly repayments, weighted rate."*
+  6. **Investments / Tax / Emergency fund** — scroll past quickly unless the adviser is leaning in
+- **Then turn to the adviser overlay (right rail / bottom sheet):**
+  - **Scope panel** — *"Sarah granted us six scopes. The ones missing — say, INVESTMENTS — render as locked tiles in the dashboard so I can see what to ask her to extend next, without leaking anything she didn't share."*
+  - **Last review** — *"Timestamp of the last time anyone in your firm opened her view. Audit-grade. Compliance trail starts here, not in a spreadsheet."*
+  - **Notes panel** — *"Five most recent notes. Pinned ones first. Click-through to her full notes thread."*
+  - **Tasks panel** — *"Open tasks first, colour dot for priority. Due dates inline."*
+  - **Compliance footer** — read it out loud verbatim: *"Acting under AFSL authorisation. This view supports analysis and advice; product recommendations remain a Statement of Advice deliverable."* — *"That's not boilerplate I added. That sentence is profession-aware — it changes if you're a broker or an accountant. The AFSL line is enforced architecturally, not editorially."*
+- **The architectural moment to plant:** *"I want to flag one thing for your CTO if you have one. The data filtering for what you can see is enforced in the financial engine, not in the UI. So even if I had a bug in this overlay that tried to render LOAN data Sarah didn't grant, the snapshot service would have stripped it before it left the database. That's the kind of plumbing your compliance team will ask about — and the answer is in our docs at `/help/compliance/cdr-consent-walkthrough`."*
+- **Backup if a tile renders empty:** the demo dataset has Sarah Kim with FULL scope — if anything is empty, switch to David Mei or open her dashboard as the consumer (second browser) to verify, then resume.
 
 ### Step 3 — Open the entity tree (THE moment) (3 min)
-- Click "My Structure" in Sarah's sidebar
+- **Pre-condition:** Step 3 lights up properly only after Phase 41a–c lands (entity schema + tree + per-entity snapshot wiring). Until then, the drill-in surface from Step 2 is the closer for the dashboard portion of the pitch — Step 3's entity-structure narrative belongs in the second meeting.
+- Click **"My Structure"** in Sarah's sidebar (Phase 41 ships this nav item)
 - Entity Tree renders: Sarah Kim (person) → Sarah Kim (personal name entity) → Sarah Kim Pty Ltd → 1 property
 - Frame: *"Sarah's structure is simple. Watch this."*
-- Switch to Olivia Novak's drill-in
-- Open her Entity Tree: Olivia → personal name → Discretionary Trust → Unit Trust → Pty Ltd → SMSF → 4 properties spread across them
+- **Switch advisers** by clicking "Back to clients" in the page header (top-left), then click **Olivia Novak's** row from the alert stream — this round-trips through `/portal/clients/[id]/view` cleanly, so the adviser sees that drilling between clients is one click, not a re-navigation
+- Open Olivia's Entity Tree: Olivia → personal name → Discretionary Trust → Unit Trust → Pty Ltd → SMSF → 4 properties spread across them
 - *"This is what your high-net-worth clients look like in real life. No platform you're using today shows this. None."*
 - **WAIT for the lean-forward moment.** This is where the adviser commits emotionally.
 - **Entity tree visual reference (post-Phase-41c).** Top-down `react-flow` hierarchy on a warm-ivory canvas: People (household members, top row) → Entities (stage-coloured Apple-glass tiles per `LegalEntityRole` — PERSONAL warm sand, HOLDING indigo, OPERATING emerald, SUPERANNUATION amber, INVESTMENT plum) → Assets attached below each entity. Edges show ownership %; trustee→trust corporate links rendered as dashed lines (the `parentEntityId` self-FK from `LegalEntity` powers this). Click a node → entity drill-in dialog with assets / income / expenses / per-entity tax position. The full-screen visual is the screenshot Reza pulls into the deck for slide 2 of the pitch — the *moat* image. Tile language: warm AU real-language ("Smith Family Trust", not "Trust 1"; "Olivia & Co Pty Ltd as trustee", not "Corporate Trustee Entity").
@@ -81,6 +93,7 @@ This playbook codifies the demo into a runnable script so:
   - **David Mei + Emma Liu (family with trust + SMSF)** — mid-complexity tree (David + Emma → Personal × 2 → Mei Family Trust [trustee: Mei Family Holdings Pty Ltd] → 3 IPs + Mei SMSF → super contributions). The "most of your clients look like this" picture.
   - **Olivia Novak (multi-entity HNW)** — full tree (Olivia → Personal → Discretionary Trust + Unit Trust + Olivia Investments Pty Ltd + Novak SMSF → 4 IPs spread across them with cross-ownership %). The "category-creating" picture — this is the slide that wins the meeting.
 - **Demo sequencing rule:** Sarah first (warm-up — adviser sees "OK, neat"), David+Emma second (recognition — *"yeah this is most of my book"*), Olivia third (emotional commit — *"I have been needing this for ten years"*). Don't reverse the order; complexity-first kills the build.
+- **The bridge back to Step 2:** even before "My Structure" lights up, the Step 2 drill-in already shows the adviser the parity moment + scope filter + compliance footer + audit trail. The entity tree is the *visual* climax; the drill-in is the *operational* foundation that makes the entity tree consumable to a working adviser. Don't skip Step 2 to get to Step 3 — Step 2 is the *"I trust this product"* moment, Step 3 is the *"I need this product"* moment.
 - **TO BE WRITTEN AS BUILD COMPLETES (post-41c):** verbatim adviser quote bank captured during the first 3 lighthouse pitches — both the visceral reactions (*"oh wow"*, *"how do you have this"*, *"can my whole firm see this?"*) and the AFSL-edge anxiety (*"is the AI giving advice from this?"* — answer in Step 5).
 
 ### Step 4 — Money flow Sankey (2 min)

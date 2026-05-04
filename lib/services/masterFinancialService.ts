@@ -35,6 +35,9 @@
 import prisma from '@/lib/db';
 import { Frequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
+import { createAuditLog } from '@/lib/security/auditLog';
+import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
+import type { DataAccessScope } from '@prisma/client';
 
 // Import existing calculation engines
 import {
@@ -282,6 +285,49 @@ export interface MasterFinancialSnapshot {
     savingsRate: number;
     liquidCash: number;
   };
+
+  // Phase 32B PR3 — viewer context (only present when fetched through the
+  // professional drill-in path). Allows the UI to render scope badges and
+  // hide tiles that the consent didn't grant. The actual data filtering
+  // happens at the service layer below; this echo is for UX only.
+  viewer?: {
+    seatId: string;
+    organizationClientId: string;
+    accessScopes: DataAccessScope[];
+    appliedScopeFilter: boolean;
+  };
+}
+
+/**
+ * Phase 32B PR3 — viewer context for the professional drill-in.
+ *
+ * When `getMasterFinancialSnapshot()` is called with a `viewerContext`, it:
+ *   1. Validates the context is well-formed (seatId + clientUserId +
+ *      accessScopes are all required and non-empty when present).
+ *   2. Verifies the calling seat has an ACTIVE OrganizationClient row for
+ *      `clientUserId` and that the requested viewer userId matches it.
+ *   3. Filters the response payload at the SERVICE layer (not the UI) to
+ *      exclude data the client did not consent to share — `LOANS` missing
+ *      → no loan / debt data; `INVESTMENTS` missing → no investment metrics;
+ *      etc. `FULL` bypasses the filter.
+ *   4. Writes a `PRO_DASHBOARD_VIEW` audit log entry (top-level) AND a
+ *      `ClientAccessLog` row (per-view detail). 3-layer consent model:
+ *      docs/architecture/03_DATA_MODEL.md §9.2.
+ *
+ * The 3 layers are NEVER collapsed — CDR consent, professional consent, and
+ * per-view access event all log independently. Per CLAUDE.md §0 architect
+ * lens + Phase 32B hard constraints.
+ */
+export interface ViewerContext {
+  /** OrganizationMember.id — which professional seat is performing the read */
+  seatId: string;
+  /** User.id of the client whose data is being read */
+  clientUserId: string;
+  /** Scopes the client granted to this organisation */
+  accessScopes: DataAccessScope[];
+  /** Optional request context for the audit row */
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 // =============================================================================
@@ -1123,7 +1169,363 @@ function buildHealthScore(
  * @param userId - The user's ID
  * @returns Complete financial snapshot with all calculations
  */
+/**
+ * Validate a viewer context. Throws if malformed — the service refuses to
+ * read another user's data on a partial / unverifiable context. This is the
+ * "service rejects malformed contexts" guarantee from Phase 32B PR3.
+ */
+function assertValidViewerContext(viewerContext: ViewerContext, userId: string): void {
+  if (!viewerContext.seatId || typeof viewerContext.seatId !== 'string') {
+    throw new Error('viewerContext.seatId is required');
+  }
+  if (!viewerContext.clientUserId || typeof viewerContext.clientUserId !== 'string') {
+    throw new Error('viewerContext.clientUserId is required');
+  }
+  if (!Array.isArray(viewerContext.accessScopes) || viewerContext.accessScopes.length === 0) {
+    throw new Error('viewerContext.accessScopes must be a non-empty array');
+  }
+  if (viewerContext.clientUserId !== userId) {
+    // Defensive: the userId arg and the viewerContext.clientUserId MUST refer
+    // to the same person. Otherwise the caller is fetching X's data while
+    // claiming consent for Y.
+    throw new Error('viewerContext.clientUserId does not match userId');
+  }
+}
+
+/**
+ * Look up the OrganizationClient row that proves the seat has consent to
+ * read this user's data. Returns the row id (used for ClientAccessLog FK)
+ * and the canonical accessScopes from the DB — we DO NOT trust the
+ * accessScopes array on the viewerContext alone.
+ */
+async function loadOrganizationClient(
+  viewerContext: ViewerContext
+): Promise<{ id: string; accessScopes: DataAccessScope[] } | null> {
+  const member = await prisma.organizationMember.findUnique({
+    where: { id: viewerContext.seatId },
+    select: { organizationId: true, isActive: true },
+  });
+  if (!member || !member.isActive) return null;
+
+  const client = await prisma.organizationClient.findFirst({
+    where: {
+      organizationId: member.organizationId,
+      userId: viewerContext.clientUserId,
+      status: 'ACTIVE',
+      consentStatus: 'GRANTED',
+    },
+    select: { id: true, accessScopes: true },
+  });
+  return client;
+}
+
+/**
+ * Apply scope filtering at the service layer (NOT the UI). Per the 3-layer
+ * consent model + Phase 32B hard constraint: if the consent did not grant
+ * `LOANS`, no loan data is allowed to leave the service in the response
+ * payload, even if the UI accidentally tries to render it.
+ *
+ * `FULL` bypasses the filter. Otherwise each scope unlocks a corresponding
+ * slice of the snapshot.
+ */
+function applyScopeFilter(
+  snapshot: MasterFinancialSnapshot,
+  scopes: DataAccessScope[]
+): MasterFinancialSnapshot {
+  if (scopes.includes('FULL')) return snapshot;
+
+  const has = (s: DataAccessScope) => scopes.includes(s);
+  const filtered: MasterFinancialSnapshot = { ...snapshot };
+
+  const blankExpenseAggregation = (): ExpenseAggregation => ({
+    total: 0,
+    essential: 0,
+    discretionary: 0,
+    taxDeductible: 0,
+    byCategory: {},
+  });
+  const blankIncomeAggregation = (): IncomeAggregation => ({
+    grossTotal: 0,
+    netTotal: 0,
+    paygWithholding: 0,
+    byType: {},
+    taxableIncome: 0,
+    nonTaxableIncome: 0,
+  });
+  const blankBudgetVariance = (): BudgetVariance => ({
+    budgeted: 0,
+    actual: 0,
+    variance: 0,
+    variancePercent: 0,
+    status: 'on_track',
+    entriesWithBudget: 0,
+    entriesReconciled: 0,
+  });
+
+  // LOANS — debt summary, debt metrics, mortgage/personal-loan/credit-card slices
+  if (!has('LOANS')) {
+    filtered.debt = {
+      summary: {
+        totalPrincipal: 0,
+        totalRepayments: 0,
+        totalInterest: 0,
+        weightedInterestRate: 0,
+        byType: {},
+      },
+      metrics: {
+        debtToIncomeRatio: 0,
+        debtServiceRatio: 0,
+        totalDebt: 0,
+        monthlyRepayments: 0,
+      },
+    };
+    filtered.netWorth = {
+      ...filtered.netWorth,
+      liabilities: { mortgages: 0, personalLoans: 0, creditCards: 0, total: 0 },
+      netWorth: filtered.netWorth.assets.total,
+    };
+    filtered.quickMetrics = {
+      ...filtered.quickMetrics,
+      monthlyLoanRepayments: 0,
+      totalLiabilities: 0,
+      netWorthValue: filtered.netWorth.netWorth,
+    };
+  }
+
+  // PROPERTIES — property metrics + portfolio aggregates
+  if (!has('PROPERTIES')) {
+    filtered.properties = [];
+    filtered.propertyPortfolioValue = 0;
+    filtered.propertyPortfolioEquity = 0;
+    filtered.netWorth = {
+      ...filtered.netWorth,
+      assets: { ...filtered.netWorth.assets, properties: 0 },
+      breakdown: { ...filtered.netWorth.breakdown, propertyEquity: 0 },
+    };
+  }
+
+  // INVESTMENTS — investment metrics + investment slice of net worth
+  if (!has('INVESTMENTS')) {
+    filtered.investments = {
+      totalValue: 0,
+      totalCostBase: 0,
+      unrealisedGain: 0,
+      unrealisedGainPercent: 0,
+      holdingsCount: 0,
+      byType: {},
+    };
+    filtered.netWorth = {
+      ...filtered.netWorth,
+      assets: { ...filtered.netWorth.assets, investments: 0 },
+      breakdown: { ...filtered.netWorth.breakdown, investmentAssets: 0 },
+    };
+  }
+
+  // TAX — tax summary
+  if (!has('TAX')) {
+    filtered.tax = {
+      estimatedTaxableIncome: 0,
+      estimatedTaxPayable: 0,
+      effectiveTaxRate: 0,
+      marginalTaxRate: 0,
+      totalDeductions: 0,
+      paygWithheld: 0,
+      estimatedRefundOrOwing: 0,
+    };
+  }
+
+  // FINANCIAL — bank accounts + cashflow + emergency fund + income/expenses.
+  // This is the strictest scope; without it the snapshot is shape-only.
+  if (!has('FINANCIAL')) {
+    const blankExpenseBreakdown = (): MasterExpenseBreakdown => ({
+      all: blankExpenseAggregation(),
+      recurring: blankExpenseAggregation(),
+      nonRecurring: blankExpenseAggregation(),
+      essential: blankExpenseAggregation(),
+      discretionary: blankExpenseAggregation(),
+      taxDeductible: blankExpenseAggregation(),
+      byCategory: [],
+      budgetVariance: blankBudgetVariance(),
+    });
+    const blankIncomeBreakdown = (): MasterIncomeBreakdown => ({
+      all: blankIncomeAggregation(),
+      primary: blankIncomeAggregation(),
+      secondary: blankIncomeAggregation(),
+      passive: blankIncomeAggregation(),
+      budgetVariance: blankBudgetVariance(),
+    });
+
+    filtered.expenses = { monthly: blankExpenseBreakdown(), annual: blankExpenseBreakdown() };
+    filtered.income = { monthly: blankIncomeBreakdown(), annual: blankIncomeBreakdown() };
+    filtered.cashflow = {
+      monthlyGrossIncome: 0,
+      monthlyNetIncome: 0,
+      monthlyIncome: 0,
+      monthlyPaygWithholding: 0,
+      monthlyExpenses: 0,
+      monthlyLoanRepayments: 0,
+      monthlyCashflow: 0,
+      monthlySurplus: 0,
+      annualGrossIncome: 0,
+      annualNetIncome: 0,
+      annualIncome: 0,
+      annualPaygWithholding: 0,
+      annualExpenses: 0,
+      annualLoanRepayments: 0,
+      annualCashflow: 0,
+      annualSurplus: 0,
+      savingsRate: 0,
+      expenseRatio: 0,
+      debtServiceRatio: 0,
+      essentialExpenses: 0,
+      discretionaryExpenses: 0,
+      taxableIncome: 0,
+      taxDeductibleExpenses: 0,
+      incomeByType: {},
+      expensesByCategory: {},
+    };
+    filtered.emergencyFund = {
+      liquidCash: 0,
+      monthlyExpenses: 0,
+      monthsCovered: 0,
+      targetMonths: 6,
+      gap: 0,
+      status: 'danger',
+    };
+    filtered.netWorth = {
+      ...filtered.netWorth,
+      assets: { ...filtered.netWorth.assets, accounts: 0 },
+      breakdown: { ...filtered.netWorth.breakdown, liquidAssets: 0 },
+    };
+    filtered.quickMetrics = {
+      ...filtered.quickMetrics,
+      monthlyIncome: 0,
+      monthlyExpenses: 0,
+      monthlyCashflow: 0,
+      liquidCash: 0,
+      savingsRate: 0,
+    };
+  }
+
+  return filtered;
+}
+
+/**
+ * Write the per-view audit trail for a professional drill-in. Two rows:
+ *   1. AuditLog (PRO_DASHBOARD_VIEW) — discoverable from the user's audit
+ *      trail; honours CDR sanitisation rules in `sanitizeCdrMetadata()`.
+ *   2. ClientAccessLog (PRO_DASHBOARD_VIEW) — per-view detail tied to the
+ *      OrganizationClient row, used by the org's compliance reports.
+ *
+ * Fire-and-forget (.catch swallowed) per CLAUDE.md §12.10 — audit logging
+ * MUST NEVER block a response.
+ */
+function logProDashboardView(
+  viewerContext: ViewerContext,
+  organizationClientId: string,
+  appliedScopes: DataAccessScope[]
+): void {
+  const sanitizedMeta = sanitizeCdrMetadata({
+    seatId: viewerContext.seatId,
+    organizationClientId,
+    accessScopes: appliedScopes,
+  });
+
+  createAuditLog({
+    userId: viewerContext.clientUserId,
+    action: 'PRO_DASHBOARD_VIEW',
+    status: 'SUCCESS',
+    entityType: 'OrganizationClient',
+    entityId: organizationClientId,
+    ipAddress: viewerContext.ipAddress,
+    userAgent: viewerContext.userAgent,
+    metadata: sanitizedMeta,
+  }).catch(() => {});
+
+  prisma.clientAccessLog
+    .create({
+      data: {
+        organizationClientId,
+        accessedByMemberId: viewerContext.seatId,
+        action: 'PRO_DASHBOARD_VIEW',
+        resourceType: 'master_financial_snapshot',
+        ipAddress: viewerContext.ipAddress,
+        userAgent: viewerContext.userAgent,
+      },
+    })
+    .catch(() => {});
+
+  prisma.organizationClient
+    .update({
+      where: { id: organizationClientId },
+      data: { lastAccessedAt: new Date() },
+    })
+    .catch(() => {});
+}
+
+/**
+ * Get the canonical financial snapshot for a user.
+ *
+ * Phase 32B PR3 — when called with a `viewerContext`, the function additionally:
+ *   - validates the context is well-formed (rejects malformed contexts)
+ *   - verifies the seat has an ACTIVE+GRANTED OrganizationClient row
+ *   - applies a scope filter at the SERVICE layer (not the UI)
+ *   - writes the per-view audit (AuditLog + ClientAccessLog)
+ *
+ * The viewerContext path is OPTIONAL — calling without it preserves the
+ * original consumer-facing behaviour byte-for-byte. Per CLAUDE.md §0
+ * architect lens: ONE canonical engine, viewerContext is a parameter, NOT
+ * a fork.
+ */
 export async function getMasterFinancialSnapshot(
+  userId: string,
+  viewerContext?: ViewerContext
+): Promise<MasterFinancialSnapshot> {
+  let organizationClientId: string | null = null;
+  let appliedScopes: DataAccessScope[] | null = null;
+
+  if (viewerContext) {
+    assertValidViewerContext(viewerContext, userId);
+    const orgClient = await loadOrganizationClient(viewerContext);
+    if (!orgClient) {
+      throw new Error(
+        'Professional access denied: no ACTIVE+GRANTED OrganizationClient row for this seat + clientUserId'
+      );
+    }
+    organizationClientId = orgClient.id;
+    // Trust the DB-stored scopes, NOT what the caller asserted on the
+    // viewerContext object. The viewerContext.accessScopes is informational —
+    // the actual filter applies the canonical OrganizationClient.accessScopes.
+    appliedScopes = orgClient.accessScopes;
+  }
+
+  return computeAndPossiblyFilter(userId, viewerContext, organizationClientId, appliedScopes);
+}
+
+async function computeAndPossiblyFilter(
+  userId: string,
+  viewerContext: ViewerContext | undefined,
+  organizationClientId: string | null,
+  appliedScopes: DataAccessScope[] | null
+): Promise<MasterFinancialSnapshot> {
+  const snapshot = await computeMasterFinancialSnapshot(userId);
+
+  if (viewerContext && organizationClientId && appliedScopes) {
+    const filtered = applyScopeFilter(snapshot, appliedScopes);
+    filtered.viewer = {
+      seatId: viewerContext.seatId,
+      organizationClientId,
+      accessScopes: appliedScopes,
+      appliedScopeFilter: !appliedScopes.includes('FULL'),
+    };
+    logProDashboardView(viewerContext, organizationClientId, appliedScopes);
+    return filtered;
+  }
+
+  return snapshot;
+}
+
+async function computeMasterFinancialSnapshot(
   userId: string
 ): Promise<MasterFinancialSnapshot> {
   // Fetch all raw data
