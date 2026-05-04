@@ -972,3 +972,88 @@ Docs updated:
 ### Out-of-scope (this session, not this PR)
 
 None. This PR is a focused revision to one skill plus the supporting docs the §16 protocol mandates.
+
+---
+
+## Session: claude/phase-33d-compliance-content (Phase 33d SHIPPED — Compliance pack content)
+
+### Changes Made
+
+- **Type:** Feature (Phase 33d compliance pack content — load-bearing B2B sales artefacts)
+- **Scope:** Five regulator-facing compliance articles authored under `docs/help/compliance/` to match the voice / structure / frontmatter shape of the existing `cdr-consent-walkthrough.md` article shipped in Phase 33a (PR #605)
+- **Description:** Authored the four queued + one expanded compliance pack articles required for B2B sales conversations with orgs' compliance teams. Quality bar: regulator-grade, not blog-grade. Every load-bearing claim in every article is cross-referenced inline to the canonical source-of-truth document it derives from, so an auditor reviewing Monitrax can independently verify every assertion against the operational policy or architecture doc that owns it.
+
+### Articles authored
+
+1. **`docs/help/compliance/data-retention-schedule.md`** (`complianceClass: cdr`, `order: 2`) — Three-class retention regime (CDR-protected / CDR-derived / Non-CDR), per-data-category retention table with legal basis (CDR Rules §1.10, Privacy Act APP 11, Corporations Act §912F, TASA §50-5, Privacy Act §15B), legal-retention overrides with `anonymizeCDRData()` de-identification mechanism, automated enforcement via Cloud Scheduler, six-day-to-irretrievable deletion guarantee. Derived from `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md` + `lib/services/cdrDataLifecycle.ts`.
+
+2. **`docs/help/compliance/incident-response-plan-summary.md`** (`complianceClass: general`, `order: 3`) — Auditor-facing summary of `docs/policy/INCIDENT_RESPONSE_PLAN.md` v1.1. Five-row severity table including HIGH (Availability) for Phase 9 auth-chain failures. Six-phase response model. OAIC NDB notification timelines (§26WK 30 days, §26WL ASAP, Basiq immediately, ACCC as directed). Containment toolkit including the unique IAM-revocation containment pattern that WIF enables. IRP §10 auth-chain availability playbook reference. Investigation evidence sources table with retention windows.
+
+3. **`docs/help/compliance/architecture-overview-for-compliance.md`** (`complianceClass: general`, `order: 4`) — System architecture from a compliance-officer lens. Data residency table (australia-southeast1 across primary DB / backups / GCS / Cloud Logging / Vercel `syd1`). Four trust boundaries (Browser → Vercel, Vercel → GCP, Vercel → Basiq, Vercel → Gemini). Three identity systems (Firebase Auth / WIF / Cloud IAM database). Six-step database auth chain with no-static-credential properties. Encryption posture per layer. Dual-emit audit-logging table. RBAC. AI processing boundary (de-identified inputs only). Deployment pipeline. Derived from `docs/architecture/01_ARCHITECTURE_OVERVIEW.md` + `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` + `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md`.
+
+4. **`docs/help/compliance/asic-rg244-rg36-boundary-statement.md`** (`complianceClass: afsl`, `order: 5`) — How Monitrax stays on the general-information side of ASIC RG 244 / RG 36 / Corporations Act §766B. Single-voice AI + Ask-a-Professional architecture is positioned as the load-bearing argument (not disclaimer-as-defence per RG 244 §244.118). Three structural constraints: general-information-only system prompt; single voice no parallel conversations; Ask-a-Pro relief valve. AFSL-holder vs platform responsibility split table (best-interests duty §961B, SOA §946A, record-keeping §912F all sit with the AFSL holder). ASIC INFO 269 (April 2024) AI-in-finserv alignment table.
+
+5. **`docs/help/compliance/data-handling-policy-summary.md`** (`complianceClass: privacy`, `order: 6`) — Staff access controls (unique login / MFA / RBAC / least privilege / no direct DB access). Segregation-of-duties via append-only audit log architecture (the application's Postgres role has `INSERT` but not `UPDATE`/`DELETE` on `AuditLog` and `AdminAuditLog`). Anomaly detection via `runAnomalyDetection()`. Device security per DSP. Approved-dependencies supply chain control. Future-staff onboarding clauses pre-written so they do not have to be invented under hiring pressure. Derived from `docs/policy/DEVICE_SECURITY_POLICY.md` + `APPROVED_DEPENDENCIES.md` + `SECURITY_AWARENESS_POLICY.md` + `docs/operational/security/02_IAM_AND_PERMISSIONS.md` + `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`.
+
+### Files Modified
+
+- `docs/help/compliance/data-retention-schedule.md` — NEW (~1500 words)
+- `docs/help/compliance/incident-response-plan-summary.md` — NEW (~1450 words)
+- `docs/help/compliance/architecture-overview-for-compliance.md` — NEW (~1700 words)
+- `docs/help/compliance/asic-rg244-rg36-boundary-statement.md` — NEW (~1700 words)
+- `docs/help/compliance/data-handling-policy-summary.md` — NEW (~1500 words)
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Step 8 compliance pack table-of-contents: 4 entries flipped from `📋 Phase 33d` to `✅ Live`; new Data Handling Policy summary row added; regulator-side question pointers updated to specific section anchors in the new articles
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #22 flipped to `~~22~~ ✅ Phase 33d SHIPPED 2026-05-04`; Recently Completed entry appended at top of 2026-05-04
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this Session block
+
+### Documentation Updated
+
+- `docs/IMPLEMENTATION_PLAN.md` ✅ (CLAUDE.md §15 SSOT — Up Next #22 + Recently Completed)
+- `docs/changelog/CHANGELOG_2026_05_04.md` ✅ (CLAUDE.md §11 daily changelog — this file)
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` ✅ (Step 8 Compliance pack table of contents now reflects shipped state)
+- `CLAUDE.md` — **NOT modified.** No new rules; no surface-classification change. The §16 doc-sync protocol rules apply unchanged; this PR is the protocol working as designed.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — *No code change. The articles document existing posture for an external compliance audience; they do not change rules. Light yes; the canonical sources-of-truth they derive from are unchanged.*
+- [x] operational procedure — *Adds five new external-facing operational documents (the help articles themselves) that compliance officers and auditors will read. The canonical operational policies are unchanged; these summarise them for an external audience.*
+- [x] strategic decision (Open Question resolved / workstream parked or revived) — *Up Next #22 (Phase 33d compliance pack content) flipped from queued → shipped.*
+
+Docs updated:
+- `docs/help/compliance/data-retention-schedule.md` (new — derived from `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md`)
+- `docs/help/compliance/incident-response-plan-summary.md` (new — derived from `docs/policy/INCIDENT_RESPONSE_PLAN.md`)
+- `docs/help/compliance/architecture-overview-for-compliance.md` (new — derived from `docs/architecture/01_ARCHITECTURE_OVERVIEW.md` + `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` + `docs/compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md`)
+- `docs/help/compliance/asic-rg244-rg36-boundary-statement.md` (new — derived from `docs/blueprint/MASTER_BLUEPRINT.md` + `docs/blueprint/TRAIL_FRAMEWORK.md` product positioning + ASIC RG 244 / RG 36 / RG 175 / INFO 269)
+- `docs/help/compliance/data-handling-policy-summary.md` (new — derived from `docs/policy/DEVICE_SECURITY_POLICY.md` + `APPROVED_DEPENDENCIES.md` + `SECURITY_AWARENESS_POLICY.md` + `docs/operational/security/02_IAM_AND_PERMISSIONS.md` + `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`)
+- `docs/IMPLEMENTATION_PLAN.md:Up Next #22` (flipped to SHIPPED)
+- `docs/IMPLEMENTATION_PLAN.md:✅ Recently Completed (2026-05-04)` (entry added at top of day)
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md:Step 8` (compliance pack ToC + question pointers updated)
+- `docs/changelog/CHANGELOG_2026_05_04.md` (this Session block)
+
+### Testing
+- [x] All five articles include the four required frontmatter fields (`title`, `audience`, `slug`, `lastReviewed`) per `lib/help/frontmatter.ts:REQUIRED_FIELDS`
+- [x] All five articles set `audience: compliance` and a unique `complianceClass` matching the article topic (cdr / general / general / afsl / privacy)
+- [x] All five articles set `order` values (2–6) that follow the existing `cdr-consent-walkthrough` (order: 1) and present a sensible compliance-pack reading sequence
+- [x] Voice + structure mirror the existing `cdr-consent-walkthrough.md` article — direct, regulator-friendly, no marketing language, table where data fits a table, "For your auditor" footer with the `compliance@monitrax.com.au` pointer
+- [x] Every article's "What an auditor can independently verify" section names specific files / DB tables / code paths that an auditor can read without Monitrax's help — the article is auditable against the codebase
+- [ ] Typecheck — N/A (pure docs work; zero code changes)
+- [ ] Lint — N/A (pure docs)
+- [ ] Build — N/A (Markdown is read at request time; no compile step)
+
+### Out-of-scope (this session, not this PR)
+
+- **PDF export per article + ZIP bundle export.** Phase 33c (Up Next #21) — single-click compliance pack download for the auditor's evidence file. The articles ship now; the bundled-export polish is the next slice.
+- **DOCX compliance templates.** Phase 33f (Up Next #24) — Word-format starter templates that orgs customise to their own letterhead (Incident Response Plan, BCP, Data Handling Policy, etc.). Deferred to PROD-ready.
+- **In-app `?` drawer with route-aware article selection.** Phase 33b (Up Next #20) — runs in parallel with this work; not gated by it.
+- **Touching code.** Hard constraint per the session brief — pure docs work, no schema, no code.
+
+### PR
+- Branch: `claude/phase-33d-compliance-content`
+- PR URL: TBD on push
+- Status: Untracked → committed → pushed in this session
