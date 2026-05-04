@@ -20,7 +20,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { withAuth } from '@/lib/auth/guards';
+import { withPermission } from '@/lib/auth/guards';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import { PermissionGuards } from '@/lib/portal/permissions';
 import type { PortalUserRole } from '@prisma/client';
@@ -34,8 +34,8 @@ const ROLE_MAPPING: Record<string, PortalUserRole> = {
   VIEWER: 'PORTAL_VIEWER',
 };
 
-export const GET = withAuth<RouteContext>(async (request: NextRequest, auth, routeCtx) => {
-  const { id: organizationClientId } = await routeCtx!.params;
+export const GET = withPermission<RouteContext>('org.read', async (request: NextRequest, auth, routeCtx) => {
+  const { id: organizationClientId } = await routeCtx.params;
 
   const orgClient = await prisma.organizationClient.findUnique({
     where: { id: organizationClientId },
