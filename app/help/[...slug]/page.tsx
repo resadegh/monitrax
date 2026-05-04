@@ -74,11 +74,27 @@ export default async function HelpArticlePage({ params }: PageProps) {
       </nav>
 
       <header className="mb-8 pb-8 border-b border-slate-200">
-        {article.frontmatter.complianceClass && (
-          <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] mb-3">
-            {article.frontmatter.complianceClass}
-          </span>
-        )}
+        <div className="flex items-start justify-between gap-4 mb-3">
+          {article.frontmatter.complianceClass ? (
+            <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em]">
+              {article.frontmatter.complianceClass}
+            </span>
+          ) : (
+            <span />
+          )}
+          <Link
+            href={`/print/help/${audience}/${articleSlug}`}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-1.5 rounded-full ring-1 ring-slate-200 hover:ring-slate-300 hover:bg-slate-50 px-3 py-1.5 text-[12px] font-medium text-slate-700 transition-colors print:hidden"
+            aria-label="Download this article as PDF"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1.5v8m0 0L4.5 6m3.5 3.5L11.5 6M2.5 11v2A1.5 1.5 0 0 0 4 14.5h8a1.5 1.5 0 0 0 1.5-1.5v-2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Download as PDF
+          </Link>
+        </div>
         <h1 className="text-3xl sm:text-[34px] font-semibold tracking-tight text-slate-900 leading-tight">
           {article.frontmatter.title}
         </h1>

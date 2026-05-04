@@ -1,5 +1,60 @@
 # Changelog — 2026-05-04
 
+## Session: claude/phase-33c-pdf-export (Phase 33c (light) SHIPPED — Per-article Save-as-PDF)
+
+### Changes Made
+- **Type:** Feature (Demo-Complete Critical Path week-13 deliverable; closes Up Next #21 at light scope; ZIP bundle deferred to PROD)
+- **Scope:** Phase 33c (light) — every public help article is now downloadable as a print-quality PDF via the browser's native print pipeline, completing the in-app help triplet (33a Help Center + 33b drawer + 33c PDF).
+- **Description:** Added a "Download as PDF" link to every `/help/<audience>/<slug>` article header. Clicking opens `/print/help/<audience>/<slug>` in a new tab — a sibling top-level route that bypasses `app/help/layout.tsx` chrome (clean print body, no nav / footer to hide via CSS). The print page uses the SAME `lib/help/markdown.ts` zero-dep renderer the screen view uses (one source of truth) and adds A4-targeted print CSS plus an auto-trigger of `window.print()` after fonts settle so the user lands with the Save-as-PDF dialog already open. Every print page carries Monitrax brand + audience + reviewed date in the document header and the canonical URL in the document footer for auditor provenance.
+
+### Files Created
+- `app/print/help/[...slug]/page.tsx` — print-optimised article view. Renders the same Markdown content as the screen version. A4-targeted print CSS: `@page` margins 18mm/16mm/22mm/16mm, `page-break-inside: avoid` on `<pre>` / `<blockquote>` / `<li>`, `page-break-after: avoid` on headings, emerald link colour preserved in print so audit trails of clickable URLs survive when the PDF is shared electronically. Document header has Monitrax brand mark + audience label + reviewed date. Document footer carries the canonical URL (auditor provenance — every printed article points back to the source). `generateStaticParams()` emits one path per article (8 paths in this build); `generateMetadata` sets `robots: { index: false, follow: false }` on the print route so search engines never see the print pages.
+- `app/print/help/[...slug]/layout.tsx` — tiny white-bg wrapper that bypasses the `/help` layout chrome. The print view is a genuinely different surface — it deserves its own route subtree, not a CSS hide-the-nav hack on top of the screen layout. Sets `robots: { index: false, follow: false }` at the layout level too as defence-in-depth.
+- `app/print/help/[...slug]/AutoPrint.tsx` — small client component that triggers `window.print()` after `document.fonts.ready` resolves and one animation frame elapses (so layout has reflowed) plus an 80ms paint buffer so the toolbar paints before the modal — less jarring than an instant modal on a blank-feeling page. Wires a delegated click handler on `[data-print-trigger]` so the visible "Open print dialog" toolbar link re-triggers the print dialog without the user needing the keyboard shortcut. No-op fallback for sandboxed iframes that reject `print()`.
+
+### Files Modified
+- `app/help/[...slug]/page.tsx` — header now contains the "Download as PDF" link with an inline 16×16 download chevron SVG. `print:hidden` so the button doesn't leak into print output. `target="_blank" rel="noopener"` so the screen view stays open for continued reading. Tailwind ring-on-hover treatment matches existing help-site pill buttons.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #21 struck through and marked SHIPPED with full summary; row 18 (Demo-Complete Critical Path) updated to reflect 33c (light) shipped; new Recently Completed entry prepended for 2026-05-04.
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Step 8 compliance pack section updated to mention the per-article download capability.
+
+### Files NOT Modified (intentional)
+- `prisma/schema.prisma` — no schema changes; PDF export is a render-time concern, not a data concern.
+- `lib/help/markdown.ts` — print view reuses the existing renderer unchanged. One source of truth.
+- `package.json` / `package-lock.json` — zero new dependencies (see Architecture Decisions below).
+
+### Architecture Decisions
+- **Zero new dependencies.** Evaluated `@react-pdf/renderer`. Installation pulled in 1,005 transitive packages with 36 vulnerabilities including 2 critical and 9 high. Rejected per CLAUDE.md §12.7 (managed-service / minimum-custom-code). The browser-native print-to-PDF pipeline is what Stripe Docs / MDN / GitHub use for the same reason — deterministic across browsers, accessible, respects user paper-size + orientation preferences, and the resulting PDF stays selectable + searchable. Compliance auditors care about evidence + provenance, not pixel polish.
+- **Print route lives OUTSIDE `/help/*`.** Initial attempt placed it at `app/help/[...slug]/print/page.tsx`. Next.js rejected this with "Catch-all must be the last part of the URL" — catch-all routes must be the leaf segment. Pivoted to `/print/help/<audience>/<slug>` — sibling top-level route with its own layout — which is structurally cleaner anyway: the print view is a genuinely different surface (clean document, no chrome) and a top-level `/print/...` prefix is a natural home for future Phase 33f DOCX templates if they're ever exposed via HTTP.
+- **`force-static` + `generateStaticParams`.** Print pages are static-generated at build time, same as the screen pages. Zero per-request cost. New articles trigger a fresh build (or revalidation when ISR is wired).
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean, exit 0.
+- [x] `npx next build` — green, exit 0. Print pages listed in build output as `● /print/help/[...slug]` with 8 SSG paths.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new print-optimised article view + print CSS pattern)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md:Up Next #21` — Phase 33c (light) marked SHIPPED with full summary.
+- `docs/IMPLEMENTATION_PLAN.md:Recently Completed 2026-05-04` — new entry prepended.
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md:Step 8` — compliance pack section updated to mention per-article PDF download.
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this entry.
+
+### PR
+- Branch: `claude/phase-33c-pdf-export`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-33b-help-drawer-Q6tyx (Phase 33b SHIPPED — In-app `?` help drawer)
 
 ### Changes Made
