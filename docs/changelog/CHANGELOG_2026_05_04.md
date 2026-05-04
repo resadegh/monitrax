@@ -1531,3 +1531,104 @@ Docs updated in this PR:
 - Branch: `claude/phase-41b-onboarding-entities`
 - PR URL: PR #612 — force-pushed after rebase on main (PRs #610 + #611 merged before this PR's branch existed)
 - Status: Conflict-resolved on rebase; force-push pending
+
+---
+
+## Session: claude/phase-41c-entity-tree (Phase 41c — Interactive Entity Tree at /dashboard/entities)
+
+### Changes Made
+- **Type**: Feature — interactive visualisation surface that REPLACES the 41b list view
+- **Scope**: `components/entities/EntityTree.tsx` (NEW), `components/entities/types.ts` (NEW), `app/dashboard/entities/page.tsx` (rewrote the list block as a thin EntityTree mount + parallel household-members fetch + Remove affordance moved into the form dialog footer), `docs/architecture/03_DATA_MODEL.md` (new §10.9), `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` (Step 3 verbiage updated for the live tree), `docs/IMPLEMENTATION_PLAN.md` (#27 ✅ SHIPPED, #28 unblocked, Recently Completed entry prepended)
+- **Description**: Phase 41 Wk-4–5 deliverable on the Demo-Complete Critical Path. Replaces the 41b list at `/dashboard/entities` with a 3-row glass-tile tree (People → Legal Entities → owned-objects chips inline), SVG Bézier connectors between rows, dashed fuchsia paths for trustee→trust corporate hierarchy. Reza directive 2026-05-04: *"Yes it should replace, the tree view should be an interactive and live tree view that user can view, track and navigate through the tree view."*
+
+### Why this matters
+
+The list view from 41b was the tactical short-term answer to "let me manage my entities." The tree is the strategic answer to "let me *see* my structure" — it's the visual that wins the lighthouse adviser pitch (Step 3, the lean-forward moment). Without the tree, an Olivia-archetype walkthrough doesn't have its punchline.
+
+### Files Modified / Created
+
+- **`components/entities/types.ts`** (NEW, ~140 lines) — shared client-side types extracted from the 41b page so the tree, the page, and any future entity surface (41g adviser overlay extension) import from one canonical source. Includes `Entity`, `HouseholdMember`, `OwnedObjectsCount`, `LegalEntityType`/`LegalEntityRole` literal unions, label maps, and `ROLE_PALETTE` per-role colour table.
+- **`components/entities/EntityTree.tsx`** (NEW, ~520 lines) — the visualisation component. Three sub-components:
+  - `PersonTile` — top-row glass tile per HouseholdMember (or generic "You" anchor when none).
+  - `EntityTile` — middle-row glass tile per LegalEntity, role-coloured, with in-tile owned-objects chips and (when applicable) "↳ trustee: X" line.
+  - `Connectors` — absolutely-positioned SVG layer that draws Bézier paths between Person and Entity tiles, plus dashed fuchsia paths for trustee→trust corporate hierarchy. Coordinates measured via refs + ResizeObserver.
+- **`app/dashboard/entities/page.tsx`** — list block (98 lines) replaced with `<EntityTree>` mount (5 lines). Added parallel `/api/household-members` fetch. Header chip `Sparkles` → `TreePine` to match the new metaphor. Per-tile remove buttons retired in favour of a Remove button in the `EntityFormDialog` footer (single canonical entry point: tile click → dialog → Save or Remove). Dead code removed: `entityIcon` helper + `Crown` / `Landmark` / `Users` / `Pencil` lucide imports.
+
+### Click affordances
+
+| Element | Action |
+|---|---|
+| Entity tile (anywhere on the tile) | Opens `EntityFormDialog` in **edit** mode |
+| Owned-objects chip (`2 properties`, etc.) | Stops propagation, navigates to the relevant `/dashboard/*` page |
+| "Add a trust, SMSF, or company" CTA | Opens `EntityFormDialog` in **create** mode |
+| Person tile | No-op for v1 (Phase 41e+ will navigate to a person-scoped tax position view) |
+| Entity dialog → "Remove" footer button | Closes dialog and opens the AlertDialog removal flow |
+
+### People→Entity edge heuristic (v1)
+
+Schema doesn't yet model shareholder/beneficiary links. Phase 41c uses:
+
+1. PERSONAL_NAME entity → matching person by case-insensitive name (substring fallback, first-member fallback).
+2. Non-PERSONAL_NAME entity → fans out to **every** PERSONAL_NAME entity's matched person (so a Family Trust connects to both David Mei *and* Emma Liu when both are present).
+3. No household members yet → single anchor labelled "You".
+
+Phase 41e's beneficiary/shareholder fields will replace this heuristic with explicit edges from real DB rows.
+
+### Visual + a11y
+
+- Apple-glass tiles, framer-motion entrance + hover lift, role-coloured palette (PERSONAL warm amber / OPERATING emerald / HOLDING indigo / SUPERANNUATION violet / INVESTMENT fuchsia).
+- `prefers-reduced-motion` honoured throughout — motion lines render but don't animate.
+- Mobile (<md): SVG suppressed, tiles stack vertically, "↳ trustee: X" labels carry the corporate hierarchy.
+- Keyboard navigable: every tile + chip is a button, Tab-traversable, Enter/Space-triggerable.
+- Colour-blind safe: every role tile carries text labels alongside the tone.
+
+### Why no react-flow
+
+Evaluated and rejected per CLAUDE.md §12.7 + §12.8 (simplicity over cleverness). The tree is a static 2-row + connector layer; no drag/zoom/pan. `reactflow` adds ~150 KB to the bundle for one page; a 350-line component using CSS grid + a small SVG layer is more maintainable and ships zero new deps. Revisit if Phase 41 ever needs pan/zoom for very large structures (10+ entities).
+
+### Build Status
+- [x] TypeScript compilation passes — `npx tsc --noEmit` exits 0
+- [x] No new dependencies added
+- [x] Prisma schema unchanged
+- [ ] Vercel preview build — to be verified after push
+
+### CLAUDE.md §16 doc-sync block
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — new EntityTree component, role-colour palette, SVG-connector pattern; reusable for Phase 41g adviser overlay
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture (no new TFN paths; chips never expose TFN)
+- [ ] operational procedure
+- [ ] strategic decision
+- [x] data model (no schema change; client-side surface change)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — #27 ✅ SHIPPED with full detail; #28 (Sankey) flipped to UNBLOCKED with second-wow-moment rationale; Recently Completed entry prepended
+- `docs/architecture/03_DATA_MODEL.md` — §10.7 marker flipped to ✅ for 41c; new §10.9 Phase 41c (component anatomy + data sources + visual rules + click affordances + heuristic + mobile fallback + why-no-react-flow + 41d/e/g unlocks)
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Step 3 entity-tree verbiage flipped from "post-Phase-41c" to "Phase 41c LIVE" with role-palette + click affordances now real
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this entry
+
+### Test plan (for Reza after preview goes live)
+
+1. **Tree renders for the seeded archetypes.** Log in as Olivia Novak. Open `/dashboard/entities`. Confirm tree shows: People row with "Olivia Novak" tile (or "You" if household members not yet seeded); Entities row with all 5 entities (Olivia personal, Novak Investment Holdings Pty Ltd, Novak Family Trust, Novak Unit Trust, Novak SMSF); each entity carries owned-objects chips (e.g. "2 properties", "1 investment"); the Trust shows "↳ trustee: Novak Investment Holdings Pty Ltd".
+2. **SVG connectors visible on desktop.** Resize the browser to ≥md width. Confirm Bézier paths draw from each Person tile down to its connected Entity tiles, and a dashed fuchsia path connects the Pty Ltd to the Trust it's the trustee of.
+3. **Mobile fallback.** Resize to <md. Confirm SVG paths disappear, tiles stack vertically, and the "↳ trustee: …" line still tells the corporate-hierarchy story.
+4. **Click navigation works.** Click a "2 properties" chip on the Family Trust tile → drills to `/dashboard/properties`. Browser back. Click anywhere on the Trust tile (not on a chip) → opens the edit dialog with the trust's name pre-populated.
+5. **Edit + Remove.** From the edit dialog, change the trust name, save. Tree refreshes with the new name (live). Re-open the dialog and click Remove → AlertDialog opens with friendly counts. Cancel. Try removing a Pty Ltd that's currently the trustee of a trust — confirm the 409 friendly count appears.
+6. **`prefers-reduced-motion`**. Toggle the OS setting → confirm tile entrance animations short-circuit (no `y/scale` motion).
+7. **Keyboard navigation.** Tab through tiles + chips → focus rings visible, Enter on a tile opens the dialog, Enter on a chip navigates.
+
+### What's NOT in this PR
+
+- **No Sankey / Money Flow visualisation** — that's Phase 41d.
+- **No "Owned by Smith Family Trust" chip across other dashboard pages.** The tree is the canonical place; Phase 41e or 41g will add cross-app chips when there's adviser-context demand.
+- **No drag/zoom/pan.** A static visualisation suffices for v1; revisit if 10+ entity structures appear.
+- **No proper shareholder/beneficiary edges.** Heuristic v1 fans out from every PERSONAL_NAME entity; real edges land in 41e.
+
+### PR
+- Branch: `claude/phase-41c-entity-tree`
+- PR URL: TBD on push
+- Status: Untracked → committed → pushed in this session
