@@ -91,8 +91,10 @@ const ROLE_PERMISSIONS: Record<PortalUserRole, PortalPermission[]> = {
   PORTAL_ADMIN: [
     // Limited organization permissions
     'org:read', 'org:update', 'org:manage_branding',
-    // Team permissions (can't remove owner)
-    'team:read', 'team:invite', 'team:remove', 'team:update_roles',
+    // Team permissions (anti-poaching guardrail 2026-05-04: `team:invite` is
+    // OWNER-only; ADMIN can manage existing roster but cannot expand it).
+    // See IMPLEMENTATION_PLAN.md Up Next #13 + CLAUDE.md §0 architect lens.
+    'team:read', 'team:remove', 'team:update_roles',
     // All client permissions
     'clients:read', 'clients:invite', 'clients:remove', 'clients:assign', 'clients:view_data', 'clients:export_data',
     // All notes permissions

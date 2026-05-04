@@ -504,20 +504,141 @@ PR2 scope updated in Up Next #13.
   - Up Next #13 (PR2) — anti-poaching guardrails added to scope
   - Up Next #21 (Phase 33a) — trigger flipped to "Parallel with PR2"
 
+### Status at session close (penultimate)
+
+- 4 commits pushed on `claude/review-monitrax-docs-8HM3K`
+- All Phase 32B / 32C / 33 strategic decisions LOCKED
+- Phase 41 (Entity Layer / My Structure) DOCUMENTED + queued
+
+---
+
+## Session addendum 4 (latest 2026-05-04) — Phase 32B PR2 SHIPPED + Phase 41 documented
+
+Reza directive: continue the build progress, give an exec summary,
+and create a Pull Request for testing.
+
+### Phase 41 — Entity Layer / "My Structure" — DOCUMENTED + queued
+
+Reza decisions captured:
+- **TFN collection: yes** (optional, encrypted at rest, default off,
+  never logged, never sent to AI; user controls visibility)
+- **Trust deed parsing: both** (manual entry + AI-assisted PDF
+  extraction via Gemini + Phase 26 OCR)
+- **Visualisation order: Tree first, then Sankey** (Claude's call;
+  Tree is more daily-utility, Sankey is the "wow" pitch screenshot)
+
+Phase 41 phases documented in Up Next #27–#34:
+- 41a — `LegalEntity` schema + ownership backfill (~5 days)
+- 41b — Onboarding wizard "How is your wealth held?" step (~5 days)
+- 41c — "My Structure" page with Entity Tree (`react-flow`) (~10 days)
+- 41d — Money Flow Sankey (~12 days)
+- 41e — Entity-aware tax engine extension (Div 115 / Div 152 /
+  trust distributions / SMSF caps / Div 7A / family trust elections
+  / retirement exemption) (~15 days)
+- 41f — Personal Xero/MYOB/QuickBooks integration (reuses Phase 32
+  AccountingIntegration stubs) (~10 days)
+- 41g — Adviser overlay shows entity structure prominently (~3 days)
+- 41h — AI Guide entity-aware diagnosis (general info only) (~5 days)
+
+Total: ~65 dev days (~13 weeks). Triggers after Phase 32B PR3
+ships (drill-in needs the schema). Critical positioning:
+**Monitrax does NOT replace Xero — Monitrax CONSUMES Xero data and
+re-presents it through the wealth-strategy lens.**
+
+### Phase 32B PR2 — SHIPPED in this session
+
+The lighthouse adviser pitch demo is now unblocked. PR2 ships:
+
+**Practice dashboard wiring** (`app/portal/dashboard/page.tsx`):
+- Replaced the "Coming Soon" stub with the assembled Practice view
+- PracticeHeader (greeting + practice-mode pill + demo-mode
+  profession switcher) → PracticeKpiStrip (4-up KPIs) →
+  PracticeAlertStream (severity-sorted call sheet, 7 alerts) →
+  PracticeClientBookTable (5-client lighthouse fixtures with
+  profession-flavoured columns) → compliance footer
+- Demo mode (`NEXT_PUBLIC_PORTAL_DEMO_MODE=1`) shows the profession
+  switcher so the lighthouse pitch can cycle through adviser /
+  broker / accountant on the same page. Production hides the
+  switcher entirely; production reads `currentOrg.profession` via
+  the OrganizationContext.
+
+**Portal sidebar repaint** (`components/portal/layout/PortalSidebar.tsx`,
+`app/portal/PortalLayoutClient.tsx`):
+- From slate-900 admin look to brand-aligned warm-ivory palette
+- White/70 backdrop-blur sidebar with slate-200 dividers (Linear/
+  Notion aesthetic, not admin-console)
+- Active nav item: filled brand-navy pill with subtle shadow
+- Inactive nav item: slate-600 text on warm-ivory background
+- Page background: gradient warm-ivory to white (matches consumer
+  dashboard bg)
+- Same NavLink anatomy retained — drop-in replacement, no IA change
+
+**API + context exposure of `Organization.profession`** (PR1
+schema field now flows through to the UI):
+- `app/api/portal/organizations/route.ts` returns `profession` in
+  the response (falls back to legacy `OrganizationPortalSettings.
+  organizationType` for orgs created before the migration)
+- `lib/portal/context/OrganizationContext.tsx` interface adds
+  `profession: string | null`
+- Practice dashboard reads `currentOrg.profession` in production
+  mode (or local state in demo mode)
+
+**Anti-poaching guardrails** (CLAUDE.md §0 architect lens):
+- `lib/portal/permissions.ts` — `team:invite` removed from
+  `PORTAL_ADMIN` permission list. Only `PORTAL_OWNER` can invite
+  professional seats. ADMIN can still manage existing roster
+  (role changes for sub-OWNER seats, removal) but cannot expand it.
+- `app/api/portal/organizations/[orgId]/team/route.ts` — every
+  successful invitation creation now writes a `PORTAL_SEAT_INVITED`
+  audit log row via canonical `createAuditLog()`. Surfaced in
+  `/admin/orgs/{orgId}/audit` (Phase 32C PR5). Fire-and-forget
+  pattern (CLAUDE.md §12.10).
+
+**What was deliberately deferred to PR3** (architect lens — too
+large for this PR):
+- Plan-tier feature gating in `withPermission()` middleware
+  (Studio/Practice/Enterprise gates SSO/white-label/API-keys/etc).
+  Documented in Up Next #13 + #19. Will land alongside the
+  drill-in render pattern in PR3.
+- Real wiring of the alert engine to snapshot deltas (still uses
+  the lighthouse fixture dataset). Real engine arrives in
+  Phase 32C PR3 once a Basiq-connected test client exists.
+- Drill-in render of the canonical consumer dashboard with adviser
+  overlay (Phase 32B PR3, ~5 days, unblocked by this PR).
+
+### Build status
+
+- TypeScript `tsc --noEmit` clean for all changed files
+- No new dependencies added
+- No new schema migrations (PR1 migration already applied)
+- All audit-log writes are fire-and-forget (no API perf regression)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (Practice dashboard
+  + sidebar repaint)
+- [x] application config (`NEXT_PUBLIC_PORTAL_DEMO_MODE` env var
+  for demo gating; documented inline)
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (anti-poaching guardrail; audit-log
+  on seat invites)
+- [ ] operational procedure
+- [x] strategic decision (Phase 41 documented + queued)
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 41 (Up Next #27–#34) +
+  header `Last updated`
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this addendum
+
 ### Status at session close (final)
 
-- 3 commits pushed on `claude/review-monitrax-docs-8HM3K`:
-  - `cebfdc5` — PR1 code (schema + Practice components +
-    lighthouse demo dataset + dead code removal)
-  - `0e9a31f` — Strategic addendum 1 (single-voice + marketplace
-    + Ask-a-Professional + in-app comms; two-voice rejected)
-  - `440a17c` — Strategic addendum 2 (Xero-style Org pricing +
-    Phase 33 Help/Training/Compliance queued)
-  - (plus this final addendum 3 commit covering tier naming +
-    parallel work + anti-poaching)
-- All Phase 32B / 32C / 33 strategic decisions LOCKED.
-- No open questions remaining for next session start.
-- Next session work: BOTH Up Next #13 (Phase 32B PR2) AND Up Next
-  #21 (Phase 33a) can start immediately, in parallel.
-- Lighthouse adviser pitch demo unblocked at end of PR2 (~3 dev
-  days from next session start).
+- 5 commits expected on `claude/review-monitrax-docs-8HM3K` (PR1
+  code + 3 strategic addenda + this PR2 build)
+- Phase 32B PR2 SHIPPED — lighthouse adviser pitch demo unblocked
+- Pull Request created for review/merge testing
+- Next session work: Phase 32B PR3 (drill-in canonical dashboard
+  + adviser overlay + plan-tier gating in `withPermission()`) AND
+  Phase 33a (Help Center infrastructure) can run in parallel.

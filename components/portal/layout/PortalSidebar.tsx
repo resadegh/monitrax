@@ -45,9 +45,9 @@ export function PortalSidebar({
   };
 
   return (
-    <aside className="w-64 bg-slate-900 text-white flex flex-col h-screen sticky top-0">
+    <aside className="w-64 bg-white/70 backdrop-blur-md text-slate-700 flex flex-col h-screen sticky top-0 border-r border-slate-200/70">
       {/* Organization Selector */}
-      <div className="p-2 border-b border-slate-800">
+      <div className="p-2 border-b border-slate-200/70">
         <OrganizationSelector />
       </div>
 
@@ -65,7 +65,7 @@ export function PortalSidebar({
 
       {/* Secondary Navigation */}
       {secondaryNavigation && secondaryNavigation.length > 0 && (
-        <div className="p-3 border-t border-slate-800 space-y-1">
+        <div className="p-3 border-t border-slate-200/70 space-y-1">
           {secondaryNavigation.map((item) => (
             <NavLink
               key={item.href}
@@ -78,13 +78,13 @@ export function PortalSidebar({
       )}
 
       {/* User/Help Section */}
-      <div className="p-3 border-t border-slate-800">
+      <div className="p-3 border-t border-slate-200/70">
         <Link
           href="/portal/settings"
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
             isActive('/portal/settings')
-              ? 'bg-slate-800 text-white'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <SettingsIcon />
@@ -92,7 +92,7 @@ export function PortalSidebar({
         </Link>
         <Link
           href="/"
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-colors mt-1"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors mt-1"
         >
           <ExitIcon />
           <span>Exit Portal</span>
@@ -123,16 +123,22 @@ function NavLink({
     <div>
       <Link
         href={item.href}
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
           isActive || isChildActive
-            ? 'bg-slate-800 text-white'
-            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            ? 'bg-slate-900 text-white shadow-sm'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
         }`}
       >
         <span className="w-5 h-5 flex-shrink-0">{item.icon}</span>
-        <span className="flex-1">{item.label}</span>
+        <span className="flex-1 font-medium">{item.label}</span>
         {item.badge !== undefined && (
-          <span className="px-2 py-0.5 text-xs bg-slate-700 rounded-full">
+          <span
+            className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${
+              isActive || isChildActive
+                ? 'bg-white/20 text-white'
+                : 'bg-slate-200 text-slate-700'
+            }`}
+          >
             {item.badge}
           </span>
         )}
@@ -147,8 +153,8 @@ function NavLink({
               href={child.href}
               className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
                 pathname === child.href
-                  ? 'text-white'
-                  : 'text-slate-500 hover:text-slate-300'
+                  ? 'text-slate-900 font-medium'
+                  : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               {child.label}
