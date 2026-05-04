@@ -109,7 +109,7 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
   // Show loading state while checking authentication or loading organizations
   if (isLoading || (orgLoading && !isPublicPage && !isFullWidthPage)) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-slate-500 mt-4">Loading...</p>
@@ -121,7 +121,7 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
   // If not authenticated and not on public page, show nothing (will redirect)
   if (!user && !isPublicPage) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
           <p className="text-slate-500 mt-4">Redirecting to login...</p>
@@ -132,14 +132,14 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
 
   if (isFullWidthPage) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
         {children}
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Sidebar Navigation */}
       <PortalSidebar
         organizationName={currentOrg?.name || 'Select Organization'}

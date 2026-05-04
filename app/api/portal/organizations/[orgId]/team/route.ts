@@ -13,6 +13,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { isPortalAccessible } from '@/lib/portal/featureFlags';
 import { PermissionGuards } from '@/lib/portal/permissions';
 import { PORTAL_ERROR_CODES, PLAN_LIMITS, INVITATION_CONSTANTS } from '@/lib/portal/constants';
+import { createAuditLog } from '@/lib/security/auditLog';
 import type { PortalUserRole, OrganizationPlan } from '@prisma/client';
 
 type RouteContext = { params: Promise<{ orgId: string }> };
@@ -336,6 +337,26 @@ export const POST = withPermission<RouteContext>('org.update', async (request, a
         personalMessage: personalMessage || null,
       },
     });
+
+    // Anti-poaching audit log (2026-05-04). Every seat-invite event writes an
+    // immutable audit row; surfaced in /admin/orgs/{orgId}/audit (Phase 32C
+    // PR5) so Monitrax support can review the full invitation history per
+    // org. Lifts conduct-policy enforcement out of ToS-only into structural
+    // code per CLAUDE.md §0 architect lens. Fire-and-forget.
+    createAuditLog({
+      userId,
+      organizationId: orgId,
+      action: 'PORTAL_SEAT_INVITED',
+      status: 'SUCCESS',
+      entityType: 'OrganizationInvitation',
+      entityId: invitation.id,
+      metadata: {
+        inviteeEmailDomain: invitation.email.split('@')[1] ?? null,
+        proposedRole: role,
+        plan: portalSettings?.plan ?? null,
+        currentStaffCount: currentStaffCount + 1,
+      },
+    }).catch(() => {});
 
     // TODO: Send invitation email
     // await sendTeamInvitationEmail(email, invitation, context.membership.organization);

@@ -22,11 +22,12 @@ export * from './types';
 // Constants
 export * from './constants';
 
-// Auth utilities — NOT re-exported here. `./auth` imports `@/lib/db` which is
-// server-only; re-exporting it from this barrel pulled the Prisma client
-// (and now the Cloud SQL Connector / google-auth-library) into client
-// component bundles via `OrganizationProvider`. Server-side callers should
-// import `@/lib/portal/auth` directly.
+// Auth utilities removed 2026-05-04: `./auth` had zero callers anywhere in
+// the codebase (per 2026-04-30 dead-code audit). Server-side portal auth is
+// handled by route-level guards under `app/api/portal/**` using the existing
+// `withPermission()` middleware from `lib/middleware.ts`. If a future portal
+// session needs a portal-context helper, build one alongside the consumer
+// `withPermission` rather than re-introducing a parallel auth surface.
 
 // Permissions
 export * from './permissions';

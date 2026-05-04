@@ -1,98 +1,88 @@
 /**
- * Phase 32: Enterprise Portal Dashboard
+ * Phase 32B PR2 — Practice dashboard.
  *
- * Main dashboard for organization portal users.
- * This is a placeholder that will be fully implemented in Phase 32.3.
+ * Renders the assembled Practice view: KPI strip + alert stream + client
+ * book table. Driven by the lighthouse fixture dataset until Phase 32C PR3+
+ * wires real snapshot deltas; the fixture also serves as the empty-state
+ * preview for orgs that haven't onboarded a real client yet.
+ *
+ * Reza directive 2026-05-04: skip the demo-mode profession switcher and
+ * build the complete capabilities. The lighthouse pitch happens against
+ * THE REAL APP populated with realistic seeded users (Up Next #33), not
+ * a demo skin. This page therefore reads `currentOrg.profession` from the
+ * Organization record exclusively — no toggle, no env-gated mode, no
+ * runtime switching.
+ *
+ * Fallback: if `currentOrg.profession` is unset (legacy org pre-PR1
+ * migration) we fall back to `currentOrg.organizationType` (the legacy
+ * shadow column on `OrganizationPortalSettings`). If both are unset we
+ * default to `FINANCIAL_ADVISOR` so the surface still renders correctly.
+ *
+ * Profession is forced at registration; once set, it cannot be flipped
+ * by an in-page toggle.
  */
+'use client';
+
+import type { OrganizationType } from '@prisma/client';
+import {
+  PracticeHeader,
+  PracticeKpiStrip,
+  PracticeAlertStream,
+  PracticeClientBookTable,
+} from '@/components/portal/practice';
+import {
+  LIGHTHOUSE_CLIENTS,
+  LIGHTHOUSE_ALERTS,
+  computeKpis,
+  getPracticeProfessionConfig,
+} from '@/lib/portal/practice';
+import { useOrganization } from '@/lib/portal';
 
 export default function PortalDashboardPage() {
+  const { currentOrg } = useOrganization();
+
+  // Profession resolution chain:
+  //   1. Organization.profession (canonical, Phase 32B PR1)
+  //   2. OrganizationPortalSettings.organizationType (legacy shadow)
+  //   3. FINANCIAL_ADVISOR (catch-all default)
+  const profession: OrganizationType =
+    (currentOrg?.profession as OrganizationType | undefined) ??
+    (currentOrg?.organizationType as OrganizationType | undefined) ??
+    'FINANCIAL_ADVISOR';
+
+  const config = getPracticeProfessionConfig(profession);
+  const kpis = computeKpis(LIGHTHOUSE_CLIENTS, LIGHTHOUSE_ALERTS);
+
+  const orgName = currentOrg?.name?.split(' ')[0] ?? 'there';
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Portal Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">M</span>
-            </div>
-            <div>
-              <h1 className="font-semibold text-slate-900">Monitrax Portal</h1>
-              <p className="text-xs text-slate-500">Enterprise Dashboard</p>
-            </div>
-          </div>
-          <nav className="flex items-center gap-6">
-            <a href="/portal/dashboard" className="text-sm font-medium text-blue-600">
-              Dashboard
-            </a>
-            <a href="/portal/clients" className="text-sm text-slate-600 hover:text-slate-900">
-              Clients
-            </a>
-            <a href="/portal/team" className="text-sm text-slate-600 hover:text-slate-900">
-              Team
-            </a>
-            <a href="/portal/settings" className="text-sm text-slate-600 hover:text-slate-900">
-              Settings
-            </a>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 space-y-8">
+        <PracticeHeader
+          organisationName={orgName}
+          profession={profession}
+          practiceLabel={config.practiceLabel}
+        />
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Under Construction Notice */}
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto flex items-center justify-center mb-4">
-            <span className="text-3xl">🏗️</span>
-          </div>
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">
-            Portal Dashboard Coming Soon
-          </h2>
-          <p className="text-slate-500 max-w-md mx-auto">
-            The Enterprise Portal dashboard is currently under development.
-            This page will display your organization overview, client statistics,
-            and recent activity.
+        <PracticeKpiStrip kpis={kpis} />
+
+        <PracticeAlertStream
+          alerts={LIGHTHOUSE_ALERTS}
+          clients={LIGHTHOUSE_CLIENTS}
+          profession={config}
+        />
+
+        <PracticeClientBookTable
+          clients={LIGHTHOUSE_CLIENTS}
+          profession={config}
+        />
+
+        <footer className="pt-6 pb-2 border-t border-slate-200/70">
+          <p className="text-[11px] text-slate-500 leading-relaxed max-w-3xl">
+            {config.complianceFootnote}
           </p>
-        </div>
-
-        {/* Preview Cards */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Clients Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <span className="text-green-600">👥</span>
-              </div>
-              <h3 className="font-medium text-slate-900">Clients</h3>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">--</div>
-            <p className="text-sm text-slate-500">Active clients</p>
-          </div>
-
-          {/* Tasks Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                <span className="text-amber-600">📋</span>
-              </div>
-              <h3 className="font-medium text-slate-900">Tasks</h3>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">--</div>
-            <p className="text-sm text-slate-500">Pending tasks</p>
-          </div>
-
-          {/* Integrations Card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <span className="text-purple-600">🔗</span>
-              </div>
-              <h3 className="font-medium text-slate-900">Integrations</h3>
-            </div>
-            <div className="text-3xl font-bold text-slate-900 mb-1">--</div>
-            <p className="text-sm text-slate-500">Active connections</p>
-          </div>
-        </div>
-      </main>
+        </footer>
+      </div>
     </div>
   );
 }

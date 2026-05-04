@@ -17,6 +17,10 @@ interface Organization {
   description: string | null;
   role: string;
   portalEnabled: boolean;
+  // Phase 32B PR1: canonical "what kind of firm is this?" — drives Practice
+  // dashboard layout, alert library, scope presets, AFSL/credit/TPB framing.
+  // Falls back to `organizationType` for orgs created before the migration.
+  profession: string | null;
   organizationType: string | null;
   plan: string | null;
   brandName: string | null;

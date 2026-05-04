@@ -20,6 +20,7 @@ interface OrganizationData {
   name: string;
   slug: string;
   description: string | null;
+  profession: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -93,6 +94,15 @@ export const GET = withPermission('org.read', async (request, auth) => {
           description: membership.organization.description,
           role: membership.role,
           portalEnabled: portalSettings?.portalEnabled ?? false,
+          // Phase 32B PR1: `profession` is the canonical "what kind of firm
+          // is this?" field on Organization. The legacy
+          // OrganizationPortalSettings.organizationType is a shadow that
+          // backfills from this; falling back to it preserves behaviour for
+          // orgs created before the migration.
+          profession:
+            membership.organization.profession ??
+            portalSettings?.organizationType ??
+            null,
           organizationType: portalSettings?.organizationType ?? null,
           plan: portalSettings?.plan ?? null,
           brandName: portalSettings?.brandName ?? null,
