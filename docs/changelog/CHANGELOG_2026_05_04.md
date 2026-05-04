@@ -1,5 +1,64 @@
 # Changelog — 2026-05-04
 
+## Session: claude/phase-33a-help-center (Phase 33a SHIPPED — Help Center foundation)
+
+### Changes Made
+- **Type:** Feature (foundation slice — first demo-complete deliverable after PR #603 merged)
+- **Scope:** Phase 33a — Help Center infrastructure + 3 seed articles
+- **Description:** First slice of the demo-complete critical path. Help Center static site live at `/help` (audience index) + `/help/<audience>/<slug>` (article pages). Markdown-source CMS reading from `docs/help/<audience>/<topic>.md` with audience routing across 6 buckets. Three seed articles authored: TRAIL framework explainer (consumer), inviting clients flow (org-admin), CDR consent walkthrough (compliance — the load-bearing B2B sales artefact). Help link wired in `PortalSidebar.tsx`.
+
+### Files Created
+- `lib/help/frontmatter.ts` — zero-dep YAML-ish frontmatter parser. Supports the subset we use: scalar strings (quoted/unquoted), single-line arrays, ISO dates as strings. Required-field validation per article. ~110 LOC.
+- `lib/help/markdown.ts` — zero-dep CommonMark-subset renderer. Supports headings (1-6), paragraphs, bold / italic, inline code, fenced code blocks (with language tag), links (scheme-restricted to http/https/mailto for XSS safety), unordered lists, ordered lists, blockquotes, horizontal rules. Deliberately drops: tables (compliance docs needing tables: render as plain HTML in body, or upgrade renderer), images (post-MVP), nested lists, inline HTML (XSS posture). Tailwind-styled output with consumer brand tokens. ~150 LOC.
+- `lib/help/content.ts` — content discovery + retrieval. Walks `docs/help/<audience>/*.md` at request time (server-only), parses + validates each, returns typed articles. Sort by `order` frontmatter then alphabetical. `generateStaticParams` for Next.js to pre-build every article at `next build`. ~120 LOC.
+- `app/help/layout.tsx` — public layout (no auth gate). Sticky header with M logo + "Open app" / "Practice" links. Warm-ivory bg matching consumer brand. Footer.
+- `app/help/page.tsx` — index page. Hero ("How can we help?") + audience sections (5 public buckets — consumer, compliance, org-admin, org-professional, org-client) each with article cards. Empty audiences render "Articles for this audience are being authored" placeholder so IA reads as intentional.
+- `app/help/[...slug]/page.tsx` — article detail page. `generateStaticParams` walks all articles. Breadcrumb + heading + summary + reviewed-date + rendered HTML body + footer.
+- `docs/help/consumer/what-is-trail.md` — 600-word TRAIL framework explainer. Includes the 5-stage table, the science (Barefoot / Prochaska / Bandura / Mani citations), how to find your stage, what's next.
+- `docs/help/org-admin/inviting-clients.md` — 700-word client invitation flow doc. 4-step flow + what client sees about the adviser + anti-poaching guardrail explainer + plan limit table + common mistakes + what's next.
+- `docs/help/compliance/cdr-consent-walkthrough.md` — 1,200-word CDR consent lifecycle reference. Three-layer consent table + grant flow + active consent + expiry + revocation + encryption + DB access (WIF) + auth & MFA + audit retention + open Basiq submission items + auditor pointers.
+
+### Files Modified
+- `components/portal/layout/PortalSidebar.tsx` — Help Center link added to user/help section (above Settings). Opens in new tab. New `HelpIcon` SVG (question-mark-in-circle, 24x24).
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #19 (Phase 33a) struck through and marked SHIPPED with detail of what landed + what was deferred to 33b/33c.
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Step 8 (Compliance pack) populated with: live URLs, walkthrough sequence inside the CDR Consent article, compliance pack table of contents (✅ live vs 📋 queued), and a "common regulator-side questions and where to point them" lookup table. Closes one of the "TO BE WRITTEN AS BUILD COMPLETES" placeholders.
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this Session block prepended above the prior session blocks.
+
+### Files NOT Modified (intentional)
+- `package.json` — npm registry blocked the `react-markdown` install (transitive dep `micromark-util-resolve-all` 403 from registry policy). Pivoted to zero-dep inline markdown impl, which is cleaner anyway per CLAUDE.md §12.7. No deps added.
+- No schema changes, no API contract changes.
+- `app/dashboard/*` — consumer-side `?` help drawer is Phase 33b, not this slice.
+
+### Build Status
+- TypeScript `tsc --noEmit` clean for all changed files (only pre-existing `baseUrl` deprecation warning, unrelated).
+- No new dependencies, no schema migrations.
+- Static generation expected to succeed at `next build` — `generateStaticParams` walks `docs/help/**/*.md` at build time.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new Help Center surface inheriting consumer brand tokens; new help link in portal sidebar)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (new compliance content article documenting CDR posture for auditor consumption)
+- [ ] operational procedure
+- [x] strategic decision (npm registry pivot — zero-dep markdown stack documented as the v1 choice)
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #19 marked SHIPPED with details
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Step 8 (Compliance pack) populated
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this Session block
+- `docs/help/consumer/what-is-trail.md`, `docs/help/org-admin/inviting-clients.md`, `docs/help/compliance/cdr-consent-walkthrough.md` — three seed articles (which serve as their own self-documentation)
+
+### What's next
+- Phase 33b — in-app `?` drawer that pulls the same Markdown source into a slide-in drawer scoped to the user's audience + current route context
+- Phase 33c — PDF export per article + ZIP bundle export for the "CDR Compliance Pack" all-in-one
+- Phase 33d — author the remaining compliance pack content (Data Retention Schedule, Incident Response Plan summary, Architecture Overview, ASIC RG 244 / RG 36 boundary statement)
+
+---
+
 ## Session: claude/demo-complete-plan-pitch-playbook (follow-up to PR #603 — doc-only)
 
 ### Changes Made

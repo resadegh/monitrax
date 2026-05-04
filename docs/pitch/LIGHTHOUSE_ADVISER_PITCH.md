@@ -112,10 +112,33 @@ This playbook codifies the demo into a runnable script so:
 - **TO BE WRITTEN AS BUILD COMPLETES:** SendGrid setup screenshot + retention policy explanation if asked
 
 ### Step 8 — Compliance pack (2 min)
-- Open `help.monitrax.com.au` → Compliance section
-- Show the CDR Consent Walkthrough article + the downloadable PDF
-- Frame: *"Every concern your compliance team will raise is documented here. Send them this URL. Saves you the back-and-forth."*
-- **TO BE WRITTEN AS BUILD COMPLETES:** compliance pack table of contents + which docs to reference for which regulator question
+- Open `/help` (or `help.monitrax.com.au` once subdomain ships) → scroll to "Compliance & regulators" section
+- Click into the **CDR Consent Walkthrough** article
+- Walk the adviser through the three sections that matter most for their compliance team:
+  - **"Three layers of consent — never collapsed"** table (CDR consent / Professional consent / Per-view access event) — frame: *"Your compliance team will ask exactly this question. The answer is right here, dated, reviewed."*
+  - **"User-initiated revocation"** flow — frame: *"This is the OAIC NDB question. We delete within 24 hours, no soft-delete, audit log written. Done."*
+  - **"Database access"** section (WIF + Cloud SQL Connector + IAM auth, no static credential) — frame: *"This is what closes CDR §3.2. Your compliance team won't have heard another fintech describe this with this much specificity."*
+- Frame the broader pack: *"Send this URL to your compliance team — `[your-monitrax-instance]/help`. Every concern they will raise is documented here, dated, with the source-of-truth doc cross-referenced. It saves the back-and-forth that usually kills a vendor evaluation."*
+- Note that PDF export per article + ZIP bundle export ("CDR Compliance Pack" all-in-one) ships in Phase 33c — single-click compliance pack download for the auditor's evidence file. Currently article links work; downloadable pack is the next slice.
+
+**Compliance pack table of contents (Phase 33a SHIPPED 2026-05-04 + planned):**
+| Article | Status | Audience | Compliance class |
+|---|---|---|---|
+| CDR Consent Walkthrough | ✅ Live | compliance | cdr |
+| Data Retention Schedule | 📋 Phase 33d | compliance | cdr |
+| Incident Response Plan summary | 📋 Phase 33d | compliance | general |
+| Architecture Overview for Compliance Officers | 📋 Phase 33d | compliance | general |
+| ASIC RG 244 / RG 36 boundary statement (AI is general-info-only) | 📋 Phase 33d | compliance | afsl |
+| Inviting your first client | ✅ Live | org-admin | general |
+| What is the TRAIL framework? | ✅ Live | consumer | general |
+
+**Common regulator-side questions and where to point them:**
+- *"How is consent obtained?"* → CDR Consent Walkthrough §"The consent grant flow"
+- *"What happens when consent is revoked?"* → CDR Consent Walkthrough §"User-initiated revocation"
+- *"How long is data retained?"* → Data Retention Schedule (Phase 33d)
+- *"Where is the data stored, and who can access it?"* → CDR Consent Walkthrough §"Database access" + §"Encryption"
+- *"What's the breach notification process?"* → Incident Response Plan summary (Phase 33d), which references `docs/policy/INCIDENT_RESPONSE_PLAN.md`
+- *"How does the AI advisor stay on the right side of AFSL?"* → ASIC RG 244 / RG 36 boundary statement (Phase 33d)
 
 ### Step 9 — Pricing + the ask (2 min)
 - Open the pricing tab

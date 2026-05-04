@@ -78,7 +78,16 @@ export function PortalSidebar({
       )}
 
       {/* User/Help Section */}
-      <div className="p-3 border-t border-slate-200/70">
+      <div className="p-3 border-t border-slate-200/70 space-y-1">
+        <Link
+          href="/help"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+        >
+          <HelpIcon />
+          <span>Help Center</span>
+        </Link>
         <Link
           href="/portal/settings"
           className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
@@ -92,7 +101,7 @@ export function PortalSidebar({
         </Link>
         <Link
           href="/"
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors mt-1"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
         >
           <ExitIcon />
           <span>Exit Portal</span>
@@ -180,6 +189,14 @@ function ExitIcon() {
   return (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  );
+}
+
+function HelpIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.008M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }
