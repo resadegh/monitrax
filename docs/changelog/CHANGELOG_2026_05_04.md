@@ -1210,3 +1210,75 @@ Docs updated:
 - Branch: `claude/phase-33d-compliance-content`
 - PR URL: TBD on push
 - Status: Untracked → committed → pushed in this session
+
+---
+
+## Session: claude/phase-41-regulatory-architecture (Phase 41 — Regulatory Architecture blueprint, doc-only)
+
+### Changes Made
+- **Type**: Documentation — architectural blueprint (doc-only PR, no code, no schema)
+- **Scope**: `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` (NEW), `docs/IMPLEMENTATION_PLAN.md`
+- **Description**: Fix the authority-mapped architecture for Phase 41e (entity-aware tax engine) + 41h (AI entity-aware diagnosis) before any regulatory code lands. Reza directive 2026-05-04 (post-Phase-41a): Monitrax must not guess on AU regulated tax + entity law; every number must trace to ITAA / SIS Act / state Land Tax Act / ATO ruling. This PR is the hard prerequisite to Phase 41e — reviewers reject 41e PRs that introduce a regulatory rule not represented here.
+
+### Why this matters
+
+Phase 41 is the most regulatory-dense surface in Monitrax. Without a written authority-mapping, 41e becomes "we asked Gemini and it sounded right." Architecting the regulatory backbone *before* the calc engine fixes the cost-of-error at the design stage rather than the audit stage. Four-lens advisory mindset (CLAUDE.md §0) at maximum strength: financial adviser + architect + behaviour psychologist + security/compliance consultant.
+
+### Files Modified
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` — NEW, 12-section blueprint covering:
+  - §1 Operating principles (authority over assumption; SSOT per rule; citation in code; ATO worked-example fixtures; AFSL/TPB/NCCP boundary structural-not-editorial; UNCOMPUTED register; FY-indexed thresholds; demo-vs-PROD scoping)
+  - §2 Regulatory surface — full table of rules in scope with primary authority citations:
+    - **2.1 ITAA 1936/1997**: Div 6 (s95–s99B), Div 6E (TR 2012/D1), s100A (TR 2022/4 + PCG 2022/2 green/yellow/red zones), Div 7A (s109D, s109N, s109Y; TR 2010/3), Div 115 (s115-25, s115-100, s115-280; TD 2008/29), Div 152, Part IVA (PS LA 2005/24), Sch 2F (trust losses), Div 165/166/175/707 (company losses), negative gearing, PSI (TR 2022/3), service entity (TR 2006/2), family trust elections + IEE, foreign resident CGT withholding (Sch 1 Subdiv 14-D)
+    - **2.2 SIS Act + ITAA super**: sole purpose test (s62), in-house asset 5% cap (s71/s82–s85), LRBA (s67A + PCG 2016/5), concessional cap (s291-20), non-concessional cap (s292-85), bring-forward, carry-forward, excess contributions (Div 291/292), TBC (Div 294), Div 293, Div 296 (verify Act status), pension phase (Div 295-385), preservation (SIS Reg 6.01–6.04)
+    - **2.3 State taxes**: per-state land tax + stamp duty + foreign purchaser surcharge (NSW/VIC/QLD/SA/WA/TAS/ACT/NT)
+    - **2.4 GST + BAS**: registration threshold (GST Act s23-15), input tax credits (Div 11), BAS cadence (Div 31)
+    - **2.5 Boundary regimes**: AFSL (Corporations Act Ch 7 + RG 244 + RG 36), TPB (Tax Agent Services Act 2009), NCCP (NCCP Act 2009)
+  - §3 Canonical module structure under `lib/calculations/tax/` — divisions/, super/, losses/, psi/, landTax/ (per-state SSOT), stampDuty/, gst/, boundaries/, fixtures/. One file per rule, sibling `.test.ts` per rule
+  - §4 Canonical types — FYReference, EntityTaxFacts, TaxRuleResult, AuthorityCitation with `lastReviewed` staleness flag, MasterTaxPosition with `authoritySources` audit trail (every rendered number traceable to its rule + authority + FY threshold)
+  - §5 Boundary enforcement — Tier 1 facts (AI may surface, citation rendered next to number) vs Tier 2 recommendations (Ask-a-Pro only). Enforced via Gemini tool registry — AI literally cannot emit personal advice because the tool isn't there. Profession-aware AFSL/credit/TPB footer rendered on every personal-advice-shaped surface
+  - §6 Cross-entity rules — where the complexity actually lives:
+    - Trustee→Trust corporate hierarchy via `LegalEntity.parentEntityId` self-FK (land tax aggregates at trust level; Div 7A risk evaluated against shareholder; resettlement risk on trustee changes)
+    - Trust→Beneficiary distribution flow (Div 6 → Div 6E streaming → s100A zone classification → FTE/IEE TFN withholding check → flow into beneficiary's personal income)
+    - Pty Ltd→Shareholder Div 7A decision tree (payment/transfer/loan classification → s109N MRP terms → sub-trust UPE arrangement → deemed dividend if neither)
+    - SMSF triumvirate (sole purpose test + in-house asset 5% cap + LRBA safe-harbour PCG 2016/5)
+  - §7 FY-indexed threshold table — `FY_THRESHOLDS['2025-2026'].super.concessionalCap === 30_000` pattern. No hard-coded constants anywhere. New FY entry by 1 June each year
+  - §8 Test fixture provenance — every fixture lifted verbatim from named ATO source (TR 2022/4, PCG 2022/2, TD 2008/29, PCG 2016/5, TR 2022/3, etc.) with `extractedAt` + `lastReviewed` staleness flags; rule changes require fixture refresh
+  - §9 Versioning protocol — new FY by 1 June; new TR/TD within 30 days of finalisation; monthly Cloud Scheduler job flags citations >12mo old via Practice surface internal alert
+  - §10 UNCOMPUTED register at `lib/calculations/tax/UNCOMPUTED.md` — initial entries: FTE ordering rules, Div 7A sub-trust UPE arrangements, multi-state land tax aggregation, foreign-resident beneficiary withholding, deceased estates / testamentary trusts, CGT event K6 (pre-CGT shares), GST margin scheme, stamp duty resettlement quantification. Reviewers reject any PR that surfaces a tax position touching an UNCOMPUTED rule without `uncomputedReasons` returned
+  - §11 Implementation sequence — 41e split into 16 sub-PRs:
+    - Demo cut (~12 days): 41e.0 foundation + types + FY thresholds + boundaries renderer; 41e.1 Div 115 + Div 6 basic + capital loss netting; 41e.2 SMSF caps (concessional + non-conc + bring-forward + TBC); 41e.3 Div 6E streaming basics; 41e.4 negative gearing + per-entity aggregator; 41e.5 MasterTaxPosition composition + Practice tax-position card
+    - PROD cut (~28 days): 41e.6 s100A zone classifier; 41e.7 Div 7A; 41e.8 Div 152; 41e.9 Div 296 (Act status gate); 41e.10 PSI; 41e.11 FTE+IEE; 41e.12 NSW+VIC land tax; 41e.13 remaining state land tax; 41e.14 stamp duty + foreign surcharge; 41e.15 trust + company loss rules; 41e.16 GST + BAS flagging
+    - 41h cannot start until 41e.0 + 41e.5 land — it composes their output
+  - §12 Sign-off + maintenance — Reza signs off this doc before 41e.0 starts; every 41e PR cites this doc in its description; every rule's file-header JSDoc points back to this doc + authority citation; quarterly walk-through to refresh citations and audit UNCOMPUTED
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #29 (Phase 41e) updated to name this doc as a hard prerequisite; trigger changed to "After 41c **and** regulatory architecture doc signed off"; sub-PR sequence flagged. Recently Completed entry prepended for 2026-05-04 with full doc summary
+
+### CLAUDE.md §16 doc-sync block
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture (architectural posture only — no CDR/code change in this PR; CMEK/KMS unchanged)
+- [ ] operational procedure
+- [x] strategic decision — Phase 41e architecture is now fixed before code; reviewers will enforce 41e PRs against this doc
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` — NEW (12 sections, ~400 lines)
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #29 — prerequisite added; Recently Completed entry prepended
+
+### Build Status
+- N/A — doc-only PR, no code/schema/test changes
+
+### What's NOT in this PR
+
+- **No code under `lib/calculations/tax/`** — the directory does not exist yet. Stub files would create misleading API surface; the architecture is what's load-bearing here. The tree lands in 41e.0.
+- **No `UNCOMPUTED.md` file yet** — that lives next to the code when 41e.0 ships. The doc here lists initial entries.
+- **No FY thresholds table** — same reason; lives in `lib/calculations/tax/fiscalYear.ts` when 41e.0 ships.
+- **No 41b/41c/41d code** — entity wizard + tree + Sankey are separate sessions; this PR is about the regulatory backbone for 41e/41h.
+
+### PR
+- Branch: `claude/phase-41-regulatory-architecture`
+- PR URL: TBD on push
+- Status: Untracked → committed → pushed in this session
