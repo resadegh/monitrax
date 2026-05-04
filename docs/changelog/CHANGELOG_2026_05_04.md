@@ -187,4 +187,114 @@ Docs updated in this PR:
 
 ### PR
 - Branch: `claude/review-monitrax-docs-8HM3K`
-- Status: Pending push
+- Status: PR1 pushed as commit `cebfdc5`
+
+---
+
+## Session addendum (later 2026-05-04) — Phase 32C strategic decisions LOCKED
+
+After PR1 was pushed, Reza proposed a counter-model to the two-voice
+AI architecture I'd recommended. That counter-model was adopted in
+full and is now the strategic direction for the B2B2C product. This
+addendum locks the decisions before the session ends so the next
+session picks up directly with PR2 = Practice dashboard wiring without
+re-litigating any of this.
+
+### Decision: Single-voice AI + Ask-a-Professional + Marketplace + In-app Comms
+
+**REJECTED:** Two-voice (`voiceContext: 'self' | 'professional-attached'`)
+adapter on the AI advisor. Logged in `IMPLEMENTATION_PLAN.md` ↩️
+Reversed Decisions so future sessions don't re-attempt.
+
+**ADOPTED:**
+- ONE AI Guide for everyone — same diagnosis, same scenarios, same
+  tone, identical output regardless of org-attached state. AI is
+  *general information / education only*; never recommends a specific
+  product or action.
+- "Ask a Professional" button on every recommendation card and every
+  Practice alert. Two states with shared component anatomy:
+  - **D2C (no professional linked)** → invite-only marketplace picker
+    showing 3 best-fit (Monitrax-curated 10–20 launch professionals
+    at v1; verified ASIC AFSL/ACL/TPB before listing).
+  - **Org-attached** → org's roster grouped by discipline (Sarah for
+    wealth, Tom for tax, Jess for refinance — all inside the org's
+    branded experience). Org-attached users see ONLY their org's
+    professionals (Reza decision: org pays for Monitrax to be their
+    CRM and comms channel; can't be a leaky funnel to competitors).
+- AFSL boundary becomes structural, not editorial — the AI is
+  incapable of crossing the line because every "next-level" answer
+  channels through a licensed human.
+
+### Decision: Two independent revenue streams
+
+| Stream | Who pays | What they get | What it costs |
+|---|---|---|---|
+| A. Org subscription | Org | Practice surface for all professionals + Wealth-tier consumer experience for ALL their clients (bundled, no per-client charge) + in-app chat + email-through-app + branded "Ask Sarah" affordance | Tiered: Solo (5 seats / 50 clients) / Practice (20 / 200) / Enterprise (unlimited) |
+| B. D2C marketplace lead fee (opt-in) | Org | Inclusion in D2C marketplace; charged only when an introduced D2C user accepts engagement | Tiered by user profile: AU$80 sub-AU$500k net worth / AU$150 AU$500k–$2M / AU$250 AU$2M+ |
+| C. D2C subscription (existing plan) | D2C user | Wealth tier (AI Guide + Basiq + Practice "Ask a Professional" affordance) | AU$24/mo / AU$245/yr |
+
+### New requirement (introduced this session): in-app chat + email-through-app
+
+Two channels, one conversation thread. New Prisma models
+`ProfessionalConversation`, `ConversationMessage`,
+`ConversationParticipant`. In-app chat (polling for v1; WebSockets
+later). Email-out via SendGrid; email-in via SendGrid Inbound Parse
+webhook → `/api/conversations/inbound` → routed to conversation by
+reply-to address. Compliance archive for AFSL holders (7yr retention).
+Hardening: DKIM/SPF, attachment scanning, rate limiting. Conversation
+content treated as CDR-derived data — encrypted at rest, sanitised
+from audit metadata, retention matched to consent.
+
+### New requirement: Monitrax platform admin (`/admin/orgs/*`)
+
+Reza's surface for managing all Orgs across the platform. Distinct
+from `/portal/team` (which is the Org's own admin surface for
+managing their seats). Monitrax-side admin = `/admin/orgs/*` (extends
+existing `/admin/billing/*` skeleton); Org-side admin = `/portal/team`
++ `/portal/settings`. Surfaces, audit trails, and capabilities are
+separate.
+
+### Plan updates (committed in this addendum)
+
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - Header `Last updated` rewritten to capture today's strategic
+    decisions
+  - Q-PRA-1 closed as DECIDED — REJECTED in favour of single-voice
+  - ↩️ Reversed Decisions: 2-voice model logged
+  - 🟡 Active Workstreams (Phase 32B): Blocking flipped to "None"
+    — PR2 unblocked
+  - 📋 Up Next: 7 new rows (#13–#20) covering Phase 32B PR2/PR3 +
+    Phase 32C PR4a/4b/4c/4d/5/6 with phase scope, dev-day estimates,
+    and trigger conditions
+
+### Risks surfaced for future PRs
+
+1. **Anti-poaching enforcement.** Org-attached users see only their
+   org's professionals — but what stops a professional from inviting a
+   "friend org" purely to give a competitor visibility? Mitigation
+   (PR2/PR3): require PORTAL_OWNER consent for new seat invites (not
+   PORTAL_ADMIN — too low a bar); audit trail in Monitrax admin; ToS
+   clause on professional conduct.
+2. **Email-in attack surface.** Inbound email parsing is a known
+   attack vector (spoofed reply-to, malware, phishing). Mitigations
+   (PR4d): DKIM/SPF rejection of unsigned; Cloud DLP / VirusTotal
+   attachment scanning; rate limiting per conversation; HTML →
+   plaintext sanitisation. Standard SendGrid hardening, must not
+   skip.
+3. **Conversation transcript retention vs CDR consent revocation.**
+   When a user revokes professional consent, what happens to past
+   messages? Recommendation: soft-delete from user view + 7yr retention
+   for the professional's compliance archive, with explicit
+   disclosure at consent time. Awaits Reza decision before PR4d
+   ships.
+
+### Status at session end
+
+- PR1 pushed (`cebfdc5`) — schema + design primitives + lighthouse
+  demo dataset + dead code removal + docs sync
+- Strategic direction LOCKED for the entire B2B2C / marketplace
+  workstream
+- Plan updated to reflect today's decisions; next session picks up
+  with Up Next #13 = Phase 32B PR2 = Practice dashboard wiring +
+  sidebar repaint
+- Lighthouse adviser pitch demo unblocks at end of PR2 (~3 dev days)
