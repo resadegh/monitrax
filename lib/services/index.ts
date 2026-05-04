@@ -44,3 +44,9 @@ export {
   type EmergencyFundMetrics,
   type HealthScoreMetrics,
 } from './masterFinancialService';
+
+// =============================================================================
+// PHASE 41a — LEGAL ENTITY SERVICE
+// =============================================================================
+
+export { getDefaultLegalEntityId } from './legalEntityService';

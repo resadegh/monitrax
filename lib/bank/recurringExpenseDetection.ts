@@ -5,6 +5,7 @@
 
 import prisma from '@/lib/db';
 import { Frequency } from '@prisma/client';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 // =============================================================================
 // TYPES
@@ -444,9 +445,11 @@ export async function processExpenseMatches(
 
     } else if (match.suggestedAction === 'CREATE') {
       // Create new expense
+      const ownerEntityId = await getDefaultLegalEntityId(userId);
       const expense = await prisma.expense.create({
         data: {
           userId,
+          ownerEntityId,
           name: match.pattern.merchantStandardised,
           vendorName: match.pattern.merchantStandardised,
           category: match.pattern.categoryLevel1 as any || 'OTHER',

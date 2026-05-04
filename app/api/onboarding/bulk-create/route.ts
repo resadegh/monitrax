@@ -5,6 +5,7 @@ import { withPermission } from '@/lib/auth/guards';
 // (sentinel meaning "write SQL NULL") to clear a JSONB field.
 // See: https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields#using-null-values
 import { Prisma } from '@prisma/client';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 // Prisma transaction client type
 type TransactionClient = Omit<
@@ -305,6 +306,12 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
       // acquisition stage during traffic spikes.
       const result = await prisma.$transaction(
         async (tx: TransactionClient) => {
+        // Phase 41a: resolve the user's PERSONAL_NAME LegalEntity inside the
+        // transaction (creates one on demand for brand-new registrations).
+        // Every owned row created below pins to this entity; Phase 41b's
+        // wizard will let users split assets across additional entities.
+        const ownerEntityId = await getDefaultLegalEntityId(userId, tx);
+
         // =======================================================================
         // 1. Update user onboarding status
         // =======================================================================
@@ -462,6 +469,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           const property = await tx.property.create({
             data: {
               userId,
+              ownerEntityId,
               name: prop.name || prop.address || 'Property',
               type: prop.type,
               address: prop.address || null,
@@ -478,6 +486,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
             const loan = await tx.loan.create({
               data: {
                 userId,
+                ownerEntityId,
                 propertyId: property.id,
                 name: prop.loan.name || `${prop.loan.lender} - ${prop.name}`,
                 type: getLoanType(prop.type),
@@ -499,6 +508,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
             await tx.income.create({
               data: {
                 userId,
+                ownerEntityId,
                 propertyId: property.id,
                 name: `Rent - ${prop.name || prop.address}`,
                 type: 'RENTAL',
@@ -516,6 +526,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
               await tx.expense.create({
                 data: {
                   userId,
+                  ownerEntityId,
                   propertyId: property.id,
                   name: expense.name || expense.category,
                   category: expense.category,
@@ -565,6 +576,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           const account = await tx.account.create({
             data: {
               userId,
+              ownerEntityId,
               name: acc.name || `${acc.type} Account`,
               type: acc.type,
               institution: acc.institution || null,
@@ -601,6 +613,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           const investmentAccount = await tx.investmentAccount.create({
             data: {
               userId,
+              ownerEntityId,
               name: inv.name || `${inv.platform || ''} - ${inv.type}`.trim(),
               type: inv.type,
               platform: inv.platform || null,
@@ -680,6 +693,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           const loan = await tx.loan.create({
             data: {
               userId,
+              ownerEntityId,
               name: debt.name?.trim() || debt.type,
               type: debt.type, // CAR | STUDENT | PERSONAL | BUSINESS
               principal: debt.principal,
@@ -720,6 +734,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           const createdAsset = await tx.asset.create({
             data: {
               userId,
+              ownerEntityId,
               name: asset.name || getAssetName(asset),
               type: asset.type,
               description: asset.description || null,
@@ -742,6 +757,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
               await tx.expense.create({
                 data: {
                   userId,
+                  ownerEntityId,
                   assetId: createdAsset.id,
                   name: expense.name,
                   category: expense.category,
@@ -776,6 +792,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           const loan = await tx.loan.create({
             data: {
               userId,
+              ownerEntityId,
               name: debt.name?.trim() || 'Car loan',
               type: 'CAR',
               principal: debt.principal,
@@ -816,6 +833,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
             const income = await tx.income.create({
               data: {
                 userId,
+                ownerEntityId,
                 name: inc.name || inc.type,
                 type: inc.type,
                 sourceType,
@@ -851,6 +869,7 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
             const expense = await tx.expense.create({
               data: {
                 userId,
+                ownerEntityId,
                 name: exp.name || exp.category,
                 category: exp.category,
                 sourceType: 'GENERAL',

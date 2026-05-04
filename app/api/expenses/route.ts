@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractExpenseLinks, wrapWithGRDCS } from '@/lib/grdcs';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 export const GET = withPermission('expense.read', async (request, auth) => {
     try {
@@ -208,9 +209,12 @@ export const POST = withPermission('expense.write', async (request, auth) => {
         }
       }
 
+      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+
       const expense = await prisma.expense.create({
         data: {
           userId: auth.userId,
+          ownerEntityId,
           name,
           category: category || 'OTHER',
           customCategoryId: customCategoryId || null,

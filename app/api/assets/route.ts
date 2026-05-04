@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 // GET /api/assets - List all assets for the user
 export const GET = withPermission('investment.read', async (request, auth) => {
@@ -150,9 +151,12 @@ export const POST = withPermission('investment.write', async (request, auth) => 
         );
       }
 
+      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+
       const asset = await prisma.asset.create({
         data: {
           userId: auth.userId,
+          ownerEntityId,
           name,
           type,
           description,

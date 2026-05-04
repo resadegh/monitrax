@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { extractAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 export const GET = withPermission('account.read', async (request, auth) => {
     try {
@@ -124,9 +125,12 @@ export const POST = withPermission('account.write', async (request, auth) => {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
       }
 
+      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+
       const account = await prisma.account.create({
         data: {
           userId: auth.userId,
+          ownerEntityId,
           name,
           type,
           institution: institution || null,

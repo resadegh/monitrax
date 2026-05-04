@@ -17,6 +17,7 @@ import {
 } from '@/lib/bank/aiCategorisation';
 import { ImportStatus, TransactionSource, ImportReviewStatus } from '@prisma/client';
 import crypto from 'crypto';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 // =============================================================================
 // GET - Import History
@@ -118,9 +119,11 @@ export const POST = withPermission<RouteContext>('account.write', async (request
         }
 
         // Create new account
+        const ownerEntityId = await getDefaultLegalEntityId(userId);
         const newAccount = await prisma.account.create({
           data: {
             userId,
+            ownerEntityId,
             name: accountName.trim(),
             type: (accountType as 'TRANSACTIONAL' | 'SAVINGS' | 'CREDIT_CARD' | 'OFFSET') || 'TRANSACTIONAL',
             institution: accountInstitution?.trim() || null,

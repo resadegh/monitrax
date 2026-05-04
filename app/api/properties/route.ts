@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { extractPropertyLinks, wrapWithGRDCS } from '@/lib/grdcs';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 export const GET = withPermission('property.read', async (request, auth) => {
     try {
@@ -66,9 +67,12 @@ export const POST = withPermission('property.write', async (request, auth) => {
         );
       }
 
+      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+
       const property = await prisma.property.create({
         data: {
           userId: auth.userId,
+          ownerEntityId,
           name,
           type,
           address,
