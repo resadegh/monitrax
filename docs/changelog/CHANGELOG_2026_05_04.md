@@ -1280,5 +1280,62 @@ Docs updated in this PR:
 
 ### PR
 - Branch: `claude/phase-41-regulatory-architecture`
+- PR URL: PR #609 — MERGED 2026-05-04
+- Status: ✅ MERGED to main
+
+---
+
+## Session: claude/phase-41-regulatory-decisions (Phase 41 — Reza decisions on regulatory architecture, follow-up to merged PR #609)
+
+### Changes Made
+- **Type**: Documentation — strategic decisions captured (doc-only follow-up)
+- **Scope**: `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md`, `docs/IMPLEMENTATION_PLAN.md`
+- **Description**: Capture Reza's two sign-off decisions on PR #609 (regulatory architecture). Both decisions update the architecture's scope and timeline materially; doc-only follow-up so the trail of decisions is auditable per CLAUDE.md §15 + §16.
+
+### Reza decisions (2026-05-04)
+
+**D-1: Full regulatory scope ships in demo cut. NO demo/PROD split within 41e.** Reza brief: *"I want all in demo."* Rationale: pitching AU advisers without s100A, Div 7A, Div 152, family trust elections, state land tax, or PSI would read as half-built. Demo timeline expands accordingly.
+
+**D-2: AFSL/TPB/NCCP boundary enforced structurally via the Gemini tool registry. NOT editorial.** Reza brief: *"I am not sure what it means but trust your decision."* Decision: structural enforcement (the AI literally cannot emit recommendations because the tool primitives don't exist). Editorial enforcement (prompt disclaimers) is brittle to adversarial phrasing and harder to defend at audit; structural enforcement is auditable code.
+
+### Files Modified
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md`:
+  - Status banner updated: v1 → v1.1 (APPROVED 2026-05-04 by Reza)
+  - New §0 Decisions log section — D-1 and D-2 captured with verbatim Reza brief, rationale, implications, and (for D-2) the two enforcement-model trade-off table
+  - §11 implementation sequence rewritten — no demo/PROD split; all 16 sub-PRs now demo-critical; sub-PR list expanded to 17 (added 41e.17 MasterTaxPosition orchestrator that was previously implicit); each row now carries explicit primary authority citation; total estimate updated from "~12 days demo + ~28 days PROD" to "**~42 days for full Phase 41e demo scope**"; sequencing note added that 41b/41c/41d/41f/41g can run in parallel with 41e (no merge conflict — 41e lives under `lib/calculations/tax/` only)
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - Demo-Complete Critical Path table updated — Phase 41e expanded from Wk 8 (single week) to Wk 8–13 (six weeks); Phase 41f shifted to Wk 14; Phase 32C PR4a-d to Wk 15-17; Phase 32C PR6 + Phase 33b/c to Wk 18; pitch fixture seed + pitch docs to Wk 19
+  - Critical Path header calendar estimate updated — "~14 weeks" → "~19 weeks" with rationale
+  - Inline note below the table explaining the timeline shift per Reza decision D-1
+  - Deferred-to-PROD bucket — "Phase 41e deep tax cases" struck through with cross-reference to D-1
+  - Up Next #29 (Phase 41e) rewritten — full sub-PR list (17 PRs); references to "trimmed cut" / "5 demo + 11 PROD" removed; trigger points at the architecture decisions PR
+
+### CLAUDE.md §16 doc-sync block
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture (architectural posture only — no code change)
+- [ ] operational procedure
+- [x] strategic decision — D-1 (full demo scope) + D-2 (structural AFSL boundary) lock in scope and architecture for Phase 41e
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` — §0 Decisions log added; §11 implementation sequence rewritten
+- `docs/IMPLEMENTATION_PLAN.md` — Critical Path table updated; Up Next #29 rewritten; calendar estimate updated; deferred-to-PROD bucket updated
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this entry
+
+### Build Status
+- N/A — doc-only PR, no code/schema/test changes
+
+### What's NOT in this PR
+
+- **No code under `lib/calculations/tax/`** — that remains scheduled for 41e.0 onwards. This PR is purely the decisions update so the architecture doc is canonical when 41e starts.
+- **No 41b/41c/41d work** — those are separate sessions. Phase 41b starts immediately after this PR per the conductor's standing instruction.
+
+### PR
+- Branch: `claude/phase-41-regulatory-decisions`
 - PR URL: TBD on push
 - Status: Untracked → committed → pushed in this session
