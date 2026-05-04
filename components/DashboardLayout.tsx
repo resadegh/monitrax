@@ -84,11 +84,16 @@ const reachNavItems: NavItem[] = [
     tourId: 'nav-accounts',
     trailStage: 'T',
     // Phase 36: consolidated from 6 sub-pages to 2 (Balances, Activity).
+    // Phase 41b: My Structure (entity layer) added as a third child —
+    // entities are foundational to "what you own" (TRACK stage per
+    // CLAUDE.md §14.2), so the entity-management surface sits inside
+    // My Accounts rather than at the top level.
     // matchRoutes retains the legacy paths so the nav item stays highlighted
     // if a user lands on a direct/deep-linked old URL.
     matchRoutes: [
       '/dashboard/balances',
       '/dashboard/activity',
+      '/dashboard/entities',
       '/dashboard/accounts',
       '/dashboard/loans',
       '/transactions',
@@ -97,6 +102,7 @@ const reachNavItems: NavItem[] = [
     children: [
       { name: 'Balances', href: '/dashboard/balances' },
       { name: 'Activity', href: '/dashboard/activity' },
+      { name: 'My Structure', href: '/dashboard/entities' },
     ],
   },
   {

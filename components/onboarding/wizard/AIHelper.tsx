@@ -33,6 +33,16 @@ const STEP_CONTEXT: Record<WizardStepId, {
       'Do I need to add my pets?',
     ],
   },
+  entities: {
+    title: 'How is your wealth held?',
+    description: 'I can help you decide whether to add a family trust, SMSF, or company — or stick with just your personal name.',
+    suggestions: [
+      "I'm new to investing — do I need a trust?",
+      'When does an SMSF make sense?',
+      'What does "trustee company" mean?',
+      "Can I add a structure later if I don't have one yet?",
+    ],
+  },
   properties: {
     title: 'Properties & Loans',
     description: 'I can help you understand property values, loan terms, and what to include.',

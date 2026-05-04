@@ -30,6 +30,8 @@ import {
 } from './types';
 import { WelcomeStep } from './steps/WelcomeStep';
 import { HouseholdStep } from './steps/HouseholdStep';
+// Phase 41b: "How is your wealth held?" — entity layer step
+import { EntitiesStep } from './steps/EntitiesStep';
 import { PropertiesStep } from './steps/PropertiesStep';
 // PR 3b: new conditional step for non-property loans
 import { DebtsStep } from './steps/DebtsStep';
@@ -406,6 +408,12 @@ export function WizardContainer({
         return (
           <div key={currentStep.id} className={animationClass}>
             <HouseholdStep data={data} onUpdate={handleUpdate} />
+          </div>
+        );
+      case 'entities':
+        return (
+          <div key={currentStep.id} className={animationClass}>
+            <EntitiesStep data={data} onUpdate={handleUpdate} />
           </div>
         );
       case 'properties':

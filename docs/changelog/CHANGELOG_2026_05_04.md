@@ -1400,3 +1400,79 @@ Docs updated in this PR:
 - Branch: `claude/phase-41-regulatory-decisions`
 - PR URL: TBD on push
 - Status: Untracked → committed → pushed in this session
+
+---
+
+## Session: claude/phase-41b-onboarding-entities (Phase 41b — Onboarding wizard "How is your wealth held?" + standalone entity management)
+
+### Changes Made
+- **Type**: Feature — onboarding step + standalone management surface + 3 new API routes + canonical service extension + AU regulatory validators
+- **Scope**: `components/onboarding/wizard/{steps/EntitiesStep,WizardContainer,types,AIHelper}.tsx`, `app/dashboard/entities/page.tsx`, `app/api/entities/{route,[id]/route}.ts`, `app/api/onboarding/bulk-create/route.ts` (two-pass writer), `components/DashboardLayout.tsx` (sidebar), `lib/services/{legalEntityService,index}.ts`, `lib/auth/permissions.ts`, `lib/utils/auValidators.ts` (NEW)
+- **Description**: Phase 41 Wk-3 deliverable on the Demo-Complete Critical Path. Lets users define their entity structure during onboarding (and revisit it any time from `/dashboard/entities`). Smart default lets users opt for "Just my personal name" with one tap. Power users add Trust / SMSF / Pty Ltd with full ABN/ACN/TFN capture and trustee→trust corporate-hierarchy support.
+
+### Why this matters
+
+Phase 41a put the entity layer's foundation in place but didn't give users a way to define entities other than the auto-created PERSONAL_NAME. 41b is what unlocks every demo archetype: Sarah Kim's Pty Ltd, the Mei Family Trust + corporate trustee + SMSF, Olivia's full multi-entity stack. Without this, Phase 41c's Entity Tree has nothing to render.
+
+### Files Modified / Created
+
+- **`lib/utils/auValidators.ts`** (NEW) — canonical AU regulatory validator module. `isValidAbn` (11-digit modulus-89 per ATO ABN spec), `isValidAcn` (9-digit ASIC complement per RG 22), `isValidTfnFormat` (8/9-digit format only — ATO does not publish the TFN checksum). `formatAbn` / `formatAcn` display helpers. Single SSOT — used by client (wizard form + management page) and server (route validation).
+- **`lib/auth/permissions.ts`** — added `entity.read` / `entity.write` / `entity.delete` rows mirroring the property/loan permission pattern.
+- **`lib/services/legalEntityService.ts`** — extended with `listEntitiesForUser` (returns `LegalEntitySummary[]` with `_count` aggregations across all 7 owned-row tables; never returns `tfnEncrypted` value), `createEntity` (encryptTfn-wrapped, parent-ownership-validated), `updateEntity` (partial update; TFN: undefined = leave untouched, null = clear, string = replace), `deleteEntity` (throws structured `EntityHasOwnedObjectsError` before the FK guard would fire). Re-exports added to `lib/services/index.ts`.
+- **`app/api/entities/route.ts`** (NEW) — GET (list) + POST (create). `withPermission('entity.read|write')`. Boundary validation via `auValidators.ts`. `logCRUD` audit on create with `sanitizeCdrMetadata`-wrapped payload (TFN value never logged — only `hasTfn: boolean`).
+- **`app/api/entities/[id]/route.ts`** (NEW) — GET / PUT / DELETE. Uses the proven `withPermission<RouteContext>('perm', async (request, auth, context) => { const { id } = await context!.params; })` pattern from the loans route per PR #607's d843e03 fix. DELETE returns 409 with structured `counts` object when entity has owned objects + a hard "can't remove last PERSONAL_NAME" guard.
+- **`components/onboarding/wizard/types.ts`** — new `EntityInput` type, `LegalEntityType` / `LegalEntityRole` re-exports, `entities: EntityInput[]` field added to `WizardData` + `INITIAL_WIZARD_DATA`, new `'entities'` step inserted into `WIZARD_STEPS` between Household and Properties.
+- **`components/onboarding/wizard/steps/EntitiesStep.tsx`** (NEW) — wizard UI. Card list of current entities with edit/remove. Add-entity dialog with type-aware field applicability (PERSONAL_NAME hides ABN/ACN; COMPANY shows both). Trustee→trust parent select shown when the user has any COMPANY entity to nominate. Opt-in TFN with explicit disclosure. Behaviour-psychology copy throughout.
+- **`components/onboarding/wizard/WizardContainer.tsx`** — imports `EntitiesStep` and adds the `'entities'` case to the step switch.
+- **`components/onboarding/wizard/AIHelper.tsx`** — new `entities` step context with on-brand suggestions.
+- **`app/api/onboarding/bulk-create/route.ts`** — added local `EntityInput` interface + `entities?` field on the local `WizardData`. Two-pass writer in the transaction: pass 1 inserts every wizard-defined entity without parent FK; pass 2 maps wizard-local temp ids to real DB ids and wires up trustee→trust FKs. `wizardEntityMap` kept in scope for future wizard slices.
+- **`app/dashboard/entities/page.tsx`** (NEW) — standalone "My Structure" surface for existing users. Header with TRACK-stage indicator + warm headline. Entity cards with type icon, type/role/ABN/ACN/parent metadata, owned-objects summary, "TFN on file" pill (never the value). Add/edit dialog mirrors the wizard step. Remove via AlertDialog with the 409 friendly counts surfaced inline.
+- **`components/DashboardLayout.tsx`** — added `My Structure` (`/dashboard/entities`) as a child of `My Accounts` per CLAUDE.md §14.2. `matchRoutes` includes the new path so the nav item highlights. (Conflict-resolved on rebase: HelpDrawerButton from PR #610 retained verbatim; My Structure child added alongside.)
+
+### CDR / TFN compliance (CLAUDE.md §13)
+
+- TFN field is OPTIONAL, default-off, opt-in only via dedicated UI switch in both wizard step and standalone page.
+- Encrypted at rest via `lib/security/tfnEncryption.ts` — single swap-point for KMS-backed CMEK upgrade (Up Next #3).
+- Server-side: route validation runs through `isValidTfnFormat` only; the value flows directly into `encryptTfn` and never appears in any other path.
+- Audit metadata: every entity write goes through `logCRUD` with `sanitizeCdrMetadata`-wrapped payload that records `hasTfn: boolean` instead of the value.
+- API responses: `LegalEntitySummary` returns `hasTfn: boolean` only — `tfnEncrypted` value is never returned over the wire.
+- Frontend: TFN field uses `<input type="password" autocomplete="off">`; placeholder shows `••• ••• ••• (existing)` when editing an entity that already has a TFN.
+
+### Build Status
+- [x] TypeScript compilation passes — `npx tsc --noEmit` exits 0
+- [x] Prisma schema unchanged — no migration in this PR
+- [ ] Vercel preview build — to be verified after force-push completes
+
+### CLAUDE.md §16 doc-sync block
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new wizard step + standalone page)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth (new permissions added but no auth flow change)
+- [ ] deployment / build
+- [x] security / CDR posture (TFN handling at the boundary; opt-in collection; encrypted at rest; never logged/returned/sent to AI)
+- [ ] operational procedure
+- [ ] strategic decision
+- [x] data model (no schema change but new API + service layer for entity management)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #26 ✅ SHIPPED with full detail; #27 (Phase 41c Entity Tree) flipped to UNBLOCKED with next-session decision question; Recently Completed entry prepended
+- `docs/architecture/03_DATA_MODEL.md` — §10.7 updated with 41b shipped marker; new §10.8 Phase 41b — entity management surfaces (surfaces + endpoints + service exports + AU validators + TFN handling recap)
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — pre-pitch checklist entity-seed sub-bullets populated for all 3 archetypes (Sarah Kim Pty Ltd; Mei Family Trust + corporate trustee + SMSF; Olivia's full 5-entity stack) + verification gate
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this entry
+
+### Test plan (for Reza after preview goes live)
+
+1. **Smart default works.** Fresh onboarding → Entities step → Continue without adding entities → confirm exactly one PERSONAL_NAME entity exists at `/dashboard/entities` with full owned-objects count.
+2. **Add-trust flow.** Fresh onboarding → add Discretionary Trust with valid 11-digit ABN → confirm both entities listed with formatted ABN.
+3. **Trustee→trust corporate hierarchy.** Add Pty Ltd with ABN+ACN → add Discretionary Trust with parent = Pty Ltd → confirm "trustee: …" label and FK wired.
+4. **TFN encryption round-trip.** Add entity with TFN opt-in ON, 8 digits. Verify in Cloud SQL that `tfnEncrypted` is base64 (not plaintext); audit log metadata contains `"hasTfn": true` and NOT the value.
+5. **Existing users see their entities.** Log in as a pre-41b user → `/dashboard/entities` shows the PERSONAL_NAME entity from Phase 41a backfill with full owned-objects count.
+6. **Remove-with-owned-objects is blocked.** AlertDialog surfaces friendly counts; last-PERSONAL_NAME removal also blocked.
+7. **Keyboard accessibility.** Tab/Enter/Space reachability for every action in wizard step + standalone page + Add/Edit dialog.
+
+### PR
+- Branch: `claude/phase-41b-onboarding-entities`
+- PR URL: PR #612 — force-pushed after rebase on main (PRs #610 + #611 merged before this PR's branch existed)
+- Status: Conflict-resolved on rebase; force-push pending

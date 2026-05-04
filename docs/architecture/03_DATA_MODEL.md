@@ -670,13 +670,63 @@ Per CLAUDE.md §12.2 SSOT, **never** duplicate this lookup in route handlers or 
 
 ## **10.7 What this enables (Phase 41b–h)**
 
-- **41b** Onboarding wizard — "How is your wealth held?" step lets users add additional entities (Trust / SMSF / Pty Ltd) and reassign owned rows.
-- **41c** "My Structure" page — the Entity Tree (top-level sidebar item under TRACK stage). React-flow hierarchy: People → Entities → Assets, with ownership %.
+- ✅ **41b** Onboarding wizard "How is your wealth held?" + standalone `/dashboard/entities` surface — **SHIPPED 2026-05-04 (PR-41b).** See §10.8.
+- **41c** "My Structure" page — the Entity Tree (under TRACK stage as a child of My Accounts; tree replaces or augments the 41b list view). React-flow hierarchy: People → Entities → Assets, with ownership %.
 - **41d** Money Flow Sankey — income sources → entities → outflows.
-- **41e** Entity-aware tax engine — Div 115 per-entity holding period, trust distributions to beneficiaries, SMSF caps, etc.
+- **41e** Entity-aware tax engine — Div 115 per-entity holding period, trust distributions to beneficiaries, SMSF caps, etc. See `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` for the full authority-mapped architecture.
 - **41f** Personal Xero / MYOB integration — connects a user's `OPERATING` Pty Ltd entity to its bookkeeping system.
 - **41g** Adviser overlay shows entity structure as the primary diagnostic.
-- **41h** AI Guide entity-aware diagnosis — general-information only ("Div 115 50% applies after 12 months"), structural recommendations channel through Ask-a-Pro.
+- **41h** AI Guide entity-aware diagnosis — general-information only ("Div 115 50% applies after 12 months"), structural recommendations channel through Ask-a-Pro per the structural Gemini-tool-registry boundary in PHASE_41_REGULATORY_ARCHITECTURE §5.
+
+## **10.8 Phase 41b — entity management surfaces**
+
+Added 2026-05-04 (PR-41b). Three surfaces, three API routes, one canonical service.
+
+### Surfaces
+
+| Surface | Route / Component | Purpose |
+|---|---|---|
+| Wizard step | `components/onboarding/wizard/steps/EntitiesStep.tsx` | First-time onboarding — "How is your wealth held?" between Household and Properties |
+| Standalone management | `app/dashboard/entities/page.tsx` (TRACK sidebar → My Accounts → My Structure) | Existing users add/edit/remove entities anytime |
+| AIHelper context | `components/onboarding/wizard/AIHelper.tsx` | Step-aware AI guidance for the wizard step |
+
+### API endpoints
+
+| Method | Route | Permission | Purpose |
+|---|---|---|---|
+| GET | `/api/entities` | `entity.read` | List user's entities + owned-objects counts |
+| POST | `/api/entities` | `entity.write` | Create new entity (validates ABN/ACN/TFN format; encrypts TFN) |
+| GET | `/api/entities/[id]` | `entity.read` | Fetch single entity (excludes plaintext TFN) |
+| PUT | `/api/entities/[id]` | `entity.write` | Partial update (TFN: undefined = leave untouched, null = clear, string = replace) |
+| DELETE | `/api/entities/[id]` | `entity.delete` | Remove entity. 409 if has owned objects (with friendly counts). 409 if it's the last PERSONAL_NAME (default-owner protection). |
+
+### Service exports (canonical `lib/services/legalEntityService.ts`)
+
+```typescript
+getDefaultLegalEntityId(userId, [tx])          // Phase 41a — returns user's PERSONAL_NAME, creates on demand
+listEntitiesForUser(userId, [tx])              // Phase 41b — returns LegalEntitySummary[] with _count aggregations
+createEntity(userId, input, [tx])              // encrypts TFN via tfnEncryption.ts; validates parent FK
+updateEntity(userId, entityId, input, [tx])   // partial update; same TFN/parent rules
+deleteEntity(userId, entityId, [tx])           // throws EntityHasOwnedObjectsError if any owned rows
+EntityHasOwnedObjectsError                     // structured error for 409 mapping
+type LegalEntitySummary                        // never includes tfnEncrypted value, only `hasTfn: boolean`
+```
+
+### AU regulatory validators (`lib/utils/auValidators.ts`)
+
+Single SSOT used by client (wizard form + management page) and server (route validation):
+- `isValidAbn(input)` — 11-digit modulus-89 checksum per ATO ABN spec.
+- `isValidAcn(input)` — 9-digit ASIC complement checksum per RG 22.
+- `isValidTfnFormat(input)` — 8/9-digit format only (ATO does not publish TFN checksum).
+- `formatAbn(d)` / `formatAcn(d)` — display formatters.
+
+### TFN handling (CDR §13 — recap)
+
+- OPTIONAL, default-off, opt-in only via dedicated UI switch.
+- Encrypted at rest via `lib/security/tfnEncryption.ts` (single swap-point for KMS-backed CMEK upgrade).
+- `LegalEntitySummary` returns `hasTfn: boolean` only — the value never crosses the API boundary by default.
+- `logCRUD` audit metadata wraps all entity payloads through `sanitizeCdrMetadata` and records `hasTfn` instead of the value.
+- AI advisor inputs explicitly omit `tfnEncrypted`.
 
 
 

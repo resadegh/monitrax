@@ -16,6 +16,7 @@ import { Frequency as FrequencyType } from '@/lib/types/prisma-enums';
 export type WizardStepId =
   | 'welcome'
   | 'household'  // Phase 29: Household setup step (first after welcome)
+  | 'entities'   // Phase 41b: "How is your wealth held?" — entity layer
   | 'properties'
   | 'debts'      // Phase 12 PR 3b: non-property loans (CAR/STUDENT/PERSONAL/BUSINESS)
   | 'accounts'
@@ -47,6 +48,19 @@ export const WIZARD_STEPS: WizardStep[] = [
     title: 'Household',
     description: 'Add your household members',
     icon: '👨‍👩‍👧‍👦',
+    profiles: ['STARTER', 'HOMEOWNER', 'INVESTOR', 'MIXED'],
+  },
+  // Phase 41b: Entity layer step. Sits between Household and Properties so
+  // every property/loan/account/etc. created in subsequent steps can be
+  // attached to the correct LegalEntity. Smart default — "Just my personal
+  // name" creates one PERSONAL_NAME entity (idempotent with the 41a
+  // backfill) and lets the user move on without ceremony.
+  {
+    id: 'entities',
+    title: 'Your structure',
+    description: 'How is your wealth held?',
+    icon: '🏛️',
+    isOptional: true,
     profiles: ['STARTER', 'HOMEOWNER', 'INVESTOR', 'MIXED'],
   },
   {
@@ -117,6 +131,65 @@ export const WIZARD_STEPS: WizardStep[] = [
     profiles: ['STARTER', 'HOMEOWNER', 'INVESTOR', 'MIXED'],
   },
 ];
+
+// =============================================================================
+// PHASE 41b — LEGAL ENTITY DATA TYPES (matches Prisma LegalEntityType / Role)
+// =============================================================================
+
+// Prisma: enum LegalEntityType { PERSONAL_NAME, COMPANY, DISCRETIONARY_TRUST,
+//   UNIT_TRUST, SMSF, PARTNERSHIP, SOLE_TRADER }
+export type LegalEntityType =
+  | 'PERSONAL_NAME'
+  | 'COMPANY'
+  | 'DISCRETIONARY_TRUST'
+  | 'UNIT_TRUST'
+  | 'SMSF'
+  | 'PARTNERSHIP'
+  | 'SOLE_TRADER';
+
+// Prisma: enum LegalEntityRole { PERSONAL, HOLDING, OPERATING, INVESTMENT, SUPERANNUATION }
+export type LegalEntityRole =
+  | 'PERSONAL'
+  | 'HOLDING'
+  | 'OPERATING'
+  | 'INVESTMENT'
+  | 'SUPERANNUATION';
+
+// Warm AU language — drives all entity-pickers and copy.
+export const LEGAL_ENTITY_TYPE_LABELS: Record<LegalEntityType, string> = {
+  PERSONAL_NAME: 'My personal name',
+  COMPANY: 'Company (Pty Ltd)',
+  DISCRETIONARY_TRUST: 'Discretionary / family trust',
+  UNIT_TRUST: 'Unit trust',
+  SMSF: 'Self-Managed Super Fund (SMSF)',
+  PARTNERSHIP: 'Partnership',
+  SOLE_TRADER: 'Sole trader (ABN, no separate entity)',
+};
+
+export const LEGAL_ENTITY_ROLE_LABELS: Record<LegalEntityRole, string> = {
+  PERSONAL: 'Personal — natural-person ownership',
+  HOLDING: 'Holding — passive investments',
+  OPERATING: 'Operating — runs an active business',
+  INVESTMENT: 'Investment — investment-only vehicle',
+  SUPERANNUATION: 'Superannuation — SMSF only',
+};
+
+// One captured-during-wizard entity row. Mirrors `CreateEntityInput` from
+// `lib/services/legalEntityService.ts` but uses string types friendly to
+// HTML form state. The bulk-create writer converts these to the service
+// shape and persists via the canonical `createEntity()` helper.
+export interface EntityInput {
+  id: string;                   // wizard-local temp id; resolved to real DB id at write time
+  name: string;
+  type: LegalEntityType;
+  role: LegalEntityRole;
+  abn?: string;                 // raw input; validated client-side via lib/utils/auValidators.ts
+  acn?: string;
+  tfn?: string;                 // OPTIONAL, opt-in only; encrypted at rest by the server
+  tradingName?: string;
+  establishedDate?: string;     // ISO date string
+  parentEntityTempId?: string;  // wizard-local pointer to another EntityInput.id (trustee → trust)
+}
 
 // =============================================================================
 // PROPERTY DATA TYPES (matches Prisma PropertyType enum)
@@ -544,6 +617,12 @@ export interface WizardData {
   diningOutFrequency: DiningFrequency | null;
   hobbiesWithCosts: string;
 
+  // Phase 41b: Legal entities (Personal, Trust, SMSF, Pty Ltd, etc.).
+  // Smart default: empty array means the wizard relies on the
+  // PERSONAL_NAME entity that the Phase 41a backfill created (or that
+  // bulk-create creates on demand for new registrations).
+  entities: EntityInput[];
+
   // Step 3: Properties (with inline loans)
   properties: PropertyInput[];
 
@@ -583,6 +662,7 @@ export const INITIAL_WIZARD_DATA: WizardData = {
   householdMembers: [],
   householdPets: [],
   carsCount: 0,
+  entities: [],
   properties: [],
   debts: [],
   accounts: [],

@@ -6,6 +6,8 @@ import { withPermission } from '@/lib/auth/guards';
 // See: https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields#using-null-values
 import { Prisma } from '@prisma/client';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+// Phase 41b: TFN at-rest encryption for wizard-defined entities (CLAUDE.md §13).
+import { encryptTfn } from '@/lib/security/tfnEncryption';
 
 // Prisma transaction client type
 type TransactionClient = Omit<
@@ -224,6 +226,37 @@ interface SuperAccountInput {
   currentBalance: number;
 }
 
+// Phase 41b: optional entity rows captured by the EntitiesStep wizard.
+// Mirrors the EntityInput shape from
+// `components/onboarding/wizard/types.ts` but kept locally typed so this
+// route doesn't add a client→server coupling.
+type LegalEntityType =
+  | 'PERSONAL_NAME'
+  | 'COMPANY'
+  | 'DISCRETIONARY_TRUST'
+  | 'UNIT_TRUST'
+  | 'SMSF'
+  | 'PARTNERSHIP'
+  | 'SOLE_TRADER';
+type LegalEntityRole =
+  | 'PERSONAL'
+  | 'HOLDING'
+  | 'OPERATING'
+  | 'INVESTMENT'
+  | 'SUPERANNUATION';
+interface EntityInput {
+  id: string;                        // wizard-local temp id
+  name: string;
+  type: LegalEntityType;
+  role: LegalEntityRole;
+  abn?: string;
+  acn?: string;
+  tfn?: string;                      // raw; encrypted by encryptTfn() before persistence
+  tradingName?: string;
+  establishedDate?: string;
+  parentEntityTempId?: string;       // wizard-local pointer to another EntityInput.id
+}
+
 interface WizardData {
   profileType: string | null;
   country: string;
@@ -239,6 +272,8 @@ interface WizardData {
   lifestylePreference?: LifestylePreference | null;
   diningOutFrequency?: DiningFrequency | null;
   hobbiesWithCosts?: string;
+  // Phase 41b: optional entity layer rows
+  entities?: EntityInput[];
   properties: PropertyInput[];
   // PR 3b: Non-property loans
   debts?: DebtInput[];
@@ -308,9 +343,62 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         async (tx: TransactionClient) => {
         // Phase 41a: resolve the user's PERSONAL_NAME LegalEntity inside the
         // transaction (creates one on demand for brand-new registrations).
-        // Every owned row created below pins to this entity; Phase 41b's
-        // wizard will let users split assets across additional entities.
+        // Used as the FALLBACK ownerEntityId for every owned row that
+        // wasn't explicitly attached to a user-defined entity in Phase
+        // 41b's wizard step.
         const ownerEntityId = await getDefaultLegalEntityId(userId, tx);
+
+        // =======================================================================
+        // Phase 41b — persist wizard-defined LegalEntity rows
+        //
+        // The EntitiesStep collects optional Trust / SMSF / Pty Ltd /
+        // Partnership / Sole Trader entries with wizard-local temp ids.
+        // Two-pass write so trustee→trust parent FKs can resolve to real
+        // DB ids:
+        //   1. Insert all entities WITHOUT parentEntityId.
+        //   2. UPDATE each entity that had a parentEntityTempId, mapping
+        //      the temp id to the real entity id created in pass 1.
+        // The temp→real mapping is kept in `wizardEntityMap` for future
+        // wizard steps (Phase 41c+) that may want to attach properties
+        // to a non-default entity.
+        // =======================================================================
+        const wizardEntityMap = new Map<string, string>();
+        if (data.entities && data.entities.length > 0) {
+          // Pass 1 — create entities, no parent linkage yet
+          for (const entity of data.entities) {
+            if (!entity.name?.trim()) continue;   // skip malformed wizard rows
+            const created = await tx.legalEntity.create({
+              data: {
+                userId,
+                name: entity.name.trim(),
+                type: entity.type,
+                role: entity.role,
+                abn: entity.abn?.replace(/\D+/g, '') || null,
+                acn: entity.acn?.replace(/\D+/g, '') || null,
+                tfnEncrypted: encryptTfn(entity.tfn ?? null),
+                tradingName: entity.tradingName?.trim() || null,
+                establishedDate: entity.establishedDate
+                  ? new Date(entity.establishedDate)
+                  : null,
+                // parentEntityId set in pass 2 below
+              },
+              select: { id: true },
+            });
+            wizardEntityMap.set(entity.id, created.id);
+          }
+
+          // Pass 2 — wire up trustee → trust parent FKs
+          for (const entity of data.entities) {
+            if (!entity.parentEntityTempId) continue;
+            const realId = wizardEntityMap.get(entity.id);
+            const realParentId = wizardEntityMap.get(entity.parentEntityTempId);
+            if (!realId || !realParentId) continue;
+            await tx.legalEntity.update({
+              where: { id: realId },
+              data: { parentEntityId: realParentId },
+            });
+          }
+        }
 
         // =======================================================================
         // 1. Update user onboarding status
