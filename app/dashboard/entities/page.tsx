@@ -66,6 +66,7 @@ import {
   formatAbn,
   formatAcn,
 } from '@/lib/utils/auValidators';
+import { useAuth } from '@/lib/context/AuthContext';
 
 // =============================================================================
 // LOCAL TYPES — mirror the LegalEntitySummary shape from the service
@@ -230,11 +231,52 @@ function formFromEntity(e: Entity): FormState {
   };
 }
 
+/**
+ * Phase 41c hotfix-2: API responses come in two error shapes across the
+ * Monitrax codebase:
+ *   - canonical (CLAUDE.md §6.6): `{ error: { code, message, details } }`
+ *     — emitted by `formatErrorResponse(errors.unauthorized(...))` etc.
+ *   - simple: `{ error: 'message string' }` — emitted by ad-hoc routes
+ *     like `/api/entities`'s catch handler.
+ *
+ * Earlier code did `${body.error}` which renders `[object Object]` when
+ * the server returns the canonical shape. This helper handles both.
+ */
+function extractErrorMessage(
+  body: unknown,
+  status: number,
+  fallback: string,
+): string {
+  if (body && typeof body === 'object') {
+    const err = (body as { error?: unknown }).error;
+    if (typeof err === 'string' && err.length > 0) {
+      return `${status} ${err}`;
+    }
+    if (err && typeof err === 'object') {
+      const message = (err as { message?: unknown }).message;
+      const code = (err as { code?: unknown }).code;
+      if (typeof message === 'string' && message.length > 0) {
+        return code ? `${status} ${message} (${code})` : `${status} ${message}`;
+      }
+      if (typeof code === 'string') {
+        return `${status} ${code}`;
+      }
+    }
+  }
+  return `${status} ${fallback}`;
+}
+
 // =============================================================================
 // MAIN PAGE
 // =============================================================================
 
 export default function EntitiesPage() {
+  // Phase 41c hotfix-2: every Monitrax API route uses `withPermission`
+  // which resolves the caller from the `Authorization: Bearer <token>`
+  // header. The bare `fetch()` calls in earlier 41b/41c code 401'd
+  // because they didn't attach the Firebase ID token. Same pattern as
+  // /dashboard/balances and every other working dashboard page.
+  const { token } = useAuth();
   const [entities, setEntities] = useState<Entity[]>([]);
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -253,27 +295,36 @@ export default function EntitiesPage() {
   const fetchEntities = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (!token) {
+      // Auth hasn't hydrated yet. We re-run when token arrives via
+      // the useEffect dependency below — until then, stay in loading
+      // state rather than 401'ing a bare fetch.
+      return;
+    }
     try {
+      const headers = { Authorization: `Bearer ${token}` };
       // Phase 41c: fetch entities + household members in parallel so the
       // tree can render People → Entities edges in one round-trip.
       const [entitiesRes, membersRes] = await Promise.all([
-        fetch('/api/entities'),
-        fetch('/api/household-members').catch(() => null),
+        fetch('/api/entities', { headers }),
+        fetch('/api/household-members', { headers }).catch(() => null),
       ]);
       if (!entitiesRes.ok) {
         // Phase 41c resilience: surface the actual server response so the
         // error block can tell the user (and Reza) WHY the API failed —
         // a generic "Failed to load entities" makes the issue invisible.
-        let serverMessage = `${entitiesRes.status} ${entitiesRes.statusText}`;
+        // `extractErrorMessage` handles both the canonical
+        // `{ error: { code, message } }` shape and the simple
+        // `{ error: 'string' }` shape (CLAUDE.md §6.6 + ad-hoc routes).
+        let body: unknown = null;
         try {
-          const errBody = await entitiesRes.json();
-          if (errBody?.error) {
-            serverMessage = `${entitiesRes.status} ${errBody.error}`;
-          }
+          body = await entitiesRes.json();
         } catch {
-          // Body wasn't JSON; keep the status line.
+          // Body wasn't JSON; fall through to the fallback.
         }
-        throw new Error(serverMessage);
+        throw new Error(
+          extractErrorMessage(body, entitiesRes.status, entitiesRes.statusText || 'Failed to load entities'),
+        );
       }
       const entitiesJson = await entitiesRes.json();
       setEntities(entitiesJson.data ?? []);
@@ -297,7 +348,7 @@ export default function EntitiesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     fetchEntities();
@@ -377,14 +428,20 @@ export default function EntitiesPage() {
         payload.tfn = form.collectsTfn && form.tfn ? form.tfn : null;
       }
 
+      if (!token) {
+        throw new Error('Not signed in. Please refresh and try again.');
+      }
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to save entity');
+        throw new Error(extractErrorMessage(err, res.status, 'Failed to save entity'));
       }
       await fetchEntities();
       setFormOpen(false);
@@ -397,15 +454,20 @@ export default function EntitiesPage() {
 
   const handleRemove = async () => {
     if (!removeTarget) return;
+    if (!token) {
+      setRemoveError('Not signed in. Please refresh and try again.');
+      return;
+    }
     setRemoving(true);
     setRemoveError(null);
     try {
       const res = await fetch(`/api/entities/${removeTarget.id}`, {
         method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to remove entity');
+        throw new Error(extractErrorMessage(err, res.status, 'Failed to remove entity'));
       }
       await fetchEntities();
       setRemoveTarget(null);

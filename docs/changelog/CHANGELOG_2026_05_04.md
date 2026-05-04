@@ -1670,3 +1670,42 @@ The Phase 41 entity-tree visualisation is a power tool — for users with trusts
 ### PR
 - Branch: `claude/phase-41c-resilience-fix`
 - PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41c-auth-token-fix (Phase 41c hotfix-2 — attach Firebase Bearer token to /api/entities calls)
+
+### Why
+
+PR #615's resilience fix surfaced the real error: `401 [object Object]`.
+
+- **The 401**: `/api/entities` (and `/api/household-members`) were 401'ing because the bare `fetch()` calls in `app/dashboard/entities/page.tsx` weren't attaching the Firebase `Authorization: Bearer <token>` header. Every other working dashboard page (Balances, Properties, Loans, Accounts) gets the token from `useAuth()` and attaches it explicitly. `/api/entities` calls in 41b/41c missed this — `withPermission()` couldn't resolve the caller and returned 401.
+- **The `[object Object]`**: my hotfix extracted `body.error` as a string, but the canonical error shape from `formatErrorResponse(errors.unauthorized(...))` (CLAUDE.md §6.6) is `{ error: { code, message, details } }`. Stringifying that object gives `[object Object]`.
+
+### Fix
+
+1. **`app/dashboard/entities/page.tsx`** — added `const { token } = useAuth()`. All four fetches now send `Authorization: Bearer ${token}`:
+   - `GET /api/entities`
+   - `GET /api/household-members`
+   - `POST /api/entities` (create)
+   - `PUT /api/entities/[id]` (edit)
+   - `DELETE /api/entities/[id]` (remove)
+   `fetchEntities()` early-returns when `token` is null (auth still hydrating) so the page stays in loading state instead of 401'ing. `useCallback` depends on `token` so the effect re-runs when it arrives.
+
+2. **New `extractErrorMessage(body, status, fallback)` helper** — handles both error shapes:
+   - canonical `{ error: { code, message } }` → `${status} ${message} (${code})`
+   - simple `{ error: 'string' }` → `${status} string`
+   - falls through to status + fallback if neither matches
+   Used by all error paths (GET fetch, POST/PUT save, DELETE).
+
+### Build Status
+- [x] `npx tsc --noEmit` clean
+- [ ] Vercel preview build — to be verified after push
+
+### CLAUDE.md §16 doc-sync
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this entry
+- No other surface change
+
+### PR
+- Branch: `claude/phase-41c-auth-token-fix`
+- PR URL: TBD on push
