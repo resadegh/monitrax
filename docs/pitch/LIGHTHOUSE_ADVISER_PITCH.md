@@ -115,10 +115,14 @@ This playbook codifies the demo into a runnable script so:
 
 ### Step 4 — Money flow Sankey (2 min)
 - Stay on Olivia
-- Click "Money Flow" tab
-- Sankey lights up: salary + rent + dividends + distributions on the left → flowing through Trust + SMSF + personal → out to consumption + tax + savings + investment on the right
-- *"This is where Olivia's money actually goes. Right now this conversation happens on a whiteboard with you and her every six months. Now it's live."*
-- **TO BE WRITTEN AS BUILD COMPLETES:** Sankey storytelling script + which flow to highlight to adviser-of-each-discipline
+- Click the **"Money Flow"** tab on `/dashboard/entities` (sibling to "Structure" — same URL, second tab)
+- Sankey lights up: **Salary + Rental + Investment + Other** on the left → flowing through her **5 entities** (Olivia personal, Pty Ltd, Discretionary Trust, Unit Trust, SMSF) in the middle → out to **Tax / Essential expenses / Discretionary / Loan repayments / Surplus** on the right
+- Pause first on the **headline chip strip** above the Sankey: *"This is the year-end answer in one row. Income: $X. Tax: $Y. Surplus: $Z."* Adviser sees the totals before tracing the flows.
+- Trace the largest single flow with the cursor (the Sankey link highlights on hover). Most likely Olivia's salary → personal entity → tax. Frame: *"This is where Olivia's money actually goes. Right now this conversation happens on a whiteboard with you and her every six months. Now it's live."*
+- **Surface the 'leak' insight** — every adviser-pitch test should look for the largest non-Surplus outflow and call it out. For Olivia (multi-entity, INVEST stage): tax is usually 25–35% of total income; if discretionary > 15%, that's the lever.
+- **Architectural honesty (read aloud if asked):** *"The tax allocation here is proportional across her entities — exact Div 6/6E trust distribution math lands in the next phase. The visual is correct in aggregate; the per-entity tax position will tighten when Phase 41e lands."* The italic caveat below the canvas says exactly this — advisers like seeing the limits stated honestly.
+- **Live + interactive** — tooltip on every link shows `Source → Target $X per year`. Adviser can hover any flow to read the exact number.
+- **TO BE WRITTEN AS BUILD COMPLETES (post first 3 lighthouse pitches):** the most-shocking moment per profession (adviser most likely tax, broker most likely loan repayments, accountant most likely the discretionary leak); script the 30-second narration around whichever flow lands.
 
 ### Step 5 — AI advice with entity awareness (3 min)
 - Open AI Guide on Olivia's view

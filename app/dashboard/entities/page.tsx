@@ -67,6 +67,8 @@ import {
   formatAcn,
 } from '@/lib/utils/auValidators';
 import { useAuth } from '@/lib/context/AuthContext';
+import { MoneyFlowSankey } from '@/components/entities/MoneyFlowSankey';
+import type { MoneyFlowResult } from '@/lib/services/moneyFlowService';
 
 // =============================================================================
 // LOCAL TYPES — mirror the LegalEntitySummary shape from the service
@@ -282,6 +284,16 @@ export default function EntitiesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Phase 41d: tab state + Money Flow data. The Money Flow tab is a
+  // dedicated visualisation surface ("where does the money actually
+  // go?") sitting alongside the Phase 41c Structure tree. Both tabs
+  // share the same /dashboard/entities URL — we render whichever is
+  // active. Default tab is Structure (the canonical entity view).
+  const [tab, setTab] = useState<'structure' | 'flow'>('structure');
+  const [flow, setFlow] = useState<MoneyFlowResult | null>(null);
+  const [flowLoading, setFlowLoading] = useState(false);
+  const [flowError, setFlowError] = useState<string | null>(null);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Entity | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
@@ -353,6 +365,51 @@ export default function EntitiesPage() {
   useEffect(() => {
     fetchEntities();
   }, [fetchEntities]);
+
+  // Phase 41d: fetch Money Flow lazily — only when the user activates
+  // the tab. Refetch when entities change (the entity list mutation
+  // affects the flow's nodes), and when token arrives. Same Bearer-
+  // token pattern as the entities fetch.
+  const fetchFlow = useCallback(async () => {
+    if (!token) return;
+    setFlowLoading(true);
+    setFlowError(null);
+    try {
+      const res = await fetch('/api/money-flow', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        let body: unknown = null;
+        try {
+          body = await res.json();
+        } catch {
+          /* not JSON */
+        }
+        throw new Error(
+          extractErrorMessage(body, res.status, res.statusText || 'Failed to load money flow'),
+        );
+      }
+      const json = await res.json();
+      setFlow(json.data ?? null);
+    } catch (err) {
+      setFlowError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setFlowLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (tab === 'flow' && !flow && !flowLoading && !flowError) {
+      fetchFlow();
+    }
+  }, [tab, flow, flowLoading, flowError, fetchFlow]);
+
+  // Invalidate the flow cache whenever entities change (after add /
+  // edit / remove from the Structure tab).
+  useEffect(() => {
+    setFlow(null);
+    setFlowError(null);
+  }, [entities]);
 
   const openAdd = () => {
     setEditing(null);
@@ -503,6 +560,45 @@ export default function EntitiesPage() {
           </p>
         </header>
 
+        {/* Phase 41d: tab toggle — Structure (the 41c tree) and Money Flow
+            (the 41d Sankey) live on the same /dashboard/entities URL.
+            Default tab is Structure; the second wow moment in the
+            lighthouse pitch (Step 4) is one click away. */}
+        {!loading && !error && (
+          <div
+            role="tablist"
+            aria-label="My Structure views"
+            className="inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white/70 p-1 text-sm shadow-sm ring-1 ring-slate-900/[0.04] backdrop-blur-sm dark:border-slate-700/50 dark:bg-slate-900/70"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'structure'}
+              onClick={() => setTab('structure')}
+              className={`rounded-full px-3.5 py-1.5 transition ${
+                tab === 'structure'
+                  ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
+              }`}
+            >
+              Structure
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'flow'}
+              onClick={() => setTab('flow')}
+              className={`rounded-full px-3.5 py-1.5 transition ${
+                tab === 'flow'
+                  ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
+              }`}
+            >
+              Money Flow
+            </button>
+          </div>
+        )}
+
         {/* Loading state */}
         {loading && (
           <div className="flex items-center justify-center rounded-2xl border border-slate-200/70 bg-white/60 p-12 dark:border-slate-700/50 dark:bg-slate-900/60">
@@ -557,8 +653,11 @@ export default function EntitiesPage() {
             to render: any non-PERSONAL_NAME entity, OR multiple
             PERSONAL_NAME entities (joint households). Reza directive
             2026-05-05: *"not everyone has one of these entities, so
-            there should be an option for user to have none."* */}
-        {!loading && !error && (() => {
+            there should be an option for user to have none."*
+
+            Phase 41d: gated by `tab === 'structure'`. The Money Flow
+            tab renders the Sankey instead. */}
+        {!loading && !error && tab === 'structure' && (() => {
           const personalEntities = entities.filter((e) => e.type === 'PERSONAL_NAME');
           const realEntities = entities.filter((e) => e.type !== 'PERSONAL_NAME');
           const hasRealStructure =
@@ -616,6 +715,42 @@ export default function EntitiesPage() {
             </div>
           );
         })()}
+
+        {/* Phase 41d: Money Flow tab — recharts <Sankey> showing income
+            sources → entities → outflows. Lazy-fetched the first time
+            the user activates the tab; cache is invalidated when
+            entities mutate (the entity list change affects the
+            Sankey's nodes). Loading + error + empty states handled
+            inline so the user sees what's happening. */}
+        {!loading && !error && tab === 'flow' && (
+          <div>
+            {flowLoading && (
+              <div className="flex items-center justify-center rounded-2xl border border-slate-200/70 bg-white/60 p-12 dark:border-slate-700/50 dark:bg-slate-900/60">
+                <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+              </div>
+            )}
+            {!flowLoading && flowError && (
+              <div className="rounded-2xl border border-rose-200/70 bg-rose-50 p-4 dark:border-rose-900/50 dark:bg-rose-950/30">
+                <div className="flex items-start gap-2 text-sm text-rose-700 dark:text-rose-300">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Couldn&rsquo;t load your money flow.</p>
+                    <p className="mt-1 text-xs opacity-80">{flowError}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={fetchFlow}
+                >
+                  Try again
+                </Button>
+              </div>
+            )}
+            {!flowLoading && !flowError && flow && <MoneyFlowSankey flow={flow} />}
+          </div>
+        )}
       </div>
 
       {/* Form dialog (add/edit) */}
