@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import { withActiveConsent } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import {
   getAccounts,
   getTransactions,
@@ -166,9 +167,11 @@ async function syncAccount(
     });
   } else {
     // Create new account
+    const ownerEntityId = await getDefaultLegalEntityId(userId);
     await prisma.account.create({
       data: {
         userId,
+        ownerEntityId,
         basiqAccountId: basiqAccount.id,
         ...accountData,
       },

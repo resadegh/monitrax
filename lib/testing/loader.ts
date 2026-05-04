@@ -7,6 +7,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '@/lib/auth';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import type {
   TestScenarioInput,
   TestLoadResult,
@@ -35,6 +36,8 @@ const DEFAULT_PASSWORD = 'TestPassword123!';
 export class TestScenarioLoader {
   private prisma: PrismaClient;
   private userId: string | null = null;
+  // Phase 41a: cache the test user's default LegalEntity id once per loader run.
+  private ownerEntityId: string | null = null;
   private entityMappings: TestLoadResult['entityMappings'] = {
     properties: {},
     loans: {},
@@ -199,14 +202,31 @@ export class TestScenarioLoader {
   }
 
   /**
+   * Resolve (and cache) the test user's default `LegalEntity` id. Phase 41a
+   * — every owned row needs an `ownerEntityId`; until the wizard ships,
+   * test scenarios pin to the user's PERSONAL_NAME entity (created on
+   * demand by the canonical helper).
+   */
+  private async getOwnerEntityId(): Promise<string> {
+    if (this.ownerEntityId) return this.ownerEntityId;
+    if (!this.userId) {
+      throw new Error('TestScenarioLoader: userId not set when resolving ownerEntityId');
+    }
+    this.ownerEntityId = await getDefaultLegalEntityId(this.userId, this.prisma);
+    return this.ownerEntityId;
+  }
+
+  /**
    * Load properties
    */
   private async loadProperties(properties: TestPropertyInput[]): Promise<void> {
+    const ownerEntityId = await this.getOwnerEntityId();
     for (const prop of properties) {
       try {
         const created = await this.prisma.property.create({
           data: {
             userId: this.userId!,
+            ownerEntityId,
             name: prop.name,
             type: prop.type,
             address: prop.address,
@@ -237,11 +257,13 @@ export class TestScenarioLoader {
    * Load accounts
    */
   private async loadAccounts(accounts: TestAccountInput[]): Promise<void> {
+    const ownerEntityId = await this.getOwnerEntityId();
     for (const account of accounts) {
       try {
         const created = await this.prisma.account.create({
           data: {
             userId: this.userId!,
+            ownerEntityId,
             name: account.name,
             type: account.type,
             institution: account.institution,
@@ -265,6 +287,7 @@ export class TestScenarioLoader {
    * Load loans
    */
   private async loadLoans(loans: TestLoanInput[]): Promise<void> {
+    const ownerEntityId = await this.getOwnerEntityId();
     for (const loan of loans) {
       try {
         // Resolve references
@@ -278,6 +301,7 @@ export class TestScenarioLoader {
         const created = await this.prisma.loan.create({
           data: {
             userId: this.userId!,
+            ownerEntityId,
             name: loan.name,
             type: loan.type,
             principal: loan.principal,
@@ -309,11 +333,13 @@ export class TestScenarioLoader {
    * Load investment accounts
    */
   private async loadInvestmentAccounts(accounts: TestInvestmentAccountInput[]): Promise<void> {
+    const ownerEntityId = await this.getOwnerEntityId();
     for (const account of accounts) {
       try {
         const created = await this.prisma.investmentAccount.create({
           data: {
             userId: this.userId!,
+            ownerEntityId,
             name: account.name,
             type: account.type,
             platform: account.platform,
@@ -420,6 +446,7 @@ export class TestScenarioLoader {
    * Load income
    */
   private async loadIncome(incomeItems: TestIncomeInput[]): Promise<void> {
+    const ownerEntityId = await this.getOwnerEntityId();
     for (const income of incomeItems) {
       try {
         // Resolve references
@@ -433,6 +460,7 @@ export class TestScenarioLoader {
         const created = await this.prisma.income.create({
           data: {
             userId: this.userId!,
+            ownerEntityId,
             name: income.name,
             type: income.type,
             sourceType: income.sourceType || 'GENERAL',
@@ -465,6 +493,7 @@ export class TestScenarioLoader {
    * Load expenses
    */
   private async loadExpenses(expenses: TestExpenseInput[]): Promise<void> {
+    const ownerEntityId = await this.getOwnerEntityId();
     for (const expense of expenses) {
       try {
         // Resolve references
@@ -481,6 +510,7 @@ export class TestScenarioLoader {
         const created = await this.prisma.expense.create({
           data: {
             userId: this.userId!,
+            ownerEntityId,
             name: expense.name,
             vendorName: expense.vendorName,
             category: expense.category,

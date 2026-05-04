@@ -975,6 +975,94 @@ None. This PR is a focused revision to one skill plus the supporting docs the §
 
 ---
 
+## Session: claude/phase-41a-legal-entity (Phase 41a — LegalEntity schema + ownership backfill SHIPPED)
+
+### Changes Made
+- **Type**: Feature — schema migration + foundational service layer for the entity layer (Phase 41 foundation; everything in 41b–h depends on this)
+- **Scope**: `prisma/schema.prisma`, `prisma/migrations/20260504130000_add_legal_entity/migration.sql`, `lib/services/legalEntityService.ts`, `lib/security/tfnEncryption.ts`, `lib/security/index.ts`, `lib/services/index.ts`, 18 call-site files (every API route + service that creates an owned row)
+- **Description**: Introduce `LegalEntity` as the canonical "who owns this?" layer. Every owned object (Property / Loan / Account / InvestmentAccount / Asset / Income / Expense) now hangs off `ownerEntityId` instead of (in addition to) the flat `userId`. Migration backfills every existing user with one `PERSONAL_NAME` LegalEntity and reassigns existing rows to it, so behaviour is identical end-to-end after backfill — but the foundation is in place for Phase 41b's wizard, 41c's tree, 41d's Sankey, 41e's entity-aware tax engine.
+
+### Why this matters
+
+Pre-41, the flat user-ownership model collapses as soon as a real Australian household enters the picture: Family Trust holds the IP, SMSF holds the share portfolio, Pty Ltd runs the side business, personal name owns the home. AI advisor can't reason about Div 115 CGT discount per holding period; tax engine can't allocate trust distributions to beneficiaries; adviser pitch demo has nothing to show. Phase 41a closes that.
+
+### Files Modified
+- `prisma/schema.prisma` — new `LegalEntity` model + `LegalEntityType` + `LegalEntityRole` enums; `legalEntities` back-reference on User; `ownerEntityId` (NOT NULL) + `ownerEntity` relation + `@@index` on Property / Loan / Account / InvestmentAccount / Asset / Income / Expense
+- `prisma/migrations/20260504130000_add_legal_entity/migration.sql` — additive migration: enums + table + self-FK + user-FK + indexes; ADD COLUMN nullable on each owned table; backfill (one PERSONAL_NAME entity per user via `gen_random_uuid()` named after `users.name`, then UPDATE every owned row WHERE `ownerEntityId IS NULL` to point at its user's PERSONAL_NAME entity); ALTER each ownerEntityId to NOT NULL + add index + add FK with `ON DELETE RESTRICT`
+- `lib/services/legalEntityService.ts` — NEW. Canonical default-entity resolver. `getDefaultLegalEntityId(userId, [tx])` returns the user's PERSONAL_NAME entity id, creating one on demand. Optional transaction client for callers inside `prisma.$transaction`
+- `lib/services/index.ts` — re-exports `getDefaultLegalEntityId`
+- `lib/security/tfnEncryption.ts` — NEW. TFN at-rest helper mirroring the `MFAMethod.secret` Phase 10 pattern. `encryptTfn` (8/9-digit validation + base64 wrap), `decryptTfn` (digit-shape revalidation), `maskTfn` (display-safe `***-***-XYZ`). Single swap-point for KMS-backed CMEK upgrade (Up Next #3)
+- `lib/security/index.ts` — re-exports the TFN helpers
+- API routes updated to provide `ownerEntityId`: `app/api/properties/route.ts`, `app/api/loans/route.ts`, `app/api/accounts/route.ts`, `app/api/assets/route.ts`, `app/api/income/route.ts`, `app/api/expenses/route.ts`, `app/api/expenses/bulk/route.ts`, `app/api/investments/accounts/route.ts`, `app/api/onboarding/bulk-create/route.ts` (12 create sites inside the transaction), `app/api/accounts/[id]/import/route.ts`, `app/api/bank/import/route.ts`, `app/api/basiq/sync/route.ts`, `app/api/documents/analyze/confirm/route.ts` (3 sites), `app/api/recurring-payments/[id]/link/route.ts`, `app/api/transactions/[id]/link/route.ts` (2 sites)
+- Library/test code updated: `lib/bank/recurringExpenseDetection.ts`, `lib/testing/loader.ts` (added private cached `getOwnerEntityId()` method, threaded through 6 loader methods), `prisma/seed-validation.ts` (added `legalEntity.upsert` for both portfolios, threaded `ownerEntityIdA` / `ownerEntityIdB` through every owned-row upsert)
+
+### Documentation Updated
+- `docs/architecture/03_DATA_MODEL.md` — new §10 (Entity Layer — Phase 41 — LegalEntity): why an entity layer, the LegalEntity shape, the ownerEntityId pattern, migration & backfill, the default-entity service, TFN handling, what 41b–h enables
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #25 (Phase 41a) struck through + ✅ SHIPPED with full detail; Up Next #26 (Phase 41b) flipped to "UNBLOCKED — next session"; Recently Completed entry for 2026-05-04 prepended
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Step 3 ("Open the entity tree — THE moment") "TO BE WRITTEN AS BUILD COMPLETES" placeholder populated: entity-tree visual reference (post-Phase-41c) + 3-archetype best-fit users + demo sequencing rule (Sarah → David+Emma → Olivia)
+
+### CLAUDE.md §12.11 destructive-write checklist (backfill UPDATEs)
+
+The migration runs an `UPDATE` against every existing row in seven tables (`properties`, `loans`, `accounts`, `investment_accounts`, `assets`, `income`, `expenses`).
+
+1. **What rows could match my `where` clause?** Every existing row in each of the seven tables — the migration just added the `ownerEntityId` column to all of them. The clause is `WHERE ownerEntityId IS NULL AND le.userId = <table>.userId AND le.type = 'PERSONAL_NAME'`.
+2. **What columns am I overwriting?** Only `ownerEntityId`. The column is brand new in this same migration (added two steps above), so its previous value is uniformly `NULL` for every row. No user-entered data is at risk.
+3. **What guard ensures I only mutate rows my code created?** The `WHERE ownerEntityId IS NULL` predicate. The migration creates exactly one `PERSONAL_NAME` LegalEntity per user immediately before the UPDATE, so the join `le.userId = <table>.userId AND le.type = 'PERSONAL_NAME'` resolves to a single row per user; the `IS NULL` predicate ensures the UPDATE only touches rows that have never been assigned an entity.
+
+User confirmation: NOT REQUIRED — the column being updated is new in the same migration, has no previous value to clobber, and the `IS NULL` guard prevents any non-migration row from being mutated.
+
+### CLAUDE.md §12.12 schema-change deploy protocol
+
+- `prisma/schema.prisma` modified
+- Matching migration file present at `prisma/migrations/20260504130000_add_legal_entity/migration.sql` in the SAME PR
+- No `prisma db push`, no `prisma db execute`, no raw `ALTER TABLE` outside the migration
+- Vercel preview deploy will run `prisma migrate deploy` against `monitrax-db-dev` before the preview build serves; production deploy runs it against `monitrax-db-prod`. If migration fails, deploy aborts.
+
+### CLAUDE.md §13 CDR / TFN compliance
+
+- `tfnEncrypted` is OPTIONAL (nullable, default-off) — the wizard collects TFN only on explicit user opt-in
+- Encrypted at rest via `lib/security/tfnEncryption.ts` (mirrors `MFAMethod.secret` pattern; single swap-point for CMEK)
+- Never logged (use `sanitizeCdrMetadata()` if a tfn-bearing entity flows through audit logging by accident)
+- Never sent to AI (advisor inputs explicitly omit the field)
+- Default API responses do not include `tfnEncrypted` — read paths must explicitly opt in
+
+### CLAUDE.md §16 doc-sync block
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — N/A (no component changes; tree visual lands in 41c)
+- [x] application config — N/A
+- [x] GCP infrastructure — N/A
+- [x] identity / auth — N/A (TFN encryption is data-at-rest, not auth)
+- [x] deployment / build — N/A (no `vercel-build` change; existing `prisma migrate deploy` step covers this migration)
+- [x] security / CDR posture — `lib/security/tfnEncryption.ts` is a new sensitive-data helper, but it follows the canonical Phase 10 pattern and CMEK upgrade is queued under Up Next #3
+- [x] operational procedure — N/A (no new failure mode encountered)
+- [x] strategic decision — N/A (Phase 41a was already queued under Up Next #25)
+- [x] data model — `docs/architecture/03_DATA_MODEL.md` §10 added
+- [x] schema migration — `prisma/migrations/20260504130000_add_legal_entity/migration.sql`
+
+Docs updated in this PR:
+- `docs/architecture/03_DATA_MODEL.md` §10 — new section documenting the entity layer
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #25 closed, #26 unblocked, Recently Completed entry added
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` Step 3 — entity-tree visual reference + archetype guidance populated
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this entry
+
+### Build Status
+- [x] TypeScript compilation passes — `npx tsc --noEmit` exits 0
+- [x] Prisma schema validates — `prisma validate` reports "valid"
+- [x] Prisma client generates — `prisma generate` succeeds
+- [ ] Vercel preview build — to be verified after push (Vercel will run `prisma migrate deploy` against `monitrax-db-dev` first; success there proves the migration applies clean against a populated DB)
+
+### Test plan (for Reza after preview goes live)
+1. **Migration applies clean.** Vercel preview build green (`prisma migrate deploy` step succeeds against dev DB).
+2. **Backfill produces exactly one PERSONAL_NAME entity per user.** Cloud SQL Studio: `SELECT COUNT(DISTINCT "userId"), COUNT(*) FROM "legal_entities" WHERE "type" = 'PERSONAL_NAME';` — both numbers should match the count of `users` rows in dev.
+3. **Every existing owned row has `ownerEntityId`.** Cloud SQL Studio: `SELECT COUNT(*) FROM properties WHERE "ownerEntityId" IS NULL` — should be 0. Repeat for loans, accounts, investment_accounts, assets, income, expenses.
+4. **TFN encryption round-trips.** `node -e "const {encryptTfn,decryptTfn,maskTfn}=require('./lib/security/tfnEncryption'); const t=encryptTfn('123456789'); console.log({encrypted:t, decrypted:decryptTfn(t), masked:maskTfn(decryptTfn(t))});"` — round-trip should succeed; masked should be `***-***-789`.
+5. **Preview app boots + dashboard renders.** Open the preview URL, log in as a dev user, hit `/dashboard` — every existing tile renders identically to before (no UI change in this PR; behaviour parity proves the schema migration is transparent to the read path).
+
+### PR
+- Branch: `claude/phase-41a-legal-entity`
+- PR URL: TBD on push
+- Status: Local commits → push → PR open
 ## Session: claude/phase-33d-compliance-content (Phase 33d SHIPPED — Compliance pack content)
 
 ### Changes Made

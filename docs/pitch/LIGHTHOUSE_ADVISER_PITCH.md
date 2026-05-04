@@ -75,7 +75,13 @@ This playbook codifies the demo into a runnable script so:
 - Open her Entity Tree: Olivia → personal name → Discretionary Trust → Unit Trust → Pty Ltd → SMSF → 4 properties spread across them
 - *"This is what your high-net-worth clients look like in real life. No platform you're using today shows this. None."*
 - **WAIT for the lean-forward moment.** This is where the adviser commits emotionally.
-- **TO BE WRITTEN AS BUILD COMPLETES:** confirmation that the entity tree visual is genuinely "lean-forward" worthy + adviser quote bank
+- **Entity tree visual reference (post-Phase-41c).** Top-down `react-flow` hierarchy on a warm-ivory canvas: People (household members, top row) → Entities (stage-coloured Apple-glass tiles per `LegalEntityRole` — PERSONAL warm sand, HOLDING indigo, OPERATING emerald, SUPERANNUATION amber, INVESTMENT plum) → Assets attached below each entity. Edges show ownership %; trustee→trust corporate links rendered as dashed lines (the `parentEntityId` self-FK from `LegalEntity` powers this). Click a node → entity drill-in dialog with assets / income / expenses / per-entity tax position. The full-screen visual is the screenshot Reza pulls into the deck for slide 2 of the pitch — the *moat* image. Tile language: warm AU real-language ("Smith Family Trust", not "Trust 1"; "Olivia & Co Pty Ltd as trustee", not "Corporate Trustee Entity").
+- **Best 3-archetype users for the demo (per Up Next #33):**
+  - **Sarah Kim (sole trader)** — minimal tree (Sarah → Personal → Sarah Kim Pty Ltd → 1 IP). The "before" picture. Use this to set the bar low so Olivia lands harder.
+  - **David Mei + Emma Liu (family with trust + SMSF)** — mid-complexity tree (David + Emma → Personal × 2 → Mei Family Trust [trustee: Mei Family Holdings Pty Ltd] → 3 IPs + Mei SMSF → super contributions). The "most of your clients look like this" picture.
+  - **Olivia Novak (multi-entity HNW)** — full tree (Olivia → Personal → Discretionary Trust + Unit Trust + Olivia Investments Pty Ltd + Novak SMSF → 4 IPs spread across them with cross-ownership %). The "category-creating" picture — this is the slide that wins the meeting.
+- **Demo sequencing rule:** Sarah first (warm-up — adviser sees "OK, neat"), David+Emma second (recognition — *"yeah this is most of my book"*), Olivia third (emotional commit — *"I have been needing this for ten years"*). Don't reverse the order; complexity-first kills the build.
+- **TO BE WRITTEN AS BUILD COMPLETES (post-41c):** verbatim adviser quote bank captured during the first 3 lighthouse pitches — both the visceral reactions (*"oh wow"*, *"how do you have this"*, *"can my whole firm see this?"*) and the AFSL-edge anxiety (*"is the AI giving advice from this?"* — answer in Step 5).
 
 ### Step 4 — Money flow Sankey (2 min)
 - Stay on Olivia

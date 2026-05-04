@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractLoanLinks, wrapWithGRDCS } from '@/lib/grdcs';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 export const GET = withPermission('loan.read', async (request, auth) => {
     try {
@@ -223,9 +224,12 @@ export const POST = withPermission('loan.write', async (request, auth) => {
         if (!result.success) return result.response;
       }
 
+      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+
       const loan = await prisma.loan.create({
         data: {
           userId: auth.userId,
+          ownerEntityId,
           name,
           type,
           propertyId: propertyId || null,

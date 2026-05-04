@@ -302,6 +302,93 @@ enum SuperContributionType {
 }
 
 // =============================================================================
+// PHASE 41: LEGAL ENTITY (Entity Layer foundation)
+// =============================================================================
+
+// `LegalEntityType` — the structural form a wealth-holding vehicle takes.
+// Forced at registration via the onboarding wizard (Phase 41b). The full
+// taxonomy is intentionally narrow at v1; uncommon shapes (foreign trusts,
+// bare trusts, etc.) escalate to OTHER-style support requests until demand
+// proves out. See `docs/architecture/03_DATA_MODEL.md` §10.
+enum LegalEntityType {
+  PERSONAL_NAME          // Default — assets held in a natural person's own name
+  COMPANY                // Pty Ltd / Ltd
+  DISCRETIONARY_TRUST    // Family discretionary trust (most common AU structure)
+  UNIT_TRUST             // Fixed-unit trust
+  SMSF                   // Self-Managed Super Fund (regulated by ATO)
+  PARTNERSHIP            // General or limited partnership
+  SOLE_TRADER            // ABN-registered individual operating a business
+}
+
+// `LegalEntityRole` — the *purpose* of the entity in the user's wealth picture.
+// One person + multiple entities is normal: PERSONAL (natural name) +
+// HOLDING (family trust holds investments) + OPERATING (Pty Ltd runs a
+// business) + SUPERANNUATION (SMSF). Drives Phase 41c entity-tree colour and
+// Phase 41h AI advisor framing.
+enum LegalEntityRole {
+  HOLDING                // Holds passive investments (most common for trusts)
+  OPERATING              // Runs an active business (most common for Pty Ltd / sole traders)
+  INVESTMENT             // Investment-only vehicle (e.g. unit trust used as a property syndicate)
+  SUPERANNUATION         // SMSF — superannuation only
+  PERSONAL               // Natural person ownership (default for every existing user)
+}
+
+// `LegalEntity` — the foundational ownership object for the Phase 41 entity
+// layer. Every Property / Loan / Account / InvestmentAccount / Asset / Income /
+// Expense will hang off a `LegalEntity` via `ownerEntityId` (instead of the
+// flat `userId` it lives on today). The migration backfills every existing
+// user with a single `PERSONAL_NAME` entity and reassigns existing rows to
+// it, so behaviour is preserved end-to-end before the wizard ships.
+//
+// TFN handling (CLAUDE.md §13):
+//   - `tfnEncrypted` is OPTIONAL. Default-off — the user must explicitly
+//     opt in via the wizard.
+//   - At rest the field is base64-wrapped via `lib/security/tfnEncryption.ts`
+//     (mirrors the `MFAMethod.secret` pattern). The helper is a single
+//     swap-point for upgrading to KMS-backed CMEK encryption when CMEK lands
+//     (queued in `IMPLEMENTATION_PLAN.md` Up Next #3).
+//   - TFN MUST never be logged, MUST never appear in audit metadata (use
+//     `sanitizeCdrMetadata()` if a tfn-bearing entity flows through audit
+//     logging by accident), MUST never be sent to Gemini / any AI model.
+//   - Read paths use `getTfnForUser(...)` which decrypts inside a single
+//     authorisation boundary; the field is never returned via API
+//     responses by default.
+model LegalEntity {
+  id                String           @id @default(uuid())
+  userId            String
+  name              String           // Display name — "Smith Family Trust" / "Reza Sadeghi" / "Acme Pty Ltd"
+  type              LegalEntityType
+  role              LegalEntityRole
+  abn               String?          // 11-digit Australian Business Number (companies, trusts, partnerships, sole traders)
+  acn               String?          // 9-digit Australian Company Number (companies only)
+  tfnEncrypted      String?          // Encrypted at rest via lib/security/tfnEncryption.ts; never logged, never sent to AI
+  tradingName       String?          // Optional trading-as name distinct from legal name
+  establishedDate   DateTime?        // Date the entity was formed (incorporation / trust deed execution / SMSF establishment)
+  parentEntityId    String?          // Self-FK for trustee → trust relationships (e.g. corporate trustee Pty Ltd is parent of the Family Trust)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relationships
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentEntity      LegalEntity?     @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: SetNull)
+  childEntities     LegalEntity[]    @relation("EntityHierarchy")
+
+  // Reverse owner relations (every owned object hangs back here)
+  properties           Property[]
+  loans                Loan[]
+  accounts             Account[]
+  investmentAccounts   InvestmentAccount[]
+  assets               Asset[]
+  incomes              Income[]
+  expenses             Expense[]
+
+  @@index([userId])
+  @@index([type])
+  @@index([parentEntityId])
+  @@map("legal_entities")
+}
+
+// =============================================================================
 // USER
 // =============================================================================
 
@@ -420,6 +507,11 @@ model User {
   // Phase 40: My Guide — AI Financial Advice (cached advice docs + chat).
   aiAdviceDocuments         AIAdviceDocument[]
 
+  // Phase 41: Entity Layer — every user has at least one LegalEntity (their
+  // PERSONAL_NAME entity is created during onboarding and backfilled for
+  // existing users by migration `20260504130000_add_legal_entity`).
+  legalEntities             LegalEntity[]
+
   @@map("users")
 }
 
@@ -516,6 +608,7 @@ model UserPreference {
 model Property {
   id             String       @id @default(uuid())
   userId         String
+  ownerEntityId  String       // Phase 41: which LegalEntity owns this property — backfilled to user's PERSONAL_NAME entity
   name           String
   type           PropertyType
   address        String?
@@ -536,12 +629,14 @@ model Property {
 
   // Relationships
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerEntity           LegalEntity            @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)
   loans                 Loan[]
   income                Income[]
   expenses              Expense[]
   depreciationSchedules DepreciationSchedule[]
 
   @@index([userId])
+  @@index([ownerEntityId])
   @@map("properties")
 }
 
@@ -552,6 +647,7 @@ model Property {
 model Loan {
   id                   String              @id @default(uuid())
   userId               String
+  ownerEntityId        String              // Phase 41: which LegalEntity owes this debt — backfilled to user's PERSONAL_NAME entity
   propertyId           String?
   offsetAccountId      String?             @unique
   linkedAssetId        String?             // For CAR loans - link to vehicle asset
@@ -572,6 +668,7 @@ model Loan {
 
   // Relationships
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerEntity    LegalEntity  @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)
   property       Property?    @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   offsetAccount  Account?     @relation(fields: [offsetAccountId], references: [id], onDelete: SetNull)
   linkedAsset    Asset?       @relation(fields: [linkedAssetId], references: [id], onDelete: SetNull)
@@ -580,6 +677,7 @@ model Loan {
   debtPlanLoans  DebtPlanLoan[]
 
   @@index([userId])
+  @@index([ownerEntityId])
   @@index([propertyId])
   @@index([linkedAssetId])
   @@index([linkedAccountId])
@@ -593,6 +691,7 @@ model Loan {
 model Account {
   id             String       @id @default(uuid())
   userId         String
+  ownerEntityId  String       // Phase 41: which LegalEntity owns this account — backfilled to user's PERSONAL_NAME entity
   name           String
   type           AccountType
   institution    String?
@@ -615,6 +714,7 @@ model Account {
 
   // Relationships
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerEntity       LegalEntity       @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)
   basiqConnection   BasiqConnection?  @relation(fields: [basiqConnectionId], references: [id], onDelete: SetNull)
   transactions      Transaction[]
   linkedLoan        Loan?             // One-to-one: this account can be an offset for one loan
@@ -631,6 +731,7 @@ model Account {
   importBatches       ImportBatch[]        @relation("ImportBatches")
 
   @@index([userId])
+  @@index([ownerEntityId])
   @@index([basiqConnectionId])
   @@map("accounts")
 }
@@ -791,6 +892,7 @@ enum CDRDisclosureType {
 model Income {
   id                    String            @id @default(uuid())
   userId                String
+  ownerEntityId         String            // Phase 41: which LegalEntity receives this income — backfilled to user's PERSONAL_NAME entity
   propertyId            String?
   investmentAccountId   String?
   customCategoryId      String?           // Custom user-defined category (overrides 'type' enum if set)
@@ -836,6 +938,7 @@ model Income {
 
   // Relationships
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerEntity       LegalEntity        @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)
   property          Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   investmentAccount InvestmentAccount? @relation(fields: [investmentAccountId], references: [id], onDelete: SetNull)
   customCategory    Category?          @relation("IncomeCustomCategory", fields: [customCategoryId], references: [id], onDelete: SetNull)
@@ -843,6 +946,7 @@ model Income {
   superContributions SuperContribution[]
 
   @@index([userId])
+  @@index([ownerEntityId])
   @@index([propertyId])
   @@index([investmentAccountId])
   @@index([customCategoryId])
@@ -856,6 +960,7 @@ model Income {
 model Expense {
   id                    String             @id @default(uuid())
   userId                String
+  ownerEntityId         String             // Phase 41: which LegalEntity bears this expense — backfilled to user's PERSONAL_NAME entity
   propertyId            String?
   loanId                String?
   investmentAccountId   String?
@@ -880,6 +985,7 @@ model Expense {
 
   // Relationships
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerEntity       LegalEntity        @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)
   property          Property?          @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   loan              Loan?              @relation(fields: [loanId], references: [id], onDelete: SetNull)
   investmentAccount InvestmentAccount? @relation(fields: [investmentAccountId], references: [id], onDelete: SetNull)
@@ -891,6 +997,7 @@ model Expense {
   linkedRecurringPayments RecurringPayment[] @relation("RecurringPaymentExpense")
 
   @@index([userId])
+  @@index([ownerEntityId])
   @@index([propertyId])
   @@index([loanId])
   @@index([investmentAccountId])
@@ -1075,6 +1182,7 @@ enum VehicleFuelType {
 model InvestmentAccount {
   id           String                @id @default(uuid())
   userId       String
+  ownerEntityId String                // Phase 41: which LegalEntity owns this investment account — backfilled to user's PERSONAL_NAME entity
   name         String
   type         InvestmentAccountType
   platform     String?               // e.g. CommSec, SelfWealth, Betashares app
@@ -1093,6 +1201,7 @@ model InvestmentAccount {
 
   // Relationships
   user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerEntity  LegalEntity             @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)
   holdings     InvestmentHolding[]
   transactions InvestmentTransaction[]
   incomes      Income[]
@@ -1100,6 +1209,7 @@ model InvestmentAccount {
   capitalGains CapitalGainEvent[]
 
   @@index([userId])
+  @@index([ownerEntityId])
   @@map("investment_accounts")
 }
 
@@ -2782,6 +2892,7 @@ model TaxPosition {
 model Asset {
   id                    String              @id @default(uuid())
   userId                String
+  ownerEntityId         String              // Phase 41: which LegalEntity owns this asset — backfilled to user's PERSONAL_NAME entity
 
   // Core fields
   name                  String
@@ -2827,12 +2938,14 @@ model Asset {
 
   // Relationships
   user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerEntity           LegalEntity         @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)
   expenses              Expense[]
   valueHistory          AssetValueHistory[]
   serviceRecords        AssetServiceRecord[]
   linkedLoans           Loan[]              // CAR loans linked to this asset
 
   @@index([userId])
+  @@index([ownerEntityId])
   @@index([type])
   @@index([status])
   @@map("assets")

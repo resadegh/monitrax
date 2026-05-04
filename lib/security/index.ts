@@ -68,3 +68,6 @@ export {
 } from './mfa';
 
 export type { MFAType, MFASetupResult, MFAVerificationResult } from './mfa';
+
+// Phase 41a: TFN at-rest encryption (LegalEntity.tfnEncrypted)
+export { encryptTfn, decryptTfn, maskTfn } from './tfnEncryption';

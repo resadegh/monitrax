@@ -569,4 +569,112 @@ The legacy `OrganizationPortalSettings.organizationType` field is now a **shadow
 
 The `getMasterFinancialSnapshot()` call from a professional path **must** pass `viewerContext` with `seatId` + `clientUserId` + `accessScopes`. Service rejects the call if any are missing. Scope filter happens at the **service layer**, not the UI — if consent doesn't include `LOANS`, loan data never enters the response payload, even if the UI accidentally tries to render it. Wiring lands in PR3.
 
+---
+
+# **10. Entity Layer (Phase 41 — `LegalEntity`)**
+
+Added 2026-05-04 (migration `20260504130000_add_legal_entity` — Phase 41a).
+
+## **10.1 Why an entity layer**
+
+Pre-Phase-41, every owned object (Property / Loan / Account / InvestmentAccount / Asset / Income / Expense) hung directly off `User.userId`. That was sufficient when "the user" was always the legal owner — i.e. every asset was held in a natural person's name. As soon as a real Australian household enters the picture (Family Trust holds the IP, SMSF holds the share portfolio, Pty Ltd runs the side business, personal name owns the home), the flat user-ownership model collapses: the AI advisor can't reason about Div 115 CGT discount per holding period, the tax engine can't allocate trust distributions to beneficiaries, and the adviser pitch demo has nothing to show.
+
+Phase 41a introduces `LegalEntity` as the canonical "who owns this?" layer. Every owned object now has an `ownerEntityId`, and the entity carries the type (`PERSONAL_NAME` / `COMPANY` / `DISCRETIONARY_TRUST` / `UNIT_TRUST` / `SMSF` / `PARTNERSHIP` / `SOLE_TRADER`), the role (`PERSONAL` / `HOLDING` / `OPERATING` / `INVESTMENT` / `SUPERANNUATION`), and the structural identifiers (ABN / ACN / encrypted TFN / trading name / established date / parent-entity for trustee → trust hierarchies).
+
+## **10.2 The `LegalEntity` shape**
+
+```
+LegalEntity {
+  id               String        @id @default(uuid())
+  userId           String        // owning user (the principal of the entity)
+  name             String        // "Smith Family Trust" / "Reza Sadeghi" / "Acme Pty Ltd"
+  type             LegalEntityType
+  role             LegalEntityRole
+  abn              String?       // 11-digit Australian Business Number
+  acn              String?       // 9-digit Australian Company Number
+  tfnEncrypted     String?       // optional, encrypted at rest, never logged, never sent to AI
+  tradingName      String?
+  establishedDate  DateTime?
+  parentEntityId   String?       // self-FK for trustee → trust
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user             User
+  parentEntity     LegalEntity?  @relation("EntityHierarchy")
+  childEntities    LegalEntity[] @relation("EntityHierarchy")
+
+  // back-references
+  properties / loans / accounts / investmentAccounts /
+  assets / incomes / expenses
+}
+```
+
+Indexed on `userId`, `type`, `parentEntityId`. Mapped to the `legal_entities` Postgres table.
+
+### Enums
+
+- `LegalEntityType` — `PERSONAL_NAME | COMPANY | DISCRETIONARY_TRUST | UNIT_TRUST | SMSF | PARTNERSHIP | SOLE_TRADER`. Foreign trusts, bare trusts, and other rare shapes escalate to OTHER-style support requests at v1; the taxonomy widens only when demand proves out.
+- `LegalEntityRole` — `PERSONAL | HOLDING | OPERATING | INVESTMENT | SUPERANNUATION`. One person + multiple entities is normal: PERSONAL (natural name) + HOLDING (family trust holds investments) + OPERATING (Pty Ltd runs a business) + SUPERANNUATION (SMSF). Drives Phase 41c entity-tree colour and Phase 41h AI advisor framing.
+
+### Self-reference (trustee → trust)
+
+`parentEntityId` models the corporate-trustee relationship: a Pty Ltd that acts as trustee for a family trust is the **parent** of that trust. `ON DELETE SET NULL` on the self-FK so removing a trustee company doesn't cascade-delete the trust it controls.
+
+## **10.3 The `ownerEntityId` pattern**
+
+Every owned object now carries:
+
+```
+ownerEntityId  String                        // NOT NULL — required at create time
+ownerEntity    LegalEntity  @relation(...)   // ON DELETE RESTRICT
+```
+
+Affected models: `Property`, `Loan`, `Account`, `InvestmentAccount`, `Asset`, `Income`, `Expense`. Each has an index on `ownerEntityId`.
+
+`ON DELETE RESTRICT` is deliberate. A user must explicitly migrate every owned row off an entity before deleting it — there is no silent "delete the trust, lose the property" path. This is the structural guard that makes the entity layer trustworthy under future entity-rename / entity-merge / entity-archive flows.
+
+## **10.4 Migration & backfill (one-shot, additive)**
+
+Migration `20260504130000_add_legal_entity` runs additively:
+
+1. Create the two enums + `legal_entities` table + self-FK + user-FK.
+2. Add `ownerEntityId` (NULLABLE) on each owned table.
+3. Backfill — for every existing `User`, INSERT one row into `legal_entities` with `type = PERSONAL_NAME`, `role = PERSONAL`, `name = users.name`. Then UPDATE every Property / Loan / Account / InvestmentAccount / Asset / Income / Expense row WHERE `ownerEntityId IS NULL` to point at its user's PERSONAL_NAME entity. The `IS NULL` guard is the §12.11 safety check — only rows that have never been assigned an entity are touched.
+4. ALTER each `ownerEntityId` to `NOT NULL`, add the index, add the FK with `ON DELETE RESTRICT`.
+
+After backfill, behaviour is identical end-to-end to the pre-migration state (every existing object is owned by the user's natural name) — but the foundation is in place for Phase 41b's wizard to introduce additional entities and Phase 41c's tree to visualise them.
+
+## **10.5 The default-entity service**
+
+Until Phase 41b's onboarding wizard ships and asks "How is your wealth held?" up front, every new owned row defaults to the user's `PERSONAL_NAME` entity. Resolution is centralised in `lib/services/legalEntityService.ts`:
+
+```
+getDefaultLegalEntityId(userId, [tx]): Promise<string>
+```
+
+- Returns the user's `PERSONAL_NAME` entity id.
+- Creates one on demand if missing (new registrations between Phase 41a deploy and Phase 41b ship).
+- Optional transaction client — pass `tx` when calling from inside `prisma.$transaction` so the entity creation is part of the same atomic write.
+
+Per CLAUDE.md §12.2 SSOT, **never** duplicate this lookup in route handlers or components — always import the helper. Eighteen call sites (every API route + service that creates an owned row) were updated in Phase 41a to use this helper.
+
+## **10.6 TFN handling (CDR §13)**
+
+`tfnEncrypted` follows three hard rules:
+
+1. **Optional, default-off.** Wizard collects TFN only if the user explicitly opts in.
+2. **Encrypted at rest.** Wrapped via `lib/security/tfnEncryption.ts` (`encryptTfn` / `decryptTfn` / `maskTfn`). The current implementation mirrors the `MFAMethod.secret` pattern (base64 obfuscation) and is a single swap-point for upgrading to KMS-backed CMEK encryption when CMEK lands (`IMPLEMENTATION_PLAN.md` Up Next #3).
+3. **Never logged, never in audit metadata, never sent to AI.** If a tfn-bearing entity flows through `createAuditLog()` by accident, it must be sanitised through `sanitizeCdrMetadata()` first. AI advisor inputs (`lib/cfo/aiAdvisor.ts`) explicitly omit the field.
+
+## **10.7 What this enables (Phase 41b–h)**
+
+- **41b** Onboarding wizard — "How is your wealth held?" step lets users add additional entities (Trust / SMSF / Pty Ltd) and reassign owned rows.
+- **41c** "My Structure" page — the Entity Tree (top-level sidebar item under TRACK stage). React-flow hierarchy: People → Entities → Assets, with ownership %.
+- **41d** Money Flow Sankey — income sources → entities → outflows.
+- **41e** Entity-aware tax engine — Div 115 per-entity holding period, trust distributions to beneficiaries, SMSF caps, etc.
+- **41f** Personal Xero / MYOB integration — connects a user's `OPERATING` Pty Ltd entity to its bookkeeping system.
+- **41g** Adviser overlay shows entity structure as the primary diagnostic.
+- **41h** AI Guide entity-aware diagnosis — general-information only ("Div 115 50% applies after 12 months"), structural recommendations channel through Ask-a-Pro.
+
+
 

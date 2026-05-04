@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { Frequency } from '@/lib/validation/common';
 import { ExpenseCategory, ExpenseSourceType } from '@/lib/validation/expenses';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 interface BulkExpenseItem {
   name: string;
@@ -54,12 +55,17 @@ export const POST = withPermission('expense.write', async (request, auth) => {
         }
       }
 
+      // Phase 41a: every expense hangs off the user's default
+      // PERSONAL_NAME LegalEntity until the wizard lets them pick.
+      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+
       // Create all expenses in a transaction
       const createdExpenses = await prisma.$transaction(
         expenses.map(expense =>
           prisma.expense.create({
             data: {
               userId: auth.userId,
+              ownerEntityId,
               name: expense.name,
               category: expense.category as ExpenseCategory,
               amount: parseFloat(String(expense.amount)),

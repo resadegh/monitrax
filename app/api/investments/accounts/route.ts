@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { z } from 'zod';
 import { extractInvestmentAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 const createAccountSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -71,9 +72,12 @@ export const POST = withPermission('investment.write', async (request, auth) => 
       totalDeposits, totalWithdrawals, costBasisMethod
     } = validation.data;
 
+    const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+
     const account = await prisma.investmentAccount.create({
       data: {
         userId: auth.userId,
+        ownerEntityId,
         name,
         type,
         platform: platform || null,

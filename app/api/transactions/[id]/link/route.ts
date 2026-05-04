@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 interface LinkRequest {
   action: 'link' | 'create' | 'update' | 'unlink' | 'transfer' | 'investment';
@@ -250,8 +251,10 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             // Create new Income entry with source type support
             type IncomeTypeType = 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
 
+            const ownerEntityId = await getDefaultLegalEntityId(userId);
             const incomeData: {
               userId: string;
+              ownerEntityId: string;
               name: string;
               type: IncomeTypeType;
               customCategoryId?: string; // Custom user-defined category
@@ -263,6 +266,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               isTaxable?: boolean;
             } = {
               userId,
+              ownerEntityId,
               name,
               type: (body.category as IncomeTypeType) || 'OTHER',
               amount: transaction.amount,
@@ -376,8 +380,10 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             // Create new Expense entry with source type and entity linking
             type ExpenseCategoryType = 'HOUSING' | 'RENT' | 'RATES' | 'INSURANCE' | 'MAINTENANCE' | 'PERSONAL' | 'UTILITIES' | 'FOOD' | 'GROCERIES' | 'TRANSPORT' | 'ENTERTAINMENT' | 'SUBSCRIPTION' | 'STRATA' | 'LAND_TAX' | 'LOAN_INTEREST' | 'REGISTRATION' | 'MODIFICATIONS' | 'HEALTH' | 'EDUCATION' | 'OTHER';
 
+            const expenseOwnerEntityId = await getDefaultLegalEntityId(userId);
             const expenseData: {
               userId: string;
+              ownerEntityId: string;
               name: string;
               vendorName?: string | null;
               category: ExpenseCategoryType;
@@ -394,6 +400,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               isRecurring?: boolean;
             } = {
               userId,
+              ownerEntityId: expenseOwnerEntityId,
               name,
               vendorName: transaction.merchantStandardised,
               category: (body.category as ExpenseCategoryType) || 'OTHER',

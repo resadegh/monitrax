@@ -15,6 +15,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { SuggestedActionType } from '@/lib/documents/intelligence';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 // Types defined locally to avoid dependency on Prisma client regeneration timing
 type ExpenseCategory =
@@ -196,9 +197,11 @@ async function createExpenseFromAnalysis(
     const frequencyStr = String(data.frequency || 'MONTHLY').toUpperCase();
     const frequency = frequencyMap[frequencyStr] || 'MONTHLY';
 
+    const ownerEntityId = await getDefaultLegalEntityId(userId);
     const expense = await prisma.expense.create({
       data: {
         userId,
+        ownerEntityId,
         name: String(data.vendor || data.name || 'Expense'),
         vendorName: data.vendor ? String(data.vendor) : null,
         amount: Number(data.amount) || 0,
@@ -259,9 +262,11 @@ async function createIncomeFromAnalysis(
     const frequencyStr = String(data.frequency || 'MONTHLY').toUpperCase();
     const frequency = frequencyMap[frequencyStr] || 'MONTHLY';
 
+    const ownerEntityId = await getDefaultLegalEntityId(userId);
     const income = await prisma.income.create({
       data: {
         userId,
+        ownerEntityId,
         name: String(data.name || 'Income'),
         amount: Number(data.amount) || 0,
         type: incomeType,
@@ -297,9 +302,11 @@ async function createLoanFromAnalysis(
   data: Record<string, unknown>
 ): Promise<{ type: string; id: string; data: Record<string, unknown> } | null> {
   try {
+    const ownerEntityId = await getDefaultLegalEntityId(userId);
     const loan = await prisma.loan.create({
       data: {
         userId,
+        ownerEntityId,
         name: String(data.name || 'Loan'),
         type: data.loanType === 'INVESTMENT_LOAN' ? 'INVESTMENT' : 'HOME',
         principal: Number(data.principal) || 0,

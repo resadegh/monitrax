@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -57,9 +58,11 @@ export const POST = withPermission<RouteContext>('expense.write', async (request
         } = body;
 
         // Create the expense
+        const ownerEntityId = await getDefaultLegalEntityId(userId);
         const newExpense = await prisma.expense.create({
           data: {
             userId,
+            ownerEntityId,
             name: name || recurringPayment.merchantStandardised,
             vendorName: vendorName || recurringPayment.merchantStandardised,
             category: category || 'OTHER',

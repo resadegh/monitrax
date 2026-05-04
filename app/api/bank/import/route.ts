@@ -17,6 +17,7 @@ import {
   applyDuplicatePolicy,
 } from '@/lib/bank';
 import { batchFindMatches } from '@/lib/bank/recurringMatcher';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import type {
   ImportFileFormat,
   DuplicatePolicy,
@@ -194,10 +195,12 @@ export const POST = withPermission('account.write', async (request, auth) => {
             : `Imported — ${baseName || 'Account'}`;
           const openingBalance = parsedFile.closingBalance ?? 0;
 
+          const ownerEntityId = await getDefaultLegalEntityId(userId);
           const newAccount = await prisma.account.create({
             data: {
               id: randomUUID(),
               userId,
+              ownerEntityId,
               name: accountName,
               type: 'TRANSACTIONAL',
               institution: detectedBank ?? null,

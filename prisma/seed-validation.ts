@@ -28,6 +28,9 @@ const TEST_USER_B_ID = '00000000-0000-0000-0000-000000000002';
 // - Various expenses
 // - Some ETF investments
 
+const TEST_USER_A_ENTITY_ID = '00000000-0000-0000-0000-000000000a01';
+const TEST_USER_B_ENTITY_ID = '00000000-0000-0000-0000-000000000b01';
+
 async function seedPortfolioA() {
   console.log('Seeding Portfolio A (Standard)...');
 
@@ -45,6 +48,20 @@ async function seedPortfolioA() {
     },
   });
 
+  // Phase 41a: every owned row needs an ownerEntityId. Upsert the test
+  // user's PERSONAL_NAME LegalEntity once and reference it below.
+  const ownerEntityIdA = (await prisma.legalEntity.upsert({
+    where: { id: TEST_USER_A_ENTITY_ID },
+    update: {},
+    create: {
+      id: TEST_USER_A_ENTITY_ID,
+      userId: userA.id,
+      name: userA.name,
+      type: 'PERSONAL_NAME',
+      role: 'PERSONAL',
+    },
+  })).id;
+
   // ==========================================================================
   // PROPERTIES
   // ==========================================================================
@@ -56,6 +73,7 @@ async function seedPortfolioA() {
     create: {
       id: '11111111-0000-0000-0000-000000000001',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'Primary Residence - Sydney',
       type: 'HOME',
       address: '123 Test Street, Sydney NSW 2000',
@@ -73,6 +91,7 @@ async function seedPortfolioA() {
     create: {
       id: '11111111-0000-0000-0000-000000000002',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'Investment Property - Melbourne',
       type: 'INVESTMENT',
       address: '456 Rental Avenue, Melbourne VIC 3000',
@@ -94,6 +113,7 @@ async function seedPortfolioA() {
     create: {
       id: '22222222-0000-0000-0000-000000000001',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'Home Loan Offset',
       type: 'OFFSET',
       institution: 'CBA',
@@ -109,6 +129,7 @@ async function seedPortfolioA() {
     create: {
       id: '22222222-0000-0000-0000-000000000002',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'High Interest Savings',
       type: 'SAVINGS',
       institution: 'ING',
@@ -124,6 +145,7 @@ async function seedPortfolioA() {
     create: {
       id: '22222222-0000-0000-0000-000000000003',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'Everyday Account',
       type: 'TRANSACTIONAL',
       institution: 'CBA',
@@ -142,6 +164,7 @@ async function seedPortfolioA() {
     create: {
       id: '33333333-0000-0000-0000-000000000001',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       propertyId: homeProperty.id,
       offsetAccountId: offsetAccount.id,
       name: 'Home Loan - CBA',
@@ -163,6 +186,7 @@ async function seedPortfolioA() {
     create: {
       id: '33333333-0000-0000-0000-000000000002',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       propertyId: investmentProperty.id,
       name: 'Investment Loan - ANZ',
       type: 'INVESTMENT',
@@ -187,6 +211,7 @@ async function seedPortfolioA() {
     create: {
       id: '44444444-0000-0000-0000-000000000001',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'Primary Salary',
       type: 'SALARY',
       sourceType: 'GENERAL',
@@ -203,6 +228,7 @@ async function seedPortfolioA() {
     create: {
       id: '44444444-0000-0000-0000-000000000002',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'Partner Salary',
       type: 'SALARY',
       sourceType: 'GENERAL',
@@ -219,6 +245,7 @@ async function seedPortfolioA() {
     create: {
       id: '44444444-0000-0000-0000-000000000003',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       propertyId: investmentProperty.id,
       name: 'Melbourne Rental',
       type: 'RENTAL',
@@ -240,6 +267,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000001',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       loanId: homeLoan.id,
       name: 'Home Loan Interest',
       category: 'LOAN_INTEREST',
@@ -258,6 +286,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000002',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       loanId: investmentLoan.id,
       propertyId: investmentProperty.id,
       name: 'Investment Loan Interest',
@@ -277,6 +306,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000003',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       propertyId: homeProperty.id,
       name: 'Council Rates - Home',
       category: 'RATES',
@@ -295,6 +325,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000004',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       propertyId: investmentProperty.id,
       name: 'Council Rates - Investment',
       category: 'RATES',
@@ -313,6 +344,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000005',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       propertyId: homeProperty.id,
       name: 'Home Insurance',
       category: 'INSURANCE',
@@ -331,6 +363,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000006',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       propertyId: investmentProperty.id,
       name: 'Landlord Insurance',
       category: 'INSURANCE',
@@ -349,6 +382,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000007',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       propertyId: investmentProperty.id,
       name: 'Strata Fees',
       category: 'STRATA',
@@ -367,6 +401,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000008',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       propertyId: investmentProperty.id,
       name: 'Property Management',
       category: 'MAINTENANCE',
@@ -385,6 +420,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000009',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'Utilities (Gas, Electric, Water)',
       category: 'UTILITIES',
       sourceType: 'GENERAL',
@@ -402,6 +438,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000010',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'Groceries',
       category: 'FOOD',
       sourceType: 'GENERAL',
@@ -419,6 +456,7 @@ async function seedPortfolioA() {
     create: {
       id: '55555555-0000-0000-0000-000000000011',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'Transport (Fuel, Opal)',
       category: 'TRANSPORT',
       sourceType: 'GENERAL',
@@ -506,6 +544,7 @@ async function seedPortfolioA() {
     create: {
       id: '77777777-0000-0000-0000-000000000001',
       userId: userA.id,
+      ownerEntityId: ownerEntityIdA,
       name: 'SelfWealth Brokerage',
       type: 'BROKERAGE',
       platform: 'SelfWealth',
@@ -626,6 +665,7 @@ async function seedPortfolioA() {
 
   return {
     userId: userA.id,
+    ownerEntityId: ownerEntityIdA,
     propertyIds: [homeProperty.id, investmentProperty.id],
     loanIds: [homeLoan.id, investmentLoan.id],
     accountIds: [offsetAccount.id, savingsAccount.id, transactionAccount.id],
@@ -660,6 +700,19 @@ async function seedPortfolioB() {
     },
   });
 
+  // Phase 41a: PERSONAL_NAME LegalEntity for user B.
+  const ownerEntityIdB = (await prisma.legalEntity.upsert({
+    where: { id: TEST_USER_B_ENTITY_ID },
+    update: {},
+    create: {
+      id: TEST_USER_B_ENTITY_ID,
+      userId: userB.id,
+      name: userB.name,
+      type: 'PERSONAL_NAME',
+      role: 'PERSONAL',
+    },
+  })).id;
+
   // Investment property (high LVR, negatively geared)
   const propertyB = await prisma.property.upsert({
     where: { id: 'B1111111-0000-0000-0000-000000000001' },
@@ -667,6 +720,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B1111111-0000-0000-0000-000000000001',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       name: 'High LVR Investment - Brisbane',
       type: 'INVESTMENT',
       address: '789 Edge Case St, Brisbane QLD 4000',
@@ -684,6 +738,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B2222222-0000-0000-0000-000000000001',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       name: 'Investment Offset',
       type: 'OFFSET',
       institution: 'Macquarie',
@@ -698,6 +753,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B2222222-0000-0000-0000-000000000002',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       name: 'Credit Card',
       type: 'CREDIT_CARD',
       institution: 'ANZ',
@@ -713,6 +769,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B3333333-0000-0000-0000-000000000001',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       propertyId: propertyB.id,
       offsetAccountId: offsetB.id,
       name: 'Split Loan - Variable',
@@ -734,6 +791,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B3333333-0000-0000-0000-000000000002',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       propertyId: propertyB.id,
       name: 'Split Loan - Fixed',
       type: 'INVESTMENT',
@@ -756,6 +814,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B4444444-0000-0000-0000-000000000001',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       name: 'Part-time Salary',
       type: 'SALARY',
       sourceType: 'GENERAL',
@@ -772,6 +831,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B4444444-0000-0000-0000-000000000002',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       propertyId: propertyB.id,
       name: 'Brisbane Rental',
       type: 'RENTAL',
@@ -789,6 +849,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B5555555-0000-0000-0000-000000000001',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       loanId: loanVariable.id,
       propertyId: propertyB.id,
       name: 'Variable Loan Interest',
@@ -807,6 +868,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B5555555-0000-0000-0000-000000000002',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       loanId: loanFixed.id,
       propertyId: propertyB.id,
       name: 'Fixed Loan Interest',
@@ -826,6 +888,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B5555555-0000-0000-0000-000000000003',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       propertyId: propertyB.id,
       name: 'Body Corporate',
       category: 'STRATA',
@@ -844,6 +907,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B7777777-0000-0000-0000-000000000001',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       name: 'Industry Super',
       type: 'SUPERS',
       platform: 'AustralianSuper',
@@ -858,6 +922,7 @@ async function seedPortfolioB() {
     create: {
       id: 'B7777777-0000-0000-0000-000000000002',
       userId: userB.id,
+      ownerEntityId: ownerEntityIdB,
       name: 'Crypto Wallet',
       type: 'ETF_CRYPTO',
       platform: 'CoinSpot',
@@ -882,6 +947,7 @@ async function seedPortfolioB() {
 
   return {
     userId: userB.id,
+    ownerEntityId: ownerEntityIdB,
     propertyIds: [propertyB.id],
     loanIds: [loanVariable.id, loanFixed.id],
     accountIds: [offsetB.id, creditCard.id],
