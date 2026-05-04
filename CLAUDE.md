@@ -655,7 +655,8 @@ When fixing bugs, always add a brief comment explaining the fix in the code itse
 
 | Data/Logic | Canonical Source | NEVER duplicate in |
 |------------|-----------------|-------------------|
-| Financial snapshot | `lib/services/masterFinancialService.ts` → `getMasterFinancialSnapshot()` | API route handlers |
+| Financial snapshot (totals, expense/income breakdowns, cashflow, emergency fund, health score, debt metrics, quick metrics) | `lib/services/masterFinancialService.ts` → `getMasterFinancialSnapshot()` | API route handlers |
+| GRDCS / relational snapshot (`SnapshotV2`: per-entity `_links` / `_meta`, `linkageHealth`, `moduleCompleteness`, `relationalInsights`, GRDCS-aware property/loan/investment arrays) | `app/api/portfolio/snapshot/route.ts` (entry) → `lib/intelligence/insightsEngine.ts` (compute) | Any new route or hook that needs GRDCS data — fetch this snapshot, do not re-aggregate |
 | Net worth | `lib/calculations/netWorthCalculator.ts` | Components, route handlers |
 | Cashflow | `lib/calculations/cashflowOrchestrator.ts` | Components, route handlers |
 | Expense aggregation | `lib/calculations/expenseAggregator.ts` | Route handlers |
@@ -673,6 +674,8 @@ When fixing bugs, always add a brief comment explaining the fix in the code itse
 3. If it doesn't exist — **create it in the canonical location**, then import
 
 **NEVER inline financial calculations in API route handlers or components.**
+
+**Two snapshot SSOTs, not duplication.** `getMasterFinancialSnapshot()` and `/api/portfolio/snapshot` cover different scopes — they are NOT duplicates of each other. Master answers *"what's my financial position right now?"* (totals, breakdowns, ratios, health). Portfolio/snapshot returns `SnapshotV2` and answers *"what does my portfolio look like as a relational graph?"* (per-entity GRDCS `_links`/`_meta`, orphan detection, `linkageHealth`, `moduleCompleteness`, `relationalInsights`). A future PR may consolidate them by promoting GRDCS layers into master, but that's a design decision — **never delete `/api/portfolio/snapshot` under the assumption it's a duplicate of master.** This was tested and confirmed during 2026-05-02's snapshot-route cleanup (PR #598): the master shape does not expose GRDCS data and migrating its callers would silently lose information.
 
 ### 12.3 Single Calculation Engine — No Competing Implementations
 
