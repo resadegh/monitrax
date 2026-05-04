@@ -671,7 +671,7 @@ Per CLAUDE.md §12.2 SSOT, **never** duplicate this lookup in route handlers or 
 ## **10.7 What this enables (Phase 41b–h)**
 
 - ✅ **41b** Onboarding wizard "How is your wealth held?" + standalone `/dashboard/entities` surface — **SHIPPED 2026-05-04 (PR-41b).** See §10.8.
-- **41c** "My Structure" page — the Entity Tree (under TRACK stage as a child of My Accounts; tree replaces or augments the 41b list view). React-flow hierarchy: People → Entities → Assets, with ownership %.
+- ✅ **41c** Interactive Entity Tree at `/dashboard/entities` — **SHIPPED 2026-05-04 (PR-41c).** Replaces the 41b list per Reza directive. See §10.9.
 - **41d** Money Flow Sankey — income sources → entities → outflows.
 - **41e** Entity-aware tax engine — Div 115 per-entity holding period, trust distributions to beneficiaries, SMSF caps, etc. See `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` for the full authority-mapped architecture.
 - **41f** Personal Xero / MYOB integration — connects a user's `OPERATING` Pty Ltd entity to its bookkeeping system.
@@ -727,6 +727,94 @@ Single SSOT used by client (wizard form + management page) and server (route val
 - `LegalEntitySummary` returns `hasTfn: boolean` only — the value never crosses the API boundary by default.
 - `logCRUD` audit metadata wraps all entity payloads through `sanitizeCdrMetadata` and records `hasTfn` instead of the value.
 - AI advisor inputs explicitly omit `tfnEncrypted`.
+
+## **10.9 Phase 41c — Interactive Entity Tree**
+
+Added 2026-05-04 (PR-41c). Reza directive: *"Yes it should replace, the tree view should be an interactive and live tree view that user can view, track and navigate through the tree view."*
+
+### What changed
+
+The standalone management surface at `/dashboard/entities` no longer renders a flat list of entity cards. It now renders an interactive 3-row glass-tile tree with SVG connectors. The list rendering block (~98 lines) was deleted; the page is now a thin orchestrator that fetches data and mounts `EntityTree` + the existing `EntityFormDialog` from 41b.
+
+### Component anatomy
+
+```
+components/entities/
+├── types.ts          — shared client-side types (Entity, HouseholdMember,
+│                       OwnedObjectsCount, ROLE_PALETTE, TYPES, ROLES, labels)
+└── EntityTree.tsx    — the visualisation component
+    ├── PersonTile    — top row: household members (or generic "You" anchor)
+    ├── EntityTile    — middle row: legal entities, role-coloured
+    └── Connectors    — SVG layer drawing Person→Entity Bézier paths
+                        + dashed Trustee→Trust corporate links
+```
+
+### Data sources
+
+| Data | Endpoint | Used for |
+|---|---|---|
+| Entities + owned-objects counts | `/api/entities` (Phase 41b) | Tile rendering + chip counts + parent FK |
+| Household members | `/api/household-members` | People row labels + Person→Entity matching |
+
+Both fetched in parallel from the page on mount and on dialog close (live refresh).
+
+### Visual rules
+
+- **Apple-glass aesthetic** matching Phase 39 — `rounded-2xl` tiles, `ring-1 ring-slate-900/[0.04]`, `backdrop-blur-sm`, hover-lift via framer-motion.
+- **Role-coloured palette** so colour-blind readers can still distinguish via the labels:
+  - PERSONAL → warm amber (matches Phase 39 PERSONAL_NAME archetype)
+  - OPERATING → emerald (active business)
+  - HOLDING → indigo (passive structure)
+  - SUPERANNUATION → violet (the Phase 39 super tone)
+  - INVESTMENT → fuchsia (accent that contrasts with HOLDING)
+- **Owned-objects rendered as chips inside each entity tile** — clickable, drill to `/dashboard/{properties|balances|investments/accounts|assets}`. Stops the tree from needing a third row (one less layout dimension).
+- **Trustee→trust link**: dashed fuchsia Bézier path between two entity tiles, plus a "↳ trustee: {parent.name}" line inside the child tile (always visible; SVG is desktop-only).
+- **`prefers-reduced-motion`** respected — entrance animations short-circuit, hover lift suppressed.
+
+### Click affordances
+
+| Element | Action |
+|---|---|
+| Entity tile (anywhere on the tile) | Opens `EntityFormDialog` in **edit** mode |
+| Owned-objects chip (`2 properties`, etc.) | Stops propagation, navigates to the relevant `/dashboard/*` page |
+| "Add a trust, SMSF, or company" CTA | Opens `EntityFormDialog` in **create** mode |
+| Person tile | No-op for v1 (Phase 41e+ will navigate to a person-scoped tax position view) |
+| Entity dialog → "Remove" footer button | Closes the dialog and opens the AlertDialog removal flow (per-tile remove buttons retired — single canonical entry point) |
+
+### People→Entity edge heuristic (v1)
+
+The schema doesn't yet model shareholder / beneficiary links between `LegalEntity` and `HouseholdMember`. Phase 41c uses a v1 heuristic:
+
+1. **PERSONAL_NAME entity → matching person** by case-insensitive name (or first-substring match), or the first household member if no match.
+2. **Non-PERSONAL_NAME entity** → fans out to **every** PERSONAL_NAME entity's matched person. (e.g. a Family Trust connects to both David Mei *and* Emma Liu when both are present.)
+
+When household members aren't seeded yet (single-user accounts, pre-onboarding), a single anchor labelled "You" stands in.
+
+This heuristic intentionally over-connects rather than under-connects so the visual stays informative for joint-name structures. Phase 41e's beneficiary / shareholder fields will replace this with explicit edges from real DB rows.
+
+### Mobile fallback (<md)
+
+- SVG layer suppressed (canvas measurements break in flowed-vertical layouts; hard-coded paths would mislead).
+- Tiles stack vertically with the same content.
+- Trustee→trust hierarchy is communicated by the in-tile "↳ trustee: {parent.name}" line.
+- The "Add" CTA renders as a full-width button at the bottom of the stack.
+
+### Why no react-flow / @xyflow/react
+
+Evaluated and rejected per CLAUDE.md §12.7 (prefer existing capability) + §12.8 (simplicity over cleverness):
+
+- The tree is a static 2-row + connector layer. No drag, no zoom, no pan needed.
+- `reactflow` adds ~150 KB to the bundle for one page.
+- `framer-motion` (already in deps) covers the entrance/hover motion.
+- A 350-line component using CSS grid + a small SVG layer is more maintainable than configuring react-flow nodes/edges and writing custom node renderers.
+
+If Phase 41 ever needs pan/zoom for very large structures (10+ entities), revisit.
+
+### What this unblocks (41d/e/f/g/h)
+
+- **41d Sankey** — the second wow moment in the lighthouse pitch. Reuses the entity layer's data shape; same role palette so colour continuity carries between the two visualisations.
+- **41e tax engine** — the entity tree is the visual that the 41h AI advisor will reference ("your trust holds property X with $300k unrealised CGT").
+- **41g adviser overlay** — the same `EntityTree` component will mount inside `/portal/clients/[id]/view` as the primary diagnostic surface above the canonical consumer dashboard.
 
 
 

@@ -19,20 +19,17 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Building2,
-  Crown,
-  Landmark,
-  Users,
   Plus,
-  Pencil,
   Trash2,
   AlertCircle,
   ShieldCheck,
   Lock,
   Loader2,
-  Sparkles,
+  TreePine,
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
+import { EntityTree } from '@/components/entities/EntityTree';
+import type { HouseholdMember } from '@/components/entities/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -201,24 +198,6 @@ function fieldApplicability(type: LegalEntityType) {
   }
 }
 
-function entityIcon(type: LegalEntityType) {
-  switch (type) {
-    case 'PERSONAL_NAME':
-      return <Users className="h-5 w-5" />;
-    case 'COMPANY':
-    case 'SOLE_TRADER':
-    case 'PARTNERSHIP':
-      return <Building2 className="h-5 w-5" />;
-    case 'DISCRETIONARY_TRUST':
-    case 'UNIT_TRUST':
-      return <Crown className="h-5 w-5" />;
-    case 'SMSF':
-      return <Landmark className="h-5 w-5" />;
-    default:
-      return <Building2 className="h-5 w-5" />;
-  }
-}
-
 function emptyForm(): FormState {
   return {
     name: '',
@@ -257,6 +236,7 @@ function formFromEntity(e: Entity): FormState {
 
 export default function EntitiesPage() {
   const [entities, setEntities] = useState<Entity[]>([]);
+  const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -274,10 +254,30 @@ export default function EntitiesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/entities');
-      if (!res.ok) throw new Error('Failed to load entities');
-      const json = await res.json();
-      setEntities(json.data ?? []);
+      // Phase 41c: fetch entities + household members in parallel so the
+      // tree can render People → Entities edges in one round-trip.
+      const [entitiesRes, membersRes] = await Promise.all([
+        fetch('/api/entities'),
+        fetch('/api/household-members').catch(() => null),
+      ]);
+      if (!entitiesRes.ok) throw new Error('Failed to load entities');
+      const entitiesJson = await entitiesRes.json();
+      setEntities(entitiesJson.data ?? []);
+
+      // Household members are best-effort — if the endpoint 401s for
+      // some reason we still render the tree with a generic "You" anchor
+      // (handled inside EntityTree).
+      if (membersRes && membersRes.ok) {
+        const membersJson = await membersRes.json();
+        const raw =
+          (membersJson?.data?.members as HouseholdMember[] | undefined) ??
+          (membersJson?.members as HouseholdMember[] | undefined) ??
+          (Array.isArray(membersJson?.data) ? (membersJson.data as HouseholdMember[]) : []) ??
+          [];
+        setMembers(raw);
+      } else {
+        setMembers([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -409,11 +409,11 @@ export default function EntitiesPage() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         {/* Header */}
         <header className="space-y-2">
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
-            <Sparkles className="h-3.5 w-3.5" />
+            <TreePine className="h-3.5 w-3.5" />
             Track stage · My Structure
           </div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 sm:text-3xl">
@@ -455,104 +455,23 @@ export default function EntitiesPage() {
           </div>
         )}
 
-        {/* Entities list */}
+        {/* Phase 41c: Entity Tree — interactive, live, navigable
+            visualisation of the user's LegalEntity graph. Replaces the
+            previous list view per Reza directive 2026-05-04. The tree
+            renders People (top) → Entities (middle, role-coloured) with
+            owned-objects chips inline; SVG connectors show ownership +
+            dashed corporate-trustee links. Clicking any tile opens the
+            EntityFormDialog (edit); the embedded "Add" affordance opens
+            the same dialog in create mode. Empty state is handled by
+            the tree itself (renders an explicit "Add" CTA when there
+            are no entities). */}
         {!loading && !error && (
-          <>
-            {entities.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  No entities yet.
-                </p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  Add a trust, SMSF, or company to map your structure.
-                </p>
-              </div>
-            )}
-
-            {entities.length > 0 && (
-              <div className="space-y-3">
-                {entities.map((entity) => {
-                  const counts = entity.ownedObjectsCount;
-                  const ownedSummary = counts.total === 0
-                    ? 'No items attached yet'
-                    : [
-                        counts.properties && `${counts.properties} property${counts.properties === 1 ? '' : ' · ies'.replace('· ies', 'ies')}`,
-                        counts.loans && `${counts.loans} loan${counts.loans === 1 ? '' : 's'}`,
-                        counts.accounts && `${counts.accounts} account${counts.accounts === 1 ? '' : 's'}`,
-                        counts.investmentAccounts && `${counts.investmentAccounts} investment${counts.investmentAccounts === 1 ? '' : 's'}`,
-                        counts.assets && `${counts.assets} asset${counts.assets === 1 ? '' : 's'}`,
-                      ]
-                        .filter(Boolean)
-                        .slice(0, 4)
-                        .join(' · ');
-                  return (
-                    <div
-                      key={entity.id}
-                      className="rounded-2xl border border-slate-200/70 bg-white/80 p-4 shadow-sm transition hover:shadow-md dark:border-slate-700/50 dark:bg-slate-900/80"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-start gap-3">
-                          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400">
-                            {entityIcon(entity.type)}
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="truncate text-base font-semibold text-slate-900 dark:text-slate-100">
-                              {entity.name}
-                            </h3>
-                            <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-                              {TYPE_LABELS[entity.type]} · {ROLE_LABELS[entity.role]}
-                              {entity.abn && ` · ABN ${formatAbn(entity.abn)}`}
-                              {entity.acn && ` · ACN ${formatAcn(entity.acn)}`}
-                              {entity.parentEntityName &&
-                                ` · trustee: ${entity.parentEntityName}`}
-                            </p>
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                              <span className="text-slate-600 dark:text-slate-300">
-                                {ownedSummary}
-                              </span>
-                              {entity.hasTfn && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                                  <Lock className="h-3 w-3" />
-                                  TFN on file
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(entity)}
-                            aria-label={`Edit ${entity.name}`}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRemoveTarget(entity);
-                              setRemoveError(null);
-                            }}
-                            aria-label={`Remove ${entity.name}`}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/30 dark:hover:text-rose-400"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Add affordance */}
-            <Button onClick={openAdd} className="w-full sm:w-auto">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Add a trust, SMSF, or company
-            </Button>
-          </>
+          <EntityTree
+            entities={entities}
+            members={members}
+            onEntityClick={openEdit}
+            onAdd={openAdd}
+          />
         )}
       </div>
 
@@ -753,18 +672,42 @@ export default function EntitiesPage() {
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={closeForm} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={!canSave || saving}>
-              {saving ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : (
-                <ShieldCheck className="mr-1.5 h-4 w-4" />
+          <DialogFooter className="sm:justify-between">
+            <div>
+              {/* Phase 41c: Remove affordance moved into the edit dialog —
+                  the tree-view tiles don't carry per-tile remove buttons,
+                  so this is the discoverable path to delete an entity. */}
+              {editing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40"
+                  onClick={() => {
+                    if (!editing) return;
+                    setRemoveTarget(editing);
+                    setRemoveError(null);
+                    setFormOpen(false);
+                  }}
+                  disabled={saving}
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  Remove
+                </Button>
               )}
-              {editing ? 'Save changes' : 'Add entity'}
-            </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={closeForm} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={!canSave || saving}>
+                {saving ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldCheck className="mr-1.5 h-4 w-4" />
+                )}
+                {editing ? 'Save changes' : 'Add entity'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
