@@ -60,3 +60,18 @@ export {
   type CreateEntityInput,
   type UpdateEntityInput,
 } from './legalEntityService';
+
+// =============================================================================
+// PHASE 41d — MONEY FLOW SERVICE
+// =============================================================================
+
+export {
+  getMoneyFlow,
+  type MoneyFlowResult,
+  type MoneyFlowEntity,
+  type MoneyFlowEdge,
+  type MoneyFlowSource,
+  type MoneyFlowOutflow,
+  type MoneyFlowSourceLabel,
+  type MoneyFlowOutflowLabel,
+} from './moneyFlowService';

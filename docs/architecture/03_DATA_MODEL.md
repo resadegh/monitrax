@@ -672,7 +672,7 @@ Per CLAUDE.md §12.2 SSOT, **never** duplicate this lookup in route handlers or 
 
 - ✅ **41b** Onboarding wizard "How is your wealth held?" + standalone `/dashboard/entities` surface — **SHIPPED 2026-05-04 (PR-41b).** See §10.8.
 - ✅ **41c** Interactive Entity Tree at `/dashboard/entities` — **SHIPPED 2026-05-04 (PR-41c).** Replaces the 41b list per Reza directive. See §10.9.
-- **41d** Money Flow Sankey — income sources → entities → outflows.
+- ✅ **41d** Money Flow Sankey at `/dashboard/entities` (Money Flow tab) — **SHIPPED 2026-05-05 (PR-41d).** See §10.10.
 - **41e** Entity-aware tax engine — Div 115 per-entity holding period, trust distributions to beneficiaries, SMSF caps, etc. See `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` for the full authority-mapped architecture.
 - **41f** Personal Xero / MYOB integration — connects a user's `OPERATING` Pty Ltd entity to its bookkeeping system.
 - **41g** Adviser overlay shows entity structure as the primary diagnostic.
@@ -818,3 +818,80 @@ If Phase 41 ever needs pan/zoom for very large structures (10+ entities), revisi
 
 
 
+
+## **10.10 Phase 41d — Money Flow Sankey**
+
+Added 2026-05-05 (PR-41d). The "where does the money actually go?" view — the **second wow moment** in the lighthouse pitch (Step 4) and the natural complement to the 41c entity tree (the tree shows *what you own*; the Sankey shows *how money moves through it*).
+
+### What it shows
+
+A 3-stage flow visualisation rendered with `recharts <Sankey>`:
+
+```
+Income sources           Legal entities                  Outflows
+───────────────         ───────────────                 ───────────────
+Salary                  PERSONAL_NAME                   Tax
+Rental                  OPERATING (Pty Ltd)             Essential expenses
+Investment              HOLDING (Trust)                 Discretionary
+Other                   SUPERANNUATION (SMSF)           Loan repayments
+                        INVESTMENT (Unit Trust)         Surplus
+```
+
+### Component anatomy
+
+```
+lib/services/moneyFlowService.ts        — getMoneyFlow(userId) orchestrator
+app/api/money-flow/route.ts             — GET wrapper (`report.read` permission)
+components/entities/MoneyFlowSankey.tsx — recharts <Sankey> wrapper
+app/dashboard/entities/page.tsx         — tab toggle (Structure | Money Flow)
+```
+
+### Income source classification
+
+Raw `IncomeType` enum values are normalised to four user-readable labels so the left column stays scannable:
+
+| Source label | IncomeType / sourceType |
+|---|---|
+| Salary | `SALARY` |
+| Rental | `RENTAL` or `RENT` |
+| Investment | `INVESTMENT` (or `sourceType === 'INVESTMENT'`) |
+| Other | everything else (`OTHER`, government payments, gifts, hobby income) |
+
+Source nodes with zero amount are filtered out (no ghost columns).
+
+### Outflow buckets
+
+| Outflow | Source |
+|---|---|
+| Tax | Sum of `Income.paygWithholding` per entity (proportional allocation when entity-level PAYG isn't recorded) |
+| Essential expenses | Sum of `Expense.amount` (annualised) where `isEssential = true`, by entity |
+| Discretionary | Sum of `Expense.amount` (annualised) where `isEssential = false`, by entity |
+| Loan repayments | Sum of `Loan.minRepayment` (annualised), by entity |
+| Surplus | Residual: `incomeIn - tax - essential - discretionary - loanRep`, clamped to ≥0 (deficit shown separately in headline chip) |
+
+### v1 heuristics (to be replaced by Phase 41e)
+
+- **Tax allocation is proportional** to each entity's share of taxable income across the household. Real per-entity tax requires Div 6/6E trust distribution math (Phase 41e.1 / 41e.4); v1 is honest about this with an inline italic caveat.
+- **Loan repayments** use `minRepayment` annualised — no interest/principal split, no offset-account effect on effective interest. The entity-aware tax engine (Phase 41e.5) will compute deductible vs. non-deductible interest correctly.
+- **Surplus** is the arithmetic residual. Negative residuals (deficit) clamp to 0 for the Sankey layout (recharts can't draw negative-width links) but are surfaced in the headline chip strip as `Deficit $X`.
+
+### Visual rules
+
+- **Role palette continuity** — entity nodes use the same role-coloured hex palette as the 41c tree (PERSONAL warm amber `#d97706` / OPERATING emerald `#059669` / HOLDING indigo `#4f46e5` / SUPERANNUATION violet `#7c3aed` / INVESTMENT fuchsia `#c026d3`). Income sources tinted cool (sky/teal/cyan); outflows tinted warm (red/orange/amber/purple) with surplus emerald (positive).
+- **Custom Node renderer** outputs Apple-glass-style rounded rectangles with AUD labels positioned outside the column; abbreviated currency for compact display, full AUD in the tooltip.
+- **Custom Tooltip** shows `{Source} → {Target}` with formatted `$X per year`.
+- **Headline chip strip** above the canvas: Income / Tax / Essentials / Discretionary / Loans / Surplus (or Deficit, in rose). Lets the viewer read the totals before tracing the flows.
+- **`prefers-reduced-motion`** collapses the entrance fade.
+
+### Why recharts (not @nivo/sankey, not d3-sankey)
+
+Evaluated and rejected per CLAUDE.md §12.7 + §12.8:
+- `recharts` is **already in deps** (v3.5.0); zero new dependencies.
+- `@nivo/sankey` would add ~150-200 KB (full nivo runtime).
+- `d3-sankey` would add ~30 KB but requires writing the SVG renderer ourselves; recharts' `<Sankey>` is good enough.
+
+### What this unblocks
+
+- **Phase 41e** — the entity-aware tax engine replaces the proportional tax allocation with Div 6/6E + s100A + Div 7A correctness (per `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md`).
+- **Phase 41g** — the same `MoneyFlowSankey` component will mount inside `/portal/clients/[id]/view` as a complementary diagnostic alongside the entity tree.
+- **Phase 41h** — the AI advisor will reference flow facts ("$24k of your salary leaks to tax annually under your current structure") via the same service.
