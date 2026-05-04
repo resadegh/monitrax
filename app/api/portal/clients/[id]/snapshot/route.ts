@@ -34,8 +34,8 @@ const ROLE_MAPPING: Record<string, PortalUserRole> = {
   VIEWER: 'PORTAL_VIEWER',
 };
 
-export const GET = withPermission<RouteContext>('org.read', async (request: NextRequest, auth, routeCtx) => {
-  const { id: organizationClientId } = await routeCtx.params;
+export const GET = withPermission<RouteContext>('org.read', async (request, auth, context) => {
+  const { id: organizationClientId } = await context!.params;
 
   const orgClient = await prisma.organizationClient.findUnique({
     where: { id: organizationClientId },
