@@ -53,8 +53,36 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
     const entities = await listEntitiesForUser(auth.userId);
     return NextResponse.json({ data: entities, _meta: { count: entities.length } });
   } catch (error) {
+    // Phase 41c resilience: surface a useful error message to the client so
+    // the My Structure page's error block can tell the user (and Reza)
+    // what's actually wrong — opaque "Internal server error" makes a live
+    // bug invisible. We still log the full error server-side; the client
+    // gets the message + a class hint for known failure modes.
     console.error('List entities error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    let message = 'Failed to list entities.';
+    let code: string | undefined;
+    if (error instanceof Error) {
+      // Prisma "model not found in current schema" surfaces as P2021 / P2022 /
+      // a "does not exist" relation error when migrations haven't run.
+      // Surface that explicitly so the deployment diagnosis is one click away.
+      const m = error.message;
+      if (/relation .* does not exist/i.test(m) || /no such table/i.test(m)) {
+        message =
+          'The legal_entities table is missing in this database. The Phase 41a migration ' +
+          'may not have run on this environment. Contact support.';
+        code = 'TABLE_MISSING';
+      } else if (/Unknown arg|Unknown field/i.test(m)) {
+        message =
+          'The deployed Prisma client is out of sync with the database schema. ' +
+          'Trigger a redeploy.';
+        code = 'CLIENT_OUT_OF_SYNC';
+      } else {
+        // Pass through the underlying message — it's safe (no PII), and
+        // surfaces real diagnostic info to the user.
+        message = m;
+      }
+    }
+    return NextResponse.json({ error: message, code }, { status: 500 });
   }
 });
 
