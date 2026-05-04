@@ -434,3 +434,90 @@ officer reads at 11pm to decide whether to sign the contract.
   adviser pitch demo unblocks at PR2 end.
 - **Up Next #21 (Phase 33a)** — Help Center infrastructure can
   start in parallel with PR2 (different surface, no conflict).
+
+---
+
+## Session addendum 3 (final 2026-05-04) — three end-of-day decisions
+
+Reza closed the session with answers to the three remaining open
+questions. All decisions baked into the plan; next session is fully
+unblocked with no strategic deliberation pending.
+
+### Decision: Tier naming = Studio / Practice / Enterprise
+
+LOCKED. "Studio" replaces "Solo" — small-firm-friendly while still
+covering one-person practices, and avoids the name-collision with
+the Practice surface dashboard. Marketing copy + Stripe product
+catalog + `OrganizationPortalSettings.plan` enum values should all
+reflect this. Existing enum is `STARTER / PROFESSIONAL / BUSINESS /
+ENTERPRISE` (per `prisma/schema.prisma`); needs renaming in a
+follow-up migration. Queued as a small additive enum-rename PR
+during Phase 32C PR6 (Stripe Billing wiring) since both touch the
+same surface.
+
+### Decision: Phase 33a runs in PARALLEL with Phase 32B PR2
+
+LOCKED. Different surfaces (Practice dashboard vs Help Center
+static site), zero merge conflict risk, two PRs in flight next
+session is operationally fine. Up Next #21 trigger updated to
+"Parallel with PR2" rather than "After PR2". Engineering work
+splits cleanly — PR2 is React + Next dynamic; 33a is Next static +
+Markdown CMS infrastructure.
+
+### Decision: Anti-poaching guardrails
+
+LOCKED. Two structural changes folded into PR2 scope:
+
+1. **Raise `team:invite` permission from PORTAL_ADMIN → PORTAL_OWNER**
+   only. One-line edit in `lib/portal/permissions.ts`:
+   ```
+   PORTAL_ADMIN: [..., 'team:invite']  // remove this line
+   PORTAL_OWNER: [..., 'team:invite']  // ensure present
+   ```
+   Effect: only the org's Owner can invite new professional seats.
+   Stops the "ADMIN invites a friend-org adviser to gain visibility
+   into the org's clients" attack at the permission layer. ADMINs
+   can still manage day-to-day team operations (role changes for
+   sub-OWNER seats, removal of inactive members) but cannot expand
+   the seat roster.
+
+2. **Audit-log emission on every seat invite.** The invitation
+   handler at `app/api/portal/organizations/[orgId]/team/route.ts`
+   adds an `AuditLog` row on POST:
+   ```
+   action: 'SEAT_INVITED',
+   actorId: <inviting OWNER's userId>,
+   targetEmail: <invitee email>,
+   metadata: { proposedRole, timestamp, organizationId }
+   ```
+   Surfaced in `/admin/orgs/{orgId}/audit` view (PR5) so Reza /
+   Monitrax support can see the full invitation history per org.
+   Lifts conduct-policy enforcement out of ToS-only into structural
+   code per CLAUDE.md §0 architect lens.
+
+PR2 scope updated in Up Next #13.
+
+### Plan updates committed in this addendum
+
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - Header `Last updated` rewritten to capture all three decisions
+  - Up Next #13 (PR2) — anti-poaching guardrails added to scope
+  - Up Next #21 (Phase 33a) — trigger flipped to "Parallel with PR2"
+
+### Status at session close (final)
+
+- 3 commits pushed on `claude/review-monitrax-docs-8HM3K`:
+  - `cebfdc5` — PR1 code (schema + Practice components +
+    lighthouse demo dataset + dead code removal)
+  - `0e9a31f` — Strategic addendum 1 (single-voice + marketplace
+    + Ask-a-Professional + in-app comms; two-voice rejected)
+  - `440a17c` — Strategic addendum 2 (Xero-style Org pricing +
+    Phase 33 Help/Training/Compliance queued)
+  - (plus this final addendum 3 commit covering tier naming +
+    parallel work + anti-poaching)
+- All Phase 32B / 32C / 33 strategic decisions LOCKED.
+- No open questions remaining for next session start.
+- Next session work: BOTH Up Next #13 (Phase 32B PR2) AND Up Next
+  #21 (Phase 33a) can start immediately, in parallel.
+- Lighthouse adviser pitch demo unblocked at end of PR2 (~3 dev
+  days from next session start).
