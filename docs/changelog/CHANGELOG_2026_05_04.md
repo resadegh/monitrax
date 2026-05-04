@@ -298,3 +298,139 @@ separate.
   with Up Next #13 = Phase 32B PR2 = Practice dashboard wiring +
   sidebar repaint
 - Lighthouse adviser pitch demo unblocks at end of PR2 (~3 dev days)
+
+---
+
+## Session addendum 2 (latest 2026-05-04) — Org pricing + Phase 33 Help/Training
+
+Two further strategic decisions locked at the end of the session.
+Captured here so the next session inherits the answers.
+
+### Decision: Xero-style dual-axis Org pricing (seats × clients)
+
+Reza directive 2026-05-04: "Org license should consider seat numbers
+AS WELL AS user base for the organisation (same as Xero plans)."
+Pricing on either axis alone leaks margin (each seat costs Monitrax
+~AU$10/mo platform overhead; each client costs ~AU$2.50/mo COGS).
+Dual-axis pricing keeps the business unit-profitable from day one.
+
+**Finalised tier matrix:**
+
+| Tier | AU$/mo (annual ~16% off) | Included seats | Included clients | Add-on seat | Add-on client |
+|---|---|---|---|---|---|
+| Studio | $199/mo · $2,000/yr | 3 | 50 | $49/seat/mo | $2/client/mo |
+| Practice | $599/mo · $6,000/yr | 10 | 250 | $39/seat/mo | $1.50/client/mo |
+| Enterprise | from $1,499/mo (custom) | 25 (configurable) | 1,000 (configurable) | Negotiated | Negotiated |
+
+**Naming:** Renamed proposed tiers from "Solo / Practice / Enterprise"
+to "Studio / Practice / Enterprise" — "Solo" reads as solo-trader
+only and creates name-collision with the Practice surface dashboard;
+"Studio" is small-firm-friendly while still capturing one-person
+practices. Reza preference pending — this is a v1 default open to
+revision in a follow-up session.
+
+**Add-ons orthogonal to tier:**
+- SSO/SAML — AU$199/mo flat (Enterprise bundled)
+- White-label (custom domain + full brand replacement) —
+  AU$499/mo flat (Enterprise bundled)
+- API access (read/write programmatic) — AU$199/mo + rate-tier
+- Marketplace participation (D2C lead-gen) — opt-in, no monthly,
+  tiered lead-only billing AU$80/$150/$250 by user net-worth
+  bracket (already locked in addendum 1)
+- Compliance archive export — bundled in Practice + Enterprise;
+  AU$49/export on Studio
+
+**RBAC implication (Reza confirmed):** Org plan tier governs more
+than seat/client caps — it gates *features*. The existing 4-tier
+`PortalUserRole` (OWNER / ADMIN / ADVISOR / VIEWER) is the role
+dimension; tier is the **plan** dimension. Both must be enforced in
+`withPermission()` middleware. PR2 scope expanded to wire plan-aware
+feature gates so the right professionals see the right
+functionality. Up Next #13 reflects this.
+
+### Decision: Phase 33 — Help / Training / FAQ / Compliance system
+
+Reza directive 2026-05-04: "Comprehensive onboarding support,
+training and BAU documents both for Monitrax support team and any
+organisations buying Monitrax in Word or PDF document format or even
+better links in Monitrax.com.au website or the app itself where
+suited. Help/trainings/FAQ/Compliance document section in Monitrax
+app, admin and the portal."
+
+**Architecture decision:** ONE source of truth, FOUR delivery
+surfaces. Markdown source files in `docs/help/<audience>/<topic>.md`
+versioned in Git alongside the app — same PR-review process as code,
+so we never ship code that contradicts the docs. Frontmatter:
+audience, category, slug, route_context, last_reviewed,
+compliance_class.
+
+**Four delivery surfaces:**
+1. Public docs site at `help.monitrax.com.au` — Next.js static gen
+   from same Markdown source. SEO-indexed (huge for D2C
+   acquisition). PDF export per article.
+2. In-app help drawer — `?` icon on every page header → slide-in
+   drawer with route-aware content selection (e.g. `/dashboard/cfo`
+   → AI Guide article). Audience-scoped search.
+3. PDF/Word download bundles — pre-built compliance packs ("CDR
+   Compliance Pack", "Org Onboarding Pack", "Adviser Quick-Start",
+   "Architecture Overview for Compliance Officers"). DOCX templates
+   for orgs to customise to their letterhead.
+4. Admin help (`/admin/help/*`) — internal-only docs gated by
+   Monitrax admin role. Operational runbooks, support workflows,
+   escalation paths. Some content sourced from existing
+   `docs/operational/*`.
+
+**Six audiences (drives navigation + access control):**
+
+| Audience | Visible to |
+|---|---|
+| `consumer` | All authenticated users + public site |
+| `org-admin` | Org OWNER / ADMIN roles |
+| `org-professional` | Org ADVISOR / VIEWER roles |
+| `org-client` | Users with active OrganizationClient link |
+| `monitrax-internal` | Monitrax admin role only |
+| `compliance` | Public + org admins |
+
+**Three training programs (with completion certificates):**
+1. Org Onboarding Program (5-day, structured) — admin provisioning
+   → professional invitation → first client invite → first AI advice
+   review → first compliance export
+2. Adviser Certification (8 modules, ~3hrs total) — TRAIL / AFSL
+   boundary / alert stream / Ask-a-Pro lifecycle / comms compliance
+   / ROA-SOA prep / Practice analytics / edge cases — completion
+   earns "Monitrax-certified" badge on marketplace listing
+3. Compliance Officer Briefing (1hr) — everything an org's
+   compliance officer needs to sign off on adoption
+
+**Engineering size:** ~10 dev days engineering + ~18 dev days
+content authoring = ~28 days total. Most is content. Can run in
+parallel with Phase 32C marketplace work.
+
+**Cost (GCP):** static site = free (Vercel hosting); search ~AU$50/mo
+(Algolia DocSearch); GCS for bundles = trivial. No new line items.
+
+**Critical for B2B sales** (financial-adviser lens): orgs'
+compliance teams will demand this audit pack before signing. The
+four-lens commitment in CLAUDE.md §0 says world-class advisor
+quality everywhere — that includes the docs the org's compliance
+officer reads at 11pm to decide whether to sign the contract.
+
+### Plan updates committed in this addendum
+
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - Header `Last updated` rewritten with both decisions
+  - Up Next #13 (PR2) scope expanded — plan-tier feature gating
+  - Up Next #19 (Admin) — seat/client overflow billing visibility
+  - Up Next #20 (Stripe Billing) — Studio/Practice/Enterprise +
+    overflow add-ons + tier add-ons
+  - Up Next #21–#26 NEW — Phase 33 Help/Training/Compliance system
+  - PR4d (transcript retention) — finalised model captured
+    (soft-delete from user view + 7yr professional archive)
+
+### What's now blocking-free for next session
+
+- **Up Next #13 (Phase 32B PR2)** — Practice dashboard wiring +
+  sidebar repaint + plan-tier gating. ~3 dev days. Lighthouse
+  adviser pitch demo unblocks at PR2 end.
+- **Up Next #21 (Phase 33a)** — Help Center infrastructure can
+  start in parallel with PR2 (different surface, no conflict).
