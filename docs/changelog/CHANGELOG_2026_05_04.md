@@ -1632,3 +1632,41 @@ Docs updated in this PR:
 - Branch: `claude/phase-41c-entity-tree`
 - PR URL: TBD on push
 - Status: Untracked → committed → pushed in this session
+
+---
+
+## Session: claude/phase-41c-resilience-fix (Phase 41c My Structure resilience hotfix — surface real API errors + always-reachable Add CTA + "no-structure" hero for users without real entities)
+
+### Why
+
+Two related issues Reza reported on prod 2026-05-05:
+
+1. *"I don't have any entities yet and there is no way to add my entities"* — `/dashboard/entities` showed *"Couldn't load your entities. Failed to load entities"* with a generic message and a "Try again" button, but **no way to add an entity** (the Add affordance lived inside the EntityTree, which only renders on success). For a user with zero entities or any API failure, the page became a dead end.
+
+2. *"Not everyone has one of these entities, so there should be an option for user to have none."* — Phase 41a auto-creates a PERSONAL_NAME entity for every user (FK invariant), but surfacing that as "an entity" in the tree implies the user has structure when they don't. Most Australians own everything in their own name; the My Structure page should reflect that as the normal default, not as "you have one entity called yourself."
+
+### Fix
+
+1. **`app/dashboard/entities/page.tsx`** — `fetchEntities()` now reads the actual server response body when the request fails and surfaces `${status} ${error.error}` instead of the opaque `Failed to load entities`. Error block also gains an "Add an entity anyway" button alongside "Try again", so the user can always create.
+2. **`app/api/entities/route.ts` (GET)** — wraps the catch-all `Internal server error` with a richer message that detects two known deployment-state issues:
+   - **`TABLE_MISSING`** when Prisma reports `relation "legal_entities" does not exist` (Phase 41a migration didn't apply on this environment).
+   - **`CLIENT_OUT_OF_SYNC`** when Prisma reports `Unknown arg / Unknown field` (deployed client predates the schema).
+   - Otherwise passes the underlying error message through (no PII risk — entity errors don't carry CDR data).
+3. **`app/dashboard/entities/page.tsx`** — new "no real structure" hero. The page now computes `hasRealStructure` = (any non-PERSONAL_NAME entity) OR (multiple PERSONAL_NAME entities, e.g. joint household). The full Entity Tree only renders when there's real structure to show. Otherwise the page renders a simplified hero: *"Your wealth is held in your personal name. Most Australian wealth-builders start here…"* with two CTAs — "Add a trust, SMSF, or company" (primary) and "Edit my personal details" (secondary, only if a PERSONAL_NAME entity exists for TFN/trading-name editing). Closing line: *"Not everyone has a separate structure — and that's fine."* The internal PERSONAL_NAME backfill from Phase 41a stays (FK invariant for Property / Loan / Account / etc.) — this is purely a UI gating decision, not a schema change.
+
+### Behaviour-psychology rationale (CLAUDE.md §0)
+
+The Phase 41 entity-tree visualisation is a power tool — for users with trusts, SMSFs, Pty Ltds, it's the moat moment. For users without, leading with a tree implies they're missing something. The hero version normalises ("most start here") and offers structure-adding as an option, not a gap to fill. Same content, dramatically different emotional read.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean
+- [ ] Vercel preview build — to be verified after push
+
+### CLAUDE.md §16 doc-sync
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this entry
+- No surface change beyond a UI/error improvement; data-model + plan unchanged
+- 03_DATA_MODEL.md §10.9 stays accurate (the tree behaviour described there still applies — it just has a gating predicate now)
+
+### PR
+- Branch: `claude/phase-41c-resilience-fix`
+- PR URL: TBD on push

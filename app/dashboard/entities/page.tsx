@@ -260,7 +260,21 @@ export default function EntitiesPage() {
         fetch('/api/entities'),
         fetch('/api/household-members').catch(() => null),
       ]);
-      if (!entitiesRes.ok) throw new Error('Failed to load entities');
+      if (!entitiesRes.ok) {
+        // Phase 41c resilience: surface the actual server response so the
+        // error block can tell the user (and Reza) WHY the API failed —
+        // a generic "Failed to load entities" makes the issue invisible.
+        let serverMessage = `${entitiesRes.status} ${entitiesRes.statusText}`;
+        try {
+          const errBody = await entitiesRes.json();
+          if (errBody?.error) {
+            serverMessage = `${entitiesRes.status} ${errBody.error}`;
+          }
+        } catch {
+          // Body wasn't JSON; keep the status line.
+        }
+        throw new Error(serverMessage);
+      }
       const entitiesJson = await entitiesRes.json();
       setEntities(entitiesJson.data ?? []);
 
@@ -434,7 +448,11 @@ export default function EntitiesPage() {
           </div>
         )}
 
-        {/* Error state */}
+        {/* Error state — Phase 41c resilience: surface the actual API
+            error AND keep an "Add an entity" CTA reachable so the user
+            is never stuck on a dead end. Until 41a's backfill ran, brand-
+            new users could land here with zero entities; if anything
+            errors at the API layer they previously had no escape hatch. */}
         {!loading && error && (
           <div className="rounded-2xl border border-rose-200/70 bg-rose-50 p-4 dark:border-rose-900/50 dark:bg-rose-950/30">
             <div className="flex items-start gap-2 text-sm text-rose-700 dark:text-rose-300">
@@ -442,16 +460,21 @@ export default function EntitiesPage() {
               <div>
                 <p className="font-medium">Couldn&rsquo;t load your entities.</p>
                 <p className="mt-1 text-xs opacity-80">{error}</p>
+                <p className="mt-2 text-xs opacity-70">
+                  You can still add a new entity below — it will save once we&rsquo;re
+                  back in sync.
+                </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={fetchEntities}
-            >
-              Try again
-            </Button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={fetchEntities}>
+                Try again
+              </Button>
+              <Button size="sm" onClick={openAdd}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add an entity anyway
+              </Button>
+            </div>
           </div>
         )}
 
@@ -462,17 +485,75 @@ export default function EntitiesPage() {
             owned-objects chips inline; SVG connectors show ownership +
             dashed corporate-trustee links. Clicking any tile opens the
             EntityFormDialog (edit); the embedded "Add" affordance opens
-            the same dialog in create mode. Empty state is handled by
-            the tree itself (renders an explicit "Add" CTA when there
-            are no entities). */}
-        {!loading && !error && (
-          <EntityTree
-            entities={entities}
-            members={members}
-            onEntityClick={openEdit}
-            onAdd={openAdd}
-          />
-        )}
+            the same dialog in create mode.
+
+            Phase 41c hotfix: not everyone has a structure. A user whose
+            only entity is the auto-created PERSONAL_NAME (Phase 41a
+            backfill) doesn't see "their structure" as an entity tree —
+            they see a simpler "your wealth is held in your personal
+            name" hero. The tree only fires when there's REAL structure
+            to render: any non-PERSONAL_NAME entity, OR multiple
+            PERSONAL_NAME entities (joint households). Reza directive
+            2026-05-05: *"not everyone has one of these entities, so
+            there should be an option for user to have none."* */}
+        {!loading && !error && (() => {
+          const personalEntities = entities.filter((e) => e.type === 'PERSONAL_NAME');
+          const realEntities = entities.filter((e) => e.type !== 'PERSONAL_NAME');
+          const hasRealStructure =
+            realEntities.length > 0 || personalEntities.length > 1;
+
+          if (hasRealStructure) {
+            return (
+              <EntityTree
+                entities={entities}
+                members={members}
+                onEntityClick={openEdit}
+                onAdd={openAdd}
+              />
+            );
+          }
+
+          // Simplified hero — user holds everything in their natural name.
+          // The PERSONAL_NAME entity (if any) is never surfaced as an
+          // "entity" here; it's an internal FK target. The user can edit
+          // their personal-name details only if they want to associate a
+          // TFN or trading name; otherwise they tap "Add" to introduce a
+          // real structure.
+          const personal = personalEntities[0];
+          return (
+            <div className="rounded-3xl border border-slate-200/70 bg-gradient-to-br from-white/80 via-white/60 to-amber-50/40 p-8 shadow-sm ring-1 ring-slate-900/[0.04] backdrop-blur-sm dark:border-slate-700/50 dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70">
+              <div className="mx-auto max-w-xl space-y-3 text-center">
+                <p className="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                  Your structure
+                </p>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 sm:text-2xl">
+                  Your wealth is held in your personal name.
+                </h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Most Australian wealth-builders start here — a single legal
+                  identity that owns everything. If you also hold assets through
+                  a family trust, an SMSF, or a Pty Ltd, add it below and
+                  we&rsquo;ll map your full picture.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-3">
+                  <Button onClick={openAdd}>
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Add a trust, SMSF, or company
+                  </Button>
+                  {personal && (
+                    <Button variant="outline" onClick={() => openEdit(personal)}>
+                      Edit my personal details
+                    </Button>
+                  )}
+                </div>
+                <p className="pt-2 text-xs text-slate-500 dark:text-slate-400">
+                  Not everyone has a separate structure — and that&rsquo;s fine.
+                  You can come back here anytime if your situation changes.
+                </p>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Form dialog (add/edit) */}
