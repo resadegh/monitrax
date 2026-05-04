@@ -3,7 +3,7 @@
 
 ---
 
-> **Status:** v1 architectural blueprint. **Doc-only.** Phase 41e cannot start until this doc is approved.
+> **Status:** v1.1 architectural blueprint — **APPROVED 2026-05-04 by Reza** (PR #609 sign-off). Phase 41e implementation may proceed against this doc.
 >
 > **Why this exists.** Phase 41 is the most regulatory-dense surface in Monitrax — entity structures, trust distributions, SMSF caps, CGT discounts, state taxes, AFSL/TPB boundaries. Without a written authority-mapping, Phase 41e becomes "we asked Gemini and it sounded right." This doc fixes the architecture so every number Monitrax shows traces back to a section of legislation, an ATO ruling, or an explicit "uncomputed" register entry.
 >
@@ -11,7 +11,46 @@
 >
 > **Cadence:** updated whenever a new rule is added to the engine, a rule materially changes (ATO TR / TD update), or a state's tax regime changes. Reviewers reject any Phase 41e/h PR that introduces a regulatory rule not represented here.
 >
-> **Last updated:** 2026-05-04. Concessional cap, non-concessional cap, bring-forward cap, TBC, and Div 296 status need verification against current ATO data before each FY rolls over (see §9 — versioning protocol).
+> **Last updated:** 2026-05-04 (v1.1 — Reza decisions captured: full demo scope, structural AFSL boundary). Concessional cap, non-concessional cap, bring-forward cap, TBC, and Div 296 status need verification against current ATO data before each FY rolls over (see §9 — versioning protocol).
+
+---
+
+## 0. Decisions log
+
+> *Strategic decisions captured here, with date and rationale, so future sessions don't re-litigate. New decisions append; nothing is overwritten.*
+
+### 2026-05-04 — Reza decisions on PR #609 sign-off
+
+**D-1: Full regulatory scope ships in demo cut. NO demo/PROD split within Phase 41e.**
+
+Reza brief verbatim: *"I want all in demo."*
+
+Rationale: pitching AU advisers without s100A, Div 7A, Div 152, family trust elections, state land tax, or PSI would read as half-built. Australian advisers' first instinct is to test the platform against the rules they handle every day. A demo that punts on those rules damages credibility more than a slower demo timeline costs revenue.
+
+Implications:
+- §11 implementation sequence is rewritten — all 16 sub-PRs are demo-critical-path. No "demo cut → PROD cut" partition within 41e.
+- Estimated 41e timeline grows from ~12 days (demo cut only) to ~40 days (full scope).
+- Lighthouse pitch slides to ~6 weeks later than the original Demo-Complete Critical Path table assumed. The Demo-Complete Critical Path in `IMPLEMENTATION_PLAN.md` is updated accordingly.
+- Deferred-to-PROD bucket in `IMPLEMENTATION_PLAN.md` is reduced — only operational hardening (pen test, insurance, CMEK, Cloud Armor, Stripe live mode, training programs, DOCX templates) genuinely defers; the regulatory engine ships in full.
+
+**D-2: AFSL / TPB / NCCP boundary enforced structurally via the Gemini tool registry. NOT editorially via prompt disclaimers.**
+
+Reza brief verbatim: *"I am not sure what it means but trust your decision."*
+
+Decision rationale (architect + security/compliance lens dominant):
+
+The two enforcement models:
+
+| Model | What it looks like | Strength | Weakness |
+|---|---|---|---|
+| **Editorial** (prompt disclaimer) | The AI is *told* in its system prompt to add disclaimers and avoid recommending. Boundary lives in natural-language instructions. | Easy to ship, easy to change. | Brittle — clever user phrasing or model drift can produce a recommendation. Hard to defend at audit ("the AI was told not to" is not the same as "the AI cannot"). |
+| **Structural** (tool registry) | The AI's available tools are a finite, named set. There is NO `recommendStructuralChange` / `recommendProduct` / `recommendTiming` tool. The AI can only emit facts via `lookupEntityTaxFacts`, `lookupContributionCapHeadroom`, `runScenario`, etc. | The AI literally cannot emit a personal-advice recommendation because the function isn't defined. Auditable: the boundary is *code*, not an editorial intention. | Slightly harder to ship — every fact-surface needs a corresponding tool primitive. |
+
+**Locked in: structural via Gemini tool registry.** This is what §5 of this doc specifies. Phase 41h's Gemini integration must be built against this constraint from day one. No fallback editorial mode. No "advisory recommendation with disclaimer" path.
+
+If a user asks the AI a recommendation question ("should I transfer property X into a trust?"), the AI's response is shaped by the tools available: it surfaces the *facts* relevant to the question (Div 115 holding period for property X, current entity structure, applicable Div 7A risk if a Pty Ltd is in scope) and the **only action affordance** is "Ask a Professional" — which routes to the marketplace per the Phase 32C PR4b/c flow.
+
+This decision survives a reasonable adversary test: even if a user attempts to get the AI to recommend an action via prompt injection, the AI cannot emit a recommendation tool call because the tool isn't in the registry.
 
 ---
 
@@ -454,34 +493,38 @@ Initial entries (Phase 41e demo scope):
 
 ---
 
-## 11. Phase 41e implementation sequence (proposed)
+## 11. Phase 41e implementation sequence
 
-Given the surface area, 41e is not one PR. It's a sequence:
+> **Updated 2026-05-04 per Reza decision D-1: full regulatory scope ships in demo cut. No demo/PROD split within 41e.**
 
-| PR | Scope | Estimate |
-|---|---|---|
-| **41e.0** | Foundation — `masterTaxEngine.ts` + types + `fiscalYear.ts` FY26 thresholds + `boundaries/*` (AFSL/TPB/NCCP rendering helpers). No rules yet. | 2 days |
-| **41e.1 (Demo)** | Div 115 + Div 6 (basic) + capital loss netting. Full test suite from TD 2008/29 + TR 2012/D1 fixtures. | 3 days |
-| **41e.2 (Demo)** | SMSF caps — concessional + non-concessional + bring-forward + TBC. | 2 days |
-| **41e.3 (Demo)** | Div 6E streaming basics (franked dividends + capital gains to specific beneficiaries). | 2 days |
-| **41e.4 (Demo)** | Negative gearing + per-entity tax position aggregator. | 1 day |
-| **41e.5 (Demo)** | `MasterTaxPosition` composition + Practice surface tax-position card. | 2 days |
-| --- | **DEMO CUT** — sufficient for lighthouse adviser pitch | --- |
-| 41e.6 (PROD) | s100A zone classifier (PCG 2022/2 fixtures) | 3 days |
-| 41e.7 (PROD) | Div 7A loan classifier + s109N MRP calc | 2 days |
-| 41e.8 (PROD) | Div 152 small business CGT concessions | 3 days |
-| 41e.9 (PROD) | Div 296 (verify Act status; gated behind feature flag until commencement) | 2 days |
-| 41e.10 (PROD) | PSI rules | 3 days |
-| 41e.11 (PROD) | Family Trust Election + IEE | 2 days |
-| 41e.12 (PROD) | State land tax — NSW + VIC (most-used states) | 3 days |
-| 41e.13 (PROD) | State land tax — QLD + SA + WA + remaining | 3 days |
-| 41e.14 (PROD) | Stamp duty (transfer + foreign surcharge per state) | 4 days |
-| 41e.15 (PROD) | Trust + company loss rules (Sch 2F + COT/SBT/Div 707) | 2 days |
-| 41e.16 (PROD) | GST + BAS flagging | 1 day |
+Given the surface area, 41e is not one PR. It's a sequence of 16 sub-PRs, all gating the lighthouse adviser pitch:
 
-Total demo: ~12 days. Total PROD: ~28 additional days.
+| PR | Scope | Estimate | Authority |
+|---|---|---|---|
+| **41e.0** | Foundation — `masterTaxEngine.ts` + canonical types (FYReference / EntityTaxFacts / TaxRuleResult / AuthorityCitation / MasterTaxPosition) + `fiscalYear.ts` FY26 thresholds table + `boundaries/*` (AFSL/TPB/NCCP rendering helpers, profession-aware). No rules yet — the bones. | 2 days | — |
+| **41e.1** | Div 115 CGT discount + Div 6 trust beneficiary income flow (basic, non-streamed) + capital loss netting (s100-50 ordering). Full test suite from TD 2008/29 + TR 2012/D1 fixtures. | 3 days | ITAA 1997 s115-25/s115-100/s115-280; ITAA 1936 s95–s99B |
+| **41e.2** | SMSF caps — concessional ($30k FY26) + non-concessional ($120k) + bring-forward ($360k) + carry-forward (TSB <$500k). | 2 days | ITAA 1997 s291-20, s292-85 |
+| **41e.3** | Transfer balance cap ($1.9m FY26) + Div 293 (high-income +15%) + Div 296 ($3m TSB tax — feature-flagged until Royal Assent confirmed). | 2 days | ITAA 1997 Div 294, Div 293, Div 296 |
+| **41e.4** | Div 6E streaming (franked dividends + capital gains to specific beneficiaries). | 2 days | ITAA 1997 Div 6E; TR 2012/D1 |
+| **41e.5** | s100A zone classifier (green/yellow/red per PCG 2022/2). | 3 days | ITAA 1936 s100A; TR 2022/4; PCG 2022/2 |
+| **41e.6** | Div 7A loan classifier + s109N minimum-repayment calc + sub-trust UPE flag. | 2 days | ITAA 1936 Div 7A; s109D, s109N, s109Y; TR 2010/3 |
+| **41e.7** | Div 152 small business CGT concessions (15-yr exemption, 50% active asset, retirement exemption $500k, rollover) + $6m MNAV / $2m turnover basic-conditions test. | 3 days | ITAA 1997 Div 152; s152-10 |
+| **41e.8** | Negative gearing (individual-only loss-against-salary; trapped in trusts) + per-entity tax position aggregator. | 1 day | ITAA 1997 Div 8 |
+| **41e.9** | PSI rules (results test / 80% rule / unrelated clients test / employment test / business premises test). | 3 days | ITAA 1997 Part 2-42; TR 2022/3 |
+| **41e.10** | Family Trust Election + Interposed Entity Election + 46.5% TFN withholding to non-quoting beneficiaries. | 2 days | ITAA 1936 Sch 2F |
+| **41e.11** | SMSF compliance triumvirate — sole purpose test (s62) + in-house asset 5% cap (s71/s82–s85) + LRBA safe-harbour (PCG 2016/5). | 3 days | SIS Act 1993 s62, s71, s67A; PCG 2016/5 |
+| **41e.12** | State land tax — NSW + VIC (most-used states; trust surcharge + foreign owner surcharge). | 3 days | NSW Land Tax Act 1956; VIC Land Tax Act 2005 |
+| **41e.13** | State land tax — QLD + SA + WA + TAS + ACT + NT + cross-state aggregator. | 4 days | Per-state Land Tax Acts |
+| **41e.14** | Stamp duty (transfer per state + foreign purchaser surcharge NSW 8%/VIC 8%/QLD 7%/WA 7%/SA 7%/TAS 8%) + trust resettlement risk flag. | 4 days | Per-state Duties Acts; TD 2012/21 |
+| **41e.15** | Trust loss rules (Sch 2F — Income Injection Test, Pattern of Distributions Test) + Company loss rules (COT / SBT / Div 707). | 2 days | ITAA 1936 Sch 2F; ITAA 1997 Div 165, 166, 175, 707 |
+| **41e.16** | GST registration threshold ($75k turnover) + BAS cadence + input tax credits flagging. | 1 day | A New Tax System (GST) Act 1999 s23-15, Div 11, Div 31 |
+| **41e.17** | `MasterTaxPosition` composition orchestrator + Practice surface tax-position card + `authoritySources` audit-trail wiring. | 2 days | — |
 
-41h (AI entity-aware diagnosis) cannot start until 41e.0 + 41e.5 land — it composes their output.
+**Total: ~42 days of focused engineering for full Phase 41e demo scope.**
+
+**41h (AI entity-aware diagnosis) prerequisites:** can start as soon as 41e.0 + 41e.17 land (it needs the foundation types + the master orchestrator). Individual rule modules can be incorporated into the AI's tool registry as they ship.
+
+**Sequencing note for sessions running in parallel with 41e:** 41e is *additive* — it lives entirely under `lib/calculations/tax/` and doesn't touch the canonical Master Financial Service or any existing route. Phase 41b (wizard), 41c (entity tree), 41d (Sankey), 41f (Xero), 41g (adviser overlay extension) can all proceed in parallel sessions without merge conflict, and only need to integrate with 41e once the master orchestrator (41e.17) ships.
 
 ---
 
