@@ -17,7 +17,7 @@
  * Usage:
  * ```tsx
  * // Import specific components
- * import { ClientList, ClientDetail } from '@/components/portal/clients';
+ * import { ClientList, ClientCanonicalDashboard } from '@/components/portal/clients';
  * import { PortalCard, PortalButton } from '@/components/portal/ui';
  *
  * // Or import from main index

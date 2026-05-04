@@ -16,6 +16,12 @@ import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { prisma } from '@/lib/db';
 import { hasActiveCDRConsent } from '@/lib/services/cdrDataLifecycle';
+import {
+  mapPlanToTier,
+  planAllowsFeature,
+  TIER_LABEL,
+  type PortalFeatureKey,
+} from '@/lib/portal/planTier';
 
 // ============================================
 // TYPES
@@ -404,6 +410,116 @@ export function withMFARequired<T = unknown>(
         secondFactor: auth.signInSecondFactor ?? 'none',
         path: request.nextUrl.pathname,
         method: request.method,
+      });
+    }
+
+    const response = await handler(request, auth, params);
+    logApiRequest(auth.userId, request, response.status, Date.now() - start);
+    return response;
+  };
+}
+
+// ============================================
+// PORTAL PLAN-TIER FEATURE GATE (Phase 32B PR3)
+// ============================================
+
+/**
+ * Wrap a portal route handler to enforce a plan-tier feature gate.
+ *
+ * Pattern: looks up the caller's portal organisation (via the OrganizationMember
+ * row tied to their userId), reads `OrganizationPortalSettings.plan`, maps it
+ * to the canonical `PlanTier` (STUDIO / PRACTICE / ENTERPRISE), and rejects
+ * the call with 402 (Payment Required) when the feature isn't unlocked at the
+ * caller's tier. Per Reza's monetisation matrix locked 2026-05-04.
+ *
+ * Sits ALONGSIDE permission/role checks — it is not a replacement for the
+ * existing `withPermission()` middleware. Compose them at the call site:
+ *
+ *   export const POST = withPortalFeatureGate('sso', async (request, auth) => {
+ *     // role / permission check here, then handler
+ *   });
+ *
+ * If the caller belongs to multiple orgs, the gate uses the first ACTIVE
+ * portal-enabled org. Future work (Phase 32C) will let the caller specify
+ * an `x-monitrax-org-id` header to disambiguate.
+ *
+ * Audit-log retention is a NUMBER not a boolean and is consumed elsewhere
+ * (lib/security/auditLog query layer) — that aspect of plan-tier gating is
+ * not enforced here.
+ */
+export function withPortalFeatureGate<T = unknown>(
+  feature: PortalFeatureKey,
+  handler: AuthenticatedHandler<T>,
+  options?: GuardOptions
+): (request: NextRequest, params: T) => Promise<Response> {
+  return async (request: NextRequest, params: T) => {
+    const start = Date.now();
+    const auth = await getAuthContext(request);
+
+    if (!auth) {
+      logApiRequest(undefined, request, 401, Date.now() - start);
+      return formatErrorResponse(errors.unauthorized());
+    }
+
+    // Find the caller's portal org. We pick the first active membership that
+    // has portal_settings; portal_settings is the canonical place where
+    // OrganizationPlan lives today.
+    const membership = await prisma.organizationMember.findFirst({
+      where: { userId: auth.userId, isActive: true },
+      select: { organizationId: true },
+    });
+
+    if (!membership) {
+      log.warn('Portal feature gate denied — caller is not a portal member', {
+        userId: auth.userId,
+        feature,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 403, Date.now() - start);
+      return formatErrorResponse(
+        errors.forbidden('Portal feature requires an active organisation membership')
+      );
+    }
+
+    const settings = await prisma.organizationPortalSettings.findUnique({
+      where: { organizationId: membership.organizationId },
+      select: { plan: true },
+    });
+
+    const tier = mapPlanToTier(settings?.plan ?? null);
+    const allowed = planAllowsFeature(tier, feature);
+
+    if (!allowed) {
+      log.info('Portal feature gate denied by plan tier', {
+        userId: auth.userId,
+        organizationId: membership.organizationId,
+        feature,
+        tier,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 402, Date.now() - start);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          data: null,
+          error: {
+            code: 'PLAN_TIER_REQUIRED',
+            message: `Feature '${feature}' is not available on the ${TIER_LABEL[tier]} plan. Upgrade to unlock.`,
+            details: { feature, currentTier: tier },
+          },
+          meta: { timestamp: new Date().toISOString(), durationMs: Date.now() - start },
+        }),
+        { status: 402, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (options?.logAccess) {
+      log.info('Portal feature gate passed', {
+        userId: auth.userId,
+        organizationId: membership.organizationId,
+        feature,
+        tier,
+        path: request.nextUrl.pathname,
       });
     }
 
