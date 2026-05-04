@@ -77,7 +77,8 @@ This playbook codifies the demo into a runnable script so:
 
 ### Step 2 — Drill into a client (4 min)
 - From the Practice dashboard, click **Sarah Kim's** row in the alert stream (or her row in the client book table)
-- The route flips to `/portal/clients/[id]/view`. The canonical consumer dashboard renders left, with the **adviser overlay** docked right on desktop / collapsed to a bottom-sheet "Adviser view" peek bar on mobile (tap to expand)
+- The route flips to `/portal/clients/[id]/view`. **Phase 41g (2026-05-05):** the page lands on the **Structure tab by default** — the entity tree is the first thing the adviser sees, not the dashboard. Tab strip below the header: **Structure** (default) | **Money Flow** | **Dashboard**. The adviser overlay (notes / tasks / scope / compliance footer) sits docked right on desktop / collapsed to a bottom-sheet "Adviser view" peek bar on mobile across all three tabs.
+- **Frame Step 2 + Step 3 + Step 4 as one continuous flow** — the tabs mean no tab-switching, no separate page, no breaking the narrative. Step 3 (entity tree) is on the same URL as Step 2; Step 4 (Money Flow) is one click away.
 - **Frame the parity moment first:** *"This is exactly what Sarah sees when she logs in. You're looking at the same thing, side-by-side. That's why I built it this way — when you're on a Zoom with her, you both have the same picture, the same numbers, the same recommendations. There is no second admin app for you."*
 - **Walk the canonical primitives in this order, narrating as you go (90 seconds total):**
   1. **KPI strip** (Net worth / Cashflow / Liquid cash / Savings rate) — *"Headline numbers. Colour-coded by tone — emerald positive, rose negative."* Pause briefly on cashflow if it's negative.
@@ -96,9 +97,9 @@ This playbook codifies the demo into a runnable script so:
 - **Backup if a tile renders empty:** the demo dataset has Sarah Kim with FULL scope — if anything is empty, switch to David Mei or open her dashboard as the consumer (second browser) to verify, then resume.
 
 ### Step 3 — Open the entity tree (THE moment) (3 min)
-- **Pre-condition:** Step 3 lights up properly only after Phase 41a–c lands (entity schema + tree + per-entity snapshot wiring). Until then, the drill-in surface from Step 2 is the closer for the dashboard portion of the pitch — Step 3's entity-structure narrative belongs in the second meeting.
-- Click **"My Structure"** in Sarah's sidebar (Phase 41 ships this nav item)
-- Entity Tree renders: Sarah Kim (person) → Sarah Kim (personal name entity) → Sarah Kim Pty Ltd → 1 property
+- **Pre-condition: ✅ LIVE 2026-05-05.** Phase 41a (schema) + 41b (wizard) + 41c (tree) + 41g (adviser drill-in mount) all shipped. The entity tree is the **default tab** on `/portal/clients/[id]/view` — the adviser is already looking at it from Step 2. No nav-switching needed.
+- Already on Sarah's drill-in (from Step 2). The Structure tab is selected by default — the entity tree renders immediately.
+- Entity Tree shows: Sarah Kim (person) → Sarah Kim (personal name entity) → Sarah Kim Pty Ltd → 1 property
 - Frame: *"Sarah's structure is simple. Watch this."*
 - **Switch advisers** by clicking "Back to clients" in the page header (top-left), then click **Olivia Novak's** row from the alert stream — this round-trips through `/portal/clients/[id]/view` cleanly, so the adviser sees that drilling between clients is one click, not a re-navigation
 - Open Olivia's Entity Tree: Olivia → personal name → Discretionary Trust → Unit Trust → Pty Ltd → SMSF → 4 properties spread across them
