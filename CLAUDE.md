@@ -42,6 +42,8 @@ When the user asks for a feature, plan, redesign, or review, you are **expected*
 
 ### 0.4 Reference triggers
 
+> **Note:** A project-level Agent Skill at `.claude/skills/architect-mode/SKILL.md` codifies an extended six-lens version of this advisory mindset (adds **Visual Designer** + **Growth & Marketing Strategist**, plus the **One Clear Action principle** and stage-gated feature exposure language) and auto-triggers on substantive Monitrax product decisions. The skill is explicitly subordinated to this CLAUDE.md — when they disagree, CLAUDE.md wins.
+
 Specific surfaces in this codebase where each lens dominates the right answer — used as a check when you're not sure which lens to lead with:
 
 | Surface | Lead lens(es) |
@@ -653,7 +655,8 @@ When fixing bugs, always add a brief comment explaining the fix in the code itse
 
 | Data/Logic | Canonical Source | NEVER duplicate in |
 |------------|-----------------|-------------------|
-| Financial snapshot | `lib/services/masterFinancialService.ts` → `getMasterFinancialSnapshot()` | API route handlers |
+| Financial snapshot (totals, expense/income breakdowns, cashflow, emergency fund, health score, debt metrics, quick metrics) | `lib/services/masterFinancialService.ts` → `getMasterFinancialSnapshot()` | API route handlers |
+| GRDCS / relational snapshot (`SnapshotV2`: per-entity `_links` / `_meta`, `linkageHealth`, `moduleCompleteness`, `relationalInsights`, GRDCS-aware property/loan/investment arrays) | `app/api/portfolio/snapshot/route.ts` (entry) → `lib/intelligence/insightsEngine.ts` (compute) | Any new route or hook that needs GRDCS data — fetch this snapshot, do not re-aggregate |
 | Net worth | `lib/calculations/netWorthCalculator.ts` | Components, route handlers |
 | Cashflow | `lib/calculations/cashflowOrchestrator.ts` | Components, route handlers |
 | Expense aggregation | `lib/calculations/expenseAggregator.ts` | Route handlers |
@@ -671,6 +674,8 @@ When fixing bugs, always add a brief comment explaining the fix in the code itse
 3. If it doesn't exist — **create it in the canonical location**, then import
 
 **NEVER inline financial calculations in API route handlers or components.**
+
+**Two snapshot SSOTs, not duplication.** `getMasterFinancialSnapshot()` and `/api/portfolio/snapshot` cover different scopes — they are NOT duplicates of each other. Master answers *"what's my financial position right now?"* (totals, breakdowns, ratios, health). Portfolio/snapshot returns `SnapshotV2` and answers *"what does my portfolio look like as a relational graph?"* (per-entity GRDCS `_links`/`_meta`, orphan detection, `linkageHealth`, `moduleCompleteness`, `relationalInsights`). A future PR may consolidate them by promoting GRDCS layers into master, but that's a design decision — **never delete `/api/portfolio/snapshot` under the assumption it's a duplicate of master.** This was tested and confirmed during 2026-05-02's snapshot-route cleanup (PR #598): the master shape does not expose GRDCS data and migrating its callers would silently lose information.
 
 ### 12.3 Single Calculation Engine — No Competing Implementations
 
@@ -1417,6 +1422,8 @@ must be rejected by the reviewer.
 ```
 
 Even if the answer is "no covered surface changed in this PR," the block MUST appear with all rows unchecked — that's positive confirmation, not absence of evidence.
+
+> **Operational enforcement:** A project-level Agent Skill at `.claude/skills/pr-prep-checklist/SKILL.md` auto-triggers on PR-preparation cues ("create a PR", "open a PR", "let's merge this", etc.) and walks this §16.5 block step-by-step, refusing to call `mcp__github__create_pull_request` until every required doc (per §16.3 matrix), `IMPLEMENTATION_PLAN.md` update (§15), and `CHANGELOG` entry (§11) is in the same PR. The skill points at this CLAUDE.md as the source of truth — it never duplicates rules. When the skill and CLAUDE.md disagree, CLAUDE.md wins.
 
 ### 16.6 Reviewer enforcement
 

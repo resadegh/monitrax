@@ -3,7 +3,8 @@
  * GET /api/dashboard/insights - Get actionable financial insights
  *
  * REFACTORED to use:
- * - FinancialSnapshotService for consistent expense/income calculations
+ * - getMasterFinancialSnapshot (canonical Phase-28 SSOT) for consistent
+ *   expense/income/cashflow/loans/accounts totals
  * - Financial Health Engine for health score (same as sidebar) - Blueprint §5.1
  *
  * Provides:
@@ -17,7 +18,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
-import { getFinancialSnapshot } from '@/lib/services/financialSnapshot';
+import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import { quickHealthCheck, scoreToRiskBand, FinancialHealthInput, PropertyData, LoanData, AccountData, InvestmentData, IncomeData, ExpenseData } from '@/lib/health';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
@@ -97,8 +98,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
     try {
       const userId = auth.userId;
 
-      // Get centralized financial snapshot for consistent totals
-      const snapshot = await getFinancialSnapshot(userId);
+      // Get canonical Phase-28 snapshot (single source of truth)
+      const snapshot = await getMasterFinancialSnapshot(userId);
 
       // Get health score from Financial Health Engine (same as sidebar) - Blueprint §5.1
       // This ensures Dashboard and Sidebar show the same health score
@@ -124,8 +125,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const essentialExpenses = snapshot.expenses.monthly.essential.total;
       const discretionaryExpenses = snapshot.expenses.monthly.discretionary.total;
       const totalMonthlyIncome = snapshot.income.monthly.all.netTotal;
-      const monthlyLoanPayments = snapshot.loans.monthlyRepayments;
-      const liquidCash = snapshot.accounts.liquidCash;
+      const monthlyLoanPayments = snapshot.quickMetrics.monthlyLoanRepayments;
+      const liquidCash = snapshot.quickMetrics.liquidCash;
 
       // Build category spending breakdown using expense details
       const expensesByCategory: Record<string, CategorySpending> = {};
@@ -194,8 +195,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const monthsCovered = snapshot.emergencyFund.monthsCovered;
       const emergencyFundGap = snapshot.emergencyFund.gap;
       const emergencyFundStatus = snapshot.emergencyFund.status;
-      const savingsRate = snapshot.healthScore.savingsRate;
-      const debtToIncome = snapshot.healthScore.debtToIncome;
+      const savingsRate = snapshot.quickMetrics.savingsRate;
+      const debtToIncome = snapshot.healthScore.components.debtToIncome.value;
 
       // Score calculations (0-100 for each component) - for breakdown display
       const savingsRateScore = Math.min(Math.max(savingsRate * 5, 0), 100);

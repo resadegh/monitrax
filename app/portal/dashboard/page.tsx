@@ -1,24 +1,28 @@
 /**
  * Phase 32B PR2 — Practice dashboard.
  *
- * Replaces the previous Phase 32 "Coming Soon" stub with the assembled
- * Practice view: KPI strip + alert stream + client book table, all driven
- * by the lighthouse demo dataset (5 fictitious AU property-investor clients
- * across all 5 TRAIL stages, 7 alerts spanning every v1 trigger kind).
+ * Renders the assembled Practice view: KPI strip + alert stream + client
+ * book table. Driven by the lighthouse fixture dataset until Phase 32C PR3+
+ * wires real snapshot deltas; the fixture also serves as the empty-state
+ * preview for orgs that haven't onboarded a real client yet.
  *
- * Demo-mode profession switcher in the header lets the lighthouse pitch
- * cycle through `FINANCIAL_ADVISOR` → `MORTGAGE_BROKER` → `ACCOUNTING_FIRM`
- * to demonstrate the same engine producing role-flavoured columns + alert
- * filtering. **Production hides the switcher entirely** — production reads
- * `org.profession` from the resolved `Organization` record (Phase 32B PR1
- * schema). The `?profession=…` query parameter only takes effect in demo
- * mode, gated by `NEXT_PUBLIC_PORTAL_DEMO_MODE=1` in the build env.
+ * Reza directive 2026-05-04: skip the demo-mode profession switcher and
+ * build the complete capabilities. The lighthouse pitch happens against
+ * THE REAL APP populated with realistic seeded users (Up Next #33), not
+ * a demo skin. This page therefore reads `currentOrg.profession` from the
+ * Organization record exclusively — no toggle, no env-gated mode, no
+ * runtime switching.
  *
- * Real data wires in PR3 alongside the canonical client drill-in surface.
+ * Fallback: if `currentOrg.profession` is unset (legacy org pre-PR1
+ * migration) we fall back to `currentOrg.organizationType` (the legacy
+ * shadow column on `OrganizationPortalSettings`). If both are unset we
+ * default to `FINANCIAL_ADVISOR` so the surface still renders correctly.
+ *
+ * Profession is forced at registration; once set, it cannot be flipped
+ * by an in-page toggle.
  */
 'use client';
 
-import { useState } from 'react';
 import type { OrganizationType } from '@prisma/client';
 import {
   PracticeHeader,
@@ -34,28 +38,17 @@ import {
 } from '@/lib/portal/practice';
 import { useOrganization } from '@/lib/portal';
 
-const isDemoMode =
-  typeof process !== 'undefined' &&
-  process.env?.NEXT_PUBLIC_PORTAL_DEMO_MODE === '1';
-
 export default function PortalDashboardPage() {
   const { currentOrg } = useOrganization();
 
-  // Demo mode lets us cycle the profession on the same page without re-onboarding
-  // an org. Production reads `currentOrg.profession` and ignores the switcher.
-  const [demoProfession, setDemoProfession] =
-    useState<OrganizationType>('FINANCIAL_ADVISOR');
-
-  // Production: read profession from the org (canonical
-  // `Organization.profession` field added in Phase 32B PR1; falls back to
-  // legacy `organizationType` for orgs created before the migration; falls
-  // back to `FINANCIAL_ADVISOR` for orgs that have neither yet).
-  // Demo: switcher controls local state, ignoring org.profession.
-  const orgProfession =
+  // Profession resolution chain:
+  //   1. Organization.profession (canonical, Phase 32B PR1)
+  //   2. OrganizationPortalSettings.organizationType (legacy shadow)
+  //   3. FINANCIAL_ADVISOR (catch-all default)
+  const profession: OrganizationType =
     (currentOrg?.profession as OrganizationType | undefined) ??
     (currentOrg?.organizationType as OrganizationType | undefined) ??
     'FINANCIAL_ADVISOR';
-  const profession: OrganizationType = isDemoMode ? demoProfession : orgProfession;
 
   const config = getPracticeProfessionConfig(profession);
   const kpis = computeKpis(LIGHTHOUSE_CLIENTS, LIGHTHOUSE_ALERTS);
@@ -69,8 +62,6 @@ export default function PortalDashboardPage() {
           organisationName={orgName}
           profession={profession}
           practiceLabel={config.practiceLabel}
-          onProfessionChange={isDemoMode ? setDemoProfession : undefined}
-          demoMode={isDemoMode}
         />
 
         <PracticeKpiStrip kpis={kpis} />
