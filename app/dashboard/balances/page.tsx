@@ -50,7 +50,12 @@ import {
   LoanFormDialog,
   type LoanFormPropertyOption,
   type LoanFormAssetOption,
+  type LoanFormValues,
 } from '@/components/loans/LoanFormDialog';
+import {
+  LoanDetailDialog,
+  type LoanDetail,
+} from '@/components/loans/LoanDetailDialog';
 import { AddSourcePicker } from '@/components/ui/AddSourcePicker';
 import { TransactionImportDialog } from '@/components/bank/TransactionImportDialog';
 import { useBasiqConnect } from '@/hooks/useBasiqConnect';
@@ -101,12 +106,50 @@ interface LoanRow {
   principal: number;
   interestRateAnnual: number;
   rateType: 'FIXED' | 'VARIABLE';
-  isInterestOnly?: boolean;
+  // Phase 36 Phase 2a: widened to carry every field the shared
+  // LoanDetailDialog needs. /api/loans already returns all of these —
+  // we just declare them so the row → dialog handoff is type-safe.
+  // The required fields are kept optional here because the row view
+  // is tolerant of partial data; LoanDetailDialog defends against
+  // missing values per-tab.
+  isInterestOnly: boolean;
+  termMonthsRemaining: number;
+  minRepayment: number;
+  repaymentFrequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY';
   fixedExpiry?: string | null;
-  property?: { id: string; name: string } | null;
-  offsetAccount?: { id: string; name: string; currentBalance: number } | null;
+  extraRepaymentCap?: number | null;
+  property?: {
+    id: string;
+    name: string;
+    currentValue?: number;
+    address?: string | null;
+  } | null;
+  offsetAccount?: {
+    id: string;
+    name: string;
+    currentBalance: number;
+    institution?: string | null;
+  } | null;
   linkedAsset?: { id: string; name: string } | null;
   linkedAccount?: { id: string; name: string } | null;
+  expenses?: Array<{
+    id: string;
+    name: string;
+    category: string;
+    amount: number;
+    frequency: string;
+    isTaxDeductible: boolean;
+    vendorName?: string;
+  }>;
+  // GRDCS metadata for the Linked tab.
+  _links?: {
+    self: string;
+    related: GRDCSLinkedEntity[];
+  };
+  _meta?: {
+    linkedCount: number;
+    missingLinks: GRDCSMissingLink[];
+  };
 }
 
 interface BasiqConnection {
@@ -186,6 +229,15 @@ function BalancesPageContent() {
   >([]);
   const [loanFormAssets, setLoanFormAssets] = useState<LoanFormAssetOption[]>([]);
   const [loanFormLookupsLoaded, setLoanFormLookupsLoaded] = useState(false);
+  // Phase 1b extension (Phase 36 Phase 2a): editing a loan reuses
+  // LoanFormDialog with the populated values. `null` means create mode.
+  const [editingLoan, setEditingLoan] = useState<LoanFormValues | null>(null);
+
+  // Phase 36 Phase 2a: loan detail dialog inline on Balances.
+  // Clicking a loan row now opens the shared LoanDetailDialog instead
+  // of navigating to /dashboard/loans/{id}.
+  const [detailLoan, setDetailLoan] = useState<LoanRow | null>(null);
+  const [loanDetailOpen, setLoanDetailOpen] = useState(false);
 
   // Phase 1c: data-source picker state. The "+ Account" / "+ Loan"
   // toolbar buttons open a small 2-tile picker (Import / Manual) per
@@ -257,6 +309,7 @@ function BalancesPageContent() {
       }
       setLoanFormLookupsLoaded(true);
     }
+    setEditingLoan(null);
     setLoanFormOpen(true);
   };
 
@@ -298,7 +351,101 @@ function BalancesPageContent() {
 
   const handleLinkedEntityNavigate = (entity: GRDCSLinkedEntity) => {
     setDetailOpen(false);
+    setLoanDetailOpen(false);
     openLinkedEntity(entity);
+  };
+
+  // Phase 36 Phase 2a: open the inline loan detail dialog. Mirrors
+  // `openAccountDetail` — the page already has the loan in state from
+  // the /api/loans fetch, so no extra request is needed.
+  const openLoanDetail = (loan: LoanRow) => {
+    setDetailLoan(loan);
+    setLoanDetailOpen(true);
+  };
+
+  // Phase 36 Phase 2a: open LoanFormDialog in edit mode for a loan
+  // already in state. Map LoanRow → LoanFormValues (decimal rate
+  // preserved). Properties + assets lookups are loaded lazily; if the
+  // user opens detail → edit before they ever opened "+ Loan" we
+  // need to populate them now.
+  const openLoanEdit = async (loan: LoanDetail) => {
+    if (!loanFormLookupsLoaded && token) {
+      // Reuse the same lazy-fetch the create flow uses. We can't
+      // factor this out without churn the rest of this PR doesn't
+      // want, so the inline duplication is intentional and small.
+      const headers = { Authorization: `Bearer ${token}` };
+      const [propsResult, assetsResult] = await Promise.allSettled([
+        fetch('/api/properties', { headers }).then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/assets', { headers }).then((r) => (r.ok ? r.json() : null)),
+      ]);
+      if (propsResult.status === 'fulfilled' && propsResult.value) {
+        const props = propsResult.value.data ?? propsResult.value.properties ?? [];
+        setLoanFormProperties(
+          props.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name }))
+        );
+      }
+      if (assetsResult.status === 'fulfilled' && assetsResult.value) {
+        const assets = assetsResult.value.data ?? assetsResult.value.assets ?? [];
+        setLoanFormAssets(
+          assets.map(
+            (a: {
+              id: string;
+              name: string;
+              currentValue: number;
+              vehicleMake?: string;
+              vehicleModel?: string;
+            }) => ({
+              id: a.id,
+              name: a.name,
+              currentValue: a.currentValue,
+              vehicleMake: a.vehicleMake,
+              vehicleModel: a.vehicleModel,
+            })
+          )
+        );
+      }
+      setLoanFormLookupsLoaded(true);
+    }
+    setEditingLoan({
+      id: loan.id,
+      name: loan.name,
+      type: loan.type,
+      principal: loan.principal,
+      interestRateAnnual: loan.interestRateAnnual,
+      rateType: loan.rateType,
+      isInterestOnly: loan.isInterestOnly,
+      termMonthsRemaining: loan.termMonthsRemaining,
+      minRepayment: loan.minRepayment,
+      repaymentFrequency: loan.repaymentFrequency,
+      fixedExpiry: loan.fixedExpiry,
+      extraRepaymentCap: loan.extraRepaymentCap,
+      propertyId: loan.property?.id ?? null,
+      offsetAccountId: loan.offsetAccount?.id ?? null,
+      // linkedAsset / linkedAccount IDs aren't carried on LoanDetail
+      // in this PR — the legacy edit form already tolerates undefined
+      // here (it leaves the select empty).
+    });
+    setLoanFormOpen(true);
+  };
+
+  // Phase 36 Phase 2a: delete handler invoked from the LoanDetailDialog
+  // footer. Mirrors `handleDeleteAccount` — the dialog runs its own
+  // AlertDialog confirmation BEFORE this fires.
+  const handleDeleteLoan = async (loan: LoanDetail) => {
+    if (!token) return;
+    const response = await fetch(`/api/loans/${loan.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        typeof errorData.error === 'string'
+          ? errorData.error
+          : `Failed to delete loan (${response.status})`
+      );
+    }
+    void reloadData();
   };
 
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
@@ -618,7 +765,12 @@ function BalancesPageContent() {
               >
                 <div className="anim-rise-stagger">
                   {loans.map((l) => (
-                    <LoanRowView key={l.id} loan={l} accounts={accounts} />
+                    <LoanRowView
+                      key={l.id}
+                      loan={l}
+                      accounts={accounts}
+                      onClick={() => openLoanDetail(l)}
+                    />
                   ))}
                 </div>
               </Section>
@@ -645,6 +797,25 @@ function BalancesPageContent() {
         onOpenChange={setDetailOpen}
         onEdit={openAccountEdit}
         onDelete={handleDeleteAccount}
+        onLinkedEntityNavigate={handleLinkedEntityNavigate}
+      />
+
+      {/*
+       * Phase 36 Phase 2a — inline loan detail dialog. Same component
+       * as the legacy /dashboard/loans page, so the click-through UX is
+       * identical on both surfaces. `detailLoan` is typed as the
+       * server-side LoanRow which structurally satisfies LoanDetail
+       * (now that the type was widened above).
+       */}
+      <LoanDetailDialog
+        loan={detailLoan as LoanDetail | null}
+        open={loanDetailOpen}
+        onOpenChange={setLoanDetailOpen}
+        onEdit={(l) => {
+          setLoanDetailOpen(false);
+          void openLoanEdit(l);
+        }}
+        onDelete={handleDeleteLoan}
         onLinkedEntityNavigate={handleLinkedEntityNavigate}
       />
 
@@ -681,8 +852,11 @@ function BalancesPageContent() {
        */}
       <LoanFormDialog
         open={loanFormOpen}
-        onOpenChange={setLoanFormOpen}
-        editing={null}
+        onOpenChange={(o) => {
+          setLoanFormOpen(o);
+          if (!o) setEditingLoan(null); // reset to create mode on close
+        }}
+        editing={editingLoan}
         properties={loanFormProperties}
         offsetAccounts={accounts
           .filter((a) => a.type !== 'CREDIT_CARD')
@@ -932,7 +1106,15 @@ function AccountRowView({
 // Loan row (preserves property/offset/asset relationships visually)
 // ---------------------------------------------------------------------------
 
-function LoanRowView({ loan, accounts }: { loan: LoanRow; accounts: AccountRow[] }) {
+function LoanRowView({
+  loan,
+  accounts,
+  onClick,
+}: {
+  loan: LoanRow;
+  accounts: AccountRow[];
+  onClick: () => void;
+}) {
   const meta = LOAN_TYPE_META[loan.type];
   const Icon = meta.icon;
 
@@ -943,9 +1125,10 @@ function LoanRowView({ loan, accounts }: { loan: LoanRow; accounts: AccountRow[]
   const effectivePrincipal = loan.principal - offsetReduction;
 
   return (
-    <Link
-      href={`/dashboard/loans/${loan.id}`}
-      className="flex items-start gap-4 px-4 sm:px-5 py-4 border-b border-border last:border-0 hover-lift hover:bg-muted/40 group"
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left flex items-start gap-4 px-4 sm:px-5 py-4 border-b border-border last:border-0 hover-lift hover:bg-muted/40 group"
     >
       <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${meta.accent} shrink-0 mt-0.5`}>
         <Icon className="w-5 h-5" />
@@ -994,7 +1177,7 @@ function LoanRowView({ loan, accounts }: { loan: LoanRow; accounts: AccountRow[]
         </div>
         <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors" />
       </div>
-    </Link>
+    </button>
   );
 }
 
