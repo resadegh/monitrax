@@ -155,7 +155,9 @@ This playbook codifies the demo into a runnable script so:
   - **"User-initiated revocation"** flow — frame: *"This is the OAIC NDB question. We delete within 24 hours, no soft-delete, audit log written. Done."*
   - **"Database access"** section (WIF + Cloud SQL Connector + IAM auth, no static credential) — frame: *"This is what closes CDR §3.2. Your compliance team won't have heard another fintech describe this with this much specificity."*
 - Frame the broader pack: *"Send this URL to your compliance team — `[your-monitrax-instance]/help`. Every concern they will raise is documented here, dated, with the source-of-truth doc cross-referenced. It saves the back-and-forth that usually kills a vendor evaluation."*
-- Note that PDF export per article + ZIP bundle export ("CDR Compliance Pack" all-in-one) ships in Phase 33c — single-click compliance pack download for the auditor's evidence file. Currently article links work; downloadable pack is the next slice.
+- **Demo the per-article PDF download** — every compliance article carries a "Download as PDF" button in its header. Click it → new tab opens at `/print/help/...` → browser's Save-as-PDF dialog opens automatically → adviser ends up with a file like `cdr-consent-walkthrough.pdf` to drop into their compliance evidence folder. Frame: *"Your compliance team can keep a dated PDF in their evidence file, signed off, and re-download when we revise it. Every PDF carries the canonical URL in the footer so they can prove provenance to their auditor."*
+- The print view is auditor-clean: Monitrax brand mark + audience + reviewed date in the header; canonical URL at the foot. No nav chrome. Print pages aren't indexed by search engines (`robots: noindex,nofollow`) so they only ever exist where you publish them deliberately.
+- ZIP bundle export ("CDR Compliance Pack" all-in-one — multi-article single-click download) DEFERS TO PROD — single-article PDF is sufficient for the lighthouse meeting.
 
 **Compliance pack table of contents (Phase 33a SHIPPED 2026-05-04 + Phase 33d SHIPPED 2026-05-04):**
 | Article | Status | Audience | Compliance class |
