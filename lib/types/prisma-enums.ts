@@ -27,7 +27,6 @@ export type AccountType = 'SAVINGS' | 'TRANSACTIONAL' | 'OFFSET' | 'CREDIT_CARD'
  * - OFFSET: Mortgage offset accounts (fully liquid, can be withdrawn anytime)
  *
  * SINGLE SOURCE OF TRUTH - used by:
- * - lib/services/financialSnapshot.ts
  * - lib/services/masterFinancialService.ts
  * - lib/cfo/scoreCalculator.ts
  */

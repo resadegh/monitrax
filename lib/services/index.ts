@@ -44,22 +44,3 @@ export {
   type EmergencyFundMetrics,
   type HealthScoreMetrics,
 } from './masterFinancialService';
-
-// =============================================================================
-// LEGACY EXPORTS (DEPRECATED - Use Master Service Instead)
-// =============================================================================
-
-/**
- * @deprecated Use getMasterFinancialSnapshot() instead
- */
-export {
-  getFinancialSnapshot,
-  getMonthlyExpenseTotal,
-  getMonthlyIncomeTotal,
-  getMonthlyCashflow as getLegacyMonthlyCashflow,
-  type FinancialSnapshot,
-  type ExpenseBreakdown,
-  type IncomeBreakdown,
-  type AccountSummary,
-  type LoanSummary,
-} from './financialSnapshot';
