@@ -1,5 +1,73 @@
 # Changelog — 2026-05-04
 
+## Session: claude/demo-complete-plan-pitch-playbook (follow-up to PR #603 — doc-only)
+
+### Changes Made
+- **Type:** Docs / strategy
+- **Scope:** Demo-complete sequencing + lighthouse pitch playbook scaffold
+- **Description:** PR #603 merged (Phase 32B PR1+PR2 LIVE). This follow-up PR captures the scope refinement decided in conversation immediately after the merge:
+  1. Demo-complete = fully functional working demo of the complete capabilities, not a half-built skeleton
+  2. Sankey IN demo-complete (Reza preference)
+  3. Three pitch-fixture archetypes confirmed (Sarah / David+Emma / Olivia)
+  4. Only PROD-hardening tasks defer to PROD-ready
+  5. Pitch process must be documented end-to-end so Reza has a runnable playbook
+
+### Files Modified
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - Header `Last updated` rewritten — names PR #603 merge + the demo-complete pivot + the Sankey-in-demo decision + pitch playbook scaffold creation
+  - New section `🎯 Demo-Complete Critical Path — Lighthouse Adviser Pitch` ABOVE Up Next, with a 14-week calendar table sequencing every demo-complete deliverable (week 1 PR3 + Phase 33a parallel, week 2-9 entity layer + AI entity-aware + trimmed Xero, week 10-13 marketplace + Ask-a-Pro + conversations + Stripe test-mode + help center + compliance pack, week 14 fixture seed + pitch playbook final pass)
+  - New explicit `🛡️ DEFERRED to PROD-ready` bucket below the table — pen test, insurance, CMEK, Cloud Armor, Stripe live mode, training programs, DOCX templates, deep tax cases, Xero bidirectional sync, /admin/orgs surface, ZIP bundle export, email-in hardening, conversation 7yr archive infra, real ASIC/TPB cross-check, performance hardening, plan-tier polish
+  - Up Next #33 (lighthouse pitch fixture seed) rewritten to capture Reza's three confirmed archetypes verbatim
+  - Up Next #34 added (pitch process documentation — final pass alongside #33 fixture seed)
+  - Recently Completed (2026-05-04) block rewritten — first entry consolidates PR #603 (Phase 32B PR1+PR2 + 4 strategic addenda); second entry covers this follow-up (demo-complete plan + pitch playbook scaffold)
+
+### Files Created
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — scaffold for the 25-minute lighthouse adviser pitch playbook. Sections:
+  - Why this document exists
+  - Pre-pitch checklist (30 min before meeting) — environment + seeded users verified, screen-share rehearsed, notifications silenced, backup plan
+  - The 25-minute demo flow — 10 numbered steps (Open with adviser's pain → Practice dashboard → drill into client → Entity Tree the moment → Sankey → AI advice with entity-awareness → Ask-a-Pro in action → conversation thread → compliance pack → pricing + the ask)
+  - Common objections + responses (seeded with 6; populated as more arrive)
+  - Post-pitch follow-up cadence (1hr / 24hr / 7-day)
+  - Design-partner conversion path (placeholder; populated when first conversion happens)
+  - Maintenance protocol (update after every pitch)
+  - Each step contains a "TO BE WRITTEN AS BUILD COMPLETES" placeholder so the engineer who ships the corresponding feature populates the demo script in lockstep with what actually works in the demo env
+
+### Files NOT Modified
+- No code changes. No schema changes. No new dependencies.
+- No `06_UI_UX_FOUNDATION.md` / `03_DATA_MODEL.md` / `09_INFRASTRUCTURE.md` updates required (pure planning + playbook scaffolding).
+
+### Build Status
+- N/A — docs-only PR. Will not affect Vercel build.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure (new failure mode / diagnostic / lesson)
+- [x] strategic decision (Demo-complete scope locked + pitch process documentation queued)
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — `🎯 Demo-Complete Critical Path` section + `🛡️ DEFERRED to PROD-ready` bucket + Up Next #33/#34 + Recently Completed entries
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — new scaffold
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this Session block (prepended above the PR #603 session)
+
+### Status at session close
+
+- 4 commits on `main` post-PR603 (this follow-up will be the 5th once merged)
+- Demo-complete bucket = ~14 weeks of focused engineering with sensible parallelism (one engineer entity layer + Practice + marketplace; second engineer / alternating sessions on Help Center + content authoring)
+- PROD-hardening bucket explicitly named so it doesn't sneak into demo-complete scope
+- Lighthouse pitch playbook scaffold in place — every demo-complete PR populates one or more "TO BE WRITTEN AS BUILD COMPLETES" placeholders so the playbook is camera-ready when fixture seed lands
+- Next session entry point: BOTH Phase 32B PR3 (drill-in canonical client view + adviser overlay + plan-tier gating) AND Phase 33a (Help Center static site + Markdown CMS) start in parallel
+
+---
+
+
+
 ## Session: claude/review-monitrax-docs-8HM3K (Phase 32B PR1)
 
 ### Changes Made
