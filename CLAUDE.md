@@ -1423,6 +1423,8 @@ must be rejected by the reviewer.
 
 Even if the answer is "no covered surface changed in this PR," the block MUST appear with all rows unchecked — that's positive confirmation, not absence of evidence.
 
+> **Operational enforcement:** A project-level Agent Skill at `.claude/skills/pr-prep-checklist/SKILL.md` auto-triggers on PR-preparation cues ("create a PR", "open a PR", "let's merge this", etc.) and walks this §16.5 block step-by-step, refusing to call `mcp__github__create_pull_request` until every required doc (per §16.3 matrix), `IMPLEMENTATION_PLAN.md` update (§15), and `CHANGELOG` entry (§11) is in the same PR. The skill points at this CLAUDE.md as the source of truth — it never duplicates rules. When the skill and CLAUDE.md disagree, CLAUDE.md wins.
+
 ### 16.6 Reviewer enforcement
 
 A reviewer (human or Claude in a follow-up session) MUST reject any PR that:

@@ -53,6 +53,36 @@ Docs updated in this PR:
 - PR URL: TBD on push
 - Status: Untracked → committed → pushed in this session
 
+### Follow-on additions (same session, same PR)
+
+**1. CLAUDE.md §0.4 cross-reference (commit `8f4c42e`).** Reza confirmed the additive policy ("if there is anything that is adding to the claude.md it is ok"), so a single-paragraph note was added to §0.4 pointing at `.claude/skills/architect-mode/SKILL.md` so future sessions reading the canonical advisory-mindset doc discover the extended six-lens version explicitly. Purely additive — no existing four-lens content, table rows, or examples modified. Skill remains explicitly subordinated to CLAUDE.md.
+
+**2. Project-level skill `pr-prep-checklist` installed at `.claude/skills/pr-prep-checklist/SKILL.md`** (the file you're reading — its first practical use is on its own creation). 223 lines, ~11.5 KB. YAML frontmatter (`name`, 904-char `description` within the 1024 limit). Operationalises the existing CLAUDE.md §3 / §11 / §15 / §16 doc-sync protocol — auto-triggers on PR-preparation cues ("create a PR", "open a PR", "let's merge this", etc.) and walks the §16.5 block step-by-step before allowing `mcp__github__create_pull_request` to fire. Verifies surface-to-doc mapping (§16.3 matrix), `IMPLEMENTATION_PLAN.md` updates (§15), `CHANGELOG` entry (§11), destructive-write checklist (§12.11) where applicable, schema-with-migration rule (§12.12) where applicable. Trivial PRs (`chore:`, `docs:` typo, `style:` formatting-only) get a one-line confirmation shortcut. Points at CLAUDE.md as the single source of truth — never duplicates rules. CLAUDE.md §16.5 updated with a single-paragraph cross-reference to the skill (purely additive). Closes the gap between "CLAUDE.md mandates §16.5" and "the model actually runs the §16.5 block at PR time."
+
+**Why both skills in one PR:** they're complementary governance additions in the same session, both project-level, both authored under the `skill-security-review` methodology, both checked into the same branch. Bundling avoids two near-identical PRs.
+
+**Doc-sync block (revised for the full PR including these additions):**
+
+```markdown
+## Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (new failure mode / diagnostic / lesson) — `pr-prep-checklist` is itself a new operational procedure (PR-prep enforcement)
+- [x] strategic decision (Open Question resolved / workstream parked or revived) — REACH-vs-TRAIL resolved (Option B); operational enforcement layer added on top of §16
+
+Docs updated in this PR:
+- `CLAUDE.md:§0.4` — cross-reference to architect-mode skill (additive)
+- `CLAUDE.md:§16.5` — cross-reference to pr-prep-checklist skill (additive)
+- `docs/IMPLEMENTATION_PLAN.md:✅ Recently Completed (2026-05-03)` — both skill installs
+- `docs/changelog/CHANGELOG_2026_05_03.md` — full session changelog (this file)
+```
+
 ### Out-of-scope (this session, not this PR)
 
 Earlier in the same session, ~60 skills were vetted and installed at **user level** (`~/.claude/skills/`), governed by the `skill-security-review` skill (also user-level) authored at the start of the session. None of those changes touched the Monitrax repo. Pin records at:
