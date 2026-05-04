@@ -121,24 +121,26 @@ This playbook codifies the demo into a runnable script so:
 - Frame the broader pack: *"Send this URL to your compliance team — `[your-monitrax-instance]/help`. Every concern they will raise is documented here, dated, with the source-of-truth doc cross-referenced. It saves the back-and-forth that usually kills a vendor evaluation."*
 - Note that PDF export per article + ZIP bundle export ("CDR Compliance Pack" all-in-one) ships in Phase 33c — single-click compliance pack download for the auditor's evidence file. Currently article links work; downloadable pack is the next slice.
 
-**Compliance pack table of contents (Phase 33a SHIPPED 2026-05-04 + planned):**
+**Compliance pack table of contents (Phase 33a SHIPPED 2026-05-04 + Phase 33d SHIPPED 2026-05-04):**
 | Article | Status | Audience | Compliance class |
 |---|---|---|---|
 | CDR Consent Walkthrough | ✅ Live | compliance | cdr |
-| Data Retention Schedule | 📋 Phase 33d | compliance | cdr |
-| Incident Response Plan summary | 📋 Phase 33d | compliance | general |
-| Architecture Overview for Compliance Officers | 📋 Phase 33d | compliance | general |
-| ASIC RG 244 / RG 36 boundary statement (AI is general-info-only) | 📋 Phase 33d | compliance | afsl |
+| Data Retention Schedule | ✅ Live | compliance | cdr |
+| Incident Response Plan summary | ✅ Live | compliance | general |
+| Architecture Overview for Compliance Officers | ✅ Live | compliance | general |
+| ASIC RG 244 / RG 36 boundary statement (AI is general-info-only) | ✅ Live | compliance | afsl |
+| Data Handling Policy summary | ✅ Live | compliance | privacy |
 | Inviting your first client | ✅ Live | org-admin | general |
 | What is the TRAIL framework? | ✅ Live | consumer | general |
 
 **Common regulator-side questions and where to point them:**
 - *"How is consent obtained?"* → CDR Consent Walkthrough §"The consent grant flow"
 - *"What happens when consent is revoked?"* → CDR Consent Walkthrough §"User-initiated revocation"
-- *"How long is data retained?"* → Data Retention Schedule (Phase 33d)
-- *"Where is the data stored, and who can access it?"* → CDR Consent Walkthrough §"Database access" + §"Encryption"
-- *"What's the breach notification process?"* → Incident Response Plan summary (Phase 33d), which references `docs/policy/INCIDENT_RESPONSE_PLAN.md`
-- *"How does the AI advisor stay on the right side of AFSL?"* → ASIC RG 244 / RG 36 boundary statement (Phase 33d)
+- *"How long is data retained?"* → Data Retention Schedule §"Retention table — by data category"
+- *"Where is the data stored, and who can access it?"* → Architecture Overview for Compliance Officers §"Database access — no static credential" + CDR Consent Walkthrough §"Encryption"
+- *"What's the breach notification process?"* → Incident Response Plan Summary §"Breach notification timelines" (auditor-facing summary; full policy at `docs/policy/INCIDENT_RESPONSE_PLAN.md`)
+- *"How does the AI advisor stay on the right side of AFSL?"* → ASIC RG 244 / RG 36 boundary statement §"The single-voice AI architecture"
+- *"How do you control staff access to consumer data?"* → Data Handling Policy Summary §"Staff access to consumer data — controls in force" + §"Segregation of duties"
 
 ### Step 9 — Pricing + the ask (2 min)
 - Open the pricing tab
