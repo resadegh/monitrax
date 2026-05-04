@@ -8,16 +8,12 @@ import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, Building, Link2, Lightbulb, LayoutGrid, List, Car, CreditCard, GraduationCap, Briefcase } from 'lucide-react';
+import { Landmark, Plus, Edit2, Trash2, Home as HomeIcon, Wallet, Calendar, TrendingDown, Eye, Receipt, DollarSign, Percent, LayoutGrid, List, Car, CreditCard, GraduationCap, Briefcase } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
-import { LinkedDataPanel } from '@/components/LinkedDataPanel';
-import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 // FormDocumentUpload + FieldMapping are now used inside the shared
@@ -27,6 +23,10 @@ import {
   LoanFormDialog,
   type LoanFormValues,
 } from '@/components/loans/LoanFormDialog';
+import {
+  LoanDetailDialog,
+  type LoanDetail,
+} from '@/components/loans/LoanDetailDialog';
 
 interface Expense {
   id: string;
@@ -261,16 +261,6 @@ function LoansPageContent() {
     return new Date(dateString).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const convertToAnnual = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52;
-      case 'FORTNIGHTLY': return amount * 26;
-      case 'MONTHLY': return amount * 12;
-      case 'ANNUAL': return amount;
-      default: return amount * 12;
-    }
-  };
-
   // Calculate effective balance (principal minus offset)
   const calculateEffectiveBalance = (loan: Loan) => {
     const offsetBalance = loan.offsetAccount?.currentBalance || 0;
@@ -287,12 +277,6 @@ function LoansPageContent() {
   const calculateLVR = (loan: Loan) => {
     if (!loan.property?.currentValue || loan.property.currentValue <= 0) return null;
     return (loan.principal / loan.property.currentValue) * 100;
-  };
-
-  // Calculate total linked expenses
-  const calculateLinkedExpenses = (loan: Loan) => {
-    if (!loan.expenses || loan.expenses.length === 0) return 0;
-    return loan.expenses.reduce((sum, e) => sum + convertToAnnual(e.amount, e.frequency), 0);
   };
 
   const totalPrincipal = loans.reduce((sum, l) => sum + l.principal, 0);
@@ -630,337 +614,33 @@ function LoansPageContent() {
         onSaved={() => { void loadData(); }}
       />
 
-      {/* Detail Dialog */}
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Landmark className="h-5 w-5" />
-              {selectedLoan?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Loan details and linked data
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedLoan && (
-            <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="property">Property</TabsTrigger>
-                <TabsTrigger value="offset">Offset</TabsTrigger>
-                <TabsTrigger value="expenses">Expenses</TabsTrigger>
-                <TabsTrigger value="strategy" className="gap-1">
-                  <Lightbulb className="h-3 w-3" />
-                  Strategy
-                </TabsTrigger>
-                <TabsTrigger value="linked" className="gap-1">
-                  <Link2 className="h-3 w-3" />
-                  Linked
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">Principal Balance</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">{formatCurrency(selectedLoan.principal)}</p>
-                      {selectedLoan.offsetAccount && (
-                        <p className="text-sm text-green-600">
-                          Effective: {formatCurrency(calculateEffectiveBalance(selectedLoan))}
-                        </p>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">Interest Rate</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">{formatPercent(selectedLoan.interestRateAnnual)}</p>
-                      <p className="text-sm text-muted-foreground">{selectedLoan.rateType}</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">Annual Interest Cost</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold text-red-600">
-                        {formatCurrency(calculateAnnualInterest(selectedLoan))}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        ~{formatCurrency(calculateAnnualInterest(selectedLoan) / 12)}/month
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">Term Remaining</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold">{selectedLoan.termMonthsRemaining} months</p>
-                      <p className="text-sm text-muted-foreground">
-                        {(selectedLoan.termMonthsRemaining / 12).toFixed(1)} years
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Loan Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Type</span>
-                      <span className="font-medium">{
-                        selectedLoan.type === 'HOME' ? 'Home Loan' :
-                        selectedLoan.type === 'INVESTMENT' ? 'Investment Loan' :
-                        selectedLoan.type === 'CAR' ? 'Car Loan' :
-                        selectedLoan.type === 'PERSONAL' ? 'Personal Loan' :
-                        selectedLoan.type === 'LINE_OF_CREDIT' ? 'Line of Credit' :
-                        selectedLoan.type === 'STUDENT' ? 'Student / HECS-HELP' :
-                        selectedLoan.type === 'BUSINESS' ? 'Business Loan' :
-                        selectedLoan.type
-                      }</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Repayment Type</span>
-                      <span className="font-medium">{selectedLoan.isInterestOnly ? 'Interest Only' : 'Principal & Interest'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Min Repayment</span>
-                      <span className="font-medium">
-                        {formatCurrency(selectedLoan.minRepayment)} {selectedLoan.repaymentFrequency.toLowerCase()}
-                      </span>
-                    </div>
-                    {selectedLoan.rateType === 'FIXED' && selectedLoan.fixedExpiry && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Fixed Rate Expiry</span>
-                        <span className="font-medium">{formatDate(selectedLoan.fixedExpiry)}</span>
-                      </div>
-                    )}
-                    {selectedLoan.extraRepaymentCap && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Extra Repayment Cap</span>
-                        <span className="font-medium">{formatCurrency(selectedLoan.extraRepaymentCap)}/year</span>
-                      </div>
-                    )}
-                    {calculateLVR(selectedLoan) !== null && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">LVR</span>
-                        <span className={`font-medium ${calculateLVR(selectedLoan)! > 80 ? 'text-orange-600' : ''}`}>
-                          {calculateLVR(selectedLoan)!.toFixed(1)}%
-                        </span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="property" className="space-y-4 pt-4">
-                {selectedLoan.property ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Building className="h-5 w-5" />
-                        {selectedLoan.property.name}
-                      </CardTitle>
-                      {selectedLoan.property.address && (
-                        <CardDescription>{selectedLoan.property.address}</CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Property Value</p>
-                          <p className="text-xl font-bold">{formatCurrency(selectedLoan.property.currentValue)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Equity</p>
-                          <p className="text-xl font-bold text-green-600">
-                            {formatCurrency(selectedLoan.property.currentValue - selectedLoan.principal)}
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                          <span>LVR</span>
-                          <span>{calculateLVR(selectedLoan)?.toFixed(1)}%</span>
-                        </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${(calculateLVR(selectedLoan) || 0) > 80 ? 'bg-orange-500' : 'bg-primary'}`}
-                            style={{ width: `${Math.min(calculateLVR(selectedLoan) || 0, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <HomeIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No property linked to this loan</p>
-                    <p className="text-sm">Edit the loan to link a property</p>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="offset" className="space-y-4 pt-4">
-                {selectedLoan.offsetAccount ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Wallet className="h-5 w-5 text-green-600" />
-                        {selectedLoan.offsetAccount.name}
-                      </CardTitle>
-                      {selectedLoan.offsetAccount.institution && (
-                        <CardDescription>{selectedLoan.offsetAccount.institution}</CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Offset Balance</p>
-                          <p className="text-xl font-bold text-green-600">
-                            {formatCurrency(selectedLoan.offsetAccount.currentBalance)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">Interest Savings</p>
-                          <p className="text-xl font-bold text-green-600">
-                            {formatCurrency(selectedLoan.offsetAccount.currentBalance * selectedLoan.interestRateAnnual)}/yr
-                          </p>
-                        </div>
-                      </div>
-                      <Card className="bg-green-50 border-green-200">
-                        <CardContent className="pt-4">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="text-sm text-muted-foreground">Principal Balance</p>
-                              <p className="font-semibold">{formatCurrency(selectedLoan.principal)}</p>
-                            </div>
-                            <span className="text-2xl text-green-600">−</span>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Offset Balance</p>
-                              <p className="font-semibold text-green-600">{formatCurrency(selectedLoan.offsetAccount.currentBalance)}</p>
-                            </div>
-                            <span className="text-2xl">=</span>
-                            <div>
-                              <p className="text-sm text-muted-foreground">Effective Balance</p>
-                              <p className="font-semibold">{formatCurrency(calculateEffectiveBalance(selectedLoan))}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No offset account linked to this loan</p>
-                    <p className="text-sm">Edit the loan to link an offset account</p>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="expenses" className="space-y-4 pt-4">
-                {selectedLoan.expenses && selectedLoan.expenses.length > 0 ? (
-                  <>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-sm">Linked Expenses Summary</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Total Expenses</p>
-                            <p className="text-xl font-bold">{selectedLoan.expenses.length}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Annual Total</p>
-                            <p className="text-xl font-bold text-red-600">
-                              {formatCurrency(calculateLinkedExpenses(selectedLoan))}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <div className="space-y-2">
-                      {selectedLoan.expenses.map((expense) => (
-                        <Card key={expense.id}>
-                          <CardContent className="pt-4">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-medium">{expense.name}</p>
-                                <div className="flex gap-2 mt-1">
-                                  <Badge variant="outline">{expense.category}</Badge>
-                                  {expense.isTaxDeductible && (
-                                    <Badge variant="secondary" className="text-green-600">Tax Deductible</Badge>
-                                  )}
-                                </div>
-                                {expense.vendorName && (
-                                  <p className="text-xs text-muted-foreground mt-1">{expense.vendorName}</p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="font-semibold">{formatCurrency(expense.amount)}</p>
-                                <p className="text-xs text-muted-foreground">{expense.frequency.toLowerCase()}</p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No expenses linked to this loan</p>
-                    <p className="text-sm">Link expenses from the Expenses page</p>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="strategy" className="mt-4">
-                <EntityStrategyTab
-                  entityType="loan"
-                  entityId={selectedLoan.id}
-                  entityName={selectedLoan.name}
-                />
-              </TabsContent>
-
-              <TabsContent value="linked" className="mt-4">
-                <LinkedDataPanel
-                  linkedEntities={selectedLoan._links?.related || []}
-                  missingLinks={selectedLoan._meta?.missingLinks || []}
-                  entityType="loan"
-                  entityName={selectedLoan.name}
-                  showHealthScore={true}
-                  onNavigate={handleLinkedEntityNavigate}
-                />
-              </TabsContent>
-            </Tabs>
-          )}
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
-              Close
-            </Button>
-            <Button onClick={() => { setShowDetailDialog(false); if (selectedLoan) handleEdit(selectedLoan); }}>
-              <Edit2 className="h-4 w-4 mr-2" />
-              Edit Loan
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/*
+       * Phase 36 Phase 2a — extracted loan detail dialog. The same
+       * component is used by /dashboard/balances so the click-through
+       * UX is identical on both pages. See components/loans/LoanDetailDialog.tsx.
+       */}
+      <LoanDetailDialog
+        loan={selectedLoan as LoanDetail | null}
+        open={showDetailDialog}
+        onOpenChange={setShowDetailDialog}
+        onEdit={(l) => {
+          setShowDetailDialog(false);
+          handleEdit(l as Loan);
+        }}
+        onDelete={async (l) => {
+          // The shared dialog runs its own AlertDialog confirmation,
+          // so we do NOT show a window.confirm() here — that would
+          // double-prompt the user.
+          const response = await fetch(`/api/loans/${l.id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.ok) {
+            await loadData();
+          }
+        }}
+        onLinkedEntityNavigate={handleLinkedEntityNavigate}
+      />
     </DashboardLayout>
   );
 }
