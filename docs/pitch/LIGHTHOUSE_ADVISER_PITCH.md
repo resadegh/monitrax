@@ -24,10 +24,26 @@ This playbook codifies the demo into a runnable script so:
 ## 1. Pre-pitch checklist (30 min before the meeting)
 
 - [ ] **Demo environment status verified** — `monitrax-db-pitch` instance is up, OR the seeded users on dev are accessible and unmodified since last seed run
-- [ ] **Three archetype users seeded and verified** (per `lib/portal/practice/lighthousePitchArchetypes.ts` — to be created in Phase 41 PR3 / pitch fixture seed PR):
+- [ ] **Three archetype users seeded and verified** (per `lib/portal/practice/lighthousePitchArchetypes.ts` — to be created in Phase 41 PR3 / pitch fixture seed PR). **Entity-seed spec (Phase 41b shipped 2026-05-04 — entities can now be created via the wizard or `/dashboard/entities`):**
   - [ ] **Sarah Kim** (sole-trader investor) — 1 property + Sarah Kim Pty Ltd; TRACK stage; cashflow turning negative; emergency fund <1mo
+    - **Entities (2):**
+      1. `Sarah Kim` — `PERSONAL_NAME` / `PERSONAL` (auto-created by Phase 41a backfill; owns the home + the personal salary income)
+      2. `Sarah Kim Pty Ltd` — `COMPANY` / `OPERATING`, ABN registered (sole-trader pivoted to company structure mid-FY for Div 7A protection); owns the side-business income + investment property loan
   - [ ] **David Mei + Emma Liu** (family with trust + SMSF) — 3 properties (1 PPR + 2 investment via Family Trust + 1 in SMSF); REDUCE stage; refinance window opening on PPR; SMSF contribution headroom remaining
+    - **Entities (4):**
+      1. `David Mei` — `PERSONAL_NAME` / `PERSONAL` (owns the PPR + David's salary income)
+      2. `Emma Liu` — `PERSONAL_NAME` / `PERSONAL` (Emma's salary income; co-beneficiary of the trust)
+      3. `Mei Family Holdings Pty Ltd` — `COMPANY` / `HOLDING`, ABN + ACN registered (corporate trustee for the trust)
+      4. `Mei Family Trust` — `DISCRETIONARY_TRUST` / `HOLDING`, ABN registered, `parentEntityId` → Mei Family Holdings Pty Ltd (owns the 2 investment properties + their loans)
+      5. `Mei SMSF` — `SMSF` / `SUPERANNUATION`, ABN registered (owns the third investment property + LRBA-funded loan, plus David's super contributions)
   - [ ] **Olivia Novak** (multi-entity HNW) — 4 properties across personal + Discretionary Trust + Unit Trust + Pty Ltd + SMSF; INVEST stage; tax position -$38,900 YTD; 11 months emergency fund; entity tree shows the full complexity
+    - **Entities (5):**
+      1. `Olivia Novak` — `PERSONAL_NAME` / `PERSONAL` (owns the PPR + personal salary income)
+      2. `Novak Investment Holdings Pty Ltd` — `COMPANY` / `HOLDING`, ABN + ACN (corporate trustee for the discretionary trust)
+      3. `Novak Family Trust` — `DISCRETIONARY_TRUST` / `HOLDING`, ABN, `parentEntityId` → Novak Investment Holdings Pty Ltd (owns 2 investment properties + their loans + share portfolio)
+      4. `Novak Unit Trust` — `UNIT_TRUST` / `INVESTMENT`, ABN (Olivia + 2 unrelated unit-holders; owns 1 commercial investment property)
+      5. `Novak SMSF` — `SMSF` / `SUPERANNUATION`, ABN (owns the SMSF investment property + Olivia's super)
+- **Verification gate** (post-seed): open Olivia's `/dashboard/entities` view and confirm the entity tree shows `Olivia → Personal | Discretionary Trust [trustee: Novak Investment Holdings Pty Ltd] | Unit Trust | SMSF` — all 5 entities visible with correct trustee→trust dashed line. This is the screenshot Reza pulls into the deck for slide 2 (the moat image).
 - [ ] **Adviser org seeded** — "Smithfield Wealth Advisers" Practice tier, Reza as PORTAL_OWNER, marketplace listing approved, profession = `FINANCIAL_ADVISOR`
 - [ ] **Adviser-side credentials ready** — login as Reza @ Smithfield, `/portal/dashboard` loads with all 3 archetype clients linked + alerts populated
 - [ ] **Consumer-side credentials ready** — login as Sarah, dashboard loads, AI Guide returns advice, Ask-a-Pro button is wired

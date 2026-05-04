@@ -120,6 +120,16 @@ export const PERMISSIONS = {
   // onboarding state in a single transaction. It's a one-time self-setup
   // action, so we scope it to OWNER to match least-privilege (CLAUDE.md §12.5).
   'onboarding.complete': ['OWNER'],
+
+  // Phase 41a/b — LegalEntity (Entity Layer) management. Mirrors the
+  // pattern used by every other top-level user-owned object (property,
+  // loan, account, etc.). VIEWERs can read entities (so they can navigate
+  // the structure) but cannot modify; CONTRIBUTORs can add/edit but not
+  // delete (delete is destructive — the §12.11 RESTRICT FK guard means
+  // the entity layer can lose data integrity if removal is misused).
+  'entity.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'entity.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+  'entity.delete': ['OWNER', 'ADMIN'],
 } as const;
 
 // ============================================

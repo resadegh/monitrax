@@ -46,7 +46,17 @@ export {
 } from './masterFinancialService';
 
 // =============================================================================
-// PHASE 41a — LEGAL ENTITY SERVICE
+// PHASE 41a/b — LEGAL ENTITY SERVICE
 // =============================================================================
 
-export { getDefaultLegalEntityId } from './legalEntityService';
+export {
+  getDefaultLegalEntityId,
+  listEntitiesForUser,
+  createEntity,
+  updateEntity,
+  deleteEntity,
+  EntityHasOwnedObjectsError,
+  type LegalEntitySummary,
+  type CreateEntityInput,
+  type UpdateEntityInput,
+} from './legalEntityService';
