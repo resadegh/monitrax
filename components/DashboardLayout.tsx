@@ -28,6 +28,7 @@ import { useUISyncEngine } from '@/hooks/useUISyncEngine';
 import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
 import { FinancialHealthMiniWidget } from '@/components/health/FinancialHealthMiniWidget';
 import AiChatButton from '@/components/AiChatButton';
+import { HelpDrawerButton } from '@/components/help/HelpDrawerButton';
 import { UniversalSearch, useUniversalSearch } from '@/components/UniversalSearch';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import {
@@ -827,6 +828,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* AI Chat Floating Button — hidden when onboarding modals are open
            so it doesn't overlap the wizard's Back/Next buttons. */}
       {!showWelcomeModal && !showWizard && <AiChatButton />}
+
+      {/* Phase 33b — In-app `?` help drawer. Hidden alongside AI Chat while
+           onboarding modals are open so it doesn't overlap the wizard. The
+           drawer itself is route-aware (lib/help/routeContext.ts) and
+           audience-scoped — consumer dashboard sees consumer + compliance. */}
+      {!showWelcomeModal && !showWizard && (
+        <HelpDrawerButton audiences={['consumer', 'compliance']} />
+      )}
 
       {/* Universal Search */}
       <UniversalSearch open={searchOpen} onOpenChange={setSearchOpen} />

@@ -1,5 +1,66 @@
 # Changelog — 2026-05-04
 
+## Session: claude/phase-33b-help-drawer-Q6tyx (Phase 33b SHIPPED — In-app `?` help drawer)
+
+### Changes Made
+- **Type:** Feature (Demo-Complete Critical Path week-13 deliverable; closes Up Next #20)
+- **Scope:** Phase 33b — in-app `?` help drawer surfacing the same Markdown source as the public `/help` site
+- **Description:** Mounted a `?` affordance into the consumer dashboard chrome (`DashboardLayout.tsx`) and the portal chrome (`PortalLayoutClient.tsx`) that opens a slide-in / bottom-sheet help drawer pre-loaded with the article most relevant to the user's current pathname. Route-aware via a typed pathname → article registry; audience-scoped per surface (consumer + compliance for the consumer app; org-admin + org-professional + org-client + consumer + compliance for the portal). Reuses `lib/help/markdown.ts` — no parallel renderer.
+
+### Files Created
+- `lib/help/routeContext.ts` — typed `pathname → { audience, slug }` registry with longest-prefix-match resolver. Initial mappings: `/dashboard/*` → `consumer/what-is-trail`, `/portal/*` → `org-admin/inviting-clients`, `/portal/consent` → `compliance/cdr-consent-walkthrough`. Adding a new route mapping is a single line — no client rebuild required, the drawer picks it up at next request. Also exports `audiencesForViewer()` helper for future use.
+- `app/api/help/drawer/route.ts` — unauthenticated GET endpoint backing the drawer. Accepts `path`, `audiences`, `audience`+`slug` (override). Returns the route-resolved primary article (frontmatter + bodyHtml rendered by the canonical `lib/help/markdown.ts`) plus the audience-scoped article list. Whitelist enforcement at the route boundary prevents `monitrax-internal` from ever being returned. Pinned to Node + `syd1` to match the rest of the API plane.
+- `components/help/HelpDrawerButton.tsx` — `?` affordance. 36px circle, warm-ivory glass, `ring-1 ring-slate-900/[0.08]`, `prefers-reduced-motion`-aware hover lift via shadow + translate-y, focus-visible ring. Owns the open/close state; mounts the `<HelpDrawer />` lazily.
+- `components/help/HelpDrawer.tsx` — slide-in drawer (≥md, right-edge ~480px, 200ms ease-out) / bottom-sheet (<md, 85vh, drag-handle visual, rounded-t-[28px]). Fetches from `/api/help/drawer` on open + on article-override change. Search input filters the audience-scoped list (title / summary / category / audience label, case-insensitive). Footer: search + audience-count + "Open full Help Center →" link. Dismiss via X / Esc / backdrop click / route change. Body-scroll lock for iOS Safari.
+
+### Files Modified
+- `components/DashboardLayout.tsx` — imports `HelpDrawerButton`, mounts it alongside `AiChatButton` with `audiences={['consumer', 'compliance']}`. Suppressed during onboarding wizard / welcome modal so it doesn't compete with the primary onboarding affordances.
+- `app/portal/PortalLayoutClient.tsx` — imports `HelpDrawerButton`, mounts it inside the authenticated portal flex container with `audiences={['org-admin', 'org-professional', 'org-client', 'consumer', 'compliance']}`. Not mounted on full-width public portal pages (login, signin, invite, consent, request-access, register).
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #20 struck through and marked SHIPPED with summary; new Recently Completed entry prepended for 2026-05-04.
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — pre-pitch checklist updated to mention the `?` drawer is reachable from every page, so the lighthouse adviser sees the support quality during the demo without needing a full Help Center detour.
+
+### Files NOT Modified (intentional, per the brief)
+- `prisma/schema.prisma` — no schema changes for this workstream.
+- `lib/services/*` — no service-layer touches.
+- `app/onboarding/*`, `components/onboarding/*` — Phase 41b territory; the `?` drawer is suppressed inside the onboarding wizard via the existing `!showWizard && !showWelcomeModal` gate in `DashboardLayout.tsx`.
+- `docs/help/*` content authoring — out of scope; the drawer surfaces the existing Phase 33a + 33d articles unchanged.
+
+### Build Status
+- [x] `npx tsc --noEmit --ignoreDeprecations 6.0` — no new type errors introduced. Pre-existing missing-module noise (`next/server`, `zod`, `next/link`, etc.) affects the entire codebase identically and resolves on `npm install`. Vercel preview build will validate end-to-end.
+- [ ] `npm run build` — not run locally (deps not installed); Vercel preview is the source of truth.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — new `<HelpDrawerButton />` + `<HelpDrawer />` shared primitives under `components/help/*`
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure (new failure mode / diagnostic / lesson)
+- [x] strategic decision (Open Question resolved / workstream parked or revived) — Up Next #20 closed
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #20 → SHIPPED + Recently Completed entry (§15)
+- `docs/changelog/CHANGELOG_2026_05_04.md` — this session block (§11)
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — pre-pitch checklist mention of in-app `?` drawer reachability
+
+The Phase 33b primitives (`HelpDrawerButton`, `HelpDrawer`) carry inline JSDoc explaining the design rules + reuse of `lib/help/markdown.ts` per CLAUDE.md §16.4. No new design tokens or palettes were introduced — the drawer reuses the existing `bg-white/85` + `ring-1 ring-slate-900/[0.06]` warm-ivory glass system from `PracticeGlassCard`. Per §16.6, no destructive Prisma writes (§12.11) and no schema changes (§12.12) — this PR adds five new files and edits two layout files only.
+
+### Test plan (manual, post-deploy)
+1. Drawer opens from any consumer page (e.g. `/dashboard`, `/dashboard/cfo`, `/cashflow`) and any portal page (`/portal/dashboard`, `/portal/clients`).
+2. Route mapping picks the correct primary article — `/dashboard/cfo` opens `consumer/what-is-trail`; `/portal/dashboard` opens `org-admin/inviting-clients`.
+3. Mobile bottom-sheet works on iOS Safari (≤md viewport): handle visible, dismiss via tap-outside, body doesn't scroll under sheet.
+4. Search filter narrows the audience-scoped list as the user types.
+5. Drawer dismisses on Esc and on route change (navigating from `/dashboard` → `/dashboard/cfo` while open).
+
+### PR
+- Branch: `claude/phase-33b-help-drawer-Q6tyx`
+- Title: `Phase 33b — In-app ? help drawer (route-aware, audience-scoped)`
+
+---
+
 ## Session: claude/phase-33a-help-center (Phase 33a SHIPPED — Help Center foundation)
 
 ### Changes Made

@@ -15,6 +15,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { OrganizationProvider, useOrganization } from '@/lib/portal';
 import { PortalSidebar, NavIcons } from '@/components/portal/layout/PortalSidebar';
+import { HelpDrawerButton } from '@/components/help/HelpDrawerButton';
 
 interface PortalLayoutClientProps {
   children: ReactNode;
@@ -151,6 +152,13 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
       <main className="flex-1 overflow-auto">
         {children}
       </main>
+
+      {/* Phase 33b — In-app `?` help drawer. Portal users see the org +
+          compliance audiences in scope, plus consumer for advisers
+          who occasionally explain consumer surfaces to their clients. */}
+      <HelpDrawerButton
+        audiences={['org-admin', 'org-professional', 'org-client', 'consumer', 'compliance']}
+      />
     </div>
   );
 }

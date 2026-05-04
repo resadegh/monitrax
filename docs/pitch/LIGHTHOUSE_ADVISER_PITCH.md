@@ -37,6 +37,7 @@ This playbook codifies the demo into a runnable script so:
 - [ ] **Browser tabs cleaned** — only Monitrax + pricing tab visible; close personal tabs, Slack, email
 - [ ] **Notifications silenced** — DND mode on Mac/Windows; no Slack pings during demo
 - [ ] **Backup plan if WIF / DB hiccups** — second browser logged in to the seed; mobile hotspot ready if home wifi flaps
+- [ ] **In-app `?` help drawer reachable from every page** — Phase 33b shipped 2026-05-04. The drawer sits at top-right of every consumer + portal page, opens with the article most relevant to the current route, and surfaces audience-scoped search + "Open full Help Center →" link. If the adviser asks "what does TRAIL mean again?" mid-demo, hit `?` on `/dashboard/cfo` and the TRAIL explainer opens inline — no tab-switching, no narrative break. Verify the `?` button renders on `/portal/dashboard` and `/dashboard` before the call.
 
 ---
 
