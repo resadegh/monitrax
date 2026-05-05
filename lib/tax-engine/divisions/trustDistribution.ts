@@ -51,6 +51,33 @@ import type { AuthorityCitation, UncomputedFlag } from '../types';
  */
 export const S99A_TRUSTEE_PENALTY_RATE = 0.47;
 
+/**
+ * Phase 41e.4 — Validate that a streaming resolution date falls within
+ * the AU FY. AU FY runs 1 July YEAR1 → 30 June YEAR2. A resolution
+ * passed in the FY (or by 30 June) is valid; later than 30 June is
+ * invalid (s207-58 + s115-228).
+ *
+ * If `financialYear` is omitted, the resolution is treated as
+ * potentially-valid (the calc trusts the caller — typically the router
+ * gets this from the FY config).
+ */
+function isResolutionValidForFy(
+  resolutionAt: string | undefined,
+  financialYear: string | undefined,
+): boolean {
+  if (!resolutionAt) return false;
+  const resolutionDate = new Date(resolutionAt);
+  if (isNaN(resolutionDate.getTime())) return false;
+  if (!financialYear) return true; // trust caller
+  // Parse "2024-25" → FY ends 30 June 2025
+  const [startStr] = financialYear.split('-');
+  const startYear = parseInt(startStr, 10);
+  if (Number.isNaN(startYear)) return true;
+  const fyStart = new Date(startYear, 6, 1); // July 1
+  const fyEnd = new Date(startYear + 1, 5, 30, 23, 59, 59); // June 30
+  return resolutionDate >= fyStart && resolutionDate <= fyEnd;
+}
+
 export interface TrustBeneficiary {
   /** Stable identifier for the beneficiary (e.g. linked LegalEntity id). */
   id: string;
@@ -70,6 +97,24 @@ export interface TrustBeneficiary {
    * reports the share to the named beneficiary.
    */
   isNonResidentOrDisabled?: boolean;
+  /**
+   * Phase 41e.4 — Div 6E streaming allocation override. When provided,
+   * this beneficiary receives the named character (franked dividends,
+   * capital gains) in absolute dollar amounts, instead of pro-rata. A
+   * valid streaming resolution must exist on or before 30 June (per
+   * s207-58 / s115-228) — caller passes via the input's
+   * `streamingResolutionAt` field.
+   *
+   * If the sum of streaming allocations across beneficiaries doesn't
+   * match the trust's character pools exactly, the residual is
+   * distributed pro-rata to non-streaming beneficiaries.
+   */
+  streaming?: {
+    /** Absolute $ of franked dividends streamed to this beneficiary. */
+    frankedDividends?: number;
+    /** Absolute $ of capital gains streamed to this beneficiary. */
+    capitalGains?: number;
+  };
 }
 
 export interface TrustDistributionInput {
@@ -80,6 +125,29 @@ export interface TrustDistributionInput {
    * `trustNetIncome > 0`, the entire amount triggers s99A penalty.
    */
   beneficiaries: TrustBeneficiary[];
+  /**
+   * Phase 41e.4 — Div 6E character pools. Pass when there are franked
+   * dividends or capital gains in `trustNetIncome` and at least one
+   * beneficiary has a `streaming` allocation. Without these pools,
+   * streaming is silently ignored and pro-rata applies.
+   */
+  characterPools?: {
+    frankedDividends?: number;
+    capitalGains?: number;
+  };
+  /**
+   * Phase 41e.4 — ISO date the streaming resolution was passed by the
+   * trustee. Per s207-58 (franked dividends) + s115-228 (capital
+   * gains), the resolution must be in writing by 30 June. The router
+   * uses this to flip UC-DIV-6E-STREAMING off only when the date is
+   * within the FY (otherwise the resolution is invalid → flag stays).
+   */
+  streamingResolutionAt?: string;
+  /**
+   * Phase 41e.4 — FY label (e.g. "2024-25") used to validate the
+   * streaming resolution date. AU FY runs 1 July → 30 June.
+   */
+  financialYear?: string;
   /**
    * `true` if the trust is a complying discretionary trust under a
    * Family Trust Election (Sch 2F ITAA 1936). Affects reimbursement-
@@ -102,6 +170,18 @@ export interface BeneficiaryDistribution {
    * doesn't compute the trustee tax — caller routes via UNCOMPUTED.
    */
   trusteeAssessedUnderS98: boolean;
+  /**
+   * Phase 41e.4 — Div 6E character composition. Reports how this
+   * beneficiary's `amount` is composed across the streamed character
+   * pools. When no streaming was requested, the pools split pro-rata.
+   * Sum of `frankedDividends` + `capitalGains` + `ordinaryIncome` ≤ `amount`
+   * (could be < if part of the amount is unstreamable income types).
+   */
+  character: {
+    frankedDividends: number;
+    capitalGains: number;
+    ordinaryIncome: number;
+  };
 }
 
 export interface TrustDistributionResult {
@@ -179,13 +259,62 @@ export function allocateTrustDistribution(
     );
   }
 
-  const distributions: BeneficiaryDistribution[] = beneficiaries.map((b) => ({
-    beneficiaryId: b.id,
-    beneficiaryName: b.name,
-    share: b.presentlyEntitledShare,
-    amount: trustNetIncome * b.presentlyEntitledShare,
-    trusteeAssessedUnderS98: !!b.isNonResidentOrDisabled,
-  }));
+  // ============================================================
+  // Phase 41e.4 — Div 6E character streaming
+  // ============================================================
+  //
+  // Determine per-beneficiary character composition (franked
+  // dividends, capital gains, ordinary income). Two paths:
+  //
+  //   A) Streaming valid → caller supplied characterPools + at
+  //      least one beneficiary has a `streaming` allocation +
+  //      `streamingResolutionAt` is within the FY. Apply
+  //      streaming explicitly; residual character flows pro-rata.
+  //   B) No valid streaming → all character flows pro-rata to
+  //      net-income shares (the v1 default). UC-DIV-6E-STREAMING
+  //      flag stays.
+  const pools = input.characterPools ?? {};
+  const totalFrankedPool = Math.max(0, pools.frankedDividends ?? 0);
+  const totalCapitalGainsPool = Math.max(0, pools.capitalGains ?? 0);
+  const totalCharacterPool = totalFrankedPool + totalCapitalGainsPool;
+  const totalOrdinaryPool = Math.max(0, trustNetIncome - totalCharacterPool);
+
+  const hasStreamingAllocation = beneficiaries.some(
+    (b) => b.streaming?.frankedDividends || b.streaming?.capitalGains,
+  );
+  const resolutionValid = isResolutionValidForFy(
+    input.streamingResolutionAt,
+    input.financialYear,
+  );
+  const streamingApplies =
+    hasStreamingAllocation &&
+    resolutionValid &&
+    (totalFrankedPool > 0 || totalCapitalGainsPool > 0);
+
+  const distributions: BeneficiaryDistribution[] = beneficiaries.map((b) => {
+    const amount = trustNetIncome * b.presentlyEntitledShare;
+    let frankedDividends = 0;
+    let capitalGains = 0;
+    if (streamingApplies) {
+      // Explicit streaming — apply allocations directly. Residual
+      // pools (after streaming) are then distributed pro-rata.
+      frankedDividends = Math.max(0, b.streaming?.frankedDividends ?? 0);
+      capitalGains = Math.max(0, b.streaming?.capitalGains ?? 0);
+    } else {
+      // Pro-rata across pools.
+      frankedDividends = totalFrankedPool * b.presentlyEntitledShare;
+      capitalGains = totalCapitalGainsPool * b.presentlyEntitledShare;
+    }
+    const ordinaryIncome = Math.max(0, amount - frankedDividends - capitalGains);
+    return {
+      beneficiaryId: b.id,
+      beneficiaryName: b.name,
+      share: b.presentlyEntitledShare,
+      amount,
+      trusteeAssessedUnderS98: !!b.isNonResidentOrDisabled,
+      character: { frankedDividends, capitalGains, ordinaryIncome },
+    };
+  });
 
   const undistributedShare = Math.max(0, 1.0 - totalShare);
   const trusteeRetainedAmount = trustNetIncome * undistributedShare;
@@ -206,6 +335,15 @@ export function allocateTrustDistribution(
     });
   }
 
+  // Phase 41e.4 — when streaming applies, cite Div 6E + s207-58 + s115-228.
+  if (streamingApplies) {
+    citations.push(
+      { kind: 'ITAA_1997', reference: 'Div 6E', lastReviewed: '2026-05-05' },
+      { kind: 'ITAA_1997', reference: 's207-58', lastReviewed: '2026-05-05' },
+      { kind: 'ITAA_1997', reference: 's115-228', lastReviewed: '2026-05-05' },
+    );
+  }
+
   // s100A risk — always flag on basic-distribution trusts. The full
   // zone classifier (white / blue / green / red per PCG 2022/2) lands
   // in 41e.5. FTE trusts get a narrower flag wording.
@@ -217,13 +355,27 @@ export function allocateTrustDistribution(
     citation: { kind: 'TR', reference: '2022/4', lastReviewed: '2026-05-05' },
   });
 
-  // Div 6E character streaming — flagged on every distribution.
-  uncomputed.push({
-    id: 'UC-DIV-6E-STREAMING',
-    rationale:
-      'Trust character (franked dividends, capital gains) is allocated generically in v1 — every beneficiary receives the same proportional mix as their net-income share. Per-beneficiary streaming under Div 6E lands with Phase 41e.4; until then, franking credits and capital gains pass through pro-rata only.',
-    citation: { kind: 'ITAA_1997', reference: 'Div 6E', lastReviewed: '2026-05-05' },
-  });
+  // Phase 41e.4 — UC-DIV-6E-STREAMING only surfaces when streaming is
+  // NOT applied (no allocations OR invalid/missing resolution). When
+  // streaming applies, the flag flips off — character is allocated
+  // explicitly per the resolution.
+  if (!streamingApplies) {
+    if (hasStreamingAllocation && !resolutionValid) {
+      uncomputed.push({
+        id: 'UC-DIV-6E-STREAMING-INVALID-RESOLUTION',
+        rationale:
+          'Beneficiaries have streaming allocations but `streamingResolutionAt` is missing or outside the FY. Per s207-58 + s115-228 the trustee resolution must be in writing on or before 30 June. Streaming ignored; character flows pro-rata. Pass a valid `streamingResolutionAt` to activate Div 6E.',
+        citation: { kind: 'ITAA_1997', reference: 's207-58', lastReviewed: '2026-05-05' },
+      });
+    } else {
+      uncomputed.push({
+        id: 'UC-DIV-6E-STREAMING',
+        rationale:
+          'No Div 6E streaming requested for this distribution — character (franked dividends, capital gains) flows pro-rata to net-income share. Pass `characterPools` + per-beneficiary `streaming` + `streamingResolutionAt` to activate explicit streaming under Div 6E.',
+        citation: { kind: 'ITAA_1997', reference: 'Div 6E', lastReviewed: '2026-05-05' },
+      });
+    }
+  }
 
   // s98 trustee assessment — flag if any beneficiary is non-resident
   // or under legal disability.

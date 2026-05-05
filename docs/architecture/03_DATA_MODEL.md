@@ -1069,3 +1069,26 @@ New `lib/tax-engine/super/highIncomeSuperTax.ts` exporting `calculateHighIncomeS
 - **UC-TBC-EXCESS** — when transfer balance exceeds the cap. Excess transfer tax (s294-230) computation deferred to a future sub-PR.
 
 **9 new tests** for `calculateHighIncomeSuperTax`: Div 293 below/above threshold (with `min(excess, contributions)` cap per s293-15), Div 296 pending vs verified, TSB ≤ threshold no flag, TBC reporting + excess flag, citation completeness. **1 router-integration test** asserting SMSF + highIncomeSuper produces `result.highIncomeSuperTax.div293.applies` + TBC headroom.
+
+## **10.16 Phase 41e.4 — Div 6E character streaming (PR #653 — shipped 2026-05-05)**
+
+**Flips off `UC-DIV-6E-STREAMING`** when a valid streaming resolution is provided. Trust beneficiaries now have a `streaming` allocation field carrying absolute dollars of franked dividends + capital gains; trust input now has `characterPools` (the franked + CGT pools in net income) + `streamingResolutionAt` (ISO date the trustee resolution was passed).
+
+**Validation:** `streamingResolutionAt` must fall within the FY (parsed from `financialYear` field — e.g. "2024-25" → between 1 July 2024 and 30 June 2025) per s207-58 + s115-228. Post-30-June resolution → falls back to pro-rata + `UC-DIV-6E-STREAMING-INVALID-RESOLUTION` flag.
+
+**Citations added when streaming applies:** Div 6E + s207-58 + s115-228.
+
+**`BeneficiaryDistribution.character`** is new — `{ frankedDividends, capitalGains, ordinaryIncome }` — sums to `amount`. Without character pools, all amount is ordinary; with pools but no streaming, character flows pro-rata; with streaming + valid resolution, character is allocated explicitly.
+
+**Five FY-end states**:
+1. No characterPools provided → all amount classified as ordinary income; UC-DIV-6E-STREAMING surfaces.
+2. characterPools provided, no streaming requested → character flows pro-rata; UC-DIV-6E-STREAMING surfaces.
+3. Streaming requested + valid resolution + characterPools → explicit allocation; UC-DIV-6E-STREAMING flag **gone**; citations include Div 6E + s207-58 + s115-228.
+4. Streaming requested but invalid/missing resolution → fallback to pro-rata; UC-DIV-6E-STREAMING-INVALID-RESOLUTION surfaces.
+5. Streaming requested but no characterPools → silently ignored (nothing to stream); UC-DIV-6E-STREAMING surfaces.
+
+6 new tests in `trustDistribution.test.ts` covering all five states.
+
+POST endpoint validates the streaming body shape and passes it through.
+
+**41e.5 — s100A zone classifier per TR 2022/4 + PCG 2022/2** is next. After 41e.5 lands, the UC-S100A-RISK flag's wording will go from "review with a tax agent" to "this distribution is a green/blue/yellow/red zone risk per the classifier".

@@ -634,8 +634,28 @@ export interface EntityTaxFacts {
       name: string;
       presentlyEntitledShare: number;
       isNonResidentOrDisabled?: boolean;
+      /**
+       * Phase 41e.4 — per-beneficiary streaming allocation. Absolute
+       * dollars of franked dividends / capital gains streamed to this
+       * beneficiary. Activates Div 6E when paired with a valid
+       * `streamingResolutionAt` and `characterPools`.
+       */
+      streaming?: {
+        frankedDividends?: number;
+        capitalGains?: number;
+      };
     }>;
     hasFamilyTrustElection?: boolean;
+    /**
+     * Phase 41e.4 — character pools in the trust net income that
+     * can be streamed under Div 6E.
+     */
+    characterPools?: {
+      frankedDividends?: number;
+      capitalGains?: number;
+    };
+    /** Phase 41e.4 — ISO date trustee passed streaming resolution. */
+    streamingResolutionAt?: string;
   };
   /**
    * Phase 41e.1 slice D-2 — CGT events for the FY. When non-empty,

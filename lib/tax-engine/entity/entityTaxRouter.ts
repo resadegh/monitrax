@@ -223,8 +223,17 @@ export function calculateEntityTaxPosition(
         name: b.name,
         presentlyEntitledShare: b.presentlyEntitledShare,
         isNonResidentOrDisabled: b.isNonResidentOrDisabled,
+        streaming: b.streaming
+          ? {
+              frankedDividends: b.streaming.frankedDividends,
+              capitalGains: b.streaming.capitalGains,
+            }
+          : undefined,
       })),
       hasFamilyTrustElection: facts.trustDistribution.hasFamilyTrustElection,
+      characterPools: facts.trustDistribution.characterPools,
+      streamingResolutionAt: facts.trustDistribution.streamingResolutionAt,
+      financialYear: facts.fy.financialYear,
     });
 
     const merged = cgt

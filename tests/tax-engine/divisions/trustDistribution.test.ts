@@ -261,3 +261,133 @@ describe('allocateTrustDistribution — edge cases', () => {
     expect(r.distributions[0].amount).toBe(0);
   });
 });
+
+describe('Phase 41e.4 — Div 6E character streaming', () => {
+  it('without streaming inputs → character flows pro-rata; UC-DIV-6E-STREAMING surfaces', () => {
+    const r = allocateTrustDistribution({
+      trustNetIncome: 100000,
+      beneficiaries: [
+        { id: 'b1', name: 'A', presentlyEntitledShare: 0.5 },
+        { id: 'b2', name: 'B', presentlyEntitledShare: 0.5 },
+      ],
+      characterPools: { frankedDividends: 30000, capitalGains: 20000 },
+    });
+    // Pro-rata: each beneficiary gets 50% of each pool
+    expect(r.distributions[0].character.frankedDividends).toBe(15000);
+    expect(r.distributions[0].character.capitalGains).toBe(10000);
+    expect(r.distributions[0].character.ordinaryIncome).toBe(25000);
+    // UC-DIV-6E-STREAMING still flagged (no streaming requested)
+    expect(r.uncomputed.some((u) => u.id === 'UC-DIV-6E-STREAMING')).toBe(true);
+  });
+
+  it('valid streaming → explicit allocation; UC-DIV-6E-STREAMING flag DISAPPEARS', () => {
+    const r = allocateTrustDistribution({
+      trustNetIncome: 100000,
+      beneficiaries: [
+        {
+          id: 'high-income',
+          name: 'David',
+          presentlyEntitledShare: 0.5,
+          // Stream all franked dividends to David (high marginal rate
+          // → maximum benefit from franking credits)
+          streaming: { frankedDividends: 30000 },
+        },
+        {
+          id: 'low-income',
+          name: 'Emma',
+          presentlyEntitledShare: 0.5,
+          // Stream the capital gains to Emma (50% discount → benefit
+          // amplified vs ordinary income at her marginal rate)
+          streaming: { capitalGains: 20000 },
+        },
+      ],
+      characterPools: { frankedDividends: 30000, capitalGains: 20000 },
+      streamingResolutionAt: '2025-06-29', // before 30 June FY24-25
+      financialYear: '2024-25',
+    });
+    // David: $50k amount, with $30k franked, $0 cgt, $20k ordinary
+    expect(r.distributions[0].character.frankedDividends).toBe(30000);
+    expect(r.distributions[0].character.capitalGains).toBe(0);
+    // Emma: $50k amount, $0 franked, $20k cgt, $30k ordinary
+    expect(r.distributions[1].character.frankedDividends).toBe(0);
+    expect(r.distributions[1].character.capitalGains).toBe(20000);
+    // UC-DIV-6E-STREAMING flag is GONE (replaced by valid streaming)
+    expect(r.uncomputed.some((u) => u.id === 'UC-DIV-6E-STREAMING')).toBe(false);
+    // Citations now include Div 6E + s207-58 + s115-228
+    expect(r.citations.some((c) => c.reference === 'Div 6E')).toBe(true);
+    expect(r.citations.some((c) => c.reference === 's207-58')).toBe(true);
+    expect(r.citations.some((c) => c.reference === 's115-228')).toBe(true);
+  });
+
+  it('streaming with invalid resolution date (post-30-June) → falls back to pro-rata + UC-DIV-6E-STREAMING-INVALID-RESOLUTION', () => {
+    const r = allocateTrustDistribution({
+      trustNetIncome: 100000,
+      beneficiaries: [
+        {
+          id: 'b1',
+          name: 'A',
+          presentlyEntitledShare: 1.0,
+          streaming: { frankedDividends: 30000 },
+        },
+      ],
+      characterPools: { frankedDividends: 30000 },
+      streamingResolutionAt: '2025-08-15', // AFTER FY24-25 (post 30 June 2025)
+      financialYear: '2024-25',
+    });
+    // Streaming ignored — pro-rata applies
+    expect(r.distributions[0].character.frankedDividends).toBe(30000); // happens to match because 100% beneficiary
+    expect(
+      r.uncomputed.some((u) => u.id === 'UC-DIV-6E-STREAMING-INVALID-RESOLUTION'),
+    ).toBe(true);
+    // Streaming citations NOT added
+    expect(r.citations.some((c) => c.reference === 's207-58')).toBe(false);
+  });
+
+  it('streaming with missing characterPools → falls back to pro-rata flag', () => {
+    const r = allocateTrustDistribution({
+      trustNetIncome: 100000,
+      beneficiaries: [
+        {
+          id: 'b1',
+          name: 'A',
+          presentlyEntitledShare: 1.0,
+          streaming: { frankedDividends: 5000 },
+        },
+      ],
+      // characterPools missing → streaming silently ignored
+      streamingResolutionAt: '2025-06-29',
+      financialYear: '2024-25',
+    });
+    // No character to stream → all ordinary
+    expect(r.distributions[0].character.frankedDividends).toBe(0);
+    expect(r.uncomputed.some((u) => u.id === 'UC-DIV-6E-STREAMING')).toBe(true);
+  });
+
+  it('character composition sums to amount', () => {
+    const r = allocateTrustDistribution({
+      trustNetIncome: 100000,
+      beneficiaries: [
+        { id: 'b1', name: 'A', presentlyEntitledShare: 0.6 },
+        { id: 'b2', name: 'B', presentlyEntitledShare: 0.4 },
+      ],
+      characterPools: { frankedDividends: 30000, capitalGains: 20000 },
+    });
+    for (const d of r.distributions) {
+      const sum =
+        d.character.frankedDividends +
+        d.character.capitalGains +
+        d.character.ordinaryIncome;
+      expect(sum).toBeCloseTo(d.amount, 2);
+    }
+  });
+
+  it('without characterPools at all → all character is 0; full amount is ordinary', () => {
+    const r = allocateTrustDistribution({
+      trustNetIncome: 100000,
+      beneficiaries: [{ id: 'b1', name: 'A', presentlyEntitledShare: 1.0 }],
+    });
+    expect(r.distributions[0].character.frankedDividends).toBe(0);
+    expect(r.distributions[0].character.capitalGains).toBe(0);
+    expect(r.distributions[0].character.ordinaryIncome).toBe(100000);
+  });
+});

@@ -283,8 +283,41 @@ export const POST = withPermission<RouteContext>(
             name: String(b.name),
             presentlyEntitledShare: Number(b.presentlyEntitledShare),
             isNonResidentOrDisabled: !!b.isNonResidentOrDisabled,
+            // Phase 41e.4 — streaming allocation per beneficiary
+            streaming:
+              b.streaming && typeof b.streaming === 'object'
+                ? {
+                    frankedDividends:
+                      typeof (b.streaming as Record<string, unknown>).frankedDividends ===
+                      'number'
+                        ? (b.streaming as { frankedDividends: number }).frankedDividends
+                        : undefined,
+                    capitalGains:
+                      typeof (b.streaming as Record<string, unknown>).capitalGains === 'number'
+                        ? (b.streaming as { capitalGains: number }).capitalGains
+                        : undefined,
+                  }
+                : undefined,
           })),
           hasFamilyTrustElection: !!td.hasFamilyTrustElection,
+          characterPools:
+            td.characterPools && typeof td.characterPools === 'object'
+              ? {
+                  frankedDividends:
+                    typeof (td.characterPools as Record<string, unknown>).frankedDividends ===
+                    'number'
+                      ? (td.characterPools as { frankedDividends: number }).frankedDividends
+                      : undefined,
+                  capitalGains:
+                    typeof (td.characterPools as Record<string, unknown>).capitalGains === 'number'
+                      ? (td.characterPools as { capitalGains: number }).capitalGains
+                      : undefined,
+                }
+              : undefined,
+          streamingResolutionAt:
+            typeof td.streamingResolutionAt === 'string'
+              ? td.streamingResolutionAt
+              : undefined,
         };
       }
 

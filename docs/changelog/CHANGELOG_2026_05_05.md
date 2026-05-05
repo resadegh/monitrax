@@ -1,5 +1,42 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e4-div6e-streaming (Phase 41e.4 — Div 6E character streaming)
+
+### Changes
+- `trustDistribution.ts` extended with streaming logic: per-beneficiary `streaming` field (franked dividends + capital gains), `characterPools` (the trust's character composition), `streamingResolutionAt` (ISO date), `financialYear` for resolution-date validation.
+- `BeneficiaryDistribution.character` reports per-beneficiary `{ frankedDividends, capitalGains, ordinaryIncome }`.
+- UC-DIV-6E-STREAMING flag **flips off** when streaming applies. New UC-DIV-6E-STREAMING-INVALID-RESOLUTION when resolution date is post-30-June.
+- Citations include Div 6E + s207-58 + s115-228 only when streaming applies.
+- Router passes new fields through `EntityTaxFacts.trustDistribution`.
+- POST endpoint validates body shape.
+- 6 new tests covering all five FY-end streaming states.
+
+### What's testable
+```bash
+curl -X POST -d '{
+  "trustDistribution": {
+    "trustNetIncome": 100000,
+    "beneficiaries": [
+      { "id": "high", "name": "David", "presentlyEntitledShare": 0.5,
+        "streaming": { "frankedDividends": 30000 } },
+      { "id": "low", "name": "Emma", "presentlyEntitledShare": 0.5,
+        "streaming": { "capitalGains": 20000 } }
+    ],
+    "characterPools": { "frankedDividends": 30000, "capitalGains": 20000 },
+    "streamingResolutionAt": "2025-06-29",
+    "hasFamilyTrustElection": true
+  }
+}' /api/tax/entity/<trust_id>?fy=2024-25
+# → distributions[0].character.frankedDividends === 30000 (David streams franking)
+# → distributions[1].character.capitalGains === 20000 (Emma streams CGT)
+# → uncomputed does NOT contain UC-DIV-6E-STREAMING (flag flipped off)
+# → citations include Div 6E + s207-58 + s115-228
+```
+
+324 tests passing (318 → 324, +6). tsc clean.
+
+---
+
 ## Session: claude/phase-41e3-tbc-div293-div296 (Phase 41e.3 — TBC + Div 293 + Div 296)
 
 ### Changes
