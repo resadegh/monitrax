@@ -79,6 +79,16 @@ import {
   calculateRentalYield,
 } from '@/lib/utils/calculations';
 
+// Phase 41e.−1 cleanup PR C — `buildTaxSummary()` now delegates to the
+// canonical Phase 20 tax engine instead of reimplementing brackets
+// inline. Resolves audit C-1 in
+// `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §3 / §10.1.
+import {
+  calculateTaxPosition,
+  type IncomeItem as TaxEngineIncomeItem,
+  type ExpenseItem as TaxEngineExpenseItem,
+} from '@/lib/tax-engine/position/taxPositionCalculator';
+
 // =============================================================================
 // MASTER TYPES
 // =============================================================================
@@ -1009,70 +1019,82 @@ function buildInvestmentMetrics(holdings: RawInvestmentHolding[]): InvestmentMet
   };
 }
 
+/**
+ * Build the master snapshot's tax summary.
+ *
+ * **Phase 41e.−1 cleanup PR C — REPLACED inline brackets with engine delegation.**
+ * Previously this function reimplemented FY24-25 tax brackets inline (the
+ * "regression trap" identified as audit C-1 in
+ * `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md`). It now calls
+ * `calculateTaxPosition()` from the canonical Phase 20 tax engine and
+ * adapts the result back into the legacy `TaxSummary` shape.
+ *
+ * **Behaviour change vs the old inline math:** the tax engine includes
+ * Medicare Levy + LITO/SAPTO offsets, which the old code did not. So
+ * `estimatedTaxPayable` and `estimatedRefundOrOwing` will move slightly
+ * for users who previously consumed this surface; the new numbers
+ * agree with `/api/tax/position` for the same user. This is the
+ * "intentional diff" outcome of the snapshot-test parity protocol
+ * (audit doc §9.2). `marginalTaxRate` is still rendered as a
+ * percentage (e.g. 30) for backward-compat with the consumer shape.
+ *
+ * Future work (Phase 41e.0+): swap consumers off `TaxSummary` onto
+ * the richer `TaxPositionResult` shape; delete this adapter.
+ */
 function buildTaxSummary(
   income: RawIncome[],
   expenses: RawExpense[]
 ): TaxSummary {
-  // Calculate gross taxable income
-  let estimatedTaxableIncome = 0;
-  let totalPaygWithheld = 0;
-
-  for (const inc of income) {
-    if (inc.isTaxable) {
-      const grossAmount = inc.type === 'SALARY' && inc.salaryType === 'NET' && inc.grossAmount
+  const taxIncomes: TaxEngineIncomeItem[] = income.map((inc) => ({
+    id: inc.id,
+    name: inc.name,
+    type: inc.type,
+    amount: inc.amount,
+    frequency: inc.frequency,
+    propertyId: inc.propertyId ?? undefined,
+    investmentAccountId: inc.investmentAccountId ?? undefined,
+    grossAmount:
+      inc.type === 'SALARY' && inc.salaryType === 'NET' && inc.grossAmount
         ? inc.grossAmount
-        : toAnnual(inc.amount, inc.frequency as Frequency);
-      estimatedTaxableIncome += grossAmount;
-    }
-    if (inc.paygWithholding) {
-      totalPaygWithheld += inc.paygWithholding;
-    }
-  }
+        : undefined,
+    paygWithholding: inc.paygWithholding ?? undefined,
+  }));
 
-  // Calculate deductions
-  const totalDeductions = expenses
-    .filter(e => e.isTaxDeductible)
-    .reduce((sum, e) => sum + toAnnual(e.amount, e.frequency as Frequency), 0);
+  const taxExpenses: TaxEngineExpenseItem[] = expenses.map((e) => ({
+    id: e.id,
+    name: e.name,
+    category: e.category ?? 'OTHER',
+    amount: e.amount,
+    frequency: e.frequency,
+    isTaxDeductible: e.isTaxDeductible,
+    propertyId: e.propertyId ?? undefined,
+    loanId: e.loanId ?? undefined,
+  }));
 
-  // Adjust taxable income for deductions
-  estimatedTaxableIncome = Math.max(0, estimatedTaxableIncome - totalDeductions);
+  // Filter out non-taxable income to match the legacy filter behaviour.
+  const taxableIncomes = taxIncomes.filter((_, i) => income[i].isTaxable);
 
-  // Simplified tax calculation (would use tax engine in production)
-  let estimatedTaxPayable = 0;
-  let marginalTaxRate = 0;
+  const result = calculateTaxPosition({
+    incomes: taxableIncomes,
+    expenses: taxExpenses,
+    depreciations: [],
+  });
 
-  // 2024-25 Australian tax brackets (simplified)
-  if (estimatedTaxableIncome <= 18200) {
-    estimatedTaxPayable = 0;
-    marginalTaxRate = 0;
-  } else if (estimatedTaxableIncome <= 45000) {
-    estimatedTaxPayable = (estimatedTaxableIncome - 18200) * 0.16;
-    marginalTaxRate = 16;
-  } else if (estimatedTaxableIncome <= 135000) {
-    estimatedTaxPayable = 4288 + (estimatedTaxableIncome - 45000) * 0.30;
-    marginalTaxRate = 30;
-  } else if (estimatedTaxableIncome <= 190000) {
-    estimatedTaxPayable = 31288 + (estimatedTaxableIncome - 135000) * 0.37;
-    marginalTaxRate = 37;
-  } else {
-    estimatedTaxPayable = 51638 + (estimatedTaxableIncome - 190000) * 0.45;
-    marginalTaxRate = 45;
-  }
-
-  const effectiveTaxRate = estimatedTaxableIncome > 0
-    ? (estimatedTaxPayable / estimatedTaxableIncome) * 100
-    : 0;
-
-  const estimatedRefundOrOwing = totalPaygWithheld - estimatedTaxPayable;
+  // `effectiveRate` returned by the engine is already in percentage
+  // scale (0–100, rounded to 2dp). `marginalRate` is the raw bracket
+  // rate (decimal, e.g. 0.30) — convert to percentage to match the
+  // legacy consumer shape.
+  const effectiveRate = result.tax.effectiveRate ?? 0;
+  const marginalRatePercent = (result.tax.marginalRate ?? 0) * 100;
 
   return {
-    estimatedTaxableIncome,
-    estimatedTaxPayable: Math.round(estimatedTaxPayable),
-    effectiveTaxRate: Math.round(effectiveTaxRate * 100) / 100,
-    marginalTaxRate,
-    totalDeductions,
-    paygWithheld: totalPaygWithheld,
-    estimatedRefundOrOwing: Math.round(estimatedRefundOrOwing),
+    estimatedTaxableIncome: Math.round(result.tax.taxableIncome),
+    estimatedTaxPayable: Math.round(result.tax.netTax),
+    effectiveTaxRate: Math.round(effectiveRate * 100) / 100,
+    marginalTaxRate: Math.round(marginalRatePercent),
+    totalDeductions: Math.round(result.deductions.total),
+    paygWithheld: Math.round(result.paygWithheld),
+    estimatedRefundOrOwing: Math.round(result.estimatedRefund),
   };
 }
 
