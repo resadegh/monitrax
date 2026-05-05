@@ -88,10 +88,11 @@ export default function AdminFeedbackPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
-  const headers = useMemo<Record<string, string>>(
-    () => (token ? { Authorization: `Bearer ${token}` } : {}),
-    [token],
-  );
+  const headers = useMemo<Record<string, string>>(() => {
+    const h: Record<string, string> = {};
+    if (token) h['Authorization'] = `Bearer ${token}`;
+    return h;
+  }, [token]);
 
   const fetchList = useCallback(async () => {
     if (!token) return;
@@ -278,10 +279,8 @@ function ThreadDetailView({
     setInternalNotes(thread.internalNotes ?? '');
   }, [thread.id, thread.internalNotes]);
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const handleReply = async () => {
     if (!reply.trim()) return;

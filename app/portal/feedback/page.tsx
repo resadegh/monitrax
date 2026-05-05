@@ -98,13 +98,11 @@ export default function AdviserFeedbackPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const headers = useMemo<Record<string, string>>(
-    () => ({
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    }),
-    [token],
-  );
+  const headers = useMemo<Record<string, string>>(() => {
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) h['Authorization'] = `Bearer ${token}`;
+    return h;
+  }, [token]);
 
   const fetchThreads = useCallback(async () => {
     setLoading(true);
@@ -257,12 +255,11 @@ function NewThreadForm({
     setSubmitting(true);
     setError(null);
     try {
+      const submitHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) submitHeaders['Authorization'] = `Bearer ${token}`;
       const res = await fetch('/api/portal/feedback', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        } as Record<string, string>,
+        headers: submitHeaders,
         body: JSON.stringify({
           subject,
           body,
@@ -405,12 +402,11 @@ function ThreadDetail({
     setSubmitting(true);
     setError(null);
     try {
+      const replyHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) replyHeaders['Authorization'] = `Bearer ${token}`;
       const res = await fetch(`/api/portal/feedback/${thread.id}/reply`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        } as Record<string, string>,
+        headers: replyHeaders,
         body: JSON.stringify({ body: reply }),
       });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
