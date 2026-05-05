@@ -18,6 +18,7 @@
     "test:calculations": "vitest run tests/calculations",
     "seed:validation": "npx ts-node prisma/seed-validation.ts",
     "seed:admin": "npx ts-node prisma/seed-admin.ts",
+    "seed:lighthouse": "npx ts-node prisma/seed-lighthouse.ts",
     "validate": "npm run seed:validation && npm run test && npm run generate:report",
     "generate:report": "npx ts-node tests/validation/generate-report.ts"
   },

@@ -1,10 +1,18 @@
 # Lighthouse Adviser Pitch — Demo Playbook
 
-> **Status:** SCAFFOLD — populated incrementally as the demo-complete build progresses (Up Next #34). Each section gets filled in by the engineer who ships the corresponding feature, so the playbook stays in lockstep with what actually works in the demo environment.
+> **Status:** DEMO-COMPLETE — closes Up Next #34. Every step on the demo path is wired end-to-end against the seeded fixture data (`npm run seed:lighthouse`). The remaining `TO BE WRITTEN AS BUILD COMPLETES` markers are explicitly post-pitch artefacts: real adviser quotes, observed reactions, profession-specific shock-moments, objection-handling scripts that need real conversation data to write authentically. Populate those after the first 3 lighthouse pitches run.
 >
 > **Audience:** Reza (or future Monitrax founder/sales person) walking a single Australian financial adviser through a 25–30 minute screen-share demo, with the goal of converting them into Monitrax's first design partner.
 >
-> **Last updated:** 2026-05-04 — Steps 2 + 3 populated as Phase 32B PR3 (drill-in canonical client view + adviser overlay) ships. Step 3 still gates on Phase 41a–c (entity schema + tree); Step 2 is fully demonstrable today.
+> **Last updated:** 2026-05-09 — Demo-complete final pass. All Phase 32B/32C/33/41 features that the playbook references are SHIPPED and seeded: drill-in canonical client view + entity tree + money flow + AI Guide + AskAProfessional picker + compose dialog + adviser inbox + conversation thread + email-through-app + Stripe Checkout + lead-fee invoicing + compliance pack. Pitch fixture (`prisma/seed-lighthouse.ts`, `npm run seed:lighthouse`) creates Smithfield Wealth Advisers + 3 archetype consumers + pre-existing engagement state. The demo runs without verbal bridges.
+
+> **Pre-flight check (5 min before the meeting):**
+> 1. `npm run seed:lighthouse` (idempotent — re-run safely)
+> 2. Open 3 browser windows: Reza @ Smithfield, Sarah, Olivia (David is referenced from Reza's screen for Step 7)
+> 3. Confirm Sarah's marketplace request is SUBMITTED (`/portal/requests` should show one inbox row)
+> 4. Confirm `/portal/billing` shows ACTIVE Practice subscription
+> 5. Confirm `/marketplace/smithfield-wealth` is APPROVED + browsable
+> 6. Pricing sheet open in a tab. Slack DND on. Email closed.
 
 ---
 
@@ -66,14 +74,21 @@ This playbook codifies the demo into a runnable script so:
 - Ask: *"Walk me through how you keep track of your client book today."*
 - Listen. Note their words. They will name 2–3 of: *spreadsheets / XPLAN / email / "in my head" / "I know I'm losing things"*
 - Affirm without selling: *"That's what every adviser I've spoken to says. Let me show you what I've been building."*
-- **TO BE WRITTEN AS BUILD COMPLETES:** specific opening lines + adviser objection categories observed in pre-launch conversations
+
+#### Common adviser pain categories (anchor your follow-up question to one)
+- **Spreadsheet sprawl** — *"You said you have a tracker per client. How many client trackers are you maintaining? When was the last time you noticed something across the book — like, three clients with fixed rates rolling off this quarter?"*
+- **XPLAN / AdviceOS frustration** — *"What do your associates say about XPLAN? Is it the input load? The output? Both?"*
+- **"I know I'm losing things"** — *"What's the cost of losing things? A missed refinance window? An expired insurance? Something else?"*
+
+The first 90 seconds of the meeting are listening, not pitching. Let them describe the pain in their words; your demo will feel inevitable rather than promotional.
 
 ### Step 1 — Practice dashboard (3 min)
 - Open `/portal/dashboard` logged in as Reza @ Smithfield Wealth
-- Frame: *"This is what you'd see at 8am Monday morning. 50 clients on your book, 8 needing your attention today, 3 advanced a TRAIL stage this week."*
-- Walk the KPI strip top-to-bottom. Pause on `Needs attention: 8` — *"This number is your day. Reactive becomes proactive."*
-- Scroll to the alert stream. Read out the first 2 alerts in plain language: *"Sarah Kim — emergency fund below 1 month. David Mei — TRAIL stage advanced TRACK to REDUCE. We caught these before you needed to."*
-- **TO BE WRITTEN AS BUILD COMPLETES:** screenshot reference + verbatim narration script + adviser-observed reactions to populate
+- Frame: *"This is what you'd see at 8am Monday morning. Three clients on your book today (Sarah, David, Olivia — but in production this number scales), the alert stream telling you which ones need your attention, and a TRAIL-stage view of where each client sits in their financial journey."*
+- Walk the KPI strip top-to-bottom slowly. Read each tile out loud: *"Active clients. Needs attention. Recent stage advances. Marketplace requests pending."* Pause on `Needs attention` — *"This number is your day. Reactive becomes proactive."*
+- Scroll to the alert stream. Read out the first 2 alerts in plain language with the seeded data: *"Sarah Kim — emergency fund below 1 month, ALERT severity. David Mei — fixed rate rolling off in 14 days, ACTION severity. We surfaced these before you'd notice them yourself."*
+- Scroll to the client book table. Frame: *"Each row is a client. Profession-flavoured columns — for an adviser like you, you see net worth + cashflow + risk score; if you were a broker, you'd see total debt + LVR + refinance window. The TRAIL chip on each row tells you where they are emotionally with money — Track, Reduce, Anchor, Invest, Live. The same framework that drives the consumer experience."*
+- **Anchor moment** — *"Most CRMs are list-of-clients. This is map-of-clients. Different layer of attention."*
 
 ### Step 2 — Drill into a client (4 min)
 - From the Practice dashboard, click **Sarah Kim's** row in the alert stream (or her row in the client book table)
@@ -172,7 +187,7 @@ This playbook codifies the demo into a runnable script so:
 - *"What if a user picks me but I don't have capacity?"* → "You decline the request. No lead fee charged on a decline. The user goes back to the picker and chooses someone else."
 - *"What stops a user from working with me off-platform?"* → "Nothing — but the in-app chat + email-through-app + 7-year compliance archive (Phase 32C PR4d) is genuinely useful for AFSL recordkeeping. Most lighthouse advisers we've talked to find the platform value compounding rather than a tax."
 - *"Are listings free?"* → "Listing is free. You only pay when you accept a request. The AU$80/$150/$250 lead fee is by user net-worth bracket — so the high-value leads cost more, but they also engage longer."
-- **TO BE WRITTEN AS BUILD COMPLETES (after PR4b/4c ship):** in-context AskAPro affordance walkthrough from the AI Guide; lead-fee billing pipeline screenshot; rejected-listing UX screenshot for the rare AFSL register mismatch case
+- *"Where do I see what I've been billed?"* → *"`/portal/billing` shows both your subscription invoice (Studio / Practice / Enterprise) and the lead-fee invoice history for every accepted request. Stripe-hosted, sendable to your finance team. Demo it now if asked."*
 
 ### Step 7 — Conversation thread (2 min) — *end-to-end demo path*
 - After Step 6c's accept, Reza sees the request detail with **two CTAs side-by-side: "Open conversation →" and "Open client view →"**. Frame: *"Two front doors. The conversation is where the relationship lives; the client view is where the data lives. Same engagement; different jobs."*
@@ -292,4 +307,4 @@ This document is the operational playbook. Update it after every pitch with:
 
 ---
 
-*Last updated: 2026-05-04 (scaffold). Sections marked "TO BE WRITTEN AS BUILD COMPLETES" populate during the corresponding feature PR.*
+*Last updated: 2026-05-09 — demo-complete final pass. All `TO BE WRITTEN AS BUILD COMPLETES` markers that depend on shipped features are populated. Remaining markers (lines 122 / 133 / 140 / 247 / 263) explicitly need real lighthouse-pitch observations to populate authentically — leave them as scaffolds until the first 3 pitches run, then fill in with real adviser quotes + observed reactions.*
