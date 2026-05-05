@@ -1583,3 +1583,26 @@ New `lib/tax-engine/divisions/negativeGearing.ts` exporting `applyNegativeGearin
 23 module tests covering all 7 entity types + all 3 loss-treatment paths + loss-exceeds-income carry-forward + citation completeness.
 
 **41e.9 — Personal Services Income (PSI) rules** is next.
+
+## **10.21 Phase 41e.9 — Personal Services Income classifier (PR #657 — shipped 2026-05-05)**
+
+New `lib/tax-engine/divisions/psiClassifier.ts` exporting `classifyPsi(input)` per ITAA 1997 Part 2-42 + TR 2022/3. Determines whether a Pty Ltd / Trust earning "personal services income" qualifies as a Personal Services Business (PSB) — if it does, no income attribution; if it doesn't, full PSI is attributed to the individual at marginal rates regardless of company structure.
+
+**Decision flow:**
+1. **PSB Determination held** (s87-60) → automatic PSB
+2. **Results test** (s87-18) — paid for a result + supplies plant/equipment + liable for rectification → automatic PSB
+3. **80%-one-client gate** (s87-15):
+   - `< 80% from one client`: ANY of unrelated-clients (s87-20) / employment (s87-25) / premises (s87-30) → PSB
+   - `≥ 80% from one client`: must satisfy results test or hold determination → otherwise NOT PSB
+4. **Unrelated clients test** requires ≥ 2 clients gained via DIRECT advertising (not personal contacts / labour-hire)
+5. NOT PSB → full PSI attributed to individual per s86-15
+
+**`PsiClassificationResult.tests`** reports per-test outcomes for AFSL footer rendering.
+
+**UNCOMPUTED:** UC-PSI-DEDUCTION-RESTRICTIONS — when PSI is attributed, deductions are restricted per s86-60 (only those deductible if individual earned directly). v1 reports gross attribution; net deduction-restricted calc deferred.
+
+**Not auto-wired into router** — same pattern as Div 152/41e.8: caller invokes `classifyPsi()` directly when the entity has personal-services income (typically COMPANY entity earning consulting fees).
+
+18 module tests covering all 5 tests + PSB Determination short-circuit + 80% boundary cases + citation completeness.
+
+**41e.10 — Family Trust Election + Interposed Entity Election** is next.

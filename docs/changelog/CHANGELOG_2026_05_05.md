@@ -1,5 +1,33 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e9-psi-rules (Phase 41e.9 — PSI classifier per Part 2-42 + TR 2022/3)
+
+### Changes
+- New `lib/tax-engine/divisions/psiClassifier.ts` — `classifyPsi(input)` 
+- 5 tests: 80%-one-client / results (s87-18) / unrelated clients (s87-20) / employment (s87-25) / premises (s87-30)
+- PSB Determination (s87-60) short-circuits to automatic PSB
+- When NOT PSB → full PSI attributed to individual per s86-15
+- UC-PSI-DEDUCTION-RESTRICTIONS for s86-60 deduction limits (deferred)
+- 18 module tests; 429 total (411 → 429, +18); tsc clean
+- Not auto-wired into router — caller invokes directly
+
+### Testable
+```ts
+import { classifyPsi } from '@/lib/tax-engine/divisions/psiClassifier';
+classifyPsi({
+  totalPsiIncome: 200000,
+  incomeFromLargestClient: 180000,  // 90% — fails 80% test
+  unrelatedClientCount: 0,
+});
+// → isPsb: false
+// → psiAttributedToIndividual: 200000 (taxed at individual marginal rates)
+// → uncomputed: UC-PSI-DEDUCTION-RESTRICTIONS
+```
+
+41e.10 (FTE / IEE chain rules) is next.
+
+---
+
 ## Session: claude/phase-41e8-negative-gearing (Phase 41e.8 — Negative gearing + per-entity loss treatment)
 
 ### Changes
