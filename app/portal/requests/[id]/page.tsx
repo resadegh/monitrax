@@ -36,6 +36,7 @@ interface RequestDetail {
   leadFeeAmount: string | null;
   leadFeeChargedAt: string | null;
   clientLinkId: string | null;
+  conversation: { id: string } | null;
   requester: {
     id: string;
     name: string;
@@ -265,12 +266,22 @@ export default function PortalRequestDetailPage({ params }: { params: Promise<{ 
             <p className="text-[14px] text-slate-700 leading-relaxed mb-3">
               The client invitation was sent. Once they grant consent, they&rsquo;ll appear in your client book and you&rsquo;ll see their canonical snapshot.
             </p>
-            <Link
-              href={`/portal/clients/${data.clientLinkId}/view`}
-              className="inline-flex items-center rounded-full bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-[12px] font-medium transition-colors"
-            >
-              Open client view →
-            </Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              {data.conversation?.id && (
+                <Link
+                  href={`/portal/conversations/${data.conversation.id}`}
+                  className="inline-flex items-center rounded-full bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-[12px] font-medium transition-colors"
+                >
+                  Open conversation →
+                </Link>
+              )}
+              <Link
+                href={`/portal/clients/${data.clientLinkId}/view`}
+                className="inline-flex items-center rounded-full bg-white ring-1 ring-emerald-200 hover:bg-emerald-50 text-emerald-800 px-3 py-1.5 text-[12px] font-medium transition-colors"
+              >
+                Open client view →
+              </Link>
+            </div>
           </PracticeGlassCard>
         )}
 

@@ -137,3 +137,26 @@ export {
   type SubmitRequestInput,
   type RespondInput,
 } from './professionalRequestService';
+
+// =============================================================================
+// PHASE 32C PR4d — CONVERSATIONS
+// =============================================================================
+
+export {
+  createForAcceptedRequest,
+  createOrgScopedConversation,
+  assertParticipant,
+  listMessages,
+  getConversationDetails,
+  listConversationsForUser,
+  listConversationsForOrg,
+  postMessage,
+  softDeleteFromUserView,
+  closeConversation,
+  findConversationByReplyToSlug,
+  buildReplyToAddress,
+  ConversationServiceError,
+  type CreateForRequestInput,
+  type CreateOrgScopedInput,
+  type PostMessageInput,
+} from './conversationService';
