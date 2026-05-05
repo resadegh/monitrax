@@ -1022,3 +1022,23 @@ Slice D ships the orchestration scaffolding that makes the entity-aware layer re
 26 new tests: `tests/tax-engine/entity/entityTaxRouter.test.ts` (11 tests — both halves of the dispatch contract) and `tests/tax-engine/boundaries/boundaries.test.ts` (15 tests — citation formatting, de-duplication, UNCOMPUTED rendering, BOUNDARY_STATEMENT contains TPB/AFSL/NCCP).
 
 After slice D, **41e.0 is COMPLETE.** 41e.1 (Div 115 + Div 6 basic + capital loss netting) starts.
+
+## **10.13 Phase 41e.1 — Div 115 CGT discount, Div 6 basic, capital loss netting (in flight)**
+
+41e.1 is the first **rule** sub-PR. Sliced for digestibility:
+
+- **Slice A (PR #644 — shipped 2026-05-05):** Div 115 CGT discount module. New `lib/tax-engine/divisions/cgtDiscount.ts` with the entity-aware rate dispatch:
+  - PERSONAL_NAME / SOLE_TRADER / DISCRETIONARY_TRUST / UNIT_TRUST / PARTNERSHIP → 50% per ITAA 1997 s115-25
+  - SMSF (complying) → 33⅓% per ITAA 1997 s115-100
+  - SMSF (non-complying) → 0% (s115-100 carve-out)
+  - COMPANY → 0% per ITAA 1997 s115-280 (companies not eligible)
+  - Any entity, < 12 months held → 0% per ITAA 1997 s115-25
+  - Foreign-resident → flagged `UC-FOREIGN-RESIDENT-CGT` (Subdiv 115-D apportionment deferred to a future sub-PR)
+  
+  Pure functions; no consumers yet — slice D wires the router to call this for `cgt_event` inputs. 24 unit tests covering every entity branch + holding-period gate + SMSF complying/non-complying split + foreign-resident UNCOMPUTED + edge cases (zero gain, negative gain).
+
+- **Slice B (queued):** Capital loss netting + ordering. ITAA 1997 s100-50 (loss-method ordering) + s115-100 (apply discount AFTER netting). Pure functions composing slice A.
+- **Slice C (queued):** Div 6 basic + `trustDistribution.ts` skeleton. Presently-entitled allocation per ITAA 1936 s95–s99B. Streaming (Div 6E) lands in 41e.4.
+- **Slice D (queued):** Wire `entityTaxRouter` to consume the new modules. COMPANY / DISCRETIONARY_TRUST UNCOMPUTED branches start producing real numbers for the simple-disposal + non-streamed-distribution cases. AFSL footer surfaces s115-25 + Div 6 citations on per-entity API responses.
+
+After 41e.1, the audit's "never false numbers" principle relaxes: COMPANY and TRUST entities start returning computed CGT figures for disposal events, paired with the boundary footer citing exactly which sections were applied.

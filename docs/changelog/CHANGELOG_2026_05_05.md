@@ -1,5 +1,51 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e1-a-cgt-discount (Phase 41e.1 slice A — Div 115 CGT discount, entity-aware rate dispatch)
+
+### Changes Made
+- **Type:** Feature — first **rule** sub-PR after the 41e.0 foundation. Pure additive module with no consumers yet (slice D wires `entityTaxRouter` to call it).
+- **Scope:** Implements ITAA 1997 Div 115 CGT discount rate dispatch by entity type. Per-entity rates: 50% (individuals + trusts + partnerships), 33⅓% (complying SMSF), 0% (companies + non-complying SMSF + < 12 months holding). Foreign-resident apportionment (Subdiv 115-D) flagged as `UC-FOREIGN-RESIDENT-CGT` for future work.
+- **Stacked on:** PR #641 (slice D of 41e.0 — closes 41e.0). Stack chain: this PR → #641 → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Created
+- `lib/tax-engine/divisions/cgtDiscount.ts` — `calculateCgtDiscount(input)` + `getCgtDiscountRate(type, isComplying?)` exports. Pure functions; no DB, no state, no side effects. Result shape carries `discountRate` / `discountAmount` / `discountedGain` / `metHoldingPeriod` / `reason` / `citations` / `uncomputed` so the boundary footer can render the exact authority used. Holding-period gate is universal (< 12 months → 0% regardless of entity type per s115-25). COMPANY result explicitly cites s115-280 so users see why no discount applied.
+- `tests/tax-engine/divisions/cgtDiscount.test.ts` — 24 tests covering every entity branch, the holding-period boundary (11 vs 12 months), SMSF complying/non-complying split, foreign-resident UNCOMPUTED, and edge cases (zero gain, negative gain trusted to caller for loss netting in slice B).
+
+### Files Modified
+- `docs/architecture/03_DATA_MODEL.md` — new §10.13 documenting Phase 41e.1 with the per-entity discount table + queue of remaining slices (B: loss netting, C: Div 6 + trustDistribution skeleton, D: router wiring).
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — status callout updated: 41e.1 slice A in flight, B/C/D queued.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry with full per-entity rate breakdown.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **251 tests passed** (227 → 251, +24 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Pure additive calc module — no UI surface yet, no schema change, no behaviour change for any existing flow. Slice D will surface this on `/dashboard/tax` per-entity API responses.)
+
+Per the going-forward commitment from PR #637 — relevant docs updated in this same PR:
+- `03_DATA_MODEL.md` — new §10.13.
+- `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice status update.
+- `IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+
+### What's user-testable now
+**Nothing visual yet** — slice A is pure additive, no consumers wired. The `/dashboard/tax` AFSL footer from 41e.0 slice D remains the most recent visible surface. Slice D of 41e.1 (router wiring) is when COMPANY / DISCRETIONARY_TRUST entities start producing real CGT figures via `GET /api/tax/entity/[entityId]` and the boundary footer surfaces s115-25 / s115-280 citations.
+
+### What's next
+- **Slice B** — capital loss netting + ordering (s100-50, s115-100). Pure functions composing slice A.
+- **Slice C** — Div 6 basic + `trustDistribution.ts` skeleton. Presently-entitled allocation per ITAA 1936 s95–s99B.
+- **Slice D** — wire `entityTaxRouter` to consume the new modules. **First slice that flips the COMPANY / DISCRETIONARY_TRUST UNCOMPUTED branches to real numbers for simple-disposal cases.**
+
+### PR
+- Branch: `claude/phase-41e1-a-cgt-discount` (stacked on `claude/phase-41e0-d-router` / PR #641)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e0-d-router (Phase 41e.0 foundation slice D — entityTaxRouter + AFSL boundaries renderer + new endpoints — closes 41e.0)
 
 ### Changes Made
