@@ -1,5 +1,54 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e-cleanup-d-fixtures (Phase 41e.−1 cleanup PR D — archetype fixtures + master-config self-test + parity baselines + slice-C bugfix)
+
+### Changes Made
+- **Type:** Tests + audit closure (Phase 41e.−1 cleanup, slice D — final slice; closes the four-slice cleanup PR; produces the parity baselines for the next 17 sub-PRs).
+- **Scope:** Three archetype fixtures (Sarah Kim / David+Emma / Olivia) shared with pitch seeding (audit doc §9.1 + Up Next #33). Master-config self-test asserting the canon (audit §10.4). Parity baseline test for slice-C's `buildTaxSummary` delegation (audit §9.4). **Caught and fixed a real bug from slice C** — `marginalRate` semantic mismatch — in the same PR.
+- **Audit closure:** All four C-class findings resolved (C-1 slice C, C-2 slice B, C-3 deferred to 41e.0 per audit §6.3, C-4 slice A). All H-class findings resolved (H-1 through H-6 slice B / Slice C). 41e.−1 is COMPLETE after this PR merges. 41e.0 unblocks.
+
+### Files Created
+- `tests/tax-engine/fixtures/archetypes/types.ts` — `ArchetypeFixture` shape; deliberately a subset of the real Prisma rows (only the fields the tax engine reads). Easy to extend per sub-PR.
+- `tests/tax-engine/fixtures/archetypes/sarah-kim.ts` — sole-trader IT consultant + Pty Ltd; $130k salary in 30% bracket; tests SOLE_TRADER income flow + future Div 7A risk + base-rate company tax dispatch.
+- `tests/tax-engine/fixtures/archetypes/david-emma.ts` — family with discretionary trust + corporate-trustee SMSF. David $180k + Emma $48k + rental + franked dividends. Tests trust streaming, corporate-trustee chain walking, household roll-up.
+- `tests/tax-engine/fixtures/archetypes/olivia.ts` — multi-entity HNW with 4 properties + trust + unit trust + Pty Ltd + SMSF. $300k+ income in 45% bracket. Tests trust-to-trust chain, FTE/IEE walking, SMSF unit-trust holding (NALI), state land tax aggregation, PSI through Pty Ltd, Div 293/296.
+- `tests/tax-engine/fixtures/archetypes/index.ts` — barrel exporting `ARCHETYPES` for `describe.each` iteration.
+- `tests/tax-engine/config/taxYearConfig.test.ts` — **master-config self-test** (audit §10.4). 22 assertions across the three FYs: every required field populated; brackets cover [0, ∞) with no gaps or overlaps; bracket rates non-negative + ascending; bringForward thresholds monotonically ordered; super contributions tax rate locked at canonical 15%; review schedule date format valid; FY25-26 registered; current-FY review date in the future.
+- `tests/tax-engine/parity/buildTaxSummary.parity.test.ts` — **slice-C parity baseline** (audit §9.4). 18 assertions: each archetype runs cleanly through `calculateTaxPosition()`, returns non-negative tax fields, marginal rate is one of the canonical bracket rates (percentage scale 0–100), refund matches `paygWithheld − netTax` within $1 rounding, deductions sum equals category breakdown, each archetype lands in the expected bracket band.
+
+### Files Modified
+- `lib/services/masterFinancialService.ts` — **bugfix from slice C.** The parity test caught that `IncomeTaxResult.marginalRate` is already in percentage scale (multiplied by 100 inside `incomeTaxCalculator.ts:112`) but slice C's adapter converted it AGAIN, producing 3000 instead of 30 in the master snapshot. Fixed by changing `(result.tax.marginalRate ?? 0) * 100` → `result.tax.marginalRate ?? 0` (pass-through). JSDoc updated to record the correct semantic.
+- `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` — Status header flipped to "✅ AUDIT COMPLETE (PRs 1-4 merged) + 🟡 41e.−1 cleanup in flight (slices A/B/C ✅ shipped; slice D = this PR)".
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — four entries prepended (slices A/B/C/D) recording the full cleanup arc.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine` — 172 tests passed (132 existing + 40 new). Zero failures.
+- [ ] `tests/regression/api.test.ts` + `tests/sanity/cross-module.test.ts` are pre-existing integration tests requiring `DATABASE_URL`; their failures are environmental, unrelated to this PR.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — closes the 4-PR audit + 4-slice 41e.−1 cleanup workstream; unblocks 41e.0.
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Docs updated:
+- `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` — status header.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — 4 entries prepended.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Validates the audit's snapshot-test protocol
+The fact that the parity test caught a real production bug from slice C — within the same session, before any user-facing impact — validates audit §9.2's "capture-before-refactor" protocol. This is exactly the regression class the protocol exists to detect across the 17 upcoming 41e.* sub-PRs.
+
+### What's next
+- **41e.0 (foundation)** unblocks. Per audit §8.1: new types (`EntityTaxFacts`, `MasterTaxPosition`, `AuthorityCitation`, `FYReference`); entity-aware aggregator extensions (resolves C-3); `entityTaxRouter.ts` skeleton; AFSL/TPB/NCCP boundaries renderer; `parentEntityId` cycle-detection wired into `legalEntityService.ts`; new permissions (`tax_data.read/write`); new endpoints `GET /api/tax/entity/[id]` + `GET /api/tax/config`. Estimated 2 days.
+- Then 41e.1 → 41e.17 per audit §8.1 (the 17 sub-PR sequence covering Div 115, Div 6/6E, s100A, Div 7A, Div 152, SMSF triumvirate, FTE/IEE, state land tax + stamp duty, trust + company loss rules, GST/BAS, MasterTaxPosition orchestrator).
+
+### PR
+- Branch: `claude/phase-41e-cleanup-d-fixtures`
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e-cleanup-c-buildtaxsummary (Phase 41e.−1 cleanup PR C — buildTaxSummary delegation)
 
 ### Changes Made

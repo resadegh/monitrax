@@ -3,7 +3,7 @@
 
 ---
 
-> **Status:** v1 — PR 1/4 (foundation: existing-state inventory + critical findings).
+> **Status:** ✅ AUDIT COMPLETE (PRs 1-4 merged) + 🟡 41e.−1 cleanup in flight (slices A/B/C ✅ shipped — PRs #626, #629, #630 merged; slice D ships archetype fixtures + master-config self-test + parity baselines, this PR).
 >
 > **PR sequencing** (incremental sign-off — each PR small enough to review in one sitting):
 > - **PR 1 (this PR):** Executive summary, existing-state inventory, critical findings register
