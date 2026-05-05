@@ -1,5 +1,47 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e0-a-types (Phase 41e.0 foundation slice A — permissions + entity-aware orchestration types)
+
+### Changes Made
+- **Type:** Foundation / type contract (Phase 41e.0 slice A — first slice of the entity-aware orchestration foundation; pure additive; zero consumer changes; zero behaviour changes; sets up the type contract that 41e.0 slices B/C/D + 41e.1 → 41e.17 build against).
+- **Scope:** Two new permissions (`tax_data.read`, `tax_data.write`) for the new endpoints landing in slice D. Five new types in `lib/tax-engine/types.ts` per architecture doc §4 + audit doc §6.2 (`AuthorityCitation`, `FYReference`, `EntityTaxFacts`, `EntityTaxPosition`, `MasterTaxPosition`, `UncomputedFlag`) — the contract for entity dispatch + cumulative authority-citation traceability + UNCOMPUTED-flag surfacing. Stacked on top of the 41e.−1 cleanup PR D branch (PR #633) so the slice-C bugfix is included.
+
+### Files Modified
+- `lib/auth/permissions.ts` — added `tax_data.read` (OWNER+ADMIN+CONTRIBUTOR+VIEWER, mirrors `report.read`) and `tax_data.write` (OWNER+ADMIN+CONTRIBUTOR — writes commit to a snapshot the household sees). JSDoc explains the gating relationship to CDR (these gate ROUTE access; CLAUDE.md §13.3 sanitisation still governs CDR-content visibility).
+- `lib/tax-engine/types.ts` — appended a new "Phase 41e.0 — Entity-Aware Orchestration Types" section. Six new exported interfaces with full JSDoc + cross-references to the architecture doc + audit doc:
+  - `AuthorityCitation` — primary-AU-authority reference (ITAA 1936/1997 / SIS Act / TR / TD / PCG / PS LA / state acts) attached to every rule result. Consumed by the AFSL/TPB/NCCP boundaries renderer (slice D).
+  - `FYReference` — FY-indexed lookup contract; thresholds NEVER hard-coded (per architecture doc §1(6)).
+  - `EntityTaxFacts` — per-entity input the dispatcher needs. Composed from the new entity-aware aggregator outputs (slice C). Optional fields will progressively populate as 41e.1+ ship the rule modules (CGT events, trust distribution resolutions, Div 7A loans, LRBA arrangements).
+  - `EntityTaxPosition` — output of dispatching a single entity. Wraps Phase 20 `TaxPositionResult` for PERSONAL_NAME flows; net-new shapes for COMPANY/TRUST/SMSF land per sub-PR (kept as `unknown` here so sub-PRs refine without churn).
+  - `UncomputedFlag` — audit-friendly "deliberately not computed" structure per audit §10.3. UI surfaces these as plain-English badges, never false numbers.
+  - `MasterTaxPosition` — household-wide roll-up. The canonical replacement for `buildTaxSummary()` once 41e.17 ships the orchestrator.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine` — 172 tests passed.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Slice A is pure additive scaffolding; full 41e.0 audit closure batched at slice D.)
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### What's next
+- **Slice B** — `parentEntityId` cycle-detection wired into `legalEntityService.ts` per audit §7. Four rules (self-parent forbidden, no chain cycles, max depth 10, type-compatibility advisory). DB CHECK constraint as defence-in-depth. 8 required tests.
+- **Slice C** — entity-aware aggregator extensions (incomeAggregator, expenseAggregator, loanAggregator, cashflowOrchestrator, netWorthCalculator) gain optional `ownerEntityId?: string` param, default = no filter (backward-compat). **Resolves the last open audit critical: C-3.**
+- **Slice D** — `entityTaxRouter` skeleton + AFSL/TPB/NCCP boundaries renderer + new endpoints (`GET /api/tax/entity/[id]`, `GET /api/tax/config`, `GET /api/tax/master-position` — the latter is a stub returning `MasterTaxPosition` with all-PERSONAL_NAME dispatch until 41e.1+ wire up entity-specific rules).
+
+After slice D, **41e.0 is complete** and **41e.1 (Div 115 + Div 6 basic + capital loss netting) starts**.
+
+### PR
+- Branch: `claude/phase-41e0-a-types` (stacked on `claude/phase-41e-cleanup-d-fixtures` / PR #633 — when #633 merges, GitHub auto-rebases this PR's base to main)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e-cleanup-d-fixtures (Phase 41e.−1 cleanup PR D — archetype fixtures + master-config self-test + parity baselines + slice-C bugfix)
 
 ### Changes Made
