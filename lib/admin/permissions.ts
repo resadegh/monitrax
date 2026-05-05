@@ -60,7 +60,17 @@ export type AdminPermission =
 
   // Audit
   | 'audit:read'
-  | 'audit:export';
+  | 'audit:export'
+
+  // Marketplace approval (Phase 32C PR4a)
+  // Monitrax-side review of professional listings before they go live on
+  // /marketplace publicly. The Monitrax admin manually cross-checks AFSL /
+  // credit-rep / TPB numbers against ASIC + TPB public registers, then
+  // approves / rejects / suspends. Automated cross-check defers to PROD.
+  | 'marketplace:listings:read'
+  | 'marketplace:listings:approve'
+  | 'marketplace:listings:reject'
+  | 'marketplace:listings:suspend';
 
 // =============================================================================
 // ROLE-PERMISSION MAPPING
@@ -116,6 +126,12 @@ const SUPER_ADMIN_PERMISSIONS: AdminPermission[] = [
   // All audit permissions
   'audit:read',
   'audit:export',
+
+  // All marketplace permissions
+  'marketplace:listings:read',
+  'marketplace:listings:approve',
+  'marketplace:listings:reject',
+  'marketplace:listings:suspend',
 ];
 
 const BILLING_ADMIN_PERMISSIONS: AdminPermission[] = [
@@ -141,6 +157,8 @@ const BILLING_ADMIN_PERMISSIONS: AdminPermission[] = [
 
   // Read audit
   'audit:read',
+
+  // No marketplace permissions for billing admin
 ];
 
 const SUPPORT_ADMIN_PERMISSIONS: AdminPermission[] = [
@@ -169,6 +187,9 @@ const SUPPORT_ADMIN_PERMISSIONS: AdminPermission[] = [
 
   // Read audit
   'audit:read',
+
+  // Marketplace — read-only (support can see the queue, can't approve)
+  'marketplace:listings:read',
 ];
 
 const VIEWER_PERMISSIONS: AdminPermission[] = [
@@ -179,6 +200,7 @@ const VIEWER_PERMISSIONS: AdminPermission[] = [
   'analytics:read',
   'feature_flags:read',
   'audit:read',
+  'marketplace:listings:read',
 ];
 
 export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
@@ -434,4 +456,10 @@ export const PERMISSION_DESCRIPTIONS: Record<AdminPermission, string> = {
   // Audit
   'audit:read': 'View audit logs',
   'audit:export': 'Export audit logs',
+
+  // Marketplace
+  'marketplace:listings:read': 'View professional marketplace listings + queue',
+  'marketplace:listings:approve': 'Approve a listing for public marketplace',
+  'marketplace:listings:reject': 'Reject a listing with reason',
+  'marketplace:listings:suspend': 'Pull an APPROVED listing offline',
 };

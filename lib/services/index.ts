@@ -75,3 +75,34 @@ export {
   type MoneyFlowSourceLabel,
   type MoneyFlowOutflowLabel,
 } from './moneyFlowService';
+
+// =============================================================================
+// PHASE 32C PR4a — PROFESSIONAL MARKETPLACE
+// =============================================================================
+
+export {
+  // Org-side
+  getListingForOrg,
+  upsertListing,
+  submitForReview,
+  // Admin-side
+  listForAdmin,
+  getListingByIdForAdmin,
+  approveListing,
+  rejectListing,
+  suspendListing,
+  // Public
+  browsePublic,
+  getPublicListing,
+  // Helpers
+  isValidSlug,
+  slugify,
+  // Errors
+  MarketplaceServiceError,
+  // Types
+  type ListingDraftInput,
+  type PublicListingFilter,
+  type AdminListingFilter,
+  type ApprovalInput,
+  type RejectionInput,
+} from './marketplaceService';
