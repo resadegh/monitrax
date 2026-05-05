@@ -1,5 +1,37 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e10-fte-iee (Phase 41e.10 — FTE + IEE + 47% TFN withholding per Sch 2F)
+
+### Changes
+- New `lib/tax-engine/divisions/fteIeeClassifier.ts` — `classifyFteIeeDistributions(input)`
+- 4-outcome dispatch: INSIDE_FAMILY / INSIDE_VIA_IEE / OUTSIDE_FAMILY_FTDT / TFN_WITHHOLDING
+- Family group test (Sch 2F s272-95) — caller-asserted relationship
+- `FAMILY_TRUST_DISTRIBUTION_TAX_RATE = 0.47` + `TFN_WITHHOLDING_RATE = 0.47` constants exported
+- TFN withholding priority over OUTSIDE_FAMILY (no double-tax)
+- IEE (s272-85) override → INSIDE_VIA_IEE
+- UC-FTDT-OUTSIDE-FAMILY / UC-FTE-CONTROL-TEST flags
+- 17 module tests; 446 total (429 → 446, +17); tsc clean
+
+### Testable
+```ts
+import { classifyFteIeeDistributions } from '@/lib/tax-engine/divisions/fteIeeClassifier';
+classifyFteIeeDistributions({
+  hasFamilyTrustElection: true,
+  beneficiaries: [
+    { beneficiaryId: 'spouse', beneficiaryName: 'Emma', distributionAmount: 50000,
+      relationship: 'FAMILY_MEMBER', hasQuotedTfn: true },
+    { beneficiaryId: 'cousin', beneficiaryName: 'Pat', distributionAmount: 30000,
+      relationship: 'OUTSIDE_FAMILY', hasQuotedTfn: true },
+  ],
+});
+// → spouse: INSIDE_FAMILY, no extra tax
+// → cousin: OUTSIDE_FAMILY_FTDT, 47% × $30k = $14,100 FTDT payable by trustee
+```
+
+41e.11 (SMSF triumvirate — sole purpose / in-house / LRBA) is next.
+
+---
+
 ## Session: claude/phase-41e9-psi-rules (Phase 41e.9 — PSI classifier per Part 2-42 + TR 2022/3)
 
 ### Changes

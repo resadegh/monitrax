@@ -1606,3 +1606,32 @@ New `lib/tax-engine/divisions/psiClassifier.ts` exporting `classifyPsi(input)` p
 18 module tests covering all 5 tests + PSB Determination short-circuit + 80% boundary cases + citation completeness.
 
 **41e.10 — Family Trust Election + Interposed Entity Election** is next.
+
+## **10.22 Phase 41e.10 — FTE + IEE + 47% TFN withholding (PR #658 — shipped 2026-05-05)**
+
+New `lib/tax-engine/divisions/fteIeeClassifier.ts` exporting `classifyFteIeeDistributions(input)` per Sch 2F ITAA 1936. Classifies each trust distribution into one of four outcomes:
+
+| Outcome | Trigger | Effect |
+|---|---|---|
+| **INSIDE_FAMILY** | TEST_INDIVIDUAL / FAMILY_MEMBER / CONTROLLED_ENTITY | Normal trust assessment |
+| **INSIDE_VIA_IEE** | OUTSIDE_FAMILY but covered by IEE (s272-85) | Treated as inside |
+| **OUTSIDE_FAMILY_FTDT** | OUTSIDE_FAMILY beneficiary | **47% Family Trust Distribution Tax** payable by trustee (s271-15) |
+| **TFN_WITHHOLDING** | Beneficiary did not quote TFN | **47% withheld** by trustee per Pt VA ITAA 1936 |
+
+**Family group definition (s272-95):** test individual + spouse / parent / sibling / lineal descendant + their spouses + entities controlled by family (>50% ownership / distribution power).
+
+**Constants exported:**
+- `FAMILY_TRUST_DISTRIBUTION_TAX_RATE = 0.47` (s271-15; indexed to top marginal + Medicare)
+- `TFN_WITHHOLDING_RATE = 0.47` (Pt VA)
+
+**Result reports:** per-beneficiary `outcome` + `grossDistribution` + `ftdtPayableByTrustee` + `tfnWithholdingDeducted` + `netToBeneficiary`. Aggregates `totalFtdtPayable` + `totalTfnWithholding`.
+
+**UNCOMPUTED flags:**
+- **UC-FTDT-OUTSIDE-FAMILY** when FTDT applies — surfaces the trustee's 47% tax exposure
+- **UC-FTE-CONTROL-TEST** when CONTROLLED_ENTITY relationship claimed — control test is fact-dependent, v1 trusts caller
+
+**Priority:** TFN withholding takes priority over OUTSIDE_FAMILY (a non-quoting beneficiary outside family has 47% withheld; no FTDT layered on top because beneficiary already receives net 53%).
+
+17 module tests covering all 4 outcomes + IEE override + custom FTDT rate + multi-beneficiary aggregation + no-FTE fallback + citation completeness + edge cases.
+
+**41e.11 — SMSF triumvirate (sole purpose / in-house asset / LRBA)** is next.
