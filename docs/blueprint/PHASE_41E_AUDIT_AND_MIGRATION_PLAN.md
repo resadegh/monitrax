@@ -406,13 +406,532 @@ Full UNCOMPUTED list is consolidated in PR 4.
 
 ---
 
-## 6. What's Next (PRs 3-4)
+## 6. Per-rule SSOT migration map — PR 3/4
 
-This PR (2/4) establishes the **layer-don't-rewrite decision** + the **multi-entity combinations matrix** + the **eight cross-entity flow scenarios** that 41e dispatches. Sign off, and PRs 3-4 land:
+> **Reza brief 2026-05-05 (the SSOT contract):** *"Any changes to the calculations should be made carefully to the existing engines considering all aspects of existing rules vs the new ones. I don't want to break something to build a new solution."*
 
-- **PR 3** — the **per-rule SSOT migration map**: each existing module from §2.1 mapped to its 41e action (replace / extend / leave-as-primitive / delete), with the exact 41e sub-PR target. Plus the **per-engine downstream impact**: which surfaces (cashflow, Sankey, AI advisor, the 11 routes, strategy, reports, dashboards) need a touch and what the touch is. Plus the **`parentEntityId` cycle-detection validation** spec.
-- **PR 4** — refined **sub-PR sequencing** (the architecture doc §11 list adjusted to insert the cleanup PR + reorder for safety), the **snapshot-test fixture strategy**, the **constants reconciliation table** (resolves C-2, H-1, H-2, H-3, H-4, H-5, H-6 in one place), the **FY25-26 config gap** (resolves C-4), the **UNCOMPUTED additions**, and the **Reza sign-off block** that gates 41e.0.
+This section is the **per-file action plan**. Every module from §2.1 + §2.2 + §2.3 gets a verdict: **REUSE** (Phase 20 primitive — keep, leave alone), **EXTEND** (modify in place to add entity awareness or extract a constant), **WRAP** (kept as-is, called from a new 41e module that adds the entity layer), **REPLACE** (delete the inline math, swap to the canonical engine), or **NET-NEW** (no existing code; build in 41e). Every action lists the 41e sub-PR that owns it.
+
+### 6.1 Migration verdict legend
+
+| Verdict | Meaning | Risk |
+|---|---|---|
+| **REUSE** | Phase 20 primitive is correct as-is; 41e composes it from above | None (preserve untouched) |
+| **EXTEND** | Modify the file in place — extract a hard-coded constant to FY config, or add an optional `entityType` param. Backward-compatible. | Low — backward-compat means zero call-site disruption |
+| **WRAP** | Phase 20 file kept untouched; new 41e module sits on top and calls it with entity-aware dispatch | None to Phase 20; new 41e module owns the entity logic |
+| **REPLACE** | Existing inline math is wrong / duplicated / out-of-sync; delete it, call canonical engine instead | **Highest** — this is where the regression-trap snapshot tests matter most |
+| **NET-NEW** | No existing code; 41e builds from scratch per `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 | Medium — fresh code, but isolated to 41e modules, no migration risk |
+| **DELETE** | Code is dead or contradictory; remove from codebase | Low after dependency check |
+
+### 6.2 Phase 20 tax engine (`lib/tax-engine/`) — per-file map
+
+| File | LOC | Verdict | Action | 41e sub-PR |
+|---|---|---|---|---|
+| `index.ts` | 103 | **REUSE** | Keep as-is. 41e imports from here. | — |
+| `types.ts` | 406 | **EXTEND** | Add `EntityTaxFacts`, `MasterTaxPosition`, `AuthorityCitation`, `FYReference` types per architecture doc §4. Existing types untouched. | 41e.0 |
+| `config/taxYearConfig.ts` | 227 | **EXTEND** | Add `TAX_YEAR_2025_26` entry (resolves C-4). Add config keys for the constants from §6.5 reconciliation table (resolves C-2, H-1, H-2, H-3). Existing FY24-25 untouched. | 41e.−1 (cleanup) + 41e.0 |
+| `core/incomeTaxCalculator.ts` | 172 | **REUSE** | Federal Div 1-6 calc is correct as-is. 41e dispatches `entityType === 'PERSONAL_NAME'` flows to this. | — |
+| `core/medicareLevyCalculator.ts` | 231 | **REUSE** | Medicare is individual-only (per Health Insurance Levy Act). 41e never calls this for COMPANY/TRUST/SMSF. | — |
+| `core/paygCalculator.ts` | 267 | **EXTEND** | Add HECS/HELP withholding (M-2; line 145 TODO). Otherwise REUSE. | 41e.−1 (cleanup, optional) or accept HECS gap as known limitation |
+| `core/taxOffsets.ts` | 299 | **REUSE** | LITO/SAPTO/franking/foreign offsets are individual-level. 41e dispatches PERSONAL_NAME flows to this. SAPTO simplification (M-1) accepted as known limitation. | — |
+| `income/salaryProcessor.ts` | 359 | **REUSE** | SG calc + sacrifice optimisation. Per-individual. Composed by 41e for SOLE_TRADER + PERSONAL_NAME. | — |
+| `income/taxabilityRules.ts` | 317 | **REUSE** | Income classification + franking math. Pure utility. | — |
+| `position/taxPositionCalculator.ts` | 499 | **REUSE** + **WRAP** | The user-level orchestrator stays as the federal-individual primitive. New `calculateEntityTaxPosition()` in 41e wraps this for `entityType === 'PERSONAL_NAME'` and dispatches to NET-NEW modules for COMPANY / TRUST / SMSF. | 41e.17 (orchestrator) wraps |
+| `super/capTracker.ts` | 373 | **EXTEND** | Move `CONCESSIONAL_CAPS` / `NON_CONCESSIONAL_CAPS` constants into `taxYearConfig.ts` so they're not duplicated. Add interest charge on excess concessional contributions (M-4) — optional. | 41e.−1 (cleanup) + 41e.2 |
+| `super/contributionCalculator.ts` | 462 | **EXTEND** | Add downsizer contribution support (M-6) — optional. Otherwise REUSE. | 41e.2 + 41e.11 |
+| Phase 20 fixtures (none exist) | 0 | **NET-NEW** | Add Sarah Kim / David+Emma / Olivia archetype fixtures with ATO worked-example numbers. Per architecture doc §1(4). | 41e.−1 (cleanup) — captures pre-refactor outputs as parity baseline |
+
+**Net Phase-20 changes:** 1 EXTEND to `types.ts` (additive, no breaking change), 1 EXTEND to `taxYearConfig.ts` (additive, no breaking change), 1 EXTEND to `capTracker.ts` (constant relocation, behaviour preserved), 1 optional EXTEND to `paygCalculator.ts` (HECS), 1 optional EXTEND to `contributionCalculator.ts` (downsizer). **Eight files preserved untouched** as calc primitives.
+
+### 6.3 Aggregators + master snapshot — per-file map
+
+| File | Verdict | Action | 41e sub-PR |
+|---|---|---|---|
+| `lib/services/masterFinancialService.ts:1012-1077` (`buildTaxSummary()`) | **REPLACE** | Delete inline bracket math. Call `calculateMasterTaxPosition(userId)` from new 41e orchestration layer. **Resolves C-1.** Snapshot test asserts parity with `/api/tax/position`. | 41e.−1 (cleanup) — first action |
+| `lib/calculations/incomeAggregator.ts` | **EXTEND** | Add optional `ownerEntityId?: string` param. Filter `findMany` `where` clause by entity if provided. Default = no filter (backward-compat). **Resolves C-3 (income).** | 41e.0 |
+| `lib/calculations/expenseAggregator.ts` | **EXTEND** | Same pattern as incomeAggregator. **Resolves C-3 (expenses).** | 41e.0 |
+| `lib/calculations/loanAggregator.ts` | **EXTEND** | Same pattern. Note: simplified interest math (`(rate/100)/12 × principal`) accepted as known limitation — full amortisation engine is out of scope. **Resolves C-3 (loans).** | 41e.0 |
+| `lib/calculations/cashflowOrchestrator.ts` | **EXTEND** | Per-entity grouping. Calls extended aggregators with `ownerEntityId`. **Resolves C-3 (cashflow).** | 41e.0 + 41e.8 |
+| `lib/calculations/netWorthCalculator.ts` | **EXTEND** | Per-entity grouping. Aggregates assets/liabilities by `ownerEntityId`. | 41e.0 |
+| `lib/cashflow/incomeNormalizer.ts:142-162` | **EXTEND** | Add tax-adjustment for non-salary income (rental / dividend / interest) — currently passed through gross (M-3). Optional v1 addition. | 41e.8 (negative gearing + per-entity aggregator) |
+
+**No DELETEs in this layer.** Aggregator extensions are additive — every existing call site continues to work.
+
+### 6.4 Tax routes + cross-engine consumers — per-file map
+
+| File | LOC | Verdict | Action | 41e sub-PR |
+|---|---|---|---|---|
+| `app/api/tax/route.ts` | 313 | **WRAP** | URL preserved. Handler becomes thin wrapper calling 41e orchestrator. Frequency enums extracted to shared utility. | 41e.17 |
+| `app/api/tax/salary/route.ts` | 149 | **REUSE** | Salary processing is individual-level; route delegates correctly to `processSalary`. No change. | — |
+| `app/api/tax/super/route.ts` | 282 | **EXTEND** | Replace hard-coded `0.85` with `config.superContributionsTaxRate`. Otherwise correct. | 41e.−1 (cleanup) — resolves H-1 |
+| `app/api/tax/super/optimize/route.ts` | 341 | **EXTEND** | 6 hard-coded `0.15` → `config.superContributionsTaxRate`. `60400` co-contrib threshold → `config.coContributionIncomeThreshold`. `0.30` / `0.37` marginal compares → call `getMarginalRate()`. `0.50` CGT discount → `config.cgtDiscountRate`. | 41e.−1 — resolves H-1 + H-2 |
+| `app/api/tax/super/contributions/route.ts` | 297 | **EXTEND** | Hard-coded `0.85` → config. Add cap validation call. | 41e.−1 + 41e.2 |
+| `app/api/tax/position/route.ts` | 298 | **WRAP** | URL preserved. Handler becomes thin wrapper calling 41e orchestrator. Tightly-coupled `IncomeItem` / `ExpenseItem` interfaces become stable contract for 41e. | 41e.17 |
+| `lib/cfo/decisionSupport/taxIntegration.ts:185, 350, 426` | 519 | **EXTEND** + partial **REPLACE** | `27500` (FY24 stale) → `config.concessionalCap` (**resolves C-2**). `250000` Div 293 → config. `60400` co-contrib → config. `50000` / `100000` CGT thresholds → config. `$3000`/property depreciation estimate (H-6) → either real Div 40/43 calc (out of v1 scope) or documented heuristic flag. | 41e.−1 + 41e.0 |
+| `lib/cfo/scenarios/sellProperty.ts` | 156 | **REUSE** | Defers to tax tab — correct behaviour. | — |
+| `lib/strategy/analyzers/taxAnalyzer.ts:129` | 136 | **EXTEND** | Replace assumed `0.30` marginal rate with `getMarginalRate(taxableIncome)` call. **Resolves H-5.** | 41e.−1 |
+| `lib/reports/generators/taxTime.ts` | 236 | **REUSE** | Pure aggregation, no calc. Consumes 41e orchestrator output. | — |
+| `lib/cashflow/incomeNormalizer.ts` | 264 | **EXTEND** (covered in §6.3) | Already counted above. | 41e.0 |
+| `app/dashboard/tax/page.tsx:446-470, 759` | 908 | **EXTEND** | Hard-coded brackets table → fetch from `/api/tax/config` (new endpoint or piggyback on `/api/tax/position`). `30000` / `120000` caps → API. `11.5%` SG → API. `30%` marginal threshold for sacrifice CTA → `getMarginalRate()`. FY24-25 hard-coded subtitle → `config.label`. **Resolves H-3 + H-4.** | 41e.−1 |
+
+**Phase 41d `MoneyFlowSankey`** (`lib/services/moneyFlowService.ts` + `components/entities/MoneyFlowSankey.tsx`): proportional tax allocation v1 is documented in the inline UI caveat. Replaced post-41e.4 (Div 6E streaming) with correct per-entity dispatch. **No code change in cleanup PR — the v1 caveat is honest. Numbers change, visual unchanged.**
+
+### 6.5 Constants reconciliation — single-source-of-truth map
+
+This table consolidates every hard-coded constant flagged in the audit. Each constant gets ONE canonical home in `taxYearConfig.ts` and every consumer reads from there.
+
+| Constant | Current value(s) | Stale? | Canonical home (post-cleanup) | Resolves finding |
+|---|---|---|---|---|
+| Concessional super cap | `$27,500` (CFO module) / `$30,000` (config + dashboard) | `$27,500` is FY24 stale | `config.concessionalCap` | C-2 |
+| Non-concessional cap | `$120,000` (multiple) | OK FY25 | `config.nonConcessionalCap` | — |
+| Super contributions tax rate | `0.15` (×7 sites, hard-coded) | OK | `config.superContributionsTaxRate` | H-1 |
+| Co-contribution income threshold | `$60,400` (×2 sites) | Indexes annually | `config.coContributionIncomeThreshold` | H-2 |
+| Super Guarantee rate | `11.5%` (dashboard) | Schedule has SG → 12% by 2025-26 | `config.superGuaranteeRate` | H-3 |
+| Federal tax brackets table | Hard-coded in dashboard (`page.tsx:446-470`) | OK as display, fragile | `config.brackets` (already exists; dashboard reads via API) | H-4 |
+| Marginal rate (assumed) | `0.30` in `taxAnalyzer.ts:129` | Wrong for high-bracket users | Call `getMarginalRate(taxableIncome)` | H-5 |
+| CGT discount rate | `0.50` (multiple) | OK for individuals/trusts | `config.cgtDiscountRate` (with entity-aware override: 33⅓% for SMSF, 0% for COMPANY) | — |
+| 12-month CGT holding | `12` (taxAnalyzer.ts) | Statutory | `config.cgtDiscountHoldingMonths` | — |
+| Div 293 threshold | `$250,000` (CFO) | OK FY25 | `config.div293Threshold` | — |
+| Property depreciation heuristic | `$3,000` per property (taxIntegration.ts) | Heuristic, not law | Document as `HEURISTIC` flag in 41e UNCOMPUTED list | H-6 |
+| FY label | `"FY24-25"` (dashboard subtitle) | Drifts annually | `config.label` | H-4 |
+| FY25-26 entry | **MISSING from `taxYearConfig.ts`** | Imminent | Add `TAX_YEAR_2025_26` config | C-4 |
+
+### 6.6 Non-tax engines — what gets a touch from 41e
+
+The following engines are NOT in scope for direct 41e refactor, but they consume aggregators that ARE refactored. Every consumer needs verification that the entity-aware aggregator extension didn't change its output.
+
+| Engine | File | Touched in 41e? | Verification needed |
+|---|---|---|---|
+| Cashflow orchestrator | `lib/calculations/cashflowOrchestrator.ts` | **YES** (§6.3) | Snapshot-test fixture asserting cashflow numbers match before/after aggregator extension |
+| Net worth calculator | `lib/calculations/netWorthCalculator.ts` | **YES** (§6.3) | Snapshot-test fixture; per-entity net worth = sum of (entity's assets) − (entity's liabilities) |
+| AI advisor (Personal CFO) | `lib/cfo/decisionSupport/taxIntegration.ts` + `lib/cfo/scenarios/*` | **YES** (§6.4) | CFO recommendations must remain semantically equivalent for v1 user (no entities = single PERSONAL_NAME). Snapshot-test golden recommendations. |
+| Strategy analyzers | `lib/strategy/analyzers/taxAnalyzer.ts` | **YES** (§6.4) | High-bracket user's CGT savings number changes (currently wrong). Document expected diff. |
+| Reports / Tax time generator | `lib/reports/generators/taxTime.ts` | **REUSE** — consumes 41e output | Output shape unchanged; numbers may change as 41e fixes downstream errors. |
+| MoneyFlowSankey (Phase 41d) | `lib/services/moneyFlowService.ts` | **YES** post-41e.4 | Visual unchanged. Numbers update from proportional allocation → correct Div 6/6E dispatch. |
+| Dashboard tax page | `app/dashboard/tax/page.tsx` | **YES** (§6.4) | UI unchanged. Hard-coded constants → API-driven. Test: change a config value, dashboard reflects. |
+| Health engine | `lib/health/*` | **NO** direct touch | But health score consumes net-worth + cashflow → indirect dependency. Snapshot-test the health score for fixture users pre/post cleanup. |
+| Insights engine (`/api/portfolio/snapshot`) | `lib/intelligence/insightsEngine.ts` | **NO** | GRDCS layer; no tax math. Untouched. |
+| Master Financial Service (non-tax fields) | `lib/services/masterFinancialService.ts` | **YES** (§6.3) — `buildTaxSummary()` only | Other fields (`netWorth`, `cashflow.net`, etc.) remain output-equivalent. |
+
+### 6.7 Per-route migration impact — the 6 tax routes
+
+| Route | Migration step | URL preserved? | Response shape preserved? | Caller update needed? |
+|---|---|---|---|---|
+| `GET /api/tax` | Handler → thin wrapper calling 41e orchestrator | ✅ | ✅ (existing fields preserved; new optional `byEntity` field added) | No |
+| `POST /api/tax/salary` | No change (salary is individual-level) | ✅ | ✅ | No |
+| `GET/POST /api/tax/super` | Constants extracted to config; handler logic unchanged | ✅ | ✅ | No |
+| `POST /api/tax/super/optimize` | Constants extracted; `getMarginalRate()` calls instead of compares | ✅ | ✅ (numbers improve for high-bracket users) | No |
+| `POST /api/tax/super/contributions` | Constants extracted; cap validation added | ✅ | ✅ (new `capValidation` field added) | No |
+| `GET /api/tax/position` | Handler → thin wrapper calling 41e orchestrator | ✅ | ✅ (existing fields preserved; new optional `entities` field added) | No |
+
+**No URL changes. No breaking response shape changes.** Every existing caller (Dashboard tax page, Sankey, AI advisor, future portal endpoints) continues to work without modification. New optional fields land in 41e.0+ for entity-aware consumers; old consumers ignore them.
+
+### 6.8 New endpoints introduced by 41e
+
+| Endpoint | Sub-PR | Purpose |
+|---|---|---|
+| `GET /api/tax/master-position?fy=YYYY-YY` | 41e.17 | Household-wide tax position across all entities. Replaces `buildTaxSummary()` consumer. |
+| `GET /api/tax/entity/[entityId]?fy=YYYY-YY` | 41e.0 | Per-entity tax position (any LegalEntityType). Used by entity drill-in pages + Sankey. |
+| `GET /api/tax/config?fy=YYYY-YY` | 41e.−1 | Returns FY config (brackets, caps, rates) for dashboard read. Replaces hard-coded values. |
+| `POST /api/tax/trust-distribution` | 41e.4 | Computes Div 6/6E streaming + per-beneficiary share + character. |
+| `POST /api/tax/div7a-check` | 41e.6 | Compliance check on a COMPANY → shareholder loan. |
+| `POST /api/tax/cgt-disposal` | 41e.1 | Entity-aware CGT (50% / 33⅓% / 0% / nil discount). |
+| `GET /api/tax/state-tax/[entityId]?state=NSW` | 41e.12-14 | Land tax + stamp duty + foreign-person surcharge. |
+
+**All new endpoints use `withPermission('tax_data.read' | 'tax_data.write')`** per CLAUDE.md §12.5. Permission added to `lib/auth/permissions.ts` in 41e.0.
 
 ---
 
-*PR 2/4 complete. Awaiting Reza review of architectural decision + combinations matrix + cross-entity flow rules before PR 3 starts.*
+## 7. `parentEntityId` cycle-detection validation spec — PR 3/4
+
+> Identified as a structural risk in §5.4. The `LegalEntity.parentEntityId` self-FK can in principle form a cycle (A's parent is B, B's parent is A). Calc engine walks this chain in `entityTaxRouter.ts` to dispatch corporate-trustee structures. A cycle would either crash the walker or recurse infinitely.
+
+### 7.1 Where cycles can be introduced
+
+| Path | Risk |
+|---|---|
+| `POST /api/entities` (create) | Low — new entity has no children at creation time |
+| `PATCH /api/entities/[id]` (update — set `parentEntityId`) | **Highest** — user re-parents an entity that already has children |
+| Database direct write (Prisma migration / seed) | Medium — must validate during seed/migration |
+| Backfill / data import | Medium — Phase 41f Xero/MYOB import could conceivably introduce |
+
+### 7.2 Validation rules
+
+The validation MUST run in the entity service layer (`lib/services/legalEntityService.ts`), not just at the API route level — because it must protect every write path including future bulk imports.
+
+**Rule 1 — Self-parent forbidden.**
+`entity.parentEntityId !== entity.id`. Trivial check.
+
+**Rule 2 — No cycle in the parent chain.**
+Walk the parent chain starting from the proposed `parentEntityId`. If we encounter the entity being mutated, reject. Maximum walk depth = configured limit (proposed: 10 — corporate trustee chains in practice are 1-2 levels deep; trust-of-trust-of-trust is rare and 10 is a safety ceiling).
+
+**Rule 3 — Maximum chain depth.**
+Independent of cycle detection, refuse to create a chain deeper than the configured limit (10). Catches accidentally-built rabbit-hole structures and suggests the user simplify.
+
+**Rule 4 — Type-compatibility (advisory, not blocking).**
+Per the indirect-ownership table in §5.4, sensible parent relationships are:
+- DISCRETIONARY_TRUST.parent → COMPANY (corporate trustee)
+- UNIT_TRUST.parent → COMPANY (corporate trustee)
+- SMSF.parent → COMPANY (corporate trustee)
+
+A PERSONAL_NAME entity having a parent is a structural error (a natural person isn't owned by anything in the LegalEntity sense). Wizard should warn + block; calc engine should treat as `parent = null` if encountered.
+
+A COMPANY having a parent is permitted (subsidiary structures, holding-company-of-trust) but warns: *"This Pty Ltd will be treated as the parent's subsidiary for tax dispatch. Confirm."*
+
+### 7.3 Implementation contract for `legalEntityService.ts`
+
+```typescript
+// Pseudocode — final shape lands in 41e.0 sub-PR
+async function validateParentChain(
+  entityId: string | null,        // null when creating
+  proposedParentId: string | null,
+  tx: Prisma.TransactionClient,
+): Promise<
+  | { ok: true }
+  | { ok: false; code: 'SELF_PARENT' | 'CYCLE_DETECTED' | 'MAX_DEPTH_EXCEEDED' | 'INVALID_PARENT_TYPE'; message: string }
+> {
+  if (proposedParentId === null) return { ok: true };
+  if (entityId !== null && entityId === proposedParentId) {
+    return { ok: false, code: 'SELF_PARENT', ... };
+  }
+  
+  // Walk the chain from proposedParentId upward
+  const visited = new Set<string>();
+  let current: string | null = proposedParentId;
+  let depth = 0;
+  const MAX_DEPTH = 10;
+  
+  while (current !== null) {
+    if (depth >= MAX_DEPTH) return { ok: false, code: 'MAX_DEPTH_EXCEEDED', ... };
+    if (entityId !== null && current === entityId) return { ok: false, code: 'CYCLE_DETECTED', ... };
+    if (visited.has(current)) return { ok: false, code: 'CYCLE_DETECTED', ... };
+    visited.add(current);
+    
+    const parent = await tx.legalEntity.findUnique({
+      where: { id: current },
+      select: { parentEntityId: true },
+    });
+    current = parent?.parentEntityId ?? null;
+    depth++;
+  }
+  
+  return { ok: true };
+}
+```
+
+**Where this is called:**
+- `createLegalEntity()` — call before `prisma.legalEntity.create`
+- `updateLegalEntity()` — call before `prisma.legalEntity.update` IF the update changes `parentEntityId`
+- Both calls inside the same transaction as the write, to prevent TOCTOU races.
+
+### 7.4 Database-level safety net (defence in depth)
+
+Cycle detection in application code is the primary guard. As a defence-in-depth measure, the migration adding the `parentEntityId` column (already shipped in Phase 41a) MUST also have a CHECK constraint preventing self-parent at the DB level:
+
+```sql
+ALTER TABLE legal_entities
+  ADD CONSTRAINT legal_entities_no_self_parent
+  CHECK (id <> parent_entity_id OR parent_entity_id IS NULL);
+```
+
+If this constraint isn't already in the existing migration, 41e.0 ships a small additive migration to add it (no destructive write checklist needed — pure CHECK constraint addition; rejects only self-parent rows which we've already established shouldn't exist).
+
+### 7.5 Tests required (lands with 41e.0)
+
+| Test | Setup | Assert |
+|---|---|---|
+| Self-parent rejected | `update(A, parentEntityId: A)` | Service returns `SELF_PARENT` error |
+| Direct cycle rejected | A→B exists; `update(B, parentEntityId: A)` | Returns `CYCLE_DETECTED` |
+| Indirect cycle rejected | A→B→C exists; `update(C, parentEntityId: A)` | Returns `CYCLE_DETECTED` |
+| Max depth enforced | Build 10-deep chain; create 11th | Returns `MAX_DEPTH_EXCEEDED` |
+| Valid corporate trustee | Pty Ltd exists; create Trust with `parent = Pty Ltd` | Returns `ok` |
+| Valid SMSF corporate trustee | Pty Ltd exists; create SMSF with `parent = Pty Ltd` | Returns `ok` |
+| Reparent without cycle | A→B exists; create C; `update(B, parent: C)` | Returns `ok` (chain becomes B→C) |
+| Calc walker walks correctly | Three-level chain Trust → Pty Ltd → null; dispatch tax for Trust | Returns Trust dispatch (skips Pty Ltd as legal-title-only) |
+
+Tests live under `__tests__/services/legalEntityService.parentChain.spec.ts` per architecture doc §1(4).
+
+---
+
+## 8. Refined sub-PR sequencing — PR 4/4
+
+> The architecture doc `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 lists 17 sub-PRs (41e.0 through 41e.17). This audit added one **cleanup PR** ahead of 41e.0 and reorders the §11 list for safety. The reordering is informed by §6 (migration map), §7 (cycle-detection), and the snapshot-test strategy in §9 below.
+
+### 8.1 The full sequence (with cleanup + reorder)
+
+| # | Sub-PR | Scope | Risk | Gates |
+|---|---|---|---|---|
+| **0** | **41e.−1 — Pre-flight cleanup** | (a) Replace `buildTaxSummary()` regression trap with delegation to `calculateTaxPosition()` (resolves C-1). (b) Add `TAX_YEAR_2025_26` to `taxYearConfig.ts` (resolves C-4). (c) Extract every constant from §6.5 reconciliation table to FY config (resolves C-2 + H-1 through H-5). (d) Capture snapshot-test fixtures of current outputs as parity baseline. (e) Add `_prisma_migrations` baseline + Sarah / David+Emma / Olivia archetype fixtures. | **Highest** of any 41e PR. Touches the master snapshot that every dashboard reads. Mitigated by parity tests. | Audit PR 4 sign-off |
+| 1 | **41e.0 — Foundation** | New types (`EntityTaxFacts`, `MasterTaxPosition`, `AuthorityCitation`, `FYReference`); entity-aware aggregator extensions (resolves C-3); `entityTaxRouter.ts` skeleton; AFSL/TPB/NCCP boundaries renderer; `parentEntityId` cycle-detection (§7) wired into `legalEntityService.ts`; new permissions (`tax_data.read/write`); new endpoints `GET /api/tax/entity/[id]` + `GET /api/tax/config`. | Medium. Touches multiple aggregators but extension is additive (optional `ownerEntityId` param, default = no filter). | 41e.−1 |
+| 2 | **41e.1 — Div 115 + Div 6 basic + capital loss netting** | CGT discount entity-aware (50% individual/trust, 33⅓% SMSF, 0% company; nil for non-resident). Capital loss netting + ordering (s100-50, s115-100). Div 6 presently-entitled basic flow. New `cgtDiscount.ts` + `trustDistribution.ts` skeleton. | Medium | 41e.0 |
+| 3 | **41e.2 — SMSF contribution caps** | Move `CONCESSIONAL_CAPS` / `NON_CONCESSIONAL_CAPS` from `capTracker.ts` into FY config. Wire SMSF entity dispatch to existing capTracker primitive. Carry-forward + bring-forward edge cases. | Low | 41e.0 |
+| 4 | **41e.3 — TBC + Div 293 + Div 296 (gated)** | Transfer Balance Cap (FY-indexed). Div 293 verified against existing primitive. **Div 296 gated behind `commencementVerified` flag** until Royal Assent confirmed. | Low (Div 293 reuses existing); Medium (Div 296 net-new + gating) | 41e.2 |
+| 5 | **41e.4 — Div 6E streaming** | Trust streaming of franked dividends + capital gains to specific beneficiaries. Required `streamingResolutionAt` field. Replaces the Sankey's proportional tax allocation v1. | Medium-High. First place where `MoneyFlowSankey` numbers change visibly. | 41e.1 |
+| 6 | **41e.5 — s100A zone classifier** | Reimbursement-agreement zone classifier per TR 2022/4 + PCG 2022/2 (white / blue / green / red zones). Surfaced as risk flags on trust distributions, NOT calc-recomputation. | Medium | 41e.4 |
+| 7 | **41e.6 — Div 7A** | Private-company loan compliance: s109N MRP, s109Y distributable surplus, sub-trust UPE per TR 2010/3 + PCG 2017/13. New `companyTax.ts.div7aCheck()`. | Medium | 41e.0 |
+| 8 | **41e.7 — Div 152 (small business CGT concessions)** | 15-year exemption, 50% active asset, retirement exemption $500k, rollover. $6m MNAV / $2m turnover basic conditions. | Medium | 41e.1 |
+| 9 | **41e.8 — Negative gearing + per-entity aggregator** | Individual-only quarantine for rental losses against salary; trust/company loss-trapping. Wires to extended `cashflowOrchestrator`. Tax-adjusts non-salary income in cashflow (resolves M-3). | Medium | 41e.0 |
+| 10 | **41e.9 — PSI** | Personal Services Income per Part 2-42 + TR 2022/3. Results test, ≥80% one-client test, employment test, business-premises test. New `companyTax.ts.psiCheck()`. | Medium | 41e.6 |
+| 11 | **41e.10 — FTE / IEE** | Family Trust Election + Interposed Entity Election per Sch 2F ITAA 1936. Family-group test at every chain link. 46.5% TFN withholding. | Medium-High (chain-walking) | 41e.4 |
+| 12 | **41e.11 — SMSF triumvirate** | Sole purpose test (s62 SIS), in-house asset 5% cap (Pt 8 SIS), LRBA per s67A + PCG 2016/5. BRP exception per s71(1)(b). NALI at 45% per s295-550. | High (multi-rule interaction) | 41e.2 + 41e.3 |
+| 13 | **41e.12 — State land tax (NSW + VIC)** | Per-state thresholds + foreign-person surcharge. Two largest states first to validate the per-state config pattern. | Medium | 41e.0 |
+| 14 | **41e.13 — State land tax (QLD / SA / WA / TAS / ACT / NT)** | Remaining six states. Same pattern as 41e.12. | Low (pattern proven) | 41e.12 |
+| 15 | **41e.14 — Stamp duty + foreign surcharge** | Land transfer duty per state. Foreign-person surcharge stacking. Resettlement risk flagged but quantification deferred (UNCOMPUTED). | Medium | 41e.13 |
+| 16 | **41e.15 — Trust + company loss rules** | Sch 2F (Income Injection Test, Pattern of Distributions Test). Div 165 COT, Div 166, Div 175, Div 707. | High (anti-avoidance is precision-critical) | 41e.10 |
+| 17 | **41e.16 — GST / BAS** | Income figures gross of GST flagged correctly. BAS preparation deferred to UNCOMPUTED. | Low (mostly flagging, not calc) | 41e.0 |
+| 18 | **41e.17 — MasterTaxPosition orchestrator** | Wraps `calculateTaxPosition()` for PERSONAL_NAME flows + dispatches all the entity rule modules above. New endpoint `GET /api/tax/master-position`. Replaces the simple delegation in 41e.−1. | Medium-High (final integration; many rule interactions) | All previous 41e.* PRs |
+
+**Reorder vs original §11.** The architecture doc §11 listed 41e.4 (Div 6E) immediately after 41e.1 (Div 115 + Div 6 basic). The reorder above keeps that adjacency but inserts 41e.2/3 (SMSF caps + TBC + Div 293 + Div 296) before 41e.4 because **the SMSF tax-rate dispatch (15% / 0% / Div 296) lands earlier and the Sankey + AI advisor need it for any structure that includes an SMSF**. 41e.5 (s100A) follows 41e.4 because the zone classifier reads the streaming resolution that 41e.4 introduces.
+
+### 8.2 PR sizing rules
+
+Per Reza directive 2026-05-05 (the timeout / digestibility constraint applied during this audit):
+
+- Each 41e.* sub-PR is reviewable in ≤30 minutes by a human reviewer. ≥1,000-line diffs split.
+- Each sub-PR ships with: rule code + ATO authority citation in file-header JSDoc + verbatim ATO worked-example fixture + snapshot test asserting parity (or documenting the diff with citation).
+- No sub-PR introduces both a Phase 20 file edit AND a NET-NEW 41e module — split the cleanup edit into 41e.−1 or its own sub-PR. (This rule pins the `buildTaxSummary` REPLACE entirely inside 41e.−1.)
+- No sub-PR ships without the ✅ checkbox on §10.5 below — the sign-off block is the contract.
+
+### 8.3 Calendar estimate
+
+Per IMPLEMENTATION_PLAN.md Up Next #29 (~42 days for 41e full scope):
+
+| Block | Sub-PRs | Estimated days |
+|---|---|---|
+| Cleanup + foundation | 41e.−1, 41e.0 | 4–5 |
+| CGT + Div 6 basic + super | 41e.1, 41e.2, 41e.3 | 5–6 |
+| Trust streaming + s100A + Div 7A | 41e.4, 41e.5, 41e.6 | 6–7 |
+| Div 152 + neg gearing + PSI | 41e.7, 41e.8, 41e.9 | 5–6 |
+| FTE + SMSF triumvirate | 41e.10, 41e.11 | 5–6 |
+| State land tax + stamp duty | 41e.12, 41e.13, 41e.14 | 6–7 |
+| Loss rules + GST + orchestrator | 41e.15, 41e.16, 41e.17 | 6–7 |
+| **Total** | **18 sub-PRs** | **~42 days** |
+
+---
+
+## 9. Snapshot-test fixture strategy — PR 4/4
+
+> Reza brief 2026-05-05: *"I don't want to break something to build a new solution."* — every refactor PR captures pre-refactor outputs against fixture archetypes and asserts numeric parity post-refactor. If the new code intentionally diverges (because the old code was wrong), the diff is documented with ATO authority citation, NOT silently swallowed.
+
+### 9.1 The three archetype fixtures + edge cases
+
+| Fixture | Persona | Entities | Why it's the canonical fixture |
+|---|---|---|---|
+| **Sarah Kim** | Sole-trader IT consultant | PERSONAL_NAME (Sarah) + COMPANY (Sarah Kim Pty Ltd) | Smallest realistic structure. Tests SOLE_TRADER income, Div 7A risk on director loans, base-rate company tax. |
+| **David + Emma Mitchell** | Family with trust + SMSF | 2× PERSONAL_NAME (David, Emma) + COMPANY (Mitchell Holdings Pty Ltd as trustee) + DISCRETIONARY_TRUST (Mitchell Family Trust) + SMSF (Mitchell Super Fund) + COMPANY (SMSF corporate trustee) | Most common HNW structure. Tests trust streaming (Div 6/6E), corporate trustee `parentEntityId` walking, SMSF contribution caps + Div 293 + Div 296, household roll-up across two adults. |
+| **Olivia Novak** | Multi-entity HNW | PERSONAL_NAME + 4× properties + DISCRETIONARY_TRUST + UNIT_TRUST + COMPANY (Pty Ltd) + SMSF | Stress test. Tests trust-to-trust chain streaming, FTE/IEE family-group walking, SMSF unit-trust holding (NALI risk), state land tax aggregation across 4 properties, PSI through Pty Ltd. |
+| **Synthetic edge cases** | (no persona) | Various | Self-parent attempt, 11-deep parent chain, missing streaming resolution at FY-end, excess concessional contribution, FY25-26 cap math, foreign-person surcharge edge, BRP exception, LRBA non-arm's-length lender (NALI). |
+
+The first three fixtures already exist as pitch fixtures (IMPLEMENTATION_PLAN.md Up Next #33). 41e.−1 reuses the same archetype identities so the fixture investment is shared between testing + demo seeding.
+
+### 9.2 Capture-before-refactor protocol
+
+Each 41e.* sub-PR follows this protocol:
+
+1. **Before any code change**, run the existing engine against every fixture. Capture outputs to `__tests__/fixtures/snapshots/<fy>/<fixture-id>.before.json`.
+2. **Implement the refactor / new module**.
+3. **Re-run** against the same fixtures. Capture to `<fixture-id>.after.json`.
+4. **Diff** the two files. Three outcomes:
+   - **Identical** → the refactor preserved behaviour. Snapshot test asserts equality. Ship.
+   - **Different (intentional)** → the new code is *correcting* a bug. PR body documents the diff with ATO authority citation. Snapshot test asserts the *new* expected output. Reviewer checks the diff matches the citation.
+   - **Different (unintentional)** → regression. Block the PR. Fix until either Identical or Intentional.
+
+### 9.3 Where the fixtures live
+
+```
+__tests__/
+  fixtures/
+    archetypes/
+      sarah-kim.json              ← input (User row + entities + properties + loans + accounts + income + expenses)
+      david-emma.json
+      olivia.json
+      synthetic-edge-cases/
+        self-parent.json
+        deep-chain.json
+        ...
+    snapshots/
+      fy2024-25/
+        sarah-kim.before.json     ← captured pre-refactor in 41e.−1
+        sarah-kim.after.json      ← captured post-refactor; assertion target
+        ...
+      fy2025-26/
+        ...
+```
+
+Snapshot files are committed to git. Reviewers can `git diff` the `.after.json` between PRs to see exactly which numbers moved.
+
+### 9.4 Tests required at 41e.−1 (the parity baseline)
+
+| Test | Asserts |
+|---|---|
+| `masterFinancialService.buildTaxSummary` parity | After refactor, `buildTaxSummary()` output for each fixture == output of `calculateTaxPosition()` for the same fixture (modulo new optional fields) |
+| `/api/tax/position` parity | Endpoint response unchanged for each fixture across refactor |
+| `/api/master-snapshot` parity | `snapshot.tax.*` numbers unchanged for each fixture |
+| Constants reconciliation parity | Reading any constant from the §6.5 list returns the same value via the new config path as the old hard-coded value |
+| FY25-26 config sanity | `getTaxYearConfig('2025-26')` returns a complete config (no `undefined` fields); brackets sum to 100% rate coverage; super caps match `capTracker.ts` projections |
+
+Each test is one assertion. Test count: ~5 × 3 fixtures = 15 baseline tests. The investment cost is low; the regression-prevention value over 18 sub-PRs is enormous.
+
+---
+
+## 10. Constants reconciliation v2, FY25-26 config gap, UNCOMPUTED register, Reza sign-off — PR 4/4
+
+### 10.1 Constants reconciliation v2 — executable mapping
+
+This is §6.5 expanded into the executable form: which file gets edited in which sub-PR to retire each hard-coded value.
+
+| Constant | Old value(s) + location | New canonical home | Sub-PR |
+|---|---|---|---|
+| Concessional cap | `27500` (`taxIntegration.ts:350`) / `30000` (`page.tsx`, config) | `getTaxYearConfig(fy).concessionalCap` | 41e.−1 |
+| Non-concessional cap | `120000` (multiple) | `getTaxYearConfig(fy).nonConcessionalCap` | 41e.−1 |
+| Super contributions tax rate | `0.15` × 7 sites (`/api/tax/super/optimize/route.ts:100,113,122,161,264,313` + `contributions/route.ts:267`) | `getTaxYearConfig(fy).superContributionsTaxRate` | 41e.−1 |
+| Co-contribution income threshold | `60400` (`/api/tax/super/optimize/route.ts:185` + `taxIntegration.ts:185`) | `getTaxYearConfig(fy).coContributionIncomeThreshold` | 41e.−1 |
+| Super Guarantee rate | `11.5` (`page.tsx:759`) | `getTaxYearConfig(fy).superGuaranteeRate` | 41e.−1 |
+| Federal tax brackets table | Hard-coded JSX (`page.tsx:446-470`) | `getTaxYearConfig(fy).brackets` rendered via map | 41e.−1 |
+| Marginal rate (assumed) | `0.30` (`taxAnalyzer.ts:129`) | `getMarginalRate(taxableIncome, fy)` | 41e.−1 |
+| CGT discount rate | `0.50` (multiple) | `getTaxYearConfig(fy).cgtDiscountRate` (entity-aware override in 41e.1) | 41e.−1 + 41e.1 |
+| 12-month CGT holding | `12` (`taxAnalyzer.ts`) | `getTaxYearConfig(fy).cgtDiscountHoldingMonths` | 41e.−1 |
+| Div 293 threshold | `250000` (`taxIntegration.ts`) | `getTaxYearConfig(fy).div293Threshold` | 41e.−1 |
+| Property depreciation heuristic | `3000`/property (`taxIntegration.ts:426`) | Flagged `HEURISTIC.PROPERTY_DEPRECIATION_ESTIMATE` in UNCOMPUTED §10.3 | 41e.−1 (flag) + future PR (real Div 40/43) |
+| FY label | `"FY24-25"` (`page.tsx` subtitle) | `getTaxYearConfig(fy).label` | 41e.−1 |
+| Quarterly SG cap | `62500` (`contributionCalculator.ts`) | `getTaxYearConfig(fy).superGuaranteeQuarterlyCap` | 41e.−1 |
+| Bring-forward TSB tiers | `1660000 / 1780000 / 1900000` (`capTracker.ts`) | `getTaxYearConfig(fy).bringForward.tsbTiers` | 41e.2 |
+| Carry-forward TSB threshold | `500000` (`capTracker.ts`) | `getTaxYearConfig(fy).carryForward.tsbThreshold` | 41e.2 |
+
+After 41e.−1 + 41e.1 + 41e.2 ship, **zero hard-coded tax constants** exist anywhere in the codebase. A regression test asserts this by grepping for `0\.15`, `27500`, `30000`, `60400`, `11\.5` in `app/`, `lib/calculations/`, `lib/cfo/`, `lib/strategy/`, `app/dashboard/tax/page.tsx`. Any future hit fails CI.
+
+### 10.2 FY25-26 config gap (resolves C-4)
+
+Current state:
+- `taxYearConfig.ts` has FY23-24 + FY24-25 only.
+- `capTracker.ts` has FY25-26 super caps projected (`CONCESSIONAL_CAPS[2025] = 30000` + `NON_CONCESSIONAL_CAPS[2025] = 120000`).
+- We're currently 7 weeks from new FY (1 July 2026).
+
+Action in 41e.−1:
+
+```typescript
+// lib/tax-engine/config/taxYearConfig.ts
+export const TAX_YEAR_2025_26: TaxYearConfig = {
+  fy: '2025-26',
+  label: 'FY25-26',
+  // Brackets carried forward from FY24-25 (Stage 3 cuts already in effect)
+  brackets: TAX_YEAR_2024_25.brackets,
+  // Super caps explicit (already projected in capTracker.ts)
+  concessionalCap: 30000,
+  nonConcessionalCap: 120000,
+  // SG rate: rises to 12% per ATO schedule
+  superGuaranteeRate: 0.12,
+  superGuaranteeQuarterlyCap: 65250, // recalculated from new SG rate
+  // Other thresholds carried forward; updated only when ATO publishes
+  div293Threshold: 250000,
+  coContributionIncomeThreshold: 60400, // verify against ATO indexation in May 2026
+  // ...
+  reviewSchedule: {
+    nextReviewBy: '2026-06-15', // before new FY commences
+    reviewers: ['Reza', 'tax-engine-owner'],
+  },
+};
+```
+
+The `reviewSchedule` field is new — added to every TaxYearConfig in 41e.−1. Forces an explicit review checkpoint before each FY rolls in, so the config is never silently stale.
+
+**Acceptance test:** `getTaxYearConfig('2025-26')` returns a complete config with no `undefined` fields. Brackets cover [0, ∞). Super caps match `capTracker.ts` projections. Authority citations present.
+
+### 10.3 UNCOMPUTED register — final v1 list
+
+> Per architecture doc §1(7): the UNCOMPUTED register is the audit-friendly statement of *"this is what we deliberately did not compute, and why."* Every UNCOMPUTED item surfaces a badge / flag in the UI, never a false number.
+
+Consolidated from §5.6 + the audit findings:
+
+| ID | What's not computed | Why | When to revisit |
+|---|---|---|---|
+| `UC-FBT` | Fringe Benefits Tax on COMPANY-owned assets used by shareholder/associate | Separate FBT regime. Out of v1 scope. Flagged on Asset detail. | Phase 42+ |
+| `UC-PT-IVA` | Part IVA general anti-avoidance (beyond PCG-codified safe-harbour checks) | Discretionary doctrine; not deterministic. Net-new beyond current scope. | Phase 42+ |
+| `UC-STAMP-NON-PROPERTY` | Transactional stamp duty (vehicle transfer, share sale duty in QLD/NSW) | Only land-transfer + foreign-person surcharge in scope. | Phase 42+ |
+| `UC-PAYROLL-TAX` | State payroll tax | Out of scope; flag only when employer entity present. | Phase 43+ |
+| `UC-GST-BAS` | GST registration determination + BAS preparation | Income figures gross of GST with flag; full BAS belongs in Xero/MYOB integration (Phase 41f). | Phase 41f |
+| `UC-CFC-TT` | Controlled Foreign Companies + Transferor Trust regimes | International anti-deferral rules; vanishingly rare in target persona. | Phase 43+ |
+| `UC-TESTAMENTARY` | Testamentary trusts / deceased estates | Specialty regime. | Phase 42+ |
+| `UC-FOREIGN-WHT` | Foreign resident CGT withholding (Sch 1 Subdiv 14-D, 12.5% on disposals ≥ $750k) | Net-new module beyond v1. | Phase 41e v2 |
+| `UC-CGT-K6` | CGT event K6 (pre-CGT shareholding interposing post-CGT entity) | Specialty event. | Phase 42+ |
+| `UC-RESETTLEMENT` | Stamp duty resettlement quantification | Resettlement *risk* is flagged in 41e.14; the *quantification* of duty payable on a deemed resettlement is a per-state legal analysis. | Phase 42+ |
+| `UC-MULTI-STATE-LAND-TAX` | Aggregated multi-state land-tax surcharges where ownership crosses jurisdictions | Per-state calc lands in 41e.12-14; the cross-state aggregation rule (some states aggregate, some don't) deferred. | Phase 41e v2 |
+| `UC-FTE-ORDERING` | FTE conferral / IEE election ordering edge cases | Sch 2F has subtle ordering rules for chained elections. v1 covers single-election scenarios. | Phase 41e v2 |
+| `UC-DIV7A-SUBTRUST-UPE` | Div 7A sub-trust UPE per TR 2010/3 PCG 2017/13 deep cases | Basic UPE flagging in 41e.6; sub-trust quantification deferred. | Phase 41e v2 |
+| `UC-PROPERTY-DEPRECIATION` (heuristic) | Real Div 40 / Div 43 capital-allowance calc | `taxIntegration.ts:426` $3k/property heuristic preserved as flag in 41e.−1; real calc requires depreciation schedule data we don't yet capture. | When Phase 41f imports depreciation schedules from Xero/MYOB |
+| `UC-HECS` | HECS/HELP withholding in PAYG | `paygCalculator.ts:145` TODO. Affects under-50k earners with HECS. | 41e.−1 (optional) or Phase 41e v2 |
+| `UC-EXCESS-INTEREST` | 10% p.a. interest on excess concessional contributions | `capTracker.ts:226-233`. Edge case. | Phase 41e v2 |
+| `UC-DOWNSIZER` | Downsizer contribution support (Div 135) | Enum exists, no calc. Edge case for ages 55+. | Phase 41e v2 |
+| `UC-SAPTO-FULL` | Real SAPTO eligibility rules (vs current simplified) | `taxOffsets.ts` admits simplification. Low-impact pool. | Phase 41e v2 |
+
+**UI surfacing rule:** anywhere an UNCOMPUTED item could affect a user's number, the surface MUST render an inline badge (e.g. *"FBT not computed — Pty Ltd-owned assets used personally may attract FBT. See your accountant."*) instead of showing a confident-looking but incomplete figure.
+
+### 10.4 Master-config self-test (lands with 41e.−1)
+
+A single CI test that asserts the canon:
+
+```typescript
+// __tests__/lib/tax-engine/config/taxYearConfig.spec.ts
+describe('taxYearConfig — canonical SSOT', () => {
+  it('has FY23-24, FY24-25, FY25-26 with no undefined fields', () => {/* ... */});
+  it('every field referenced by §6.5 reconciliation table exists', () => {/* ... */});
+  it('brackets cover [0, ∞) with no gaps or overlaps', () => {/* ... */});
+  it('super caps match capTracker.ts projections', () => {/* ... */});
+  it('reviewSchedule.nextReviewBy is in the future for the current FY', () => {/* ... */});
+});
+```
+
+If anyone deletes a field, hard-codes a value back, or forgets to extend the config to a new FY, CI catches it.
+
+### 10.5 Reza sign-off block — gates 41e.0
+
+> **This block is the contract.** Reza's signature here is the trigger for 41e.−1 to start. Until this is signed, no 41e code lands. Reviewers reject any 41e PR opened before this block has all checkboxes ticked.
+
+#### Decisions confirmed across PRs 1-4
+
+- [ ] **D-A1** — The existing 3,776-LOC Phase 20 tax engine at `lib/tax-engine/` is preserved as the calc-primitive library. 41e is a layer on top, not a rewrite. *(PR 2 §4.)*
+- [ ] **D-A2** — Eight Phase 20 files preserved untouched; five additive EXTENDs only; one REPLACE (`buildTaxSummary()`) confined to 41e.−1. *(PR 3 §6.2.)*
+- [ ] **D-A3** — Aggregators gain optional `ownerEntityId?: string` param (default = no filter, backward-compat) to resolve C-3. *(PR 3 §6.3.)*
+- [ ] **D-A4** — All hard-coded constants migrated to `taxYearConfig.ts` per §6.5 + §10.1. CI asserts no future hard-codes via grep regression test. *(PR 3 §6.5 + PR 4 §10.1.)*
+- [ ] **D-A5** — FY25-26 config added in 41e.−1 with `reviewSchedule.nextReviewBy: 2026-06-15`. Same `reviewSchedule` field added to FY23-24 + FY24-25 retroactively. *(PR 4 §10.2.)*
+- [ ] **D-A6** — Three archetype fixtures (Sarah Kim / David+Emma / Olivia) shared between snapshot tests + pitch seeding. *(PR 4 §9.1.)*
+- [ ] **D-A7** — `parentEntityId` cycle-detection enforced in `legalEntityService.ts` per §7. DB CHECK constraint added as defence-in-depth. 8 required tests land in 41e.0. *(PR 3 §7.)*
+- [ ] **D-A8** — Sub-PR sequence reordered to insert 41e.−1 (cleanup) ahead of 41e.0 and to land 41e.2/3 (SMSF caps + Div 293/296) before 41e.4 (Div 6E). 18 sub-PRs total, ~42 days. *(PR 4 §8.1.)*
+- [ ] **D-A9** — Every sub-PR captures pre-refactor + post-refactor snapshots; intentional diffs documented with ATO citation; unintentional diffs block the PR. *(PR 4 §9.2.)*
+- [ ] **D-A10** — UNCOMPUTED items render UI badges with plain-English explanations, never false numbers. *(PR 4 §10.3.)*
+- [ ] **D-A11** — Three classes of finding from §1 confirmed: (a) Phase 20 sound — keep, layer on top; (b) regression traps fix in 41e.−1; (c) 41e net-new scope is genuine.
+
+#### Open question for Reza (only one)
+
+- [ ] **Q-41E-1** — `UC-HECS` (HECS/HELP withholding in PAYG): include in 41e.−1 cleanup, or defer to Phase 41e v2? **Recommendation:** include in 41e.−1 since the TODO is already in `paygCalculator.ts:145` and affects under-$50k earners with student debt — a population the demo archetype Sarah Kim sits in. ~2 hours of work.
+
+#### Sign-off
+
+When the boxes above are ticked + Q-41E-1 is decided, paste the following block in the PR-merge conversation of PR 4:
+
+```
+PHASE 41E AUDIT — SIGNED OFF
+- All decisions D-A1 through D-A11: confirmed
+- Q-41E-1 decision: [INCLUDE IN 41e.−1 / DEFER TO v2]
+- Approval to start 41e.−1: granted
+- Date: YYYY-MM-DD
+- Signed: Reza
+```
+
+41e.−1 starts the next session.
+
+---
+
+## 11. Audit complete — what happens next
+
+This PR (4/4) closes the Phase 41e audit + migration plan. Once Reza signs §10.5:
+
+1. **Session N+1** — Open `claude/phase-41e-cleanup-pr` branch. Implement 41e.−1 per §8.1 + §10.1 + §10.2. Capture parity-baseline snapshots per §9.4. Ship.
+2. **Session N+2** — `claude/phase-41e-foundation` (41e.0). Types + aggregator extensions + cycle-detection + permissions + new endpoints.
+3. **Sessions N+3 through N+19** — sub-PRs 41e.1 through 41e.17 per §8.1.
+
+Each subsequent 41e session re-reads this audit doc, the architecture doc, and the IMPLEMENTATION_PLAN.md Up Next #29 row at session start (per CLAUDE.md Part 1, Step 1).
+
+---
+
+*PR 4/4 complete. Audit + migration plan ready for Reza sign-off in §10.5. After sign-off, 41e.−1 starts. Phase 41e regulatory engine implementation begins.*
