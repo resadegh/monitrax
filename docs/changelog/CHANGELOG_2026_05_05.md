@@ -1,5 +1,53 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e-cleanup-c-buildtaxsummary (Phase 41e.−1 cleanup PR C — buildTaxSummary delegation)
+
+### Changes Made
+- **Type:** Refactor (Phase 41e.−1 cleanup, slice C — replaces inline tax-bracket math with engine delegation; behaviour change is intentional and documented).
+- **Scope:** `buildTaxSummary()` in `lib/services/masterFinancialService.ts:1012-1077` previously reimplemented FY24-25 tax brackets inline (audit C-1 — "Simplified tax calculation (would use tax engine in production)" comment, but it was in production). Now calls `calculateTaxPosition()` from the canonical Phase 20 tax engine and adapts the result back into the legacy `TaxSummary` shape.
+- **Audit findings resolved:** **C-1** (the regression trap). Combined with slice B's resolution of C-2 + H-1 through H-6, the only remaining audit critical is C-3 (entity-aware aggregators — lands in 41e.0) and C-4 was resolved in slice A.
+
+### Behaviour change (intentional)
+Per audit doc §9.2 "capture-before-refactor" protocol — this is the **intentional-with-citation** outcome:
+- **Old:** brackets-only calc; no Medicare Levy; no LITO/SAPTO offsets; no franking gross-up; raw deductible-expense subtraction.
+- **New:** full Phase 20 engine — Medicare Levy + Surcharge included (Health Insurance Levy Act 1982); LITO/SAPTO/franking/foreign offsets applied (ITAA 1997 Div 126-H/126-L/207/770); income categorised by type with proper franking gross-up; deductions categorised.
+- **Net effect on the consumer-facing `TaxSummary`:**
+  - `estimatedTaxableIncome` may be higher (franking gross-up adds to assessable income).
+  - `estimatedTaxPayable` is now closer to ATO-correct because Medicare + offsets are netted in.
+  - `estimatedRefundOrOwing` is now closer to the user's actual refund/owing (matches `/api/tax/position`).
+  - `marginalTaxRate` semantics preserved: returned as percentage (e.g. 30, not 0.30).
+  - `effectiveTaxRate` semantics preserved: 0–100 scale, 2dp.
+  - `totalDeductions` now includes the full deduction breakdown (work-related + property + investment + depreciation + other).
+  - `paygWithheld` unchanged — same source.
+
+### Files Modified
+- `lib/services/masterFinancialService.ts` — Imports `calculateTaxPosition` + types from `@/lib/tax-engine/position/taxPositionCalculator`. `buildTaxSummary()` rewritten as an adapter: maps `RawIncome[]`/`RawExpense[]` → `IncomeItem[]`/`ExpenseItem[]`, calls `calculateTaxPosition({ incomes, expenses, depreciations: [] })`, maps the rich `TaxPositionResult` back to the legacy `TaxSummary` shape. Inline brackets math (FY24-25 hardcoded thresholds + bracket-walking if/else chain) deleted. New JSDoc explains the behaviour change with cross-reference to audit doc.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] No public API change. Same `TaxSummary` shape returned to every consumer (Master Financial Snapshot, dashboard, AI advisor, Sankey).
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Slice C delivers an audit finding; full audit closure batched at slice D where the doc updates land.)
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Future work (Phase 41e.0+)
+The adapter pattern in this PR is intentional — keeping consumers on the legacy `TaxSummary` shape minimises blast radius for slice C. Phase 41e.0+ swaps consumers (dashboard, AI advisor, Sankey) directly onto the richer `TaxPositionResult` shape and deletes this adapter. Until then, `MasterFinancialSnapshot.tax` is the bridge.
+
+### What's next
+- **Slice D (final 41e.−1 slice)** — Sarah Kim / David+Emma / Olivia archetype fixtures + master-config self-test + parity-baseline snapshots. After slice D, **41e.−1 is complete** and **41e.0 (foundation)** unblocks. Audit doc + IMPLEMENTATION_PLAN updates batched in slice D per the audit closure plan.
+
+### PR
+- Branch: `claude/phase-41e-cleanup-c-buildtaxsummary`
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e-cleanup-b-consumers (Phase 41e.−1 cleanup PR B — migrate consumers to canonical FY config)
 
 ### Changes Made
