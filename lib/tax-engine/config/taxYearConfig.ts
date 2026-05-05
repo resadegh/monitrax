@@ -1,6 +1,23 @@
 /**
  * Phase 20: Australian Tax Year Configuration
- * Tax rates and thresholds for Australian financial years
+ * Tax rates and thresholds for Australian financial years.
+ *
+ * **CANONICAL SSOT for AU tax thresholds** (CLAUDE.md §12.2). Every
+ * consumer reads from `getTaxYearConfig(fy)`. New constants land
+ * here with a primary-authority citation; consumers never hard-code.
+ *
+ * Per `PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §10.1 + §10.2,
+ * Phase 41e.−1 (this slice — PR A) extends the schema with new
+ * canonical homes for previously-hard-coded values:
+ *   - `label` — display string, replaces hard-coded "FY24-25"
+ *   - `superContributionsTaxRate` — replaces 7× `0.15` / `0.85`
+ *   - `coContributionIncomeThreshold` — replaces $60,400
+ *   - `superGuaranteeQuarterlyCap` — replaces $62,500
+ *   - `carryForwardTsbThreshold` — replaces $500,000 in capTracker
+ *   - `bringForwardThresholds` — replaces capTracker hard-codes
+ *   - `reviewSchedule` — forces explicit per-FY review checkpoint
+ *
+ * Consumer migration to these new fields lands in PR B.
  *
  * Sources:
  * - ATO Individual Tax Rates: https://www.ato.gov.au/rates/individual-income-tax-rates/
@@ -18,6 +35,7 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
   financialYear: '2024-25',
   startDate: new Date(2024, 6, 1), // July 1, 2024
   endDate: new Date(2025, 5, 30), // June 30, 2025
+  label: 'FY24-25',
 
   // Tax brackets (Stage 3 tax cuts applied)
   brackets: [
@@ -70,13 +88,83 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
 
   // Superannuation
   superGuaranteeRate: 0.115, // 11.5% for 2024-25
+  superGuaranteeQuarterlyCap: 62500, // ATO maximum super contribution base FY24-25
   concessionalCap: 30000, // Increased from $27,500 to $30,000 for 2024-25
   nonConcessionalCap: 120000, // Increased for 2024-25
   division293Threshold: 250000,
+  superContributionsTaxRate: 0.15, // ITAA 1997 s295-485 — taxed-in-fund rate
+  coContributionIncomeThreshold: 60400, // Phase-out upper bound FY24-25
+  carryForwardTsbThreshold: 500000, // ITAA 1997 s291-20(3)
+  bringForwardThresholds: {
+    full: 1660000, // < this → 3-year bring-forward
+    reduced: 1780000, // < this (≥ full) → 2-year
+    none: 1900000, // ≥ this → no bring-forward
+  },
 
   // CGT
   cgtDiscount: 0.5, // 50% discount
   cgtDiscountMonths: 12, // Must hold for 12+ months
+
+  reviewSchedule: {
+    nextReviewBy: '2026-06-15', // before FY26-27 commences
+    reviewers: ['Reza', 'tax-engine-owner'],
+  },
+};
+
+// =============================================================================
+// 2025-26 Financial Year (Upcoming — closes audit C-4)
+// =============================================================================
+
+/**
+ * FY25-26 config. Resolves PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md C-4
+ * (FY25-26 missing). Most thresholds carried forward from FY24-25.
+ * Updates:
+ *  - Super Guarantee rate rises to 12% per ATO schedule.
+ *  - SG quarterly cap recalculated for the new SG rate (ATO publishes
+ *    annually; using preliminary $65,250).
+ *  - All other thresholds: review and update with confirmed ATO data
+ *    by `reviewSchedule.nextReviewBy` (2026-06-15) before FY commences.
+ */
+export const TAX_YEAR_2025_26: TaxYearConfig = {
+  financialYear: '2025-26',
+  startDate: new Date(2025, 6, 1), // July 1, 2025
+  endDate: new Date(2026, 5, 30), // June 30, 2026
+  label: 'FY25-26',
+
+  // Brackets carried forward — Stage 3 cuts already in effect
+  brackets: TAX_YEAR_2024_25.brackets,
+  taxFreeThreshold: 18200,
+
+  medicareRate: 0.02,
+  medicareThresholds: TAX_YEAR_2024_25.medicareThresholds, // pending ATO update
+  medicareSurchargeThresholds: TAX_YEAR_2024_25.medicareSurchargeThresholds,
+
+  lito: TAX_YEAR_2024_25.lito,
+  saptoSingle: 2230,
+  saptoCoupleEach: 1602,
+
+  // Super — SG rises to 12%
+  superGuaranteeRate: 0.12,
+  superGuaranteeQuarterlyCap: 65250, // preliminary; verify against ATO May 2026
+  concessionalCap: 30000,
+  nonConcessionalCap: 120000,
+  division293Threshold: 250000,
+  superContributionsTaxRate: 0.15,
+  coContributionIncomeThreshold: 60400, // verify against ATO indexation May 2026
+  carryForwardTsbThreshold: 500000,
+  bringForwardThresholds: {
+    full: 1660000,
+    reduced: 1780000,
+    none: 1900000,
+  },
+
+  cgtDiscount: 0.5,
+  cgtDiscountMonths: 12,
+
+  reviewSchedule: {
+    nextReviewBy: '2026-06-15', // before FY26-27 commences
+    reviewers: ['Reza', 'tax-engine-owner'],
+  },
 };
 
 // =============================================================================
@@ -87,6 +175,7 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
   financialYear: '2023-24',
   startDate: new Date(2023, 6, 1),
   endDate: new Date(2024, 5, 30),
+  label: 'FY23-24',
 
   brackets: [
     { min: 0, max: 18200, baseAmount: 0, rate: 0 },
@@ -131,12 +220,26 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
   saptoCoupleEach: 1602,
 
   superGuaranteeRate: 0.11, // 11% for 2023-24
+  superGuaranteeQuarterlyCap: 62270, // ATO maximum super contribution base FY23-24
   concessionalCap: 27500,
   nonConcessionalCap: 110000,
   division293Threshold: 250000,
+  superContributionsTaxRate: 0.15,
+  coContributionIncomeThreshold: 58445, // FY23-24 phase-out upper
+  carryForwardTsbThreshold: 500000,
+  bringForwardThresholds: {
+    full: 1480000, // FY23-24 tier
+    reduced: 1590000,
+    none: 1900000,
+  },
 
   cgtDiscount: 0.5,
   cgtDiscountMonths: 12,
+
+  reviewSchedule: {
+    nextReviewBy: '2026-06-15',
+    reviewers: ['Reza', 'tax-engine-owner'],
+  },
 };
 
 // =============================================================================
@@ -144,6 +247,7 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
 // =============================================================================
 
 const TAX_YEAR_CONFIGS: Record<string, TaxYearConfig> = {
+  '2025-26': TAX_YEAR_2025_26,
   '2024-25': TAX_YEAR_2024_25,
   '2023-24': TAX_YEAR_2023_24,
 };

@@ -107,6 +107,12 @@ export interface TaxYearConfig {
   startDate: Date;
   endDate: Date;
 
+  /**
+   * Display label, e.g. "FY24-25". Read by UI consumers instead of
+   * hard-coding the subtitle. (CLAUDE.md §12.2 SSOT.)
+   */
+  label: string;
+
   // Tax brackets
   brackets: TaxBracket[];
   taxFreeThreshold: number;
@@ -123,13 +129,70 @@ export interface TaxYearConfig {
 
   // Super
   superGuaranteeRate: number;
+  /**
+   * Maximum quarterly OTE (Ordinary Time Earnings) on which SG must
+   * be paid. Above this, SG is capped. ATO publishes this annually.
+   * FY24-25: $62,500; FY25-26: $65,250 (preliminary).
+   */
+  superGuaranteeQuarterlyCap: number;
   concessionalCap: number;
   nonConcessionalCap: number;
   division293Threshold: number;
+  /**
+   * Tax rate on concessional contributions inside the fund (per
+   * ITAA 1997 s295-485). 15% across all FYs covered. Replaces the
+   * 7 hard-coded `0.15` / `0.85` values across the tax-route layer.
+   */
+  superContributionsTaxRate: number;
+  /**
+   * Government co-contribution income threshold — phase-out upper
+   * bound. Below this, eligible for some co-contribution. Indexed
+   * annually. FY24-25: $60,400.
+   */
+  coContributionIncomeThreshold: number;
+  /**
+   * Total Super Balance threshold below which carry-forward of
+   * unused concessional cap is permitted (ITAA s291-20(3)).
+   * Currently $500,000 across all FYs.
+   */
+  carryForwardTsbThreshold: number;
+  /**
+   * Total Super Balance tiers controlling bring-forward
+   * non-concessional eligibility (ITAA s292-85(2)). At or above
+   * `none`, no bring-forward; between `reduced` and `none`, 2-year
+   * bring-forward; below `full`, full 3-year bring-forward.
+   */
+  bringForwardThresholds: BringForwardThresholds;
 
   // CGT
   cgtDiscount: number;
   cgtDiscountMonths: number; // Holding period for discount eligibility
+
+  /**
+   * Per-FY review checkpoint. Forces an explicit human review of
+   * thresholds before the FY commences. Per
+   * `PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §10.2.
+   */
+  reviewSchedule: TaxYearReviewSchedule;
+}
+
+export interface BringForwardThresholds {
+  /** Below this TSB → 3-year bring-forward available (3× cap). */
+  full: number;
+  /** Below this TSB → 2-year bring-forward available (2× cap). */
+  reduced: number;
+  /** At or above this TSB → no bring-forward (1× cap only). */
+  none: number;
+}
+
+export interface TaxYearReviewSchedule {
+  /** ISO date by which the next review of this FY's config is due. */
+  nextReviewBy: string;
+  /**
+   * Who's responsible for the review. Owners read this so they
+   * know whose desk the review lands on each year.
+   */
+  reviewers: string[];
 }
 
 // =============================================================================

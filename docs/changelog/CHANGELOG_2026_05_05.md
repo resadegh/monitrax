@@ -1,5 +1,39 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e-cleanup-a-constants (Phase 41e.−1 cleanup PR A — extend `TaxYearConfig` + add FY25-26)
+
+### Changes Made
+- **Type:** Refactor / config (Phase 41e.−1 cleanup, slice A — pure additive type + config extension; zero consumer changes; zero behaviour changes)
+- **Scope:** Extends `TaxYearConfig` with new canonical homes for previously-hard-coded values per `PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §10.1: `label`, `superGuaranteeQuarterlyCap`, `superContributionsTaxRate`, `coContributionIncomeThreshold`, `carryForwardTsbThreshold`, `bringForwardThresholds`, `reviewSchedule`. Backfills FY23-24 + FY24-25 with the new fields (using values that match what the consumers currently hard-code). Adds `TAX_YEAR_2025_26` (resolves audit C-4: FY25-26 was missing from the canonical config). Per-FY `reviewSchedule.nextReviewBy: 2026-06-15` forces an explicit human review checkpoint before each new FY commences.
+- **Why slice A first:** Lowest-risk cut of the cleanup PR. Pure additive — every consumer continues reading the existing fields it always has. New fields are present but unused by consumers in this PR. Slice B migrates consumers (`/api/tax/super/*`, `taxIntegration.ts`, `taxAnalyzer.ts`, dashboard tax page brackets table) to the new fields. Slice C handles the `buildTaxSummary()` regression trap. Slice D adds archetype fixtures + master-config self-test.
+
+### Files Modified
+- `lib/tax-engine/types.ts` — `TaxYearConfig` extended with 7 new required fields. New supporting types: `BringForwardThresholds`, `TaxYearReviewSchedule`. JSDoc on every new field with its primary-authority citation (ITAA section / ATO source).
+- `lib/tax-engine/config/taxYearConfig.ts` — file header docs the SSOT contract per CLAUDE.md §12.2 + audit doc §10.1. `TAX_YEAR_2024_25` and `TAX_YEAR_2023_24` populated with the new fields using values that match what consumers currently hard-code (so swapping consumers to read from config in slice B is a behaviour-preserving refactor). `TAX_YEAR_2025_26` added as a new export (carries forward most thresholds; SG rises to 12% per ATO schedule; preliminary $65,250 quarterly cap pending ATO confirmation by 2026-06-15). `TAX_YEAR_CONFIGS` registry includes all three FYs.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean, exit 0 (after `npx prisma generate` to refresh the marketplace model from PR #620; pre-existing errors only).
+- Pure additive: no consumer compiled differently. Required-fields addition flagged at compile time if any new FY config is added in the future without populating them.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+- (Audit doc + IMPLEMENTATION_PLAN.md not updated — slice A doesn't change strategy or close any audit decision; full closure of audit findings C-1 through C-4 + H-1 through H-6 lands across slices A-D, doc updates batched at slice D.)
+
+### What's next
+- **Slice B** — migrate consumers to read from the new config fields: `/api/tax/super/route.ts`, `/api/tax/super/optimize/route.ts` (6× `0.15` + `60400` co-contrib threshold), `/api/tax/super/contributions/route.ts`, `lib/cfo/decisionSupport/taxIntegration.ts:185+350+426`, `lib/strategy/analyzers/taxAnalyzer.ts:129` (assumed 30% marginal → `getMarginalRate()`), `app/dashboard/tax/page.tsx:446-470` (hard-coded brackets table → `config.brackets`), `app/dashboard/tax/page.tsx:759` (hard-coded SG rate → `config.superGuaranteeRate`). Resolves audit C-2 + H-1 + H-2 + H-3 + H-4 + H-5.
+- **Slice C** — replace `buildTaxSummary()` regression trap (`masterFinancialService.ts:1012-1077`) with delegation to `calculateTaxPosition()`. Snapshot test asserts numerical parity with `/api/tax/position`. Resolves audit C-1.
+- **Slice D** — Sarah Kim / David+Emma / Olivia archetype fixtures + master-config self-test + parity-baseline snapshots. Captures pre-refactor baselines for slices E onwards (the actual 41e rule modules).
+
+### PR
+- Branch: `claude/phase-41e-cleanup-a-constants`
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-32c-pr4b-askapro (Phase 32C PR4b — AskAProfessionalButton + picker SHIPPED)
 
 ### Changes Made
