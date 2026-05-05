@@ -371,4 +371,44 @@ Docs updated:
 
 ### PR
 - Branch: `claude/phase-41e-audit-pr3-migration-map` (stacked on `claude/phase-41e-audit-pr2-combinations`)
+- PR URL: https://github.com/resadegh/monitrax/pull/623
+
+---
+
+## Session: claude/phase-41e-audit-pr4-final (Phase 41e audit + migration plan PR 4/4 — refined sequencing + fixture strategy + UNCOMPUTED register + Reza sign-off block)
+
+### Changes Made
+- **Type:** Docs (PR 4/4 — final audit PR; doc-only, no code, no schema). Closes the 4-PR Phase 41e audit + migration plan workstream. Cherry-picked PR 3 commit `259d0ad` because it didn't propagate to main when PR 2 was merged (PR 3 was stacked on PR 2's branch; PR 2 was merged from the branch tip without PR 3's commit).
+- **Scope:** The five pieces that turn the audit from analysis into an executable contract: refined 18-sub-PR sequencing with the `41e.−1` cleanup PR inserted ahead of `41e.0` and SMSF tax dispatch reordered ahead of trust streaming; snapshot-test fixture strategy with capture-before-refactor parity protocol; executable constants reconciliation table mapping §6.5 entries to specific sub-PRs with CI grep regression test enforcing zero hard-codes post-cleanup; FY25-26 config gap closure with new `reviewSchedule.nextReviewBy` field forcing explicit per-FY review; UNCOMPUTED v1 register with 18 items and UI-badge surfacing rule; Reza sign-off block with 11 decisions (D-A1 through D-A11) + 1 open question (Q-41E-1: HECS/HELP withholding now or later) that gates 41e.−1 start.
+
+### Files Modified
+- `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` — appended §8 (refined sub-PR sequencing: full 18-row table with risk + gates + scope; PR sizing rules; calendar estimate ~42 days), §9 (snapshot-test fixture strategy: three archetype fixtures shared with pitch seeding + synthetic edge cases; capture-before-refactor protocol; fixture file layout; ~15 baseline tests at 41e.−1), §10 (constants reconciliation v2 with executable per-sub-PR mapping; FY25-26 config gap closure with code snippet + `reviewSchedule` field; UNCOMPUTED v1 register with 18 items; master-config self-test; **Reza sign-off block** with decision checklist + paste-back template), §11 (audit-complete handoff explaining session N+1 through N+19 cadence).
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #29 — narrative refresh: PRs 1-3 marked merged; PR 4 narrative added; full content of PR 4 summarised inline.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — closes the 4-PR audit workstream and produces the explicit sign-off contract that gates Phase 41e.0
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Docs updated:
+- `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` — §8, §9, §10, §11 appended
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #29 — narrative refresh
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry
+
+### Testing
+- [x] Markdown renders cleanly
+- [x] Every CRITICAL finding from §3 has a resolution row in §10.1 + §10.2
+- [x] Sub-PR sequence in §8.1 covers all 17 sub-PRs from architecture doc §11 + the new 41e.−1
+- [x] Sign-off block §10.5 has one checkbox per decision lifted from PRs 2-3
+- [ ] Reza sign-off on PR 4 — pending; this PR's merge gates 41e.−1 start
+
+### What's next
+- Reza signs the §10.5 sign-off block (paste the template into the PR-merge conversation).
+- Session N+1 opens `claude/phase-41e-cleanup-pr` and ships 41e.−1 (cleanup) per §8.1 + §10.1 + §10.2 + §9.4 (snapshot baselines).
+- Session N+2 ships 41e.0 (foundation: types + aggregator extensions + cycle-detection + permissions + new endpoints).
+- Sessions N+3 through N+19 ship sub-PRs 41e.1 through 41e.17 in the order locked in §8.1.
+
+### PR
+- Branch: `claude/phase-41e-audit-pr4-final` (off main; cherry-picked PR 3 commit because it didn't propagate to main when PR 2 was merged)
 - PR URL: TBD on push
