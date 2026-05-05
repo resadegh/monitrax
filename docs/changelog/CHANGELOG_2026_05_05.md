@@ -1,5 +1,88 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e1-d2-cgt-router (Phase 41e.1 slice D-2 — wire CGT into entityTaxRouter; closes 41e.1)
+
+### Changes Made
+- **Type:** Feature — closes 41e.1. Wires slices A (CGT discount) + B (loss netting) into the router as a CGT side calc independent of the income-tax dispatch. **First demonstration of "never false silence"** — a COMPANY entity with income tax still UNCOMPUTED can now surface a fully-computed CGT figure with 0% discount per s115-280, instead of returning silently null.
+- **Scope:** Conditional CGT dispatch — entities WITH `cgtEvents` get a populated `cgtResult` (regardless of whether `result` is null/computed). De-duplicated cumulative citations + UNCOMPUTED.
+- **Stacked on:** PR #649 (slice D-1). Stack chain: this PR → #649 → #647 → #645 → #644 → #641 → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Modified
+- `lib/tax-engine/types.ts` — `EntityTaxFacts` gains optional `cgtEvents`, `carryForwardCapitalLosses`, `smsfIsComplying`, `isForeignResident` fields. `EntityTaxPosition` gains optional `cgtResult` field (independent of `result`).
+- `lib/tax-engine/entity/entityTaxRouter.ts` — imports `applyCapitalLossNetting` + types. New `dispatchCgtIfPresent(facts)` helper runs loss-netting if `cgtEvents` non-empty. New `mergeCgt(citations, uncomputed, cgt)` helper de-duplicates merged arrays. Every dispatch branch (PERSONAL_NAME / TRUST-with-distribution / UNCOMPUTED branches) now populates `cgtResult` + merges CGT citations & flags into the cumulative position.
+- `app/api/tax/entity/[entityId]/route.ts` — POST handler validates + accepts `cgtEvents` array (each event needs `id`/`monthsHeld`/`nominalAmount`) + `carryForwardCapitalLosses` array; passes both into `EntityTaxFacts`.
+- `tests/tax-engine/entity/entityTaxRouter.test.ts` — 8 new tests for the D-2 contract.
+- `docs/architecture/03_DATA_MODEL.md` §10.13 — slice D-2 row appended; **41e.1 COMPLETE** statement.
+- `docs/architecture/07_API_STANDARDS.md` §15 — POST endpoint row updated.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D-2 status flip + 41e.1 closure note.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **303 tests passed** (295 → 303, +8 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — closes 41e.1; introduces the "never false silence" principle as a complement to "never false numbers".
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Per the going-forward commitment from PR #637 — all relevant docs updated in the same PR.
+
+### What's user-testable now (visual / API)
+
+**This is the visible flip for COMPANY entities.**
+
+```bash
+# COMPANY entity with disposal events:
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cgtEvents": [
+      { "id": "e1", "monthsHeld": 60, "nominalAmount": 200000 }
+    ]
+  }' \
+  https://yourenv/api/tax/entity/<company_entityId>
+```
+
+Response carries:
+- `entityPosition.result === null` (income tax still UNCOMPUTED — 41e.7 territory)
+- `entityPosition.uncomputed[0].id === "UC-ENTITY-COMPANY"` (the audit's "never false numbers" rule for income tax stays)
+- **`entityPosition.cgtResult.assessableNetCapitalGain === 200000`** (0% discount per s115-280 — full nominal gain assessable)
+- `entityPosition.citations` includes `s115-280` so the AFSL footer can show users **exactly why** their company-owned asset got no discount
+
+**Combined trust + CGT:**
+```bash
+curl -X POST \
+  -d '{
+    "trustDistribution": { "trustNetIncome": 100000, "beneficiaries": [...] },
+    "cgtEvents": [{ "id": "e1", "monthsHeld": 36, "nominalAmount": 80000 }]
+  }' \
+  /api/tax/entity/<trust_entityId>
+```
+Returns BOTH a Div 6 distribution in `result` AND a Div 115 calc in `cgtResult` with 50% discount → $40k assessable. Citations include both s95/s97 (Div 6) and s115-25/s100-50/Div 102-A (CGT) — no duplicates.
+
+**With prior-year losses:**
+```bash
+curl -X POST \
+  -d '{
+    "cgtEvents": [{ "id": "g1", "monthsHeld": 24, "nominalAmount": 80000 }],
+    "carryForwardCapitalLosses": [{ "financialYear": "2022-23", "amount": 20000 }]
+  }' \
+  /api/tax/entity/<entityId>
+```
+Net gain after $20k prior-year loss → 50% discount → **$30k assessable**. Caller passes the unconsumed balance from the user's CGT register.
+
+### What's next
+**41e.1 is COMPLETE.** Next: **41e.2 — SMSF contribution caps.** Move CONCESSIONAL_CAPS / NON_CONCESSIONAL_CAPS from `capTracker.ts` into `taxYearConfig.ts`. Wire SMSF entity dispatch to the existing `capTracker` primitive. Carry-forward + bring-forward edge cases. Per audit §8.1, ~2 days estimated.
+
+### PR
+- Branch: `claude/phase-41e1-d2-cgt-router` (stacked on `claude/phase-41e1-d1-trust-router` / PR #649)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e1-d1-trust-router (Phase 41e.1 slice D-1 — wire trustDistribution into entityTaxRouter)
 
 ### Changes Made
