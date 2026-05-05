@@ -27,6 +27,7 @@ interface UserRequest {
   declineReason: string | null;
   leadFeeTier: string | null;
   leadFeeAmount: string | null;
+  conversation: { id: string } | null;
   listing: {
     id: string;
     publicSlug: string;
@@ -174,8 +175,19 @@ function RequestsList() {
                 )}
 
                 {item.status === 'ACCEPTED' && (
-                  <div className="rounded-lg bg-emerald-50 ring-1 ring-emerald-200 px-3 py-2 mb-3 text-[12px] text-emerald-900">
-                    They&rsquo;ve accepted. You&rsquo;ll receive a connect invitation shortly to start the engagement.
+                  <div className="rounded-lg bg-emerald-50 ring-1 ring-emerald-200 px-3 py-2 mb-3 flex items-center justify-between gap-3 flex-wrap">
+                    <p className="text-[12px] text-emerald-900">
+                      They&rsquo;ve accepted. The conversation is open — keep chatting in-app or by email.
+                    </p>
+                    {item.conversation?.id && (
+                      <Link
+                        href={`/dashboard/conversations/${item.conversation.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center rounded-full bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1 text-[11px] font-medium transition-colors flex-shrink-0"
+                      >
+                        Open conversation →
+                      </Link>
+                    )}
                   </div>
                 )}
 

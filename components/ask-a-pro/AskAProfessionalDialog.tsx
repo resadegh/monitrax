@@ -229,7 +229,13 @@ function OrgScopeView({
           </header>
 
           {candidate.assignedMember ? (
-            <MemberCard member={candidate.assignedMember} highlighted onClose={onClose} />
+            <MemberCard
+              member={candidate.assignedMember}
+              orgClientId={candidate.orgClientId}
+              orgName={candidate.organizationName}
+              highlighted
+              onClose={onClose}
+            />
           ) : (
             <p className="text-[12px] text-slate-500 italic mb-3">
               No specific advisor assigned to you yet — the firm&rsquo;s roster:
@@ -246,7 +252,13 @@ function OrgScopeView({
             {candidate.roster
               .filter((m) => !candidate.assignedMember || m.memberId !== candidate.assignedMember.memberId)
               .map((m) => (
-                <MemberCard key={m.memberId} member={m} onClose={onClose} />
+                <MemberCard
+                  key={m.memberId}
+                  member={m}
+                  orgClientId={candidate.orgClientId}
+                  orgName={candidate.organizationName}
+                  onClose={onClose}
+                />
               ))}
           </div>
         </section>
@@ -257,22 +269,60 @@ function OrgScopeView({
 
 function MemberCard({
   member,
+  orgClientId,
+  orgName,
   highlighted = false,
   onClose,
 }: {
   member: { memberId: string; name: string; email: string; role: string };
+  orgClientId: string;
+  orgName: string;
   highlighted?: boolean;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  const handleClick = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      // Ensure-or-create the org-scoped conversation, then navigate.
+      // PR4d wires the in-app thread + email-through-app for this engagement.
+      const res = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orgClientId,
+          memberId: member.memberId,
+          subject: `Conversation with ${member.name}`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error?.message ?? 'Failed to open conversation');
+      const conversationId = json.data?.conversation?.id as string | undefined;
+      if (!conversationId) throw new Error('No conversation id returned');
+      onClose();
+      router.push(`/dashboard/conversations/${conversationId}`);
+    } catch (err) {
+      // Surface inline (rare path; the picker is open + user is authenticated).
+      // eslint-disable-next-line no-console
+      console.warn('[AskAPro] org-scoped conversation open failed', err);
+      setBusy(false);
+    }
+  };
+
   return (
-    <Link
-      href={`/portal-message?memberId=${member.memberId}`}
-      onClick={onClose}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={busy}
+      className={`w-full text-left flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors disabled:opacity-60 ${
         highlighted
           ? 'bg-emerald-50 ring-1 ring-emerald-200 hover:bg-emerald-100'
           : 'bg-white ring-1 ring-slate-200 hover:bg-slate-50'
       }`}
+      title={`Message ${member.name} at ${orgName}`}
     >
       <div className={`w-9 h-9 rounded-full flex items-center justify-center font-medium text-[13px] ${
         highlighted ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-700'
@@ -286,9 +336,9 @@ function MemberCard({
       <span className={`text-[11px] uppercase tracking-wide font-medium ${
         highlighted ? 'text-emerald-700' : 'text-slate-500'
       }`}>
-        {roleLabel(member.role)}
+        {busy ? '…' : roleLabel(member.role)}
       </span>
-    </Link>
+    </button>
   );
 }
 
