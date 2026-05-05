@@ -61,6 +61,11 @@ const secondaryNavigation = [
     href: '/portal/reports',
     icon: <NavIcons.Reports />,
   },
+  {
+    label: 'Feedback',
+    href: '/portal/feedback',
+    icon: <NavIcons.Feedback />,
+  },
 ];
 
 // Pages that should NOT require authentication

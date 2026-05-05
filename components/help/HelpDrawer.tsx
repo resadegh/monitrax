@@ -358,18 +358,38 @@ export function HelpDrawer({ open, onClose, audiences }: HelpDrawerProps) {
             <p className="text-[11px] text-slate-500">
               {audiences.length} audience{audiences.length === 1 ? '' : 's'} in scope
             </p>
-            <Link
-              href="/help"
-              onClick={closeAndReset}
-              className="
-                inline-flex items-center gap-1
-                text-[12px] font-medium text-emerald-700
-                hover:text-emerald-800
-              "
-            >
-              Open full Help Center
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
+            <div className="flex items-center gap-3">
+              {/* Phase 33g: Send feedback link — only surfaces for advisers
+                  (audience set includes any org-* audience). The route param
+                  pre-fills `surfaceRoute` on the new-thread form so the
+                  adviser doesn't have to remember which page they were on. */}
+              {audiences.some((a) => a.startsWith('org-')) && pathname && (
+                <Link
+                  href={`/portal/feedback?route=${encodeURIComponent(pathname)}`}
+                  onClick={closeAndReset}
+                  className="
+                    inline-flex items-center gap-1
+                    text-[12px] font-medium text-slate-600
+                    hover:text-slate-900
+                  "
+                >
+                  Send feedback
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
+              <Link
+                href="/help"
+                onClick={closeAndReset}
+                className="
+                  inline-flex items-center gap-1
+                  text-[12px] font-medium text-emerald-700
+                  hover:text-emerald-800
+                "
+              >
+                Open full Help Center
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
           </div>
         </footer>
       </aside>
