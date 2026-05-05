@@ -175,6 +175,9 @@ export {
   getCustomerForOrg,
   cancelAtPeriodEnd,
   resumeSubscription,
+  // PR6b — lead-fee invoicing
+  createLeadFeeInvoiceForRequest,
+  listLeadFeeInvoicesForOrg,
   StripeBillingServiceError,
   BILLING_ENV_VARS,
   type CheckoutInput,

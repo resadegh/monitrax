@@ -304,9 +304,10 @@ async function dispatchEvent(event: Stripe.Event): Promise<void> {
       await markSubscriptionCancelled(event.data.object as Stripe.Subscription);
       return;
     case 'invoice.paid':
+      await handleInvoicePaid(event.data.object as Stripe.Invoice);
+      return;
     case 'invoice.payment_failed':
-      // Lead-fee invoice handling lands in PR6b. For PR6a we simply log
-      // the event via the StripeWebhookEvent row (already persisted).
+      await handleInvoiceFailed(event.data.object as Stripe.Invoice);
       return;
     default:
       // Unhandled event — that's fine; we logged it in StripeWebhookEvent.
@@ -461,5 +462,198 @@ export async function resumeSubscription(organizationId: string): Promise<Stripe
   return prisma.stripeSubscription.update({
     where: { id: sub.id },
     data: { cancelAtPeriodEnd: false },
+  });
+}
+
+// =============================================================================
+// PHASE 32C PR6b — LEAD-FEE INVOICING
+// =============================================================================
+//
+// When `acceptRequest` (in professionalRequestService) accepts a marketplace
+// request, the org owes Monitrax a lead fee (AU$80/$150/$250 by tier). PR4c
+// recorded the BILLING INTENT in `professional_requests.leadFeeChargedAt`;
+// PR6b creates the actual Stripe Invoice + sends it.
+//
+// Flow:
+//   1. acceptRequest fires → calls createLeadFeeInvoiceForRequest()
+//   2. We resolve the org's StripeCustomer (lazy-create if needed; the org
+//      may not have subscribed to a plan yet but they still pay lead fees)
+//   3. Create a Stripe Invoice + InvoiceItem, send it
+//   4. Persist `stripeInvoiceId` + status=PENDING_PAYMENT + invoice URL on
+//      the ProfessionalRequest
+//   5. Stripe fires `invoice.paid` / `invoice.payment_failed` webhooks
+//      → handleInvoicePaid / handleInvoiceFailed update the request
+
+interface CreateLeadFeeInvoiceInput {
+  requestId: string;
+  /** Owner email — used to lazy-create the StripeCustomer if no subscription
+   *  exists yet (lead fees are payable even without an active plan). */
+  ownerEmail: string;
+}
+
+/**
+ * Creates and sends a Stripe Invoice for a lead fee.
+ *
+ * Idempotent — if `stripeInvoiceId` is already set on the request, returns
+ * the existing invoice id without creating a new one. Failure does NOT
+ * roll back the accept; ops can re-run by calling this with the same id.
+ */
+export async function createLeadFeeInvoiceForRequest(
+  input: CreateLeadFeeInvoiceInput,
+): Promise<{ invoiceId: string; invoiceUrl: string | null }> {
+  const request = await prisma.professionalRequest.findUnique({
+    where: { id: input.requestId },
+    include: {
+      listing: { select: { organizationId: true, displayName: true } },
+      requester: { select: { name: true, email: true } },
+    },
+  });
+  if (!request) {
+    throw new StripeBillingServiceError('Request not found', 'NOT_FOUND');
+  }
+  if (request.status !== 'ACCEPTED') {
+    throw new StripeBillingServiceError(
+      `Cannot invoice from status ${request.status} — must be ACCEPTED`,
+      'INVALID_INPUT',
+    );
+  }
+  if (!request.leadFeeAmount || !request.leadFeeTier) {
+    throw new StripeBillingServiceError(
+      'Request has no lead-fee tier resolved (was acceptRequest run?)',
+      'INVALID_INPUT',
+    );
+  }
+
+  // Idempotent — already invoiced
+  if (request.stripeInvoiceId) {
+    return {
+      invoiceId: request.stripeInvoiceId,
+      invoiceUrl: request.leadFeeInvoiceUrl ?? null,
+    };
+  }
+
+  if (!isStripeConfigured()) {
+    // Dev/demo path — record the intent without creating a Stripe invoice.
+    // The architectural pattern is visible (status=PENDING_PAYMENT) without
+    // requiring real keys.
+    await prisma.professionalRequest.update({
+      where: { id: request.id },
+      data: { leadFeeStatus: 'PENDING_CREATE' },
+    });
+    return { invoiceId: `stub-${request.id}`, invoiceUrl: null };
+  }
+
+  const customer = await getOrCreateCustomer(
+    request.listing.organizationId,
+    input.ownerEmail,
+  );
+  const stripe = getStripeClient();
+
+  // Mark intent so a re-run after a failure doesn't double-create
+  await prisma.professionalRequest.update({
+    where: { id: request.id },
+    data: { leadFeeStatus: 'PENDING_CREATE' },
+  });
+
+  // Convert decimal AUD → cents (Stripe wants integer minor units)
+  const amountCents = Math.round(Number(request.leadFeeAmount) * 100);
+
+  // Create the InvoiceItem first, then collect into an Invoice
+  await stripe.invoiceItems.create({
+    customer: customer.stripeCustomerId,
+    amount: amountCents,
+    currency: 'aud',
+    description: `Marketplace lead fee · ${request.requester.name} · ${request.leadFeeTier} tier`,
+    metadata: {
+      monitrax_request_id: request.id,
+      monitrax_organization_id: request.listing.organizationId,
+      monitrax_lead_fee_tier: request.leadFeeTier,
+    },
+  });
+
+  const invoice = await stripe.invoices.create({
+    customer: customer.stripeCustomerId,
+    auto_advance: true, // Stripe finalises + attempts collection automatically
+    collection_method: 'charge_automatically',
+    description: `Lead fee for accepted marketplace request from ${request.requester.name}`,
+    metadata: {
+      monitrax_request_id: request.id,
+      monitrax_organization_id: request.listing.organizationId,
+    },
+  });
+
+  if (!invoice.id) {
+    throw new StripeBillingServiceError('Stripe did not return an invoice id', 'STRIPE_ERROR');
+  }
+
+  // Finalise immediately so payment attempt fires now
+  await stripe.invoices.finalizeInvoice(invoice.id);
+
+  await prisma.professionalRequest.update({
+    where: { id: request.id },
+    data: {
+      stripeInvoiceId: invoice.id,
+      leadFeeStatus: 'PENDING_PAYMENT',
+      leadFeeInvoiceUrl: invoice.hosted_invoice_url ?? null,
+    },
+  });
+
+  return { invoiceId: invoice.id, invoiceUrl: invoice.hosted_invoice_url ?? null };
+}
+
+async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
+  // Lead-fee invoices carry monitrax_request_id metadata; subscription
+  // invoices don't (they're handled by mirrorSubscription's separate path).
+  const requestId = invoice.metadata?.monitrax_request_id;
+  if (!requestId || !invoice.id) return;
+
+  await prisma.professionalRequest.update({
+    where: { stripeInvoiceId: invoice.id },
+    data: {
+      leadFeeStatus: 'PAID',
+      leadFeePaidAt: new Date(),
+    },
+  }).catch(() => {
+    // Request may have been deleted; webhook re-deliveries handle the rest
+  });
+}
+
+async function handleInvoiceFailed(invoice: Stripe.Invoice): Promise<void> {
+  const requestId = invoice.metadata?.monitrax_request_id;
+  if (!requestId || !invoice.id) return;
+
+  await prisma.professionalRequest.update({
+    where: { stripeInvoiceId: invoice.id },
+    data: {
+      leadFeeStatus: 'FAILED',
+      leadFeeFailedAt: new Date(),
+    },
+  }).catch(() => {});
+}
+
+/**
+ * Reads the most-recent lead-fee invoices for an org for the billing UI.
+ */
+export async function listLeadFeeInvoicesForOrg(organizationId: string, limit = 50) {
+  return prisma.professionalRequest.findMany({
+    where: {
+      listing: { organizationId },
+      stripeInvoiceId: { not: null },
+    },
+    orderBy: { leadFeeChargedAt: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      leadFeeAmount: true,
+      leadFeeTier: true,
+      leadFeeStatus: true,
+      leadFeeChargedAt: true,
+      leadFeePaidAt: true,
+      leadFeeFailedAt: true,
+      stripeInvoiceId: true,
+      leadFeeInvoiceUrl: true,
+      requester: { select: { name: true } },
+      listing: { select: { displayName: true } },
+    },
   });
 }

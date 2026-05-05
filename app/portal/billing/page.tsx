@@ -386,15 +386,7 @@ function BillingContent() {
           )}
         </div>
 
-        <PracticeGlassCard padding="md">
-          <h3 className="text-[12px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Lead-fee billing</h3>
-          <p className="text-[13px] text-slate-700 leading-relaxed mb-2">
-            Lead fees from accepted marketplace requests are billed separately, charged via Stripe per accepted engagement (AU$80 / $150 / $250 by user net-worth bracket).
-          </p>
-          <p className="text-[11px] text-slate-500">
-            Invoice history surface ships in the next slice (PR6b). For now, lead-fee billing intent is recorded on each ProfessionalRequest.<code className="font-mono text-[10px] bg-slate-100 px-1 py-0.5 rounded">leadFeeChargedAt</code> column.
-          </p>
-        </PracticeGlassCard>
+        <LeadFeeInvoiceHistory orgId={orgId} />
       </div>
     </div>
   );
@@ -405,5 +397,111 @@ export default function PortalBillingPage() {
     <Suspense fallback={null}>
       <BillingContent />
     </Suspense>
+  );
+}
+
+// =============================================================================
+// LEAD-FEE INVOICE HISTORY (PR6b)
+// =============================================================================
+
+interface LeadFeeInvoiceRow {
+  id: string;
+  leadFeeAmount: string | null;
+  leadFeeTier: string | null;
+  leadFeeStatus: string | null;
+  leadFeeChargedAt: string | null;
+  leadFeePaidAt: string | null;
+  leadFeeFailedAt: string | null;
+  stripeInvoiceId: string | null;
+  leadFeeInvoiceUrl: string | null;
+  requester: { name: string };
+  listing: { displayName: string };
+}
+
+const LEAD_FEE_STATUS_PILL: Record<string, { label: string; classes: string }> = {
+  PENDING_CREATE: { label: 'Creating…', classes: 'bg-slate-100 text-slate-700 ring-slate-200' },
+  PENDING_PAYMENT: { label: 'Awaiting payment', classes: 'bg-amber-50 text-amber-800 ring-amber-200' },
+  PAID: { label: 'Paid', classes: 'bg-emerald-50 text-emerald-800 ring-emerald-200' },
+  FAILED: { label: 'Payment failed', classes: 'bg-rose-50 text-rose-800 ring-rose-200' },
+  VOIDED: { label: 'Voided', classes: 'bg-slate-100 text-slate-600 ring-slate-200' },
+};
+
+function LeadFeeInvoiceHistory({ orgId }: { orgId: string | null }) {
+  const [items, setItems] = useState<LeadFeeInvoiceRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!orgId) return;
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/portal/billing/invoices?organizationId=${orgId}`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        setItems(json.data?.items ?? []);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    void load();
+  }, [orgId]);
+
+  return (
+    <PracticeGlassCard padding="md">
+      <h3 className="text-[12px] font-semibold uppercase tracking-wide text-slate-500 mb-3">Lead-fee invoices</h3>
+      <p className="text-[12px] text-slate-600 mb-4 leading-relaxed">
+        Per-accepted-request charges (AU$80 / $150 / $250 by user net-worth bracket). Created automatically when you accept a marketplace request; payment collected via Stripe within 24 hours.
+      </p>
+      {isLoading ? (
+        <p className="text-[12px] text-slate-500">Loading invoices…</p>
+      ) : items.length === 0 ? (
+        <p className="text-[12px] text-slate-500">
+          No lead-fee invoices yet. Accepted marketplace requests will appear here once Stripe creates the invoice.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => {
+            const statusEntry: { label: string; classes: string } =
+              (item.leadFeeStatus ? LEAD_FEE_STATUS_PILL[item.leadFeeStatus] : null) ??
+              { label: item.leadFeeStatus ?? '—', classes: 'bg-slate-100 text-slate-700 ring-slate-200' };
+            return (
+              <div key={item.id} className="rounded-lg bg-white ring-1 ring-slate-200 p-3 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] font-medium text-slate-900 truncate">
+                    Lead from {item.requester.name}
+                  </div>
+                  <div className="text-[11px] text-slate-500 tabular-nums">
+                    {item.leadFeeChargedAt && new Date(item.leadFeeChargedAt).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {item.leadFeeTier && <span className="ml-2">{item.leadFeeTier} tier</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[14px] font-semibold text-slate-900 tabular-nums">
+                    AU${item.leadFeeAmount ? parseFloat(item.leadFeeAmount).toFixed(2) : '0.00'}
+                  </span>
+                  <span className={`inline-flex items-center rounded-full ring-1 ring-inset px-2.5 py-0.5 text-[10px] font-medium whitespace-nowrap ${statusEntry.classes}`}>
+                    {statusEntry.label}
+                  </span>
+                  {item.leadFeeInvoiceUrl && (
+                    <a
+                      href={item.leadFeeInvoiceUrl}
+                      target="_blank"
+                      rel="noopener"
+                      className="text-[11px] text-emerald-700 hover:text-emerald-800 underline decoration-emerald-200 hover:decoration-emerald-500 underline-offset-2 whitespace-nowrap"
+                    >
+                      View →
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <p className="mt-4 text-[10px] text-slate-400 leading-snug">
+        Stripe-hosted invoice URLs route to your finance team. Subscription invoices are listed in your <a href="https://dashboard.stripe.com/test/customers" target="_blank" rel="noopener" className="underline">Stripe customer portal</a>.
+      </p>
+    </PracticeGlassCard>
   );
 }

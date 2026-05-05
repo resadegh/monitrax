@@ -4729,11 +4729,20 @@ model ProfessionalRequest {
   declineReason       String?             @db.Text
   withdrawnAt         DateTime?
 
-  // Lead fee (resolved at submit-time, billed at accept-time; actual Stripe
-  // charge wires in PR6 — at v1 `leadFeeChargedAt` is the billing intent)
+  // Lead fee (resolved at submit-time, billed at accept-time)
+  // `leadFeeChargedAt` is the billing-intent timestamp set when accept fires.
+  // Phase 32C PR6b adds the actual Stripe Invoice linkage:
+  //   - `stripeInvoiceId`     — Stripe's `in_xxx` once the invoice is created
+  //   - `leadFeeStatus`       — Stripe-mirrored payment status (PENDING / PAID / FAILED / VOID)
+  //   - `leadFeeInvoiceUrl`   — Stripe-hosted invoice URL the adviser can share with their accountant
   leadFeeTier         LeadFeeTier?
   leadFeeAmount       Decimal?            @db.Decimal(10, 2)
   leadFeeChargedAt    DateTime?
+  stripeInvoiceId     String?             @unique
+  leadFeeStatus       LeadFeeStatus?
+  leadFeeInvoiceUrl   String?
+  leadFeePaidAt       DateTime?
+  leadFeeFailedAt     DateTime?
 
   // Engagement created if accepted — links to the OrganizationClient row
   // that materialises the relationship after consent. NULL until accept.
@@ -4764,6 +4773,19 @@ enum LeadFeeTier {
   EMERGING    // <$200k net worth — listing.leadFeeTierEmerging applies
   GROWING     // $200k-$1M net worth — listing.leadFeeTierGrowing applies
   ESTABLISHED // $1M+ net worth — listing.leadFeeTierEstablished applies
+}
+
+// Phase 32C PR6b — Lead-fee invoice status mirrored from Stripe.
+// `PENDING_CREATE` is the brief window between accept-fire and invoice-create;
+// `PENDING_PAYMENT` is the standard "invoice issued, awaiting payment" state.
+// `VOIDED` covers the case where the listing or request was retroactively
+// reversed (refund handled at PROD; v1 only voids before payment).
+enum LeadFeeStatus {
+  PENDING_CREATE
+  PENDING_PAYMENT
+  PAID
+  FAILED
+  VOIDED
 }
 
 // =============================================================================

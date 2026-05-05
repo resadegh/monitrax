@@ -402,6 +402,41 @@ export async function acceptRequest(input: RespondInput): Promise<ProfessionalRe
     console.warn('[acceptRequest] conversation auto-create failed', err);
   }
 
+  // Phase 32C PR6b — create the Stripe lead-fee invoice. Same best-effort
+  // pattern as the conversation: failures don't roll back the accept (the
+  // billing intent is already recorded in `leadFeeChargedAt`); ops can
+  // re-run `createLeadFeeInvoiceForRequest` for any request with
+  // `stripeInvoiceId IS NULL` after status=ACCEPTED.
+  try {
+    // Resolve the org's PORTAL_OWNER email — the billing customer is
+    // always tied to the owner. If multiple owners exist, pick the
+    // earliest-active one (deterministic).
+    const owner = await prisma.organizationMember.findFirst({
+      where: {
+        organizationId: accepted.listingId
+          ? (await prisma.professionalListing.findUnique({
+              where: { id: accepted.listingId },
+              select: { organizationId: true },
+            }))?.organizationId
+          : undefined,
+        role: 'OWNER',
+        isActive: true,
+      },
+      include: { user: { select: { email: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (owner?.user?.email) {
+      const { createLeadFeeInvoiceForRequest } = await import('./stripeBillingService');
+      await createLeadFeeInvoiceForRequest({
+        requestId: accepted.id,
+        ownerEmail: owner.user.email,
+      });
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[acceptRequest] lead-fee invoice create failed', err);
+  }
+
   return accepted;
 }
 
