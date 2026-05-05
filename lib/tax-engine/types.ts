@@ -467,3 +467,197 @@ export function parseFinancialYear(fy: string): FinancialYear {
     isCurrent: fy === currentFY.year,
   };
 }
+
+// =============================================================================
+// Phase 41e.0 — Entity-Aware Orchestration Types
+// =============================================================================
+//
+// Per `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §4 + the audit
+// doc §6.2, these types are the contract that the 41e orchestration layer
+// (`entityTaxRouter` + per-rule modules + `MasterTaxPosition` orchestrator)
+// builds against. They sit alongside the existing Phase 20 individual-level
+// types (TaxYearConfig, TaxPositionResult, etc.) — Phase 20 is preserved as
+// a calc-primitive library; 41e composes those primitives entity by entity.
+//
+// Authority-citation traceability is mandatory per architecture doc §1(3) —
+// every rule result the new layer produces carries an `AuthorityCitation`
+// recording the ITAA section / SIS Act / TR / TD / PCG it was computed
+// against. The cumulative set of citations per `MasterTaxPosition` is the
+// audit trail a registered tax agent reviewer reads to verify the snapshot.
+
+/**
+ * Reference to the AU primary authority a tax-rule result was computed
+ * against. Consumed by the AFSL/TPB/NCCP boundaries renderer to show
+ * "computed per ITAA 1997 s115-25" footnotes wherever a calculated number
+ * is surfaced.
+ */
+export interface AuthorityCitation {
+  /** Type of source — keeps citations easy to filter + style consistently. */
+  kind:
+    | 'ITAA_1936'
+    | 'ITAA_1997'
+    | 'SIS_ACT'
+    | 'TR' // Taxation Ruling
+    | 'TD' // Taxation Determination
+    | 'PCG' // Practical Compliance Guideline
+    | 'PS_LA' // Practice Statement Law Administration
+    | 'STATE_DUTIES_ACT'
+    | 'STATE_LAND_TAX_ACT';
+  /** e.g. "s115-25", "Div 6", "TR 2022/4". */
+  reference: string;
+  /** ISO date when the citation was last reviewed against the live source. */
+  lastReviewed: string;
+}
+
+/**
+ * FY-indexed reference for any threshold lookup. Per architecture doc §1(6),
+ * thresholds are NEVER hard-coded — every consumer asks for `FYReference`
+ * + a key, and `taxYearConfig.ts` is the single resolver.
+ */
+export interface FYReference {
+  financialYear: string;
+  /** Display label, e.g. "FY24-25" — same as `TaxYearConfig.label`. */
+  label: string;
+}
+
+/**
+ * Per-entity facts the tax dispatcher needs to compute that entity's tax
+ * position. Composed from the new entity-aware aggregator outputs (slice
+ * C of 41e.0) — every income / expense / loan / property / investment /
+ * asset row the entity owns, plus structural metadata (entity type, role,
+ * trustee chain, etc.) that drives the dispatch.
+ *
+ * Sub-PRs 41e.1+ progressively populate the optional fields:
+ *   - 41e.1 adds `cgtEvents` for Div 115 dispatch
+ *   - 41e.4 adds `trustDistributionResolutions` for Div 6/6E streaming
+ *   - 41e.6 adds `div7aLoans` for private-company loan compliance
+ *   - 41e.11 adds `lrbaArrangements` + `brpHoldings` for SMSF dispatch
+ */
+export interface EntityTaxFacts {
+  entityId: string;
+  entityType:
+    | 'PERSONAL_NAME'
+    | 'SOLE_TRADER'
+    | 'PARTNERSHIP'
+    | 'COMPANY'
+    | 'DISCRETIONARY_TRUST'
+    | 'UNIT_TRUST'
+    | 'SMSF';
+  /** Self-FK chain — populated by the dispatcher walking `parentEntityId`. */
+  parentEntityId?: string;
+  /** FY this fact-set applies to. */
+  fy: FYReference;
+  /**
+   * Income items owned by this entity (filtered by `ownerEntityId`).
+   * Shape matches `IncomeItem` from
+   * `lib/tax-engine/position/taxPositionCalculator.ts`. Imported as a
+   * structural row to avoid a circular import — the per-rule modules
+   * that compose this type also import from `position/`.
+   */
+  incomes: ReadonlyArray<{
+    id: string;
+    name: string;
+    type: string;
+    amount: number;
+    frequency: string;
+    propertyId?: string;
+    investmentAccountId?: string;
+    grossAmount?: number;
+    paygWithholding?: number;
+    frankingPercentage?: number;
+    frankingCredits?: number;
+  }>;
+  /** Expense items owned by this entity. Same shape as `ExpenseItem`. */
+  expenses: ReadonlyArray<{
+    id: string;
+    name: string;
+    category: string;
+    amount: number;
+    frequency: string;
+    isTaxDeductible: boolean;
+    propertyId?: string;
+    loanId?: string;
+    investmentAccountId?: string;
+  }>;
+  /** Depreciation schedules. Same shape as `DepreciationItem`. */
+  depreciations: ReadonlyArray<{
+    id: string;
+    propertyId: string;
+    currentYearDeduction: number;
+    type: string;
+  }>;
+  /** Super contributions in scope (only meaningful for SMSF / individuals). */
+  superContributions?: {
+    concessional: number;
+    nonConcessional: number;
+  };
+  /**
+   * 41e.4+ — streaming resolution metadata for trust entities. If absent
+   * for a DISCRETIONARY_TRUST at FY-end, the dispatcher applies the
+   * default-distribution penalty rate per s99A.
+   */
+  trustDistributionResolutionAt?: string;
+}
+
+/**
+ * Per-entity tax position — the output of dispatching a single entity
+ * through `entityTaxRouter`. Wraps a Phase 20 `TaxPositionResult` for
+ * PERSONAL_NAME flows, or a NET-NEW result shape for COMPANY / TRUST /
+ * SMSF flows (precise shape TBD per sub-PR — kept as `unknown` here so
+ * sub-PRs can refine without churn in this commit).
+ */
+export interface EntityTaxPosition {
+  entityId: string;
+  entityType: EntityTaxFacts['entityType'];
+  fy: FYReference;
+  /** The actual tax computation output. PERSONAL_NAME ⇒ `TaxPositionResult`. */
+  result: unknown;
+  /** Cumulative authority citations for every rule applied. */
+  citations: AuthorityCitation[];
+  /** UNCOMPUTED items flagged during dispatch (per audit §10.3). */
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Audit-friendly statement of "this is what we deliberately did not
+ * compute, and why." Per audit doc §10.3 — every UNCOMPUTED item
+ * surfaces as a UI badge with plain-English explanation, never a false
+ * number.
+ */
+export interface UncomputedFlag {
+  /** Stable identifier, e.g. `UC-FBT`, `UC-PROPERTY-DEPRECIATION`. */
+  id: string;
+  /** Plain-English rationale shown to the user. */
+  rationale: string;
+  /** Linked authority if the omission has one (rare). */
+  citation?: AuthorityCitation;
+}
+
+/**
+ * Household-wide tax position — sum of every entity's `EntityTaxPosition`
+ * for a given user + FY, plus inter-entity flows (Div 6 distributions
+ * pushed from trust → beneficiary, Div 7A imputations from company →
+ * shareholder, etc.) that 41e.4+ progressively model.
+ *
+ * This is the canonical replacement for `buildTaxSummary()` once 41e.17
+ * ships the orchestrator. Until then, slice C's adapter remains the
+ * bridge.
+ */
+export interface MasterTaxPosition {
+  userId: string;
+  fy: FYReference;
+  entities: EntityTaxPosition[];
+  /** Cumulative across the household — the snapshot summary number. */
+  totals: {
+    assessableIncome: number;
+    taxableIncome: number;
+    netTax: number;
+    paygWithheld: number;
+    estimatedRefund: number;
+  };
+  /** Aggregate of every entity's authority citations, deduplicated. */
+  authoritySources: AuthorityCitation[];
+  /** Aggregate UNCOMPUTED flags across all entities, deduplicated. */
+  uncomputed: UncomputedFlag[];
+  computedAt: string;
+}
