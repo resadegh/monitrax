@@ -160,3 +160,23 @@ export {
   type CreateOrgScopedInput,
   type PostMessageInput,
 } from './conversationService';
+
+// =============================================================================
+// PHASE 32C PR6 — STRIPE BILLING (TEST-MODE)
+// =============================================================================
+
+export {
+  isStripeConfigured,
+  getOrCreateCustomer,
+  createCheckoutSession,
+  constructAndVerifyWebhookEvent,
+  handleWebhookEvent,
+  getSubscriptionStatus,
+  getCustomerForOrg,
+  cancelAtPeriodEnd,
+  resumeSubscription,
+  StripeBillingServiceError,
+  BILLING_ENV_VARS,
+  type CheckoutInput,
+  type CheckoutResult,
+} from './stripeBillingService';

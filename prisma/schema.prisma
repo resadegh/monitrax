@@ -280,6 +280,17 @@ enum AuditAction {
   CONVERSATION_EMAIL_OUTBOUND
   CONVERSATION_EMAIL_INBOUND
   CONVERSATION_SOFT_DELETED_FROM_USER
+
+  // Phase 32C PR6 — Stripe billing lifecycle. Webhook handlers fire these
+  // when subscription state changes. Test-mode events at v1; live mode
+  // events ship post-Basiq accreditation.
+  BILLING_CHECKOUT_STARTED
+  BILLING_SUBSCRIPTION_CREATED
+  BILLING_SUBSCRIPTION_UPDATED
+  BILLING_SUBSCRIPTION_CANCELLED
+  BILLING_INVOICE_PAID
+  BILLING_INVOICE_FAILED
+  BILLING_WEBHOOK_RECEIVED
 }
 
 enum AuditStatus {
@@ -1514,6 +1525,12 @@ model Organization {
   // Phase 32C PR4d: conversations owned by this org (one per accepted
   // request, plus org-attached client conversations from ClientLink).
   conversations           ProfessionalConversation[]
+
+  // Phase 32C PR6: Stripe billing — one customer record per Org once the
+  // owner first enters the billing flow; subscription state mirrored from
+  // Stripe webhooks. Test-mode at v1; live mode wires post-Basiq.
+  stripeCustomer          StripeCustomer?
+  stripeSubscription      StripeSubscription?
 
   @@map("organizations")
 }
@@ -4988,4 +5005,124 @@ enum MessageChannel {
   EMAIL_OUT     // Outbound — sent via SendGrid mirroring an in-app message
   EMAIL_IN      // Inbound — received via SendGrid Inbound Parse webhook
   SYSTEM        // Reserved (welcome message on conversation creation, etc.)
+}
+
+// =============================================================================
+// PHASE 32C PR6: STRIPE BILLING (TEST-MODE)
+// =============================================================================
+// One StripeCustomer per Org (lazy-created when the owner first enters the
+// billing flow). One StripeSubscription per Org reflects the live state of
+// the org's plan. StripeWebhookEvent records every webhook event we
+// process so we can dedupe (Stripe may deliver the same event multiple
+// times) and audit (the events table is the source of truth for "what
+// did Stripe tell us happened").
+//
+// At v1 we run test-mode only — the keys are TEST_STRIPE_SECRET_KEY +
+// TEST_STRIPE_PUBLISHABLE_KEY + TEST_STRIPE_WEBHOOK_SECRET. Live mode
+// wires post-Basiq accreditation per IMPLEMENTATION_PLAN.md DEFERRED.
+//
+// `planTier` on StripeSubscription is the canonical PlanTier (STUDIO /
+// PRACTICE / ENTERPRISE) — the legacy `OrganizationPortalSettings.plan`
+// (STARTER/PROFESSIONAL/BUSINESS/ENTERPRISE) is a shadow that the planTier
+// service maps from. Enum rename is queued for a follow-up migration.
+
+model StripeCustomer {
+  id                String  @id @default(uuid())
+  organizationId    String  @unique
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  stripeCustomerId  String  @unique  // cus_xxx from Stripe
+  // The portal-owner email at customer-creation time. Stripe can also
+  // hold an email; this column is just for fast lookup without round-tripping.
+  email             String
+
+  // True when this customer was created in Stripe TEST mode. Once we go
+  // live (post-Basiq), new customers will be `false`. The webhook handler
+  // routes to the right keyspace based on this flag.
+  isTestMode        Boolean @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  subscription      StripeSubscription?
+
+  @@index([stripeCustomerId])
+  @@map("stripe_customers")
+}
+
+model StripeSubscription {
+  id                     String   @id @default(uuid())
+  organizationId         String   @unique
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  customerId             String   @unique  // FK to StripeCustomer.id
+  customer               StripeCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  stripeSubscriptionId   String   @unique  // sub_xxx from Stripe
+  status                 SubscriptionStatus  // mirrors Stripe's status enum
+
+  // Plan tier the user is subscribed to — canonical PlanTier vocabulary.
+  planTier               BillingPlanTier
+
+  // Stripe-side identifiers used to look up the price + product when we
+  // need to upgrade/downgrade. Stored verbatim from the webhook event so
+  // we don't re-fetch from Stripe to find them.
+  stripePriceId          String
+  stripeProductId        String
+
+  // Billing period info — surfaced in the org's billing surface.
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  cancelAtPeriodEnd      Boolean  @default(false)
+
+  // Test-mode flag mirrors the customer.
+  isTestMode             Boolean  @default(true)
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([stripeSubscriptionId])
+  @@index([status])
+  @@map("stripe_subscriptions")
+}
+
+model StripeWebhookEvent {
+  id                String   @id @default(uuid())
+  // Stripe's event id (evt_xxx) — unique constraint lets the handler
+  // dedupe if Stripe re-delivers the same event.
+  stripeEventId     String   @unique
+  eventType         String   // customer.subscription.created / invoice.paid / etc
+  livemode          Boolean  // false in test mode
+
+  // The full event payload — kept for audit + debugging. Trimmed to
+  // metadata only on PROD if storage becomes a concern (Stripe events
+  // can be retrieved by id from their API for 30 days).
+  payload           Json
+
+  // Processing outcome — written when the handler completes.
+  processedAt       DateTime?
+  processingError   String?  @db.Text
+
+  receivedAt        DateTime @default(now())
+
+  @@index([eventType])
+  @@index([receivedAt])
+  @@map("stripe_webhook_events")
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  UNPAID
+  PAUSED
+}
+
+enum BillingPlanTier {
+  STUDIO        // AU$199/mo — 3 seats, 50 clients
+  PRACTICE      // AU$599/mo — 10 seats, 250 clients
+  ENTERPRISE    // From AU$1,499/mo — custom seats + clients
 }
