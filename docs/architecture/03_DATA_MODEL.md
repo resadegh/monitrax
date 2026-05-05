@@ -1753,3 +1753,64 @@ Extends `lib/tax-engine/landTax/stateLandTax.ts` with **6 more state configs** (
 **Total tax-engine tests:** 342 → 374 (+32). tsc clean.
 
 **41e.14 — Stamp duty + foreign purchaser surcharge** is next.
+
+## **10.26 Phase 41e.14 — Stamp duty + foreign purchaser surcharge (PR — shipped 2026-05-05)**
+
+New module `lib/tax-engine/stampDuty/stateStampDuty.ts` + new directory `lib/tax-engine/stampDuty/`. Stamp duty is a **point-of-sale** state tax (different cadence from annual land tax in 41e.12-13). Same per-state config pattern as land tax.
+
+**8 state configs** — `NSW_STAMP_DUTY_FY2024_25` (Sch 1 brackets to 7% premium + FPAD 8% per Ch 2 Pt 4 Div 4) + `VIC_STAMP_DUTY_FY2024_25` (brackets to 6.5% + FPAD 8% per Pt 5, raised from 7% in 2024) + `QLD_STAMP_DUTY_FY2024_25` (brackets to 5.75% + AFAD 8% per Ch 4) + `SA_STAMP_DUTY_FY2024_25` (brackets to 5.5% + foreign 7%) + `WA_STAMP_DUTY_FY2024_25` (brackets to 5.15% + foreign 7%) + `TAS_STAMP_DUTY_FY2024_25` (brackets to 4.5% + FBI 8% per Ch 4 Pt 6, raised 2024) + `ACT_STAMP_DUTY_FY2024_25` (brackets + foreign 0.75% per Pt 5A — lowest in AU) + `NT_STAMP_DUTY_FY2024_25` (brackets only — **no FPAD regime**, only AU jurisdiction without).
+
+**4 UNCOMPUTED flags:**
+- **UC-STAMP-DUTY-NT-NO-FPAD** — NT-only when foreign purchaser
+- **UC-STAMP-DUTY-CONCESSION** — caller-asserted FHB / off-the-plan / PPR
+- **UC-STAMP-DUTY-MULTI-PURCHASER** — foreign-share apportionment per NSW s104X / VIC s28A NOT computed
+- **UC-STAMP-DUTY-NEW-BUILD** — off-the-plan / vacant-land state-specific concessions deferred
+
+19 module tests; tsc clean.
+
+## **10.27 Phase 41e.15 — Trust + company loss rules (PR — shipped 2026-05-05)**
+
+Two new modules under `lib/tax-engine/divisions/`.
+
+**Trust loss rules** (`trustLossRules.ts`) — per Sch 2F ITAA 1936:
+
+| Trust type | Tests required |
+|---|---|
+| FAMILY_TRUST_FTE | Income Injection Test (Div 270) only |
+| FIXED_TRUST | 50% Stake (s269-50) + Same Business (s269-100) + IIT (Div 266) |
+| NON_FIXED_TRUST | 50% Stake + Pattern of Distributions (s267-30) + Control (s269-95) + IIT (Div 267) |
+| EXCEPTED_TRUST | None — losses flow freely (Div 268) |
+
+Outcomes: `LOSSES_DEDUCTIBLE` / `LOSSES_DENIED` / `INCONCLUSIVE`. UC-TRUST-LOSS-DENIED + UC-TRUST-LOSS-INCONCLUSIVE.
+
+**Company loss rules** (`companyLossRules.ts`) — per Div 165 ITAA 1997:
+
+- **COT** (s165-12) primary test
+- **BCT** fallback when COT fails: SBT (s165-210) or Similar Business Test (s165-211 — broader, added 2019)
+- Outcomes: `LOSSES_DEDUCTIBLE_VIA_COT` / `LOSSES_DEDUCTIBLE_VIA_BCT` / `LOSSES_DENIED` / `INCONCLUSIVE`
+- 4 UNCOMPUTED flags: UC-COMPANY-LOSS-COT-NOT-ASSERTED / UC-COMPANY-LOSS-BCT-FACTUAL / UC-COMPANY-LOSS-DENIED / UC-COMPANY-LOSS-BCT-NOT-ASSERTED
+
+**v1 design:** factual tests (multi-year history) take caller-asserted PASS/FAIL/NOT_ASSERTED rather than computing from share register or business activity records.
+
+17 module tests; tsc clean.
+
+## **10.28 Phase 41e.16 — GST / BAS calculator (PR — shipped 2026-05-05)**
+
+New module `lib/tax-engine/gst/gstCalculator.ts` + new directory. Per *A New Tax System (GST) Act 1999*.
+
+**Constants:** `GST_RATE = 0.1` (s9-70), `GST_REGISTRATION_THRESHOLD = 75_000` (s23-15).
+
+**4 supply classifications:** TAXABLE (10% GST applies) / GST_FREE (s38 — basic food, health, education, exports — no GST charged but ITC available) / INPUT_TAXED (s40 — residential rent, financial supplies — no GST + no ITC) / OUT_OF_SCOPE.
+
+**Reverse charge** (Div 84) — recipient self-assesses GST + claims offsetting ITC.
+
+**BAS labels aggregated:** G1 (sales incl GST) / G2 (export GST-free) / G3 (other GST-free) / G10 (capital purchases incl GST) / G11 (non-capital incl GST) / 1A (output GST = `gstCollected`) / 1B (input tax credits = `gstCreditsClaimable`). Net GST = 1A − 1B.
+
+**3 UNCOMPUTED flags:**
+- **UC-GST-INPUT-TAXED-DENIAL** — per-acquisition when no ITC available
+- **UC-GST-REGISTRATION-REQUIRED** — turnover ≥ $75k + unregistered
+- **UC-GST-ADVANCED-DIVISIONS** — always: Div 48 grouping, Div 162 instalments, Div 75 margin scheme, s38-325 going-concern, Div 142 excess GST out of v1 scope
+
+18 module tests; **428 total tax-engine tests**; tsc clean.
+
+**41e.17 — MasterTaxPosition orchestrator** is next (closes Phase 41e).

@@ -1,5 +1,83 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e14-15-16-stamp-loss-gst (Phase 41e.14 + 41e.15 + 41e.16 — Stamp duty / Loss rules / GST-BAS bundled)
+
+### Changes
+**Three atomic commits on one branch — bundled per Reza brief "finish all remaining 41e tasks". 41e.17 split out into a separate follow-up PR for orchestrator review isolation.**
+
+#### 41e.14 — Stamp duty + foreign purchaser surcharge
+- New `lib/tax-engine/stampDuty/stateStampDuty.ts` + new directory
+- 8 state configs: NSW (Sch 1 + FPAD 8% Ch 2 Pt 4 Div 4) / VIC (FPAD 8% Pt 5 raised 2024) / QLD (AFAD 8% Ch 4 raised 2024) / SA (foreign 7% Pt 4) / WA (foreign 7% Ch 3 Pt 5) / TAS (FBI 8% Ch 4 Pt 6 raised 2024) / ACT (foreign 0.75% Pt 5A) / NT (brackets only — no FPAD regime)
+- 4 UC flags: UC-STAMP-DUTY-NT-NO-FPAD / UC-STAMP-DUTY-CONCESSION (caller-asserted FHB/PPR/off-the-plan) / UC-STAMP-DUTY-MULTI-PURCHASER (foreign-share apportionment per NSW s104X / VIC s28A) / UC-STAMP-DUTY-NEW-BUILD
+- 19 module tests
+
+#### 41e.15 — Trust + company loss rules
+- New `lib/tax-engine/divisions/trustLossRules.ts` per Sch 2F ITAA 1936
+  - 4 trust types (FAMILY_TRUST_FTE / FIXED_TRUST / NON_FIXED_TRUST / EXCEPTED_TRUST)
+  - 5 tests dispatched: IIT (Div 270) / 50% Stake (s269-50) / Pattern of Distributions (s267-30) / Control (s269-95) / SBT (s269-100)
+  - Outcomes: LOSSES_DEDUCTIBLE / LOSSES_DENIED / INCONCLUSIVE
+- New `lib/tax-engine/divisions/companyLossRules.ts` per Div 165 ITAA 1997
+  - COT primary (s165-12) + BCT fallback (SBT s165-210 or Similar Business Test s165-211)
+  - Outcomes: LOSSES_DEDUCTIBLE_VIA_COT / LOSSES_DEDUCTIBLE_VIA_BCT / LOSSES_DENIED / INCONCLUSIVE
+- 6 UC flags total
+- v1 design: factual tests take caller-asserted PASS/FAIL/NOT_ASSERTED; v1 does not compute COT from share register or SBT from business activity records
+- 17 module tests
+
+#### 41e.16 — GST / BAS calculator
+- New `lib/tax-engine/gst/gstCalculator.ts` + new directory
+- GST_RATE constant (0.1) per s9-70 GST Act + GST_REGISTRATION_THRESHOLD ($75k) per s23-15
+- 4 supply classifications: TAXABLE / GST_FREE (s38) / INPUT_TAXED (s40) / OUT_OF_SCOPE
+- Reverse charge (Div 84) — recipient self-assesses + offsetting ITC
+- BAS label aggregation: G1 (sales incl GST) / G2 (export GST-free) / G3 (other GST-free) / G10 (capital purchases incl GST) / G11 (non-capital incl GST) / 1A (output GST) / 1B (input tax credits); netGst = 1A − 1B
+- 3 UC flags: UC-GST-INPUT-TAXED-DENIAL (per-acquisition) / UC-GST-REGISTRATION-REQUIRED (turnover ≥ $75k unregistered) / UC-GST-ADVANCED-DIVISIONS (always — Div 48 grouping, Div 162 instalments, Div 75 margin scheme, s38-325 going-concern, Div 142 excess GST out of v1 scope)
+- 18 module tests
+
+### Build status
+- 54 new module tests across the three sub-PRs (19 + 17 + 18)
+- 428 total tax-engine tests (374 → 428, +54)
+- tsc clean
+- Each sub-PR is its own atomic commit; can be reverted independently
+
+### Testable
+```ts
+// 41e.14 — NSW foreign individual buying $1M residential
+import { calculateStampDuty, NSW_STAMP_DUTY_FY2024_25 } from '@/lib/tax-engine/stampDuty/stateStampDuty';
+calculateStampDuty(
+  { dutiableValue: 1_000_000, purchaserType: 'INDIVIDUAL', isForeignPurchaser: true, isResidential: true },
+  NSW_STAMP_DUTY_FY2024_25,
+);
+// → generalDuty: 40,090 + foreignPurchaserSurcharge: 80,000 = totalDuty: 120,090
+
+// 41e.15 — Family trust with FTE in force, IIT pass
+import { applyTrustLossRules } from '@/lib/tax-engine/divisions/trustLossRules';
+applyTrustLossRules({
+  trustType: 'FAMILY_TRUST_FTE',
+  lossAmount: 50_000,
+  testOutcomes: { incomeInjectionTest: 'PASS' },
+});
+// → outcome: 'LOSSES_DEDUCTIBLE', deductibleLossAmount: 50_000
+
+// 41e.16 — Mixed transactions, registered entity
+import { calculateGst } from '@/lib/tax-engine/gst/gstCalculator';
+calculateGst({
+  transactions: [
+    { transactionId: 's1', supplyType: 'SALE', classification: 'TAXABLE', amountExcludingGst: 10_000 },
+    { transactionId: 'p1', supplyType: 'NON_CAPITAL_PURCHASE', classification: 'TAXABLE', amountExcludingGst: 3_000 },
+  ],
+  annualTurnover: 500_000,
+  isRegistered: true,
+});
+// → gstCollected: 1,000 (1A) | gstCreditsClaimable: 300 (1B) | netGst: 700 | G1: 11,000 | G11: 3,300
+```
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.26 + §10.27 + §10.28
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 (41e.14/15/16 rows flipped to SHIPPED; 41e.17 noted as separate PR)
+
+41e.17 (MasterTaxPosition orchestrator — closes Phase 41e) follows in a separate PR.
+
+---
+
 ## Session: claude/phase-41e13-rest-of-states-aggregator (Phase 41e.13 — State land tax rest-of-states + cross-state aggregator)
 
 ### Changes
