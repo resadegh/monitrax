@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useOrganization } from '@/lib/portal';
 import { PracticeGlassCard } from '@/components/portal/practice/PracticeGlassCard';
+import { HelpTooltip } from '@/components/help/HelpTooltip';
 
 type SurfaceTag = 'BUG' | 'FEATURE' | 'UX' | 'PRAISE' | 'QUESTION' | 'COMPLIANCE';
 type Severity = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -318,7 +319,10 @@ function NewThreadForm({
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Tag</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5 inline-flex items-center gap-1">
+              Tag
+              <HelpTooltip term="surface-tag" />
+            </label>
             <select
               value={surfaceTag}
               onChange={(e) => setSurfaceTag(e.target.value as SurfaceTag)}

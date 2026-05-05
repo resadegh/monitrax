@@ -91,6 +91,10 @@ export function listArticlesByAudience(audience: HelpAudience): HelpArticleSumma
   return walkAudience(audience)
     .map(readAndValidate)
     .filter((a): a is HelpArticleSummary => a !== null)
+    // Phase 33i — exclude AI scaffold drafts from public listings + drawer
+    // resolution. They stay on disk so the editor can finish them; flipping
+    // the `status` field to `PUBLISHED` (or removing it) makes them live.
+    .filter((a) => a.frontmatter.status !== 'DRAFT_AI_SCAFFOLD')
     .sort((a, b) => {
       const orderA = a.frontmatter.order ?? 100;
       const orderB = b.frontmatter.order ?? 100;
