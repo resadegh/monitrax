@@ -1,5 +1,55 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e12-state-land-tax (Phase 41e.12 — State land tax NSW + VIC)
+
+### Changes
+- New `lib/tax-engine/landTax/stateLandTax.ts` + new directory `lib/tax-engine/landTax/`
+- `LandTaxConfig` per-state pattern (state / label / generalThreshold / brackets / trustSurchargeRate / foreignOwnerSurchargeRate / citations)
+- `NSW_LAND_TAX_CY2025` — $1.075M threshold; 3-bracket progressive scale to $88,036 + 2% over $6.571M; s5A special trust 1.5% × first $1.075M; Sch 1A 4% foreign on residential
+- `VIC_LAND_TAX_FY2024_25` — $50k threshold; 8-bracket progressive scale to $46,950 + 2.65% over $3M; s46IB trust 0.5% × value; s46IC absentee 4% on all taxable land
+- `calculateLandTax(input, config)` order: general progressive → trust surcharge (DISCRETIONARY_TRUST + UNIT_TRUST_NON_FIXED only; UNIT_TRUST_FIXED exempt) → foreign / absentee surcharge
+- `getLandTaxConfig(state)` (throws for QLD/SA/WA/TAS/ACT/NT — those land in 41e.13) + `getSupportedStates()`
+- 3 UNCOMPUTED flags: UC-MULTI-STATE-LAND-TAX (cross-state aggregation deferred to 41e.13) / UC-LAND-TAX-PPOR-EXEMPTION (caller's responsibility) / UC-LAND-TAX-TRUST-SURCHARGE-NUANCE (v1 simplifies trust scale)
+- Authority: NSW Land Tax Act 1956 (s10/s27/s5A/Sch 1A) + VIC Land Tax Act 2005 (Schedule 1/s46IB/s46IC)
+- 33 module tests; 503 total (470 → 503, +33); tsc clean
+
+### Testable
+```ts
+import {
+  calculateLandTax,
+  NSW_LAND_TAX_CY2025,
+  VIC_LAND_TAX_FY2024_25,
+} from '@/lib/tax-engine/landTax/stateLandTax';
+
+// NSW foreign discretionary trust @ $1.5M residential
+calculateLandTax(
+  { taxableLandValue: 1_500_000, ownershipType: 'DISCRETIONARY_TRUST', isForeignOwner: true, isResidential: true },
+  NSW_LAND_TAX_CY2025,
+);
+// → generalLandTax: 6,900 (s27)
+// → trustSurcharge: 16,125 (s5A; 1.5% × $1.075M cap)
+// → foreignOwnerSurcharge: 60,000 (Sch 1A; 4% × $1.5M)
+// → totalTax: 83,025
+
+// VIC absentee individual @ $600k (any taxable land — VIC 4% absentee covers all)
+calculateLandTax(
+  { taxableLandValue: 600_000, ownershipType: 'INDIVIDUAL', isForeignOwner: true, isResidential: false },
+  VIC_LAND_TAX_FY2024_25,
+);
+// → generalLandTax: 3,950 (Schedule 1)
+// → trustSurcharge: 0 (individual)
+// → foreignOwnerSurcharge: 24,000 (s46IC; 4% × $600k)
+// → totalTax: 27,950
+```
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.24
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 (41e.12 row flipped to SHIPPED)
+
+41e.13 (rest-of-states QLD/SA/WA/TAS/ACT/NT + cross-state aggregator) is next.
+
+---
+
 ## Session: claude/phase-41e11-smsf-triumvirate (Phase 41e.11 — SMSF triumvirate compliance classifier)
 
 ### Changes

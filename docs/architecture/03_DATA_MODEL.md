@@ -1660,3 +1660,56 @@ New `lib/tax-engine/divisions/smsfTriumvirateClassifier.ts` — the hardest of t
 **24 module tests** covering all 4 regimes + BRP exception + per-loan LRBA paths + NALI triggers + worst-case combination (all 4 flags surface) + edge cases.
 
 **41e.12 — State land tax (NSW + VIC)** is next.
+
+## **10.24 Phase 41e.12 — State land tax (NSW + VIC) (PR — shipped 2026-05-05)**
+
+New module `lib/tax-engine/landTax/stateLandTax.ts` + new directory `lib/tax-engine/landTax/`. First of the per-state regimes — NSW + VIC ship now (largest states by taxable land value); QLD/SA/WA/TAS/ACT/NT + cross-state aggregator land in 41e.13.
+
+**Per-state config pattern locked in:**
+
+```ts
+export interface LandTaxConfig {
+  state: AustralianState;
+  label: string;                       // e.g. "NSW CY2025"
+  generalThreshold: number;
+  brackets: LandTaxBracket[];          // progressive
+  trustSurchargeRate: number;
+  foreignOwnerSurchargeRate: number;
+  citations: AuthorityCitation[];
+}
+```
+
+**Configs shipped:**
+
+| Config | Threshold | Top bracket | Trust surcharge | Foreign surcharge |
+|---|---|---|---|---|
+| `NSW_LAND_TAX_CY2025` | $1,075,000 | $88,036 + 2% over $6,571,000 | 1.5% × first $1.075M (special trust s5A) | 4% on residential (Sch 1A) |
+| `VIC_LAND_TAX_FY2024_25` | $50,000 | $46,950 + 2.65% over $3M | 0.5% × value (s46IB) | 4% on all taxable land — absentee (s46IC) |
+
+**Authority:**
+- NSW Land Tax Act 1956 — s10 (taxable value), s27 (general rates), s5A (special trust), Sch 1A (foreign surcharge)
+- VIC Land Tax Act 2005 — Schedule 1 (general rates), s46IB (trust), s46IC (absentee)
+
+**Order of operations** (`calculateLandTax(input, config)`):
+1. **General progressive brackets** — value ≥ threshold runs through the per-state ladder; below threshold = $0 general tax.
+2. **Trust surcharge** — applied if `ownershipType ∈ {DISCRETIONARY_TRUST, UNIT_TRUST_NON_FIXED}`. NOT applied for `UNIT_TRUST_FIXED`.
+3. **Foreign / absentee surcharge** — applied if `isForeignOwner`. NSW limited to residential; VIC covers all taxable land.
+
+**Helpers:** `getLandTaxConfig(state)` (throws for unsupported), `getSupportedStates()` (returns `['NSW', 'VIC']` in v1).
+
+**3 UNCOMPUTED flags** (every result):
+- **UC-MULTI-STATE-LAND-TAX** — single-state assessment only; cross-state aggregation rules (NSW grouping Pt 4, VIC trustee aggregation Pt 3 Div 4) ship in 41e.13.
+- **UC-LAND-TAX-PPOR-EXEMPTION** — caller's responsibility (pass `taxableLandValue: 0` if PPOR exempt). Partial exemption (PPOR-converted-to-rental within FY) NOT computed.
+- **UC-LAND-TAX-TRUST-SURCHARGE-NUANCE** — v1 simplifies trust surcharge to a flat % over taxable value; real-world calc uses progressive trust-specific scales.
+
+**33 module tests:**
+- NSW general (6 cases — 0/below threshold/at threshold/$1.5M/$2M/top bracket)
+- VIC general (4 cases — below $50k/at $100k/$600k/top bracket)
+- Trust surcharge (7 cases — NSW @ $500k, NSW @ $2M cap, VIC @ $500k, UNIT_TRUST_NON_FIXED, UNIT_TRUST_FIXED no surcharge, INDIVIDUAL no surcharge, UNCOMPUTED flag emitted)
+- Foreign surcharge (5 cases — NSW residential, NSW non-residential excluded, VIC residential, VIC non-residential included, AU resident excluded)
+- Combined (NSW foreign discretionary trust @ $1.5M residential = $6,900 + $16,125 + $60,000 = $83,025)
+- UNCOMPUTED flag presence + skip-when-PPOR (3 cases)
+- Citations (NSW + VIC) (2 cases)
+- `getLandTaxConfig` + `getSupportedStates` (4 cases)
+
+**41e.13 — Rest-of-states (QLD/SA/WA/TAS/ACT/NT) + cross-state aggregator** is next.
