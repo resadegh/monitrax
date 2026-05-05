@@ -506,3 +506,48 @@ For full wizard architecture, step definitions, data flow, and draft persistence
 ---
 
 *This framework is the authoritative reference for all Monitrax design decisions. Every new feature, page, recommendation, and interaction must map to a TRAIL stage.*
+
+---
+
+## Appendix C — TRAIL in the B2B2C Surface (added 2026-05-09)
+
+When Phase 32B (Practice surface) shipped, the question was whether
+TRAIL belongs only to the consumer experience or whether it carries
+into the adviser-facing B2B2C view too.
+
+**Answer: TRAIL is universal.** The framework was designed for human
+financial behaviour, not for a specific product surface. An adviser
+managing 50 clients benefits from seeing each client's TRAIL stage
+exactly as the consumer sees it — same vocabulary, same colour
+language, same psychological framing.
+
+### How TRAIL appears in the B2B2C surface
+
+1. **Practice dashboard alert stream** (`/portal/dashboard`) — every alert is tagged with the client's current TRAIL stage. *"Sarah Kim — emergency fund below 1 month [TRACK]"* / *"David Mei — fixed rate rolling off in 14 days [REDUCE]"*.
+
+2. **Practice client book table** — each row shows a `<TrailStageChip />` with the client's stage, mirroring the consumer's stage indicator. Filterable by stage.
+
+3. **Drill-in canonical client view** (`/portal/clients/[id]/view`) — the same KPI strip + Health card + Cashflow tile + property portfolio the consumer sees on their dashboard, with the same TRAIL-aligned recommendations. Service-layer scope filtering applied via `viewerContext`; the engine is unchanged.
+
+4. **Marketplace listing target tiers** map TRAIL stages to net-worth brackets (`EMERGING <$200k` / `GROWING $200k-$1M` / `ESTABLISHED $1M-$3M` / `HIGH_NET_WORTH $3M+`). A Studio firm targeting EMERGING tier serves Track-stage users; a Practice firm targeting ESTABLISHED tier serves Anchor + Invest-stage users.
+
+5. **AskAProfessional context biasing** — the picker maps consumer-side context labels to professional specialisations (e.g. context=`'tax'` boosts listings with `TAX_OPTIMISATION` / `PERSONAL_TAX` / `SMSF_ACCOUNTING` specialisations). Stage-matched intervention preserved across the consumer→professional bridge.
+
+### Critical invariant
+
+**Adviser-facing surfaces must NEVER override the consumer's TRAIL stage.** If Sarah is in TRACK stage from her own dashboard's perspective, Reza @ Smithfield Wealth sees her as TRACK stage too. The framework is consumer-truth-driven; advisers see what the consumer sees, not a parallel adviser-only assessment.
+
+This invariant is enforced architecturally: the adviser drill-in passes `viewerContext` to `getMasterFinancialSnapshot()` (which scopes the data shown), but the **stage classification logic is the same code path** that runs for the consumer. There is no `getAdviserStageForClient()` parallel function.
+
+### What TRAIL is NOT used for in B2B2C
+
+- **NOT a sales targeting matrix.** Marketplace listings target net-worth tiers, not TRAIL stages. (TRAIL is a behavioural framework; net-worth is a commercial signal — they're correlated but not the same thing.)
+- **NOT a pricing input.** Lead-fee tiers (AU$80/$150/$250) are by user net-worth bracket, not TRAIL stage.
+- **NOT a permission gate.** A user can engage with any professional regardless of their TRAIL stage; we don't gate "Connect" CTAs by stage.
+
+### Reference
+
+- Phase 32B PR1 — `<TrailStageChip />` in `components/portal/practice/`
+- Phase 32B PR3 — drill-in canonical client view preserves consumer-truth stage classification
+- Phase 32C PR4b — context biasing in `lib/services/askAProfessionalService.ts` `CONTEXT_BIAS` map
+- Phase 32B/32C — `lib/portal/practice/professionConfig.ts` profession-aware Practice configuration

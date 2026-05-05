@@ -1,6 +1,7 @@
 # Monitrax Documentation Index
 
-**Date:** 2026-04-10 | **Version:** 1.0 | **Status:** ACTIVE | **Owner:** Dev Lead
+**Date:** 2026-05-09 | **Version:** 1.1 | **Status:** ACTIVE | **Owner:** Dev Lead
+**Last refresh:** 2026-05-09 — DEMO-COMPLETE doc-sync (Phase 32B + 32C + 33a-d/g + 41a-d/g)
 
 > Master registry of all Monitrax documentation. This is the starting point for finding any document.
 
@@ -10,6 +11,8 @@
 
 | Need | Go To |
 |------|-------|
+| **Live operational SSOT (now / next / blocked)** | [docs/IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) |
+| **Lighthouse adviser pitch playbook** | [docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md](pitch/LIGHTHOUSE_ADVISER_PITCH.md) |
 | System architecture & design | [docs/architecture/](#architecture) |
 | Phase specifications & roadmap | [docs/blueprint/](#blueprint-phases) |
 | **Mobile companion app** | [docs/mobile/](#mobile-companion-app) |
@@ -23,6 +26,10 @@
 | Change history | [docs/changelog/](#changelog) |
 | API documentation | [docs/api/](#api-documentation) |
 | Archived (obsolete) documents | [docs/archive/](#archive) |
+
+### Demo-Complete state (2026-05-09)
+
+The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 41a-d/g all SHIPPED. Critical-path engineering remaining: zero. Run `npm run seed:lighthouse` to populate the demo fixture (Smithfield Wealth Advisers + 3 archetype consumers — Sarah Kim / David Mei + Emma Liu / Olivia Novak). See `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` for the runnable demo script. Full deliverables list in `docs/IMPLEMENTATION_PLAN.md` Recently Completed (rolling 30 days).
 
 ---
 
@@ -54,11 +61,22 @@
 | Document | Description | Status |
 |----------|-------------|--------|
 | [MASTER_BLUEPRINT.md](blueprint/MASTER_BLUEPRINT.md) | Master phase status overview (SINGLE SOURCE) | ACTIVE |
+| [TRAIL_FRAMEWORK.md](blueprint/TRAIL_FRAMEWORK.md) | TRAIL framework — Track / Reduce / Anchor / Invest / Live (consumer + B2B2C reuse) | ACTIVE |
 | [ADMIN_PORTAL_COMPLETION_PLAN.md](blueprint/ADMIN_PORTAL_COMPLETION_PLAN.md) | Admin portal implementation plan | ACTIVE |
-| PHASE_01 through PHASE_35 | Individual phase specifications (~47 files) | Various |
+| **B2B2C surface (Phase 32B + 32C)** |  |  |
+| [PHASE_32_ENTERPRISE_PORTAL.md](blueprint/PHASE_32_ENTERPRISE_PORTAL.md) | Org client management — ✅ SHIPPED May 2026 (Studio/Practice/Enterprise) | ACTIVE |
+| [PHASE_33G_ADVISER_FEEDBACK_INBOX.md](blueprint/PHASE_33G_ADVISER_FEEDBACK_INBOX.md) | Adviser feedback inbox — ✅ SHIPPED May 2026 | ACTIVE |
+| **Phase 41 — Entity Layer** |  |  |
+| [PHASE_41_REGULATORY_ARCHITECTURE.md](blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md) | Authority-mapped tax/super/state regulations Monitrax respects | ACTIVE |
+| [PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md](blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md) | Phase 41e audit + migration plan (~28 days, queued) | ACTIVE |
+| **Phase 36 — UX Simplification** |  |  |
+| [PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md](blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md) | Phase 2a SHIPPED May 2026; Phase 2b/2d queued | ACTIVE |
+| **Phase 39 — My Wealth Redesign** |  |  |
+| [PHASE_39_MY_WEALTH_REDESIGN.md](blueprint/PHASE_39_MY_WEALTH_REDESIGN.md) | v4 tile pattern shipped; propagation parked | ACTIVE |
+| PHASE_01 through PHASE_31 | Pre-B2B2C phase specifications (~47 files) | Various |
 | PHASE_E_GCP_SERVICE_ENABLEMENT.md | GCP service enablement plan | ACTIVE |
 
-> For individual phase status, see [MASTER_BLUEPRINT.md](blueprint/MASTER_BLUEPRINT.md)
+> For individual phase status, see [MASTER_BLUEPRINT.md](blueprint/MASTER_BLUEPRINT.md) §4 Completed/In Progress/Planned tables.
 
 ---
 
@@ -227,6 +245,25 @@
 | Document | Description |
 |----------|-------------|
 | [STRATEGY_API.md](api/STRATEGY_API.md) | Strategy engine API documentation |
+
+---
+
+## Pitch & Lighthouse
+
+| Document | Location | Description |
+|----------|----------|-------------|
+| [LIGHTHOUSE_ADVISER_PITCH.md](pitch/LIGHTHOUSE_ADVISER_PITCH.md) | docs/pitch/ | DEMO-COMPLETE 25-30 min pitch playbook with pre-flight checklist + verbatim narration scripts + objection handling + design-partner conversion path |
+
+To run the demo: `npm run seed:lighthouse` (idempotent; `--reset` for clean re-seed). Smithfield Wealth Advisers + 3 archetypes (Sarah Kim sole-trader / David Mei + Emma Liu family with trust + SMSF / Olivia Novak multi-entity HNW).
+
+---
+
+## Marketing
+
+| Document | Location | Description |
+|----------|----------|-------------|
+| [THE_TRAIL_METHOD.md](marketing/THE_TRAIL_METHOD.md) | docs/marketing/ | Public-facing TRAIL method messaging |
+| [TRAIL_WEBSITE_COPY.md](marketing/TRAIL_WEBSITE_COPY.md) | docs/marketing/ | Website copy for the TRAIL framework |
 
 ---
 

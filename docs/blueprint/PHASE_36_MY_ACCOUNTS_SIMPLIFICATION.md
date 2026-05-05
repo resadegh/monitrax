@@ -1,8 +1,9 @@
 # Phase 36: My Accounts — UX Simplification
 
 > **TRAIL Stage:** Track
-> **Status:** In Progress
+> **Status:** 🔄 **Phase 36 Phase 2a SHIPPED** (PR #601, 2026-05-02 — inline `LoanDetailDialog` on Balances). Phase 36b (PR #552) extracted shared `AccountDetailDialog` + `AccountFormDialog` + `LoanFormDialog`. **Phase 2b (Connect Bank UI migration + Basiq `?action=` href flips) and Phase 2d (legacy route redirects `/dashboard/accounts` → `/dashboard/balances`) remain queued.** Phase 36 Phase 2c + 2e are no-ops (already complete).
 > **Started:** 2026-04-18
+> **Last updated:** 2026-05-09 (doc-sync catch-up)
 > **Owner:** UX / Frontend
 
 ---

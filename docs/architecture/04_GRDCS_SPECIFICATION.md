@@ -264,3 +264,122 @@ GRDCS supports planned features:
 - Stress propagation calculations
 - Relationship risk heuristics
 
+
+---
+
+# **§14 — Phase 41 Entity Layer: GRDCS Extension**
+
+*Added 2026-05-09 (doc-sync catch-up).* Phase 41a-d added a new entity
+relationship layer to GRDCS — every owned-row table now carries an
+`ownerEntityId` foreign key to a `LegalEntity` row. This deepens the
+GRDCS graph from "user → owned object" to "user → entity → owned
+object" without breaking the canonical relationship invariants.
+
+## **§14.1 New entity-relationship axis**
+
+Pre-Phase-41:
+```
+User ──owns──→ Property
+User ──owns──→ Loan
+User ──owns──→ Account
+...
+```
+
+Post-Phase-41:
+```
+User ──has──→ LegalEntity ──owns──→ Property
+                          ──owns──→ Loan
+                          ──owns──→ Account
+                          ──owns──→ InvestmentAccount
+                          ──owns──→ Asset
+                          ──owns──→ Income
+                          ──owns──→ Expense
+
+LegalEntity ──parentEntityId──→ LegalEntity (trustee → trust hierarchy)
+```
+
+Every existing edge (User → owned object) is preserved via the
+`userId` foreign key on each table; the new `ownerEntityId` adds a
+parallel edge that tracks entity-of-record. The migration backfill
+created one PERSONAL_NAME entity per existing user and pointed every
+existing owned row at that entity, so no relationships were
+disrupted.
+
+## **§14.2 GRDCS rules with the entity layer**
+
+The original GRDCS rules from §3-8 still hold. New rules introduced
+by Phase 41:
+
+1. **`ownerEntityId` is NOT NULL on every owned-row table.** The
+   `LegalEntity` for a user is created on registration (or by the
+   41a backfill for legacy users); orphan owned rows are
+   structurally impossible.
+
+2. **Cross-entity relationships preserve user ownership.** If
+   property X is owned by entity E, and entity E is owned by user U,
+   then property X is reachable from user U via two edges. Both
+   edges are FK-enforced; deleting U cascades to E and to X.
+
+3. **Trustee→trust hierarchy via self-FK.** `LegalEntity.parentEntityId`
+   points to another LegalEntity (typically: a corporate trustee Pty Ltd
+   has children that are the trusts it acts trustee for). The
+   GRDCS graph respects this hierarchy when computing relationship
+   strength + stress propagation.
+
+4. **Entity deletion cascade is RESTRICT, not CASCADE.** Deleting an
+   entity that owns rows requires explicit user action to either
+   re-assign or delete the owned rows first. GRDCS enforces this at
+   the FK level (`@relation(onDelete: Restrict)`), and the
+   `lib/services/legalEntityService.ts` `deleteEntity()` function
+   surfaces a friendly counts-by-type error before the FK guard
+   would fire.
+
+5. **Default-entity fallback** — `getDefaultLegalEntityId(userId)`
+   resolves the user's PERSONAL_NAME entity, creating one on demand
+   for brand-new registrations between 41a deploy and the next
+   onboarding wizard refresh. This means callers in Phase 41 owned-row
+   create paths can always resolve an `ownerEntityId` without
+   nullable handling.
+
+## **§14.3 GRDCS for the B2B2C surface (Phase 32B/32C)**
+
+The B2B2C surface introduces five new entity relationship paths:
+
+1. **`Organization → ProfessionalListing`** (1-1). The listing is
+   the org's public marketplace identity.
+
+2. **`ProfessionalListing → ProfessionalRating`** (1-many). Ratings
+   are scoped to the listing they're for.
+
+3. **`User → ProfessionalRequest → ProfessionalListing`** (M:1:1).
+   The bridge between a D2C user and an Org listing.
+
+4. **`ProfessionalRequest → ProfessionalConversation`** (1-1, optional).
+   Conversation auto-created on request acceptance.
+
+5. **`Organization → StripeCustomer → StripeSubscription`** (1-1-1).
+   Lazy-created on first checkout.
+
+GRDCS treats these as read-mostly graphs — they're navigated for
+display (e.g. "show me the conversation tied to this accepted
+request") but rarely mutated through GRDCS itself. Lifecycle
+mutations go through canonical services; GRDCS subscribes to the
+state changes for downstream consumers (alerts, audit, etc.).
+
+## **§14.4 Cross-axis invariant preserved**
+
+The pre-Phase-41 GRDCS invariant (every edge is FK-enforced; the
+graph is acyclic with respect to ownership) is preserved across both
+new axes:
+
+- Entity layer: cycles are structurally impossible because
+  `parentEntityId` is unidirectional and the FK requires the parent
+  to exist before the child.
+- B2B2C layer: the relationship paths (1)-(5) above are all
+  unidirectional from the upstream entity to the downstream;
+  composing them yields no cycles.
+
+GRDCS-aware UI surfaces (Linked Data panels, entity drill-in
+dialogs, the `/dashboard/entities` tree, the `/portal/clients/[id]/view`
+adviser drill-in) MUST respect these relationship FKs; they are the
+authoritative contract for cross-module navigation.

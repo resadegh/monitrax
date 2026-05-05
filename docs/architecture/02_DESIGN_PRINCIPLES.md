@@ -420,3 +420,131 @@ Every component has minimum required access:
 - Database queries scoped to user
 - Feature flags control access
 - Admin roles are granular
+
+---
+
+# **§9 — B2B2C Design Doctrine (added 2026-05-09)**
+
+The Phase 32B/32C B2B2C surface introduced design rules that hold
+across the new modules. These extend the foundational principles
+above without contradicting any of them.
+
+## **§9.1 — Single canonical engine, scope as parameter**
+
+The most important architectural rule of the B2B2C build: **never
+fork the canonical engine to add a new caller scope.** When the
+adviser drill-in needs scope-filtered financial data, we did NOT
+create `getMasterFinancialSnapshotForAdviser()`. We added a
+`viewerContext` parameter to the existing
+`getMasterFinancialSnapshot()` function.
+
+The same rule applies to:
+- `marketplaceService.ts` — three caller scopes (Org / admin / public) on one canonical service
+- `professionalRequestService.ts` — submit / accept / decline / withdraw on one canonical service
+- `conversationService.ts` — consumer + professional viewers share `assertParticipant` access gate
+
+**Why this matters:** forking the engine introduces drift risk. Two
+copies of "what does net worth mean?" mean two places where the
+calculation can diverge. The parameter pattern means a bug fix in
+the canonical engine fixes both consumer and adviser views
+simultaneously.
+
+## **§9.2 — Server-side guardrails, not UI-side**
+
+The leaky-funnel guardrail (org-attached users never see the public
+marketplace) and the AFSL/credit/TPB licence boundary (Monitrax's
+AI never gives personal advice) are enforced at the **service
+boundary**, not in the UI.
+
+A leaky-funnel implemented in the UI is a UI bug waiting to happen.
+A leaky-funnel implemented in the service rejects with `403
+ORG_USER_PUBLIC_BLOCKED` regardless of which UI calls it.
+
+This pattern is universal in the B2B2C surface:
+- Webhook signature verification at the route boundary
+- `assertParticipant` access gate at the service boundary
+- Plan-tier feature gating via `withPortalFeatureGate`
+- PORTAL_OWNER-only commercial actions enforced in the route handler
+
+## **§9.3 — Frozen-at-write-time for audit accuracy**
+
+Some fields must not change after they're written, even if the
+upstream source changes:
+
+- `ConversationMessage.senderRole` — frozen at send time so audit
+  shows "sent as PROFESSIONAL" even if the person leaves the org.
+- `ProfessionalRequest.leadFeeAmount` + `.leadFeeTier` — frozen at
+  submit-time so listing-side rate edits don't retroactively change
+  in-flight requests.
+- `ConversationMessage.retentionUntil` — frozen at write-time at
+  `createdAt + 7 years` so retention policy changes don't shorten
+  the existing compliance archive.
+
+**Pattern:** when storing a value that's derived from another
+mutable source, always store the resolved snapshot, not the
+reference. The reference can drift; the snapshot is canonical.
+
+## **§9.4 — Best-effort post-transaction follow-ups**
+
+When a primary action (e.g. `acceptRequest`) succeeds, several
+secondary actions follow:
+- Conversation auto-create
+- Lead-fee Stripe Invoice creation
+- Audit log row write
+
+These secondary actions run AFTER the primary transaction commits.
+Failure of any secondary action does NOT roll back the primary;
+operations team can re-run the secondary idempotently.
+
+**Why:** keeps the data model honest. The accept lifecycle transition
++ ClientLink upsert run in a single `$transaction` so a half-applied
+state is impossible. Adding the Stripe API call inside that
+transaction would mean a Stripe outage rolls back the accept —
+which is wrong: the engagement is recorded, the lead-fee billing
+intent is recorded, and ops can retry the invoice creation.
+
+## **§9.5 — Idempotency at the database boundary**
+
+Every webhook handler dedupes via DB unique constraints:
+- `StripeWebhookEvent.stripeEventId` UNIQUE
+- `ConversationMessage` unique-key inferred from `inboundFromEmail` + `createdAt`
+
+Every "create or update" path uses upsert with deterministic IDs:
+- Pitch fixture seed uses `lh-<archetype>-<entity-type>-<index>` IDs
+- Migration backfills use `IS NULL` guards
+- Service-layer creates use `findFirst` + early-return patterns
+
+**Pattern:** any operation that might run twice (due to retry,
+re-delivery, or re-deploy) is idempotent at the lowest practical
+layer. The DB unique constraint is the cheapest enforcement; the
+service-layer check is the friendliest UX.
+
+## **§9.6 — Dev/demo graceful degradation**
+
+Every external-service integration falls through gracefully when its
+env var is unset:
+- `isStripeConfigured()` returns false → billing UI renders friendly notice
+- `SENDGRID_API_KEY` unset → outbound mirror logs to console + writes audit row
+- `GEMINI_API_KEY` unset → AI advice surfaces show fallback content
+
+The architectural pattern is visible (auditors / future engineers
+can see how the integration would work) without requiring real
+credentials in dev/demo environments. This makes the demo runnable
+on any developer's machine without secret distribution.
+
+## **§9.7 — TRAIL stage classification is consumer-truth-driven**
+
+The adviser-facing surface NEVER overrides the consumer's TRAIL
+stage classification. If Sarah is in TRACK from her own dashboard,
+Reza @ Smithfield Wealth sees her as TRACK too. The framework is
+behavioural; advisers see the same behavioural truth the consumer
+sees.
+
+Architecturally enforced: the adviser drill-in passes `viewerContext`
+to `getMasterFinancialSnapshot()`, which scopes the data shown, but
+the **stage classification logic is the same code path** that runs
+for the consumer. There is no `getAdviserStageForClient()` parallel
+function.
+
+See `docs/blueprint/TRAIL_FRAMEWORK.md` Appendix C for the full
+exposition.
