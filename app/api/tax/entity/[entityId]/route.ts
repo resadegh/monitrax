@@ -318,6 +318,27 @@ export const POST = withPermission<RouteContext>(
             typeof td.streamingResolutionAt === 'string'
               ? td.streamingResolutionAt
               : undefined,
+          // Phase 41e.5
+          isTestamentaryTrust: !!td.isTestamentaryTrust,
+          s100aFacts: Array.isArray(td.s100aFacts)
+            ? td.s100aFacts.map((f: Record<string, unknown>) => ({
+                beneficiaryId: String(f.beneficiaryId),
+                relationshipToController:
+                  f.relationshipToController === 'CONTROLLER' ||
+                  f.relationshipToController === 'IMMEDIATE_FAMILY' ||
+                  f.relationshipToController === 'EXTENDED_FAMILY' ||
+                  f.relationshipToController === 'UNRELATED'
+                    ? f.relationshipToController
+                    : undefined,
+                isMinor: !!f.isMinor,
+                beneficiaryReceivedFunds:
+                  typeof f.beneficiaryReceivedFunds === 'boolean'
+                    ? f.beneficiaryReceivedFunds
+                    : undefined,
+                unpaidPresentEntitlement: !!f.unpaidPresentEntitlement,
+                fundsUsedByOther: !!f.fundsUsedByOther,
+              }))
+            : undefined,
         };
       }
 

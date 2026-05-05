@@ -42,6 +42,10 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
+import {
+  classifyS100AZones,
+  type S100AClassificationResult,
+} from './s100aZoneClassifier';
 
 /**
  * Penalty rate applied by s99A to undistributed net income of a
@@ -155,6 +159,29 @@ export interface TrustDistributionInput {
    * calc — flag is for the AFSL footer + audit trail.
    */
   hasFamilyTrustElection?: boolean;
+  /**
+   * Phase 41e.5 — `true` if the trust is testamentary / deceased-estate.
+   * Drives WHITE-zone classification per PCG 2022/2 ¶13.
+   */
+  isTestamentaryTrust?: boolean;
+  /**
+   * Phase 41e.5 — per-beneficiary s100A facts. When supplied, the
+   * always-on UC-S100A-RISK flag is replaced with a real PCG 2022/2
+   * zone classification (white/green/blue/red) attached to
+   * `s100aClassification` on the result.
+   */
+  s100aFacts?: ReadonlyArray<{
+    beneficiaryId: string;
+    relationshipToController?:
+      | 'CONTROLLER'
+      | 'IMMEDIATE_FAMILY'
+      | 'EXTENDED_FAMILY'
+      | 'UNRELATED';
+    isMinor?: boolean;
+    beneficiaryReceivedFunds?: boolean;
+    unpaidPresentEntitlement?: boolean;
+    fundsUsedByOther?: boolean;
+  }>;
 }
 
 export interface BeneficiaryDistribution {
@@ -196,6 +223,12 @@ export interface TrustDistributionResult {
   trusteePenaltyTax: number;
   /** Sum of all `distributions[*].amount` + `trusteeRetainedAmount`. */
   totalAccountedFor: number;
+  /**
+   * Phase 41e.5 — s100A classifier result. Populated when caller
+   * supplies `s100aFacts` for at least one beneficiary; otherwise
+   * `undefined` and the always-on UC-S100A-RISK flag remains.
+   */
+  s100aClassification?: S100AClassificationResult;
   /** Authority sources backing this calc. */
   citations: AuthorityCitation[];
   /** UNCOMPUTED flags raised during dispatch (s100A, s98, etc.). */
@@ -344,16 +377,54 @@ export function allocateTrustDistribution(
     );
   }
 
-  // s100A risk — always flag on basic-distribution trusts. The full
-  // zone classifier (white / blue / green / red per PCG 2022/2) lands
-  // in 41e.5. FTE trusts get a narrower flag wording.
-  uncomputed.push({
-    id: 'UC-S100A-RISK',
-    rationale: hasFamilyTrustElection
-      ? 'Family Trust Election trust — s100A reimbursement-agreement risk is generally low but not zero. Full zone classifier per TR 2022/4 + PCG 2022/2 lands with Phase 41e.5. Confirm with a registered tax agent if any beneficiary share materially exceeds their economic benefit.'
-      : 's100A reimbursement-agreement risk per TR 2022/4 + PCG 2022/2 — zone classification (white/blue/green/red) lands with Phase 41e.5. Until then, distributions to non-FTE adult beneficiaries should be reviewed by a registered tax agent for the "ordinary family or commercial dealing" carve-out.',
-    citation: { kind: 'TR', reference: '2022/4', lastReviewed: '2026-05-05' },
-  });
+  // Phase 41e.5 — s100A zone classification.
+  // When `s100aFacts` is provided for at least one beneficiary, run
+  // the classifier and attach the result. Replaces the always-on
+  // UC-S100A-RISK flag with real per-beneficiary WHITE/GREEN/BLUE/RED
+  // zones per PCG 2022/2.
+  // Without facts, fall back to the conservative blanket flag.
+  let s100aClassification: S100AClassificationResult | undefined;
+  if (input.s100aFacts && input.s100aFacts.length > 0) {
+    const factsByBenId = new Map(
+      input.s100aFacts.map((f) => [f.beneficiaryId, f]),
+    );
+    const classifierInput = {
+      beneficiaries: distributions.map((d) => {
+        const f = factsByBenId.get(d.beneficiaryId);
+        return {
+          beneficiaryId: d.beneficiaryId,
+          beneficiaryName: d.beneficiaryName,
+          amount: d.amount,
+          relationshipToController: f?.relationshipToController,
+          isMinor: f?.isMinor,
+          beneficiaryReceivedFunds: f?.beneficiaryReceivedFunds,
+          unpaidPresentEntitlement: f?.unpaidPresentEntitlement,
+          fundsUsedByOther: f?.fundsUsedByOther,
+        };
+      }),
+      hasFamilyTrustElection,
+      isTestamentaryTrust: !!input.isTestamentaryTrust,
+    };
+    s100aClassification = classifyS100AZones(classifierInput);
+    // Merge classifier citations + uncomputed
+    for (const c of s100aClassification.citations) {
+      const exists = citations.some(
+        (x) => x.kind === c.kind && x.reference === c.reference,
+      );
+      if (!exists) citations.push(c);
+    }
+    uncomputed.push(...s100aClassification.uncomputed);
+  } else {
+    // Fallback — caller didn't supply classifier facts. Keep the
+    // 41e.1-slice-C wording but add the 41e.5 doc-pointer.
+    uncomputed.push({
+      id: 'UC-S100A-RISK',
+      rationale: hasFamilyTrustElection
+        ? 'Family Trust Election trust — s100A reimbursement-agreement risk is generally low but not zero. Phase 41e.5 zone classifier shipped — pass `s100aFacts` per beneficiary to get a real PCG 2022/2 zone classification. Without facts, the conservative blanket flag stays.'
+        : 's100A reimbursement-agreement risk per TR 2022/4 + PCG 2022/2 — Phase 41e.5 zone classifier shipped. Pass `s100aFacts` per beneficiary (relationshipToController, beneficiaryReceivedFunds, unpaidPresentEntitlement, fundsUsedByOther) to receive a real WHITE/GREEN/BLUE/RED zone. Without facts, distributions to non-FTE adult beneficiaries should be reviewed by a registered tax agent.',
+      citation: { kind: 'TR', reference: '2022/4', lastReviewed: '2026-05-05' },
+    });
+  }
 
   // Phase 41e.4 — UC-DIV-6E-STREAMING only surfaces when streaming is
   // NOT applied (no allocations OR invalid/missing resolution). When
@@ -393,6 +464,7 @@ export function allocateTrustDistribution(
     trusteeRetainedAmount,
     trusteePenaltyTax,
     totalAccountedFor,
+    s100aClassification,
     citations,
     uncomputed,
   };

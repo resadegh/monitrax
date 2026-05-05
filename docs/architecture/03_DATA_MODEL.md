@@ -1477,3 +1477,25 @@ New `lib/tax-engine/super/highIncomeSuperTax.ts` exporting `calculateHighIncomeS
 POST endpoint validates the streaming body shape and passes it through.
 
 **41e.5 — s100A zone classifier per TR 2022/4 + PCG 2022/2** is next. After 41e.5 lands, the UC-S100A-RISK flag's wording will go from "review with a tax agent" to "this distribution is a green/blue/yellow/red zone risk per the classifier".
+
+## **10.17 Phase 41e.5 — s100A reimbursement-agreement zone classifier (PR #654 — shipped 2026-05-05)**
+
+New `lib/tax-engine/divisions/s100aZoneClassifier.ts` exporting `classifyS100AZones(input)` — per ITAA 1936 s100A + TR 2022/4 + PCG 2022/2. Replaces the always-on `UC-S100A-RISK` flag from 41e.1 slice C with a real per-beneficiary WHITE/GREEN/BLUE/RED zone classification when input data permits.
+
+**Decision priority (highest → lowest):**
+1. **RED** — UPE + (funds used by another OR funds NOT received)
+2. **RED** — funds used by another (no UPE)
+3. **RED** — minor + funds NOT received
+4. **WHITE** — testamentary trust (PCG 2022/2 ¶13)
+5. **GREEN** — FTE + (CONTROLLER or IMMEDIATE_FAMILY) + funds received + no UPE (PCG 2022/2 ¶17-19)
+6. **BLUE** — default (PCG 2022/2 ¶20-21)
+
+**Conservative by design:** v1 confidently classifies WHITE / GREEN / RED only when input carries strong signals. Everything else falls into BLUE — review-warranted but no commissioner action expected on facts alone.
+
+**`TrustDistributionInput.s100aFacts`** (per beneficiary): `relationshipToController`, `isMinor`, `beneficiaryReceivedFunds`, `unpaidPresentEntitlement`, `fundsUsedByOther`. **`TrustDistributionInput.isTestamentaryTrust`** for the testamentary white-zone path.
+
+**`TrustDistributionResult.s100aClassification`** carries the full classifier result when facts are provided. The conservative blanket `UC-S100A-RISK` flag is REPLACED by `UC-S100A-NUANCED` when any classification falls into BLUE or RED.
+
+**20 new classifier tests + 3 router-integration tests.** Zero regressions on existing 26 trustDistribution tests — the new fields are fully optional/backward-compat.
+
+**41e.6 — Div 7A loan classifier** is next.

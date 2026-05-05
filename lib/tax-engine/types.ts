@@ -656,6 +656,29 @@ export interface EntityTaxFacts {
     };
     /** Phase 41e.4 — ISO date trustee passed streaming resolution. */
     streamingResolutionAt?: string;
+    /**
+     * Phase 41e.5 — `true` if testamentary trust / deceased estate.
+     * Drives WHITE-zone classification per PCG 2022/2 ¶13.
+     */
+    isTestamentaryTrust?: boolean;
+    /**
+     * Phase 41e.5 — per-beneficiary s100A facts. When provided, the
+     * conservative blanket UC-S100A-RISK flag is replaced with a real
+     * PCG 2022/2 classification (white/green/blue/red) on the result's
+     * `s100aClassification` field.
+     */
+    s100aFacts?: ReadonlyArray<{
+      beneficiaryId: string;
+      relationshipToController?:
+        | 'CONTROLLER'
+        | 'IMMEDIATE_FAMILY'
+        | 'EXTENDED_FAMILY'
+        | 'UNRELATED';
+      isMinor?: boolean;
+      beneficiaryReceivedFunds?: boolean;
+      unpaidPresentEntitlement?: boolean;
+      fundsUsedByOther?: boolean;
+    }>;
   };
   /**
    * Phase 41e.1 slice D-2 — CGT events for the FY. When non-empty,

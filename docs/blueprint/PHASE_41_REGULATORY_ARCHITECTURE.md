@@ -512,7 +512,8 @@ Initial entries (Phase 41e demo scope):
 > - **41e.2 (SMSF contribution caps) — SHIPPED PR #651.** Wires existing `capTracker` primitive into the entity router. Concessional + non-concessional cap headroom, carry-forward (s291-20(3)) + bring-forward (s292-85(2)). UC-SMSF-SOLE-PURPOSE replaces the placeholder UC-ENTITY-SMSF (sole purpose / in-house / LRBA still UNCOMPUTED — lands in 41e.11).
 > - **41e.3 (TBC + Div 293 + Div 296 gated) — SHIPPED PR #652.** New `highIncomeSuperTax.ts` module + 4 new fields on `TaxYearConfig` + `EntityTaxFacts.highIncomeSuper`. Div 296 gated by `div296CommencementVerified` config flag — flips on automatically once Royal Assent verified.
 > - **41e.4 (Div 6E streaming) — SHIPPED PR #653.** Per-beneficiary streaming allocations of franked dividends + capital gains (s207-58 + s115-228). Resolution must fall within FY (date validated against parsed `financialYear`). UC-DIV-6E-STREAMING flag flips off when streaming applies. UC-DIV-6E-STREAMING-INVALID-RESOLUTION surfaces when resolution date is post-30-June.
-> - **41e.5 → 41e.17** — queued; sequence below remains the contract.
+> - **41e.5 (s100A zone classifier) — SHIPPED PR #654.** Per-beneficiary WHITE/GREEN/BLUE/RED zone classification per PCG 2022/2. Conservative v1: RED requires strong signals (UPE + funds-not-received, or funds used by another, or minor + funds-not-received); WHITE for testamentary; GREEN for FTE + immediate-family + funds-received + no-UPE; BLUE default. UC-S100A-RISK flag REPLACED by UC-S100A-NUANCED (only surfaces when classification is BLUE or RED).
+> - **41e.6 → 41e.17** — queued; sequence below remains the contract.
 
 Given the surface area, 41e is not one PR. It's a sequence of 18 sub-PRs (the original 17 plus the inserted `41e.−1`), all gating the lighthouse adviser pitch:
 

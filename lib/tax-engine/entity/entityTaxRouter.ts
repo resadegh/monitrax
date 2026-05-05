@@ -234,6 +234,8 @@ export function calculateEntityTaxPosition(
       characterPools: facts.trustDistribution.characterPools,
       streamingResolutionAt: facts.trustDistribution.streamingResolutionAt,
       financialYear: facts.fy.financialYear,
+      isTestamentaryTrust: facts.trustDistribution.isTestamentaryTrust,
+      s100aFacts: facts.trustDistribution.s100aFacts,
     });
 
     const merged = cgt

@@ -23,12 +23,10 @@
  * v1 is **deliberately conservative**: it classifies WHITE / GREEN /
  * RED only when the input data carries strong signals. Everything
  * else falls into BLUE — review-warranted-but-not-flagged. This
- * matches the "never false numbers, never false silence" pattern —
- * the calc only emits a strong-zone classification when the evidence
- * supports it.
+ * matches the "never false numbers, never false silence" pattern.
  *
  * Pure functions; no DB. Composed by `entityTaxRouter` for
- * DISCRETIONARY_TRUST entities.
+ * DISCRETIONARY_TRUST entities via the trustDistribution service.
  */
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
@@ -48,48 +46,25 @@ export interface S100ABeneficiaryFacts {
    *   - 'IMMEDIATE_FAMILY' — spouse, parent, child of controller
    *   - 'EXTENDED_FAMILY' — sibling, cousin, etc. of controller
    *   - 'UNRELATED' — non-family
-   * Used to refine the WHITE/GREEN/RED dispatch.
    */
   relationshipToController?:
     | 'CONTROLLER'
     | 'IMMEDIATE_FAMILY'
     | 'EXTENDED_FAMILY'
     | 'UNRELATED';
-  /**
-   * `true` if beneficiary is a minor (< 18 at distribution date).
-   * Minor beneficiaries with adult-rate amounts are a common s100A
-   * red-flag (the trustee distributes to a tax-free-threshold child,
-   * but the funds are used by the controller).
-   */
+  /** `true` if beneficiary is a minor (< 18 at distribution date). */
   isMinor?: boolean;
-  /**
-   * `true` if the beneficiary actually received the funds (cash, bank
-   * transfer, application to their education, etc.). When `false`,
-   * combined with `unpaidPresentEntitlement`, the distribution is a
-   * RED zone candidate.
-   */
+  /** `true` if the beneficiary actually received the funds. */
   beneficiaryReceivedFunds?: boolean;
-  /**
-   * `true` if there's a recorded UPE (unpaid present entitlement) at
-   * year-end — the beneficiary is entitled but the trust hasn't paid.
-   * Triggers Div 7A risk on its own; combined with funds-not-received
-   * and use-by-controller, becomes RED zone.
-   */
+  /** `true` if there's a recorded UPE at year-end. */
   unpaidPresentEntitlement?: boolean;
-  /**
-   * `true` if funds (or an asset purchased with them) are used by the
-   * trustee / controller / another adult beneficiary instead of the
-   * named beneficiary. Strongest RED signal in PCG 2022/2.
-   */
+  /** `true` if funds are used by trustee/controller/another adult. */
   fundsUsedByOther?: boolean;
 }
 
 export interface S100AInput {
-  /** Per-beneficiary facts. */
   beneficiaries: S100ABeneficiaryFacts[];
-  /** Trust has a Family Trust Election (Sch 2F ITAA 1936). */
   hasFamilyTrustElection?: boolean;
-  /** Trust is a testamentary trust (deceased-estate route). */
   isTestamentaryTrust?: boolean;
 }
 
@@ -97,21 +72,14 @@ export interface S100ABeneficiaryClassification {
   beneficiaryId: string;
   beneficiaryName: string;
   zone: S100AZone;
-  /** Plain-English reasoning for the zone — surfaced in AFSL footer. */
   reason: string;
-  /** Specific PCG 2022/2 ¶ refs that drove the classification. */
   pcgReferences: string[];
-  /** When BLUE/RED, recommend review with a tax agent. */
   requiresAgentReview: boolean;
 }
 
 export interface S100AClassificationResult {
-  /** Per-beneficiary classifications. */
   classifications: S100ABeneficiaryClassification[];
-  /**
-   * Highest-risk zone across all beneficiaries. Order:
-   * RED > BLUE > GREEN > WHITE. Useful for headline rendering.
-   */
+  /** Highest-risk zone across all beneficiaries (RED > BLUE > GREEN > WHITE). */
   highestZone: S100AZone;
   citations: AuthorityCitation[];
   uncomputed: UncomputedFlag[];
@@ -130,22 +98,6 @@ const BASE_CITATIONS: AuthorityCitation[] = [
   { kind: 'PCG', reference: '2022/2', lastReviewed: '2026-05-05' },
 ];
 
-/**
- * Classify a single beneficiary's distribution into a PCG 2022/2 zone.
- *
- * Decision priority (highest → lowest):
- *   1. RED if `unpaidPresentEntitlement && (fundsUsedByOther || beneficiaryReceivedFunds === false)`
- *   2. RED if `fundsUsedByOther === true`
- *   3. RED if `isMinor && fundsUsedByOther`
- *   4. WHITE if `isTestamentaryTrust` (always — deceased-estate route)
- *   5. GREEN if FTE + immediate-family + beneficiaryReceivedFunds === true
- *   6. BLUE — default for everything else
- *
- * The "WHITE for testamentary" rule is conservative: testamentary
- * trusts are explicitly mentioned in PCG 2022/2 ¶13 as outside s100A
- * scope. Other WHITE cases (pre-1979 arrangements etc.) are vanishingly
- * rare for our user base and stay BLUE rather than misclassified.
- */
 function classifyBeneficiary(
   facts: S100ABeneficiaryFacts,
   options: {
@@ -156,7 +108,7 @@ function classifyBeneficiary(
   const { hasFamilyTrustElection, isTestamentaryTrust } = options;
   const refs: string[] = [];
 
-  // RED-zone signals (priority 1) — strong evidence of reimbursement scheme.
+  // RED-zone signals — strong evidence of reimbursement scheme.
   if (
     facts.unpaidPresentEntitlement &&
     (facts.fundsUsedByOther || facts.beneficiaryReceivedFunds === false)
@@ -167,13 +119,12 @@ function classifyBeneficiary(
       beneficiaryName: facts.beneficiaryName,
       zone: 'RED',
       reason:
-        "Unpaid present entitlement combined with funds NOT received by beneficiary or used by another adult — a feature of arrangements PCG 2022/2 classifies as red zone. Engage a registered tax agent before lodgement.",
+        'Unpaid present entitlement combined with funds NOT received by beneficiary or used by another adult — a feature of arrangements PCG 2022/2 classifies as red zone. Engage a registered tax agent before lodgement.',
       pcgReferences: refs,
       requiresAgentReview: true,
     };
   }
 
-  // RED-zone signal (priority 2) — funds used by trustee/controller directly.
   if (facts.fundsUsedByOther === true) {
     refs.push('PCG 2022/2 ¶22-25 (red zone)');
     return {
@@ -181,21 +132,20 @@ function classifyBeneficiary(
       beneficiaryName: facts.beneficiaryName,
       zone: 'RED',
       reason:
-        "Distribution funds used by trustee/controller/another adult instead of the named beneficiary — PCG 2022/2 red-zone feature. Engage a registered tax agent.",
+        'Distribution funds used by trustee/controller/another adult instead of the named beneficiary — PCG 2022/2 red-zone feature. Engage a registered tax agent.',
       pcgReferences: refs,
       requiresAgentReview: true,
     };
   }
 
-  // RED-zone signal (priority 3) — minor with funds-used-by-other.
-  if (facts.isMinor && facts.fundsUsedByOther) {
-    refs.push('PCG 2022/2 ¶25 (red zone — minor + diverted funds)');
+  if (facts.isMinor && facts.beneficiaryReceivedFunds === false) {
+    refs.push('PCG 2022/2 ¶25 (red zone — minor + funds diverted)');
     return {
       beneficiaryId: facts.beneficiaryId,
       beneficiaryName: facts.beneficiaryName,
       zone: 'RED',
       reason:
-        'Minor beneficiary with funds used by another adult — common s100A pattern (kiddie-tax avoidance with diverted economic benefit).',
+        'Minor beneficiary with funds NOT materially received — common s100A pattern (kiddie-tax avoidance with diverted economic benefit).',
       pcgReferences: refs,
       requiresAgentReview: true,
     };
@@ -235,7 +185,7 @@ function classifyBeneficiary(
     };
   }
 
-  // BLUE — default.
+  // BLUE — default for everything else.
   refs.push('PCG 2022/2 ¶20-21 (blue zone — review recommended)');
   return {
     beneficiaryId: facts.beneficiaryId,
@@ -248,9 +198,6 @@ function classifyBeneficiary(
   };
 }
 
-/**
- * Classify a trust's distributions across all beneficiaries.
- */
 export function classifyS100AZones(
   input: S100AInput,
 ): S100AClassificationResult {
@@ -263,17 +210,11 @@ export function classifyS100AZones(
     classifyBeneficiary(b, options),
   );
 
-  // Highest-risk zone across the trust.
   const highestZone: S100AZone = classifications.reduce<S100AZone>((acc, c) => {
     return ZONE_RANK[c.zone] > ZONE_RANK[acc] ? c.zone : acc;
   }, 'WHITE');
 
   const uncomputed: UncomputedFlag[] = [];
-
-  // Surface UC-S100A-NUANCED when classifier hits BLUE — the v1
-  // classifier is conservative, and BLUE means "we don't know enough
-  // to confidently classify". Replaces the always-on UC-S100A-RISK
-  // from 41e.1 slice C with a more specific call-to-action.
   if (
     classifications.some((c) => c.zone === 'BLUE') ||
     classifications.some((c) => c.zone === 'RED')

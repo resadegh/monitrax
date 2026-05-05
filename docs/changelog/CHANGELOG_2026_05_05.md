@@ -1,5 +1,42 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e5-s100a-zone-classifier (Phase 41e.0 → 41e.5 integration + s100A zone classifier)
+
+### Two things bundled
+1. **Integration of stranded 41e.0 → 41e.4 stack** — PRs #634-#652 had merged into each other's branches but never reached main. This PR merges the stack tip into main with conflict resolution (3 doc files + 1 permissions file).
+2. **Phase 41e.5 net-new** — s100A reimbursement-agreement zone classifier per ATO PCG 2022/2.
+
+### 41e.5 changes
+- New `lib/tax-engine/divisions/s100aZoneClassifier.ts` — `classifyS100AZones(input)` per ITAA 1936 s100A + TR 2022/4 + PCG 2022/2
+- 6-priority decision tree: RED (3 signal sets) → WHITE (testamentary) → GREEN (FTE + immediate family + funds received) → BLUE default
+- `TrustDistributionInput` extended with `s100aFacts` + `isTestamentaryTrust`
+- `TrustDistributionResult` extended with `s100aClassification`
+- UC-S100A-RISK flag REPLACED by UC-S100A-NUANCED (only surfaces when BLUE or RED)
+- POST `/api/tax/entity/[id]` accepts the new body fields
+- 23 tests (20 classifier + 3 router-integration)
+
+### Testable
+```bash
+curl -X POST -d '{
+  "trustDistribution": {
+    "trustNetIncome": 100000,
+    "beneficiaries": [{"id":"b1","name":"Sarah","presentlyEntitledShare":1.0}],
+    "hasFamilyTrustElection": true,
+    "s100aFacts": [{
+      "beneficiaryId":"b1",
+      "relationshipToController":"IMMEDIATE_FAMILY",
+      "beneficiaryReceivedFunds":true
+    }]
+  }
+}' /api/tax/entity/<trust_id>?fy=2024-25
+# → s100aClassification.classifications[0].zone === "GREEN"
+# → uncomputed does NOT contain UC-S100A-RISK
+```
+
+344 tests passing (324 → 344, +20 from 41e.5). tsc clean.
+
+---
+
 ## Session: claude/phase-41e4-div6e-streaming (Phase 41e.4 — Div 6E character streaming)
 
 ### Changes
