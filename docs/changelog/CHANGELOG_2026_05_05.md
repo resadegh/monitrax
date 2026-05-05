@@ -1,5 +1,41 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e6-div7a-classifier (Phase 41e.6 — Div 7A loan classifier)
+
+### Changes
+- New `lib/tax-engine/divisions/div7aLoanClassifier.ts` — `classifyDiv7ALoans(loans)` + `calculateMinimumYearlyRepayment(B, N, r)` per ITAA 1936 Div 7A
+- 4-priority status: SUB_TRUST_UPE → NO_AGREEMENT (s109D, full balance) → MRP_SHORTFALL (deemed dividend = shortfall) → COMPLIANT
+- s109N MRP via standard amortising-annuity formula, with degenerate cases handled (zero balance/years/rate)
+- `EntityTaxFacts.div7aLoans` new optional field; router COMPANY branch returns `result.div7aClassification`
+- UC-DIV7A-DISTRIBUTABLE-SURPLUS surfaces when deemed dividend > 0 (s109Y cap deferred)
+- UC-DIV7A-SUBTRUST-UPE surfaces for sub-trust UPE (TR 2010/3 + PCG 2017/13)
+- POST endpoint accepts `div7aLoans` body
+- 20 module tests + 3 router-integration tests
+- 364 tests total (344 → 364, +20)
+- tsc clean
+
+### Testable
+```bash
+curl -X POST -d '{
+  "div7aLoans": [{
+    "loanId": "l1",
+    "openingBalance": 100000,
+    "yearsRemaining": 7,
+    "benchmarkRate": 0.0837,
+    "paymentsMadeThisFy": 0,
+    "hasComplianceAgreement": true
+  }]
+}' /api/tax/entity/<company_id>?fy=2024-25
+# → result.div7aClassification.classifications[0].status === "MRP_SHORTFALL"
+# → result.div7aClassification.totalDeemedDividend ≈ 19500 (the unpaid MRP)
+# → uncomputed contains UC-DIV7A-DISTRIBUTABLE-SURPLUS + UC-ENTITY-COMPANY
+# → citations include Div 7A + s109D + s109N + s109Y
+```
+
+41e.7 (Div 152 small business CGT concessions) starts next.
+
+---
+
 ## Session: claude/phase-41e5-s100a-zone-classifier (Phase 41e.0 → 41e.5 integration + s100A zone classifier)
 
 ### Two things bundled
