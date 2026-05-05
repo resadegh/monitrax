@@ -435,7 +435,8 @@ Per `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §6.8. New endpoints 
 | Endpoint | Method | Sub-PR | Permission | Purpose |
 |---|---|---|---|---|
 | `/api/tax/config` | GET | 41e.0 slice D | `tax_data.read` | Returns the canonical FY config (`TaxYearConfig`) for `?fy=YYYY-YY` (default current FY). Replaces hard-coded thresholds. |
-| `/api/tax/entity/[entityId]` | GET | 41e.0 slice D | `tax_data.read` | Returns per-entity tax position via the `entityTaxRouter` skeleton. PERSONAL_NAME / SOLE_TRADER → real Phase 20 result + boundary footnote; COMPANY / TRUST / SMSF / PARTNERSHIP → null result + UNCOMPUTED flag (per audit §10.3). Caller must own the entity. |
+| `/api/tax/entity/[entityId]` | GET | 41e.0 slice D | `tax_data.read` | Returns per-entity tax position via the `entityTaxRouter`. PERSONAL_NAME / SOLE_TRADER → real Phase 20 result + boundary footnote; COMPANY / TRUST / SMSF / PARTNERSHIP → null result + UNCOMPUTED flag (per audit §10.3). Caller must own the entity. |
+| `/api/tax/entity/[entityId]` | POST | 41e.1 slice D-1 | `tax_data.read` | Same response shape as GET, accepts a JSON body to drive slice-specific dispatch paths (e.g. `{ "trustDistribution": { "trustNetIncome": 100000, "beneficiaries": [...] } }`). For DISCRETIONARY_TRUST / UNIT_TRUST entities, providing `trustDistribution` flips the response from UNCOMPUTED to a real Div 6 allocation. Caller must own the entity. |
 | `/api/tax/master-position` | GET | 41e.17 (queued) | `tax_data.read` | Household-wide tax position roll-up. Replaces the `buildTaxSummary()` adapter from cleanup PR C. |
 | `/api/tax/trust-distribution` | POST | 41e.4 (queued) | `tax_data.write` | Computes Div 6/6E streaming + per-beneficiary share + character. |
 | `/api/tax/div7a-check` | POST | 41e.6 (queued) | `tax_data.write` | Compliance check on a COMPANY → shareholder loan. |

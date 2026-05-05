@@ -36,6 +36,7 @@ import {
   getTaxYearConfig,
   getCurrentTaxYearConfig,
 } from '../config/taxYearConfig';
+import { allocateTrustDistribution } from '../divisions/trustDistribution';
 import type {
   AuthorityCitation,
   EntityTaxFacts,
@@ -122,7 +123,38 @@ export function calculateEntityTaxPosition(
     };
   }
 
-  // Net-new entity types — flagged UNCOMPUTED until 41e.1+ ships rules.
+  // Phase 41e.1 slice D-1 — TRUST entities flip to computed when
+  // distribution data is provided. Otherwise still UNCOMPUTED.
+  // (UNIT_TRUST follows the same Div 6 mechanism in v1; per-unit
+  // pro-rata allocation refines in 41e.4 alongside Div 6E streaming.)
+  if (
+    (facts.entityType === 'DISCRETIONARY_TRUST' ||
+      facts.entityType === 'UNIT_TRUST') &&
+    facts.trustDistribution
+  ) {
+    const distributionResult = allocateTrustDistribution({
+      trustNetIncome: facts.trustDistribution.trustNetIncome,
+      beneficiaries: facts.trustDistribution.beneficiaries.map((b) => ({
+        id: b.id,
+        name: b.name,
+        presentlyEntitledShare: b.presentlyEntitledShare,
+        isNonResidentOrDisabled: b.isNonResidentOrDisabled,
+      })),
+      hasFamilyTrustElection: facts.trustDistribution.hasFamilyTrustElection,
+    });
+
+    return {
+      entityId: facts.entityId,
+      entityType: facts.entityType,
+      fy: facts.fy,
+      result: distributionResult,
+      citations: distributionResult.citations,
+      uncomputed: distributionResult.uncomputed,
+    };
+  }
+
+  // Net-new entity types without slice-D dispatch data — still
+  // UNCOMPUTED. Trust entities WITHOUT distribution data fall here.
   const flag = UNCOMPUTED_ENTITY_TAX[facts.entityType];
 
   return {
@@ -136,12 +168,32 @@ export function calculateEntityTaxPosition(
 }
 
 /**
- * Returns true if this entity type is currently dispatched via the
- * Phase 20 engine. Useful for callers that need to know whether they
- * should expect numbers or UNCOMPUTED flags.
+ * Returns true if this entity type produces a computed result via the
+ * router *unconditionally* (i.e. without needing slice-specific
+ * dispatch inputs like `trustDistribution` or `cgtEvents`).
+ *
+ * As 41e.1+ slices ship, more entity types become *conditionally*
+ * computed — TRUST entities now produce real numbers when
+ * `EntityTaxFacts.trustDistribution` is provided (Phase 41e.1 slice
+ * D-1). Use `entityHasConditionalComputedTax` to test those.
  */
 export function entityHasComputedTax(
   entityType: EntityTaxFacts['entityType'],
 ): boolean {
   return entityType === 'PERSONAL_NAME' || entityType === 'SOLE_TRADER';
+}
+
+/**
+ * Returns true if the entity type can produce a computed result when
+ * the relevant slice-specific dispatch input is provided. Mirrors the
+ * router's actual capability matrix as 41e.1+ slices ship.
+ */
+export function entityHasConditionalComputedTax(
+  entityType: EntityTaxFacts['entityType'],
+): boolean {
+  return (
+    entityHasComputedTax(entityType) ||
+    entityType === 'DISCRETIONARY_TRUST' ||
+    entityType === 'UNIT_TRUST'
+  );
 }
