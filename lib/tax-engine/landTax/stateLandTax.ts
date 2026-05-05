@@ -1,10 +1,11 @@
 /**
- * Phase 41e.12 — State land tax (NSW + VIC).
+ * Phase 41e.12 (NSW + VIC) + Phase 41e.13 (QLD + SA + WA + TAS + ACT + NT).
  *
- * Per `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11. First
- * of the per-state regimes. NSW + VIC first because they're the
- * largest states by taxable-land value; per-state config pattern
- * locked in here, then 41e.13 ships QLD/SA/WA/TAS/ACT/NT.
+ * Per `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11. All
+ * eight Australian states + territories ship per-state `LandTaxConfig`.
+ * NT is a structural zero (no land tax regime) so the cross-state
+ * aggregator can iterate uniformly. Cross-state aggregation lands
+ * in `crossStateAggregator.ts` (this PR).
  *
  * AU primary authority:
  *   - **NSW** Land Tax Act 1956 (No 26)
@@ -82,10 +83,18 @@ export interface LandTaxConfig {
    */
   trustSurchargeRate: number;
   /**
-   * Foreign / absentee owner surcharge rate (typically 4%). Applied
-   * to taxable land value when owner is non-resident.
+   * Foreign / absentee owner surcharge rate (typically 2-4%). Applied
+   * to taxable land value when owner is non-resident. 0 = state has
+   * no land tax foreign surcharge (e.g. SA, WA — those are stamp-duty
+   * only).
    */
   foreignOwnerSurchargeRate: number;
+  /**
+   * `true` if the foreign surcharge applies ONLY to residential land
+   * (NSW Sch 1A, TAS, ACT). `false` if it applies to ALL taxable
+   * land (VIC absentee, QLD absentee).
+   */
+  foreignSurchargeResidentialOnly?: boolean;
   /** Citations to surface in the AFSL footer. */
   citations: AuthorityCitation[];
 }
@@ -136,6 +145,7 @@ export const NSW_LAND_TAX_CY2025: LandTaxConfig = {
   ],
   trustSurchargeRate: 0.0075, // 1.5% on first $1.075M = effective 0.75% × 2 — see calc; NSW special trust adds the standard rate to the trust scale; v1 simplifies to 1.5% × value when value ≤ $1.075M
   foreignOwnerSurchargeRate: 0.04, // 4% NSW
+  foreignSurchargeResidentialOnly: true,
   citations: [
     { kind: 'STATE_LAND_TAX_ACT', reference: 'NSW Land Tax Act 1956 s10', lastReviewed: '2026-05-05' },
     { kind: 'STATE_LAND_TAX_ACT', reference: 'NSW Land Tax Act 1956 s27', lastReviewed: '2026-05-05' },
@@ -160,6 +170,7 @@ export const VIC_LAND_TAX_FY2024_25: LandTaxConfig = {
   ],
   trustSurchargeRate: 0.005, // VIC has a separate trust scale; v1 uses simplified 0.5% surcharge over base
   foreignOwnerSurchargeRate: 0.04, // 4% VIC absentee owner surcharge (was 2%, raised 2024)
+  foreignSurchargeResidentialOnly: false, // VIC absentee covers all taxable land
   citations: [
     { kind: 'STATE_LAND_TAX_ACT', reference: 'VIC Land Tax Act 2005 Schedule 1', lastReviewed: '2026-05-05' },
     { kind: 'STATE_LAND_TAX_ACT', reference: 'VIC Land Tax Act 2005 s46IB (trust)', lastReviewed: '2026-05-05' },
@@ -167,21 +178,154 @@ export const VIC_LAND_TAX_FY2024_25: LandTaxConfig = {
   ],
 };
 
-const STATE_CONFIG_REGISTRY: Partial<Record<AustralianState, LandTaxConfig>> = {
-  NSW: NSW_LAND_TAX_CY2025,
-  VIC: VIC_LAND_TAX_FY2024_25,
+// ============================================================
+// 41e.13 — rest-of-states (QLD / SA / WA / TAS / ACT / NT).
+// Same per-state config pattern. Trust scales + grouping
+// nuance still surface UC-LAND-TAX-TRUST-SURCHARGE-NUANCE.
+// ============================================================
+
+export const QLD_LAND_TAX_CY2025: LandTaxConfig = {
+  state: 'QLD',
+  label: 'QLD CY2025',
+  generalThreshold: 600_000,
+  // Resident individual scale per Land Tax Act 2010 (QLD) Sch 1.
+  brackets: [
+    { min: 0, max: 600_000, baseAmount: 0, rate: 0 },
+    { min: 600_001, max: 1_000_000, baseAmount: 500, rate: 0.01 },
+    { min: 1_000_001, max: 3_000_000, baseAmount: 4_500, rate: 0.0165 },
+    { min: 3_000_001, max: 5_000_000, baseAmount: 37_500, rate: 0.0125 },
+    { min: 5_000_001, max: 10_000_000, baseAmount: 62_500, rate: 0.0175 },
+    { min: 10_000_001, max: null, baseAmount: 150_000, rate: 0.0225 },
+  ],
+  trustSurchargeRate: 0.0175, // QLD trust/company scale uses lower threshold ($350k) and steeper top rate; v1 simplification — UC flag covers nuance
+  foreignOwnerSurchargeRate: 0.02, // QLD absentee owner surcharge — 2% on resident-equivalent assessment
+  foreignSurchargeResidentialOnly: false, // QLD absentee covers all taxable land
+  citations: [
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'QLD Land Tax Act 2010 s32 (taxable value)', lastReviewed: '2026-05-05' },
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'QLD Land Tax Act 2010 Sch 1 (resident scale)', lastReviewed: '2026-05-05' },
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'QLD Land Tax Act 2010 Sch 3 (absentee surcharge)', lastReviewed: '2026-05-05' },
+  ],
+};
+
+export const SA_LAND_TAX_FY2024_25: LandTaxConfig = {
+  state: 'SA',
+  label: 'SA FY24-25',
+  generalThreshold: 755_000,
+  brackets: [
+    { min: 0, max: 755_000, baseAmount: 0, rate: 0 },
+    { min: 755_001, max: 1_098_000, baseAmount: 0, rate: 0.005 },
+    { min: 1_098_001, max: 1_672_000, baseAmount: 1_715, rate: 0.01 },
+    { min: 1_672_001, max: 2_500_000, baseAmount: 7_455, rate: 0.02 },
+    { min: 2_500_001, max: null, baseAmount: 24_015, rate: 0.024 },
+  ],
+  trustSurchargeRate: 0.005, // SA trust surcharge — 0.5% v1 simplification
+  foreignOwnerSurchargeRate: 0, // SA has no foreign / absentee land tax surcharge (foreign surcharge is on stamp duty only)
+  citations: [
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'SA Land Tax Act 1936 s5 (general scale)', lastReviewed: '2026-05-05' },
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'SA Land Tax Act 1936 s13 (trust)', lastReviewed: '2026-05-05' },
+  ],
+};
+
+export const WA_LAND_TAX_FY2024_25: LandTaxConfig = {
+  state: 'WA',
+  label: 'WA FY24-25',
+  generalThreshold: 300_000,
+  brackets: [
+    { min: 0, max: 300_000, baseAmount: 0, rate: 0 },
+    { min: 300_001, max: 420_000, baseAmount: 300, rate: 0.0025 },
+    { min: 420_001, max: 1_000_000, baseAmount: 600, rate: 0.004 },
+    { min: 1_000_001, max: 1_800_000, baseAmount: 2_920, rate: 0.0065 },
+    { min: 1_800_001, max: 5_000_000, baseAmount: 8_120, rate: 0.013 },
+    { min: 5_000_001, max: 11_000_000, baseAmount: 49_720, rate: 0.0155 },
+    { min: 11_000_001, max: null, baseAmount: 142_720, rate: 0.0267 },
+  ],
+  trustSurchargeRate: 0, // WA has no separate trust surcharge — trusts assessed on standard scale
+  foreignOwnerSurchargeRate: 0, // WA has no land tax foreign surcharge (only on stamp duty)
+  citations: [
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'WA Land Tax Act 2002 s5 (general scale)', lastReviewed: '2026-05-05' },
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'WA Land Tax Assessment Act 2002 (assessment)', lastReviewed: '2026-05-05' },
+  ],
+};
+
+export const TAS_LAND_TAX_FY2024_25: LandTaxConfig = {
+  state: 'TAS',
+  label: 'TAS FY24-25',
+  generalThreshold: 100_000,
+  brackets: [
+    { min: 0, max: 100_000, baseAmount: 0, rate: 0 },
+    { min: 100_001, max: 500_000, baseAmount: 50, rate: 0.0045 },
+    { min: 500_001, max: null, baseAmount: 1_837.5, rate: 0.015 },
+  ],
+  trustSurchargeRate: 0, // TAS trusts assessed on standard scale; absentee landholder duty is separate
+  foreignOwnerSurchargeRate: 0.02, // TAS foreign investor land tax surcharge — 2% (since 2022)
+  foreignSurchargeResidentialOnly: true, // TAS surcharge limited to residential land
+  citations: [
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'TAS Land Tax Act 2000 s11 (general scale)', lastReviewed: '2026-05-05' },
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'TAS Land Tax Rating Act 2000 (foreign surcharge)', lastReviewed: '2026-05-05' },
+  ],
+};
+
+export const ACT_LAND_TAX_FY2024_25: LandTaxConfig = {
+  state: 'ACT',
+  label: 'ACT FY24-25',
+  // ACT doesn't run a "land tax" in the same shape as NSW/VIC. ACT's
+  // Rates Act 2004 charges (a) annual general rates on every parcel
+  // (separate from this calc) plus (b) a residential land tax that
+  // only applies to non-owner-occupied (rental / vacant) residential
+  // properties. v1 simplification: 1.0% flat where applicable, with
+  // UC-ACT-RATES-VS-LAND-TAX surfacing the structural mismatch.
+  generalThreshold: 0,
+  brackets: [
+    { min: 0, max: 150_000, baseAmount: 0, rate: 0.0054 },
+    { min: 150_001, max: 275_000, baseAmount: 810, rate: 0.0062 },
+    { min: 275_001, max: 2_000_000, baseAmount: 1_585, rate: 0.0114 },
+    { min: 2_000_001, max: null, baseAmount: 21_250, rate: 0.0114 },
+  ],
+  trustSurchargeRate: 0,
+  foreignOwnerSurchargeRate: 0.0075, // ACT foreign ownership surcharge — 0.75%
+  foreignSurchargeResidentialOnly: true,
+  citations: [
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'ACT Rates Act 2004 (rates + land tax)', lastReviewed: '2026-05-05' },
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'ACT Land Tax Act 2004 (residential rental land tax)', lastReviewed: '2026-05-05' },
+  ],
 };
 
 /**
- * Resolve config for a state. Throws if unsupported in v1 — caller
- * checks `getSupportedStates()` first.
+ * NT does not levy land tax. Config is a structural zero so the
+ * cross-state aggregator can iterate uniformly. UC-NT-NO-LAND-TAX
+ * surfaces in `calculateLandTax` to make the absence explicit.
+ */
+export const NT_LAND_TAX_FY2024_25: LandTaxConfig = {
+  state: 'NT',
+  label: 'NT FY24-25',
+  generalThreshold: Infinity, // never crossed — no tax
+  brackets: [{ min: 0, max: null, baseAmount: 0, rate: 0 }],
+  trustSurchargeRate: 0,
+  foreignOwnerSurchargeRate: 0,
+  citations: [
+    { kind: 'STATE_LAND_TAX_ACT', reference: 'NT — no land tax regime', lastReviewed: '2026-05-05' },
+  ],
+};
+
+const STATE_CONFIG_REGISTRY: Partial<Record<AustralianState, LandTaxConfig>> = {
+  NSW: NSW_LAND_TAX_CY2025,
+  VIC: VIC_LAND_TAX_FY2024_25,
+  QLD: QLD_LAND_TAX_CY2025,
+  SA: SA_LAND_TAX_FY2024_25,
+  WA: WA_LAND_TAX_FY2024_25,
+  TAS: TAS_LAND_TAX_FY2024_25,
+  ACT: ACT_LAND_TAX_FY2024_25,
+  NT: NT_LAND_TAX_FY2024_25,
+};
+
+/**
+ * Resolve config for a state. Every Australian state ships a config
+ * post-41e.13 (NT ships a structural zero — no land tax regime).
  */
 export function getLandTaxConfig(state: AustralianState): LandTaxConfig {
   const config = STATE_CONFIG_REGISTRY[state];
   if (!config) {
-    throw new Error(
-      `Land tax not yet implemented for ${state}. NSW + VIC ship in 41e.12; QLD/SA/WA/TAS/ACT/NT in 41e.13.`,
-    );
+    throw new Error(`Land tax config missing for ${state}.`);
   }
   return config;
 }
@@ -265,63 +409,94 @@ export function calculateLandTax(
 
   // 2. Trust surcharge (non-fixed trusts only).
   let trustSurcharge = 0;
-  if (
+  const isTrustOwner =
     ownershipType === 'DISCRETIONARY_TRUST' ||
-    ownershipType === 'UNIT_TRUST_NON_FIXED'
-  ) {
+    ownershipType === 'UNIT_TRUST_NON_FIXED';
+  if (isTrustOwner && config.trustSurchargeRate > 0) {
     if (config.state === 'NSW') {
       // NSW special trust surcharge: 1.5% on first $1.075M, then standard rate above.
       // v1 simplification: 1.5% × min(value, $1.075M).
-      trustSurcharge =
-        Math.min(taxableLandValue, 1_075_000) * 0.015;
-    } else if (config.state === 'VIC') {
-      // VIC trust surcharge: progressive scale above 0 with no
-      // tax-free threshold. v1 simplification: 0.5% × value.
-      trustSurcharge = taxableLandValue * config.trustSurchargeRate;
+      trustSurcharge = Math.min(taxableLandValue, 1_075_000) * 0.015;
     } else {
       trustSurcharge = taxableLandValue * config.trustSurchargeRate;
     }
     if (trustSurcharge > 0) {
+      const trustCitation =
+        config.state === 'NSW'
+          ? 'NSW Land Tax Act 1956 s5A'
+          : config.state === 'VIC'
+          ? 'VIC Land Tax Act 2005 s46IB'
+          : config.state === 'QLD'
+          ? 'QLD Land Tax Act 2010 (trust scale)'
+          : config.state === 'SA'
+          ? 'SA Land Tax Act 1936 s13'
+          : `${config.state} trust scale`;
       breakdown.push({
         label: `${config.state} trust surcharge (non-fixed trust)`,
         amount: trustSurcharge,
-        citation:
-          config.state === 'NSW'
-            ? 'NSW Land Tax Act 1956 s5A'
-            : 'VIC Land Tax Act 2005 s46IB',
+        citation: trustCitation,
       });
     }
     uncomputed.push({
       id: 'UC-LAND-TAX-TRUST-SURCHARGE-NUANCE',
       rationale:
-        'Trust surcharge calculation simplified in v1 to a flat % over the taxable value (NSW: 1.5% on first $1.075M; VIC: 0.5% over base). Real-world calc uses a progressive trust-specific scale that varies by state. Engage a registered tax agent for exact figure on trust-held property.',
+        'Trust surcharge calculation simplified in v1 to a flat % over the taxable value (NSW: 1.5% on first $1.075M; VIC/QLD/SA: flat % over base). Real-world calc uses a progressive trust-specific scale that varies by state. Engage a registered tax agent for exact figure on trust-held property.',
       citation:
         config.state === 'NSW'
           ? { kind: 'STATE_LAND_TAX_ACT', reference: 'NSW Land Tax Act 1956 s5A', lastReviewed: '2026-05-05' }
-          : { kind: 'STATE_LAND_TAX_ACT', reference: 'VIC Land Tax Act 2005 s46IB', lastReviewed: '2026-05-05' },
+          : config.state === 'VIC'
+          ? { kind: 'STATE_LAND_TAX_ACT', reference: 'VIC Land Tax Act 2005 s46IB', lastReviewed: '2026-05-05' }
+          : { kind: 'STATE_LAND_TAX_ACT', reference: `${config.state} trust scale`, lastReviewed: '2026-05-05' },
     });
   }
 
-  // 3. Foreign / absentee owner surcharge.
+  // 3. Foreign / absentee owner surcharge — data-driven from config.
   let foreignOwnerSurcharge = 0;
-  if (isForeignOwner) {
-    if (config.state === 'NSW' && isResidential) {
-      foreignOwnerSurcharge = taxableLandValue * config.foreignOwnerSurchargeRate;
-    } else if (config.state === 'VIC') {
-      // VIC absentee owner surcharge applies to ALL taxable land
-      // (not just residential).
-      foreignOwnerSurcharge = taxableLandValue * config.foreignOwnerSurchargeRate;
+  if (isForeignOwner && config.foreignOwnerSurchargeRate > 0) {
+    const residentialOnly = config.foreignSurchargeResidentialOnly ?? false;
+    const surchargeApplies = !residentialOnly || isResidential;
+    if (surchargeApplies) {
+      foreignOwnerSurcharge =
+        taxableLandValue * config.foreignOwnerSurchargeRate;
     }
     if (foreignOwnerSurcharge > 0) {
+      const pct = (config.foreignOwnerSurchargeRate * 100).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
       breakdown.push({
-        label: `${config.state} foreign / absentee owner surcharge (${(config.foreignOwnerSurchargeRate * 100).toFixed(0)}%)`,
+        label: `${config.state} foreign / absentee owner surcharge (${pct}%)`,
         amount: foreignOwnerSurcharge,
         citation:
           config.state === 'NSW'
             ? 'NSW Land Tax Act 1956 Sch 1A'
-            : 'VIC Land Tax Act 2005 s46IC',
+            : config.state === 'VIC'
+            ? 'VIC Land Tax Act 2005 s46IC'
+            : config.state === 'QLD'
+            ? 'QLD Land Tax Act 2010 Sch 3'
+            : config.state === 'TAS'
+            ? 'TAS Land Tax Rating Act 2000 (foreign surcharge)'
+            : config.state === 'ACT'
+            ? 'ACT Rates Act 2004 (foreign ownership)'
+            : `${config.state} foreign owner surcharge`,
       });
     }
+  }
+
+  // ACT structural disclosure — Rates vs Land Tax mismatch.
+  if (config.state === 'ACT' && taxableLandValue > 0) {
+    uncomputed.push({
+      id: 'UC-ACT-RATES-VS-LAND-TAX',
+      rationale:
+        'ACT does not run a "land tax" in the same shape as NSW/VIC. ACT Rates Act 2004 charges (a) annual general rates on every parcel (separate from this calc) and (b) a residential land tax that only applies to non-owner-occupied residential properties. v1 calc applies a flat-bracketed approximation; for an exact figure consult the ACT Revenue Office or a registered tax agent.',
+      citation: { kind: 'STATE_LAND_TAX_ACT', reference: 'ACT Rates Act 2004', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  // NT structural disclosure — no land tax.
+  if (config.state === 'NT') {
+    uncomputed.push({
+      id: 'UC-NT-NO-LAND-TAX',
+      rationale:
+        'NT does not levy land tax. This config returns $0 for structural completeness in the cross-state aggregator. NT does levy stamp duty (lands in 41e.14).',
+    });
   }
 
   // Multi-state aggregation flag — always surface so callers know.

@@ -9,6 +9,12 @@ import {
   getSupportedStates,
   NSW_LAND_TAX_CY2025,
   VIC_LAND_TAX_FY2024_25,
+  QLD_LAND_TAX_CY2025,
+  SA_LAND_TAX_FY2024_25,
+  WA_LAND_TAX_FY2024_25,
+  TAS_LAND_TAX_FY2024_25,
+  ACT_LAND_TAX_FY2024_25,
+  NT_LAND_TAX_FY2024_25,
   type LandTaxInput,
 } from '@/lib/tax-engine/landTax/stateLandTax';
 
@@ -299,24 +305,242 @@ describe('calculateLandTax — citations', () => {
   });
 });
 
-describe('getLandTaxConfig + getSupportedStates', () => {
-  it('NSW + VIC supported in v1', () => {
+describe('getLandTaxConfig + getSupportedStates (post-41e.13)', () => {
+  it('all 8 states/territories supported', () => {
     const supported = getSupportedStates();
     expect(supported).toContain('NSW');
     expect(supported).toContain('VIC');
+    expect(supported).toContain('QLD');
+    expect(supported).toContain('SA');
+    expect(supported).toContain('WA');
+    expect(supported).toContain('TAS');
+    expect(supported).toContain('ACT');
+    expect(supported).toContain('NT');
+    expect(supported).toHaveLength(8);
   });
 
-  it('getLandTaxConfig returns correct config for NSW', () => {
+  it('getLandTaxConfig returns correct config per state', () => {
     expect(getLandTaxConfig('NSW')).toBe(NSW_LAND_TAX_CY2025);
-  });
-
-  it('getLandTaxConfig returns correct config for VIC', () => {
     expect(getLandTaxConfig('VIC')).toBe(VIC_LAND_TAX_FY2024_25);
+    expect(getLandTaxConfig('QLD')).toBe(QLD_LAND_TAX_CY2025);
+    expect(getLandTaxConfig('SA')).toBe(SA_LAND_TAX_FY2024_25);
+    expect(getLandTaxConfig('WA')).toBe(WA_LAND_TAX_FY2024_25);
+    expect(getLandTaxConfig('TAS')).toBe(TAS_LAND_TAX_FY2024_25);
+    expect(getLandTaxConfig('ACT')).toBe(ACT_LAND_TAX_FY2024_25);
+    expect(getLandTaxConfig('NT')).toBe(NT_LAND_TAX_FY2024_25);
+  });
+});
+
+describe('calculateLandTax — QLD (Land Tax Act 2010)', () => {
+  it('value below QLD threshold ($600k) → no general tax', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 500_000 }),
+      QLD_LAND_TAX_CY2025,
+    );
+    expect(r.generalLandTax).toBe(0);
   });
 
-  it('throws for unsupported states (QLD/SA/WA/TAS/ACT/NT) in v1', () => {
-    expect(() => getLandTaxConfig('QLD')).toThrow(/41e.13/);
-    expect(() => getLandTaxConfig('SA')).toThrow(/41e.13/);
-    expect(() => getLandTaxConfig('WA')).toThrow(/41e.13/);
+  it('value $1M → $500 + 1% × $400k = $4,500', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 1_000_000 }),
+      QLD_LAND_TAX_CY2025,
+    );
+    expect(r.generalLandTax).toBeCloseTo(4_500, 2);
+  });
+
+  it('value $3M → $4,500 + 1.65% × $2M = $37,500', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 3_000_000 }),
+      QLD_LAND_TAX_CY2025,
+    );
+    expect(r.generalLandTax).toBeCloseTo(37_500, 2);
+  });
+
+  it('QLD foreign + residential @ $1M → 2% × $1M = $20,000 absentee surcharge', () => {
+    const r = calculateLandTax(
+      baseInput({
+        taxableLandValue: 1_000_000,
+        isForeignOwner: true,
+        isResidential: true,
+      }),
+      QLD_LAND_TAX_CY2025,
+    );
+    expect(r.foreignOwnerSurcharge).toBeCloseTo(20_000, 2);
+  });
+
+  it('QLD foreign + non-residential → still applies (covers all taxable land)', () => {
+    const r = calculateLandTax(
+      baseInput({
+        taxableLandValue: 1_000_000,
+        isForeignOwner: true,
+        isResidential: false,
+      }),
+      QLD_LAND_TAX_CY2025,
+    );
+    expect(r.foreignOwnerSurcharge).toBeCloseTo(20_000, 2);
+  });
+});
+
+describe('calculateLandTax — SA (Land Tax Act 1936)', () => {
+  it('value below SA threshold ($755k) → no general tax', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 700_000 }),
+      SA_LAND_TAX_FY2024_25,
+    );
+    expect(r.generalLandTax).toBe(0);
+  });
+
+  it('value $1.098M → $0 + 0.5% × $343k = $1,715', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 1_098_000 }),
+      SA_LAND_TAX_FY2024_25,
+    );
+    expect(r.generalLandTax).toBeCloseTo(1_715, 2);
+  });
+
+  it('SA has no land tax foreign surcharge (stamp-duty-only state)', () => {
+    const r = calculateLandTax(
+      baseInput({
+        taxableLandValue: 1_000_000,
+        isForeignOwner: true,
+        isResidential: true,
+      }),
+      SA_LAND_TAX_FY2024_25,
+    );
+    expect(r.foreignOwnerSurcharge).toBe(0);
+  });
+});
+
+describe('calculateLandTax — WA (Land Tax Act 2002)', () => {
+  it('value below WA threshold ($300k) → no general tax', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 250_000 }),
+      WA_LAND_TAX_FY2024_25,
+    );
+    expect(r.generalLandTax).toBe(0);
+  });
+
+  it('value $420k → $300 + 0.25% × $120k = $600', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 420_000 }),
+      WA_LAND_TAX_FY2024_25,
+    );
+    expect(r.generalLandTax).toBeCloseTo(600, 2);
+  });
+
+  it('WA has no land tax foreign surcharge', () => {
+    const r = calculateLandTax(
+      baseInput({
+        taxableLandValue: 1_000_000,
+        isForeignOwner: true,
+        isResidential: true,
+      }),
+      WA_LAND_TAX_FY2024_25,
+    );
+    expect(r.foreignOwnerSurcharge).toBe(0);
+  });
+
+  it('WA has no separate trust surcharge', () => {
+    const r = calculateLandTax(
+      baseInput({
+        taxableLandValue: 1_000_000,
+        ownershipType: 'DISCRETIONARY_TRUST',
+      }),
+      WA_LAND_TAX_FY2024_25,
+    );
+    expect(r.trustSurcharge).toBe(0);
+  });
+});
+
+describe('calculateLandTax — TAS (Land Tax Act 2000)', () => {
+  it('value below TAS threshold ($100k) → no general tax', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 80_000 }),
+      TAS_LAND_TAX_FY2024_25,
+    );
+    expect(r.generalLandTax).toBe(0);
+  });
+
+  it('value $500k → top of bracket 2 = $50 + 0.45% × $400k = $1,850', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 500_000 }),
+      TAS_LAND_TAX_FY2024_25,
+    );
+    expect(r.generalLandTax).toBeCloseTo(1_850, 2);
+  });
+
+  it('TAS foreign + residential @ $500k → 2% × $500k = $10,000', () => {
+    const r = calculateLandTax(
+      baseInput({
+        taxableLandValue: 500_000,
+        isForeignOwner: true,
+        isResidential: true,
+      }),
+      TAS_LAND_TAX_FY2024_25,
+    );
+    expect(r.foreignOwnerSurcharge).toBeCloseTo(10_000, 2);
+  });
+
+  it('TAS foreign + non-residential → no foreign surcharge (residential only)', () => {
+    const r = calculateLandTax(
+      baseInput({
+        taxableLandValue: 500_000,
+        isForeignOwner: true,
+        isResidential: false,
+      }),
+      TAS_LAND_TAX_FY2024_25,
+    );
+    expect(r.foreignOwnerSurcharge).toBe(0);
+  });
+});
+
+describe('calculateLandTax — ACT (Rates Act 2004)', () => {
+  it('ACT applies a structural disclosure UC flag', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 500_000 }),
+      ACT_LAND_TAX_FY2024_25,
+    );
+    expect(r.uncomputed.some((u) => u.id === 'UC-ACT-RATES-VS-LAND-TAX')).toBe(true);
+  });
+
+  it('ACT computes a flat-bracketed approximation > 0', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 500_000 }),
+      ACT_LAND_TAX_FY2024_25,
+    );
+    expect(r.generalLandTax).toBeGreaterThan(0);
+  });
+
+  it('ACT foreign + residential @ $500k → 0.75% × $500k = $3,750', () => {
+    const r = calculateLandTax(
+      baseInput({
+        taxableLandValue: 500_000,
+        isForeignOwner: true,
+        isResidential: true,
+      }),
+      ACT_LAND_TAX_FY2024_25,
+    );
+    expect(r.foreignOwnerSurcharge).toBeCloseTo(3_750, 2);
+  });
+});
+
+describe('calculateLandTax — NT (no land tax regime)', () => {
+  it('NT returns $0 total tax for any value', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 5_000_000 }),
+      NT_LAND_TAX_FY2024_25,
+    );
+    expect(r.totalTax).toBe(0);
+    expect(r.generalLandTax).toBe(0);
+    expect(r.trustSurcharge).toBe(0);
+    expect(r.foreignOwnerSurcharge).toBe(0);
+  });
+
+  it('NT surfaces UC-NT-NO-LAND-TAX', () => {
+    const r = calculateLandTax(
+      baseInput({ taxableLandValue: 1_000_000 }),
+      NT_LAND_TAX_FY2024_25,
+    );
+    expect(r.uncomputed.some((u) => u.id === 'UC-NT-NO-LAND-TAX')).toBe(true);
   });
 });
