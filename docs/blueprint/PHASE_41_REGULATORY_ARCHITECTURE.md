@@ -507,7 +507,7 @@ Initial entries (Phase 41e demo scope):
 >
 > **Implementation status (2026-05-05):**
 > - **41e.−1 cleanup** — slices A (PR #626 ✅ merged), B (PR #629 ✅ merged), C (PR #630 ✅ merged), D (PR #633 in review). After D, audit C-1, C-2, C-4 + H-1 through H-6 all resolved. C-3 deferred to 41e.0 slice C (entity-aware aggregators).
-> - **41e.0 foundation** — slice A (PR #634 in review — types + permissions), slice B (PR #636 in review — `parentEntityId` cycle-detection per audit §7), slice C (PR #639 in review — entity-aware aggregator extensions, **resolves audit C-3** — the last open audit critical), slice D (queued — `entityTaxRouter` skeleton + AFSL boundaries renderer + new endpoints).
+> - **41e.0 foundation** — slice A (PR #634 in review — types + permissions), slice B (PR #636 in review — `parentEntityId` cycle-detection per audit §7), slice C (PR #639 in review — entity-aware aggregator extensions, **resolves audit C-3** — the last open audit critical), slice D (PR #642 in review — `entityTaxRouter` skeleton + AFSL boundaries renderer + 2 new endpoints + `<BoundaryFootnote />` wired into `/dashboard/tax`. **First user-visible 41e.0 surface.** After D, **41e.0 is COMPLETE.**).
 > - **41e.1 → 41e.17** — queued; sequence below remains the contract.
 
 Given the surface area, 41e is not one PR. It's a sequence of 18 sub-PRs (the original 17 plus the inserted `41e.−1`), all gating the lighthouse adviser pitch:

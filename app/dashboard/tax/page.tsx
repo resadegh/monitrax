@@ -33,6 +33,23 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import { BoundaryFootnote } from '@/components/tax/BoundaryFootnote';
+import type { AuthorityCitation } from '@/lib/tax-engine/types';
+
+/**
+ * Authority citations applied to the figures rendered on this page.
+ * Phase 20 produces federal individual tax (Div 1-6 + s4-10), Medicare
+ * (Health Insurance Levy Act 1982 §3, §8), LITO (Div 126-H), SAPTO
+ * (Div 126-L), franking offset (Div 207). When 41e.1+ ship, the per-
+ * entity dispatch will surface its own citations from the API response;
+ * this static list documents the household-level baseline.
+ */
+const TAX_PAGE_CITATIONS: AuthorityCitation[] = [
+  { kind: 'ITAA_1997', reference: 's4-10', lastReviewed: '2026-05-05' },
+  { kind: 'ITAA_1997', reference: 'Div 1-6', lastReviewed: '2026-05-05' },
+  { kind: 'ITAA_1997', reference: 'Div 126-H (LITO)', lastReviewed: '2026-05-05' },
+  { kind: 'ITAA_1997', reference: 'Div 207 (Franking)', lastReviewed: '2026-05-05' },
+];
 
 interface TaxRecommendation {
   id: string;
@@ -793,15 +810,17 @@ export default function TaxPage() {
           </Tabs>
         )}
 
-        {/* Disclaimer */}
+        {/* AFSL / TPB / NCCP boundary footnote (Phase 41e.0 slice D).
+            Replaces the old free-text Disclaimer with the canonical
+            renderer — one source of truth for legal copy across every
+            tax-shaped surface. */}
         <Card className="border-muted bg-muted/30">
           <CardContent className="pt-4">
-            <p className="text-xs text-muted-foreground">
-              <strong>Disclaimer:</strong> This is an estimate based on your recorded income and expenses.
-              Tax calculations include Medicare levy and LITO offset but may not account for all offsets,
-              deductions, or special circumstances. Please consult a registered tax agent for accurate
-              tax planning and lodgment. Last calculated: {taxPosition?.metadata.calculatedAt ? new Date(taxPosition.metadata.calculatedAt).toLocaleString('en-AU') : 'N/A'}
-            </p>
+            <BoundaryFootnote
+              fyLabel={taxConfig.label}
+              citations={TAX_PAGE_CITATIONS}
+              calculatedAt={taxPosition?.metadata.calculatedAt}
+            />
           </CardContent>
         </Card>
       </div>
