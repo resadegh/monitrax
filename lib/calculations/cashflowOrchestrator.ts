@@ -21,6 +21,12 @@ import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 // TYPES
 // =============================================================================
 
+/**
+ * Phase 41a — `LegalEntity` ownership FK propagated through the cashflow
+ * inputs (Phase 41e.0 audit C-3). Optional + nullable on every input row;
+ * the `ownerEntityId` filter param on `calculateCashflow()` defaults to
+ * "no filter" so omitting it preserves pre-41e behaviour exactly.
+ */
 export interface IncomeItem {
   amount: number;
   frequency: string;
@@ -30,6 +36,7 @@ export interface IncomeItem {
   grossAmount?: number | null;
   isTaxable?: boolean;
   name?: string;
+  ownerEntityId?: string | null;
 }
 
 export interface ExpenseItem {
@@ -39,6 +46,7 @@ export interface ExpenseItem {
   isTaxDeductible?: boolean;
   category?: string;
   name?: string;
+  ownerEntityId?: string | null;
 }
 
 export interface LoanItem {
@@ -48,6 +56,7 @@ export interface LoanItem {
   principal?: number;
   interestRate?: number;
   offsetBalance?: number;
+  ownerEntityId?: string | null;
 }
 
 export interface CashflowInput {
@@ -278,11 +287,33 @@ export function calculateSimpleCashflow(input: CashflowInput): SimpleCashflowRes
 }
 
 /**
- * Calculate complete cashflow analysis with all breakdowns
+ * Calculate complete cashflow analysis with all breakdowns.
  *
  * This is the canonical cashflow calculation used throughout the app.
+ *
+ * `ownerEntityId` (Phase 41e.0 audit C-3): when provided, only items
+ * whose `ownerEntityId` matches are included in the result. Default =
+ * no filter for backward-compat — every existing caller continues to
+ * receive household-wide totals exactly as before.
+ *
+ * Per `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §6.3.
  */
-export function calculateCashflow(input: CashflowInput): CashflowResult {
+export function calculateCashflow(
+  input: CashflowInput,
+  ownerEntityId?: string,
+): CashflowResult {
+  // Apply optional entity filter once at the top so every downstream
+  // loop sees the scoped set. `ownerEntityId === undefined` ⇒ no filter.
+  const incomeFiltered = ownerEntityId
+    ? input.income.filter((i) => i.ownerEntityId === ownerEntityId)
+    : input.income;
+  const expensesFiltered = ownerEntityId
+    ? input.expenses.filter((e) => e.ownerEntityId === ownerEntityId)
+    : input.expenses;
+  const loansFiltered = ownerEntityId
+    ? input.loans.filter((l) => l.ownerEntityId === ownerEntityId)
+    : input.loans;
+
   // Calculate income with gross/net separation
   let monthlyGrossIncome = 0;
   let monthlyNetIncome = 0;
@@ -290,7 +321,7 @@ export function calculateCashflow(input: CashflowInput): CashflowResult {
   let taxableIncome = 0;
   const incomeByType: Record<string, number> = {};
 
-  for (const item of input.income) {
+  for (const item of incomeFiltered) {
     const { monthlyGross, monthlyNet, monthlyPayg } = calculateIncomeAmounts(item);
 
     monthlyGrossIncome += monthlyGross;
@@ -312,7 +343,7 @@ export function calculateCashflow(input: CashflowInput): CashflowResult {
   let taxDeductibleExpenses = 0;
   const expensesByCategory: Record<string, number> = {};
 
-  for (const expense of input.expenses) {
+  for (const expense of expensesFiltered) {
     const monthly = toMonthly(expense.amount, expense.frequency as Frequency);
     monthlyExpenses += monthly;
 
@@ -332,7 +363,7 @@ export function calculateCashflow(input: CashflowInput): CashflowResult {
 
   // Calculate loan repayments
   let monthlyLoanRepayments = 0;
-  for (const loan of input.loans) {
+  for (const loan of loansFiltered) {
     const monthly = toMonthly(loan.minRepayment, loan.repaymentFrequency as Frequency);
     monthlyLoanRepayments += monthly;
   }

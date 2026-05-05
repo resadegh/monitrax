@@ -1,5 +1,51 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e0-c-aggregators (Phase 41e.0 foundation slice C — entity-aware aggregator extensions, resolves audit C-3)
+
+### Changes Made
+- **Type:** Feature — entity-scoping behaviour added to the 5 canonical financial aggregators (Phase 41e.0 slice C). Pure additive: every existing call site continues to receive household-wide totals exactly as before; new callers can scope per-entity by passing the optional `ownerEntityId` filter.
+- **Scope:** Resolves the last open audit critical — **C-3** (aggregators have zero entity awareness). Combined with C-1 / C-2 / C-4 (resolved in 41e.−1 cleanup) and H-1 through H-6 (resolved in 41e.−1 cleanup B/C), this closes the full audit register.
+- **Stacked on:** PR #637 (doc-sync follow-up). Stack chain: this PR → #637 → #636 → #634 → #633 → main.
+
+### Files Modified
+- `lib/calculations/incomeAggregator.ts` — `IncomeInput.ownerEntityId?: string | null` added; `aggregateIncome(income, targetFrequency, ownerEntityId?)` filters before aggregation.
+- `lib/calculations/expenseAggregator.ts` — `ExpenseInput.ownerEntityId?: string | null` added; `aggregateExpenses(expenses, targetFrequency, ownerEntityId?)` filters before category breakdown.
+- `lib/calculations/loanAggregator.ts` — `LoanInput.ownerEntityId?: string | null` added; `aggregateLoanRepayments(loans, targetFrequency, ownerEntityId?)` filters before principal/interest summation.
+- `lib/calculations/cashflowOrchestrator.ts` — `IncomeItem` / `ExpenseItem` / `LoanItem` all gained `ownerEntityId?: string | null`; `calculateCashflow(input, ownerEntityId?)` applies the filter once at the top across all three sub-arrays so every downstream loop sees the scoped set.
+- `lib/calculations/netWorthCalculator.ts` — `PropertyInput` / `AccountInput` / `InvestmentInput` / `SuperInput` / `AssetInput` / `LoanInput` all gained `ownerEntityId?: string | null`; `calculateTotalAssets(...args, ownerEntityId?)` and `calculateTotalLiabilities(loans, ownerEntityId?)` filter via internal `matchEntity` helper.
+- `docs/architecture/03_DATA_MODEL.md` §10.12 — "Aggregator extensions (slice C — pending)" flipped to **shipped** with a per-aggregator signature table + the test contract summary. Confirms: (1) filter-omitted reproduces pre-41e household totals, (2) filter-provided returns only matching items, (3) `e1.total + e2.total === household.total` proves no double-counting.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 status — slice C flipped from "queued" to "PR #639 in review — **resolves audit C-3 — the last open audit critical**".
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry prepended documenting the slice + the closing of the full audit register.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Files Created
+- `tests/calculations/aggregatorEntityScoping.test.ts` — 18 tests covering all 5 aggregators. Three assertion classes: backward-compat (filter omitted → unchanged behaviour), entity-scoping (filter provided → only matching items), structural correctness (per-entity sums equal household total — no double-counting).
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **201 tests passed** (183 → 201, +18 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — closes the full audit register (C-1 / C-2 / C-3 / C-4 + H-1..H-6 all resolved)
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Per the going-forward commitment from PR #637: every relevant doc updated in this same PR, no batching.
+
+Docs updated:
+- `docs/architecture/03_DATA_MODEL.md` §10.12 — slice C flipped to "shipped" with full per-aggregator signature table + test contract.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice C status flipped + audit-closure note.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+
+### What's next
+- **Slice D (final 41e.0 slice)** — `entityTaxRouter` skeleton + AFSL/TPB/NCCP boundaries renderer + new endpoints (`GET /api/tax/entity/[id]`, `GET /api/tax/config`, stub `GET /api/tax/master-position`). After D, **41e.0 is complete** and **41e.1 (Div 115 + Div 6 basic + capital loss netting) starts.** Per the pre-declared doc-touch list from PR #637 changelog, slice D will update: `07_API_STANDARDS.md` (new endpoints), `06_UI_UX_FOUNDATION.md` (boundaries-renderer footer pattern if surfaced UI-side), `03_DATA_MODEL.md` §10.12 (router + endpoints), `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 status flip, IMPLEMENTATION_PLAN entry, `MASTER_BLUEPRINT.md` if 41e.0 phase status changes.
+
+### PR
+- Branch: `claude/phase-41e0-c-aggregators` (stacked on `claude/phase-41e0-doc-sync-followup` / PR #637)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e0-doc-sync-followup (Phase 41e.0 doc-sync follow-up — close §3.1 / §16 gaps from slices A + B)
 
 ### Changes Made

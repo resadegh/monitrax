@@ -22,6 +22,11 @@ export interface LoanInput {
   type?: string;
   isInterestOnly?: boolean;
   propertyId?: string | null;
+  /**
+   * Phase 41a — `LegalEntity` ownership FK (Phase 41e.0 audit C-3).
+   * See `incomeAggregator.IncomeInput.ownerEntityId` for full rationale.
+   */
+  ownerEntityId?: string | null;
 }
 
 export interface LoanAggregation {
@@ -44,11 +49,16 @@ export interface DebtMetrics {
 // =============================================================================
 
 /**
- * Aggregate loan repayments to a target frequency (monthly or annual)
+ * Aggregate loan repayments to a target frequency (monthly or annual).
+ *
+ * `ownerEntityId` (Phase 41e.0 audit C-3): when provided, only loans
+ * whose `ownerEntityId` matches are aggregated. Default = no filter
+ * for backward-compat. Per audit doc §6.3.
  */
 export function aggregateLoanRepayments(
   loans: LoanInput[],
-  targetFrequency: 'monthly' | 'annual' = 'monthly'
+  targetFrequency: 'monthly' | 'annual' = 'monthly',
+  ownerEntityId?: string,
 ): LoanAggregation {
   const converter = targetFrequency === 'monthly' ? toMonthly : toAnnual;
 
@@ -59,7 +69,11 @@ export function aggregateLoanRepayments(
 
   const byType: Record<string, { principal: number; repayments: number }> = {};
 
-  for (const loan of loans) {
+  const filtered = ownerEntityId
+    ? loans.filter((l) => l.ownerEntityId === ownerEntityId)
+    : loans;
+
+  for (const loan of filtered) {
     const principal = Number(loan.principal || 0);
     const repayment = converter(
       loan.minRepayment || 0,
