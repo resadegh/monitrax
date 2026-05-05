@@ -15,6 +15,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { ConnectCta } from './ConnectCta';
 
 interface Rating {
   id: string;
@@ -141,21 +142,14 @@ export default function MarketplaceListingDetailPage({
         </div>
       </header>
 
-      {/* CTA */}
-      <div className="rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 px-5 py-4 mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h3 className="text-[14px] font-semibold text-emerald-900">Want to talk to {listing.displayName}?</h3>
-          <p className="text-[12px] text-emerald-700 mt-0.5">
-            Create a free Monitrax account, decide what to share, then send a request.
-          </p>
-        </div>
-        <Link
-          href={`/signup?intent=connect&listing=${listing.publicSlug}`}
-          className="inline-flex items-center rounded-full bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-[13px] font-medium transition-colors"
-        >
-          Get started →
-        </Link>
-      </div>
+      {/* CTA — Phase 32C PR4c: opens ComposeRequestDialog (handles auth gate
+          + leaky-funnel guardrail at the API layer with friendly fallbacks) */}
+      <ConnectCta
+        listingId={listing.id}
+        listingDisplayName={listing.displayName}
+        listingDiscipline={listing.discipline}
+        publicSlug={listing.publicSlug}
+      />
 
       {/* Blurb */}
       {listing.blurb && (

@@ -252,6 +252,16 @@ enum AuditAction {
   MARKETPLACE_LISTING_APPROVED
   MARKETPLACE_LISTING_REJECTED
   MARKETPLACE_LISTING_SUSPENDED
+
+  // Phase 32C PR4c — Professional request lifecycle (D2C user → marketplace
+  // listing → adviser inbox → ACCEPTED / DECLINED). On ACCEPTED, an
+  // OrganizationClient row is created (consent invite path) and a
+  // lead-fee billing intent is recorded — actual Stripe charge wires in PR6.
+  PROFESSIONAL_REQUEST_SUBMITTED
+  PROFESSIONAL_REQUEST_ACCEPTED
+  PROFESSIONAL_REQUEST_DECLINED
+  PROFESSIONAL_REQUEST_WITHDRAWN
+  PROFESSIONAL_REQUEST_EXPIRED
 }
 
 enum AuditStatus {
@@ -531,6 +541,9 @@ model User {
   // Phase 32C PR4a: Marketplace ratings — a user can rate a professional
   // listing they've engaged with (one rating per listing per user).
   professionalRatings ProfessionalRating[]
+
+  // Phase 32C PR4c: requests this user has submitted to professional listings.
+  professionalRequests ProfessionalRequest[]
 
   @@map("users")
 }
@@ -1481,6 +1494,9 @@ model OrganizationMember {
   // Relationships
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Phase 32C PR4c: marketplace requests this member has responded to.
+  respondedRequests ProfessionalRequest[]
 
   @@unique([organizationId, userId])
   @@index([organizationId])
@@ -4519,7 +4535,8 @@ model ProfessionalListing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ratings ProfessionalRating[]
+  ratings  ProfessionalRating[]
+  requests ProfessionalRequest[]
 
   @@index([status])
   @@index([discipline, status])
@@ -4602,4 +4619,86 @@ enum ListingRegion {
   ACT
   NT
   NATIONAL
+}
+
+// =============================================================================
+// PHASE 32C PR4c: PROFESSIONAL REQUEST LIFECYCLE
+// =============================================================================
+// D2C user picks a marketplace listing → composes a question → submits →
+// adviser inbox → ACCEPTED (lead fee billing intent recorded) / DECLINED.
+// On ACCEPTED, an OrganizationClient row is created so the engagement
+// materialises (consent invite path).
+//
+// Lead-fee tier is resolved at SUBMIT time from the user's net worth via
+// `masterFinancialService.ts` (Emerging <$200k / Growing $200k–$1M /
+// Established $1M+). The amount is taken from the listing's per-tier rate
+// at submit-time so changing tier rates after the fact doesn't affect
+// already-submitted requests.
+//
+// Actual Stripe billing wires in PR6 — at v1 we record the charge intent
+// (`leadFeeChargedAt` set on accept) without performing a live charge.
+// CLAUDE.md §0 architect lens: keep the data model right; payment plumbing
+// is a separate concern with its own deploy gate.
+
+model ProfessionalRequest {
+  id                  String              @id @default(uuid())
+
+  // Who's asking
+  requesterUserId     String
+  requester           User                @relation(fields: [requesterUserId], references: [id], onDelete: Cascade)
+
+  // What they're asking about
+  listingId           String
+  listing             ProfessionalListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  // The ask
+  contextLabel        String? // tax / refinance / etc — how the user got here (open-ended; matches askAProfessionalService context vocabulary)
+  question            String              @db.Text
+
+  // Snapshot context shared at submission time (json snapshot of headline
+  // metrics the user explicitly chose to share). NEVER includes raw account
+  // numbers / transactions — only aggregated metrics (e.g. monthlyCashflow,
+  // totalDebt, netWorthBracket). CDR sanitisation runs at the service layer.
+  snapshotContextJson Json?
+
+  // Lifecycle
+  status              RequestStatus       @default(SUBMITTED)
+  submittedAt         DateTime            @default(now())
+  respondedAt         DateTime?
+  respondedByMemberId String?
+  respondedByMember   OrganizationMember? @relation(fields: [respondedByMemberId], references: [id], onDelete: SetNull)
+  declineReason       String?             @db.Text
+  withdrawnAt         DateTime?
+
+  // Lead fee (resolved at submit-time, billed at accept-time; actual Stripe
+  // charge wires in PR6 — at v1 `leadFeeChargedAt` is the billing intent)
+  leadFeeTier         LeadFeeTier?
+  leadFeeAmount       Decimal?            @db.Decimal(10, 2)
+  leadFeeChargedAt    DateTime?
+
+  // Engagement created if accepted — links to the OrganizationClient row
+  // that materialises the relationship after consent. NULL until accept.
+  clientLinkId        String?             @unique
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([requesterUserId, status])
+  @@index([listingId, status])
+  @@index([status, submittedAt])
+  @@map("professional_requests")
+}
+
+enum RequestStatus {
+  SUBMITTED   // User submitted; awaiting adviser action
+  ACCEPTED    // Adviser accepted; lead fee billing intent recorded; ClientLink created
+  DECLINED    // Adviser declined; no fee charged, no link created
+  WITHDRAWN   // User withdrew before adviser action
+  EXPIRED     // 14+ days no adviser response; auto-marked by scheduled job
+}
+
+enum LeadFeeTier {
+  EMERGING    // <$200k net worth — listing.leadFeeTierEmerging applies
+  GROWING     // $200k-$1M net worth — listing.leadFeeTierGrowing applies
+  ESTABLISHED // $1M+ net worth — listing.leadFeeTierEstablished applies
 }
