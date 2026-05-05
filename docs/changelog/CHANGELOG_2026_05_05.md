@@ -1,5 +1,82 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-32c-pr4a-marketplace (Phase 32C PR4a — Professional Marketplace SHIPPED)
+
+### Changes Made
+- **Type:** Feature (Demo-Complete Critical Path; closes Up Next #13; first Phase 32C deliverable; built in parallel with Session D's Phase 41 — zero territory overlap)
+- **Scope:** Professional marketplace MVP — Org-side listing editor + Monitrax admin approval queue + public browse + public listing detail.
+
+### Files Created
+- `prisma/migrations/20260505140000_add_professional_marketplace/migration.sql` — additive: 4 new enums + extension of `AuditAction` with 5 new values + `professional_listings` + `professional_ratings` tables + indexes + FKs.
+- `lib/services/marketplaceService.ts` — canonical service with three caller scopes (Org / admin / public). Submit-time validation, status-transition guards, slug helpers, typed error codes.
+- `app/api/portal/organizations/[orgId]/marketplace-listing/route.ts` — GET/PUT.
+- `app/api/portal/organizations/[orgId]/marketplace-listing/submit/route.ts` — POST. PORTAL_OWNER only.
+- `app/api/admin/marketplace/listings/route.ts` — GET admin queue.
+- `app/api/admin/marketplace/listings/[id]/route.ts` — GET/POST. POST takes `{ action: 'approve' | 'reject' | 'suspend', ... }`.
+- `app/api/marketplace/listings/route.ts` — GET public browse. APPROVED only.
+- `app/api/marketplace/listings/[slug]/route.ts` — GET public detail with 10 most recent public ratings.
+- `components/portal/marketplace/MarketplaceListingEditor.tsx` — Org-side editor (~470 lines). Discipline-conditional compliance fields, accessible checkbox groups, sticky bottom action bar, REJECTED/SUSPENDED feedback panels.
+- `app/portal/marketplace/listing/page.tsx` — Org-side listing page wrapping the editor with status badge and apple-glass aesthetic.
+- `app/admin/marketplace/listings/page.tsx` — Admin queue. Defaults to PENDING_REVIEW filter.
+- `app/admin/marketplace/listings/[id]/page.tsx` — Admin detail with deeplinks to ASIC moneysmart / TPB public register / ABR for cross-check, manual cross-check checkboxes, free-text verificationNotes, approve/reject/suspend buttons.
+- `app/marketplace/layout.tsx` — public marketplace chrome.
+- `app/marketplace/page.tsx` — public browse with filters and sorted listing cards.
+- `app/marketplace/[slug]/page.tsx` — public listing detail with full blurb, specialisations, target tiers, regions, recent ratings, "Connect" CTA.
+
+### Files Modified
+- `prisma/schema.prisma` — added `ProfessionalListing` + `ProfessionalRating` models + 4 enums + 5 AuditAction values + reverse relations on `Organization`, `User`, `AdminUser`.
+- `lib/services/index.ts` — re-exports the marketplace service surface.
+- `lib/portal/permissions.ts` — added `marketplace:listing:read|write|submit` permission types and role mapping (OWNER full, ADMIN read+write, ADVISOR/VIEWER read-only).
+- `lib/admin/permissions.ts` — added `marketplace:listings:read|approve|reject|suspend` permission types and role mapping (SUPER_ADMIN full, SUPPORT_ADMIN + VIEWER read-only) + PERMISSION_DESCRIPTIONS entries.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #13 marked SHIPPED + new Recently Completed entry prepended for 2026-05-05.
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Step 6 marketplace section populated with the demo path.
+
+### Architecture Decisions
+- **Zero new dependencies.** Reused existing Apple-glass tokens, admin UI primitives, service patterns. No extra packages.
+- **One service, three scopes.** Viewer scope is a parameter (filter shape), not a fork (CLAUDE.md §0 architect lens / §12.3).
+- **Lead-fee tiers stored per-listing.** Defaults AU$80/$150/$250 by Emerging/Growing/Established bracket (per IMPLEMENTATION_PLAN.md Up Next #15). Per-Org overrides at admin-approval time.
+- **Status-transition guards in the service.** Editing an APPROVED listing flips back to PENDING_REVIEW; editing a REJECTED listing returns to DRAFT.
+- **Submit-only for OWNER.** Mirrors `team:invite` anti-poaching guardrail (PR #603) — submitting publishes firm's public profile + binds to lead-fee contract; commercial decision belongs to Org owner.
+- **Manual ASIC/TPB cross-check at v1.** Admin detail has one-tap register deeplinks + timestamped checkboxes + verificationNotes scratchpad. Automated API cross-check defers to PROD.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean, exit 0.
+- [x] `npx next build` — green, exit 0. All 11 marketplace routes registered.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new `MarketplaceListingEditor` + public marketplace card / detail patterns)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (lead-fee tier defaults baked into schema; submit-for-review owner-only)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md:Up Next #13` — marked SHIPPED with summary.
+- `docs/IMPLEMENTATION_PLAN.md:Recently Completed 2026-05-05` — new entry prepended.
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md:Step 6` — marketplace section populated.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+N/A — migration is purely additive (CREATE TYPE / CREATE TABLE / ALTER TYPE ADD VALUE). No `update`, `upsert`, `delete`, `updateMany`, `deleteMany`, or raw SQL `UPDATE`/`DELETE` on existing rows.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+- [x] `prisma/schema.prisma` modified
+- [x] Matching migration at `prisma/migrations/20260505140000_add_professional_marketplace/migration.sql`
+- [x] Migration is purely additive
+- [x] `npx prisma validate` clean
+- [x] `npx prisma generate` clean
+
+### PR
+- Branch: `claude/phase-32c-pr4a-marketplace`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41d-money-flow-sankey (Phase 41d — Money Flow Sankey at /dashboard/entities)
 
 ### Changes Made

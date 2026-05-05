@@ -133,15 +133,40 @@ This playbook codifies the demo into a runnable script so:
 - **TO BE WRITTEN AS BUILD COMPLETES:** AFSL objection-handling flowchart + scripted responses
 
 ### Step 6 — Ask-a-Professional in action (3 min)
+
+#### Step 6a — Show the marketplace surface first (60 sec)
+- Open `/marketplace` in a new tab — the public marketplace browse, no auth required
+- Frame: *"Before I show you how the AI Guide connects users to professionals, here's the front door — what an Australian who's looking for an adviser sees when they search Monitrax."*
+- Walk the listing cards: rating + accepted-request count + specialisation chips + region preview
+- Click into a sample listing (e.g. `/marketplace/smithfield-wealth`) — point at:
+  - The compliance footer on every public surface ("listings are reviewed before going live; AFSL/credit rep/TPB numbers cross-checked against ASIC and TPB public registers")
+  - The "Connect" CTA pointing at `/signup?intent=connect&listing=...` (the AskAPro state machine in PR4b plugs in here)
+- Frame: *"This is invite-only at v1 — Monitrax-curated 10–20 launch professionals. The public registers are cross-checked before anything goes live."*
+
+#### Step 6b — Show the Org-side editor (45 sec)
+- Switch to Reza @ Smithfield's portal, navigate to `/portal/marketplace/listing`
+- Frame: *"This is what your firm's marketplace profile editor looks like. Click into it once at setup, set your specialisations + regions + compliance number, submit for review."*
+- Scroll quickly — point at:
+  - Discipline-conditional compliance number (AFSL field surfaces because Smithfield is FINANCIAL_ADVISOR)
+  - Status badge top-right ("Live on marketplace" if approved; "Pending review" if just submitted)
+  - The lead-fee tiers ($80 / $150 / $250 by user net-worth bracket) — *"Per-Org overrides exist if you want a different deal; defaults are the published rates."*
+- Frame: *"Once submitted, Monitrax cross-checks your AFSL on the ASIC moneysmart register manually. Approval lands in 24–48 hours at v1; we automate the cross-check post-launch when volume justifies it."*
+
+#### Step 6c — The acquisition story (90 sec)
 - Switch to a SECOND screen / browser logged in as Sarah Kim
 - Show Sarah's AI Guide page on her dashboard
-- Click "Ask a Professional" → marketplace picker shows 3 best-fit (Smithfield Wealth featured)
+- Click "Ask a Professional" → marketplace picker shows 3 best-fit (Smithfield Wealth featured) — **NOTE for the demo: this surface ships in PR4b; for the lighthouse pitch run the marketplace browse step (6a) instead and verbally bridge: "and from inside the consumer app, the AI Guide can launch this same surface contextually — the next slice."**
 - Sarah picks Smithfield, composes a question (e.g. *"Should I refinance my offset?"*), submits
 - Switch BACK to Reza @ Smithfield's screen
 - Practice → Inbox tab — the request lands instantly with Sarah's snapshot context attached
 - *"This is your acquisition channel. Pre-qualified, financially-engaged user who has already done the data entry. Your CAC just dropped from AU$2,000 to AU$150."*
 - **The CAC story lands here.** Watch for the second lean-forward.
-- **TO BE WRITTEN AS BUILD COMPLETES:** lead-fee pricing tier breakdown + how to handle "what if I don't accept the lead?" objection
+
+#### Common objections at this step
+- *"What if a user picks me but I don't have capacity?"* → "You decline the request. No lead fee charged on a decline. The user goes back to the picker and chooses someone else."
+- *"What stops a user from working with me off-platform?"* → "Nothing — but the in-app chat + email-through-app + 7-year compliance archive (Phase 32C PR4d) is genuinely useful for AFSL recordkeeping. Most lighthouse advisers we've talked to find the platform value compounding rather than a tax."
+- *"Are listings free?"* → "Listing is free. You only pay when you accept a request. The AU$80/$150/$250 lead fee is by user net-worth bracket — so the high-value leads cost more, but they also engage longer."
+- **TO BE WRITTEN AS BUILD COMPLETES (after PR4b/4c ship):** in-context AskAPro affordance walkthrough from the AI Guide; lead-fee billing pipeline screenshot; rejected-listing UX screenshot for the rare AFSL register mismatch case
 
 ### Step 7 — Conversation thread (2 min)
 - In the Practice inbox, click Sarah's request

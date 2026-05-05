@@ -62,7 +62,16 @@ export type PortalPermission =
 
   // Audit log permissions
   | 'audit:read'
-  | 'audit:export';
+  | 'audit:export'
+
+  // Marketplace permissions (Phase 32C PR4a)
+  // The Org's public profile on /marketplace. Read = view our own draft;
+  // write = create/edit; submit = move to PENDING_REVIEW for admin approval.
+  // Admin approval lives in the separate Monitrax admin permission registry
+  // (`lib/admin/permissions.ts`) — the Org never approves its own listing.
+  | 'marketplace:listing:read'
+  | 'marketplace:listing:write'
+  | 'marketplace:listing:submit';
 
 // =============================================================================
 // ROLE PERMISSION MAPPING
@@ -86,6 +95,8 @@ const ROLE_PERMISSIONS: Record<PortalUserRole, PortalPermission[]> = {
     'api_keys:read', 'api_keys:create', 'api_keys:revoke',
     // All audit permissions
     'audit:read', 'audit:export',
+    // Marketplace listing — full
+    'marketplace:listing:read', 'marketplace:listing:write', 'marketplace:listing:submit',
   ],
 
   PORTAL_ADMIN: [
@@ -107,6 +118,10 @@ const ROLE_PERMISSIONS: Record<PortalUserRole, PortalPermission[]> = {
     'api_keys:read', 'api_keys:create',
     // Audit permissions
     'audit:read',
+    // Marketplace listing — read + edit, but submit-for-review is OWNER-only
+    // (submitting publishes the firm's public profile + binds them to the
+    // lead-fee contract — commercial decision belongs to the Org owner).
+    'marketplace:listing:read', 'marketplace:listing:write',
   ],
 
   PORTAL_ADVISOR: [
@@ -124,6 +139,8 @@ const ROLE_PERMISSIONS: Record<PortalUserRole, PortalPermission[]> = {
     'integrations:read',
     // No API key permissions
     // No audit permissions
+    // Marketplace listing — read-only
+    'marketplace:listing:read',
   ],
 
   PORTAL_VIEWER: [
@@ -141,6 +158,8 @@ const ROLE_PERMISSIONS: Record<PortalUserRole, PortalPermission[]> = {
     'integrations:read',
     // No API key permissions
     // No audit permissions
+    // Marketplace listing — read-only
+    'marketplace:listing:read',
   ],
 };
 
