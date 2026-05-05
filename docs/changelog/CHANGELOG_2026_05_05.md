@@ -120,6 +120,77 @@ Docs updated:
 
 ---
 
+## Session: claude/phase-33g-adviser-feedback-build-Q6tyx (Phase 33g — Adviser Feedback Inbox SHIPPED)
+
+### Changes Made
+- **Type:** Feature (Demo-Complete Critical Path; closes Up Next #35; closes Open Question Q-FB-1)
+- **Scope:** End-to-end async feedback channel between advisers + Reza. Adviser-side `/portal/feedback`, Reza-side `/admin/feedback`, Markdown export endpoint feeding Claude Code synthesis sessions.
+- **Description:** Reza directive 2026-05-05 *"use your judgement and continue"* — Claude resolved the five §9 open questions (naming = "Send feedback" verbs / "Feedback" nouns; email = in-app only with documented swap-point; severity = default MEDIUM; internal-notes audit = every edit; SLA = 48 hours stated in form copy, cron deferred) and built the feature in one session. Schema + service + API + UI + 4 integration touch-points (help-drawer footer, PracticeHeader pill, portal sidebar, admin sidebar). Architecture decision: keep `FeedbackThread` separate from Phase 32C PR4d's `ProfessionalConversation` — different participants, retention rules, status workflow; rationale documented in the service file-header JSDoc to prevent future merge attempts.
+
+### Files Created
+- `lib/services/feedbackService.ts` — canonical CRUD + audit boundary. ~340 LOC. `createThread` + `appendReply` (auto-flips OPEN → IN_REVIEW on first admin reply) + `updateAdminFields` (audits each field on every change) + `listAdviserThreads`/`getAdviserThread` (sanitises `internalNotes` out before return) + `listAdminThreads`/`getAdminThread` + `exportThreadsAsMarkdown` (server-side excludes `internalNotes`; respects `taggedForAi` + `since` filters). `notifyAdviserOfReply()` is a documented swap-point for SendGrid.
+- `app/api/portal/feedback/route.ts` — adviser GET + POST. `withPermission('feedback.read'/'feedback.write')`. Validates subject ≤140 chars, body non-empty, surfaceTag in whitelist.
+- `app/api/portal/feedback/[id]/route.ts` — adviser thread detail. 404 if not own.
+- `app/api/portal/feedback/[id]/reply/route.ts` — adviser reply. Service-layer ownership enforcement → 403 on cross-thread post attempt.
+- `app/api/admin/feedback/route.ts` — admin list with status/tag/severity/orgId filters. `verifyAdminGCPAuth` + `mfaSetupRequiredResponse()`.
+- `app/api/admin/feedback/[id]/route.ts` — admin thread GET (full incl. internal notes + author info) + PATCH (status flip / internal notes / taggedForAi).
+- `app/api/admin/feedback/[id]/reply/route.ts` — admin reply with `MONITRAX_ADMIN` role. Resolves admin's User.id by email (admin auth context exposes `adminId` against `admin_users` not `users`; the FeedbackMessage FK requires a User row, which exists for the same email after the admin signs into the consumer surface once).
+- `app/api/admin/feedback/export/route.ts` — Markdown export. `Content-Type: text/markdown`, `Content-Disposition: attachment`, file naming `monitrax-feedback-YYYY-MM-DD.md` (or `-tagged.md` when filtered). `?since=YYYY-MM-DD` for date-range slices, `?taggedOnly=true` for AI-eligible threads only. Logs the export via `logExport({ entityType: 'FeedbackThread' })`.
+- `app/portal/feedback/page.tsx` — adviser master-detail page. List on left, new-thread form OR selected thread on right. Auto-fills `surfaceRoute` from `?route=` query param set by the help-drawer footer link. Tag/severity selects, markdown body textarea, 48h SLA copy, CDR-data UX nudge.
+- `app/admin/feedback/page.tsx` — Reza inbox. Status filter chips (All / Open / In review / Planned / Shipped / Won't fix / Duplicate), list with `_count.messages` + relTime, detail pane with status flipper + tag-for-AI checkbox + reply box + internal-notes textarea (audited on blur if changed) + two export buttons (tagged-only / all).
+- `prisma/migrations/20260505180000_add_feedback_inbox/migration.sql` — additive only. CREATE 4 enums + 2 tables + 6 indexes; `ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS` × 3 for the new audit actions. No destructive write per CLAUDE.md §12.11.
+- `docs/blueprint/PHASE_33G_ADVISER_FEEDBACK_INBOX.md` — design doc updated to SHIPPED status with the Decisions-made table.
+
+### Files Modified
+- `prisma/schema.prisma` — added 4 enums (`FeedbackSurfaceTag` / `FeedbackSeverity` / `FeedbackStatus` / `FeedbackAuthorRole`) + 2 models (`FeedbackThread` / `FeedbackMessage`) + reverse relations on User (`feedbackThreads`, `feedbackMessages`) + Organization (`feedbackThreads`) + 3 new `AuditAction` enum values.
+- `lib/auth/permissions.ts` — added `feedback.read` + `feedback.write` (every role gets both — feedback is not gated, locking it would be hostile UX).
+- `components/help/HelpDrawer.tsx` — footer gets a "Send feedback →" link beside "Open full Help Center →"; only surfaces when audience set includes any `org-*` audience (so consumer drawer stays the same); pre-fills `?route=<pathname>` so the adviser's new-thread form auto-fills `surfaceRoute`.
+- `components/portal/practice/PracticeHeader.tsx` — adds a "Send feedback" pill in the action slot; carries `?route=/portal/dashboard` so the new-thread form auto-fills.
+- `components/portal/layout/PortalSidebar.tsx` — adds `NavIcons.Feedback` (chat-bubble glyph).
+- `app/portal/PortalLayoutClient.tsx` — adds Feedback to the secondary navigation array.
+- `components/admin/layout/AdminSidebar.tsx` — adds `icons.feedback` + "Adviser Feedback" entry under Operations section.
+
+### Build Status
+- [x] `npx tsc --noEmit --ignoreDeprecations 6.0` — only pre-existing missing-module errors (`react`, `next/server`, etc) that affect the entire codebase identically when `node_modules` is absent. No new type errors introduced by Phase 33g code.
+- [ ] `npm run build` — not run locally (deps not installed). Vercel preview is the source of truth — green build proves the migration applies cleanly to `monitrax-db-dev` + the Prisma client compiles against the extended schema.
+
+### Architecture decisions (logged here so a future session has them)
+- **Separate `FeedbackThread` from `ProfessionalConversation`** (Phase 32C PR4d). Different participants (Monitrax↔adviser vs adviser↔client), different retention rules (24mo default vs 7yr archive), different status workflow (bug-tracker shape vs message-only). Forcing them through one schema would create a discriminator nightmare per CLAUDE.md §12.2 SSOT. Logged in `lib/services/feedbackService.ts` file-header JSDoc.
+- **Email notification: in-app v1 + documented swap-point.** `notifyAdviserOfReply()` ships no-op. Phase 32C PR4d's SendGrid integration swaps the implementation here. Single swap-point; the rest of the codebase doesn't change.
+- **`internalNotes` excluded from adviser-facing API at the service layer**, not at the route layer. Single gate; both gates would be defence in depth but service-layer enforcement means new routes can't accidentally leak the field.
+- **Markdown export is server-side**, not client-side rendering of the inbox to text. Avoids any chance the adviser-facing JSON shape leaks into the export — the server controls exactly what's in the file.
+- **Auto-flip OPEN → IN_REVIEW on first admin reply.** Keeps inbox SLA reporting honest without manual status flipping.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — new `<HelpDrawerButton />` footer state + `PracticeHeader` action slot + admin & portal sidebar entries
+- [x] application config — new `feedback.read` + `feedback.write` permissions registered
+- [ ] GCP infrastructure
+- [ ] identity / auth (re-uses `withPermission` + `verifyAdminGCPAuth` — no new auth surface)
+- [ ] deployment / build
+- [x] security / CDR posture — new audit actions, internal-notes never logged, CDR UX nudge in adviser form, MFA enforcement on admin routes
+- [ ] operational procedure (no new failure mode this round)
+- [x] strategic decision — Q-FB-1 closed by Claude judgement; Up Next #35 → SHIPPED
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #35 → SHIPPED + Recently Completed entry + Q-FB-1 → DECIDED (§15)
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this session block (§11)
+- `docs/blueprint/PHASE_33G_ADVISER_FEEDBACK_INBOX.md` — flipped to SHIPPED + Decisions-made table
+
+### Test plan (manual, post-deploy)
+1. As an adviser logged into `/portal/dashboard`: click `?` help drawer → footer shows "Send feedback →" → click → lands at `/portal/feedback?route=%2Fportal%2Fdashboard` with the new-thread form pre-filled with `/portal/dashboard` in the surface-route preview.
+2. Submit a thread; appears immediately in the left-rail list. Reply on it; reply renders with "You" label.
+3. As Reza in `/admin/feedback`: thread is visible with status `OPEN`. Reply once → service auto-flips status to `IN_REVIEW`. Adviser sees the reply on their next visit; status chip shows "In review".
+4. Edit `internalNotes` and tab away → audit log row appears with action `FEEDBACK_INTERNAL_NOTE_UPDATED` and metadata `{ previousLength, nextLength }` (no body).
+5. Click "Export tagged (.md)" → file downloads, opens cleanly, `internalNotes` are absent. Open a fresh Claude Code session in the repo and paste/attach the file: synthesis works.
+
+### PR
+- Branch: `claude/phase-33g-adviser-feedback-build-Q6tyx`
+- PR #627 (proposal-only) merged 2026-05-05 at the proposal commit; the implementation commit was pushed after the merge and ships in a follow-up PR.
+
+---
+
 ## Session: claude/phase-32c-pr4b-askapro (Phase 32C PR4b — AskAProfessionalButton + picker SHIPPED)
 
 ### Changes Made
