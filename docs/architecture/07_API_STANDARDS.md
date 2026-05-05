@@ -428,3 +428,157 @@ The API layer is correct when:
 
 ---
 
+
+---
+
+# **15. Phase 32B/32C/33g — B2B2C API Patterns**
+
+*Added 2026-05-09 (doc-catch-up).* The B2B2C surface introduced three
+new auth patterns + one new caller-scope dimension that route
+handlers across the new modules use. They're documented here as
+canonical patterns; new endpoints that touch the same surfaces
+should follow the same rules.
+
+## **15.1 Three auth gates, three caller types**
+
+| Caller | Auth gate | Permission |
+|---|---|---|
+| **Consumer** (D2C user) | `withPermission('report.read')` etc | Standard `lib/auth/permissions.ts` registry |
+| **Org-side** (PORTAL_OWNER / PORTAL_ADMIN / PORTAL_ADVISOR / PORTAL_VIEWER) | `withPermission('org.read'/'org.update')` + per-route active-membership check | Portal permissions in `lib/portal/permissions.ts` |
+| **Admin** (Monitrax AdminUser) | `verifyAdminGCPAuth(request)` + `hasAdminPermission(role, perm)` | `lib/admin/permissions.ts` |
+| **Webhook** (Stripe / SendGrid Inbound Parse) | **NO auth gate** — signature verification is the auth mechanism. Read raw body via `request.text()` BEFORE parsing. | n/a |
+
+Webhook routes deliberately reject naked `withPermission` — they're
+called by an external service, not an authenticated Monitrax user.
+The signature header is the authority. 4xx on signature mismatch
+(Stripe / SendGrid retry on 5xx, not 4xx); 5xx only on dispatch
+failure to trigger retry-with-backoff.
+
+## **15.2 Org-scoped routes**
+
+Every portal endpoint that operates on an Org's data takes the
+`organizationId` either as a path parameter or as a query string,
+and uses this pattern:
+
+```ts
+const membership = await prisma.organizationMember.findFirst({
+  where: { userId: auth.userId, organizationId, isActive: true },
+  select: { id: true, role: true },
+});
+if (!membership) {
+  return NextResponse.json(
+    { error: { code: PORTAL_ERROR_CODES.NOT_A_MEMBER, message: 'You are not a member of this organisation' } },
+    { status: 403 },
+  );
+}
+const portalRole = ROLE_MAPPING[membership.role] ?? 'PORTAL_VIEWER';
+if (!hasPortalPermission(portalRole, 'marketplace:listing:write')) {
+  return NextResponse.json(
+    { error: { code: PORTAL_ERROR_CODES.INSUFFICIENT_ROLE, message: 'Insufficient role' } },
+    { status: 403 },
+  );
+}
+```
+
+The `ROLE_MAPPING` (UserRole → PortalUserRole) is duplicated in each
+route file deliberately — keeps the route file readable + auditable
+without a hidden import. Future refactor may consolidate via a helper.
+
+**Anti-poaching guardrail:** commercial actions (submit-for-review on
+marketplace listing, subscribe / cancel / resume on billing) are
+restricted to PORTAL_OWNER even when other writes are allowed.
+Mirrors the `team:invite` PORTAL_OWNER restriction from PR #603.
+
+## **15.3 Drill-in client routes — `verifyAdviserClientAccess`**
+
+Every `/api/portal/clients/[id]/*` endpoint MUST route through the
+shared `lib/portal/adviserClientAccess.ts` helper. Layered checks
+(rejection at any layer returns a structured error):
+
+1. `OrganizationClient` row exists for `params.id`
+2. status === 'ACTIVE' AND consentStatus === 'GRANTED'
+3. Caller has an active `OrganizationMember` seat on the same org
+4. Caller's role permits viewing client data
+5. If caller is `PORTAL_ADVISOR`, they're assigned to this client (`PORTAL_OWNER` / `PORTAL_ADMIN` see whole book)
+
+Returns the canonical `accessScopes` from the DB row — never from
+caller-provided input. Per CLAUDE.md §0 architect lens, the consent
+source-of-truth is the database, never URL params or headers.
+
+**Reviewers reject any new portal client-data endpoint that doesn't
+route through this helper.**
+
+## **15.4 Webhook idempotency**
+
+Both signed-payload webhooks (`/api/stripe/webhooks` and
+`/api/conversations/inbound`) implement idempotency at the database
+boundary:
+
+- Stripe: every event recorded in `StripeWebhookEvent` with unique
+  constraint on `stripeEventId`. Re-deliveries dedupe at insert.
+- Inbound email: `replyToSlug` extracted from `to` header; conversation
+  resolved via `findConversationByReplyToSlug`; sender email matched
+  against the consumer participant; message posted with
+  `channel='EMAIL_IN'` (which bypasses the `assertParticipant` gate
+  since the webhook isn't an authenticated user).
+
+Both webhooks return:
+- 400 on signature mismatch / missing required fields (permanent failure — don't retry)
+- 4xx on validation failure (e.g. unknown slug, sender mismatch)
+- 5xx on internal dispatch failure (transient — Stripe / SendGrid retry with backoff)
+
+## **15.5 Error code vocabulary (additions)**
+
+The unified envelope (per §2.2) gains these codes across the B2B2C
+surface. Codes are typed strings on the route boundary so the UI can
+branch on them without parsing free-text messages:
+
+| Code | HTTP | Meaning |
+|---|---|---|
+| `NOT_A_MEMBER` | 403 | Caller has no active OrganizationMember seat on this org |
+| `INSUFFICIENT_ROLE` | 403 | Caller's portal role doesn't permit the action (commercial actions are OWNER-only) |
+| `PLAN_TIER_REQUIRED` | 402 | Caller's resolved PlanTier doesn't unlock this feature (e.g. white-label is PRACTICE+) |
+| `CONSENT_NOT_GRANTED` | 403 | OrganizationClient row exists but consent isn't ACTIVE+GRANTED |
+| `CLIENT_NOT_ASSIGNED` | 403 | PORTAL_ADVISOR caller; client isn't assigned to them |
+| `ORG_USER_PUBLIC_BLOCKED` | 403 | Org-attached user attempted to use the public marketplace surface (leaky-funnel guardrail) |
+| `LISTING_NOT_AVAILABLE` | 409 | Listing isn't APPROVED at request-submit time |
+| `INVALID_STATUS_TRANSITION` | 409 | Status transition violates the lifecycle state machine |
+| `SLUG_TAKEN` | 409 | Marketplace `publicSlug` already in use by another Org |
+| `INCOMPLETE_DRAFT` | 400 | Submit-for-review failed validation (≥10-char tagline / ≥100-char blurb / etc) |
+| `PAYLOAD_TOO_LARGE` | 413 | Snapshot context >8KB on `submitRequest`, or message body >10KB on `postMessage` |
+| `WEBHOOK_VERIFICATION_FAILED` | 400 | Stripe / SendGrid signature mismatch — permanent failure |
+| `NOT_CONFIGURED` | 503 | Stripe / SendGrid keys not set in this environment (dev/demo path) |
+
+## **15.6 Audit-log conventions**
+
+State-changing routes write a `createAuditLog()` row fire-and-forget
+(`.catch(() => {})`) so audit writes never block responses. The
+following actions are canonical for the B2B2C surface:
+
+```
+PRO_DASHBOARD_VIEW                       — adviser opened drill-in
+PORTAL_SEAT_INVITED                      — anti-poaching guardrail
+MARKETPLACE_LISTING_UPDATED|SUBMITTED|APPROVED|REJECTED|SUSPENDED
+PROFESSIONAL_REQUEST_SUBMITTED|ACCEPTED|DECLINED|WITHDRAWN|EXPIRED
+CONVERSATION_CREATED|MESSAGE_SENT|EMAIL_OUTBOUND|EMAIL_INBOUND|SOFT_DELETED_FROM_USER
+BILLING_CHECKOUT_STARTED|SUBSCRIPTION_CREATED|UPDATED|CANCELLED|INVOICE_PAID|INVOICE_FAILED|WEBHOOK_RECEIVED
+FEEDBACK_THREAD_REPLIED|STATUS_CHANGED|INTERNAL_NOTE_UPDATED
+```
+
+CDR-protected metadata MUST go through `sanitizeCdrMetadata()`. For
+the B2B2C surface, none of the new audit metadata is CDR-protected
+(listing slugs, lead-fee tiers, conversation ids, plan tiers are all
+non-CDR), but new endpoints that introduce CDR-derived metadata
+should follow the CLAUDE.md §13.3 sanitization requirement.
+
+## **15.7 Webhook source-of-truth principle**
+
+For any data mirrored from an external system (Stripe subscriptions,
+inbound emails, future Xero sync), the external system is the
+authoritative source. Local state mirrors what the external system
+reports via webhooks. This means:
+
+- Don't read local state for billing decisions; read `StripeSubscription.status`, which is mirrored from the latest webhook.
+- Don't trust caller-provided "current status"; always look up server-side.
+- Don't try to sync from local back to external (the `cancelAtPeriodEnd` action calls Stripe first, then mirrors the result locally — Stripe stays the source of truth).
+- When the external system has a richer state model than ours, store the verbatim mirror + a derived field for our use (e.g. `SubscriptionStatus` enum mirrors Stripe's status names exactly; `BillingPlanTier` is our derived column resolved from price-id + metadata).

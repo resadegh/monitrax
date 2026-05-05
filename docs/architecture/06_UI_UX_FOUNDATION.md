@@ -360,3 +360,157 @@ Consistency is the north star.
 ---
 
 
+
+---
+
+# **15. Phase 32B/32C/33g — B2B2C UI Patterns**
+
+*Added 2026-05-09 (doc-catch-up).* The Practice surface introduced a
+distinct visual vocabulary alongside the existing consumer surface.
+Patterns here are reusable across the new B2B2C modules
+(`/portal/dashboard`, `/portal/clients`, `/portal/marketplace`,
+`/portal/requests`, `/portal/conversations`, `/portal/billing`,
+`/portal/feedback`) and should be referenced — not re-invented — for
+new surfaces in the same domain.
+
+## **15.1 PracticeGlassCard** (`components/portal/practice/PracticeGlassCard.tsx`)
+
+The canonical surface for Practice tiles. Apple-glass aesthetic per
+CLAUDE.md §0 designer lens: **warm-ivory background, 28px corner
+radius, 1px ring border at low opacity, subtle inner highlight at
+the top, hover lift via shadow + scale (skipped on
+`prefers-reduced-motion`)**. No heavy drop-shadow — depth reads from
+the ring + gradient, not from a halo.
+
+Props: `padding` (none/sm/md/lg), `interactive` (true triggers hover
+lift), `accentTone` (`'critical' | 'opportunity' | 'milestone' | null`
+— renders a 4px-wide vertical accent strip on the left edge).
+
+Reusable across every Practice tile + `<MarketplaceListingEditor>` +
+`<LeadFeeInvoiceHistory>` + adviser inbox cards. **Do not re-invent**
+— if the new surface needs Apple-glass, use this primitive.
+
+## **15.2 Status pill colour vocabulary**
+
+Consistent across the B2B2C surface so the status family is recognisable
+at a glance:
+
+| Status family | Tone | Tailwind classes |
+|---|---|---|
+| **Active / Healthy / Approved / Paid** | Emerald | `bg-emerald-50 text-emerald-800 ring-emerald-200` |
+| **Pending / Awaiting / Trialing** | Amber | `bg-amber-50 text-amber-800 ring-amber-200` |
+| **Trialing / Info** | Sky | `bg-sky-50 text-sky-800 ring-sky-200` |
+| **Rejected / Failed / Critical** | Rose | `bg-rose-50 text-rose-800 ring-rose-200` |
+| **Closed / Suspended / Voided / Withdrawn / Neutral** | Slate | `bg-slate-100 text-slate-700 ring-slate-200` |
+
+Pill base: `inline-flex items-center rounded-full ring-1 ring-inset
+px-2.5 py-0.5 text-[11px] font-medium`. Use the same pill chrome
+across **every** status surface — listing status, request status,
+subscription status, conversation closed-state, lead-fee invoice
+status, feedback status. Future surfaces follow this vocabulary;
+don't invent new status colours.
+
+## **15.3 Slide-in / bottom-sheet dialog pattern**
+
+`<AskAProfessionalDialog />`, `<ComposeRequestDialog />`,
+`<HelpDrawer />` all share the same dialog chrome:
+
+- **≥sm:** right-edge slide-in ~480px
+- **<sm:** bottom-sheet 90vh with `rounded-t-[28px]`
+- Sticky header with title + dismiss X
+- Body-scroll lock on the document for iOS Safari
+- Esc to close, backdrop click to close
+- `prefers-reduced-motion`-aware via Tailwind `motion-safe:*` utilities (NOT framer-motion — keeps the bundle lean)
+- `role="dialog"` + `aria-modal="true"` + `aria-labelledby` on the title
+
+Animation: `motion-safe:animate-in motion-safe:fade-in
+motion-safe:slide-in-from-bottom motion-safe:sm:zoom-in-95
+motion-safe:sm:slide-in-from-bottom-0 duration-200`.
+
+Don't pull `framer-motion` for new dialogs in this family — the
+Tailwind motion utilities cover the surface area we need.
+
+## **15.4 Conversation thread chrome** (`components/conversations/ConversationThread.tsx`)
+
+Reusable across portal + dashboard surfaces. Header (subject + counterparty)
++ message list + composer + 7yr archive disclosure footer. Polls
+every 5 seconds for new messages. Optimistic-add on send with
+rollback on failure. Scroll-to-bottom on new message + initial mount.
+⌘/Ctrl+Enter to send. Channel badges (`IN_APP` / via email / from
+email) on each message.
+
+**Never** introduce a parallel conversation thread component for
+new surfaces; reuse `<ConversationThread />`. The component takes
+`viewerRole` ('CONSUMER' | 'PROFESSIONAL'), `viewerName`,
+`counterpartyName`, `isClosed`, `onSent` callback. Both sides of
+the thread render the same component with different perspective
+props.
+
+## **15.5 Compose dialog with AI starter prompts**
+
+`<ComposeRequestDialog />` is the canonical pattern for any user-input
+form that benefits from AI-suggested starters. Sticky header + body
++ context-aware AI starter prompts (10 contexts × 1-3 starters each)
++ free-text textarea + opt-in metadata-share checkbox + submit
+button.
+
+The starter-prompts pattern is reusable: when a future feature wants
+to lower friction on a free-text input by offering common starting
+points, copy the `STARTERS_BY_CONTEXT` map structure + the
+button-row UI (rounded-lg gray pills that populate the textarea on
+click).
+
+## **15.6 Plan tile pattern** (`/portal/billing`)
+
+Three-column tile grid for subscription plans. Each tile carries:
+- Tier name + Recommended pill (emerald) on the recommended tier
+- Headline price (24px, tabular-num) + frequency caption
+- Feature checklist with `✓` markers (emerald-600 bullets)
+- OWNER-only Subscribe button with `disabled` if not owner
+- "Current plan" disabled-emerald state when this is the active tier
+- Enterprise tile uses `mailto:sales@monitrax.com.au` instead of the Subscribe button
+
+Reusable for any future tier-comparison surface (e.g. a future
+add-on packs surface).
+
+## **15.7 Channel badge** (used on conversation messages + invoice rows)
+
+Small inline indicator that this row originated from a non-default
+channel. Examples:
+- "via email" on conversation messages bridged through SendGrid
+- "from email" on conversation messages received through Inbound Parse
+- "Test mode" on Stripe customer / subscription rows in dev/demo
+
+Visual treatment: pill `inline-flex items-center rounded-full
+bg-amber-50 ring-1 ring-amber-200 px-2 py-0.5 text-[10px]
+font-medium text-amber-800` — small enough that screen-readers
+treat it as a label, not a button. Auditors notice; users barely do.
+
+## **15.8 Empty-state copy guidance**
+
+Empty states across the B2B2C surface follow this pattern:
+1. **Affirming** — *"No active conversations yet."* (not *"You have nothing"*)
+2. **Educational** — *"Conversations are auto-created when you accept a marketplace request."*
+3. **Actionable** — *"Open inbox →"* (links to the surface where they'd take the next step)
+
+Never use *"Nothing to see here"* / *"Empty"* / *"You haven't done X
+yet"*. Per CLAUDE.md §0 behaviour-psychology lens — surface helps
+the user act, doesn't shame them for not having acted.
+
+## **15.9 Accessibility checklist (B2B2C surfaces)**
+
+Every interactive component in the B2B2C surface meets:
+- `focus-visible:outline-none focus-visible:ring-2
+  focus-visible:ring-emerald-500 focus-visible:ring-offset-1`
+- ARIA `role="dialog"` + `aria-modal` + `aria-labelledby` on every
+  modal
+- Buttons have explicit `type="button"` (defensive against form
+  submission default)
+- Esc closes any modal that's open
+- Body-scroll lock on iOS Safari for any modal that's open
+- Native HTML controls preferred over custom (radio / checkbox /
+  textarea / select — used in `MarketplaceListingEditor`,
+  `ComposeRequestDialog`, `/portal/billing` plan tiles)
+
+If a new surface introduces a custom interactive control, it MUST
+re-implement these guarantees; reviewers reject PRs that don't.

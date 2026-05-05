@@ -942,3 +942,340 @@ This is deliberate. Editing a client's structure is a personal-advice activity t
 ### What this unblocks (41h)
 
 - The AI advisor (Phase 41h) composes the same flow shape and entity tree to produce entity-aware diagnostics ("Olivia's trust holds property X with $300k unrealised CGT"). Both visualisations are now reachable from the adviser drill-in, so the AI's recommendations show up next to the same evidence the adviser is reading.
+
+---
+
+# **§11 — PHASE 32B/32C/33g: B2B2C SURFACE DATA MODEL**
+
+*Added 2026-05-09 (doc-catch-up). Phases 32B/32C/33g shipped between
+2026-05-04 and 2026-05-09 as the B2B2C Practice surface that lets
+Australian financial advisers, brokers, and accountants run their
+client book on Monitrax. This section catalogues the new entities,
+the relationships between them, and the architectural rules that
+hold across all of them.*
+
+The new domain is layered:
+
+```
+Public  ─── Marketplace listing ───┐
+                                   ▼
+Picker  ─── Ask-a-Pro candidates ──┤
+                                   ▼
+Bridge  ─── Professional request ──┤
+                                   ▼
+Engagement ─ ClientLink ───────────┤
+                                   ▼
+Comms ──── Conversation thread ────┤
+                                   ▼
+Billing ── Stripe customer/sub ────┘ ── Lead-fee invoice
+```
+
+Every layer has a single canonical service in `lib/services/` and
+every layer enforces the **leaky-funnel guardrail** at the service
+boundary: org-attached users (any active+granted `OrganizationClient`)
+never see the public marketplace, never receive public-marketplace
+suggestions, and cannot submit public-marketplace requests. Strategic
+decision per `IMPLEMENTATION_PLAN.md` Up Next #15 (2026-05-04):
+orgs pay for Monitrax to be their CRM + comms channel; the platform
+must not redirect their clients to competitors.
+
+## **§11.1 — `Organization.profession`** (Phase 32B PR1)
+
+Added field, forced at registration:
+
+```prisma
+model Organization {
+  profession  OrganizationType  @default(FINANCIAL_ADVISOR)
+}
+
+enum OrganizationType {
+  ACCOUNTING_FIRM
+  FINANCIAL_ADVISOR
+  MORTGAGE_BROKER
+  TAX_AGENT
+  BOOKKEEPER
+  OTHER
+}
+```
+
+Drives Practice dashboard layout, alert library, scope presets, and
+AFSL/credit-licence guardrails. Cannot be flipped in-page (no toggle,
+no env-gated demo mode — Reza directive 2026-05-04). The legacy
+`OrganizationPortalSettings.organizationType` is now a shadow that
+the canonical column will eventually subsume.
+
+## **§11.2 — Marketplace** (Phase 32C PR4a)
+
+```prisma
+model ProfessionalListing {
+  organizationId        String  @unique  // one per Org at v1
+  publicSlug            String  @unique
+  status                ListingStatus  // DRAFT/PENDING_REVIEW/APPROVED/REJECTED/SUSPENDED
+  discipline            OrganizationType
+  specialisations       ProfessionalSpecialisation[]
+  targetTiers           ListingTargetTier[]
+  regions               ListingRegion[]
+  afslNumber            String?
+  creditRepNumber       String?
+  tpbNumber             String?
+  abn                   String?
+  leadFeeTierEmerging   Decimal  @default(80)
+  leadFeeTierGrowing    Decimal  @default(150)
+  leadFeeTierEstablished Decimal @default(250)
+  reviewedByAdminId     String?         // FK AdminUser
+  asicCrossCheckedAt    DateTime?       // manual cross-check at v1
+  tpbCrossCheckedAt     DateTime?
+  ratingsCount          Int             // denormalised for browse perf
+  averageRating         Decimal?
+  acceptedRequestsCount Int
+}
+
+model ProfessionalRating {
+  listingId       String
+  raterUserId     String
+  stars           Int             // 1-5
+  comment         String?
+  isPublic        Boolean         // moderation flag — admin can hide without deleting
+  flaggedAt       DateTime?
+  @@unique([listingId, raterUserId])  // one rating per user per listing
+}
+```
+
+**Lifecycle invariants:**
+- Editing an `APPROVED` listing flips it back to `PENDING_REVIEW` — admin re-checks before re-publish.
+- Editing a `REJECTED` listing returns it to `DRAFT`.
+- Submit-for-review requires ≥10-char tagline, ≥100-char blurb, ≥1 specialisation + region, discipline-conditional compliance number (AFSL for FINANCIAL_ADVISOR, credit rep for MORTGAGE_BROKER, TPB for TAX_AGENT/ACCOUNTING_FIRM).
+- Lead-fee tiers stored per-listing so per-Org overrides are possible at admin-approval time.
+
+## **§11.3 — Professional Request lifecycle** (Phase 32C PR4c)
+
+```prisma
+model ProfessionalRequest {
+  requesterUserId       String
+  listingId             String
+  contextLabel          String?         // 'tax' / 'refinance' / etc — biases AskAPro picker
+  question              String
+  snapshotContextJson   Json?           // user-curated metrics shared at submit (CDR-sanitised; max 8KB)
+  status                RequestStatus   // SUBMITTED/ACCEPTED/DECLINED/WITHDRAWN/EXPIRED
+  respondedByMemberId   String?         // FK OrganizationMember
+  declineReason         String?
+  withdrawnAt           DateTime?
+  // Lead fee — tier resolved at submit-time, billing intent recorded at accept-time
+  leadFeeTier           LeadFeeTier?
+  leadFeeAmount         Decimal?
+  leadFeeChargedAt      DateTime?
+  // Phase 32C PR6b — Stripe Invoice linkage
+  stripeInvoiceId       String?  @unique
+  leadFeeStatus         LeadFeeStatus?  // PENDING_CREATE/PENDING_PAYMENT/PAID/FAILED/VOIDED
+  leadFeeInvoiceUrl     String?
+  leadFeePaidAt         DateTime?
+  leadFeeFailedAt       DateTime?
+  // Engagement materialised on accept
+  clientLinkId          String?  @unique  // FK OrganizationClient
+  conversation          ProfessionalConversation?  // 1-1 auto-created on accept
+}
+```
+
+**State machine:**
+
+```
+   SUBMITTED ──accept──→ ACCEPTED  → ClientLink created + conversation created + lead-fee invoice created
+            ──decline─→ DECLINED  → reason text required
+            ──withdraw→ WITHDRAWN
+            ──14d──────→ EXPIRED  (PROD scheduler; not implemented in v1)
+```
+
+**Lead-fee tier is FROZEN at submit-time** — the listing's per-tier
+rate is read at submit and the resolved amount stored on the request.
+Downstream tier-rate edits on the listing don't retroactively change
+in-flight requests.
+
+**Accept transaction:** lifecycle transition + `OrganizationClient`
+upsert (status=INVITED, consentStatus=PENDING — engagement materialises
+through the existing consent flow) run in a single
+`prisma.$transaction`. Conversation auto-create + lead-fee invoice
+creation run AFTER the transaction commits as best-effort follow-ups
+(failure does NOT roll back accept; ops can re-run idempotently).
+
+## **§11.4 — Conversations** (Phase 32C PR4d)
+
+```prisma
+model ProfessionalConversation {
+  requestId        String?  @unique  // 1-1 with ProfessionalRequest (NULL for org-scoped)
+  organizationId   String
+  replyToSlug      String  @unique  // 32-char hex; routes inbound emails
+  subject          String  @db.VarChar(160)
+  isClosed         Boolean
+  lastMessageAt    DateTime
+}
+
+model ConversationParticipant {
+  conversationId   String
+  userId           String?         // CONSUMER role
+  memberId         String?         // PROFESSIONAL role (FK OrganizationMember)
+  role             ConversationRole  // CONSUMER/PROFESSIONAL/AI_HELPER
+  hiddenFromUser   Boolean         // soft-delete from this participant's view
+  lastReadAt       DateTime?       // read-receipt
+  @@unique([conversationId, userId, memberId])
+}
+
+model ConversationMessage {
+  conversationId    String
+  senderUserId      String?
+  senderRole        ConversationRole  // FROZEN at send time for audit
+  body              String  @db.Text
+  channel           MessageChannel    // IN_APP/EMAIL_OUT/EMAIL_IN/SYSTEM
+  externalMessageId String?           // SendGrid message id (outbound) or stub id (dev)
+  inboundFromEmail  String?
+  inboundSubject    String?
+  retentionUntil    DateTime          // = createdAt + 7 years (AFSL compliance)
+}
+```
+
+**Compliance archive invariants:**
+- Every message has `retentionUntil = createdAt + 7 years` per AFSL recordkeeping requirement (decision 2026-05-04).
+- Soft-delete from a participant's view (`ConversationParticipant.hiddenFromUser`) does NOT remove the message row — the compliance archive persists.
+- Sender role is FROZEN at send time so the audit trail stays accurate after a person leaves the org.
+- Only the consumer can hide a conversation from their own view; professional-side hiding is not implemented.
+- VIEWER seats are excluded from `ConversationParticipant` rows on creation — they can't take inbound, so they shouldn't appear in the participant list.
+
+**Inbound webhook routing:** `replyToSlug` is a 32-char hex string used
+in the reply-to address: `monitrax+conv-<slug>@<inbound-domain>`.
+SendGrid Inbound Parse extracts the slug from the `to` header,
+verifies the sender email matches a CONSUMER participant, posts the
+message body as `EMAIL_IN`. Hardening (DKIM/SPF strict, signed-event
+verification, sender-domain allowlist, Cloud DLP attachment scanning,
+rate-limiting per conversation) defers to PROD.
+
+## **§11.5 — Stripe billing** (Phase 32C PR6a/b)
+
+```prisma
+model StripeCustomer {
+  organizationId    String  @unique
+  stripeCustomerId  String  @unique  // cus_xxx from Stripe
+  email             String
+  isTestMode        Boolean
+}
+
+model StripeSubscription {
+  organizationId         String  @unique
+  customerId             String  @unique  // FK StripeCustomer
+  stripeSubscriptionId   String  @unique  // sub_xxx
+  status                 SubscriptionStatus  // mirrors Stripe's status enum
+  planTier               BillingPlanTier     // STUDIO/PRACTICE/ENTERPRISE
+  stripePriceId          String
+  stripeProductId        String
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  cancelAtPeriodEnd      Boolean
+  isTestMode             Boolean
+}
+
+model StripeWebhookEvent {
+  stripeEventId   String  @unique  // evt_xxx — dedupe key
+  eventType       String
+  livemode        Boolean
+  payload         Json
+  processedAt     DateTime?
+  processingError String?
+  receivedAt      DateTime
+}
+```
+
+**`BillingPlanTier` is a NEW enum** (STUDIO/PRACTICE/ENTERPRISE) on
+the new `StripeSubscription` table — not a destructive rename of the
+legacy `OrganizationPlan` enum (STARTER/PROFESSIONAL/BUSINESS/ENTERPRISE).
+Reason: BUSINESS has no clean target in the 3-tier Xero-style model;
+collapsing it into PRACTICE would require §12.11 user-confirmation.
+The new enum on the new table sidesteps this; the existing
+`lib/portal/planTier.ts` mapping shadow handles the legacy fallback.
+Legacy enum rename is queued for a future PR.
+
+**Plan-tier resolution:** `resolvePlanTierForOrg(orgId)` reads the
+`StripeSubscription` row first (TRIALING/ACTIVE/PAST_DUE = entitled,
+honouring Stripe's 3-day grace window), falls through to the legacy
+`OrganizationPortalSettings.plan` only when no subscription exists.
+
+**Webhook idempotency:** every event Stripe delivers is recorded in
+`StripeWebhookEvent` with a unique constraint on `stripeEventId`.
+Re-deliveries (Stripe retries up to 3 days) are deduped at the
+database boundary. Lead-fee invoice events are routed by
+`monitrax_request_id` metadata on the InvoiceItem, so subscription
+invoices and lead-fee invoices don't collide in the dispatcher.
+
+## **§11.6 — Adviser feedback inbox** (Phase 33g)
+
+```prisma
+model FeedbackThread {
+  authorUserId  String      // The adviser submitting feedback
+  surface       FeedbackSurfaceTag  // PORTAL_DASHBOARD/PORTAL_REQUESTS/PORTAL_BILLING/...
+  surfaceRoute  String?     // pathname captured from the help drawer
+  severity      FeedbackSeverity   // LOW/MEDIUM/HIGH/CRITICAL — default MEDIUM
+  status        FeedbackStatus     // NEW/IN_REVIEW/RESPONDED/RESOLVED/WONT_FIX
+  internalNotes String?     @db.Text  // ONLY visible to Monitrax admins
+  taggedForAi   Boolean     // admin opt-in to include in AI training export
+}
+
+model FeedbackMessage {
+  threadId    String
+  authorRole  FeedbackAuthorRole  // ADVISER/MONITRAX_ADMIN
+  body        String  @db.Text
+}
+```
+
+Architectural decision documented in `lib/services/feedbackService.ts`
+file-header JSDoc: keep `FeedbackThread` separate from
+`ProfessionalConversation` — different participants, retention rules,
+status workflow. Feedback is adviser→Monitrax; conversation is
+adviser↔consumer.
+
+`internalNotes` are NEVER returned by the adviser-facing API and
+NEVER included in the Markdown export the admin downloads. The
+service layer is the single boundary where this is enforced.
+
+## **§11.7 — Architectural rules across the B2B2C surface**
+
+Every layer enforces these rules at the **service boundary**:
+
+1. **Leaky-funnel guardrail.** Org-attached users (any active+granted
+   `OrganizationClient`) never see the public marketplace. The
+   `getCandidatesForUser` AskAPro service returns only the org's
+   roster; the `submitRequest` service rejects with
+   `ORG_USER_PUBLIC_BLOCKED` if called by an org-attached user.
+
+2. **`assertParticipant` is the single access-control gate** for
+   conversations. Every read/write goes through it; cross-org leakage
+   is structurally impossible because the API can't return a
+   conversation without matching a `ConversationParticipant` row.
+
+3. **Sender role frozen at write-time** — `ConversationMessage.senderRole`
+   is recorded as it was at send time. Audit trail stays accurate
+   even if a member later leaves the org.
+
+4. **Tier rates frozen at submit-time** — `ProfessionalRequest.leadFeeAmount`
+   is captured from the listing's per-tier rate at the moment of
+   submission. Downstream tier-rate edits don't retroactively change
+   in-flight requests.
+
+5. **PORTAL_OWNER-only commercial actions** — submit-for-review
+   (marketplace listing), subscribe / cancel / resume (billing),
+   are all OWNER-only. Anti-poaching guardrail; mirrors the
+   `team:invite` PORTAL_OWNER restriction from PR #603.
+
+6. **Billing intent vs payment** — accept-time records `leadFeeChargedAt`
+   as the billing intent; the actual Stripe Invoice is created in a
+   best-effort post-transaction follow-up. Failure to create the
+   invoice does NOT roll back the accept; ops can re-run
+   `createLeadFeeInvoiceForRequest` for any request with
+   `stripeInvoiceId IS NULL` after status=ACCEPTED.
+
+7. **Webhook signature verification IS the auth** for `/api/stripe/webhooks`
+   and `/api/conversations/inbound`. Neither route uses
+   `withPermission`; both verify the request via signed payload at
+   the route boundary. 4xx on signature mismatch (Stripe retries on
+   5xx, not 4xx); 5xx on dispatch failure to trigger Stripe's retry.
+
+8. **`isStripeConfigured()` / `SENDGRID_API_KEY` guards** allow
+   dev/demo environments to run without secrets. The architectural
+   pattern is visible (events are logged; messages are recorded; UI
+   renders friendly notices) without requiring real keys.
