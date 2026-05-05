@@ -1081,11 +1081,13 @@ function buildTaxSummary(
   });
 
   // `effectiveRate` returned by the engine is already in percentage
-  // scale (0–100, rounded to 2dp). `marginalRate` is the raw bracket
-  // rate (decimal, e.g. 0.30) — convert to percentage to match the
-  // legacy consumer shape.
+  // scale (0–100, rounded to 2dp). `marginalRate` is also percentage
+  // scale (0–100) — see `incomeTaxCalculator.ts:112` which multiplies
+  // by 100 before returning. The legacy `TaxSummary.marginalTaxRate`
+  // consumer also expects percentage (e.g. 30, not 0.30), so pass
+  // through unchanged.
   const effectiveRate = result.tax.effectiveRate ?? 0;
-  const marginalRatePercent = (result.tax.marginalRate ?? 0) * 100;
+  const marginalRatePercent = result.tax.marginalRate ?? 0;
 
   return {
     estimatedTaxableIncome: Math.round(result.tax.taxableIncome),
