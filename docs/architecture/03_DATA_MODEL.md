@@ -1555,3 +1555,31 @@ New `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts` exporting `appl
 Router wiring: 41e.7 module is currently NOT auto-wired into `entityTaxRouter` — Div 152 elections are taxpayer-specific (the choice between concessions is a financial-advisor decision, not an automatic dispatch). Caller invokes `applyDiv152()` directly when scenario-modelling a disposal. Future sub-PR may add a `cgtEvent.div152Election` field if user feedback warrants automatic dispatch.
 
 **41e.8 — negative gearing per-entity aggregator** is next.
+
+## **10.20 Phase 41e.8 — Negative gearing + per-entity loss treatment (PR #656 — shipped 2026-05-05)**
+
+New `lib/tax-engine/divisions/negativeGearing.ts` exporting `applyNegativeGearing(input)` + `entityCanOffsetLossesCurrentFy(type)`. Dispatches the tax treatment of net losses by entity type per ITAA 1997 Div 8 (deductibility) + Div 36 (loss offset).
+
+**Loss treatment by entity type:**
+| Entity | Treatment | Rationale |
+|---|---|---|
+| **PERSONAL_NAME** | Offset other income same FY | "Negative gearing" — rental loss reduces salary tax |
+| **SOLE_TRADER** | Offset other income same FY | Sole trader = individual for tax |
+| **PARTNERSHIP** | Offset partner income | Losses flow per s92 partnership agreement |
+| **SMSF** | Offset other fund income | Fund-level offset (NALI rules in 41e.11) |
+| **DISCRETIONARY_TRUST** | Trap at entity, carry forward | Cannot distribute losses; subject to Sch 2F loss tests |
+| **UNIT_TRUST** | Trap at entity, carry forward | Same Sch 2F regime |
+| **COMPANY** | Trap at entity, carry forward | Subject to Div 165 COT/SBT tests |
+
+**UNCOMPUTED flags:**
+- **UC-TAX-LOSS-CARRY-FORWARD** — when individual loss exceeds other income (multi-year tracking deferred — caller must persist in tax-loss register)
+- **UC-TRUST-LOSS-TESTS** — TRUST loss carries forward; Sch 2F (Income Injection / Pattern of Distributions) tests deferred to 41e.15
+- **UC-COMPANY-LOSS-TESTS** — COMPANY loss carries forward; Div 165 (COT) + Div 165-13 (SBT) tests deferred to 41e.15
+
+**Result shape** — reports `netResult` + `lossTreatment` ('OFFSET_OTHER_INCOME' | 'TRAPPED_AT_ENTITY' | 'NO_LOSS') + `lossAbsorbedThisFy` + `lossCarriedForward` + `taxableIncomeAtEntity` + `reason` + citations.
+
+**Not auto-wired into router** — same pattern as Div 152: caller invokes `applyNegativeGearing()` directly because the input shape (gross income / deductible expenses / other income at entity) is computed differently per source (property loss vs business loss vs investment loss).
+
+23 module tests covering all 7 entity types + all 3 loss-treatment paths + loss-exceeds-income carry-forward + citation completeness.
+
+**41e.9 — Personal Services Income (PSI) rules** is next.

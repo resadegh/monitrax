@@ -1,5 +1,34 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e8-negative-gearing (Phase 41e.8 — Negative gearing + per-entity loss treatment)
+
+### Changes
+- New `lib/tax-engine/divisions/negativeGearing.ts` — `applyNegativeGearing(input)` + `entityCanOffsetLossesCurrentFy(type)` per ITAA 1997 Div 8 + Div 36
+- 7 entity types dispatched: 4 offset same-FY (PERSONAL/SOLE_TRADER/PARTNERSHIP/SMSF), 3 trap (DISCRETIONARY_TRUST/UNIT_TRUST/COMPANY)
+- UC-TAX-LOSS-CARRY-FORWARD when individual loss > other income
+- UC-TRUST-LOSS-TESTS / UC-COMPANY-LOSS-TESTS for trapped cases (Sch 2F + Div 165 classifiers in 41e.15)
+- 23 module tests
+- 411 total (388 → 411, +23); tsc clean
+- Not auto-wired into router (same pattern as Div 152 — caller invokes directly)
+
+### Testable
+```ts
+import { applyNegativeGearing } from '@/lib/tax-engine/divisions/negativeGearing';
+applyNegativeGearing({
+  entityType: 'PERSONAL_NAME',
+  grossIncome: 30000,        // gross rent
+  deductibleExpenses: 50000, // interest + rates etc
+  otherIncome: 100000,       // salary
+});
+// → netResult: -20000, lossTreatment: 'OFFSET_OTHER_INCOME'
+// → taxableIncomeAtEntity: 80000 ($100k salary - $20k loss)
+// → cites Div 8 + Div 36
+```
+
+41e.9 (PSI rules) is next.
+
+---
+
 ## Session: claude/phase-41e7-div152-sbc (Phase 41e.7 — Div 152 small business CGT concessions)
 
 ### Changes
