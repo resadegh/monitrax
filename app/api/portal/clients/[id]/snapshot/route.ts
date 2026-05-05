@@ -22,112 +22,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
-import { PermissionGuards } from '@/lib/portal/permissions';
-import type { PortalUserRole } from '@prisma/client';
+import { verifyAdviserClientAccess } from '@/lib/portal/adviserClientAccess';
 
 type RouteContext = { params: Promise<{ id: string }> };
-
-const ROLE_MAPPING: Record<string, PortalUserRole> = {
-  OWNER: 'PORTAL_OWNER',
-  ADMIN: 'PORTAL_ADMIN',
-  CONTRIBUTOR: 'PORTAL_ADVISOR',
-  VIEWER: 'PORTAL_VIEWER',
-};
 
 export const GET = withPermission<RouteContext>('org.read', async (request, auth, context) => {
   const { id: organizationClientId } = await context!.params;
 
-  const orgClient = await prisma.organizationClient.findUnique({
-    where: { id: organizationClientId },
-    select: {
-      id: true,
-      organizationId: true,
-      userId: true,
-      status: true,
-      consentStatus: true,
-      accessScopes: true,
-      assignedToMemberId: true,
-    },
-  });
-
-  if (!orgClient) {
+  // Phase 41g: consent + membership + role + assignment checks now live
+  // in `verifyAdviserClientAccess`. Three portal endpoints share the
+  // same guard (snapshot, entities, money-flow); reviewers reject any
+  // new client-data endpoint that doesn't route through this helper.
+  const access = await verifyAdviserClientAccess(auth.userId, organizationClientId);
+  if (!access.ok) {
     return NextResponse.json(
-      { success: false, error: { code: 'NOT_FOUND', message: 'Client link not found' } },
-      { status: 404 }
+      { success: false, error: { code: access.code, message: access.message } },
+      { status: access.status },
     );
   }
 
-  if (orgClient.status !== 'ACTIVE' || orgClient.consentStatus !== 'GRANTED') {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'CONSENT_NOT_GRANTED',
-          message:
-            'This client has not granted active consent. Send a consent request before viewing their data.',
-        },
-      },
-      { status: 403 }
-    );
-  }
-
-  // Verify the caller has an active seat on the same organisation as the
-  // client link. Without this check any logged-in user could read any
-  // OrganizationClient by guessing the id.
-  const membership = await prisma.organizationMember.findFirst({
-    where: {
-      userId: auth.userId,
-      organizationId: orgClient.organizationId,
-      isActive: true,
-    },
-    select: { id: true, role: true },
-  });
-
-  if (!membership) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'NOT_A_MEMBER',
-          message: 'You are not a member of this organisation',
-        },
-      },
-      { status: 403 }
-    );
-  }
-
-  const portalRole = ROLE_MAPPING[membership.role] ?? 'PORTAL_VIEWER';
-
-  if (!PermissionGuards.canViewClientData(portalRole)) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'INSUFFICIENT_ROLE',
-          message: 'Your role does not permit viewing client data',
-        },
-      },
-      { status: 403 }
-    );
-  }
-
-  // PORTAL_ADVISOR can only view clients assigned to them. PORTAL_OWNER /
-  // ADMIN see the whole book.
-  if (
-    portalRole === 'PORTAL_ADVISOR' &&
-    orgClient.assignedToMemberId !== membership.id
-  ) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: 'CLIENT_NOT_ASSIGNED',
-          message: 'You are not assigned to this client',
-        },
-      },
-      { status: 403 }
-    );
-  }
+  const { orgClient, membership } = access;
 
   const ipAddress =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||

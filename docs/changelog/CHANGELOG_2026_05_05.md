@@ -81,3 +81,92 @@ Docs updated in this PR:
 ### PR
 - Branch: `claude/phase-41d-money-flow-sankey`
 - PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41g-adviser-overlay-entity (Phase 41g — Adviser drill-in entity layer)
+
+### Changes Made
+
+- **Type**: Feature — adviser drill-in surface extended with entity tree + Sankey
+- **Scope**: `lib/portal/adviserClientAccess.ts` (NEW shared helper), `app/api/portal/clients/[id]/entities/route.ts` (NEW), `app/api/portal/clients/[id]/money-flow/route.ts` (NEW), `app/api/portal/clients/[id]/snapshot/route.ts` (refactored to use the shared helper), `app/portal/clients/[id]/view/page.tsx` (3-tab toggle + parallel fetches + tree/Sankey mounts), `docs/IMPLEMENTATION_PLAN.md`, `docs/architecture/03_DATA_MODEL.md` (new §10.11), `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` (Step 2/3 flipped to LIVE)
+- **Description**: Mount the Phase 41c `EntityTree` and Phase 41d `MoneyFlowSankey` inside `/portal/clients/[id]/view` so when an adviser opens a client, the entity tree is the **primary diagnostic** they see first (default tab). 3-tab toggle: **Structure** (default) | **Money Flow** | **Dashboard** (the existing canonical view from 32B PR3). Tabs mean Step 2 → Step 3 → Step 4 of the lighthouse pitch is one continuous flow, no nav-switching.
+
+### Why this matters
+
+Per Reza brief 2026-05-04: *"the adviser cannot give wealth advice without seeing the structure first; this surfaces it prominently."* Phase 41a–d shipped the consumer-side entity layer; 41g is what makes it reachable in the adviser pitch. Without 41g, the lighthouse pitch's Step 3 (entity tree, the *moat moment*) requires the adviser to navigate to a different page — breaks the flow. With 41g, it's the default view of the drill-in.
+
+### Files Created / Modified
+
+- **`lib/portal/adviserClientAccess.ts`** (NEW, ~150 lines) — shared helper `verifyAdviserClientAccess(callerUserId, organizationClientId)` that does the layered consent + membership + role + assignment checks. Returns either `{ ok: true, orgClient, membership }` or a structured error with `{ ok: false, status, code, message }`. **Reviewers reject any new portal client-data endpoint that doesn't route through this helper** (CLAUDE.md §0 architect lens — single canonical access guard).
+- **`app/api/portal/clients/[id]/snapshot/route.ts`** — refactored to delegate auth to `verifyAdviserClientAccess`. Removed inline duplication of consent/membership/role/assignment checks (~75 lines of code consolidated). Behaviour unchanged.
+- **`app/api/portal/clients/[id]/entities/route.ts`** (NEW) — thin GET wrapper. Auth via `verifyAdviserClientAccess`; delegates to canonical `listEntitiesForUser` (same service the consumer `/api/entities` uses) but passes the **client's** userId. Returns `{ entities, members }` — household members fetched via `where: { householdProfile: { userId: client.userId } }`.
+- **`app/api/portal/clients/[id]/money-flow/route.ts`** (NEW) — thin GET wrapper. Auth via the same helper; delegates to canonical `getMoneyFlow` with the client's userId. Service swap is internal — when Phase 41e replaces the proportional tax allocation with Div 6/6E, this endpoint surface stays unchanged.
+- **`app/portal/clients/[id]/view/page.tsx`** — added `tab` state (defaulting to `'structure'`), `entities` + `members` + `flow` state, parallel-fetch logic (snapshot + entities + flow in one `Promise.all`), 3-tab toggle (Structure / Money Flow / Dashboard) with active styling, and tab-content branching. Snapshot is treated as the primary load (its failure blocks the page); entities + flow failures are best-effort (the tree's empty state and Sankey's `isEmpty` handling cover those).
+
+### Audit
+
+The page-level `/snapshot` request already writes a `PRO_DASHBOARD_VIEW` row to `ClientAccessLog` for the view session. The new entities + money-flow endpoints **piggyback** on that row — they don't write their own. Multiplying audit rows per component would pollute the compliance log without adding signal. If component-level access logs are ever required for compliance, we add new action codes (`PRO_ENTITY_VIEW`, `PRO_MONEY_FLOW_VIEW`) and emit them at the route layer.
+
+### Read-only in adviser view
+
+Advisers can NOT edit a client's entity layer:
+- The `EntityTree`'s `onEntityClick` is a no-op (no edit dialog opens for advisers)
+- The `EntityTree`'s `onAdd` is a no-op (no Add CTA fires)
+- No `EntityFormDialog` mounted on the adviser page
+
+This is deliberate: editing a client's structure is a personal-advice activity that needs to happen through the proper Ask-a-Pro / consent channels (Phase 32C), not via a side-door API the adviser can hit because they have a viewing seat. A future Phase 41 slice may surface a *"Suggest a structural change"* affordance that opens an Ask-a-Pro thread for the client to action.
+
+### Failure modes
+
+- **Snapshot fails** → page shows the existing "Cannot view this client" error; entities/flow don't load.
+- **Entities fail** → Structure tab renders with empty arrays; the EntityTree's empty-state hero shows.
+- **Money flow fails** → Money Flow tab renders the friendly "No money flow data available for this client yet" message.
+- **Dashboard tab** is unaffected by entities/flow failures — only depends on snapshot.
+
+### Build Status
+- [x] TypeScript compilation passes — `npx tsc --noEmit` exits 0
+- [x] No new dependencies added
+- [x] Prisma schema unchanged
+
+### CLAUDE.md §16 doc-sync block
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (3-tab toggle on adviser drill-in; reuses Phase 41c/d components verbatim)
+- [ ] application config
+- [ ] GCP infrastructure
+- [x] identity / auth (`verifyAdviserClientAccess` shared helper consolidates consent + membership + role + assignment checks across 3 portal endpoints)
+- [ ] deployment / build
+- [x] security / CDR posture (canonical scope source-of-truth = DB row, not caller-provided; 3-layer consent model preserved end-to-end; audit piggyback policy documented)
+- [ ] operational procedure
+- [ ] strategic decision
+- [x] data model (no schema change but new portal endpoints + shared access helper)
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #31 ✅ SHIPPED with full detail; Recently Completed entry prepended
+- `docs/architecture/03_DATA_MODEL.md` — §10.7 marker flipped to ✅ for 41g; new §10.11 (auth guard, audit policy, read-only constraint, failure modes, 41h unlock)
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Step 2 expanded to mention the tab toggle (Structure default, Money Flow + Dashboard one click away); Step 3 pre-condition flipped from "Phase 41a-c required" to "✅ LIVE 2026-05-05"
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry
+
+### Test plan
+
+1. **Adviser opens Sarah Kim's drill-in.** Navigate to `/portal/clients/{id}/view` (Sarah's organizationClientId). Page loads with Structure tab selected by default. Entity tree shows Sarah → Sarah Kim Pty Ltd. Adviser overlay docked right.
+2. **Money Flow tab.** Click "Money Flow" tab. Sankey renders Sarah's actual income → entities → outflows. Headline chip strip above shows annual totals.
+3. **Dashboard tab.** Click "Dashboard". The existing canonical consumer dashboard renders (KPI strip, health card, etc.). This is the legacy 32B PR3 view, unchanged.
+4. **Read-only entity tree.** Click any entity tile in Structure tab — nothing happens (no edit dialog). Click the "Add" CTA — nothing happens. Verify advisers cannot edit a client's entity layer.
+5. **Olivia Novak full structure.** Switch to Olivia's drill-in. Structure tab shows all 5 entities (Olivia personal, Pty Ltd, Discretionary Trust, Unit Trust, SMSF) with the dashed corporate-trustee line.
+6. **Consent revoked.** If a client's consent is revoked while the adviser has the page open, refresh — page shows the consent-not-granted error block (covered by `verifyAdviserClientAccess` layer 2).
+7. **PORTAL_ADVISOR not assigned.** Log in as a PORTAL_ADVISOR seat that's NOT assigned to the client. Open the URL directly. Page returns 403 `CLIENT_NOT_ASSIGNED` (covered by `verifyAdviserClientAccess` layer 5).
+8. **Audit log.** Check `client_access_logs` table — exactly ONE `PRO_DASHBOARD_VIEW` row written per page load (snapshot endpoint), not three.
+
+### What's NOT in this PR
+
+- **No write affordance for advisers** on the entity layer (read-only by design).
+- **No "Suggest a structural change" Ask-a-Pro thread.** Future slice.
+- **No per-component audit rows** (`PRO_ENTITY_VIEW` etc.). Page-level `PRO_DASHBOARD_VIEW` covers it; revisit if compliance demands finer granularity.
+- **Phase 41f (Xero/MYOB integration)** — separate workstream.
+- **Phase 41h (AI entity-aware diagnosis)** — separate workstream; depends on 41e.0 + 41e.17.
+
+### PR
+- Branch: `claude/phase-41g-adviser-overlay-entity`
+- PR URL: TBD on push
