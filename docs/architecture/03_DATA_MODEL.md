@@ -1527,3 +1527,31 @@ where B = opening balance, r = ATO benchmark rate (caller provides per FY), N = 
 **20 new tests** + **3 router-integration tests**: COMPLIANT path (payments ≥ MRP), MRP_SHORTFALL with deemed dividend = shortfall (NOT entire balance), NO_AGREEMENT with deemed = full balance, SUB_TRUST_UPE priority over NO_AGREEMENT, multi-loan aggregation (`highestSeverity` = worst), citation completeness, `calculateMinimumYearlyRepayment` boundary cases (zero balance, zero years, zero rate, higher rate → higher MRP). Router integration: COMPANY without data still UNCOMPUTED, with data → real classification + UC-ENTITY-COMPANY preserved, with both div7aLoans + cgtEvents → both populated.
 
 **41e.7 — Div 152 small business CGT concessions** is next.
+
+## **10.19 Phase 41e.7 — Division 152 small business CGT concessions (PR #655 — shipped 2026-05-05)**
+
+New `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts` exporting `applyDiv152(input)`. Stacks four concessions on top of Div 115 (50% discount from 41e.1):
+
+| Step | Concession | Authority | Effect |
+|---|---|---|---|
+| 1 | **15-year exemption** | s152-105 | gain entirely disregarded if asset held ≥15yr + retirement/incapacity |
+| 2 | **50% active asset reduction** | s152-205 | halves remaining gain |
+| 3 | **Retirement exemption** | s152-305 | up to $500k lifetime cap (s152-310) |
+| 4 | **Small business rollover** | s152-410 | defer remaining gain (replacement asset) |
+
+**Basic conditions (s152-10):** MNAV ≤ $6M (s152-15) OR aggregated turnover ≤ $2M (s152-20), AND asset is active (s152-35). Without basic conditions met → returns gain unchanged regardless of elections.
+
+**Stacking note:** 15-year exemption is mutually exclusive with the other three (when applied, returns immediately). Other three stack in order — caller elects each via `electActiveAssetReduction` (default `true`), `electRetirementExemption`, `electRollover`.
+
+**`Div152Result.steps`** array reports each concession applied + reduction amount + running gain — surfaces in AFSL footer for full audit trail.
+
+**UNCOMPUTED flags:**
+- **UC-DIV152-AGGREGATION** — when MNAV or turnover within ±20% of threshold; user must aggregate connected entities + affiliates per s152-15(2). v1 takes caller's figures at face value.
+- **UC-DIV152-RETIREMENT-CAP** — when lifetime cap binds (less than full retirement-exemption available).
+- **UC-DIV152-ROLLOVER** — replacement-asset tracking deferred (caller must acquire within 2yr or deferred gain crystallises).
+
+24 module tests covering basic conditions, 15-year exemption, 50% reduction (default + opt-out), retirement (no cap / partial cap / cap exceeded), rollover, full-stack interaction (`$2M gain → 50% → retirement-cap → rollover residual`), citation rules, edge cases (zero gain, basic conditions fail).
+
+Router wiring: 41e.7 module is currently NOT auto-wired into `entityTaxRouter` — Div 152 elections are taxpayer-specific (the choice between concessions is a financial-advisor decision, not an automatic dispatch). Caller invokes `applyDiv152()` directly when scenario-modelling a disposal. Future sub-PR may add a `cgtEvent.div152Election` field if user feedback warrants automatic dispatch.
+
+**41e.8 — negative gearing per-entity aggregator** is next.
