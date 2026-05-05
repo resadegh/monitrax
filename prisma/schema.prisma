@@ -252,6 +252,13 @@ enum AuditAction {
   MARKETPLACE_LISTING_APPROVED
   MARKETPLACE_LISTING_REJECTED
   MARKETPLACE_LISTING_SUSPENDED
+
+  // Phase 33g — Adviser feedback inbox. Every reply (from either side),
+  // every status flip, and every internal-note edit writes one of these.
+  // CLAUDE.md §13.3 "audit everything"; §16.3 row "Strategic decision".
+  FEEDBACK_THREAD_REPLIED
+  FEEDBACK_THREAD_STATUS_CHANGED
+  FEEDBACK_INTERNAL_NOTE_UPDATED
 }
 
 enum AuditStatus {
@@ -531,6 +538,13 @@ model User {
   // Phase 32C PR4a: Marketplace ratings — a user can rate a professional
   // listing they've engaged with (one rating per listing per user).
   professionalRatings ProfessionalRating[]
+
+  // Phase 33g: Adviser feedback inbox. A user can author feedback threads
+  // (when they're an adviser hitting `/portal/feedback`) and reply to threads
+  // as either the original adviser OR a Monitrax admin (when Reza replies
+  // from `/admin/feedback`, the FeedbackMessage.authorRole disambiguates).
+  feedbackThreads  FeedbackThread[]
+  feedbackMessages FeedbackMessage[]
 
   @@map("users")
 }
@@ -1462,6 +1476,10 @@ model Organization {
   auditLogs               AuditLog[]
   strategyRecommendations StrategyRecommendation[]
   professionalListing     ProfessionalListing?
+
+  // Phase 33g: Adviser feedback threads can carry org context (so Reza can
+  // filter the inbox by org). Set on creation to the adviser's currentOrg.
+  feedbackThreads FeedbackThread[]
 
   @@map("organizations")
 }
@@ -4602,4 +4620,100 @@ enum ListingRegion {
   ACT
   NT
   NATIONAL
+}
+
+// =============================================================================
+// PHASE 33g: ADVISER FEEDBACK INBOX
+// =============================================================================
+//
+// Async feedback channel for post-pitch + pilot advisers. Adviser writes a
+// thread from /portal/feedback (or via the help-drawer footer link); Reza
+// reads + replies + flips status from /admin/feedback. A weekly Markdown
+// export endpoint feeds a Claude Code session for theme synthesis.
+//
+// Design doc: docs/blueprint/PHASE_33G_ADVISER_FEEDBACK_INBOX.md
+//
+// Architecture note (CLAUDE.md §12.2 SSOT): these are deliberately SEPARATE
+// from Phase 32C PR4d's ProfessionalConversation model — different
+// participants (Monitrax↔adviser vs adviser↔client), different retention
+// rules (24mo default vs 7yr archive), different status workflow (bug-tracker
+// shape vs message-only). Forcing them through one schema would require a
+// discriminator nightmare. Do NOT consolidate without revisiting that
+// rationale; logged in IMPLEMENTATION_PLAN.md Open Questions.
+
+enum FeedbackSurfaceTag {
+  BUG // Something that should work but doesn't
+  FEATURE // Wishlist / enhancement
+  UX // Friction / clarity / labelling concern
+  PRAISE // Positive signal — capture for testimonials + roadmap validation
+  QUESTION // Genuine question (we point them at the help article + improve discoverability)
+  COMPLIANCE // CDR / AFSL / TPB / privacy concern — auto-flagged for 7yr retention
+}
+
+enum FeedbackSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum FeedbackStatus {
+  OPEN // Just submitted; awaiting first admin response
+  IN_REVIEW // Admin has replied / triaged
+  PLANNED // On the roadmap (linked to an Up Next entry, ideally)
+  SHIPPED // Resolved — fix is live
+  WONT_FIX // Out of scope; closed with reasoning
+  DUPLICATE // Closed; pointed at the canonical thread
+}
+
+enum FeedbackAuthorRole {
+  ADVISER
+  MONITRAX_ADMIN
+}
+
+model FeedbackThread {
+  id             String             @id @default(uuid())
+  userId         String // Adviser who submitted the thread
+  organizationId String? // Org context if the adviser is org-attached
+  subject        String             @db.VarChar(140)
+  surfaceRoute   String? // e.g. "/portal/clients/abc/view" — auto-filled from caller pathname
+  surfaceTag     FeedbackSurfaceTag
+  severity       FeedbackSeverity   @default(MEDIUM)
+  status         FeedbackStatus     @default(OPEN)
+  // Reza-only — never returned to adviser-facing API. Excluded from the
+  // Markdown export by default; can be opted-in for Claude synthesis.
+  internalNotes  String?            @db.Text
+  // When true, this thread (and its messages) are included in the Markdown
+  // export Reza pipes into a Claude Code session for theme synthesis.
+  taggedForAi    Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  // Set by /admin/feedback whenever an admin views or replies. Used by the
+  // 48h SLA cron (queued post-MVP) to flag OPEN threads with no admin attention.
+  lastReviewedAt DateTime?
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  messages     FeedbackMessage[]
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("feedback_threads")
+}
+
+model FeedbackMessage {
+  id         String             @id @default(uuid())
+  threadId   String
+  authorId   String // FK to User — author may be the adviser OR a Monitrax admin
+  authorRole FeedbackAuthorRole
+  body       String             @db.Text // markdown source; rendered via lib/help/markdown.ts
+  createdAt  DateTime           @default(now())
+
+  thread FeedbackThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([authorId])
+  @@map("feedback_messages")
 }

@@ -1,10 +1,24 @@
 # Phase 33g — Adviser Feedback Inbox (async)
 
-> **Status:** PROPOSAL (2026-05-05) — awaiting Reza go/no-go.
-> **Owner:** Claude (proposal author) → Reza (decision).
-> **Branch:** `claude/phase-33g-adviser-feedback-proposal-Q6tyx` (this PR is doc-only; no code lands until approval).
+> **Status:** ✅ **SHIPPED 2026-05-05.** Live end-to-end. See "Decisions made" section below for how the §9 open questions were resolved.
+> **Owner:** Claude (built under Reza directive *"use your judgement and continue"*).
+> **Branch:** `claude/phase-33g-adviser-feedback-proposal-Q6tyx` (proposal + implementation in the same branch — see PR #627).
 > **Trigger:** Reza brief 2026-05-05 — "I thought of a feedback system to provide to the advisers after the pitch and the pilot users, this feedback system should allow a direct chat with yourself in order to go back and forth with the feedback and requirements, then you can analyse, create a plan and present to me for a way forward."
-> **Decision so far:** Reza picked the **async** shape over live-AI-chat (cheaper, faster to ship, narrower compliance surface; live chat queued as a future evolution if volume justifies it).
+> **Shape:** Reza picked the **async** option over live-AI-chat (cheaper, faster to ship, narrower compliance surface; live chat queued as Phase 33g.2 if volume justifies it).
+
+## Decisions made (post-§9)
+
+Five §9 open questions resolved by Claude under the *"use your judgement"* directive. Each documented inline in the relevant code comment so a future session can find the rationale:
+
+| # | Question | Decision | Rationale |
+|---|---|---|---|
+| §9.1 | Naming | **"Send feedback"** for action affordances (verbs); **"Feedback"** for page titles + sidebar entries | Matches the verb pattern of other CTAs ("Open full Help Center", "Send reply"). "Tell us" was rejected as too informal for a B2B tool. |
+| §9.2 | Email notification on reply | **In-app only for v1.** `lib/services/feedbackService.ts` ships a documented `notifyAdviserOfReply()` swap-point that fires no-op today. | Phase 32C PR4d will land SendGrid for `ProfessionalConversation`; swap the implementation in this single function. No infra duplication. |
+| §9.3 | Severity defaults | **Default `MEDIUM`.** Adviser can change it but doesn't have to. | Frictionless ship. Reza's `/admin/feedback` is the canonical triage anyway — a wrong default at submission costs nothing. |
+| §9.4 | Internal-notes audit | **Every edit.** `FEEDBACK_INTERNAL_NOTE_UPDATED` audit row on every onBlur where `internalNotes` changed. | CLAUDE.md §13.3 "audit everything". Body of note is NEVER logged — only `previousLength` + `nextLength`. |
+| §9.5 | First-reply SLA | **48 hours**, stated in the form copy ("We aim to reply within 48 hours"). Cron-based flagging deferred to a follow-up PR. | Under-promise + over-deliver. 24h reads more serious but we'll fail it; 48h is realistic for a one-person team. |
+
+The build landed in the same PR as the proposal so reviewers can see both at once.
 
 ---
 

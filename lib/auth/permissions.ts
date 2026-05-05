@@ -130,6 +130,15 @@ export const PERMISSIONS = {
   'entity.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
   'entity.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
   'entity.delete': ['OWNER', 'ADMIN'],
+
+  // Phase 33g — Adviser feedback inbox. `feedback.write` lets any user
+  // submit feedback (including org-attached advisers — that's the whole
+  // point); `feedback.read` lets them see their OWN threads (service-layer
+  // scoping enforces that — see lib/services/feedbackService.ts). Every
+  // role gets both because feedback is the channel by which the product
+  // improves; locking it behind OWNER would be hostile UX.
+  'feedback.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER', 'PARTNER', 'ACCOUNTANT'],
+  'feedback.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER', 'PARTNER', 'ACCOUNTANT'],
 } as const;
 
 // ============================================
