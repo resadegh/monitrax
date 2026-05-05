@@ -1,5 +1,50 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e1-b-loss-netting (Phase 41e.1 slice B — capital loss netting + ordering)
+
+### Changes Made
+- **Type:** Feature — pure additive calc module composing slice A. No consumer wiring (slice D wires `entityTaxRouter`).
+- **Scope:** Implements ITAA 1997 s100-50 (loss-method ordering) + s115-100 (discount applied to net gain after losses) + Div 102-A (assessable net capital gain). Catches the most common consumer-tax mistake — applying the discount to gross gains then subtracting losses produces a smaller assessable number than the law allows; the right order yields a *higher* taxable figure. Tests pin this explicitly.
+- **Stacked on:** PR #644 (slice A — CGT discount). Stack chain: this PR → #644 → #641 → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Created
+- `lib/tax-engine/divisions/capitalLossNetting.ts` — `applyCapitalLossNetting(input)` exported. Composes slice A. Returns full breakdown: `totalNominalGains` / `totalCurrentYearLosses` / `totalPriorYearLosses` / `netGainBeforeDiscount` / `discountResult` / `assessableNetCapitalGain` / `carryForwardOut` / `breakdown[]` / `citations[]` / `uncomputed[]`. FIFO ordering for prior-year losses (oldest consumed first per s100-50). Mixed-holding-period proration with `UC-CGT-MIXED-HOLDING` UNCOMPUTED flag.
+- `tests/tax-engine/divisions/capitalLossNetting.test.ts` — 18 tests covering: basic gain (with/without > 12-month discount), current-year netting, **the critical s115-100 ordering pin** (assert $35k not $20k for the canonical $100k gain + $30k loss + 50% discount case), losses > gains → carry forward, prior-year carry-forward, prior + current both consumed, FIFO sort independence from input order, entity-type dispatch (SMSF 33⅓%, COMPANY 0%, TRUST 50%), mixed holding period UNCOMPUTED, citation completeness, breakdown row per event, edge cases (no events, only prior losses).
+
+### Files Modified
+- `docs/architecture/03_DATA_MODEL.md` §10.13 — slice B row flipped to "shipped" with full description of the s100-50 / s115-100 / Div 102-A trio.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 status callout — slice B in flight notation added.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **269 tests passed** (251 → 269, +18 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Pure additive calc module, no UI surface, no schema change. Slice D will surface this on `/dashboard/tax` per-entity API responses.)
+
+Per the going-forward commitment from PR #637, relevant docs updated:
+- `03_DATA_MODEL.md` §10.13 — slice B shipped row.
+- `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice B in flight.
+- `IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+
+### What's user-testable now
+**Nothing visual yet** — same as slice A. Slice D will be the visible flip when COMPANY / TRUST entities start producing real CGT figures via `GET /api/tax/entity/[entityId]`.
+
+### What's next
+- **Slice C** — Div 6 basic + `trustDistribution.ts` skeleton. Presently-entitled allocation per ITAA 1936 s95–s99B. Streaming (Div 6E) lands in 41e.4.
+- **Slice D** — wire `entityTaxRouter`. **First slice that flips the COMPANY / DISCRETIONARY_TRUST UNCOMPUTED branches to real numbers for simple-disposal cases.**
+
+### PR
+- Branch: `claude/phase-41e1-b-loss-netting` (stacked on `claude/phase-41e1-a-cgt-discount` / PR #644)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e1-a-cgt-discount (Phase 41e.1 slice A — Div 115 CGT discount, entity-aware rate dispatch)
 
 ### Changes Made
