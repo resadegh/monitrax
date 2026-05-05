@@ -1,5 +1,66 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e13-rest-of-states-aggregator (Phase 41e.13 — State land tax rest-of-states + cross-state aggregator)
+
+### Changes
+- 6 new state configs added to `lib/tax-engine/landTax/stateLandTax.ts`:
+  - `QLD_LAND_TAX_CY2025` — $600k threshold; 6-bracket scale to 2.25% over $10M; 2% absentee surcharge on all land (Sch 3)
+  - `SA_LAND_TAX_FY2024_25` — $755k threshold; 5-bracket scale to 2.4% over $2.5M; 0.5% trust (s13); **no foreign surcharge** (stamp-duty-only state)
+  - `WA_LAND_TAX_FY2024_25` — $300k threshold; 7-bracket scale to 2.67% over $11M; **no trust + no foreign surcharge**
+  - `TAS_LAND_TAX_FY2024_25` — $100k threshold; 3-bracket scale to 1.5% over $500k; 2% foreign on residential
+  - `ACT_LAND_TAX_FY2024_25` — Rates Act 2004 approximation; 4-bracket scale; 0.75% foreign on residential; **UC-ACT-RATES-VS-LAND-TAX** structural disclosure flag
+  - `NT_LAND_TAX_FY2024_25` — structural zero (no land tax regime); **UC-NT-NO-LAND-TAX** flag
+- New `LandTaxConfig.foreignSurchargeResidentialOnly?: boolean` field — foreign-surcharge dispatch now data-driven (NSW/TAS/ACT = `true`; VIC/QLD = `false`; SA/WA = rate is 0)
+- New module `lib/tax-engine/landTax/crossStateAggregator.ts` — `calculateCrossStateLandTax({ properties, ownershipType, isForeignOwner })`:
+  - Groups properties by state; sums `taxableLandValue` per state (within-state aggregation = same owner's parcels assessed against single progressive scale per NSW Pt 4 / VIC Pt 3 Div 4 / QLD Pt 5)
+  - Calls `calculateLandTax` for each state's aggregated value
+  - Returns `perStateAssessments[]` (alphabetical for stable rendering) + grand totals + de-duped citations + de-duped UC flags
+  - UC-LAND-TAX-JOINT-OWNERSHIP for joint ownership / inter-trust grouping
+- `getSupportedStates()` now returns `['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'ACT', 'NT']` — all 8 states/territories
+- `getLandTaxConfig()` no longer throws for any state
+- Existing test "throws for unsupported states (QLD/SA/WA/TAS/ACT/NT) in v1" removed (no longer applicable post-41e.13)
+- 32 new module tests; 535 total (503 → 535, +32); tsc clean
+
+### Testable
+```ts
+import { calculateCrossStateLandTax } from '@/lib/tax-engine/landTax/crossStateAggregator';
+
+// Owner with multi-state portfolio: NSW + VIC + QLD @ $1.5M each, AU resident
+calculateCrossStateLandTax({
+  properties: [
+    { propertyId: 'n1', state: 'NSW', taxableLandValue: 1_500_000, isResidential: true },
+    { propertyId: 'v1', state: 'VIC', taxableLandValue: 1_500_000, isResidential: true },
+    { propertyId: 'q1', state: 'QLD', taxableLandValue: 1_500_000, isResidential: true },
+  ],
+  ownershipType: 'INDIVIDUAL',
+  isForeignOwner: false,
+});
+// → grandTotalGeneralTax: 37,350    (NSW $6,900 + VIC $17,700 + QLD $12,750)
+// → statesAssessed: 3
+// → perStateAssessments sorted alphabetically (NSW, QLD, VIC)
+// → uncomputed includes UC-LAND-TAX-JOINT-OWNERSHIP
+
+// Within-state aggregation: two VIC parcels at $400k each
+calculateCrossStateLandTax({
+  properties: [
+    { propertyId: 'v1', state: 'VIC', taxableLandValue: 400_000, isResidential: true },
+    { propertyId: 'v2', state: 'VIC', taxableLandValue: 400_000, isResidential: true },
+  ],
+  ownershipType: 'INDIVIDUAL',
+  isForeignOwner: false,
+});
+// → aggregatedValue: 800,000 (NOT two $400k assessments)
+// → grandTotalGeneralTax: 6,450 (VIC @ $800k = $3,950 + 1.25% × $200k)
+```
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.25
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 (41e.13 row flipped to SHIPPED)
+
+41e.14 (stamp duty + foreign purchaser surcharge) is next.
+
+---
+
 ## Session: claude/phase-41e12-state-land-tax (Phase 41e.12 — State land tax NSW + VIC)
 
 ### Changes

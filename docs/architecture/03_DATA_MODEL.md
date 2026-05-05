@@ -1713,3 +1713,43 @@ export interface LandTaxConfig {
 - `getLandTaxConfig` + `getSupportedStates` (4 cases)
 
 **41e.13 — Rest-of-states (QLD/SA/WA/TAS/ACT/NT) + cross-state aggregator** is next.
+
+## **10.25 Phase 41e.13 — State land tax rest-of-states + cross-state aggregator (PR — shipped 2026-05-05)**
+
+Extends `lib/tax-engine/landTax/stateLandTax.ts` with **6 more state configs** (`QLD_LAND_TAX_CY2025`, `SA_LAND_TAX_FY2024_25`, `WA_LAND_TAX_FY2024_25`, `TAS_LAND_TAX_FY2024_25`, `ACT_LAND_TAX_FY2024_25`, `NT_LAND_TAX_FY2024_25`) and adds new module `lib/tax-engine/landTax/crossStateAggregator.ts` for multi-state owner aggregation.
+
+**All 8 states/territories now supported.** `getSupportedStates()` returns `['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'ACT', 'NT']`.
+
+**State-by-state matrix:**
+
+| State | Threshold | Trust surcharge | Foreign surcharge | Notes |
+|---|---|---|---|---|
+| NSW | $1,075,000 | 1.5% × first $1.075M (s5A) | 4% residential (Sch 1A) | shipped 41e.12 |
+| VIC | $50,000 | 0.5% × value (s46IB) | 4% all land (s46IC absentee) | shipped 41e.12 |
+| QLD | $600,000 | 1.75% v1 simplification | 2% all land (Sch 3 absentee) | new |
+| SA | $755,000 | 0.5% (s13) | **none** (stamp-duty-only state) | new |
+| WA | $300,000 | **none** (standard scale) | **none** (stamp-duty-only state) | new |
+| TAS | $100,000 | none | 2% residential (since 2022) | new |
+| ACT | $0 | none | 0.75% residential | structural mismatch flagged |
+| NT | $∞ (no regime) | n/a | n/a | structural zero |
+
+**Config interface extended** with `foreignSurchargeResidentialOnly?: boolean` so the foreign-surcharge dispatch is data-driven (NSW/TAS/ACT = `true`; VIC/QLD = `false`; SA/WA = surcharge rate is 0).
+
+**Two new UNCOMPUTED flags:**
+- **UC-ACT-RATES-VS-LAND-TAX** — ACT does not run a "land tax" in the same shape as NSW/VIC. Rates Act 2004 charges (a) annual general rates on every parcel + (b) residential land tax on non-owner-occupied properties only. v1 applies a flat-bracketed approximation; consult ACT Revenue Office for exact figure.
+- **UC-NT-NO-LAND-TAX** — NT does not levy land tax. Config returns $0 for structural completeness so the aggregator can iterate uniformly.
+
+**Cross-state aggregator** — `calculateCrossStateLandTax({ properties, ownershipType, isForeignOwner })`:
+
+1. Groups properties by state; sums `taxableLandValue` per state (within-state aggregation = same owner's parcels in one state assessed against that state's progressive scale).
+2. Calls `calculateLandTax` for each state's aggregated value with shared owner-level facts.
+3. Returns `perStateAssessments[]` (sorted alphabetically by state for stable rendering) + `grandTotalGeneralTax` + `grandTotalTrustSurcharge` + `grandTotalForeignSurcharge` + `grandTotalTax` + de-duped citations + de-duped UNCOMPUTED flags.
+
+**Aggregator-specific UC flag:**
+- **UC-LAND-TAX-JOINT-OWNERSHIP** — joint ownership apportionment (multiple owners per parcel) and inter-trust grouping rules (NSW Pt 4 grouping, QLD Pt 5 related-corp) NOT computed in v1. Aggregator assumes a single owner across all `properties`.
+
+**32 new tests** covering all 6 new state configs (per-bracket + foreign + trust where applicable) + cross-state aggregator (single-state, within-state aggregation, across-state independence, alphabetical ordering, NT structural zero, foreign-owner mix, citation/UC de-dup, empty input). **Existing test "throws for unsupported states"** removed (no longer applicable post-41e.13).
+
+**Total tax-engine tests:** 342 → 374 (+32). tsc clean.
+
+**41e.14 — Stamp duty + foreign purchaser surcharge** is next.
