@@ -1814,3 +1814,58 @@ New module `lib/tax-engine/gst/gstCalculator.ts` + new directory. Per *A New Tax
 18 module tests; **428 total tax-engine tests**; tsc clean.
 
 **41e.17 — MasterTaxPosition orchestrator** is next (closes Phase 41e).
+
+## **10.29 Phase 41e.17 — MasterTaxPosition orchestrator (PR — shipped 2026-05-05)**
+
+**Closes Phase 41e.** New module `lib/tax-engine/orchestrator/masterTaxPosition.ts` + new directory. The canonical replacement for `buildTaxSummary()` (the old single-entity adapter) for callers that need a household-wide view across multiple entities + cross-cutting state taxes + GST + per-entity loss-rule overlays.
+
+**Pipeline (deterministic, pure):**
+
+1. **Per-entity dispatch** — calls `calculateEntityTaxPosition()` from the existing entity router. The router already wires Phase 41e.0/1/2/3/4/5/6/8/11 (CGT discount, capital loss netting, trust distribution, SMSF caps + Div 293, Div 6E streaming, s100A facts, Div 7A loans, negative gearing, SMSF triumvirate). Per-entity income tax + CGT come back from this call.
+2. **Cross-cutting modules** — land tax (cross-state aggregator from 41e.13), stamp duty (per-transaction from 41e.14), GST (BAS calc from 41e.16). Each invoked once per `buildMasterTaxPosition()` call.
+3. **Per-entity advanced overlays** — trust loss rules (41e.15) + company loss rules (41e.15) keyed by `entityId`. Decorate the matching entity's citations + UNCOMPUTED flags; do NOT modify the entity's `result` number in v1 (rules can deny loss deductions, but v1 surfaces the rule outcome rather than re-computing — v2 decision).
+4. **Citation + UNCOMPUTED aggregation** — de-duped across every module that ran via `${kind}|${reference}` key.
+5. **Boundary footer envelope** — calls `renderBoundaryFootnote()` from `lib/tax-engine/boundaries/`. Output's `boundary` field is ready for UI render via `BoundaryFootnote.tsx`.
+
+**New types:**
+
+```ts
+export interface MasterTaxPositionInput {
+  userId: string;
+  fy: FYReference;
+  entities: EntityTaxFacts[];
+  landTax?: CrossStateLandTaxInput;
+  stampDutyTransactions?: StampDutyTransaction[];
+  gst?: GstInput;
+  trustLossByEntity?: Record<string, TrustLossInput>;
+  companyLossByEntity?: Record<string, CompanyLossInput>;
+}
+
+export interface MasterTaxPositionV2 extends MasterTaxPosition {
+  crossCutting?: CrossCuttingTaxResult;
+  boundary: BoundaryFootnote;
+  modulesInvoked: string[];
+}
+```
+
+`MasterTaxPositionV2` extends the existing `MasterTaxPosition` interface (in `types.ts`) with the new 41e.17 fields. The base shape is unchanged so existing callers that consume `MasterTaxPosition` continue to compile.
+
+**`crossCutting` block** populated only when at least one cross-cutting module ran:
+
+```ts
+export interface CrossCuttingTaxResult {
+  landTax?: CrossStateLandTaxResult;
+  stampDuty?: { perTransaction: Array<{ transactionId, state, result }>; total: number };
+  gst?: GstResult;
+  trustLossByEntity?: Record<string, TrustLossResult>;
+  companyLossByEntity?: Record<string, CompanyLossResult>;
+}
+```
+
+**Determinism:** pure function. Same inputs → same output. No DB calls. No side effects. Citation + UNCOMPUTED ordering is stable (insertion order via `Set` de-dup).
+
+**21 module tests** covering: single entity / multi-entity household aggregation / cross-cutting land tax (skip when empty / run when properties present) / cross-cutting stamp duty (skip / run, totals) / cross-cutting GST (skip / run) / per-entity trust + company loss overlays (each + both) / full household integration (every module at once → modulesInvoked complete; citations + UNCOMPUTED aggregated) / edge cases (zero entities, no cross-cutting → undefined block).
+
+**Total tax-engine tests:** 428 → 449 (+21). tsc clean.
+
+**Phase 41e is COMPLETE.** Next phase: 41h (the AI advisor pitch using these calcs as the regulatory engine).
