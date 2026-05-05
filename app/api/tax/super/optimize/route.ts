@@ -97,7 +97,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
     if (strategy.recommendedSalarySacrifice > 0) {
       const optimizedTaxableIncome = grossSalary - strategy.recommendedSalarySacrifice;
       const optimizedTax = TaxEngine.calculateIncomeTax(optimizedTaxableIncome, config);
-      const superTax = strategy.recommendedSalarySacrifice * 0.15;
+      const superTax = strategy.recommendedSalarySacrifice * config.superContributionsTaxRate;
 
       scenarios.push({
         name: 'Optimal Salary Sacrifice',
@@ -110,7 +110,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
         superContributions: Math.round(currentConcessional + strategy.recommendedSalarySacrifice),
         netPosition: Math.round(grossSalary - optimizedTax.taxPayable - strategy.recommendedSalarySacrifice),
         taxSavings: Math.round(strategy.taxSavings),
-        superGain: Math.round(strategy.recommendedSalarySacrifice * 0.85), // After 15% contributions tax
+        superGain: Math.round(strategy.recommendedSalarySacrifice * (1 - config.superContributionsTaxRate)), // After contributions tax
       });
     }
 
@@ -119,7 +119,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
     if (moderateSacrifice > 0 && moderateSacrifice !== strategy.recommendedSalarySacrifice) {
       const moderateTaxableIncome = grossSalary - moderateSacrifice;
       const moderateTax = TaxEngine.calculateIncomeTax(moderateTaxableIncome, config);
-      const moderateSuperTax = moderateSacrifice * 0.15;
+      const moderateSuperTax = moderateSacrifice * config.superContributionsTaxRate;
       const moderateSavings = (currentTax.taxPayable - moderateTax.taxPayable) - moderateSuperTax;
 
       scenarios.push({
@@ -133,7 +133,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
         superContributions: Math.round(currentConcessional + moderateSacrifice),
         netPosition: Math.round(grossSalary - moderateTax.taxPayable - moderateSacrifice),
         taxSavings: Math.round(moderateSavings),
-        superGain: Math.round(moderateSacrifice * 0.85),
+        superGain: Math.round(moderateSacrifice * (1 - config.superContributionsTaxRate)),
       });
     }
 
@@ -158,7 +158,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
       recommendations.push({
         type: 'TAX_EFFICIENCY',
         title: 'High Tax Bracket Opportunity',
-        description: `At ${Math.round(marginalRate * 100)}% marginal rate, salary sacrifice saves ${Math.round((marginalRate - 0.15) * 100)}% compared to income tax.`,
+        description: `At ${Math.round(marginalRate * 100)}% marginal rate, salary sacrifice saves ${Math.round((marginalRate - config.superContributionsTaxRate) * 100)}% compared to income tax.`,
         priority: 'HIGH',
       });
     }
@@ -182,7 +182,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
     }
 
     // Co-contribution eligibility
-    if (grossSalary < 60400) {
+    if (grossSalary < config.coContributionIncomeThreshold) {
       const coContribResult = calculateCoContribution(grossSalary, 1000);
 
       if (coContribResult.eligible) {
@@ -260,8 +260,8 @@ export const POST = withPermission('report.read', async (request, auth) => {
     const reducedTax = TaxEngine.calculateIncomeTax(reducedTaxable, config);
     const reducedMedicare = TaxEngine.calculateMedicareLevy({ taxableIncome: reducedTaxable }, config);
 
-    // Super contributions tax (15%)
-    const superContributionsTax = salarySacrifice * 0.15;
+    // Super contributions tax (ITAA 1997 s295-485)
+    const superContributionsTax = salarySacrifice * config.superContributionsTaxRate;
 
     // Calculate SG
     const superGuarantee = grossSalary * config.superGuaranteeRate;
@@ -310,7 +310,7 @@ export const POST = withPermission('report.read', async (request, auth) => {
         capExcessTax: Math.round(excessTax),
         totalTax: Math.round(newTotalTax),
         netIncome: Math.round(reducedTaxable - reducedTax.taxPayable - reducedMedicare.total),
-        superGain: Math.round(salarySacrifice * 0.85), // After contributions tax
+        superGain: Math.round(salarySacrifice * (1 - config.superContributionsTaxRate)), // After contributions tax
       },
       comparison: {
         taxSavings: Math.round(taxSavings),

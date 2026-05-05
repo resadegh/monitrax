@@ -11,6 +11,7 @@ import {
   calculateTaxPosition,
   getCurrentFinancialYear,
 } from '@/lib/tax-engine';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 import type { IncomeItem, ExpenseItem, DepreciationItem } from '@/lib/tax-engine/position/taxPositionCalculator';
@@ -333,6 +334,7 @@ interface TaxRiskDetectionParams {
 function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
   const { taxPosition, superTotals, unrealisedCGT, daysUntilEOFY, properties, depreciations } = params;
   const risks: TaxRisk[] = [];
+  const config = getCurrentTaxYearConfig();
 
   // 1. High CGT exposure
   if (unrealisedCGT > 50000) {
@@ -347,7 +349,7 @@ function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
   }
 
   // 2. Super cap approaching
-  const concessionalCap = 27500;
+  const concessionalCap = config.concessionalCap;
   const superCapUtilisation = superTotals.concessional / concessionalCap;
   if (superCapUtilisation > 0.8 && superCapUtilisation < 1) {
     risks.push({
@@ -370,15 +372,15 @@ function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
   }
 
   // 3. Division 293 threshold
-  const div293Threshold = 250000;
+  const div293Threshold = config.division293Threshold;
   const assessableIncome = taxPosition.tax.assessableIncome;
   if (assessableIncome > div293Threshold * 0.9 && assessableIncome < div293Threshold) {
     risks.push({
       type: 'div293_threshold',
       severity: 'medium',
       title: 'Approaching Division 293 threshold',
-      description: `Income of $${assessableIncome.toLocaleString()} is within 10% of the $250,000 Division 293 threshold.`,
-      impact: superTotals.concessional * 0.15,
+      description: `Income of $${assessableIncome.toLocaleString()} is within 10% of the $${div293Threshold.toLocaleString()} Division 293 threshold.`,
+      impact: superTotals.concessional * config.superContributionsTaxRate,
       action: 'Consider strategies to manage income timing',
     });
   } else if (assessableIncome >= div293Threshold) {
@@ -386,8 +388,8 @@ function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
       type: 'div293_threshold',
       severity: 'high',
       title: 'Division 293 tax applies',
-      description: `Income of $${assessableIncome.toLocaleString()} exceeds $250,000. Additional 15% tax on super contributions.`,
-      impact: superTotals.concessional * 0.15,
+      description: `Income of $${assessableIncome.toLocaleString()} exceeds $${div293Threshold.toLocaleString()}. Additional ${config.superContributionsTaxRate * 100}% tax on super contributions.`,
+      impact: superTotals.concessional * config.superContributionsTaxRate,
       action: 'Division 293 tax will be assessed',
     });
   }
@@ -418,12 +420,19 @@ function detectTaxRisks(params: TaxRiskDetectionParams): TaxRisk[] {
   );
 
   if (propertiesWithoutDepreciation.length > 0) {
+    // UNCOMPUTED `UC-PROPERTY-DEPRECIATION` per
+    // PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md §10.3 — flagged heuristic.
+    // Real Div 40 + Div 43 capital-allowance calc requires depreciation
+    // schedule data we do not yet capture; this $3k/property impact is
+    // a heuristic estimate intended to direct the user to a quantity
+    // surveyor, not a precise tax saving.
+    const HEURISTIC_PROPERTY_DEPRECIATION_PER_YEAR = 3000;
     risks.push({
       type: 'depreciation_unclaimed',
       severity: 'medium',
       title: 'Investment properties without depreciation',
       description: `${propertiesWithoutDepreciation.length} investment property(ies) have no depreciation schedule. You may be missing deductions.`,
-      impact: propertiesWithoutDepreciation.length * 3000, // Estimate $3k/year per property
+      impact: propertiesWithoutDepreciation.length * HEURISTIC_PROPERTY_DEPRECIATION_PER_YEAR,
       action: 'Consider getting a depreciation schedule',
     });
   }

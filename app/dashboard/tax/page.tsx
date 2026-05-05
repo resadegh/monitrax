@@ -32,6 +32,7 @@ import {
   Info,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 
 interface TaxRecommendation {
   id: string;
@@ -124,6 +125,9 @@ export default function TaxPage() {
   const [taxPosition, setTaxPosition] = useState<TaxPositionResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  // Canonical FY config — single source of truth for label, brackets,
+  // SG rate (PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md §10.1).
+  const taxConfig = getCurrentTaxYearConfig();
 
   useEffect(() => {
     if (token) {
@@ -426,10 +430,10 @@ export default function TaxPage() {
                 )}
               </div>
 
-              {/* Tax Brackets Reference */}
+              {/* Tax Brackets Reference — rendered from canonical FY config (PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md §6.5 H-4) */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Australian Tax Brackets 2024-2025</CardTitle>
+                  <CardTitle>Australian Tax Brackets {taxConfig.label}</CardTitle>
                   <CardDescription>Current income tax rates for residents (Stage 3 tax cuts applied)</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -443,37 +447,40 @@ export default function TaxPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        <TableRow className={taxPosition.summary.taxableIncome <= 18200 ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}>
-                          <TableCell>$0 - $18,200</TableCell>
-                          <TableCell><Badge variant="outline">0%</Badge></TableCell>
-                          <TableCell>Nil</TableCell>
-                        </TableRow>
-                        <TableRow className={taxPosition.summary.taxableIncome > 18200 && taxPosition.summary.taxableIncome <= 45000 ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}>
-                          <TableCell>$18,201 - $45,000</TableCell>
-                          <TableCell><Badge variant="outline">16%</Badge></TableCell>
-                          <TableCell>16c for each $1 over $18,200</TableCell>
-                        </TableRow>
-                        <TableRow className={taxPosition.summary.taxableIncome > 45000 && taxPosition.summary.taxableIncome <= 135000 ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}>
-                          <TableCell>$45,001 - $135,000</TableCell>
-                          <TableCell><Badge variant="outline">30%</Badge></TableCell>
-                          <TableCell>$4,288 plus 30c for each $1 over $45,000</TableCell>
-                        </TableRow>
-                        <TableRow className={taxPosition.summary.taxableIncome > 135000 && taxPosition.summary.taxableIncome <= 190000 ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}>
-                          <TableCell>$135,001 - $190,000</TableCell>
-                          <TableCell><Badge variant="outline">37%</Badge></TableCell>
-                          <TableCell>$31,288 plus 37c for each $1 over $135,000</TableCell>
-                        </TableRow>
-                        <TableRow className={taxPosition.summary.taxableIncome > 190000 ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}>
-                          <TableCell>$190,001+</TableCell>
-                          <TableCell><Badge variant="outline">45%</Badge></TableCell>
-                          <TableCell>$51,638 plus 45c for each $1 over $190,000</TableCell>
-                        </TableRow>
+                        {taxConfig.brackets.map((bracket, idx) => {
+                          const min = bracket.min;
+                          const max = bracket.max;
+                          const inBracket =
+                            taxPosition.summary.taxableIncome >= min &&
+                            (max === null || taxPosition.summary.taxableIncome <= max);
+                          const rangeLabel =
+                            max === null
+                              ? `$${min.toLocaleString()}+`
+                              : `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+                          const ratePercent = Math.round(bracket.rate * 100);
+                          const taxOnRange =
+                            bracket.rate === 0
+                              ? 'Nil'
+                              : idx === 1
+                              ? `${(bracket.rate * 100).toFixed(0)}c for each $1 over $${(min - 1).toLocaleString()}`
+                              : `$${bracket.baseAmount.toLocaleString()} plus ${(bracket.rate * 100).toFixed(0)}c for each $1 over $${(min - 1).toLocaleString()}`;
+                          return (
+                            <TableRow
+                              key={`${min}-${max ?? 'top'}`}
+                              className={inBracket ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}
+                            >
+                              <TableCell>{rangeLabel}</TableCell>
+                              <TableCell><Badge variant="outline">{ratePercent}%</Badge></TableCell>
+                              <TableCell>{taxOnRange}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
                   <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
                     <Info className="h-3 w-3" />
-                    Your current bracket is highlighted. Plus 2% Medicare Levy on taxable income.
+                    Your current bracket is highlighted. Plus {(taxConfig.medicareRate * 100).toFixed(0)}% Medicare Levy on taxable income.
                   </p>
                 </CardContent>
               </Card>
@@ -719,9 +726,9 @@ export default function TaxPage() {
                         <span>Concessional (Pre-tax)</span>
                         <span className="font-medium">{formatCurrency(taxPosition.super.concessional)}</span>
                       </div>
-                      <Progress value={(taxPosition.super.concessional / 30000) * 100} className="h-2" />
+                      <Progress value={(taxPosition.super.concessional / taxConfig.concessionalCap) * 100} className="h-2" />
                       <p className="text-xs text-muted-foreground mt-1">
-                        {formatCurrency(30000 - taxPosition.super.concessional)} remaining of $30,000 cap
+                        {formatCurrency(taxConfig.concessionalCap - taxPosition.super.concessional)} remaining of {formatCurrency(taxConfig.concessionalCap)} cap
                       </p>
                     </div>
                     <div>
@@ -729,9 +736,9 @@ export default function TaxPage() {
                         <span>Non-Concessional (After-tax)</span>
                         <span className="font-medium">{formatCurrency(taxPosition.super.nonConcessional)}</span>
                       </div>
-                      <Progress value={(taxPosition.super.nonConcessional / 120000) * 100} className="h-2" />
+                      <Progress value={(taxPosition.super.nonConcessional / taxConfig.nonConcessionalCap) * 100} className="h-2" />
                       <p className="text-xs text-muted-foreground mt-1">
-                        {formatCurrency(120000 - taxPosition.super.nonConcessional)} remaining of $120,000 cap
+                        {formatCurrency(taxConfig.nonConcessionalCap - taxPosition.super.nonConcessional)} remaining of {formatCurrency(taxConfig.nonConcessionalCap)} cap
                       </p>
                     </div>
                   </CardContent>
@@ -739,24 +746,24 @@ export default function TaxPage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Super Contribution Caps 2024-25</CardTitle>
+                    <CardTitle>Super Contribution Caps {taxConfig.label}</CardTitle>
                     <CardDescription>Annual contribution limits</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="p-3 rounded-lg bg-muted">
                         <p className="text-sm font-medium">Concessional Cap</p>
-                        <p className="text-2xl font-bold">$30,000</p>
+                        <p className="text-2xl font-bold">{formatCurrency(taxConfig.concessionalCap)}</p>
                         <p className="text-xs text-muted-foreground">SG + salary sacrifice + personal deductible</p>
                       </div>
                       <div className="p-3 rounded-lg bg-muted">
                         <p className="text-sm font-medium">Non-Concessional Cap</p>
-                        <p className="text-2xl font-bold">$120,000</p>
+                        <p className="text-2xl font-bold">{formatCurrency(taxConfig.nonConcessionalCap)}</p>
                         <p className="text-xs text-muted-foreground">After-tax contributions</p>
                       </div>
                       <div className="p-3 rounded-lg bg-muted">
                         <p className="text-sm font-medium">Super Guarantee Rate</p>
-                        <p className="text-2xl font-bold">11.5%</p>
+                        <p className="text-2xl font-bold">{(taxConfig.superGuaranteeRate * 100).toFixed(1)}%</p>
                         <p className="text-xs text-muted-foreground">Employer mandatory contribution</p>
                       </div>
                     </div>
@@ -774,10 +781,10 @@ export default function TaxPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-sky-700 dark:text-sky-400 mb-2">
-                      At your {formatPercent(taxPosition.tax.marginalRate)} marginal rate, salary sacrificing into super saves {formatPercent(taxPosition.tax.marginalRate - 15)} compared to taking income.
+                      At your {formatPercent(taxPosition.tax.marginalRate)} marginal rate, salary sacrificing into super saves {formatPercent(taxPosition.tax.marginalRate - taxConfig.superContributionsTaxRate * 100)} compared to taking income.
                     </p>
                     <p className="text-sm text-sky-700 dark:text-sky-400">
-                      Remaining concessional cap: {formatCurrency(30000 - taxPosition.super.concessional)}
+                      Remaining concessional cap: {formatCurrency(taxConfig.concessionalCap - taxPosition.super.concessional)}
                     </p>
                   </CardContent>
                 </Card>
