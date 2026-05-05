@@ -443,6 +443,40 @@ export const POST = withPermission<RouteContext>(
         };
       }
 
+      // Phase 41e.6 — Div 7A loans from body.
+      let div7aLoans: EntityTaxFacts['div7aLoans'] = undefined;
+      if (body && typeof body === 'object' && Array.isArray(body.div7aLoans)) {
+        for (const l of body.div7aLoans) {
+          if (
+            typeof l?.loanId !== 'string' ||
+            typeof l?.openingBalance !== 'number' ||
+            typeof l?.yearsRemaining !== 'number' ||
+            typeof l?.benchmarkRate !== 'number' ||
+            typeof l?.paymentsMadeThisFy !== 'number' ||
+            typeof l?.hasComplianceAgreement !== 'boolean'
+          ) {
+            return NextResponse.json(
+              {
+                success: false,
+                error:
+                  'Invalid div7aLoans body — each loan requires { loanId: string, openingBalance: number, yearsRemaining: number, benchmarkRate: number, paymentsMadeThisFy: number, hasComplianceAgreement: boolean }.',
+              },
+              { status: 400 },
+            );
+          }
+        }
+        div7aLoans = body.div7aLoans.map((l: Record<string, unknown>) => ({
+          loanId: String(l.loanId),
+          loanLabel: l.loanLabel ? String(l.loanLabel) : undefined,
+          openingBalance: Number(l.openingBalance),
+          yearsRemaining: Number(l.yearsRemaining),
+          benchmarkRate: Number(l.benchmarkRate),
+          paymentsMadeThisFy: Number(l.paymentsMadeThisFy),
+          hasComplianceAgreement: !!l.hasComplianceAgreement,
+          isSubTrustUpe: !!l.isSubTrustUpe,
+        }));
+      }
+
       const facts: EntityTaxFacts = {
         entityId: entity.id,
         entityType: entity.type,
@@ -475,6 +509,7 @@ export const POST = withPermission<RouteContext>(
         carryForwardCapitalLosses,
         smsfContributions,
         highIncomeSuper,
+        div7aLoans,
       };
 
       const entityPosition = calculateEntityTaxPosition(facts);

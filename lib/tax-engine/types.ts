@@ -747,6 +747,23 @@ export interface EntityTaxFacts {
     /** Amount in retirement phase super (TBC tracking). */
     transferBalanceUsed?: number;
   };
+  /**
+   * Phase 41e.6 — Division 7A loans owed by the COMPANY entity to a
+   * shareholder/associate. When provided for a COMPANY entity, the
+   * router runs `classifyDiv7ALoans` and returns the result on the
+   * entity's `result.div7aClassification`. Without data, the COMPANY
+   * UNCOMPUTED placeholder remains.
+   */
+  div7aLoans?: ReadonlyArray<{
+    loanId: string;
+    loanLabel?: string;
+    openingBalance: number;
+    yearsRemaining: number;
+    benchmarkRate: number;
+    paymentsMadeThisFy: number;
+    hasComplianceAgreement: boolean;
+    isSubTrustUpe?: boolean;
+  }>;
 }
 
 /**

@@ -1499,3 +1499,31 @@ New `lib/tax-engine/divisions/s100aZoneClassifier.ts` exporting `classifyS100AZo
 **20 new classifier tests + 3 router-integration tests.** Zero regressions on existing 26 trustDistribution tests — the new fields are fully optional/backward-compat.
 
 **41e.6 — Div 7A loan classifier** is next.
+
+## **10.18 Phase 41e.6 — Division 7A loan classifier (PR #655 — shipped 2026-05-05)**
+
+New `lib/tax-engine/divisions/div7aLoanClassifier.ts` exporting `classifyDiv7ALoans(loans)` + `calculateMinimumYearlyRepayment(balance, years, rate)`. Compliance check on private-company → shareholder/associate loans per ITAA 1936 Div 7A.
+
+**Status dispatch (priority highest → lowest):**
+| Status | Trigger | Deemed dividend |
+|---|---|---|
+| **SUB_TRUST_UPE** | `isSubTrustUpe` | $0 (deferred to TR 2010/3 + PCG 2017/13 deep-case sub-PR) |
+| **NO_AGREEMENT** | `!hasComplianceAgreement` | full opening balance (s109D) |
+| **MRP_SHORTFALL** | payments < s109N MRP | shortfall amount |
+| **COMPLIANT** | payments ≥ MRP | $0 |
+
+**MRP formula (s109N — Schedule 4 ITAA 1936):** standard amortising-annuity:
+```
+MRP = B × [r × (1+r)^N] / [(1+r)^N − 1]
+```
+where B = opening balance, r = ATO benchmark rate (caller provides per FY), N = years remaining. Degenerate cases handled: zero balance / zero years → MRP = 0; zero rate → straight-line `B / N`.
+
+**`EntityTaxFacts.div7aLoans`** new optional field. Wired into router COMPANY branch — when loans data is provided for a COMPANY entity, `result.div7aClassification` carries the full result. Income tax dispatch (base-rate 25%/30% + franking) STILL UNCOMPUTED — that's 41e.7 territory. **"Never false silence" pattern:** COMPANY with `div7aLoans` returns Div 7A classification + `UC-ENTITY-COMPANY` for income tax.
+
+**UNCOMPUTED flags:**
+- **UC-DIV7A-DISTRIBUTABLE-SURPLUS** — when total deemed dividend > 0. s109Y surplus cap is its own beast (net assets + paid-up capital + repayments + non-commercial loans, less prior frankable distributions).
+- **UC-DIV7A-SUBTRUST-UPE** — when any loan is flagged `isSubTrustUpe`. Option 1/2/3 sub-trust regimes deferred.
+
+**20 new tests** + **3 router-integration tests**: COMPLIANT path (payments ≥ MRP), MRP_SHORTFALL with deemed dividend = shortfall (NOT entire balance), NO_AGREEMENT with deemed = full balance, SUB_TRUST_UPE priority over NO_AGREEMENT, multi-loan aggregation (`highestSeverity` = worst), citation completeness, `calculateMinimumYearlyRepayment` boundary cases (zero balance, zero years, zero rate, higher rate → higher MRP). Router integration: COMPANY without data still UNCOMPUTED, with data → real classification + UC-ENTITY-COMPANY preserved, with both div7aLoans + cgtEvents → both populated.
+
+**41e.7 — Div 152 small business CGT concessions** is next.

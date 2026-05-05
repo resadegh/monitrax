@@ -45,6 +45,7 @@ import {
 } from '../divisions/capitalLossNetting';
 import { trackContributionCaps } from '../super/capTracker';
 import { calculateHighIncomeSuperTax } from '../super/highIncomeSuperTax';
+import { classifyDiv7ALoans } from '../divisions/div7aLoanClassifier';
 import type {
   AuthorityCitation,
   EntityTaxFacts,
@@ -324,6 +325,53 @@ export function calculateEntityTaxPosition(
       cgtResult: cgt ?? undefined,
       citations: merged.citations,
       uncomputed: merged.uncomputed,
+    };
+  }
+
+  // Phase 41e.6 — COMPANY entities flip to computed (for Div 7A) when
+  // div7aLoans data is provided. Income tax dispatch (base-rate
+  // 25%/30%) still UNCOMPUTED — that's 41e.7 territory. So COMPANY
+  // result here carries Div 7A classification only; the income-tax
+  // UNCOMPUTED flag stays. "Never false silence" pattern.
+  if (
+    facts.entityType === 'COMPANY' &&
+    facts.div7aLoans &&
+    facts.div7aLoans.length > 0
+  ) {
+    const div7aResult = classifyDiv7ALoans(
+      facts.div7aLoans.map((l) => ({
+        loanId: l.loanId,
+        loanLabel: l.loanLabel,
+        openingBalance: l.openingBalance,
+        yearsRemaining: l.yearsRemaining,
+        benchmarkRate: l.benchmarkRate,
+        paymentsMadeThisFy: l.paymentsMadeThisFy,
+        hasComplianceAgreement: l.hasComplianceAgreement,
+        isSubTrustUpe: l.isSubTrustUpe,
+      })),
+    );
+
+    // COMPANY income tax dispatch (base-rate / franking) still
+    // UNCOMPUTED — surface the placeholder so the user knows that the
+    // 25%/30% dispatch + s115-280 CGT carve-out lands in 41e.7.
+    const companyFlag = UNCOMPUTED_ENTITY_TAX.COMPANY!;
+    let citations: AuthorityCitation[] = [...div7aResult.citations];
+    let uncomputed: UncomputedFlag[] = [companyFlag, ...div7aResult.uncomputed];
+
+    if (cgt) {
+      const m = mergeCgt(citations, uncomputed, cgt);
+      citations = m.citations;
+      uncomputed = m.uncomputed;
+    }
+
+    return {
+      entityId: facts.entityId,
+      entityType: facts.entityType,
+      fy: facts.fy,
+      result: { div7aClassification: div7aResult },
+      cgtResult: cgt ?? undefined,
+      citations,
+      uncomputed,
     };
   }
 
