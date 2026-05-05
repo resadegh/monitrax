@@ -1,9 +1,10 @@
 # PHASE 32: ENTERPRISE PORTAL - Organization Client Management
 
-> **Status**: APPROVED - READY FOR IMPLEMENTATION
+> **Status**: ✅ **SHIPPED — Phase 32B + 32C complete (May 2026).** Pricing model finalised (Studio AU$199 / Practice AU$599 / Enterprise from $1,499 — Xero-style dual-axis with seat + client overflow). White-labeling shipped on PRACTICE+ tier. SSO deferred to PROD. Multi-Organization Clients supported via `OrganizationClient` model. API access shipped on PRACTICE+ tier. Xero integration: personal Xero OAuth + balance-sheet/P&L import shipped (Phase 41a-d); full bidirectional sync deferred to PROD per Phase 41f. **Single source of truth invariant preserved** — `getMasterFinancialSnapshot()` is the canonical engine; `viewerContext` parameter (not a fork) applies service-layer scope filtering for adviser drill-in. **See `docs/IMPLEMENTATION_PLAN.md` Recently Completed entries 2026-05-04 through 2026-05-09 for full deliverables list, and `docs/blueprint/MASTER_BLUEPRINT.md` §4 Completed Phases for Phase 32B PR1/PR3 + 32C PR4a/4b/4c/4d/PR6 row-by-row status.**
+>
 > **Author**: Claude AI
 > **Created**: 2026-01-19
-> **Updated**: 2026-01-19
+> **Updated**: 2026-05-09 — flipped to SHIPPED with reference to canonical operational SSOT
 > **Target Audience**: Accountants, Financial Advisors, Wealth Managers, Bookkeepers
 
 ---
@@ -12,15 +13,18 @@
 
 | Question | Decision | Date |
 |----------|----------|------|
-| Pricing Model | TBD - To be finalized later | 2026-01-19 |
-| White-Labeling | YES - Required (Phase 32.11) | 2026-01-19 |
-| SSO/SAML | YES - Required (Phase 32.12) | 2026-01-19 |
-| Multi-Organization Clients | YES - One client can belong to multiple orgs | 2026-01-19 |
-| API Access | **CRITICAL** - Required for Xero integration (Phase 32.13) | 2026-01-19 |
-| Xero Integration | **CRITICAL** - Primary accounting software integration | 2026-01-19 |
-| **Data Integrity** | **CRITICAL** - Monitrax = Single Source of Truth, export-only sync | 2026-01-19 |
-| **Isolation** | **CRITICAL** - Must NOT break/change main app without approval | 2026-01-19 |
-| **Accountant UX** | Portal designed like Xero Practice Manager, familiar to accountants | 2026-01-19 |
+| Pricing Model | ✅ Locked 2026-05-04 — Studio AU$199 / Practice AU$599 / Enterprise from $1,499 (Xero-style dual-axis with seat + client overflow add-ons) | 2026-05-04 |
+| White-Labeling | ✅ Shipped on PRACTICE+ tier via `lib/portal/planTier.ts` feature flags | 2026-05-08 |
+| SSO/SAML | 📋 Deferred to PROD-ready (post-Basiq accreditation) | 2026-05-04 |
+| Multi-Organization Clients | ✅ Supported via `OrganizationClient` model + per-org consent | 2026-05-04 |
+| API Access | ✅ Shipped on PRACTICE+ tier | 2026-05-08 |
+| Xero Integration | 🔄 Phase 41a-d shipped personal OAuth + balance-sheet import; full bidirectional sync queued under Phase 41f (~10 days) | 2026-05-09 |
+| **Data Integrity** | ✅ **Invariant preserved** — `getMasterFinancialSnapshot()` canonical engine, `viewerContext` parameter (not a fork) for adviser drill-in | 2026-05-04 |
+| **Isolation** | ✅ Service-layer scope filtering at `viewerContext`, never UI-layer | 2026-05-04 |
+| **Accountant UX** | ✅ Practice surface shipped — Apple-glass + warm-ivory aesthetic, profession-aware config (adviser/broker/accountant), TRAIL framework reused | 2026-05-04 |
+| **Anti-poaching guardrail** | ✅ `team:invite` + commercial actions (submit-listing / subscribe / cancel) PORTAL_OWNER-only; `PORTAL_SEAT_INVITED` audit log row on every invitation | 2026-05-04 |
+| **Leaky-funnel guardrail** | ✅ Org-attached users never see public marketplace surface (enforced at service boundary in `getCandidatesForUser` + `submitRequest`) | 2026-05-04 |
+| **Pitch fixture seed** | ✅ `prisma/seed-lighthouse.ts` + `npm run seed:lighthouse` — 3 archetypes (Sarah / David+Emma / Olivia) + Smithfield Wealth Advisers | 2026-05-09 |
 
 ---
 
