@@ -280,4 +280,38 @@ Docs updated:
 
 ### PR
 - Branch: `claude/phase-41e-audit-pr2-combinations`
+- PR URL: https://github.com/resadegh/monitrax/pull/622
+
+---
+
+## Session: claude/phase-41e-audit-pr3-migration-map (Phase 41e audit + migration plan PR 3/4 — per-rule SSOT migration map + per-engine downstream impact + cycle-detection spec)
+
+### Changes Made
+- **Type:** Docs (PR 3/4 of the four-PR audit gating Phase 41e.0; doc-only, no code, no schema; stacked on PR 2/4 branch since both edit the same doc sequentially — will rebase clean once PR 2 merges)
+- **Scope:** Per-file migration verdict for every Phase 20 module + every aggregator + every tax route + every cross-engine consumer. Constants reconciliation table consolidating C-2, H-1, H-2, H-3, H-4, H-5, H-6 into a single source-of-truth map. `parentEntityId` cycle-detection validation contract for `legalEntityService.ts`.
+
+### Files Modified
+- `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` — appended §6 (per-rule SSOT migration map: verdict legend; Phase 20 per-file map showing 8 files preserved untouched + 5 additive EXTENDs; aggregator per-file map with C-3 resolution; tax routes per-file map with constants reconciliation; constants reconciliation table mapping every hard-coded value to its canonical home in `taxYearConfig.ts`; non-tax engine touch list with verification requirements; per-route migration impact showing zero URL changes + zero breaking response shape changes; new endpoints introduced by 41e), §7 (`parentEntityId` cycle-detection spec: 4 rules — self-parent forbidden / no chain cycles / max depth 10 / type-compatibility advisory; pseudocode for `validateParentChain()`; database CHECK constraint as defence-in-depth; 8 required tests), §8 (refreshed What's Next pointing at PR 4).
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #29 — narrative refresh: PR 2/4 marked open; PR 3/4 narrative added.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — locks in the per-file SSOT migration plan + cycle-detection contract
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Docs updated:
+- `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` — §6, §7, §8 appended
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #29 — narrative refresh
+
+### Testing
+- [x] Markdown renders cleanly
+- [x] Every constant from §3 critical findings register has a row in the §6.5 reconciliation table
+- [x] Every Phase 20 file from §2.1 has a verdict in §6.2
+- [ ] Reza sign-off on PR 3 — pending
+
+### What's next
+- After Reza signs off PR 3, PR 4 (final) lands: refined sub-PR sequencing + snapshot-test fixture strategy + constants reconciliation v2 + FY25-26 config + UNCOMPUTED additions + Reza sign-off block that gates 41e.0.
+
+### PR
+- Branch: `claude/phase-41e-audit-pr3-migration-map` (stacked on `claude/phase-41e-audit-pr2-combinations`)
 - PR URL: TBD on push
