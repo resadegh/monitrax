@@ -942,3 +942,52 @@ This is deliberate. Editing a client's structure is a personal-advice activity t
 ### What this unblocks (41h)
 
 - The AI advisor (Phase 41h) composes the same flow shape and entity tree to produce entity-aware diagnostics ("Olivia's trust holds property X with $300k unrealised CGT"). Both visualisations are now reachable from the adviser drill-in, so the AI's recommendations show up next to the same evidence the adviser is reading.
+
+## **10.12 Phase 41e.−1 cleanup + 41e.0 foundation — schema-relevant changes**
+
+The Phase 41e.−1 cleanup PR (slices A/B/C/D — PRs #626/#629/#630/#633) and Phase 41e.0 foundation (slices A/B in flight via PRs #634/#636) introduce schema-adjacent changes worth recording here even though most of 41e is calc-engine and type-system work.
+
+### `TaxYearConfig` extended (slice A — PR #626)
+
+`lib/tax-engine/types.ts` extended with 7 new required fields on `TaxYearConfig` carrying primary-authority citations in JSDoc. These are **type-only** changes (no DB schema impact) but they are the canonical SSOT for AU tax thresholds (CLAUDE.md §12.2):
+
+| Field | Purpose | Authority |
+|---|---|---|
+| `label` | Display string ("FY24-25") | — |
+| `superGuaranteeQuarterlyCap` | ATO maximum super contribution base | ATO annual publication |
+| `superContributionsTaxRate` | Taxed-in-fund rate (15% across all FYs) | ITAA 1997 s295-485 |
+| `coContributionIncomeThreshold` | Phase-out upper bound | ATO annual indexation |
+| `carryForwardTsbThreshold` | TSB threshold for carry-forward concessional | ITAA 1997 s291-20(3) |
+| `bringForwardThresholds` | TSB tiers for non-concessional bring-forward | ITAA 1997 s292-85(2) |
+| `reviewSchedule` | Per-FY review checkpoint (forces explicit human review before each new FY) | Audit doc §10.2 |
+
+`TAX_YEAR_2025_26` added (resolves audit C-4). SG rises to 12% per ATO schedule.
+
+### LegalEntity DB CHECK constraint (slice B — PR #636)
+
+Migration `20260506110000_legal_entity_no_self_parent` adds:
+
+```sql
+ALTER TABLE "legal_entities"
+  ADD CONSTRAINT "legal_entities_no_self_parent"
+  CHECK ("id" <> "parentEntityId" OR "parentEntityId" IS NULL);
+```
+
+**Defence-in-depth** for the `parentEntityId` cycle-detection contract documented in audit §7. The application-layer `validateParentChain()` helper in `lib/services/legalEntityService.ts` is the primary guard (SELF_PARENT / CYCLE_DETECTED / MAX_DEPTH_EXCEEDED at chain depth 10 / PARENT_NOT_FOUND); this CHECK constraint catches the simplest cycle (`id = parent_entity_id`) at the storage layer regardless of how a row reaches the database.
+
+Pure additive — only rejects rows the application has been blocking since 41a. §12.11 N/A.
+
+### Phase 41e.0 entity-aware orchestration types (slice A — PR #634)
+
+New type contracts in `lib/tax-engine/types.ts` (no DB schema impact, but they're the canonical contract for the new layer per architecture doc §4):
+
+- `AuthorityCitation` — primary AU authority reference (ITAA 1936/1997 / SIS Act / TR / TD / PCG / PS LA / state acts) attached to every rule result.
+- `FYReference` — FY-indexed lookup contract.
+- `EntityTaxFacts` — per-entity dispatcher input.
+- `EntityTaxPosition` — output of single-entity dispatch.
+- `UncomputedFlag` — audit-friendly "deliberately not computed" structure.
+- `MasterTaxPosition` — household-wide roll-up; the canonical replacement for `buildTaxSummary()` once 41e.17 lands.
+
+### Aggregator extensions (slice C — pending)
+
+The 5 financial aggregators (`incomeAggregator`, `expenseAggregator`, `loanAggregator`, `cashflowOrchestrator`, `netWorthCalculator`) will gain optional `ownerEntityId?: string` parameter (default = no filter, backward-compatible). This is the application-layer flow that activates the existing `ownerEntityId` FK on every owned object. No DB schema change.

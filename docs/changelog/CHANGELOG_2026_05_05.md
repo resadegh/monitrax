@@ -1,5 +1,45 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e0-doc-sync-followup (Phase 41e.0 doc-sync follow-up — close §3.1 / §16 gaps from slices A + B)
+
+### Changes Made
+- **Type:** Docs-only follow-up (no code, no schema). Per Reza directive 2026-05-05 — *"make sure all relevant documents including design, blueprint, runbooks etc are also updated as we go so there is nothing missed"* — fills the §3.1 / §16 doc-sync gaps left when slices A (PR #634) and B (PR #636) said *"full 41e.0 audit closure batched at slice D."* That batching was a reasonable judgement call but it skipped specific docs that should have updated per the matrix. This PR fixes the misses inline.
+- **Scope:** Updates 4 canonical docs to reflect the work that has shipped across the audit + 41e.−1 cleanup + 41e.0 slices A/B. No code changes; no migration changes; no behaviour changes.
+- **Stacked on:** PR #636 (slice B). Stack chain: this PR → #636 → #634 → #633 → main.
+
+### Files Modified
+- `docs/operational/security/02_IAM_AND_PERMISSIONS.md` — extended the Permission Naming Convention example list with `entity.read` / `entity.write` / `entity.delete` (Phase 41a) + `tax_data.read` / `tax_data.write` (Phase 41e.0). Added a "Phase 41e tax-data permissions" paragraph explaining what they gate (route access, not CDR-content visibility) and pointing at `lib/auth/permissions.ts` as the canonical role mapping.
+- `docs/architecture/03_DATA_MODEL.md` — appended new §10.12 "Phase 41e.−1 cleanup + 41e.0 foundation — schema-relevant changes" capturing: the 7 new `TaxYearConfig` fields with their primary-authority citations (slice A — PR #626); the new `TAX_YEAR_2025_26` config (resolves audit C-4); the `legal_entities_no_self_parent` DB CHECK constraint (slice B — PR #636 / migration `20260506110000_legal_entity_no_self_parent`); the 6 new entity-aware orchestration types in `lib/tax-engine/types.ts` (slice A — PR #634); the upcoming aggregator extension contract (slice C, queued).
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` — §4 Canonical types now carries an "Implementation status (2026-05-05)" callout listing each type that landed in 41e.0 slice A (PR #634) at `lib/tax-engine/types.ts`, plus the two intentional deviations from the architectural pseudocode (`EntityTaxPosition.result` typed `unknown`; `EntityTaxFacts.incomes/expenses/depreciations` inlined as structural rows to avoid circular imports). §11 Implementation sequence updated to reflect the audit-inserted `41e.−1` cleanup PR + the slice-by-slice ship status (41e.−1 A/B/C ✅ merged, D in review; 41e.0 A/B in review). Sequence is now 18 sub-PRs total (was 17).
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed (2026-05-05) — prepended two entries for 41e.0 slice A (PR #634) and slice B (PR #636) with the same level of detail as the 41e.−1 cleanup-slice entries. Slice A: types + permissions; slice B: cycle-detection + DB CHECK + 11 tests.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — closes the doc-sync gaps from slices A + B
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Docs updated:
+- `docs/operational/security/02_IAM_AND_PERMISSIONS.md` — Permission Naming Convention + tax-data permissions explainer.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.12 capturing 41e.−1 + 41e.0 schema-relevant changes.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` — §4 implementation-status callout + §11 sequence-status update.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — slices A + B entries prepended.
+
+### Going-forward commitment
+Per Reza directive — every future slice updates the relevant docs in the same PR, not batched. If a slice has nothing to update for a given doc surface, the §16.5 block lists the unchecked surfaces explicitly (positive confirmation, not absence of evidence). The following docs will be touched by upcoming 41e.0 slices:
+- **Slice C** (aggregator extensions) → `03_DATA_MODEL.md` §10.12 ("Aggregator extensions — pending" → "Aggregator extensions — shipped"), `01_ARCHITECTURE_OVERVIEW.md` if module boundaries change, IMPLEMENTATION_PLAN Recently Completed.
+- **Slice D** (entityTaxRouter + boundaries renderer + new endpoints) → `07_API_STANDARDS.md` (new endpoints), `06_UI_UX_FOUNDATION.md` (boundaries-renderer footer pattern if surfaced UI-side), `03_DATA_MODEL.md` §10.12 (router + endpoints), IMPLEMENTATION_PLAN Recently Completed, `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 status flip, `MASTER_BLUEPRINT.md` if 41e.0 phase status changes.
+
+### What's next
+- **Slice C** — entity-aware aggregator extensions (resolves the last open audit critical: C-3).
+- **Slice D** — `entityTaxRouter` skeleton + AFSL/TPB/NCCP boundaries renderer + new endpoints. Closes 41e.0; 41e.1 starts.
+
+### PR
+- Branch: `claude/phase-41e0-doc-sync-followup` (stacked on `claude/phase-41e0-b-cycle-detection` / PR #636)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e0-b-cycle-detection (Phase 41e.0 foundation slice B — parentEntityId cycle-detection)
 
 ### Changes Made

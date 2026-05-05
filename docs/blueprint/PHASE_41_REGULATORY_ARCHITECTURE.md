@@ -233,6 +233,12 @@ lib/calculations/tax/
 
 The engine speaks one common language. Every rule consumes and produces these types — no rule-local data structures.
 
+> **Implementation status (2026-05-05):** **`AuthorityCitation`, `FYReference`, `EntityTaxFacts`, `EntityTaxPosition`, `UncomputedFlag`, `MasterTaxPosition`** all landed in **Phase 41e.0 slice A (PR #634)** at `lib/tax-engine/types.ts`. The pseudocode below reflects the original architectural intent; the actual TypeScript contracts diverge in two places:
+> - `EntityTaxPosition.result` is typed `unknown` rather than a union of rule-result shapes — sub-PRs 41e.1+ refine this in their own commits to avoid churn.
+> - `EntityTaxFacts.incomes / expenses / depreciations` are inlined structural rows matching `IncomeItem` / `ExpenseItem` / `DepreciationItem` from `position/taxPositionCalculator.ts` to avoid a circular import.
+>
+> Both deviations are documented inline in `lib/tax-engine/types.ts` JSDoc with cross-references back to this section. The semantics — authority-citation traceability, UNCOMPUTED-flag aggregation, FY-indexed thresholds — are preserved verbatim.
+
 ```typescript
 // FY-indexed reference (e.g. '2025-2026' is the AU financial year ending 30 June 2026)
 type FYReference = `${number}-${number}`;
@@ -496,8 +502,15 @@ Initial entries (Phase 41e demo scope):
 ## 11. Phase 41e implementation sequence
 
 > **Updated 2026-05-04 per Reza decision D-1: full regulatory scope ships in demo cut. No demo/PROD split within 41e.**
+>
+> **Updated 2026-05-05 per audit doc §8.1: a pre-flight cleanup PR (`41e.−1`) inserted ahead of `41e.0`. Sequence is now 18 sub-PRs.** The audit caught an existing 3,776-LOC Phase 20 federal tax engine at `lib/tax-engine/` — sound within scope, with the architecturally cleaner play being to **layer 41e on top, not rewrite**. The cleanup PR runs first to (a) replace the `buildTaxSummary()` regression trap with delegation to `calculateTaxPosition()`, (b) extract every hard-coded constant (concessional cap, super tax rate, co-contribution threshold, SG rate, brackets table, marginal rate assumption, CGT discount) to FY config, (c) add FY25-26 to `taxYearConfig.ts` (resolves audit C-4), (d) capture parity-baseline snapshots against three archetype fixtures (Sarah Kim / David+Emma / Olivia) shared with pitch seeding.
+>
+> **Implementation status (2026-05-05):**
+> - **41e.−1 cleanup** — slices A (PR #626 ✅ merged), B (PR #629 ✅ merged), C (PR #630 ✅ merged), D (PR #633 in review). After D, audit C-1, C-2, C-4 + H-1 through H-6 all resolved. C-3 deferred to 41e.0 slice C (entity-aware aggregators).
+> - **41e.0 foundation** — slice A (PR #634 in review — types + permissions), slice B (PR #636 in review — `parentEntityId` cycle-detection per audit §7), slice C (queued — entity-aware aggregator extensions, resolves C-3), slice D (queued — `entityTaxRouter` skeleton + AFSL boundaries renderer + new endpoints).
+> - **41e.1 → 41e.17** — queued; sequence below remains the contract.
 
-Given the surface area, 41e is not one PR. It's a sequence of 16 sub-PRs, all gating the lighthouse adviser pitch:
+Given the surface area, 41e is not one PR. It's a sequence of 18 sub-PRs (the original 17 plus the inserted `41e.−1`), all gating the lighthouse adviser pitch:
 
 | PR | Scope | Estimate | Authority |
 |---|---|---|---|
