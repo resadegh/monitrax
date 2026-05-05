@@ -247,3 +247,37 @@ Docs updated:
 ### PR
 - Branch: `claude/phase-41g-adviser-overlay-entity`
 - PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e-audit-pr2-combinations (Phase 41e audit + migration plan PR 2/4 — architectural decision + multi-entity combinations matrix)
+
+### Changes Made
+- **Type:** Docs (PR 2/4 of the four-PR audit gating Phase 41e.0; doc-only, no code, no schema)
+- **Scope:** Locks in three foundational decisions for the entity-aware tax engine: (1) layer 41e on top of the existing 3,776-LOC Phase 20 tax engine rather than rewrite, (2) the multi-entity ownership combinations matrix (which entity types can legally own which financial-object types under AU law + per-cell tax dispatch rule), (3) the eight cross-entity flow scenarios 41e must dispatch correctly (corporate trustee, Div 7A, trust-to-trust streaming, trust→PERSONAL distribution, SMSF contributions, LRBA, PSI through Pty Ltd, BRP acquisition).
+
+### Files Modified
+- `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` — appended §4 (architectural decision: layer-don't-rewrite with rejected alternatives, layer-boundary diagram, consumer-rewiring summary, new canonical entry points), §5 (multi-entity combinations matrix: legend, 7×7 entity×object table with per-cell AU rule + authority citation, schema-vs-AU-vs-calc divergence map listing every cell where the schema is broader than AU law and the wizard/calc engine must enforce, indirect ownership table for corporate-trustee + custodian + service-entity + LRBA bare trust + SMSF-held unit trust, eight cross-entity flow scenarios with the calc-engine module each one triggers, UNCOMPUTED list deferred to PR 4), §6 (refreshed What's Next pointing at PR 3-4).
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #29 updated: PR 1/4 marked merged 2026-05-05; PR 2/4 narrative added (combinations matrix + cross-entity flow scenarios); hard-prerequisite gate on the full 4-PR audit retained.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — locks in Phase 41e architectural approach (layer-don't-rewrite) + entity ownership rules
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Docs updated:
+- `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` — §4, §5, §6 appended
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #29 — narrative refresh
+
+### Testing
+- [x] Markdown renders cleanly
+- [ ] Reza sign-off on PR 2 — pending
+
+### What's next
+- After Reza signs off PR 2, branch off main and ship PR 3 (per-rule SSOT migration map + per-engine downstream impact + parentEntityId cycle-detection spec).
+- After PR 3 signs off, ship PR 4 (refined sub-PR sequencing + snapshot-test fixture strategy + constants reconciliation + FY25-26 config gap + UNCOMPUTED additions + Reza sign-off block that gates 41e.0).
+- 41e.0 starts only after PR 4 sign-off.
+
+### PR
+- Branch: `claude/phase-41e-audit-pr2-combinations`
+- PR URL: TBD on push
