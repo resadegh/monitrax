@@ -43,6 +43,7 @@ import {
   type CgtEvent,
   type CarryForwardLoss,
 } from '../divisions/capitalLossNetting';
+import { trackContributionCaps } from '../super/capTracker';
 import type {
   AuthorityCitation,
   EntityTaxFacts,
@@ -243,6 +244,53 @@ export function calculateEntityTaxPosition(
     };
   }
 
+  // Phase 41e.2 — SMSF entities flip to computed when smsfContributions
+  // data is provided. Returns the CapTrackingResult shape — concessional
+  // + non-concessional cap headroom, carry-forward and bring-forward
+  // eligibility, excess-contribution tax. Without contribution data,
+  // SMSF stays UNCOMPUTED.
+  if (facts.entityType === 'SMSF' && facts.smsfContributions) {
+    const capResult = trackContributionCaps(
+      {
+        concessionalYTD: facts.smsfContributions.concessionalYTD,
+        nonConcessionalYTD: facts.smsfContributions.nonConcessionalYTD,
+        totalSuperBalance: facts.smsfContributions.totalSuperBalance,
+        carryForwardAmounts: facts.smsfContributions.carryForwardAmounts?.map(
+          (c) => ({ financialYear: c.financialYear, unusedAmount: c.unusedAmount }),
+        ),
+      },
+      config,
+    );
+
+    const smsfCitations: AuthorityCitation[] = [
+      { kind: 'ITAA_1997', reference: 's291-20', lastReviewed: '2026-05-05' },
+      { kind: 'ITAA_1997', reference: 's292-85', lastReviewed: '2026-05-05' },
+      { kind: 'SIS_ACT', reference: 'Pt 8 (in-house asset cap)', lastReviewed: '2026-05-05' },
+    ];
+    const smsfUncomputed: UncomputedFlag[] = [
+      {
+        id: 'UC-SMSF-SOLE-PURPOSE',
+        rationale:
+          'Sole purpose test (SIS Act s62) + in-house asset 5% cap (Pt 8 SIS) + LRBA compliance per PCG 2016/5 — full SMSF triumvirate dispatch lands with Phase 41e.11. Until then, SMSF figures cover contribution-cap headroom only.',
+        citation: { kind: 'SIS_ACT', reference: 's62', lastReviewed: '2026-05-05' },
+      },
+    ];
+
+    const merged = cgt
+      ? mergeCgt(smsfCitations, smsfUncomputed, cgt)
+      : { citations: smsfCitations, uncomputed: smsfUncomputed };
+
+    return {
+      entityId: facts.entityId,
+      entityType: facts.entityType,
+      fy: facts.fy,
+      result: capResult,
+      cgtResult: cgt ?? undefined,
+      citations: merged.citations,
+      uncomputed: merged.uncomputed,
+    };
+  }
+
   // Net-new entity types without slice-D dispatch data — income tax
   // still UNCOMPUTED. But: if cgtEvents is provided, the CGT side
   // calc still surfaces (with the right per-entity discount rate). A
@@ -292,6 +340,7 @@ export function entityHasConditionalComputedTax(
   return (
     entityHasComputedTax(entityType) ||
     entityType === 'DISCRETIONARY_TRUST' ||
-    entityType === 'UNIT_TRUST'
+    entityType === 'UNIT_TRUST' ||
+    entityType === 'SMSF'
   );
 }
