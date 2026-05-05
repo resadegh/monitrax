@@ -88,7 +88,7 @@ export default function AdminFeedbackPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
-  const headers = useMemo<HeadersInit>(
+  const headers = useMemo<Record<string, string>>(
     () => (token ? { Authorization: `Bearer ${token}` } : {}),
     [token],
   );
@@ -278,7 +278,7 @@ function ThreadDetailView({
     setInternalNotes(thread.internalNotes ?? '');
   }, [thread.id, thread.internalNotes]);
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };

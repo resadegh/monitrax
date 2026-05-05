@@ -98,7 +98,7 @@ export default function AdviserFeedbackPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const headers = useMemo<HeadersInit>(
+  const headers = useMemo<Record<string, string>>(
     () => ({
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -262,7 +262,7 @@ function NewThreadForm({
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        } as Record<string, string>,
         body: JSON.stringify({
           subject,
           body,
@@ -410,7 +410,7 @@ function ThreadDetail({
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        } as Record<string, string>,
         body: JSON.stringify({ body: reply }),
       });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
