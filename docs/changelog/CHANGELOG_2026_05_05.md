@@ -1,5 +1,48 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e2-smsf-contribution-caps (Phase 41e.2 — SMSF contribution caps wired into router)
+
+### Changes Made
+- **Type:** Feature — wires existing `capTracker.trackContributionCaps` into the entity router for SMSF entities. Pure additive; no consumer changes.
+- **Scope:** Closes 41e.2. SMSF entities with `smsfContributions` data flip from UNCOMPUTED to real CapTrackingResult — cap headroom + carry-forward + bring-forward + excess-contribution tax warnings.
+- **Stacked on:** PR #650 (41e.1 close). Stack chain: this PR → #650 → #649 → ... → main.
+
+### Files Modified
+- `lib/tax-engine/types.ts` — `EntityTaxFacts.smsfContributions` field added.
+- `lib/tax-engine/entity/entityTaxRouter.ts` — new SMSF dispatch branch using existing `trackContributionCaps`. Replaces placeholder UC-ENTITY-SMSF flag with the more precise UC-SMSF-SOLE-PURPOSE.
+- `app/api/tax/entity/[entityId]/route.ts` — POST handler accepts `smsfContributions` body field.
+- `tests/tax-engine/entity/entityTaxRouter.test.ts` — 5 new tests covering: SMSF without data → UNCOMPUTED, with data → CapTrackingResult, cap exceeded → isExceeded, carry-forward applied, both smsfContributions + cgtEvents → both populated.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.14 documenting the slice.
+- `docs/architecture/07_API_STANDARDS.md` §15 — POST row updated.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — 41e.2 SHIPPED.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **308 tests passed** (303 → 308, +5).
+
+### What's user-testable now
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -d '{"smsfContributions":{"concessionalYTD":20000,"nonConcessionalYTD":0,"totalSuperBalance":600000}}' \
+  /api/tax/entity/<smsf_entityId>
+# → result.concessional.cap === 30000 (FY24-25 from canonical config)
+# → result.concessional.remaining === 10000
+# → citations include s291-20 + s292-85 + SIS Pt 8
+# → uncomputed flags: UC-SMSF-SOLE-PURPOSE (sole purpose / in-house / LRBA → 41e.11)
+```
+
+### What's next
+**41e.3 — TBC + Div 293 + Div 296** (gated until Royal Assent). Then 41e.4 (Div 6E streaming).
+
+### PR
+- Branch: `claude/phase-41e2-smsf-contribution-caps`
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e1-d2-cgt-router (Phase 41e.1 slice D-2 — wire CGT into entityTaxRouter; closes 41e.1)
 
 ### Changes Made

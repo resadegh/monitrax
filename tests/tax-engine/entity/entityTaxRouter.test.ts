@@ -380,3 +380,103 @@ describe('Phase 41e.1 slice D-2 — cgtEvents wired into router', () => {
     expect(result.cgtResult).toBeUndefined();
   });
 });
+
+describe('Phase 41e.2 — SMSF contribution caps wired into router', () => {
+  it('SMSF without smsfContributions → still UNCOMPUTED', () => {
+    const result = calculateEntityTaxPosition(baseFacts({ entityType: 'SMSF' }));
+    expect(result.result).toBeNull();
+    expect(result.uncomputed[0]?.id).toBe('UC-ENTITY-SMSF');
+  });
+
+  it('SMSF with smsfContributions → computed CapTrackingResult', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'SMSF',
+        smsfContributions: {
+          concessionalYTD: 20000,
+          nonConcessionalYTD: 0,
+          totalSuperBalance: 600000,
+        },
+      }),
+    );
+    expect(result.result).not.toBeNull();
+    const cap = result.result as {
+      concessional: { cap: number; remaining: number; isExceeded: boolean };
+      nonConcessional: { cap: number };
+    };
+    // FY24-25 cap is $30,000 — $20,000 used → $10,000 remaining
+    expect(cap.concessional.cap).toBe(30000);
+    expect(cap.concessional.remaining).toBe(10000);
+    expect(cap.concessional.isExceeded).toBe(false);
+    expect(cap.nonConcessional.cap).toBe(120000);
+    // Citations: s291-20 + s292-85 + Pt 8 SIS
+    expect(result.citations.some((c) => c.reference === 's291-20')).toBe(true);
+    expect(result.citations.some((c) => c.reference === 's292-85')).toBe(true);
+    // SMSF triumvirate UNCOMPUTED still surfaces (full sole-purpose / in-house / LRBA lands in 41e.11)
+    expect(result.uncomputed.some((u) => u.id === 'UC-SMSF-SOLE-PURPOSE')).toBe(true);
+    // The "ENTITY-SMSF" placeholder flag is GONE
+    expect(result.uncomputed.some((u) => u.id === 'UC-ENTITY-SMSF')).toBe(false);
+  });
+
+  it('SMSF concessional cap exceeded → isExceeded true + warning', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'SMSF',
+        smsfContributions: {
+          concessionalYTD: 35000, // over $30k cap
+          nonConcessionalYTD: 0,
+          totalSuperBalance: 400000,
+        },
+      }),
+    );
+    const cap = result.result as {
+      concessional: { isExceeded: boolean; excessAmount: number };
+      excessContributionsTax: number;
+    };
+    expect(cap.concessional.isExceeded).toBe(true);
+    expect(cap.concessional.excessAmount).toBe(5000);
+    expect(cap.excessContributionsTax).toBeGreaterThan(0);
+  });
+
+  it('SMSF carry-forward unused concessional applied (TSB < $500k)', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'SMSF',
+        smsfContributions: {
+          concessionalYTD: 30000,
+          nonConcessionalYTD: 0,
+          totalSuperBalance: 400000, // < $500k threshold
+          carryForwardAmounts: [
+            { financialYear: '2022-23', unusedAmount: 10000 },
+          ],
+        },
+      }),
+    );
+    const cap = result.result as {
+      concessional: { carryForwardAvailable: number; totalAvailable: number };
+    };
+    // Carry-forward grants extra $10k headroom; total available $40k
+    expect(cap.concessional.carryForwardAvailable).toBe(10000);
+    expect(cap.concessional.totalAvailable).toBe(40000);
+  });
+
+  it('SMSF with both smsfContributions AND cgtEvents → both populated', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'SMSF',
+        smsfContributions: {
+          concessionalYTD: 15000,
+          nonConcessionalYTD: 0,
+          totalSuperBalance: 800000,
+        },
+        cgtEvents: [{ id: 'e1', monthsHeld: 18, nominalAmount: 90000 }],
+        smsfIsComplying: true,
+      }),
+    );
+    // result has the cap tracking
+    expect(result.result).not.toBeNull();
+    // cgtResult has the 33⅓% disposal
+    const cgt = result.cgtResult as { discountResult: { discountRate: number } };
+    expect(cgt.discountResult.discountRate).toBeCloseTo(1 / 3, 6);
+  });
+});

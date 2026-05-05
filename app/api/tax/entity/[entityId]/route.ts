@@ -329,6 +329,37 @@ export const POST = withPermission<RouteContext>(
         );
       }
 
+      // Phase 41e.2 — SMSF contribution caps from body.
+      let smsfContributions: EntityTaxFacts['smsfContributions'] = undefined;
+      if (body && typeof body === 'object' && body.smsfContributions) {
+        const sc = body.smsfContributions;
+        if (
+          typeof sc.concessionalYTD !== 'number' ||
+          typeof sc.nonConcessionalYTD !== 'number'
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                'Invalid smsfContributions body — requires { concessionalYTD: number, nonConcessionalYTD: number }.',
+            },
+            { status: 400 },
+          );
+        }
+        smsfContributions = {
+          concessionalYTD: sc.concessionalYTD,
+          nonConcessionalYTD: sc.nonConcessionalYTD,
+          totalSuperBalance:
+            typeof sc.totalSuperBalance === 'number' ? sc.totalSuperBalance : undefined,
+          carryForwardAmounts: Array.isArray(sc.carryForwardAmounts)
+            ? sc.carryForwardAmounts.map((c: Record<string, unknown>) => ({
+                financialYear: String(c.financialYear),
+                unusedAmount: Number(c.unusedAmount),
+              }))
+            : undefined,
+        };
+      }
+
       const facts: EntityTaxFacts = {
         entityId: entity.id,
         entityType: entity.type,
@@ -359,6 +390,7 @@ export const POST = withPermission<RouteContext>(
         trustDistribution,
         cgtEvents,
         carryForwardCapitalLosses,
+        smsfContributions,
       };
 
       const entityPosition = calculateEntityTaxPosition(facts);

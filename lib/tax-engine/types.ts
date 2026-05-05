@@ -647,6 +647,27 @@ export interface EntityTaxFacts {
   smsfIsComplying?: boolean;
   /** Subdiv 115-D foreign-resident flag — surfaces UNCOMPUTED. */
   isForeignResident?: boolean;
+  /**
+   * Phase 41e.2 — SMSF contribution caps. When provided for an SMSF
+   * entity, the router runs the existing `capTracker.trackContributionCaps`
+   * primitive and produces an `EntityTaxPosition.result` containing the
+   * `CapTrackingResult` shape. Until then the SMSF stays UNCOMPUTED.
+   *
+   * Concessional + non-concessional YTD totals at the date of dispatch
+   * (typically pulled from `SuperContribution` rows). Carry-forward
+   * unused amounts from prior FYs feed the s291-20(3) carry-forward
+   * rule. `totalSuperBalance` gates the bring-forward eligibility per
+   * s292-85(2) — config thresholds in `bringForwardThresholds`.
+   */
+  smsfContributions?: {
+    concessionalYTD: number;
+    nonConcessionalYTD: number;
+    totalSuperBalance?: number;
+    carryForwardAmounts?: ReadonlyArray<{
+      financialYear: string;
+      unusedAmount: number;
+    }>;
+  };
 }
 
 /**
