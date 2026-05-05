@@ -119,3 +119,21 @@ export {
   type OrgScopedCandidate,
   type PublicListingCandidate,
 } from './askAProfessionalService';
+
+// =============================================================================
+// PHASE 32C PR4c — PROFESSIONAL REQUEST LIFECYCLE
+// =============================================================================
+
+export {
+  submitRequest,
+  listRequestsForUser,
+  listInboxForOrg,
+  getRequestForOrg,
+  acceptRequest,
+  declineRequest,
+  withdrawRequest,
+  classifyNetWorthTier,
+  ProfessionalRequestServiceError,
+  type SubmitRequestInput,
+  type RespondInput,
+} from './professionalRequestService';

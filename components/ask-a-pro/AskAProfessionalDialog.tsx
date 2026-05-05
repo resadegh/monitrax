@@ -30,12 +30,14 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type {
   AskAProResult,
   OrgScopedCandidate,
   PublicListingCandidate,
 } from '@/lib/services/askAProfessionalService';
+import { ComposeRequestDialog } from './ComposeRequestDialog';
 
 interface Props {
   context?: string;
@@ -43,9 +45,15 @@ interface Props {
 }
 
 export function AskAProfessionalDialog({ context, onClose }: Props) {
+  const router = useRouter();
   const [data, setData] = useState<AskAProResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // PR4c: when the user clicks a public listing, open the compose dialog
+  // instead of bare-navigating to the listing page. The compose dialog
+  // wraps the picker so the user can dismiss it and pick someone else
+  // without leaving the AskAPro flow.
+  const [composeFor, setComposeFor] = useState<PublicListingCandidate | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -167,10 +175,29 @@ export function AskAProfessionalDialog({ context, onClose }: Props) {
               totalAvailable={data.totalAvailable}
               context={context}
               onClose={onClose}
+              onPickListing={(listing) => setComposeFor(listing)}
             />
           )}
         </div>
       </div>
+
+      {composeFor && (
+        <ComposeRequestDialog
+          listingId={composeFor.id}
+          listingDisplayName={composeFor.displayName}
+          listingDiscipline={composeFor.discipline}
+          context={context}
+          onClose={() => setComposeFor(null)}
+          onSubmitted={(requestId) => {
+            setComposeFor(null);
+            onClose();
+            // After submit, drop the user on their request-tracking page so
+            // they can see the SUBMITTED status + withdraw if they change
+            // their mind. Soft handoff — keeps the success state visible.
+            router.push(`/dashboard/requests?just=${requestId}`);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -270,9 +297,11 @@ function PublicScopeView({
   totalAvailable,
   context,
   onClose,
+  onPickListing,
 }: {
   listings: PublicListingCandidate[];
   totalAvailable: number;
+  onPickListing: (listing: PublicListingCandidate) => void;
   context?: string;
   onClose: () => void;
 }) {
@@ -299,11 +328,11 @@ function PublicScopeView({
         {context ? `Best-fit for ${contextNoun(context)}` : 'Suggested for you'} · {listings.length} of {totalAvailable}
       </p>
       {listings.map((l) => (
-        <Link
+        <button
+          type="button"
           key={l.id}
-          href={`/marketplace/${l.publicSlug}`}
-          onClick={onClose}
-          className="group block rounded-xl bg-white ring-1 ring-slate-200 hover:ring-slate-300 hover:shadow-sm transition-all p-3.5"
+          onClick={() => onPickListing(l)}
+          className="group w-full text-left rounded-xl bg-white ring-1 ring-slate-200 hover:ring-slate-300 hover:shadow-sm transition-all p-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
           <div className="flex items-start justify-between gap-3 mb-1.5">
             <h4 className="text-[14px] font-semibold text-slate-900 leading-snug">{l.displayName}</h4>
@@ -318,9 +347,9 @@ function PublicScopeView({
           )}
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             <span>{disciplineLabel(l.discipline)}</span>
-            <span className="text-emerald-700 group-hover:translate-x-0.5 transition-transform">View →</span>
+            <span className="text-emerald-700 group-hover:translate-x-0.5 transition-transform">Send a question →</span>
           </div>
-        </Link>
+        </button>
       ))}
       <div className="pt-2 text-center">
         <Link

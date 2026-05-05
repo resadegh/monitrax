@@ -152,16 +152,20 @@ This playbook codifies the demo into a runnable script so:
   - The lead-fee tiers ($80 / $150 / $250 by user net-worth bracket) — *"Per-Org overrides exist if you want a different deal; defaults are the published rates."*
 - Frame: *"Once submitted, Monitrax cross-checks your AFSL on the ASIC moneysmart register manually. Approval lands in 24–48 hours at v1; we automate the cross-check post-launch when volume justifies it."*
 
-#### Step 6c — The acquisition story (90 sec)
+#### Step 6c — The acquisition story (90 sec) — *end-to-end demo path*
 - Switch to a SECOND screen / browser logged in as Sarah Kim
 - Open Sarah's AI Guide page on her dashboard (`/dashboard/cfo`)
 - On any AI advice card (e.g. a tax-planning recommendation), click **"Ask a professional"** — the compact button next to "Ask a follow-up". Frame: *"From inside the AI Guide. Sarah doesn't have to leave her dashboard, doesn't have to know what discipline to search for. The AI knew this was a tax conversation, so the picker is pre-biased to tax specialists."*
-- Picker opens — top-3 best-fit (Smithfield Wealth featured for tax). Frame: *"Three best-fit, ranked by rating + context match. The 'See all professionals' link drops her on the full marketplace if these aren't right."*
-- Sarah picks Smithfield → routes to `/marketplace/smithfield-wealth` (the public listing detail) → Connect CTA. Frame: *"The Connect CTA is where the request lifecycle starts — compose question, send to Smithfield's inbox, ACCEPT or DECLINE — that's PR4c, the next slice. For now the demo bridges to the marketplace listing page."*
-- **NOTE for the lighthouse pitch (post-PR4c):** at that point the demo runs end-to-end — Sarah composes "Should I refinance my offset?", clicks Submit, the request lands in Reza's Practice inbox instantly with Sarah's snapshot context attached.
-- Switch BACK to Reza @ Smithfield's screen
-- Practice → Inbox tab — the request lands instantly with Sarah's snapshot context attached
-- *"This is your acquisition channel. Pre-qualified, financially-engaged user who has already done the data entry. Your CAC just dropped from AU$2,000 to AU$150."*
+- **AskAPro picker opens** — top-3 best-fit (Smithfield Wealth featured for tax). Frame: *"Three best-fit, ranked by rating + context match. The 'See all professionals' link drops her on the full marketplace if these aren't right."*
+- Sarah clicks Smithfield Wealth — **the compose dialog opens directly on top of the picker.** Frame: *"No tab-switching, no re-finding her place. The picker remembers who she picked; she just writes."*
+- Sarah picks one of the AI starter prompts: *"I want to make sure my tax position is optimised before EOFY — could we have a chat?"* (or types her own). Toggle ON the **"Share my headline metrics"** checkbox. Frame: *"This isn't sending Smithfield her transaction history — it's an opt-in flag that says 'when you open my request, you can read my fresh financial snapshot'. Auditors love this — explicit consent at the point of sharing, no precomputed payload sitting in a database."*
+- Click **Send request**. Sarah lands on `/dashboard/requests` with the new request highlighted (status: *Awaiting response*). Frame: *"She can withdraw any time before Smithfield responds. No commitment until both sides have said yes."*
+- **Switch BACK to Reza @ Smithfield's screen**
+- Open `/portal/requests` — **the request just submitted is at the top of the inbox**, status badge *Awaiting your response*, lead-fee tier visible (Growing tier · AU$150 — based on Sarah's net worth). Frame: *"Lead fee is calculated at submit time — your firm sees exactly what this request will cost before you accept. No surprises."*
+- Click into the request detail. Frame: *"Sarah's question. Her shared-metrics indicator (so you know to open the canonical snapshot once she's a client). Lead-fee panel showing the exact charge that will hit your account on accept."*
+- Click **Accept**. Frame: *"That single click does three things: locks in the lead fee, creates the engagement record, and sends Sarah a connect invitation. She grants consent through the existing flow you already saw — and she's a client."*
+- The detail page now shows *"Engagement created"* with an "Open client view" link to the Phase 32B drill-in. Frame: *"From here, you're back in the canonical client surface — entity tree, money flow, snapshot. The acquisition step is done. The platform handed her off to your existing client workflow."*
+- *"This is your acquisition channel. Pre-qualified, financially-engaged user who has already done the data entry, has explicitly consented to share metrics, and is a click away from being a paying client. Your CAC just dropped from AU$2,000 to AU$150 — and the user paid the data-entry cost themselves."*
 - **The CAC story lands here.** Watch for the second lean-forward.
 
 #### Common objections at this step
