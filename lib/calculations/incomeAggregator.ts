@@ -26,6 +26,15 @@ export interface IncomeInput {
   isTaxable?: boolean;
   propertyId?: string | null;
   investmentAccountId?: string | null;
+  /**
+   * Phase 41a — `LegalEntity` ownership FK (Phase 41e.0 audit C-3).
+   * Populated by Prisma reads for any caller that wants entity-scoped
+   * aggregation. Optional + nullable for backward-compat: existing
+   * call sites that don't read the column see `undefined`, and the
+   * `ownerEntityId` filter param on `aggregateIncome()` defaults to
+   * "no filter" so omitting it preserves pre-41e behaviour exactly.
+   */
+  ownerEntityId?: string | null;
 }
 
 export interface IncomeAggregation {
@@ -99,11 +108,19 @@ function getPaygAmount(item: IncomeInput, targetFrequency: 'monthly' | 'annual')
 // =============================================================================
 
 /**
- * Aggregate income to a target frequency (monthly or annual)
+ * Aggregate income to a target frequency (monthly or annual).
+ *
+ * `ownerEntityId` (Phase 41e.0 audit C-3): when provided, only items
+ * whose `ownerEntityId` matches are aggregated. Default = no filter
+ * for backward-compat — existing call sites that don't pass this
+ * parameter see exactly the pre-41e behaviour.
+ *
+ * Per `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §6.3.
  */
 export function aggregateIncome(
   income: IncomeInput[],
-  targetFrequency: 'monthly' | 'annual' = 'monthly'
+  targetFrequency: 'monthly' | 'annual' = 'monthly',
+  ownerEntityId?: string,
 ): IncomeAggregation {
   let grossTotal = 0;
   let netTotal = 0;
@@ -113,7 +130,11 @@ export function aggregateIncome(
 
   const byType: Record<string, { gross: number; net: number }> = {};
 
-  for (const item of income) {
+  const filtered = ownerEntityId
+    ? income.filter((i) => i.ownerEntityId === ownerEntityId)
+    : income;
+
+  for (const item of filtered) {
     const gross = getGrossAmount(item, targetFrequency);
     const net = getNetAmount(item, targetFrequency);
     const payg = getPaygAmount(item, targetFrequency);

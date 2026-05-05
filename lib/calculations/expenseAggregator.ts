@@ -27,6 +27,11 @@ export interface ExpenseInput {
   propertyId?: string | null;
   loanId?: string | null;
   assetId?: string | null;
+  /**
+   * Phase 41a — `LegalEntity` ownership FK (Phase 41e.0 audit C-3).
+   * See `incomeAggregator.IncomeInput.ownerEntityId` for full rationale.
+   */
+  ownerEntityId?: string | null;
 }
 
 export interface ExpenseAggregation {
@@ -49,11 +54,16 @@ export interface CategoryBreakdown {
 // =============================================================================
 
 /**
- * Aggregate expenses to a target frequency (monthly or annual)
+ * Aggregate expenses to a target frequency (monthly or annual).
+ *
+ * `ownerEntityId` (Phase 41e.0 audit C-3): when provided, only items
+ * whose `ownerEntityId` matches are aggregated. Default = no filter
+ * for backward-compat. Per audit doc §6.3.
  */
 export function aggregateExpenses(
   expenses: ExpenseInput[],
-  targetFrequency: 'monthly' | 'annual' = 'monthly'
+  targetFrequency: 'monthly' | 'annual' = 'monthly',
+  ownerEntityId?: string,
 ): ExpenseAggregation {
   const converter = targetFrequency === 'monthly' ? toMonthly : toAnnual;
 
@@ -63,7 +73,11 @@ export function aggregateExpenses(
   let taxDeductible = 0;
   const byCategory: Record<string, number> = {};
 
-  for (const expense of expenses) {
+  const filtered = ownerEntityId
+    ? expenses.filter((e) => e.ownerEntityId === ownerEntityId)
+    : expenses;
+
+  for (const expense of filtered) {
     const amount = converter(expense.amount, expense.frequency as Frequency);
 
     total += amount;
