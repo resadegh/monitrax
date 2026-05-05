@@ -106,3 +106,16 @@ export {
   type ApprovalInput,
   type RejectionInput,
 } from './marketplaceService';
+
+// =============================================================================
+// PHASE 32C PR4b — ASK A PROFESSIONAL
+// =============================================================================
+
+export {
+  getCandidatesForUser,
+  isKnownContext,
+  type AskAProContext,
+  type AskAProResult,
+  type OrgScopedCandidate,
+  type PublicListingCandidate,
+} from './askAProfessionalService';
