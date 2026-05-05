@@ -187,6 +187,18 @@ This playbook codifies the demo into a runnable script so:
 - *"Your client communicates the way they're comfortable. You communicate from your normal email. Both happen in one thread, archived for compliance for 7 years. That's the relationship layer."*
 - **NOTE for the demo:** if `SENDGRID_API_KEY` isn't set in the demo env (which it usually isn't — production secret), the outbound email no-ops + logs to the console, and the architectural pattern is visible without actually sending. Inbound webhook is wired but requires SendGrid Inbound Parse DNS to be live; for the lighthouse pitch run it's enough to demonstrate the in-app two-way + the architectural diagram. Frame: *"In dev, SendGrid is dialled off so we don't accidentally email people. In production, this is wired — see Phase 32C PR4d's evidence pack."*
 
+### Step 7b — Billing + plan tiers (1.5 min) — *only if the adviser asks "how do I sign up?"*
+> Skip this step if the adviser doesn't bring up pricing — let them sit with the value first. Use this only when they're already nodding.
+
+- Open `/portal/billing` from Reza's portal sidebar
+- Frame: *"This is what you'd see on day one — three plans, all monthly AUD, all self-serve. Studio is the solo / micro-practice tier; Practice is where most firms land; Enterprise is where SSO + custom domain + 7-year audit retention live. Lead-fee billing is a separate column from the subscription — accepted marketplace requests bill on top, only when you accept."*
+- Point at the **Recommended** pill on Practice. Frame: *"Most firms we've talked to are 4-8 advisers with 100-200 clients — Practice is the comfortable fit. You can switch tiers any time; downgrades take effect at end of period."*
+- Click **Subscribe** on Practice. Stripe-hosted Checkout opens. Frame: *"Stripe-hosted. Your card data never touches Monitrax — we only see the customer ID and the subscription state via webhook. Phase 32C PR6a evidence pack covers the security model for your compliance team."*
+- Use Stripe's test card `4242 4242 4242 4242` (any future date, any CVC) — payment lands, redirects back to `/portal/billing?success=true`. Frame: *"Two seconds later the webhook fires and your plan tier flips. Watch."* Refresh — current-plan card now shows ACTIVE / Practice / period-end date / Test mode badge.
+- Frame the architecture explicitly: *"Stripe is the source of truth for billing state — we mirror it via signed webhooks, deduped via the event id. If we ever lose a webhook, Stripe re-delivers for 3 days; the dedupe is at the database boundary so re-deliveries are no-ops. The subscription status feeds directly into your feature gates — when you cancel, your team's audit-log retention drops back to 90 days at end of period; when you re-subscribe, it lifts back to 365. No manual provisioning."*
+- Frame the lead-fee model: *"Lead fees from accepted requests are AU$80, $150, or $250 by user net-worth bracket — billed via Stripe per accepted request. Invoice history surface ships in the next slice (PR6b). For now, the billing intent is recorded the moment you click Accept on a marketplace request — see the lead-fee panel on `/portal/requests/<id>`."*
+- **NOTE for the demo:** if Stripe API keys aren't set in the demo env, `/portal/billing` shows a "Configure these env vars" notice instead of the plan tiles. The architectural pattern is visible without the keys. For the lighthouse pitch, run with the keys set so the Checkout demo works end-to-end.
+
 ### Step 8 — Compliance pack (2 min)
 - Open `/help` (or `help.monitrax.com.au` once subdomain ships) → scroll to "Compliance & regulators" section
 - Click into the **CDR Consent Walkthrough** article

@@ -111,3 +111,53 @@ export const TIER_LABEL: Record<PlanTier, string> = {
   PRACTICE: 'Practice',
   ENTERPRISE: 'Enterprise',
 };
+
+// =============================================================================
+// PHASE 32C PR6 — LIVE STRIPE SUBSCRIPTION INTEGRATION
+// =============================================================================
+//
+// At Phase 32B PR3 the planTier was read from `OrganizationPortalSettings.plan`
+// (the static admin-set tier). Phase 32C PR6 makes Stripe the authoritative
+// source: an active StripeSubscription row overrides the static plan. The
+// fallback is preserved so:
+//   - Orgs that haven't entered the billing flow yet keep their admin-set tier
+//   - Test envs without a STRIPE_SECRET_KEY can still gate features
+
+import { prisma } from '@/lib/db';
+import type { BillingPlanTier, SubscriptionStatus } from '@prisma/client';
+
+const ACTIVE_STATUSES: SubscriptionStatus[] = ['TRIALING', 'ACTIVE', 'PAST_DUE'];
+
+const BILLING_TO_TIER: Record<BillingPlanTier, PlanTier> = {
+  STUDIO: 'STUDIO',
+  PRACTICE: 'PRACTICE',
+  ENTERPRISE: 'ENTERPRISE',
+};
+
+/**
+ * Resolve the canonical PlanTier for an organisation, prefering a LIVE
+ * Stripe subscription over the static legacy plan column. Used by the
+ * route-layer feature gates so feature access tracks billing state.
+ *
+ * `PAST_DUE` is treated as still-entitled — Stripe gives a 3-day grace
+ * window before transitioning to UNPAID; we keep features on during the
+ * grace window. `INCOMPLETE_EXPIRED` / `UNPAID` / `CANCELED` fall through
+ * to the legacy plan (which typically resolves to STUDIO for new orgs).
+ */
+export async function resolvePlanTierForOrg(organizationId: string): Promise<PlanTier> {
+  const sub = await prisma.stripeSubscription.findUnique({
+    where: { organizationId },
+    select: { status: true, planTier: true, cancelAtPeriodEnd: true, currentPeriodEnd: true },
+  });
+
+  if (sub && ACTIVE_STATUSES.includes(sub.status)) {
+    return BILLING_TO_TIER[sub.planTier];
+  }
+
+  // Fallback to the legacy admin-set plan
+  const settings = await prisma.organizationPortalSettings.findUnique({
+    where: { organizationId },
+    select: { plan: true },
+  });
+  return mapPlanToTier(settings?.plan ?? null);
+}
