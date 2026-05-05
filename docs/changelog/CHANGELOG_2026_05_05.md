@@ -1,5 +1,43 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e11-smsf-triumvirate (Phase 41e.11 — SMSF triumvirate compliance classifier)
+
+### Changes
+- New `lib/tax-engine/divisions/smsfTriumvirateClassifier.ts` — `classifySmsfTriumvirate(input)` covering all 5 SMSF rules in one classifier
+- Sole purpose test (s62 SIS) → 45% non-complying rate when fail (s295-160)
+- In-house asset 5% cap (Pt 8 SIS) with BRP exception (s71(1)(b))
+- LRBA compliance per loan: COMPLIANT / BREACH_MULTI_ASSET / BREACH_BARE_TRUST / BREACH_RECOURSE / NALI_RISK
+- NALI at 45% on whole income amount (s295-550)
+- 3 constants exported: NON_COMPLYING_SMSF_RATE / NALI_RATE / IN_HOUSE_ASSET_CAP
+- 4 UNCOMPUTED flags: UC-SMSF-NON-COMPLYING / -IN-HOUSE-BREACH / -LRBA-BREACH / -NALI
+- 24 module tests; 470 total (446 → 470, +24); tsc clean
+
+### Testable
+```ts
+import { classifySmsfTriumvirate } from '@/lib/tax-engine/divisions/smsfTriumvirateClassifier';
+classifySmsfTriumvirate({
+  totalFundValue: 1_000_000,
+  meetsSolePurposeTest: true,
+  inHouseAssets: [
+    { assetId: 'brp', marketValue: 500_000, isBrpException: true },  // BRP excluded
+    { assetId: 'a1', marketValue: 30_000 },                          // 3% — within cap
+  ],
+  lrbaArrangements: [{
+    loanId: 'l1', outstandingBalance: 500000,
+    hasBareTrust: true, isNonRecourse: true,
+    isArmsLength: true, isSingleAcquirableAsset: true,
+  }],
+  fyIncome: 50000,
+  hasNonArmsLengthIncome: false,
+});
+// → solePurpose: PASS, inHouseAsset: COMPLIANT (3%), lrba: COMPLIANT
+// → applicableIncomeRate: 0.15, naliTax: 0, anyBreach: false
+```
+
+41e.12 (State land tax — NSW + VIC) is next.
+
+---
+
 ## Session: claude/phase-41e10-fte-iee (Phase 41e.10 — FTE + IEE + 47% TFN withholding per Sch 2F)
 
 ### Changes

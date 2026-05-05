@@ -1635,3 +1635,28 @@ New `lib/tax-engine/divisions/fteIeeClassifier.ts` exporting `classifyFteIeeDist
 17 module tests covering all 4 outcomes + IEE override + custom FTDT rate + multi-beneficiary aggregation + no-FTE fallback + citation completeness + edge cases.
 
 **41e.11 — SMSF triumvirate (sole purpose / in-house asset / LRBA)** is next.
+
+## **10.23 Phase 41e.11 — SMSF triumvirate compliance classifier (PR #659 — shipped 2026-05-05)**
+
+New `lib/tax-engine/divisions/smsfTriumvirateClassifier.ts` — the hardest of the 41e sub-PRs. Three intertwined SMSF compliance regimes plus NALI in one classifier:
+
+| Regime | Authority | Effect of breach |
+|---|---|---|
+| **Sole purpose test** | SIS Act s62 | Fund non-complying → 45% rate on all income (s295-160) |
+| **In-house asset 5% cap** | SIS Act Pt 8 | Trustee must prepare written disposal plan; BRP exception per s71(1)(b) |
+| **LRBA compliance** | SIS Act s67A + PCG 2016/5 | Per-loan: BREACH_MULTI_ASSET / BREACH_BARE_TRUST / BREACH_RECOURSE / NALI_RISK |
+| **NALI** | ITAA 1997 s295-550 | 45% on the whole non-arm's-length income amount |
+
+**Constants exported:** `NON_COMPLYING_SMSF_RATE = 0.45`, `NALI_RATE = 0.45`, `IN_HOUSE_ASSET_CAP = 0.05`.
+
+**Result reports** per-regime status: `solePurpose` (PASS/FAIL), `inHouseAsset` (status + value + cap + breach amount + percentage), `lrba` (overall status + per-loan breakdown), `naliTax` (dollar amount), `applicableIncomeRate` (15% complying or 45% non-complying), `anyBreach` headline boolean.
+
+**4 UNCOMPUTED flags:**
+- **UC-SMSF-NON-COMPLYING** when sole purpose fails
+- **UC-SMSF-IN-HOUSE-BREACH** when 5% cap exceeded
+- **UC-SMSF-LRBA-BREACH** when structural LRBA requirements fail
+- **UC-SMSF-NALI** when NALI applies
+
+**24 module tests** covering all 4 regimes + BRP exception + per-loan LRBA paths + NALI triggers + worst-case combination (all 4 flags surface) + edge cases.
+
+**41e.12 — State land tax (NSW + VIC)** is next.
