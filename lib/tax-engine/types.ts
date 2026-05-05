@@ -620,6 +620,33 @@ export interface EntityTaxFacts {
     }>;
     hasFamilyTrustElection?: boolean;
   };
+  /**
+   * Phase 41e.1 slice D-2 — CGT events for the FY. When non-empty,
+   * the router runs `applyCapitalLossNetting` (which composes Div 115
+   * discount per entity type) and attaches the result to
+   * `EntityTaxPosition.cgtResult`. Independent of `result` so a
+   * TRUST entity can carry BOTH a Div 6 distribution (in `result`)
+   * AND a CGT calc (in `cgtResult`); a COMPANY entity carries only
+   * `cgtResult` (its base income tax dispatch lands with 41e.7).
+   */
+  cgtEvents?: ReadonlyArray<{
+    id: string;
+    monthsHeld: number;
+    nominalAmount: number;
+    label?: string;
+  }>;
+  /**
+   * Unused capital losses from prior FYs, oldest-first per s100-50.
+   * Caller passes the unconsumed balance from the user's CGT register.
+   */
+  carryForwardCapitalLosses?: ReadonlyArray<{
+    financialYear: string;
+    amount: number;
+  }>;
+  /** SMSF-specific: complying status for s115-100 1/3 discount. */
+  smsfIsComplying?: boolean;
+  /** Subdiv 115-D foreign-resident flag — surfaces UNCOMPUTED. */
+  isForeignResident?: boolean;
 }
 
 /**
@@ -635,6 +662,15 @@ export interface EntityTaxPosition {
   fy: FYReference;
   /** The actual tax computation output. PERSONAL_NAME ⇒ `TaxPositionResult`. */
   result: unknown;
+  /**
+   * Phase 41e.1 slice D-2 — optional CGT calc result when the entity
+   * had `cgtEvents` for the FY. Populated by `applyCapitalLossNetting`.
+   * Independent of `result` so an entity can carry both an income-tax
+   * computation AND a CGT computation (or just one). Shape is the
+   * `CapitalLossNettingResult` from `divisions/capitalLossNetting.ts`
+   * — kept as `unknown` here per the same rationale as `result`.
+   */
+  cgtResult?: unknown;
   /** Cumulative authority citations for every rule applied. */
   citations: AuthorityCitation[];
   /** UNCOMPUTED items flagged during dispatch (per audit §10.3). */

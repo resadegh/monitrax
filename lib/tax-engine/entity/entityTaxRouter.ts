@@ -37,6 +37,12 @@ import {
   getCurrentTaxYearConfig,
 } from '../config/taxYearConfig';
 import { allocateTrustDistribution } from '../divisions/trustDistribution';
+import {
+  applyCapitalLossNetting,
+  type CapitalLossNettingResult,
+  type CgtEvent,
+  type CarryForwardLoss,
+} from '../divisions/capitalLossNetting';
 import type {
   AuthorityCitation,
   EntityTaxFacts,
@@ -84,10 +90,77 @@ const BASE_CITATIONS: Record<string, AuthorityCitation[]> = {
 };
 
 /**
+ * Compute CGT side calc if `cgtEvents` is non-empty. Returns null
+ * otherwise. Independent of entity-specific income-tax dispatch so a
+ * COMPANY entity (income tax UNCOMPUTED) can still surface a
+ * fully-computed CGT figure with the right per-entity discount rate.
+ */
+function dispatchCgtIfPresent(
+  facts: EntityTaxFacts,
+): CapitalLossNettingResult | null {
+  if (!facts.cgtEvents || facts.cgtEvents.length === 0) {
+    return null;
+  }
+  return applyCapitalLossNetting({
+    entityType: facts.entityType,
+    events: facts.cgtEvents.map((e) => ({
+      id: e.id,
+      monthsHeld: e.monthsHeld,
+      nominalAmount: e.nominalAmount,
+      label: e.label,
+    })) as CgtEvent[],
+    carryForwardLosses: facts.carryForwardCapitalLosses?.map((l) => ({
+      financialYear: l.financialYear,
+      amount: l.amount,
+    })) as CarryForwardLoss[] | undefined,
+    isComplying: facts.smsfIsComplying,
+    isForeignResident: facts.isForeignResident,
+  });
+}
+
+/**
+ * Merge CGT citations + UNCOMPUTED into the cumulative position arrays
+ * without duplicating entries. De-dup keys: `${kind}:${reference}` for
+ * citations, `id` for flags.
+ */
+function mergeCgt(
+  citations: AuthorityCitation[],
+  uncomputed: UncomputedFlag[],
+  cgt: CapitalLossNettingResult,
+): { citations: AuthorityCitation[]; uncomputed: UncomputedFlag[] } {
+  const seenCit = new Set(citations.map((c) => `${c.kind}:${c.reference}`));
+  const mergedCitations = [...citations];
+  for (const c of cgt.citations) {
+    const key = `${c.kind}:${c.reference}`;
+    if (!seenCit.has(key)) {
+      seenCit.add(key);
+      mergedCitations.push(c);
+    }
+  }
+  const seenFlags = new Set(uncomputed.map((u) => u.id));
+  const mergedUncomputed = [...uncomputed];
+  for (const u of cgt.uncomputed) {
+    if (!seenFlags.has(u.id)) {
+      seenFlags.add(u.id);
+      mergedUncomputed.push(u);
+    }
+  }
+  return { citations: mergedCitations, uncomputed: mergedUncomputed };
+}
+
+/**
  * Dispatch a single `EntityTaxFacts` through the right calc path and
  * produce a structurally-correct `EntityTaxPosition`. PERSONAL_NAME and
- * SOLE_TRADER flow through the existing Phase 20 engine; everything
- * else is flagged UNCOMPUTED until the relevant sub-PR lands.
+ * SOLE_TRADER flow through the existing Phase 20 engine; TRUST entities
+ * with distribution data flow through Div 6; everything else is
+ * flagged UNCOMPUTED until the relevant sub-PR lands.
+ *
+ * Phase 41e.1 slice D-2 — independent of the income-tax dispatch above,
+ * if `cgtEvents` is provided the router runs the loss-netting +
+ * Div 115 discount calc and attaches the result to
+ * `EntityTaxPosition.cgtResult`. This lets a COMPANY entity surface a
+ * full CGT calc (with 0% discount per s115-280) even while its income
+ * tax is still UNCOMPUTED — never false numbers, but no false silence.
  */
 export function calculateEntityTaxPosition(
   facts: EntityTaxFacts,
@@ -95,6 +168,9 @@ export function calculateEntityTaxPosition(
   const config = facts.fy.financialYear
     ? getTaxYearConfig(facts.fy.financialYear)
     : getCurrentTaxYearConfig();
+
+  // Phase 41e.1 slice D-2 — CGT side calc (independent of entity income tax).
+  const cgt = dispatchCgtIfPresent(facts);
 
   if (facts.entityType === 'PERSONAL_NAME' || facts.entityType === 'SOLE_TRADER') {
     const result = calculateTaxPosition(
@@ -113,13 +189,19 @@ export function calculateEntityTaxPosition(
       config,
     );
 
+    const baseCitations = BASE_CITATIONS[facts.entityType] ?? [];
+    const merged = cgt
+      ? mergeCgt(baseCitations, [], cgt)
+      : { citations: baseCitations, uncomputed: [] };
+
     return {
       entityId: facts.entityId,
       entityType: facts.entityType,
       fy: facts.fy,
       result,
-      citations: BASE_CITATIONS[facts.entityType] ?? [],
-      uncomputed: [],
+      cgtResult: cgt ?? undefined,
+      citations: merged.citations,
+      uncomputed: merged.uncomputed,
     };
   }
 
@@ -143,27 +225,43 @@ export function calculateEntityTaxPosition(
       hasFamilyTrustElection: facts.trustDistribution.hasFamilyTrustElection,
     });
 
+    const merged = cgt
+      ? mergeCgt(distributionResult.citations, distributionResult.uncomputed, cgt)
+      : {
+          citations: distributionResult.citations,
+          uncomputed: distributionResult.uncomputed,
+        };
+
     return {
       entityId: facts.entityId,
       entityType: facts.entityType,
       fy: facts.fy,
       result: distributionResult,
-      citations: distributionResult.citations,
-      uncomputed: distributionResult.uncomputed,
+      cgtResult: cgt ?? undefined,
+      citations: merged.citations,
+      uncomputed: merged.uncomputed,
     };
   }
 
-  // Net-new entity types without slice-D dispatch data — still
-  // UNCOMPUTED. Trust entities WITHOUT distribution data fall here.
+  // Net-new entity types without slice-D dispatch data — income tax
+  // still UNCOMPUTED. But: if cgtEvents is provided, the CGT side
+  // calc still surfaces (with the right per-entity discount rate). A
+  // COMPANY entity hitting this branch with cgtEvents returns
+  // `result: null + UC-ENTITY-COMPANY` AND `cgtResult: <real number>`.
   const flag = UNCOMPUTED_ENTITY_TAX[facts.entityType];
+  const baseUncomputed: UncomputedFlag[] = flag ? [flag] : [];
+  const merged = cgt
+    ? mergeCgt([], baseUncomputed, cgt)
+    : { citations: [] as AuthorityCitation[], uncomputed: baseUncomputed };
 
   return {
     entityId: facts.entityId,
     entityType: facts.entityType,
     fy: facts.fy,
     result: null,
-    citations: [],
-    uncomputed: flag ? [flag] : [],
+    cgtResult: cgt ?? undefined,
+    citations: merged.citations,
+    uncomputed: merged.uncomputed,
   };
 }
 

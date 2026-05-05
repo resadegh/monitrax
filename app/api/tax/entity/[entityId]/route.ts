@@ -288,6 +288,47 @@ export const POST = withPermission<RouteContext>(
         };
       }
 
+      // Phase 41e.1 slice D-2 — CGT events from body.
+      let cgtEvents: EntityTaxFacts['cgtEvents'] = undefined;
+      if (body && typeof body === 'object' && Array.isArray(body.cgtEvents)) {
+        for (const ev of body.cgtEvents) {
+          if (
+            typeof ev?.id !== 'string' ||
+            typeof ev?.monthsHeld !== 'number' ||
+            typeof ev?.nominalAmount !== 'number'
+          ) {
+            return NextResponse.json(
+              {
+                success: false,
+                error:
+                  'Invalid cgtEvents body — each event requires { id: string, monthsHeld: number, nominalAmount: number }.',
+              },
+              { status: 400 },
+            );
+          }
+        }
+        cgtEvents = body.cgtEvents.map((ev: Record<string, unknown>) => ({
+          id: String(ev.id),
+          monthsHeld: Number(ev.monthsHeld),
+          nominalAmount: Number(ev.nominalAmount),
+          label: ev.label ? String(ev.label) : undefined,
+        }));
+      }
+      let carryForwardCapitalLosses: EntityTaxFacts['carryForwardCapitalLosses'] =
+        undefined;
+      if (
+        body &&
+        typeof body === 'object' &&
+        Array.isArray(body.carryForwardCapitalLosses)
+      ) {
+        carryForwardCapitalLosses = body.carryForwardCapitalLosses.map(
+          (l: Record<string, unknown>) => ({
+            financialYear: String(l.financialYear),
+            amount: Number(l.amount),
+          }),
+        );
+      }
+
       const facts: EntityTaxFacts = {
         entityId: entity.id,
         entityType: entity.type,
@@ -316,6 +357,8 @@ export const POST = withPermission<RouteContext>(
         })),
         depreciations: [],
         trustDistribution,
+        cgtEvents,
+        carryForwardCapitalLosses,
       };
 
       const entityPosition = calculateEntityTaxPosition(facts);

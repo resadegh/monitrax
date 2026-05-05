@@ -241,3 +241,142 @@ describe('Phase 41e.1 slice D-1 — TRUST entities flip when trustDistribution p
     expect(taxResult?.tax).toBeDefined();
   });
 });
+
+describe('Phase 41e.1 slice D-2 — cgtEvents wired into router', () => {
+  it('PERSONAL_NAME with cgtEvents → cgtResult + 50% discount', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'PERSONAL_NAME',
+        cgtEvents: [{ id: 'e1', monthsHeld: 24, nominalAmount: 100000 }],
+      }),
+    );
+    expect(result.cgtResult).toBeDefined();
+    const cgt = result.cgtResult as {
+      assessableNetCapitalGain: number;
+      discountResult: { discountRate: number } | null;
+    };
+    expect(cgt.assessableNetCapitalGain).toBe(50000);
+    expect(cgt.discountResult?.discountRate).toBe(0.5);
+    // Citations include both Phase 20 base + CGT (s100-50, s115-100, Div 102-A, s115-25)
+    expect(result.citations.some((c) => c.reference === 's115-25')).toBe(true);
+    expect(result.citations.some((c) => c.reference === 's100-50')).toBe(true);
+  });
+
+  it('COMPANY with cgtEvents → cgtResult populated (0% discount per s115-280) BUT result still null (income tax UNCOMPUTED)', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'COMPANY',
+        cgtEvents: [{ id: 'e1', monthsHeld: 60, nominalAmount: 200000 }],
+      }),
+    );
+    // Income tax still UNCOMPUTED — that's 41e.7 territory
+    expect(result.result).toBeNull();
+    expect(result.uncomputed.some((u) => u.id === 'UC-ENTITY-COMPANY')).toBe(true);
+    // But CGT is fully computed
+    expect(result.cgtResult).toBeDefined();
+    const cgt = result.cgtResult as {
+      assessableNetCapitalGain: number;
+      discountResult: { discountRate: number } | null;
+    };
+    expect(cgt.assessableNetCapitalGain).toBe(200000); // 0% discount → full gain
+    expect(cgt.discountResult?.discountRate).toBe(0);
+    // Citations include s115-280 (the COMPANY carve-out)
+    expect(result.citations.some((c) => c.reference === 's115-280')).toBe(true);
+  });
+
+  it('SMSF with cgtEvents → 33⅓% discount on cgtResult', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'SMSF',
+        cgtEvents: [{ id: 'e1', monthsHeld: 18, nominalAmount: 90000 }],
+        smsfIsComplying: true,
+      }),
+    );
+    const cgt = result.cgtResult as {
+      assessableNetCapitalGain: number;
+      discountResult: { discountRate: number } | null;
+    };
+    expect(cgt.discountResult?.discountRate).toBeCloseTo(1 / 3, 6);
+    expect(cgt.assessableNetCapitalGain).toBeCloseTo(60000, 2);
+  });
+
+  it('TRUST with BOTH trustDistribution AND cgtEvents → both populated independently', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'DISCRETIONARY_TRUST',
+        trustDistribution: {
+          trustNetIncome: 100000,
+          beneficiaries: [
+            { id: 'b1', name: 'Sarah', presentlyEntitledShare: 1.0 },
+          ],
+        },
+        cgtEvents: [{ id: 'e1', monthsHeld: 36, nominalAmount: 80000 }],
+      }),
+    );
+    // Distribution result lives on .result
+    const dist = result.result as { distributions: Array<{ amount: number }> };
+    expect(dist.distributions[0].amount).toBe(100000);
+    // CGT result lives on .cgtResult — TRUST gets 50% discount
+    const cgt = result.cgtResult as {
+      assessableNetCapitalGain: number;
+      discountResult: { discountRate: number };
+    };
+    expect(cgt.assessableNetCapitalGain).toBe(40000);
+    expect(cgt.discountResult.discountRate).toBe(0.5);
+    // Citations from BOTH dispatches present, deduplicated
+    expect(result.citations.some((c) => c.reference === 's95')).toBe(true);
+    expect(result.citations.some((c) => c.reference === 's115-25')).toBe(true);
+    // No citation duplicated
+    const refs = result.citations.map((c) => `${c.kind}:${c.reference}`);
+    expect(new Set(refs).size).toBe(refs.length);
+  });
+
+  it('losses > gains → carry-forward residual surfaces; no discount', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'PERSONAL_NAME',
+        cgtEvents: [
+          { id: 'g1', monthsHeld: 24, nominalAmount: 30000 },
+          { id: 'l1', monthsHeld: 18, nominalAmount: -50000 },
+        ],
+      }),
+    );
+    const cgt = result.cgtResult as {
+      assessableNetCapitalGain: number;
+      carryForwardOut: number;
+      discountResult: unknown;
+    };
+    expect(cgt.assessableNetCapitalGain).toBe(0);
+    expect(cgt.carryForwardOut).toBe(20000);
+    expect(cgt.discountResult).toBeNull();
+  });
+
+  it('prior-year carry-forward losses applied via body field', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'PERSONAL_NAME',
+        cgtEvents: [{ id: 'g1', monthsHeld: 24, nominalAmount: 80000 }],
+        carryForwardCapitalLosses: [
+          { financialYear: '2022-23', amount: 20000 },
+        ],
+      }),
+    );
+    const cgt = result.cgtResult as { assessableNetCapitalGain: number };
+    // Net gain $60k after $20k prior-year loss → 50% discount → $30k assessable
+    expect(cgt.assessableNetCapitalGain).toBe(30000);
+  });
+
+  it('no cgtEvents → cgtResult is undefined', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({ entityType: 'PERSONAL_NAME' }),
+    );
+    expect(result.cgtResult).toBeUndefined();
+  });
+
+  it('empty cgtEvents array → cgtResult is undefined', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({ entityType: 'PERSONAL_NAME', cgtEvents: [] }),
+    );
+    expect(result.cgtResult).toBeUndefined();
+  });
+});
