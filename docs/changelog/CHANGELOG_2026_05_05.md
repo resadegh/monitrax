@@ -1,5 +1,39 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e7-div152-sbc (Phase 41e.7 — Div 152 small business CGT concessions)
+
+### Changes
+- New `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts` — `applyDiv152(input)` per ITAA 1997 Div 152
+- Stacks 4 concessions on top of Div 115: 15-year exemption / 50% active asset / retirement ($500k lifetime cap) / rollover
+- Basic conditions test (s152-10) — MNAV ≤ $6M OR turnover ≤ $2M, AND active asset
+- `steps[]` array reports each concession + running gain for AFSL audit trail
+- UC-DIV152-AGGREGATION when MNAV/turnover near threshold (s152-15(2) aggregation)
+- UC-DIV152-RETIREMENT-CAP when $500k lifetime cap binds
+- UC-DIV152-ROLLOVER for replacement-asset tracking (deferred)
+- 24 module tests
+- 388 total (364 → 388, +24); tsc clean
+
+### Not auto-wired into router
+Div 152 elections are taxpayer-specific (which concessions to claim is a financial-advisor decision, not automatic dispatch). Caller invokes `applyDiv152()` directly when scenario-modelling a disposal — typical caller is the AI advisor or a future "what's my tax if I sell?" surface.
+
+### Testable
+```ts
+import { applyDiv152 } from '@/lib/tax-engine/divisions/div152SmallBusinessConcessions';
+applyDiv152({
+  gainAfterDiv115: 500000,
+  maxNetAssetValue: 4_000_000,
+  aggregatedTurnover: 1_500_000,
+  isActiveAsset: true,
+  monthsHeld: 18 * 12,
+  isRetirementOrIncapacity: true,
+});
+// → 15-year exemption applied; assessableGain === 0; cites s152-105
+```
+
+41e.8 (negative gearing per-entity aggregator) is next.
+
+---
+
 ## Session: claude/phase-41e6-div7a-classifier (Phase 41e.6 — Div 7A loan classifier)
 
 ### Changes
