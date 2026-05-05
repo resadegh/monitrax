@@ -1,5 +1,45 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e0-b-cycle-detection (Phase 41e.0 foundation slice B — parentEntityId cycle-detection)
+
+### Changes Made
+- **Type:** Feature / safety guard (Phase 41e.0 slice B — wires the cycle-detection contract from audit doc §7 into `legalEntityService.ts`; adds an additive DB CHECK constraint as defence-in-depth; ships 11 tests).
+- **Scope:** New exported `validateParentChain(entityId, proposedParentId, client)` helper implementing audit §7.2 Rules 1–3 (self-parent forbidden, no cycle in parent chain, max depth 10). Wired into `createEntity()` and `updateEntity()` inside the same transaction client to prevent TOCTOU races (audit §7.3). Subsumes the old `if (input.parentEntityId === entityId)` self-parent check that was the only guard before.
+- **Stacked on:** PR #634 (slice A — types + permissions). Stacks PR #634 → PR #633 → main; will rebase clean as upstream merges.
+
+### Files Modified
+- `lib/services/legalEntityService.ts` — appended a new `Phase 41e.0 — parentEntityId cycle-detection (audit doc §7)` section: `PARENT_CHAIN_MAX_DEPTH = 10` constant, `ParentChainValidationError` + `ParentChainValidationResult` exported types, `validateParentChain()` walker exported. The walker iterates upward from `proposedParentId` building a `visited` set, returning structured errors for SELF_PARENT / CYCLE_DETECTED / MAX_DEPTH_EXCEEDED / PARENT_NOT_FOUND. Catches two cycle flavours: (a) `proposedParent` is downstream of `entityId`, (b) the existing chain (independent of the proposed change) is already cyclic — surfaces it now rather than infinite-loop. Both `createEntity()` and `updateEntity()` now call `validateParentChain()` after the user-ownership check.
+
+### Files Created
+- `prisma/migrations/20260506110000_legal_entity_no_self_parent/migration.sql` — pure additive DB CHECK constraint per audit §7.4. Rejects only rows where `id = parent_entity_id` (which the application layer has been blocking since 41a). §12.11 N/A — this constraint adds a guard, does not modify any row. CLAUDE.md §12.12 satisfied — schema.prisma untouched (Prisma doesn't model raw CHECK constraints; this is a defence-in-depth pattern at the storage layer that doesn't need a Prisma model representation).
+- `tests/legalEntityService/parentChain.test.ts` — 11 tests. The 8 mandated by audit §7.5 (self-parent rejected; direct cycle rejected; indirect cycle rejected; max depth enforced; valid corporate trustee Pty Ltd → Trust; valid SMSF corporate trustee; valid reparent without cycle; walker terminates correctly on a 3-level valid chain) plus 3 extras (null parent trivially ok; PARENT_NOT_FOUND surfaces; pre-existing cyclic chain detected without infinite-loop). Uses an in-memory `fakeClient` that stubs `legalEntity.findUnique` against a chain map — pure unit, no DB.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (after one explicit type annotation on the union-type Prisma lookup).
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **183 passed (172 from slice D + 11 new)**. Zero failures.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Slice B is a contained safety guard; full 41e.0 audit closure batched at slice D.)
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Why a separate migration when schema.prisma isn't touched
+Per CLAUDE.md §12.12 — a migration file is required for any DB-state change, regardless of whether `schema.prisma` is touched. CHECK constraints are commonly placed at the DB level without a corresponding Prisma annotation (Prisma's `@@check` is provider-limited). The application-layer validator (`validateParentChain`) is the primary guard; the DB CHECK is defence-in-depth that catches the simplest cycle (`id = parent_entity_id`) regardless of how a row reaches the database (manual INSERT, future bulk import, etc.).
+
+### What's next
+- **Slice C (next)** — entity-aware aggregator extensions. The 5 aggregators (`incomeAggregator`, `expenseAggregator`, `loanAggregator`, `cashflowOrchestrator`, `netWorthCalculator`) gain optional `ownerEntityId?: string` param, default = no filter (backward-compat — existing call sites pass `undefined`, behaviour unchanged). **Resolves the last open audit critical: C-3.**
+- **Slice D** — `entityTaxRouter` skeleton + AFSL/TPB/NCCP boundaries renderer + new endpoints. After D, **41e.0 is complete** and **41e.1 (Div 115 + Div 6 basic + capital loss netting)** starts.
+
+### PR
+- Branch: `claude/phase-41e0-b-cycle-detection` (stacked on `claude/phase-41e0-a-types` / PR #634 → which is stacked on `claude/phase-41e-cleanup-d-fixtures` / PR #633)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e0-a-types (Phase 41e.0 foundation slice A — permissions + entity-aware orchestration types)
 
 ### Changes Made
