@@ -329,6 +329,35 @@ export const POST = withPermission<RouteContext>(
         );
       }
 
+      // Phase 41e.3 — high-income super tax inputs from body.
+      let highIncomeSuper: EntityTaxFacts['highIncomeSuper'] = undefined;
+      if (body && typeof body === 'object' && body.highIncomeSuper) {
+        const h = body.highIncomeSuper;
+        if (
+          typeof h.div293Income !== 'number' ||
+          typeof h.concessionalContributions !== 'number' ||
+          typeof h.totalSuperBalance !== 'number'
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                'Invalid highIncomeSuper body — requires { div293Income, concessionalContributions, totalSuperBalance } as numbers.',
+            },
+            { status: 400 },
+          );
+        }
+        highIncomeSuper = {
+          div293Income: h.div293Income,
+          concessionalContributions: h.concessionalContributions,
+          totalSuperBalance: h.totalSuperBalance,
+          tsbEarnings:
+            typeof h.tsbEarnings === 'number' ? h.tsbEarnings : undefined,
+          transferBalanceUsed:
+            typeof h.transferBalanceUsed === 'number' ? h.transferBalanceUsed : undefined,
+        };
+      }
+
       // Phase 41e.2 — SMSF contribution caps from body.
       let smsfContributions: EntityTaxFacts['smsfContributions'] = undefined;
       if (body && typeof body === 'object' && body.smsfContributions) {
@@ -391,6 +420,7 @@ export const POST = withPermission<RouteContext>(
         cgtEvents,
         carryForwardCapitalLosses,
         smsfContributions,
+        highIncomeSuper,
       };
 
       const entityPosition = calculateEntityTaxPosition(facts);

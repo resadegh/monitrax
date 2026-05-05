@@ -174,6 +174,23 @@ export interface TaxYearConfig {
    * `PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §10.2.
    */
   reviewSchedule: TaxYearReviewSchedule;
+
+  // Phase 41e.3 — high-balance super tax thresholds.
+  /**
+   * Transfer Balance Cap (s294-35) — maximum amount that can be moved
+   * to retirement-phase super. Indexed annually. FY24-25: $1.9M.
+   */
+  transferBalanceCap: number;
+  /**
+   * Division 296 commencement flag. Divulged but not Royal Assent
+   * confirmed at time of writing — this flag gates the Div 296 calc.
+   * When `false`, the calc returns 0 and surfaces UC-DIV-296-PENDING.
+   */
+  div296CommencementVerified: boolean;
+  /** Div 296 TSB threshold ($3M proposed) — applies when commencementVerified is true. */
+  div296TsbThreshold: number;
+  /** Div 296 additional rate on earnings attributable to TSB above threshold. */
+  div296Rate: number;
 }
 
 export interface BringForwardThresholds {
@@ -667,6 +684,25 @@ export interface EntityTaxFacts {
       financialYear: string;
       unusedAmount: number;
     }>;
+  };
+  /**
+   * Phase 41e.3 — Div 293 / Div 296 / TBC inputs. Optional companion
+   * to `smsfContributions`. Surfaces high-income surcharge and
+   * high-balance tax on the SMSF dispatch result (under
+   * `result.highIncomeSuperTax`). Div 296 is gated by
+   * `config.div296CommencementVerified` until Royal Assent.
+   */
+  highIncomeSuper?: {
+    /** Income for Div 293 purposes (s293-15 calc). */
+    div293Income: number;
+    /** Concessional contributions (typically same as smsfContributions.concessionalYTD). */
+    concessionalContributions: number;
+    /** Total Super Balance at start of FY. */
+    totalSuperBalance: number;
+    /** TSB earnings during the FY (Div 296 base). Optional. */
+    tsbEarnings?: number;
+    /** Amount in retirement phase super (TBC tracking). */
+    transferBalanceUsed?: number;
   };
 }
 

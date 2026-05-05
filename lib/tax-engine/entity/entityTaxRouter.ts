@@ -44,6 +44,7 @@ import {
   type CarryForwardLoss,
 } from '../divisions/capitalLossNetting';
 import { trackContributionCaps } from '../super/capTracker';
+import { calculateHighIncomeSuperTax } from '../super/highIncomeSuperTax';
 import type {
   AuthorityCitation,
   EntityTaxFacts,
@@ -262,6 +263,11 @@ export function calculateEntityTaxPosition(
       config,
     );
 
+    // Phase 41e.3 — Div 293 / 296 / TBC if data provided
+    const highIncomeResult = facts.highIncomeSuper
+      ? calculateHighIncomeSuperTax(facts.highIncomeSuper, config)
+      : null;
+
     const smsfCitations: AuthorityCitation[] = [
       { kind: 'ITAA_1997', reference: 's291-20', lastReviewed: '2026-05-05' },
       { kind: 'ITAA_1997', reference: 's292-85', lastReviewed: '2026-05-05' },
@@ -276,15 +282,34 @@ export function calculateEntityTaxPosition(
       },
     ];
 
-    const merged = cgt
-      ? mergeCgt(smsfCitations, smsfUncomputed, cgt)
-      : { citations: smsfCitations, uncomputed: smsfUncomputed };
+    // Merge highIncomeSuperTax citations + uncomputed
+    let citations = smsfCitations;
+    let uncomputed = smsfUncomputed;
+    if (highIncomeResult) {
+      const seenC = new Set(citations.map((c) => `${c.kind}:${c.reference}`));
+      for (const c of highIncomeResult.citations) {
+        const key = `${c.kind}:${c.reference}`;
+        if (!seenC.has(key)) {
+          seenC.add(key);
+          citations.push(c);
+        }
+      }
+      const seenU = new Set(uncomputed.map((u) => u.id));
+      for (const u of highIncomeResult.uncomputed) {
+        if (!seenU.has(u.id)) {
+          seenU.add(u.id);
+          uncomputed.push(u);
+        }
+      }
+    }
+
+    const merged = cgt ? mergeCgt(citations, uncomputed, cgt) : { citations, uncomputed };
 
     return {
       entityId: facts.entityId,
       entityType: facts.entityType,
       fy: facts.fy,
-      result: capResult,
+      result: { capResult, highIncomeSuperTax: highIncomeResult ?? undefined },
       cgtResult: cgt ?? undefined,
       citations: merged.citations,
       uncomputed: merged.uncomputed,
