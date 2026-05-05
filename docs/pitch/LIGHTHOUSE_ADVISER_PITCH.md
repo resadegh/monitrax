@@ -154,9 +154,11 @@ This playbook codifies the demo into a runnable script so:
 
 #### Step 6c — The acquisition story (90 sec)
 - Switch to a SECOND screen / browser logged in as Sarah Kim
-- Show Sarah's AI Guide page on her dashboard
-- Click "Ask a Professional" → marketplace picker shows 3 best-fit (Smithfield Wealth featured) — **NOTE for the demo: this surface ships in PR4b; for the lighthouse pitch run the marketplace browse step (6a) instead and verbally bridge: "and from inside the consumer app, the AI Guide can launch this same surface contextually — the next slice."**
-- Sarah picks Smithfield, composes a question (e.g. *"Should I refinance my offset?"*), submits
+- Open Sarah's AI Guide page on her dashboard (`/dashboard/cfo`)
+- On any AI advice card (e.g. a tax-planning recommendation), click **"Ask a professional"** — the compact button next to "Ask a follow-up". Frame: *"From inside the AI Guide. Sarah doesn't have to leave her dashboard, doesn't have to know what discipline to search for. The AI knew this was a tax conversation, so the picker is pre-biased to tax specialists."*
+- Picker opens — top-3 best-fit (Smithfield Wealth featured for tax). Frame: *"Three best-fit, ranked by rating + context match. The 'See all professionals' link drops her on the full marketplace if these aren't right."*
+- Sarah picks Smithfield → routes to `/marketplace/smithfield-wealth` (the public listing detail) → Connect CTA. Frame: *"The Connect CTA is where the request lifecycle starts — compose question, send to Smithfield's inbox, ACCEPT or DECLINE — that's PR4c, the next slice. For now the demo bridges to the marketplace listing page."*
+- **NOTE for the lighthouse pitch (post-PR4c):** at that point the demo runs end-to-end — Sarah composes "Should I refinance my offset?", clicks Submit, the request lands in Reza's Practice inbox instantly with Sarah's snapshot context attached.
 - Switch BACK to Reza @ Smithfield's screen
 - Practice → Inbox tab — the request lands instantly with Sarah's snapshot context attached
 - *"This is your acquisition channel. Pre-qualified, financially-engaged user who has already done the data entry. Your CAC just dropped from AU$2,000 to AU$150."*

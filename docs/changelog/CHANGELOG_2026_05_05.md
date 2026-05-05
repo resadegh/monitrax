@@ -1,5 +1,62 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-32c-pr4b-askapro (Phase 32C PR4b — AskAProfessionalButton + picker SHIPPED)
+
+### Changes Made
+- **Type:** Feature (Demo-Complete Critical Path; closes Up Next #14)
+- **Scope:** In-app bridge between the consumer surface and the professional marketplace. `<AskAProfessionalButton />` primitive + `<AskAProfessionalDialog />` picker, server-driven candidate resolver with leaky-funnel guardrail enforced server-side.
+- **Description:** D2C users see top-3 best-fit marketplace listings biased by the calling context. Org-attached users see ONLY their org's roster (other orgs and public marketplace never returned). Wired into the AI Guide recommendation card so every advice category gets a contextually-biased picker.
+
+### Files Created
+- `lib/services/askAProfessionalService.ts` — canonical resolver. `getCandidatesForUser(userId, context?)`. Open-ended `CONTEXT_BIAS` map (tax / retirement / refinance / property / smsf / wealth / trust / business / estate / insurance / home-loan / investment-loan / general). Returns `{ scope: 'org' | 'public', ... }`. Public-path ranks top-12 by rating then re-ranks by `matchScore = matched_specialisations + averageRating/10` and slices to top-3.
+- `app/api/ask-a-pro/candidates/route.ts` — thin GET wrapper. `withPermission('report.read')` (lightest-touch every authenticated role has — discovery surface, not CDR-data).
+- `components/ask-a-pro/AskAProfessionalButton.tsx` — primitive. Three variants (primary full pill / compact inline pill / icon-only 32×32). Focus-visible ring, ARIA-haspopup="dialog".
+- `components/ask-a-pro/AskAProfessionalDialog.tsx` — picker. Right-edge slide-in ≥sm / bottom-sheet 90vh on <sm. Sticky header with title + context hint. Body-scroll lock. Esc to close, backdrop click to close, prefers-reduced-motion-aware via Tailwind `motion-safe:*` utilities. Branches on scope: org-scope shows assigned advisor highlighted in emerald glass tile + roster grouped under "Or another team member" (excludes VIEWER seats — they don't take inbound); public-scope shows 3 best-fit cards with rating + tagline + discipline label, "See all professionals →" footer to `/marketplace`. Member click → `/portal-message?memberId=<id>` placeholder (PR4d wires the in-app conversation thread); listing click → `/marketplace/[slug]` (existing Connect CTA is the entry to PR4c request lifecycle). Unauthenticated path returns 401 → dialog renders friendly "Create a free Monitrax account" nudge linking to `/register`.
+- `components/ask-a-pro/index.ts` — barrel.
+
+### Files Modified
+- `lib/services/index.ts` — re-exports the new service surface (`getCandidatesForUser`, `isKnownContext`, types).
+- `components/cfo/AdviceRecommendationCard.tsx` — adds `<AskAProfessionalButton variant="compact" context={CATEGORY_TO_ASK_A_PRO_CONTEXT[rec.category]} />` next to "Ask a follow-up". New `CATEGORY_TO_ASK_A_PRO_CONTEXT` map (tax → tax, debt → refinance, property → property, investment → wealth, risk → insurance, cashflow/spending → general, savings → wealth) so each advice category opens the picker pre-biased to the right specialisation.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #14 marked SHIPPED with summary; new Recently Completed entry prepended.
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` — Step 6c updated: the in-context AskAPro path is now demonstrable end-to-end.
+
+### Architecture Decisions
+- **Leaky-funnel guardrail enforced server-side.** Org-attached users (any active+granted `OrganizationClient` row) never see public marketplace listings via the API. Strategic decision per IMPLEMENTATION_PLAN.md Up Next #15 (2026-05-04): orgs pay for Monitrax to be their CRM + comms channel; the platform must not redirect their clients to competitors.
+- **Context as open-ended free-text label, not enum.** Calling surfaces pass a string label (`'tax'`, `'refinance'`, etc.) rather than picking from a fixed enum. Lets new contexts be added without service / schema changes; unknown contexts fall through to rating-only ranking. The `CONTEXT_BIAS` map is the single source of truth — adding a new context is one map entry.
+- **Zero new dependencies.** Dialog uses Tailwind `motion-safe:*` utility variants (which already work in the existing build) instead of pulling `framer-motion` just for two animations. Lighter footprint, same UX.
+- **PR4c not in scope.** This PR ships the picker only. The full request lifecycle (compose question → submit → adviser inbox → ACCEPT (lead fee billed) / DECLINE → consent invite → ClientLink materialises) is PR4c. The picker hands off via:
+  - D2C: navigate to `/marketplace/[slug]` where the existing Connect CTA awaits.
+  - Org-attached: navigate to `/portal-message?memberId=<id>` placeholder (PR4d wires the in-app conversation thread).
+- **Permission gate `report.read`.** Reused the lightest-touch authenticated permission rather than introducing a new `marketplace:browse` permission. The picker is a discovery surface; gating it tighter would prevent VIEWER-role users from ever connecting with their org's roster.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean, exit 0.
+- [x] `npx next build` — green; `/api/ask-a-pro/candidates` registered.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new `<AskAProfessionalButton />` primitive + dialog pattern, reusable across surfaces)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md:Up Next #14` — marked SHIPPED.
+- `docs/IMPLEMENTATION_PLAN.md:Recently Completed 2026-05-05` — new entry prepended.
+- `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md:Step 6c` — in-context AskAPro path now demonstrable.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### PR
+- Branch: `claude/phase-32c-pr4b-askapro`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-32c-pr4a-marketplace (Phase 32C PR4a — Professional Marketplace SHIPPED)
 
 ### Changes Made

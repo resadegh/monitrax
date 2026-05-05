@@ -17,6 +17,22 @@ import type { AIAdviceRecommendation, AIAdviceEvidence, ScenarioResult } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatPercentageValue } from '@/lib/utils/formatters';
+import { AskAProfessionalButton } from '@/components/ask-a-pro';
+
+// Phase 32C PR4b — map AI advice category → AskAProfessional context. Lets the
+// picker bias toward the matching specialisations (e.g. category=tax → boosts
+// TAX_OPTIMISATION / PERSONAL_TAX listings). Open-ended; unknown categories
+// fall through to the rating-only ranking in askAProfessionalService.ts.
+const CATEGORY_TO_ASK_A_PRO_CONTEXT: Partial<Record<AIAdviceRecommendation['category'], string>> = {
+  tax: 'tax',
+  debt: 'refinance',
+  property: 'property',
+  investment: 'wealth',
+  risk: 'insurance',
+  cashflow: 'general',
+  spending: 'general',
+  savings: 'wealth',
+};
 
 const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
@@ -137,6 +153,11 @@ export function AdviceRecommendationCard({
                 <MessageSquare className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                 Ask a follow-up
               </Button>
+              <AskAProfessionalButton
+                variant="compact"
+                context={CATEGORY_TO_ASK_A_PRO_CONTEXT[rec.category] ?? 'general'}
+                label="Ask a professional"
+              />
               {rec.steps.length > 0 && (
                 <Button
                   size="sm"
