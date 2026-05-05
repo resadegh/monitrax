@@ -41,35 +41,47 @@ export interface NetWorthResult {
   };
 }
 
-// Input types for calculation
+// Input types for calculation.
+//
+// Phase 41a — `LegalEntity` ownership FK propagated through every input
+// (Phase 41e.0 audit C-3). Optional + nullable on every shape; the
+// `ownerEntityId` filter param on `calculateTotalAssets` /
+// `calculateTotalLiabilities` defaults to "no filter" so omitting it
+// preserves pre-41e behaviour exactly.
 export interface PropertyInput {
   currentValue: number;
   type?: string;
+  ownerEntityId?: string | null;
 }
 
 export interface AccountInput {
   currentBalance: number;
   type?: string;
+  ownerEntityId?: string | null;
 }
 
 export interface InvestmentInput {
   units: number;
   currentPrice?: number;
   averagePrice?: number;
+  ownerEntityId?: string | null;
 }
 
 export interface SuperInput {
   balance: number;
+  ownerEntityId?: string | null;
 }
 
 export interface AssetInput {
   currentValue: number;
+  ownerEntityId?: string | null;
 }
 
 export interface LoanInput {
   principal: number;
   type?: string;
   propertyId?: string | null;
+  ownerEntityId?: string | null;
 }
 
 // =============================================================================
@@ -77,37 +89,45 @@ export interface LoanInput {
 // =============================================================================
 
 /**
- * Calculate total assets from all sources
+ * Calculate total assets from all sources.
+ *
+ * `ownerEntityId` (Phase 41e.0 audit C-3): when provided, only assets
+ * whose `ownerEntityId` matches are summed. Default = no filter for
+ * backward-compat. Per audit doc §6.3.
  */
 export function calculateTotalAssets(
   properties: PropertyInput[],
   accounts: AccountInput[],
   investments: InvestmentInput[],
   superannuation: SuperInput[] = [],
-  personalAssets: AssetInput[] = []
+  personalAssets: AssetInput[] = [],
+  ownerEntityId?: string,
 ): AssetSummary {
-  const propertyTotal = properties.reduce(
+  const matchEntity = <T extends { ownerEntityId?: string | null }>(items: T[]): T[] =>
+    ownerEntityId ? items.filter((x) => x.ownerEntityId === ownerEntityId) : items;
+
+  const propertyTotal = matchEntity(properties).reduce(
     (sum, p) => sum + Number(p.currentValue || 0),
     0
   );
 
-  const accountTotal = accounts.reduce(
+  const accountTotal = matchEntity(accounts).reduce(
     (sum, a) => sum + Number(a.currentBalance || 0),
     0
   );
 
-  const investmentTotal = investments.reduce((sum, i) => {
+  const investmentTotal = matchEntity(investments).reduce((sum, i) => {
     const price = Number(i.currentPrice || i.averagePrice || 0);
     const units = Number(i.units || 0);
     return sum + units * price;
   }, 0);
 
-  const superTotal = superannuation.reduce(
+  const superTotal = matchEntity(superannuation).reduce(
     (sum, s) => sum + Number(s.balance || 0),
     0
   );
 
-  const assetTotal = personalAssets.reduce(
+  const assetTotal = matchEntity(personalAssets).reduce(
     (sum, a) => sum + Number(a.currentValue || 0),
     0
   );
@@ -123,14 +143,25 @@ export function calculateTotalAssets(
 }
 
 /**
- * Calculate total liabilities from all loan sources
+ * Calculate total liabilities from all loan sources.
+ *
+ * `ownerEntityId` (Phase 41e.0 audit C-3): when provided, only loans
+ * whose `ownerEntityId` matches are summed. Default = no filter for
+ * backward-compat. Per audit doc §6.3.
  */
-export function calculateTotalLiabilities(loans: LoanInput[]): LiabilitySummary {
+export function calculateTotalLiabilities(
+  loans: LoanInput[],
+  ownerEntityId?: string,
+): LiabilitySummary {
   let mortgages = 0;
   let personalLoans = 0;
   let creditCards = 0;
 
-  for (const loan of loans) {
+  const filtered = ownerEntityId
+    ? loans.filter((l) => l.ownerEntityId === ownerEntityId)
+    : loans;
+
+  for (const loan of filtered) {
     const principal = Number(loan.principal || 0);
     const type = loan.type?.toUpperCase() || '';
 

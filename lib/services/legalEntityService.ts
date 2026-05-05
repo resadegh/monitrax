@@ -23,6 +23,128 @@ import { encryptTfn } from '@/lib/security/tfnEncryption';
 type PrismaTxOrClient = PrismaClient | Prisma.TransactionClient;
 
 // ---------------------------------------------------------------------------
+// Phase 41e.0 — parentEntityId cycle-detection (audit doc §7)
+// ---------------------------------------------------------------------------
+
+/**
+ * Maximum depth allowed for a `parentEntityId` chain. Per audit doc §7.2
+ * Rule 3 — corporate trustee chains in practice are 1–2 levels deep;
+ * trust-of-trust-of-trust is rare and 10 is a safety ceiling that
+ * catches accidentally-built rabbit-hole structures.
+ */
+const PARENT_CHAIN_MAX_DEPTH = 10;
+
+export type ParentChainValidationError =
+  | 'SELF_PARENT'
+  | 'CYCLE_DETECTED'
+  | 'MAX_DEPTH_EXCEEDED'
+  | 'PARENT_NOT_FOUND';
+
+export type ParentChainValidationResult =
+  | { ok: true }
+  | { ok: false; code: ParentChainValidationError; message: string };
+
+/**
+ * Validate that setting `proposedParentId` as the parent of `entityId`
+ * does not create a cycle, exceed depth, or self-reference.
+ *
+ * Per audit doc §7.2:
+ *   Rule 1 — `entity.parentEntityId !== entity.id`.
+ *   Rule 2 — walking the parent chain from `proposedParentId` upward
+ *            never revisits `entityId` and never revisits any node
+ *            (catches reparenting cycles where the proposed parent's
+ *            chain already includes this entity downstream).
+ *   Rule 3 — chain depth ≤ 10.
+ *   Rule 4 — type-compatibility is advisory only and lives in route /
+ *            wizard layer, NOT here (a structurally-cycle-free chain is
+ *            the absolute floor; type rules are policy on top).
+ *
+ * Per audit doc §7.3 — MUST be called inside the same transaction as
+ * the write to prevent TOCTOU races. Both `createEntity` and
+ * `updateEntity` already do this via the `client` parameter.
+ *
+ * `entityId === null` ⇒ creating a new entity (no row to cycle to yet).
+ */
+export async function validateParentChain(
+  entityId: string | null,
+  proposedParentId: string | null,
+  client: PrismaTxOrClient = prisma,
+): Promise<ParentChainValidationResult> {
+  if (proposedParentId === null) {
+    return { ok: true };
+  }
+
+  // Rule 1 — self-parent forbidden.
+  if (entityId !== null && entityId === proposedParentId) {
+    return {
+      ok: false,
+      code: 'SELF_PARENT',
+      message: 'An entity cannot be its own parent.',
+    };
+  }
+
+  // Walk from `proposedParentId` upward toward the root.
+  const visited = new Set<string>();
+  let current: string | null = proposedParentId;
+  let depth = 0;
+
+  while (current !== null) {
+    // Rule 3 — max depth.
+    if (depth >= PARENT_CHAIN_MAX_DEPTH) {
+      return {
+        ok: false,
+        code: 'MAX_DEPTH_EXCEEDED',
+        message: `Parent chain exceeds the ${PARENT_CHAIN_MAX_DEPTH}-deep safety ceiling.`,
+      };
+    }
+
+    // Rule 2 — cycle detection. Two flavours:
+    //   (a) the chain visits the node we're trying to set the parent
+    //       on (entityId) — that means proposedParent is downstream of
+    //       this entity, so connecting them creates an immediate cycle.
+    //   (b) the chain visits a node already seen this walk — that means
+    //       the existing chain (independent of our proposed change) is
+    //       already cyclic. Surface it now rather than infinite-loop.
+    if (entityId !== null && current === entityId) {
+      return {
+        ok: false,
+        code: 'CYCLE_DETECTED',
+        message: 'Setting this parent would create a cycle in the entity chain.',
+      };
+    }
+    if (visited.has(current)) {
+      return {
+        ok: false,
+        code: 'CYCLE_DETECTED',
+        message: 'Existing parent chain is already cyclic — fix upstream before re-parenting.',
+      };
+    }
+    visited.add(current);
+
+    // Step up one level. Explicit type annotation because the
+    // `PrismaTxOrClient` union confuses TS' inference here.
+    const parent: { parentEntityId: string | null } | null =
+      await client.legalEntity.findUnique({
+        where: { id: current },
+        select: { parentEntityId: true },
+      });
+
+    if (!parent) {
+      return {
+        ok: false,
+        code: 'PARENT_NOT_FOUND',
+        message: 'Parent entity not found while walking the chain.',
+      };
+    }
+
+    current = parent.parentEntityId;
+    depth++;
+  }
+
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // Default entity (Phase 41a)
 // ---------------------------------------------------------------------------
 
@@ -218,6 +340,14 @@ export async function createEntity(
     if (!parent || parent.userId !== userId) {
       throw new Error('Parent entity not found or not owned by this user.');
     }
+    // Phase 41e.0 (audit §7) — cycle-detection inside the same client/tx.
+    // entityId is `null` here because we haven't created the row yet; the
+    // walker only checks that the proposed parent's chain is internally
+    // consistent and within depth.
+    const chainCheck = await validateParentChain(null, input.parentEntityId, client);
+    if (!chainCheck.ok) {
+      throw new Error(chainCheck.message);
+    }
   }
 
   const created = await client.legalEntity.create({
@@ -276,15 +406,18 @@ export async function updateEntity(
   client: PrismaTxOrClient = prisma,
 ): Promise<LegalEntitySummary> {
   if (input.parentEntityId !== undefined && input.parentEntityId !== null) {
-    if (input.parentEntityId === entityId) {
-      throw new Error('An entity cannot be its own parent.');
-    }
     const parent = await client.legalEntity.findUnique({
       where: { id: input.parentEntityId },
       select: { userId: true },
     });
     if (!parent || parent.userId !== userId) {
       throw new Error('Parent entity not found or not owned by this user.');
+    }
+    // Phase 41e.0 (audit §7) — cycle-detection. Subsumes the old
+    // self-parent check (Rule 1) and adds chain-cycle + max-depth.
+    const chainCheck = await validateParentChain(entityId, input.parentEntityId, client);
+    if (!chainCheck.ok) {
+      throw new Error(chainCheck.message);
     }
   }
 

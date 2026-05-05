@@ -1,5 +1,630 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e4-div6e-streaming (Phase 41e.4 — Div 6E character streaming)
+
+### Changes
+- `trustDistribution.ts` extended with streaming logic: per-beneficiary `streaming` field (franked dividends + capital gains), `characterPools` (the trust's character composition), `streamingResolutionAt` (ISO date), `financialYear` for resolution-date validation.
+- `BeneficiaryDistribution.character` reports per-beneficiary `{ frankedDividends, capitalGains, ordinaryIncome }`.
+- UC-DIV-6E-STREAMING flag **flips off** when streaming applies. New UC-DIV-6E-STREAMING-INVALID-RESOLUTION when resolution date is post-30-June.
+- Citations include Div 6E + s207-58 + s115-228 only when streaming applies.
+- Router passes new fields through `EntityTaxFacts.trustDistribution`.
+- POST endpoint validates body shape.
+- 6 new tests covering all five FY-end streaming states.
+
+### What's testable
+```bash
+curl -X POST -d '{
+  "trustDistribution": {
+    "trustNetIncome": 100000,
+    "beneficiaries": [
+      { "id": "high", "name": "David", "presentlyEntitledShare": 0.5,
+        "streaming": { "frankedDividends": 30000 } },
+      { "id": "low", "name": "Emma", "presentlyEntitledShare": 0.5,
+        "streaming": { "capitalGains": 20000 } }
+    ],
+    "characterPools": { "frankedDividends": 30000, "capitalGains": 20000 },
+    "streamingResolutionAt": "2025-06-29",
+    "hasFamilyTrustElection": true
+  }
+}' /api/tax/entity/<trust_id>?fy=2024-25
+# → distributions[0].character.frankedDividends === 30000 (David streams franking)
+# → distributions[1].character.capitalGains === 20000 (Emma streams CGT)
+# → uncomputed does NOT contain UC-DIV-6E-STREAMING (flag flipped off)
+# → citations include Div 6E + s207-58 + s115-228
+```
+
+324 tests passing (318 → 324, +6). tsc clean.
+
+---
+
+## Session: claude/phase-41e3-tbc-div293-div296 (Phase 41e.3 — TBC + Div 293 + Div 296)
+
+### Changes
+- New module `lib/tax-engine/super/highIncomeSuperTax.ts` — Div 293 + Div 296 (gated) + TBC.
+- `TaxYearConfig` extended (4 new fields populated across all 3 FY configs).
+- Router SMSF branch composes `highIncomeSuperTax` when `EntityTaxFacts.highIncomeSuper` provided. Result shape now `{ capResult, highIncomeSuperTax }`.
+- POST endpoint accepts `highIncomeSuper` body.
+- 9 module tests + 1 router-integration test.
+
+### What's testable
+```bash
+curl -X POST -d '{
+  "smsfContributions": { "concessionalYTD": 30000, "nonConcessionalYTD": 0, "totalSuperBalance": 1000000 },
+  "highIncomeSuper": { "div293Income": 280000, "concessionalContributions": 30000, "totalSuperBalance": 1000000, "transferBalanceUsed": 1500000 }
+}' /api/tax/entity/<smsf_id>
+# → result.highIncomeSuperTax.div293.applies === true
+# → result.highIncomeSuperTax.div293.tax === 4500 (30000 * 0.15)
+# → result.highIncomeSuperTax.tbc.headroom === 400000
+```
+
+318 tests passing. tsc clean.
+
+---
+
+## Session: claude/phase-41e2-smsf-contribution-caps (Phase 41e.2 — SMSF contribution caps wired into router)
+
+### Changes Made
+- **Type:** Feature — wires existing `capTracker.trackContributionCaps` into the entity router for SMSF entities. Pure additive; no consumer changes.
+- **Scope:** Closes 41e.2. SMSF entities with `smsfContributions` data flip from UNCOMPUTED to real CapTrackingResult — cap headroom + carry-forward + bring-forward + excess-contribution tax warnings.
+- **Stacked on:** PR #650 (41e.1 close). Stack chain: this PR → #650 → #649 → ... → main.
+
+### Files Modified
+- `lib/tax-engine/types.ts` — `EntityTaxFacts.smsfContributions` field added.
+- `lib/tax-engine/entity/entityTaxRouter.ts` — new SMSF dispatch branch using existing `trackContributionCaps`. Replaces placeholder UC-ENTITY-SMSF flag with the more precise UC-SMSF-SOLE-PURPOSE.
+- `app/api/tax/entity/[entityId]/route.ts` — POST handler accepts `smsfContributions` body field.
+- `tests/tax-engine/entity/entityTaxRouter.test.ts` — 5 new tests covering: SMSF without data → UNCOMPUTED, with data → CapTrackingResult, cap exceeded → isExceeded, carry-forward applied, both smsfContributions + cgtEvents → both populated.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.14 documenting the slice.
+- `docs/architecture/07_API_STANDARDS.md` §15 — POST row updated.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — 41e.2 SHIPPED.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **308 tests passed** (303 → 308, +5).
+
+### What's user-testable now
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -d '{"smsfContributions":{"concessionalYTD":20000,"nonConcessionalYTD":0,"totalSuperBalance":600000}}' \
+  /api/tax/entity/<smsf_entityId>
+# → result.concessional.cap === 30000 (FY24-25 from canonical config)
+# → result.concessional.remaining === 10000
+# → citations include s291-20 + s292-85 + SIS Pt 8
+# → uncomputed flags: UC-SMSF-SOLE-PURPOSE (sole purpose / in-house / LRBA → 41e.11)
+```
+
+### What's next
+**41e.3 — TBC + Div 293 + Div 296** (gated until Royal Assent). Then 41e.4 (Div 6E streaming).
+
+### PR
+- Branch: `claude/phase-41e2-smsf-contribution-caps`
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e1-d2-cgt-router (Phase 41e.1 slice D-2 — wire CGT into entityTaxRouter; closes 41e.1)
+
+### Changes Made
+- **Type:** Feature — closes 41e.1. Wires slices A (CGT discount) + B (loss netting) into the router as a CGT side calc independent of the income-tax dispatch. **First demonstration of "never false silence"** — a COMPANY entity with income tax still UNCOMPUTED can now surface a fully-computed CGT figure with 0% discount per s115-280, instead of returning silently null.
+- **Scope:** Conditional CGT dispatch — entities WITH `cgtEvents` get a populated `cgtResult` (regardless of whether `result` is null/computed). De-duplicated cumulative citations + UNCOMPUTED.
+- **Stacked on:** PR #649 (slice D-1). Stack chain: this PR → #649 → #647 → #645 → #644 → #641 → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Modified
+- `lib/tax-engine/types.ts` — `EntityTaxFacts` gains optional `cgtEvents`, `carryForwardCapitalLosses`, `smsfIsComplying`, `isForeignResident` fields. `EntityTaxPosition` gains optional `cgtResult` field (independent of `result`).
+- `lib/tax-engine/entity/entityTaxRouter.ts` — imports `applyCapitalLossNetting` + types. New `dispatchCgtIfPresent(facts)` helper runs loss-netting if `cgtEvents` non-empty. New `mergeCgt(citations, uncomputed, cgt)` helper de-duplicates merged arrays. Every dispatch branch (PERSONAL_NAME / TRUST-with-distribution / UNCOMPUTED branches) now populates `cgtResult` + merges CGT citations & flags into the cumulative position.
+- `app/api/tax/entity/[entityId]/route.ts` — POST handler validates + accepts `cgtEvents` array (each event needs `id`/`monthsHeld`/`nominalAmount`) + `carryForwardCapitalLosses` array; passes both into `EntityTaxFacts`.
+- `tests/tax-engine/entity/entityTaxRouter.test.ts` — 8 new tests for the D-2 contract.
+- `docs/architecture/03_DATA_MODEL.md` §10.13 — slice D-2 row appended; **41e.1 COMPLETE** statement.
+- `docs/architecture/07_API_STANDARDS.md` §15 — POST endpoint row updated.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D-2 status flip + 41e.1 closure note.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **303 tests passed** (295 → 303, +8 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — closes 41e.1; introduces the "never false silence" principle as a complement to "never false numbers".
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Per the going-forward commitment from PR #637 — all relevant docs updated in the same PR.
+
+### What's user-testable now (visual / API)
+
+**This is the visible flip for COMPANY entities.**
+
+```bash
+# COMPANY entity with disposal events:
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cgtEvents": [
+      { "id": "e1", "monthsHeld": 60, "nominalAmount": 200000 }
+    ]
+  }' \
+  https://yourenv/api/tax/entity/<company_entityId>
+```
+
+Response carries:
+- `entityPosition.result === null` (income tax still UNCOMPUTED — 41e.7 territory)
+- `entityPosition.uncomputed[0].id === "UC-ENTITY-COMPANY"` (the audit's "never false numbers" rule for income tax stays)
+- **`entityPosition.cgtResult.assessableNetCapitalGain === 200000`** (0% discount per s115-280 — full nominal gain assessable)
+- `entityPosition.citations` includes `s115-280` so the AFSL footer can show users **exactly why** their company-owned asset got no discount
+
+**Combined trust + CGT:**
+```bash
+curl -X POST \
+  -d '{
+    "trustDistribution": { "trustNetIncome": 100000, "beneficiaries": [...] },
+    "cgtEvents": [{ "id": "e1", "monthsHeld": 36, "nominalAmount": 80000 }]
+  }' \
+  /api/tax/entity/<trust_entityId>
+```
+Returns BOTH a Div 6 distribution in `result` AND a Div 115 calc in `cgtResult` with 50% discount → $40k assessable. Citations include both s95/s97 (Div 6) and s115-25/s100-50/Div 102-A (CGT) — no duplicates.
+
+**With prior-year losses:**
+```bash
+curl -X POST \
+  -d '{
+    "cgtEvents": [{ "id": "g1", "monthsHeld": 24, "nominalAmount": 80000 }],
+    "carryForwardCapitalLosses": [{ "financialYear": "2022-23", "amount": 20000 }]
+  }' \
+  /api/tax/entity/<entityId>
+```
+Net gain after $20k prior-year loss → 50% discount → **$30k assessable**. Caller passes the unconsumed balance from the user's CGT register.
+
+### What's next
+**41e.1 is COMPLETE.** Next: **41e.2 — SMSF contribution caps.** Move CONCESSIONAL_CAPS / NON_CONCESSIONAL_CAPS from `capTracker.ts` into `taxYearConfig.ts`. Wire SMSF entity dispatch to the existing `capTracker` primitive. Carry-forward + bring-forward edge cases. Per audit §8.1, ~2 days estimated.
+
+### PR
+- Branch: `claude/phase-41e1-d2-cgt-router` (stacked on `claude/phase-41e1-d1-trust-router` / PR #649)
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e1-d1-trust-router (Phase 41e.1 slice D-1 — wire trustDistribution into entityTaxRouter)
+
+### Changes Made
+- **Type:** Feature — first user-testable Div 6 surface. Wires slice C's `allocateTrustDistribution` into the router. **First time a trust entity can produce a real `EntityTaxPosition.result` instead of an UNCOMPUTED placeholder.**
+- **Scope:** Conditional dispatch — TRUST entities WITH `trustDistribution` data → computed Div 6 allocation; WITHOUT data → still UNCOMPUTED (backward-compat). New POST endpoint to exercise the wiring via curl.
+- **Stacked on:** PR #647 (slice C). Stack chain: this PR → #647 → #645 → #644 → #641 → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Modified
+- `lib/tax-engine/types.ts` — `EntityTaxFacts.trustDistribution` optional field added (`trustNetIncome`, `beneficiaries[]`, `hasFamilyTrustElection?`). JSDoc cross-references slice C + UC-DIV-6E-STREAMING.
+- `lib/tax-engine/entity/entityTaxRouter.ts` — imports `allocateTrustDistribution`. New conditional branch: DISCRETIONARY_TRUST or UNIT_TRUST + `trustDistribution` provided → run distribution + return real result. New `entityHasConditionalComputedTax(type)` helper for callers to test the conditional capability matrix.
+- `app/api/tax/entity/[entityId]/route.ts` — new POST handler accepts `{ trustDistribution }` body. Validates shape (rejects 400 on malformed). Same response envelope as GET. Same Prisma ownership check. `tax_data.read` (read because it's a calc, not a mutation).
+- `tests/tax-engine/entity/entityTaxRouter.test.ts` — 6 new tests pinning the conditional dispatch contract. Existing UNCOMPUTED-branch tests unchanged (still pass without distribution data).
+- `docs/architecture/03_DATA_MODEL.md` §10.13 — slice D-1 row appended; slice D-2 status added.
+- `docs/architecture/07_API_STANDARDS.md` §15 — new POST endpoint row in the Phase 41e endpoints table.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D-1 status flip.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry with the curl example for visual testing.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **295 tests passed** (289 → 295, +6 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual / config / GCP / identity / deployment / security / operational / data model — partial: new POST endpoint adds to the §15 API surface but no schema / config / IAM change.
+- [ ] strategic decision
+
+Per the going-forward commitment from PR #637, all relevant docs updated in this same PR:
+- `03_DATA_MODEL.md` §10.13 — slice D-1 shipped.
+- `07_API_STANDARDS.md` §15 — new POST endpoint.
+- `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D-1 status.
+- `IMPLEMENTATION_PLAN.md` Recently Completed — new entry with curl example.
+
+### What's user-testable now (visual / API)
+
+**This is a visible flip.** Once this PR + the upstream stack merges:
+
+1. **Hit the new POST endpoint with a trust distribution body:**
+   ```bash
+   curl -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "trustDistribution": {
+         "trustNetIncome": 100000,
+         "beneficiaries": [
+           { "id": "b1", "name": "Sarah", "presentlyEntitledShare": 1.0 }
+         ],
+         "hasFamilyTrustElection": true
+       }
+     }' \
+     https://yourenv/api/tax/entity/<discretionary_trust_entityId>
+   ```
+   
+   Response: `{ "success": true, "data": { "entityPosition": { "result": { "distributions": [...], "trusteeRetainedAmount": 0, ... }, "citations": [...s95, s97...], "uncomputed": [{ id: "UC-S100A-RISK", ... }, { id: "UC-DIV-6E-STREAMING", ... }] }, "boundary": { "computedPer": "Computed per ITAA 1936 s95, ITAA 1936 s97.", ... } } }`.
+
+2. **Try partial entitlement (50%):** trustee gets 50% × 47% = 23.5% s99A penalty. Response carries `s99A` in citations.
+
+3. **GET endpoint behaviour unchanged** — without distribution data in the body, trust entities still return UNCOMPUTED. **No regression on `/dashboard/tax` or any existing surface.**
+
+### What's next
+- **Slice D-2 (final 41e.1 slice)** — wire `cgtDiscount` + `capitalLossNetting` into `entityTaxRouter` for any entity type with `cgtEvents`. After D-2, **41e.1 is COMPLETE** and **41e.2 (SMSF contribution caps)** starts.
+
+### PR
+- Branch: `claude/phase-41e1-d1-trust-router` (stacked on `claude/phase-41e1-c-trust-distribution` / PR #647)
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e1-c-trust-distribution (Phase 41e.1 slice C — Div 6 basic + trustDistribution.ts skeleton)
+
+### Changes Made
+- **Type:** Feature — pure additive calc module. No consumer wiring (slice D wires `entityTaxRouter` to consume slices A/B/C together).
+- **Scope:** Implements ITAA 1936 Div 6 basic — presently-entitled beneficiary allocation per s95 + s97 + s99A. Streaming (Div 6E), s100A zone classification, and s98 trustee-level assessment all surface as UNCOMPUTED flags pointing at the sub-PR that resolves each (41e.4, 41e.5, future).
+- **Stacked on:** PR #645 (slice B — capital loss netting). Stack chain: this PR → #645 → #644 → #641 → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Created
+- `lib/tax-engine/divisions/trustDistribution.ts` — `allocateTrustDistribution(input)` + `getDistributableAmount(result)` + exported `S99A_TRUSTEE_PENALTY_RATE = 0.47` constant. Validates shares (≥ 0; sum ≤ 1.0 with 1e-9 floating-point tolerance for `1/3 + 1/3 + 1/3` cases). Returns full breakdown with per-beneficiary `BeneficiaryDistribution[]`, `trusteeRetainedAmount`, `trusteePenaltyTax`, `totalAccountedFor`, citations + UNCOMPUTED flags.
+- `tests/tax-engine/divisions/trustDistribution.test.ts` — 20 tests covering basic distribution (1-way / 2-way / 3-way), s99A penalty (no entitlement → full 47% / partial entitlement → residual at 47%), validation errors (negative share / over-distribution throw; floating-point tolerance preserved), UNCOMPUTED flags (UC-S100A-RISK always with FTE-aware wording, UC-DIV-6E-STREAMING always, UC-S98-TRUSTEE-ASSESSMENT only when applicable), citation rules (s99A appears only with residual > 0), `getDistributableAmount` helper, `S99A_TRUSTEE_PENALTY_RATE` exposure, edge cases (zero income).
+
+### Files Modified
+- `docs/architecture/03_DATA_MODEL.md` §10.13 — slice C row flipped to "shipped" with full description of the s95/s97/s99A trio and the UNCOMPUTED contract.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice C status flipped (slice D queued).
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **289 tests passed** (269 → 289, +20 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Pure additive calc module; no UI surface yet.)
+
+Per the going-forward commitment from PR #637, relevant docs updated:
+- `03_DATA_MODEL.md` §10.13 — slice C shipped row.
+- `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice C status flip.
+- `IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+
+### What's user-testable now
+**Nothing visual yet** — same as slices A and B. Slice D wires the router and the `/dashboard/tax` AFSL footer starts surfacing per-entity citations (s95, s97, s99A for trust entities; s115-25, s115-100, s100-50 for any disposal; s115-280 explicitly for COMPANY).
+
+### What's next
+- **Slice D (final)** — wire `entityTaxRouter` to consume slices A/B/C together. **First user-visible 41e.1 surface.** COMPANY / DISCRETIONARY_TRUST UNCOMPUTED branches start producing real numbers for simple-disposal cases. The AFSL footer surfaces the full citation set on per-entity API responses. After slice D, the audit's "never false numbers" rule relaxes for the v1-supported scope: companies and trusts with basic events get computed numbers instead of UNCOMPUTED flags, paired with the boundary footer documenting exactly which sections were applied.
+
+### PR
+- Branch: `claude/phase-41e1-c-trust-distribution` (stacked on `claude/phase-41e1-b-loss-netting` / PR #645)
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e1-b-loss-netting (Phase 41e.1 slice B — capital loss netting + ordering)
+
+### Changes Made
+- **Type:** Feature — pure additive calc module composing slice A. No consumer wiring (slice D wires `entityTaxRouter`).
+- **Scope:** Implements ITAA 1997 s100-50 (loss-method ordering) + s115-100 (discount applied to net gain after losses) + Div 102-A (assessable net capital gain). Catches the most common consumer-tax mistake — applying the discount to gross gains then subtracting losses produces a smaller assessable number than the law allows; the right order yields a *higher* taxable figure. Tests pin this explicitly.
+- **Stacked on:** PR #644 (slice A — CGT discount). Stack chain: this PR → #644 → #641 → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Created
+- `lib/tax-engine/divisions/capitalLossNetting.ts` — `applyCapitalLossNetting(input)` exported. Composes slice A. Returns full breakdown: `totalNominalGains` / `totalCurrentYearLosses` / `totalPriorYearLosses` / `netGainBeforeDiscount` / `discountResult` / `assessableNetCapitalGain` / `carryForwardOut` / `breakdown[]` / `citations[]` / `uncomputed[]`. FIFO ordering for prior-year losses (oldest consumed first per s100-50). Mixed-holding-period proration with `UC-CGT-MIXED-HOLDING` UNCOMPUTED flag.
+- `tests/tax-engine/divisions/capitalLossNetting.test.ts` — 18 tests covering: basic gain (with/without > 12-month discount), current-year netting, **the critical s115-100 ordering pin** (assert $35k not $20k for the canonical $100k gain + $30k loss + 50% discount case), losses > gains → carry forward, prior-year carry-forward, prior + current both consumed, FIFO sort independence from input order, entity-type dispatch (SMSF 33⅓%, COMPANY 0%, TRUST 50%), mixed holding period UNCOMPUTED, citation completeness, breakdown row per event, edge cases (no events, only prior losses).
+
+### Files Modified
+- `docs/architecture/03_DATA_MODEL.md` §10.13 — slice B row flipped to "shipped" with full description of the s100-50 / s115-100 / Div 102-A trio.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 status callout — slice B in flight notation added.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **269 tests passed** (251 → 269, +18 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Pure additive calc module, no UI surface, no schema change. Slice D will surface this on `/dashboard/tax` per-entity API responses.)
+
+Per the going-forward commitment from PR #637, relevant docs updated:
+- `03_DATA_MODEL.md` §10.13 — slice B shipped row.
+- `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice B in flight.
+- `IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+
+### What's user-testable now
+**Nothing visual yet** — same as slice A. Slice D will be the visible flip when COMPANY / TRUST entities start producing real CGT figures via `GET /api/tax/entity/[entityId]`.
+
+### What's next
+- **Slice C** — Div 6 basic + `trustDistribution.ts` skeleton. Presently-entitled allocation per ITAA 1936 s95–s99B. Streaming (Div 6E) lands in 41e.4.
+- **Slice D** — wire `entityTaxRouter`. **First slice that flips the COMPANY / DISCRETIONARY_TRUST UNCOMPUTED branches to real numbers for simple-disposal cases.**
+
+### PR
+- Branch: `claude/phase-41e1-b-loss-netting` (stacked on `claude/phase-41e1-a-cgt-discount` / PR #644)
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e1-a-cgt-discount (Phase 41e.1 slice A — Div 115 CGT discount, entity-aware rate dispatch)
+
+### Changes Made
+- **Type:** Feature — first **rule** sub-PR after the 41e.0 foundation. Pure additive module with no consumers yet (slice D wires `entityTaxRouter` to call it).
+- **Scope:** Implements ITAA 1997 Div 115 CGT discount rate dispatch by entity type. Per-entity rates: 50% (individuals + trusts + partnerships), 33⅓% (complying SMSF), 0% (companies + non-complying SMSF + < 12 months holding). Foreign-resident apportionment (Subdiv 115-D) flagged as `UC-FOREIGN-RESIDENT-CGT` for future work.
+- **Stacked on:** PR #641 (slice D of 41e.0 — closes 41e.0). Stack chain: this PR → #641 → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Created
+- `lib/tax-engine/divisions/cgtDiscount.ts` — `calculateCgtDiscount(input)` + `getCgtDiscountRate(type, isComplying?)` exports. Pure functions; no DB, no state, no side effects. Result shape carries `discountRate` / `discountAmount` / `discountedGain` / `metHoldingPeriod` / `reason` / `citations` / `uncomputed` so the boundary footer can render the exact authority used. Holding-period gate is universal (< 12 months → 0% regardless of entity type per s115-25). COMPANY result explicitly cites s115-280 so users see why no discount applied.
+- `tests/tax-engine/divisions/cgtDiscount.test.ts` — 24 tests covering every entity branch, the holding-period boundary (11 vs 12 months), SMSF complying/non-complying split, foreign-resident UNCOMPUTED, and edge cases (zero gain, negative gain trusted to caller for loss netting in slice B).
+
+### Files Modified
+- `docs/architecture/03_DATA_MODEL.md` — new §10.13 documenting Phase 41e.1 with the per-entity discount table + queue of remaining slices (B: loss netting, C: Div 6 + trustDistribution skeleton, D: router wiring).
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — status callout updated: 41e.1 slice A in flight, B/C/D queued.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry with full per-entity rate breakdown.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **251 tests passed** (227 → 251, +24 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Pure additive calc module — no UI surface yet, no schema change, no behaviour change for any existing flow. Slice D will surface this on `/dashboard/tax` per-entity API responses.)
+
+Per the going-forward commitment from PR #637 — relevant docs updated in this same PR:
+- `03_DATA_MODEL.md` — new §10.13.
+- `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice status update.
+- `IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+
+### What's user-testable now
+**Nothing visual yet** — slice A is pure additive, no consumers wired. The `/dashboard/tax` AFSL footer from 41e.0 slice D remains the most recent visible surface. Slice D of 41e.1 (router wiring) is when COMPANY / DISCRETIONARY_TRUST entities start producing real CGT figures via `GET /api/tax/entity/[entityId]` and the boundary footer surfaces s115-25 / s115-280 citations.
+
+### What's next
+- **Slice B** — capital loss netting + ordering (s100-50, s115-100). Pure functions composing slice A.
+- **Slice C** — Div 6 basic + `trustDistribution.ts` skeleton. Presently-entitled allocation per ITAA 1936 s95–s99B.
+- **Slice D** — wire `entityTaxRouter` to consume the new modules. **First slice that flips the COMPANY / DISCRETIONARY_TRUST UNCOMPUTED branches to real numbers for simple-disposal cases.**
+
+### PR
+- Branch: `claude/phase-41e1-a-cgt-discount` (stacked on `claude/phase-41e0-d-router` / PR #641)
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e0-d-router (Phase 41e.0 foundation slice D — entityTaxRouter + AFSL boundaries renderer + new endpoints — closes 41e.0)
+
+### Changes Made
+- **Type:** Feature — orchestration scaffolding + first user-visible 41e.0 surface (the AFSL/TPB/NCCP boundary footer on `/dashboard/tax`).
+- **Scope:** **Closes 41e.0.** Ships `entityTaxRouter` skeleton (PERSONAL_NAME / SOLE_TRADER computed; COMPANY / TRUST / SMSF / PARTNERSHIP UNCOMPUTED-flagged until 41e.1+ rule modules land), the canonical AFSL/TPB/NCCP boundaries renderer (lib + React component + tests), two new endpoints (`/api/tax/config`, `/api/tax/entity/[entityId]`), and wires the boundary footer into `/dashboard/tax` page (replaces the old free-text Disclaimer).
+- **Stacked on:** PR #639 (slice C). Stack chain: this PR → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Created
+- `lib/tax-engine/entity/entityTaxRouter.ts` — `calculateEntityTaxPosition(facts)` + `entityHasComputedTax(type)` exports. Dispatches by `LegalEntityType`. Per-type UNCOMPUTED flags reference the sub-PR that will produce the real number (audit §10.3 — never false numbers).
+- `lib/tax-engine/boundaries/index.ts` — `BOUNDARY_STATEMENT` constant (the canonical legal copy), `formatCitation`, `renderBoundaryFootnote`, `renderBoundaryOneLine` exports. De-duplicates citations + UNCOMPUTED flags so repeats don't pollute the footer.
+- `components/tax/BoundaryFootnote.tsx` — React component, 5 stacked rows (FY → computed-per → UNCOMPUTED → boundary → calculated-at). Compact variant for tile use.
+- `app/api/tax/config/route.ts` — GET handler. `tax_data.read`. Returns `{ config, availableFinancialYears }`.
+- `app/api/tax/entity/[entityId]/route.ts` — GET handler. `tax_data.read`. Ownership-checked (Prisma `findFirst` with `userId`). Returns `{ entityPosition, boundary }`.
+- `tests/tax-engine/entity/entityTaxRouter.test.ts` — 11 tests covering both halves of the router contract (PERSONAL_NAME computed + UNCOMPUTED branches per type + helper).
+- `tests/tax-engine/boundaries/boundaries.test.ts` — 15 tests covering citation formatting, de-duplication, UNCOMPUTED rendering, BOUNDARY_STATEMENT contains TPB/AFSL/NCCP, fyContext optional handling.
+
+### Files Modified
+- `app/dashboard/tax/page.tsx` — imports `BoundaryFootnote` + `AuthorityCitation` type; declares module-level `TAX_PAGE_CITATIONS` (ITAA 1997 s4-10, Div 1-6, Div 126-H LITO, Div 207 Franking); replaces the old free-text Disclaimer card with `<BoundaryFootnote citations={TAX_PAGE_CITATIONS} fyLabel={taxConfig.label} calculatedAt={taxPosition?.metadata.calculatedAt} />`. **First user-visible 41e.0 surface.**
+- `docs/architecture/07_API_STANDARDS.md` — new §15 "Phase 41e — Entity-aware tax endpoints" listing the shipped + queued tax-route surface with permissions + the boundary-envelope response shape.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — new §13 "AFSL / TPB / NCCP Boundary Footnote Pattern" documenting the canonical component, the legal-copy-lives-in-one-place rule, the compact variant, and the matrix of surfaces that MUST render the footer.
+- `docs/architecture/03_DATA_MODEL.md` §10.12 — slice D shipped row appended with full module + endpoint summary.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D status flip ("queued" → "PR #642 in review — first user-visible 41e.0 surface — after D, **41e.0 is COMPLETE**").
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry documenting the slice + the full module + endpoint catalogue + the AFSL footer text the user can verify on `/dashboard/tax`.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **227 tests passed** (201 → 227, +26 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — new `<BoundaryFootnote />` component pattern documented in `06_UI_UX_FOUNDATION.md` §13 with the matrix of surfaces that MUST adopt it.
+- [x] strategic decision — closes 41e.0; unblocks 41e.1.
+- [ ] application config / GCP infrastructure / identity / auth / deployment / build / security / CDR posture / operational procedure / data model
+
+Per the going-forward commitment from PR #637 — every relevant doc updated in this same PR.
+
+Docs updated:
+- `docs/architecture/07_API_STANDARDS.md` — new §15.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — new §13.
+- `docs/architecture/03_DATA_MODEL.md` §10.12 — slice D row.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D status.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+
+### What's user-testable now (Reza brief 2026-05-05 — *"let me know when I can check anything visually to test and review"*)
+
+**Once this PR merges:**
+
+1. **`/dashboard/tax` AFSL boundary footer** — visible at the bottom of the page. Look for "Computed per ITAA 1997 s4-10, ITAA 1997 Div 1-6, ITAA 1997 Div 126-H (LITO), ITAA 1997 Div 207 (Franking). These figures are general information only — not personal financial, tax, or credit advice. Confirm with a registered tax agent (TPB), financial adviser (AFSL), or credit assistant (NCCP) before acting." If you see the OLD generic Disclaimer text, the slice didn't deploy.
+
+2. **`GET /api/tax/config`** — `curl https://yourenv/api/tax/config` (auth required). Returns the canonical FY config including new fields (`label`, `superGuaranteeQuarterlyCap`, `superContributionsTaxRate`, `coContributionIncomeThreshold`, `bringForwardThresholds`, `reviewSchedule`).
+
+3. **`GET /api/tax/entity/[entityId]`** — for any `LegalEntity` you own. PERSONAL_NAME entity → returns full Phase 20 tax position. COMPANY / TRUST / SMSF entity → returns `entityPosition.result === null` + a `uncomputed` array with a structured flag like *"Trust streaming + Div 6 / Div 6E + s100A zone classification lands with Phase 41e.1, 41e.4 and 41e.5..."*. **This is the audit's "never false numbers" guarantee in action** — try it for an SMSF entity if you have one and confirm the response carries an UNCOMPUTED flag, not a fabricated number.
+
+4. **Boundary-component reusability** — when 41e.1 ships per-entity figures, the same `<BoundaryFootnote />` component will mount on the AI advice cards, the Money Flow tab, and the adviser drill-in tax surface. The matrix of "MUST render" surfaces is in `06_UI_UX_FOUNDATION.md` §13.5.
+
+### What's next
+- **41e.1** — Div 115 CGT discount + Div 6 trust beneficiary income flow (basic, non-streamed) + capital loss netting (s100-50 ordering). Estimated 3 days.
+- **First per-entity numbers in production.** When 41e.1 lands, COMPANY entities get their proper 25%/30% base-rate dispatch + the UNCOMPUTED `UC-ENTITY-COMPANY` flag flips to a real number. The `<BoundaryFootnote />` component then surfaces 41e.1's citations (s115-25, Div 6) on every page that consumes the per-entity API.
+
+### PR
+- Branch: `claude/phase-41e0-d-router` (stacked on `claude/phase-41e0-c-aggregators` / PR #639)
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e0-c-aggregators (Phase 41e.0 foundation slice C — entity-aware aggregator extensions, resolves audit C-3)
+
+### Changes Made
+- **Type:** Feature — entity-scoping behaviour added to the 5 canonical financial aggregators (Phase 41e.0 slice C). Pure additive: every existing call site continues to receive household-wide totals exactly as before; new callers can scope per-entity by passing the optional `ownerEntityId` filter.
+- **Scope:** Resolves the last open audit critical — **C-3** (aggregators have zero entity awareness). Combined with C-1 / C-2 / C-4 (resolved in 41e.−1 cleanup) and H-1 through H-6 (resolved in 41e.−1 cleanup B/C), this closes the full audit register.
+- **Stacked on:** PR #637 (doc-sync follow-up). Stack chain: this PR → #637 → #636 → #634 → #633 → main.
+
+### Files Modified
+- `lib/calculations/incomeAggregator.ts` — `IncomeInput.ownerEntityId?: string | null` added; `aggregateIncome(income, targetFrequency, ownerEntityId?)` filters before aggregation.
+- `lib/calculations/expenseAggregator.ts` — `ExpenseInput.ownerEntityId?: string | null` added; `aggregateExpenses(expenses, targetFrequency, ownerEntityId?)` filters before category breakdown.
+- `lib/calculations/loanAggregator.ts` — `LoanInput.ownerEntityId?: string | null` added; `aggregateLoanRepayments(loans, targetFrequency, ownerEntityId?)` filters before principal/interest summation.
+- `lib/calculations/cashflowOrchestrator.ts` — `IncomeItem` / `ExpenseItem` / `LoanItem` all gained `ownerEntityId?: string | null`; `calculateCashflow(input, ownerEntityId?)` applies the filter once at the top across all three sub-arrays so every downstream loop sees the scoped set.
+- `lib/calculations/netWorthCalculator.ts` — `PropertyInput` / `AccountInput` / `InvestmentInput` / `SuperInput` / `AssetInput` / `LoanInput` all gained `ownerEntityId?: string | null`; `calculateTotalAssets(...args, ownerEntityId?)` and `calculateTotalLiabilities(loans, ownerEntityId?)` filter via internal `matchEntity` helper.
+- `docs/architecture/03_DATA_MODEL.md` §10.12 — "Aggregator extensions (slice C — pending)" flipped to **shipped** with a per-aggregator signature table + the test contract summary. Confirms: (1) filter-omitted reproduces pre-41e household totals, (2) filter-provided returns only matching items, (3) `e1.total + e2.total === household.total` proves no double-counting.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 status — slice C flipped from "queued" to "PR #639 in review — **resolves audit C-3 — the last open audit critical**".
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry prepended documenting the slice + the closing of the full audit register.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Files Created
+- `tests/calculations/aggregatorEntityScoping.test.ts` — 18 tests covering all 5 aggregators. Three assertion classes: backward-compat (filter omitted → unchanged behaviour), entity-scoping (filter provided → only matching items), structural correctness (per-entity sums equal household total — no double-counting).
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **201 tests passed** (183 → 201, +18 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — closes the full audit register (C-1 / C-2 / C-3 / C-4 + H-1..H-6 all resolved)
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Per the going-forward commitment from PR #637: every relevant doc updated in this same PR, no batching.
+
+Docs updated:
+- `docs/architecture/03_DATA_MODEL.md` §10.12 — slice C flipped to "shipped" with full per-aggregator signature table + test contract.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice C status flipped + audit-closure note.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+
+### What's next
+- **Slice D (final 41e.0 slice)** — `entityTaxRouter` skeleton + AFSL/TPB/NCCP boundaries renderer + new endpoints (`GET /api/tax/entity/[id]`, `GET /api/tax/config`, stub `GET /api/tax/master-position`). After D, **41e.0 is complete** and **41e.1 (Div 115 + Div 6 basic + capital loss netting) starts.** Per the pre-declared doc-touch list from PR #637 changelog, slice D will update: `07_API_STANDARDS.md` (new endpoints), `06_UI_UX_FOUNDATION.md` (boundaries-renderer footer pattern if surfaced UI-side), `03_DATA_MODEL.md` §10.12 (router + endpoints), `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 status flip, IMPLEMENTATION_PLAN entry, `MASTER_BLUEPRINT.md` if 41e.0 phase status changes.
+
+### PR
+- Branch: `claude/phase-41e0-c-aggregators` (stacked on `claude/phase-41e0-doc-sync-followup` / PR #637)
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e0-doc-sync-followup (Phase 41e.0 doc-sync follow-up — close §3.1 / §16 gaps from slices A + B)
+
+### Changes Made
+- **Type:** Docs-only follow-up (no code, no schema). Per Reza directive 2026-05-05 — *"make sure all relevant documents including design, blueprint, runbooks etc are also updated as we go so there is nothing missed"* — fills the §3.1 / §16 doc-sync gaps left when slices A (PR #634) and B (PR #636) said *"full 41e.0 audit closure batched at slice D."* That batching was a reasonable judgement call but it skipped specific docs that should have updated per the matrix. This PR fixes the misses inline.
+- **Scope:** Updates 4 canonical docs to reflect the work that has shipped across the audit + 41e.−1 cleanup + 41e.0 slices A/B. No code changes; no migration changes; no behaviour changes.
+- **Stacked on:** PR #636 (slice B). Stack chain: this PR → #636 → #634 → #633 → main.
+
+### Files Modified
+- `docs/operational/security/02_IAM_AND_PERMISSIONS.md` — extended the Permission Naming Convention example list with `entity.read` / `entity.write` / `entity.delete` (Phase 41a) + `tax_data.read` / `tax_data.write` (Phase 41e.0). Added a "Phase 41e tax-data permissions" paragraph explaining what they gate (route access, not CDR-content visibility) and pointing at `lib/auth/permissions.ts` as the canonical role mapping.
+- `docs/architecture/03_DATA_MODEL.md` — appended new §10.12 "Phase 41e.−1 cleanup + 41e.0 foundation — schema-relevant changes" capturing: the 7 new `TaxYearConfig` fields with their primary-authority citations (slice A — PR #626); the new `TAX_YEAR_2025_26` config (resolves audit C-4); the `legal_entities_no_self_parent` DB CHECK constraint (slice B — PR #636 / migration `20260506110000_legal_entity_no_self_parent`); the 6 new entity-aware orchestration types in `lib/tax-engine/types.ts` (slice A — PR #634); the upcoming aggregator extension contract (slice C, queued).
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` — §4 Canonical types now carries an "Implementation status (2026-05-05)" callout listing each type that landed in 41e.0 slice A (PR #634) at `lib/tax-engine/types.ts`, plus the two intentional deviations from the architectural pseudocode (`EntityTaxPosition.result` typed `unknown`; `EntityTaxFacts.incomes/expenses/depreciations` inlined as structural rows to avoid circular imports). §11 Implementation sequence updated to reflect the audit-inserted `41e.−1` cleanup PR + the slice-by-slice ship status (41e.−1 A/B/C ✅ merged, D in review; 41e.0 A/B in review). Sequence is now 18 sub-PRs total (was 17).
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed (2026-05-05) — prepended two entries for 41e.0 slice A (PR #634) and slice B (PR #636) with the same level of detail as the 41e.−1 cleanup-slice entries. Slice A: types + permissions; slice B: cycle-detection + DB CHECK + 11 tests.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] strategic decision — closes the doc-sync gaps from slices A + B
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model
+
+Docs updated:
+- `docs/operational/security/02_IAM_AND_PERMISSIONS.md` — Permission Naming Convention + tax-data permissions explainer.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.12 capturing 41e.−1 + 41e.0 schema-relevant changes.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` — §4 implementation-status callout + §11 sequence-status update.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — slices A + B entries prepended.
+
+### Going-forward commitment
+Per Reza directive — every future slice updates the relevant docs in the same PR, not batched. If a slice has nothing to update for a given doc surface, the §16.5 block lists the unchecked surfaces explicitly (positive confirmation, not absence of evidence). The following docs will be touched by upcoming 41e.0 slices:
+- **Slice C** (aggregator extensions) → `03_DATA_MODEL.md` §10.12 ("Aggregator extensions — pending" → "Aggregator extensions — shipped"), `01_ARCHITECTURE_OVERVIEW.md` if module boundaries change, IMPLEMENTATION_PLAN Recently Completed.
+- **Slice D** (entityTaxRouter + boundaries renderer + new endpoints) → `07_API_STANDARDS.md` (new endpoints), `06_UI_UX_FOUNDATION.md` (boundaries-renderer footer pattern if surfaced UI-side), `03_DATA_MODEL.md` §10.12 (router + endpoints), IMPLEMENTATION_PLAN Recently Completed, `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 status flip, `MASTER_BLUEPRINT.md` if 41e.0 phase status changes.
+
+### What's next
+- **Slice C** — entity-aware aggregator extensions (resolves the last open audit critical: C-3).
+- **Slice D** — `entityTaxRouter` skeleton + AFSL/TPB/NCCP boundaries renderer + new endpoints. Closes 41e.0; 41e.1 starts.
+
+### PR
+- Branch: `claude/phase-41e0-doc-sync-followup` (stacked on `claude/phase-41e0-b-cycle-detection` / PR #636)
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e0-b-cycle-detection (Phase 41e.0 foundation slice B — parentEntityId cycle-detection)
+
+### Changes Made
+- **Type:** Feature / safety guard (Phase 41e.0 slice B — wires the cycle-detection contract from audit doc §7 into `legalEntityService.ts`; adds an additive DB CHECK constraint as defence-in-depth; ships 11 tests).
+- **Scope:** New exported `validateParentChain(entityId, proposedParentId, client)` helper implementing audit §7.2 Rules 1–3 (self-parent forbidden, no cycle in parent chain, max depth 10). Wired into `createEntity()` and `updateEntity()` inside the same transaction client to prevent TOCTOU races (audit §7.3). Subsumes the old `if (input.parentEntityId === entityId)` self-parent check that was the only guard before.
+- **Stacked on:** PR #634 (slice A — types + permissions). Stacks PR #634 → PR #633 → main; will rebase clean as upstream merges.
+
+### Files Modified
+- `lib/services/legalEntityService.ts` — appended a new `Phase 41e.0 — parentEntityId cycle-detection (audit doc §7)` section: `PARENT_CHAIN_MAX_DEPTH = 10` constant, `ParentChainValidationError` + `ParentChainValidationResult` exported types, `validateParentChain()` walker exported. The walker iterates upward from `proposedParentId` building a `visited` set, returning structured errors for SELF_PARENT / CYCLE_DETECTED / MAX_DEPTH_EXCEEDED / PARENT_NOT_FOUND. Catches two cycle flavours: (a) `proposedParent` is downstream of `entityId`, (b) the existing chain (independent of the proposed change) is already cyclic — surfaces it now rather than infinite-loop. Both `createEntity()` and `updateEntity()` now call `validateParentChain()` after the user-ownership check.
+
+### Files Created
+- `prisma/migrations/20260506110000_legal_entity_no_self_parent/migration.sql` — pure additive DB CHECK constraint per audit §7.4. Rejects only rows where `id = parent_entity_id` (which the application layer has been blocking since 41a). §12.11 N/A — this constraint adds a guard, does not modify any row. CLAUDE.md §12.12 satisfied — schema.prisma untouched (Prisma doesn't model raw CHECK constraints; this is a defence-in-depth pattern at the storage layer that doesn't need a Prisma model representation).
+- `tests/legalEntityService/parentChain.test.ts` — 11 tests. The 8 mandated by audit §7.5 (self-parent rejected; direct cycle rejected; indirect cycle rejected; max depth enforced; valid corporate trustee Pty Ltd → Trust; valid SMSF corporate trustee; valid reparent without cycle; walker terminates correctly on a 3-level valid chain) plus 3 extras (null parent trivially ok; PARENT_NOT_FOUND surfaces; pre-existing cyclic chain detected without infinite-loop). Uses an in-memory `fakeClient` that stubs `legalEntity.findUnique` against a chain map — pure unit, no DB.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (after one explicit type annotation on the union-type Prisma lookup).
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **183 passed (172 from slice D + 11 new)**. Zero failures.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Slice B is a contained safety guard; full 41e.0 audit closure batched at slice D.)
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Why a separate migration when schema.prisma isn't touched
+Per CLAUDE.md §12.12 — a migration file is required for any DB-state change, regardless of whether `schema.prisma` is touched. CHECK constraints are commonly placed at the DB level without a corresponding Prisma annotation (Prisma's `@@check` is provider-limited). The application-layer validator (`validateParentChain`) is the primary guard; the DB CHECK is defence-in-depth that catches the simplest cycle (`id = parent_entity_id`) regardless of how a row reaches the database (manual INSERT, future bulk import, etc.).
+
+### What's next
+- **Slice C (next)** — entity-aware aggregator extensions. The 5 aggregators (`incomeAggregator`, `expenseAggregator`, `loanAggregator`, `cashflowOrchestrator`, `netWorthCalculator`) gain optional `ownerEntityId?: string` param, default = no filter (backward-compat — existing call sites pass `undefined`, behaviour unchanged). **Resolves the last open audit critical: C-3.**
+- **Slice D** — `entityTaxRouter` skeleton + AFSL/TPB/NCCP boundaries renderer + new endpoints. After D, **41e.0 is complete** and **41e.1 (Div 115 + Div 6 basic + capital loss netting)** starts.
+
+### PR
+- Branch: `claude/phase-41e0-b-cycle-detection` (stacked on `claude/phase-41e0-a-types` / PR #634 → which is stacked on `claude/phase-41e-cleanup-d-fixtures` / PR #633)
+- PR URL: TBD on push
+
+---
+
+## Session: claude/phase-41e0-a-types (Phase 41e.0 foundation slice A — permissions + entity-aware orchestration types)
+
+### Changes Made
+- **Type:** Foundation / type contract (Phase 41e.0 slice A — first slice of the entity-aware orchestration foundation; pure additive; zero consumer changes; zero behaviour changes; sets up the type contract that 41e.0 slices B/C/D + 41e.1 → 41e.17 build against).
+- **Scope:** Two new permissions (`tax_data.read`, `tax_data.write`) for the new endpoints landing in slice D. Five new types in `lib/tax-engine/types.ts` per architecture doc §4 + audit doc §6.2 (`AuthorityCitation`, `FYReference`, `EntityTaxFacts`, `EntityTaxPosition`, `MasterTaxPosition`, `UncomputedFlag`) — the contract for entity dispatch + cumulative authority-citation traceability + UNCOMPUTED-flag surfacing. Stacked on top of the 41e.−1 cleanup PR D branch (PR #633) so the slice-C bugfix is included.
+
+### Files Modified
+- `lib/auth/permissions.ts` — added `tax_data.read` (OWNER+ADMIN+CONTRIBUTOR+VIEWER, mirrors `report.read`) and `tax_data.write` (OWNER+ADMIN+CONTRIBUTOR — writes commit to a snapshot the household sees). JSDoc explains the gating relationship to CDR (these gate ROUTE access; CLAUDE.md §13.3 sanitisation still governs CDR-content visibility).
+- `lib/tax-engine/types.ts` — appended a new "Phase 41e.0 — Entity-Aware Orchestration Types" section. Six new exported interfaces with full JSDoc + cross-references to the architecture doc + audit doc:
+  - `AuthorityCitation` — primary-AU-authority reference (ITAA 1936/1997 / SIS Act / TR / TD / PCG / PS LA / state acts) attached to every rule result. Consumed by the AFSL/TPB/NCCP boundaries renderer (slice D).
+  - `FYReference` — FY-indexed lookup contract; thresholds NEVER hard-coded (per architecture doc §1(6)).
+  - `EntityTaxFacts` — per-entity input the dispatcher needs. Composed from the new entity-aware aggregator outputs (slice C). Optional fields will progressively populate as 41e.1+ ship the rule modules (CGT events, trust distribution resolutions, Div 7A loans, LRBA arrangements).
+  - `EntityTaxPosition` — output of dispatching a single entity. Wraps Phase 20 `TaxPositionResult` for PERSONAL_NAME flows; net-new shapes for COMPANY/TRUST/SMSF land per sub-PR (kept as `unknown` here so sub-PRs refine without churn).
+  - `UncomputedFlag` — audit-friendly "deliberately not computed" structure per audit §10.3. UI surfaces these as plain-English badges, never false numbers.
+  - `MasterTaxPosition` — household-wide roll-up. The canonical replacement for `buildTaxSummary()` once 41e.17 ships the orchestrator.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine` — 172 tests passed.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Slice A is pure additive scaffolding; full 41e.0 audit closure batched at slice D.)
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### What's next
+- **Slice B** — `parentEntityId` cycle-detection wired into `legalEntityService.ts` per audit §7. Four rules (self-parent forbidden, no chain cycles, max depth 10, type-compatibility advisory). DB CHECK constraint as defence-in-depth. 8 required tests.
+- **Slice C** — entity-aware aggregator extensions (incomeAggregator, expenseAggregator, loanAggregator, cashflowOrchestrator, netWorthCalculator) gain optional `ownerEntityId?: string` param, default = no filter (backward-compat). **Resolves the last open audit critical: C-3.**
+- **Slice D** — `entityTaxRouter` skeleton + AFSL/TPB/NCCP boundaries renderer + new endpoints (`GET /api/tax/entity/[id]`, `GET /api/tax/config`, `GET /api/tax/master-position` — the latter is a stub returning `MasterTaxPosition` with all-PERSONAL_NAME dispatch until 41e.1+ wire up entity-specific rules).
+
+After slice D, **41e.0 is complete** and **41e.1 (Div 115 + Div 6 basic + capital loss netting) starts**.
+
+### PR
+- Branch: `claude/phase-41e0-a-types` (stacked on `claude/phase-41e-cleanup-d-fixtures` / PR #633 — when #633 merges, GitHub auto-rebases this PR's base to main)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e-cleanup-d-fixtures (Phase 41e.−1 cleanup PR D — archetype fixtures + master-config self-test + parity baselines + slice-C bugfix)
 
 ### Changes Made

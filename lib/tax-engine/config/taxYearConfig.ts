@@ -109,6 +109,12 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
     nextReviewBy: '2026-06-15', // before FY26-27 commences
     reviewers: ['Reza', 'tax-engine-owner'],
   },
+
+  // Phase 41e.3 — high-balance super tax
+  transferBalanceCap: 1900000, // ITAA 1997 s294-35 — FY24-25 $1.9M
+  div296CommencementVerified: false, // pending Royal Assent
+  div296TsbThreshold: 3000000, // proposed $3M
+  div296Rate: 0.15, // additional 15% per the proposed Bill
 };
 
 // =============================================================================
@@ -165,6 +171,12 @@ export const TAX_YEAR_2025_26: TaxYearConfig = {
     nextReviewBy: '2026-06-15', // before FY26-27 commences
     reviewers: ['Reza', 'tax-engine-owner'],
   },
+
+  // Phase 41e.3 — high-balance super tax (FY25-26 projections)
+  transferBalanceCap: 1900000, // unchanged unless ATO indexes
+  div296CommencementVerified: false, // verify status before each FY
+  div296TsbThreshold: 3000000,
+  div296Rate: 0.15,
 };
 
 // =============================================================================
@@ -240,6 +252,12 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
     nextReviewBy: '2026-06-15',
     reviewers: ['Reza', 'tax-engine-owner'],
   },
+
+  // Phase 41e.3 — high-balance super tax (historical FY23-24 thresholds)
+  transferBalanceCap: 1900000, // FY23-24 $1.9M
+  div296CommencementVerified: false, // not yet enacted in FY23-24
+  div296TsbThreshold: 3000000,
+  div296Rate: 0.15,
 };
 
 // =============================================================================

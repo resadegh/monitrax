@@ -233,6 +233,12 @@ lib/calculations/tax/
 
 The engine speaks one common language. Every rule consumes and produces these types — no rule-local data structures.
 
+> **Implementation status (2026-05-05):** **`AuthorityCitation`, `FYReference`, `EntityTaxFacts`, `EntityTaxPosition`, `UncomputedFlag`, `MasterTaxPosition`** all landed in **Phase 41e.0 slice A (PR #634)** at `lib/tax-engine/types.ts`. The pseudocode below reflects the original architectural intent; the actual TypeScript contracts diverge in two places:
+> - `EntityTaxPosition.result` is typed `unknown` rather than a union of rule-result shapes — sub-PRs 41e.1+ refine this in their own commits to avoid churn.
+> - `EntityTaxFacts.incomes / expenses / depreciations` are inlined structural rows matching `IncomeItem` / `ExpenseItem` / `DepreciationItem` from `position/taxPositionCalculator.ts` to avoid a circular import.
+>
+> Both deviations are documented inline in `lib/tax-engine/types.ts` JSDoc with cross-references back to this section. The semantics — authority-citation traceability, UNCOMPUTED-flag aggregation, FY-indexed thresholds — are preserved verbatim.
+
 ```typescript
 // FY-indexed reference (e.g. '2025-2026' is the AU financial year ending 30 June 2026)
 type FYReference = `${number}-${number}`;
@@ -496,8 +502,19 @@ Initial entries (Phase 41e demo scope):
 ## 11. Phase 41e implementation sequence
 
 > **Updated 2026-05-04 per Reza decision D-1: full regulatory scope ships in demo cut. No demo/PROD split within 41e.**
+>
+> **Updated 2026-05-05 per audit doc §8.1: a pre-flight cleanup PR (`41e.−1`) inserted ahead of `41e.0`. Sequence is now 18 sub-PRs.** The audit caught an existing 3,776-LOC Phase 20 federal tax engine at `lib/tax-engine/` — sound within scope, with the architecturally cleaner play being to **layer 41e on top, not rewrite**. The cleanup PR runs first to (a) replace the `buildTaxSummary()` regression trap with delegation to `calculateTaxPosition()`, (b) extract every hard-coded constant (concessional cap, super tax rate, co-contribution threshold, SG rate, brackets table, marginal rate assumption, CGT discount) to FY config, (c) add FY25-26 to `taxYearConfig.ts` (resolves audit C-4), (d) capture parity-baseline snapshots against three archetype fixtures (Sarah Kim / David+Emma / Olivia) shared with pitch seeding.
+>
+> **Implementation status (2026-05-05):**
+> - **41e.−1 cleanup** — slices A (PR #626 ✅ merged), B (PR #629 ✅ merged), C (PR #630 ✅ merged), D (PR #633 in review). After D, audit C-1, C-2, C-4 + H-1 through H-6 all resolved. C-3 deferred to 41e.0 slice C (entity-aware aggregators).
+> - **41e.0 foundation** — slice A (PR #634 in review — types + permissions), slice B (PR #636 in review — `parentEntityId` cycle-detection per audit §7), slice C (PR #639 in review — entity-aware aggregator extensions, **resolves audit C-3** — the last open audit critical), slice D (PR #642 in review — `entityTaxRouter` skeleton + AFSL boundaries renderer + 2 new endpoints + `<BoundaryFootnote />` wired into `/dashboard/tax`. **First user-visible 41e.0 surface.** After D, **41e.0 is COMPLETE.**).
+> - **41e.1 (Div 115 + Div 6 basic + capital loss netting) — COMPLETE.** slice A (PR #644 — Div 115 CGT discount module + 24 tests), slice B (PR #645 — capital loss netting + s100-50 / s115-100 / Div 102-A + 18 tests), slice C (PR #647 — Div 6 basic via `trustDistribution.ts` + s99A 47% penalty + 20 tests), slice D-1 (PR #649 — wire trustDistribution into entityTaxRouter), **slice D-2 (PR #650 — wire cgtDiscount + capitalLossNetting into entityTaxRouter; CGT calc independent of income tax dispatch so COMPANY entities can surface real CGT figures even with income tax still UNCOMPUTED; 8 new router tests).** **41e.2 (SMSF contribution caps) starts next.**
+> - **41e.2 (SMSF contribution caps) — SHIPPED PR #651.** Wires existing `capTracker` primitive into the entity router. Concessional + non-concessional cap headroom, carry-forward (s291-20(3)) + bring-forward (s292-85(2)). UC-SMSF-SOLE-PURPOSE replaces the placeholder UC-ENTITY-SMSF (sole purpose / in-house / LRBA still UNCOMPUTED — lands in 41e.11).
+> - **41e.3 (TBC + Div 293 + Div 296 gated) — SHIPPED PR #652.** New `highIncomeSuperTax.ts` module + 4 new fields on `TaxYearConfig` + `EntityTaxFacts.highIncomeSuper`. Div 296 gated by `div296CommencementVerified` config flag — flips on automatically once Royal Assent verified.
+> - **41e.4 (Div 6E streaming) — SHIPPED PR #653.** Per-beneficiary streaming allocations of franked dividends + capital gains (s207-58 + s115-228). Resolution must fall within FY (date validated against parsed `financialYear`). UC-DIV-6E-STREAMING flag flips off when streaming applies. UC-DIV-6E-STREAMING-INVALID-RESOLUTION surfaces when resolution date is post-30-June.
+> - **41e.5 → 41e.17** — queued; sequence below remains the contract.
 
-Given the surface area, 41e is not one PR. It's a sequence of 16 sub-PRs, all gating the lighthouse adviser pitch:
+Given the surface area, 41e is not one PR. It's a sequence of 18 sub-PRs (the original 17 plus the inserted `41e.−1`), all gating the lighthouse adviser pitch:
 
 | PR | Scope | Estimate | Authority |
 |---|---|---|---|

@@ -139,6 +139,18 @@ export const PERMISSIONS = {
   // improves; locking it behind OWNER would be hostile UX.
   'feedback.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER', 'PARTNER', 'ACCOUNTANT'],
   'feedback.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER', 'PARTNER', 'ACCOUNTANT'],
+
+  // Phase 41e.0 — entity-aware tax dispatch. Read covers per-entity tax
+  // position queries (`/api/tax/entity/[id]`, `/api/tax/master-position`,
+  // FY config) — the same audience as `report.read`. Write covers
+  // computational mutations like trust-distribution composition or
+  // CGT-disposal calc invocations (when 41e.1+ ship those endpoints) —
+  // CONTRIBUTOR-and-up because writes commit to a snapshot the
+  // household sees. CDR sanitisation rules of CLAUDE.md §13.3 still
+  // apply at the route layer; this permission gates ROUTE access, not
+  // CDR-content visibility.
+  'tax_data.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'tax_data.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
 } as const;
 
 // ============================================
