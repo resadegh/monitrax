@@ -21,6 +21,7 @@
 | CDR compliance questions | [CDR Compliance](security/03_CDR_COMPLIANCE.md) |
 | Security incident | [Incident Response Runbook](runbooks/01_INCIDENT_RESPONSE.md) |
 | Google Maps not loading / API not activated | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) |
+| Adviser feedback inbox triage / weekly synthesis | [Feedback Triage and Synthesis](feedback/01_TRIAGE_AND_SYNTHESIS.md) |
 
 ---
 
@@ -78,6 +79,15 @@ Step-by-step procedures for incident response and common support scenarios.
 | 03 | [Health Checks](runbooks/03_HEALTH_CHECKS.md) | System health verification procedures |
 | 04 | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) | Enabling Maps APIs, verifying key scoping (frontend referrer + backend API restrictions), env vars, troubleshooting, cost monitoring, quarterly review checklist |
 
+### Feedback (Phase 33g)
+
+Operational practice for the adviser feedback inbox.
+
+| # | Document | Description |
+|---|----------|-------------|
+| 00 | [Feedback Index](feedback/00_INDEX.md) | Section index + quick links + when-things-go-wrong table |
+| 01 | [Triage and Synthesis](feedback/01_TRIAGE_AND_SYNTHESIS.md) | Daily 10-min triage, weekly Claude Code synthesis ritual, CDR-leak handling, audit-log queries, common questions, forward-path triggers |
+
 ---
 
 ## Document Status
@@ -89,6 +99,7 @@ Step-by-step procedures for incident response and common support scenarios.
 | Database (01-04) | 4 | Current |
 | Security (01-03) | 3 | Current |
 | Runbooks (01) | 1 | Current |
+| Feedback (00-01) | 2 | Current |
 
 ---
 
@@ -104,4 +115,4 @@ Step-by-step procedures for incident response and common support scenarios.
 
 ---
 
-Last Updated: 2026-04-09
+Last Updated: 2026-05-05 — added Feedback section (Phase 33g) covering daily triage + weekly Claude Code synthesis ritual.

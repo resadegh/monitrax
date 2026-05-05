@@ -1,6 +1,10 @@
 # Phase 33g — Adviser Feedback Inbox (async)
 
 > **Status:** ✅ **SHIPPED 2026-05-05.** Live end-to-end. See "Decisions made" section below for how the §9 open questions were resolved.
+>
+> **Companion docs:**
+> - **Adviser-facing help:** [`docs/help/org-professional/sending-feedback.md`](../help/org-professional/sending-feedback.md) — what advisers see + how to send good feedback + status meanings + privacy posture.
+> - **Operational runbook:** [`docs/operational/feedback/01_TRIAGE_AND_SYNTHESIS.md`](../operational/feedback/01_TRIAGE_AND_SYNTHESIS.md) — daily triage, weekly Claude Code synthesis ritual, CDR-leak handling, audit-log queries, forward-path triggers.
 > **Owner:** Claude (built under Reza directive *"use your judgement and continue"*).
 > **Branch:** `claude/phase-33g-adviser-feedback-proposal-Q6tyx` (proposal + implementation in the same branch — see PR #627).
 > **Trigger:** Reza brief 2026-05-05 — "I thought of a feedback system to provide to the advisers after the pitch and the pilot users, this feedback system should allow a direct chat with yourself in order to go back and forth with the feedback and requirements, then you can analyse, create a plan and present to me for a way forward."
