@@ -1,5 +1,71 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e0-d-router (Phase 41e.0 foundation slice D — entityTaxRouter + AFSL boundaries renderer + new endpoints — closes 41e.0)
+
+### Changes Made
+- **Type:** Feature — orchestration scaffolding + first user-visible 41e.0 surface (the AFSL/TPB/NCCP boundary footer on `/dashboard/tax`).
+- **Scope:** **Closes 41e.0.** Ships `entityTaxRouter` skeleton (PERSONAL_NAME / SOLE_TRADER computed; COMPANY / TRUST / SMSF / PARTNERSHIP UNCOMPUTED-flagged until 41e.1+ rule modules land), the canonical AFSL/TPB/NCCP boundaries renderer (lib + React component + tests), two new endpoints (`/api/tax/config`, `/api/tax/entity/[entityId]`), and wires the boundary footer into `/dashboard/tax` page (replaces the old free-text Disclaimer).
+- **Stacked on:** PR #639 (slice C). Stack chain: this PR → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Created
+- `lib/tax-engine/entity/entityTaxRouter.ts` — `calculateEntityTaxPosition(facts)` + `entityHasComputedTax(type)` exports. Dispatches by `LegalEntityType`. Per-type UNCOMPUTED flags reference the sub-PR that will produce the real number (audit §10.3 — never false numbers).
+- `lib/tax-engine/boundaries/index.ts` — `BOUNDARY_STATEMENT` constant (the canonical legal copy), `formatCitation`, `renderBoundaryFootnote`, `renderBoundaryOneLine` exports. De-duplicates citations + UNCOMPUTED flags so repeats don't pollute the footer.
+- `components/tax/BoundaryFootnote.tsx` — React component, 5 stacked rows (FY → computed-per → UNCOMPUTED → boundary → calculated-at). Compact variant for tile use.
+- `app/api/tax/config/route.ts` — GET handler. `tax_data.read`. Returns `{ config, availableFinancialYears }`.
+- `app/api/tax/entity/[entityId]/route.ts` — GET handler. `tax_data.read`. Ownership-checked (Prisma `findFirst` with `userId`). Returns `{ entityPosition, boundary }`.
+- `tests/tax-engine/entity/entityTaxRouter.test.ts` — 11 tests covering both halves of the router contract (PERSONAL_NAME computed + UNCOMPUTED branches per type + helper).
+- `tests/tax-engine/boundaries/boundaries.test.ts` — 15 tests covering citation formatting, de-duplication, UNCOMPUTED rendering, BOUNDARY_STATEMENT contains TPB/AFSL/NCCP, fyContext optional handling.
+
+### Files Modified
+- `app/dashboard/tax/page.tsx` — imports `BoundaryFootnote` + `AuthorityCitation` type; declares module-level `TAX_PAGE_CITATIONS` (ITAA 1997 s4-10, Div 1-6, Div 126-H LITO, Div 207 Franking); replaces the old free-text Disclaimer card with `<BoundaryFootnote citations={TAX_PAGE_CITATIONS} fyLabel={taxConfig.label} calculatedAt={taxPosition?.metadata.calculatedAt} />`. **First user-visible 41e.0 surface.**
+- `docs/architecture/07_API_STANDARDS.md` — new §15 "Phase 41e — Entity-aware tax endpoints" listing the shipped + queued tax-route surface with permissions + the boundary-envelope response shape.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — new §13 "AFSL / TPB / NCCP Boundary Footnote Pattern" documenting the canonical component, the legal-copy-lives-in-one-place rule, the compact variant, and the matrix of surfaces that MUST render the footer.
+- `docs/architecture/03_DATA_MODEL.md` §10.12 — slice D shipped row appended with full module + endpoint summary.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D status flip ("queued" → "PR #642 in review — first user-visible 41e.0 surface — after D, **41e.0 is COMPLETE**").
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry documenting the slice + the full module + endpoint catalogue + the AFSL footer text the user can verify on `/dashboard/tax`.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **227 tests passed** (201 → 227, +26 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — new `<BoundaryFootnote />` component pattern documented in `06_UI_UX_FOUNDATION.md` §13 with the matrix of surfaces that MUST adopt it.
+- [x] strategic decision — closes 41e.0; unblocks 41e.1.
+- [ ] application config / GCP infrastructure / identity / auth / deployment / build / security / CDR posture / operational procedure / data model
+
+Per the going-forward commitment from PR #637 — every relevant doc updated in this same PR.
+
+Docs updated:
+- `docs/architecture/07_API_STANDARDS.md` — new §15.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — new §13.
+- `docs/architecture/03_DATA_MODEL.md` §10.12 — slice D row.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D status.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry.
+
+### What's user-testable now (Reza brief 2026-05-05 — *"let me know when I can check anything visually to test and review"*)
+
+**Once this PR merges:**
+
+1. **`/dashboard/tax` AFSL boundary footer** — visible at the bottom of the page. Look for "Computed per ITAA 1997 s4-10, ITAA 1997 Div 1-6, ITAA 1997 Div 126-H (LITO), ITAA 1997 Div 207 (Franking). These figures are general information only — not personal financial, tax, or credit advice. Confirm with a registered tax agent (TPB), financial adviser (AFSL), or credit assistant (NCCP) before acting." If you see the OLD generic Disclaimer text, the slice didn't deploy.
+
+2. **`GET /api/tax/config`** — `curl https://yourenv/api/tax/config` (auth required). Returns the canonical FY config including new fields (`label`, `superGuaranteeQuarterlyCap`, `superContributionsTaxRate`, `coContributionIncomeThreshold`, `bringForwardThresholds`, `reviewSchedule`).
+
+3. **`GET /api/tax/entity/[entityId]`** — for any `LegalEntity` you own. PERSONAL_NAME entity → returns full Phase 20 tax position. COMPANY / TRUST / SMSF entity → returns `entityPosition.result === null` + a `uncomputed` array with a structured flag like *"Trust streaming + Div 6 / Div 6E + s100A zone classification lands with Phase 41e.1, 41e.4 and 41e.5..."*. **This is the audit's "never false numbers" guarantee in action** — try it for an SMSF entity if you have one and confirm the response carries an UNCOMPUTED flag, not a fabricated number.
+
+4. **Boundary-component reusability** — when 41e.1 ships per-entity figures, the same `<BoundaryFootnote />` component will mount on the AI advice cards, the Money Flow tab, and the adviser drill-in tax surface. The matrix of "MUST render" surfaces is in `06_UI_UX_FOUNDATION.md` §13.5.
+
+### What's next
+- **41e.1** — Div 115 CGT discount + Div 6 trust beneficiary income flow (basic, non-streamed) + capital loss netting (s100-50 ordering). Estimated 3 days.
+- **First per-entity numbers in production.** When 41e.1 lands, COMPANY entities get their proper 25%/30% base-rate dispatch + the UNCOMPUTED `UC-ENTITY-COMPANY` flag flips to a real number. The `<BoundaryFootnote />` component then surfaces 41e.1's citations (s115-25, Div 6) on every page that consumes the per-entity API.
+
+### PR
+- Branch: `claude/phase-41e0-d-router` (stacked on `claude/phase-41e0-c-aggregators` / PR #639)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e0-c-aggregators (Phase 41e.0 foundation slice C — entity-aware aggregator extensions, resolves audit C-3)
 
 ### Changes Made
