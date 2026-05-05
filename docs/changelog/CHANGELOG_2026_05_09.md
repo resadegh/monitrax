@@ -1,5 +1,88 @@
 # Changelog — 2026-05-09 — DEMO-COMPLETE
 
+## Session: claude/phase-33hij-help-coverage-build (Phase 33h + 33i + 33j — Per-page Help Coverage SHIPPED)
+
+### Changes Made
+- **Type:** Feature (closes Up Next #36/#37/#38; closes Open Question Q-HELP-1)
+- **Scope:** Per-page help coverage end-to-end — frontmatter-driven route registry + 15 navigation-instruction articles + inline tooltip primitive with 30-term dictionary + 7 critical-field wire-ups
+- **Description:** Reza directives 2026-05-09: *"start the build, complete all steps and give me one PR URL"* + mid-build clarification *"I meant instructions not necessarily help or advise in order to help user to navigate and understand the Monitrax sections."* Claude resolved the five §9 design-doc open questions, built all three sub-phases, and rewrote the first 12 articles in navigation-instruction tone after the mid-build clarification.
+
+### Files Created (engine + tooling)
+- `lib/help/tooltips.ts` — central tooltip dictionary (~440 LOC). 30 entries: 22 finance terms with ATO/ASIC/SIS Act source-cites + 8 Monitrax-specific. Single SSOT per CLAUDE.md §12.2.
+- `components/help/HelpTooltip.tsx` — inline tooltip primitive. Two usage shapes (icon-only / inline-wrap). Esc / click-outside / blur dismissal. Viewport-aware above/below placement. `prefers-reduced-motion`-aware. Keyboard accessible.
+
+### Files Created (15 navigation-instruction articles)
+- `docs/help/consumer/your-monitrax-home.md` → routeContext `/dashboard`
+- `docs/help/consumer/onboarding-walkthrough.md` → `/onboarding/*`
+- `docs/help/consumer/managing-accounts-and-loans.md` → `[/dashboard/balances, /dashboard/balances/*, /dashboard/accounts, /dashboard/loans]`
+- `docs/help/consumer/reading-your-cashflow.md` → `/cashflow`
+- `docs/help/consumer/ai-guide-and-actions.md` → `/dashboard/cfo` (complianceClass: afsl)
+- `docs/help/consumer/your-tax-position.md` → `/dashboard/tax` (complianceClass: afsl)
+- `docs/help/consumer/emergency-fund-target.md` → `/dashboard/safety-net`
+- `docs/help/consumer/debt-freedom-plan.md` → `/dashboard/debt-planner` (complianceClass: afsl)
+- `docs/help/consumer/adding-properties.md` → `[/dashboard/properties, /dashboard/properties/*]`
+- `docs/help/consumer/investment-accounts-and-holdings.md` → `/dashboard/investments/*`
+- `docs/help/consumer/my-structure.md` → `[/dashboard/entities, /dashboard/entities/*]`
+- `docs/help/consumer/uploading-documents.md` → `[/dashboard/documents, /dashboard/vault]`
+- `docs/help/org-professional/practice-overview.md` → `/portal/dashboard`
+- `docs/help/org-professional/client-drill-in.md` → `[/portal/clients/[id]/view, /portal/clients/[id]/*]`
+- `docs/help/org-admin/marketplace-listing.md` → `[/portal/marketplace/listing, /portal/marketplace/*]`
+
+### Files Created (docs)
+- `docs/blueprint/HELP_COVERAGE_MAP.md` — single source of truth for what help content exists for every Monitrax surface. ~50 routes classified. Maintenance protocol included.
+
+### Files Modified
+- `lib/help/frontmatter.ts` — `ArticleFrontmatter.routeContext` promoted from `string` to `string | string[]` with suffix-glob support; `status: 'DRAFT_AI_SCAFFOLD' | 'PUBLISHED'` flag added for editorial workflow.
+- `lib/help/routeContext.ts` — completely rewritten. Hardcoded `RULES` array deleted. New `buildRules()` derives the rule set from each published article's frontmatter at request time. Longest-matching-prefix wins; exact beats glob at equal length.
+- `lib/help/content.ts` — `listArticlesByAudience` now filters out `status: DRAFT_AI_SCAFFOLD` articles (excludes from public Help Center index AND drawer resolution).
+- `components/properties/PropertyTile.tsx` — `Equity` + `LVR` labels gain `<HelpTooltip>` icons.
+- `app/dashboard/tax/page.tsx` — `Concessional`, `Non-Concessional`, `Medicare Levy` labels gain tooltips.
+- `components/loans/LoanDetailDialog.tsx` — `Effective Balance` label gains tooltip.
+- `app/portal/feedback/page.tsx` — `Tag` label in feedback form gains tooltip.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #36/#37/#38 → SHIPPED + Recently Completed entry + Q-HELP-1 → DECIDED.
+- `docs/blueprint/PHASE_33HIJ_HELP_COVERAGE_PROPOSAL.md` — flipped to SHIPPED + Decisions-made block at top.
+
+### Mid-build pivot (worth recording)
+First pass at the 12 consumer articles read like financial education ("here's how to think about LVR", "here's the Avalanche vs Snowball tradeoff"). Reza clarified mid-build: *"instructions not necessarily help or advise."* All 12 articles rewritten in navigation-instruction tone — every article opens with **How to get here** → walks the page surface-by-surface in a table → numbered **Common tasks** → **Common navigation questions** → **What's next**. Concept definitions moved to tooltips where they belong. Pattern locked for all future articles per the coverage map.
+
+### Build Status
+- [x] `npx tsc --noEmit --ignoreDeprecations 6.0` — only pre-existing missing-module errors (no new type errors introduced)
+- [ ] `npm run build` — not run locally (deps not installed); Vercel preview is the source of truth
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — new `<HelpTooltip>` primitive
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision — Q-HELP-1 closed; Up Next #36/#37/#38 → SHIPPED
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — three Up Next rows + Recently Completed + Q-HELP-1 (§15)
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this session block (§11)
+- `docs/blueprint/PHASE_33HIJ_HELP_COVERAGE_PROPOSAL.md` — flipped to SHIPPED with Decisions-made table
+- `docs/blueprint/HELP_COVERAGE_MAP.md` — new SSOT for help coverage
+
+§12.11 destructive-write checklist: NOT REQUIRED — no Prisma writes.
+§12.12 schema migration: NOT REQUIRED — no schema changes.
+
+### Test plan (manual, post-deploy)
+1. Hit `?` drawer on `/dashboard/cfo` → opens `consumer/ai-guide-and-actions` article (was: generic TRAIL article).
+2. Hit `?` drawer on `/dashboard/properties/123` (any property sub-route) → opens `consumer/adding-properties` (glob match).
+3. Hover `?` icon next to `Equity` on a property tile → tooltip popover appears with definition + Learn more link.
+4. Click `?` icon next to `Concessional` on `/dashboard/tax` → popover with ATO source link; click outside → dismisses.
+5. `/help` index page lists all 15 new articles under their respective audience sections; draft-flagged articles (none in this batch) would NOT appear.
+
+### PR
+- Branch: `claude/phase-33hij-help-coverage-proposal-Q6tyx` (cherry-picked onto main as needed)
+- Single PR carrying the proposal + the build
+
+---
+
 ## Session: claude/phase-32c-demo-complete (PR6b + #33 + #34 SHIPPED — demo-complete state achieved)
 
 ### Changes Made

@@ -1,9 +1,29 @@
 # Phase 33h / 33i / 33j — Per-page Help Coverage
 
-> **Status:** PROPOSAL (2026-05-09) — awaiting Reza go/no-go.
-> **Owner:** Claude (proposal author) → Reza (decision).
-> **Branch:** `claude/phase-33hij-help-coverage-proposal-Q6tyx` (this PR is doc-only; no code lands until approval).
-> **Trigger:** Reza brief 2026-05-09 — *"to improve the help center, I need to document help/additional information for each page and section of Monitrax as well. so when users are stuck they can click on help and navigate to the required section to see the information about that section and how to."*
+> **Status:** ✅ **SHIPPED 2026-05-09.** All three sub-phases live end-to-end. See "Decisions made" section below for how the §9 open questions were resolved.
+>
+> **Companion docs:**
+> - **Coverage map (SSOT):** [`docs/blueprint/HELP_COVERAGE_MAP.md`](./HELP_COVERAGE_MAP.md) — every Monitrax surface classified
+> - **Tooltip dictionary (SSOT):** `lib/help/tooltips.ts` — 30 entries with ATO/ASIC/SIS Act source-cites
+> - **Engine:** `lib/help/routeContext.ts` — derives the route → article registry from each article's frontmatter
+> - **Component:** `components/help/HelpTooltip.tsx` — inline tooltip primitive
+>
+> **Trigger:** Reza brief 2026-05-09 — *"to improve the help center, I need to document help/additional information for each page and section of Monitrax as well."* + mid-build clarification *"I meant instructions not necessarily help or advise in order to help user to navigate and understand the Monitrax sections."*
+
+## Decisions made (post-§9)
+
+Five §9 open questions resolved by Claude under the *"start the build, complete all steps"* directive. **Plus** a mid-build pivot when Reza clarified the brief.
+
+| # | Question | Decision | Rationale |
+|---|---|---|---|
+| §9.1 | Sequencing vs lighthouse pitch | **Ship before pitch in parallel** | Quality gain > delay cost. Demo-complete PR (#639) shipped same day. |
+| §9.2 | AI scaffold provider | **Skip the LLM tool entirely** | Articles authored directly in this Claude Code session. No runtime API dep needed for one-off authoring. Future drift handled by `lastReviewed` timestamps + a Cloud Scheduler nag (queued). |
+| §9.3 | Coverage map sign-off | **Trust judgement** | Map shipped alongside articles in one PR. Reviewer reviews the whole thing once. |
+| §9.4 | Tooltip rollout | **Component + dictionary + 7 wire-ups in one PR** | Bigger PR, but the dictionary is useless without proof-of-life integrations. |
+| §9.5 | Stage-matched help | **Inline framing within articles** | Simpler. No separate stage-picker UI. |
+| BONUS | **Mid-build clarification** | **All 12 already-drafted articles rewritten in navigation-instruction tone** | Reza: *"I meant instructions not necessarily help or advise in order to help user to navigate and understand the Monitrax sections."* Articles now lead with "How to get here" + walk the page surface-by-surface + numbered "Common tasks" + "Common navigation questions" + "What's next". Financial-concept content moved to tooltips where it belongs. |
+
+The build landed in a single PR carrying the design doc + coverage map + 15 articles + tooltip dictionary + component + 7 wire-ups + IMPLEMENTATION_PLAN updates.
 
 ---
 

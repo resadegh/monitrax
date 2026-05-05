@@ -80,6 +80,7 @@ import {
 } from '@/components/ui/tabs';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
+import { HelpTooltip } from '@/components/help/HelpTooltip';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { formatCurrency } from '@/lib/utils/formatters';
 import {
@@ -539,8 +540,9 @@ export function LoanDetailDialog({
                             </div>
                             <span className="text-2xl">=</span>
                             <div>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-sm text-muted-foreground inline-flex items-center gap-1">
                                 Effective Balance
+                                <HelpTooltip term="effective-principal" />
                               </p>
                               <p className="font-semibold">
                                 {formatCurrency(effectivePrincipalFor(loan))}
