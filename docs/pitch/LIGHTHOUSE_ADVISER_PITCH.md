@@ -174,14 +174,18 @@ This playbook codifies the demo into a runnable script so:
 - *"Are listings free?"* → "Listing is free. You only pay when you accept a request. The AU$80/$150/$250 lead fee is by user net-worth bracket — so the high-value leads cost more, but they also engage longer."
 - **TO BE WRITTEN AS BUILD COMPLETES (after PR4b/4c ship):** in-context AskAPro affordance walkthrough from the AI Guide; lead-fee billing pipeline screenshot; rejected-listing UX screenshot for the rare AFSL register mismatch case
 
-### Step 7 — Conversation thread (2 min)
-- In the Practice inbox, click Sarah's request
-- Thread opens. Type a reply. Hit send.
-- Switch back to Sarah's screen. She has the message in-app + an email arrived
-- Reply from her email client (don't switch back to in-app)
-- Switch to Reza's Practice inbox — the reply landed in the thread, marked `EMAIL_REPLY_IN`
-- *"Your client communicates the way they're comfortable. You communicate from your normal email. Both happen in one thread, archived for compliance for 7 years."*
-- **TO BE WRITTEN AS BUILD COMPLETES:** SendGrid setup screenshot + retention policy explanation if asked
+### Step 7 — Conversation thread (2 min) — *end-to-end demo path*
+- After Step 6c's accept, Reza sees the request detail with **two CTAs side-by-side: "Open conversation →" and "Open client view →"**. Frame: *"Two front doors. The conversation is where the relationship lives; the client view is where the data lives. Same engagement; different jobs."*
+- Click **Open conversation →** — `/portal/conversations/<id>` opens. Thread is already populated with a system welcome message (auto-created when Reza accepted). Subject line carries Sarah's question. Frame: *"Pre-filled subject. Sarah's question is right there. The clock starts on day one of the engagement, not after a back-and-forth to figure out what you're talking about."*
+- Type a reply: *"Hi Sarah, happy to help with your tax position. Let's start with a 30-min call this week — Tuesday or Thursday afternoon work? Bring your last two FY tax returns and the most recent statement from your investment property."* Hit ⌘+Enter to send.
+- Frame: *"That message landed three places: the in-app thread (you can see it), Sarah's `/dashboard/conversations` (where she'll see it next), and Sarah's email inbox (mirrored automatically — and the reply-to is `monitrax+conv-<slug>@reply.monitrax.com.au`, so when she hits Reply on her phone the response routes back into THIS thread)."*
+- **Switch to Sarah's screen.** Open `/dashboard/conversations` — Smithfield Wealth conversation at the top, unread-dot indicator visible. Click in. Reza's message is there with a small `via email` badge in the corner (architectural cue — auditors care, users barely notice).
+- *"Sarah has three ways to reply: type here in-app, hit reply in her email, or just close her laptop and walk away — the conversation persists for seven years either way."*
+- Sarah types: *"Thursday 2pm works. I'll bring everything."* Hit Send.
+- **Switch BACK to Reza's screen.** Within 5 seconds (the poll interval), Sarah's reply appears in his thread.
+- Frame the architecture explicitly for the auditor's compliance team: *"Every message — in-app, outbound email, inbound email — sits in the same `ConversationMessage` table with a `retentionUntil = createdAt + 7 years` column. Soft-delete from Sarah's view does not remove the row; your compliance archive persists. ASIC audits her file in five years' time, the transcript is there. The system does not let you accidentally delete a message — there's no UI to do it; only the scheduler that sweeps `retentionUntil < now` rows can remove anything, and that's a PROD-deferred job."*
+- *"Your client communicates the way they're comfortable. You communicate from your normal email. Both happen in one thread, archived for compliance for 7 years. That's the relationship layer."*
+- **NOTE for the demo:** if `SENDGRID_API_KEY` isn't set in the demo env (which it usually isn't — production secret), the outbound email no-ops + logs to the console, and the architectural pattern is visible without actually sending. Inbound webhook is wired but requires SendGrid Inbound Parse DNS to be live; for the lighthouse pitch run it's enough to demonstrate the in-app two-way + the architectural diagram. Frame: *"In dev, SendGrid is dialled off so we don't accidentally email people. In production, this is wired — see Phase 32C PR4d's evidence pack."*
 
 ### Step 8 — Compliance pack (2 min)
 - Open `/help` (or `help.monitrax.com.au` once subdomain ships) → scroll to "Compliance & regulators" section

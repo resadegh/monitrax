@@ -269,6 +269,17 @@ enum AuditAction {
   FEEDBACK_THREAD_REPLIED
   FEEDBACK_THREAD_STATUS_CHANGED
   FEEDBACK_INTERNAL_NOTE_UPDATED
+
+  // Phase 32C PR4d — In-app conversations + email-through-app between
+  // a consumer and a professional. Auto-created when a ProfessionalRequest
+  // is ACCEPTED; persisted with 7-yr retention for the professional's
+  // AFSL compliance archive (decision 2026-05-04). Soft-delete from the
+  // user view does NOT remove the row — the message stays in the archive.
+  CONVERSATION_CREATED
+  CONVERSATION_MESSAGE_SENT
+  CONVERSATION_EMAIL_OUTBOUND
+  CONVERSATION_EMAIL_INBOUND
+  CONVERSATION_SOFT_DELETED_FROM_USER
 }
 
 enum AuditStatus {
@@ -558,6 +569,12 @@ model User {
   // from `/admin/feedback`, the FeedbackMessage.authorRole disambiguates).
   feedbackThreads  FeedbackThread[]
   feedbackMessages FeedbackMessage[]
+
+  // Phase 32C PR4d: conversations this user is a participant in (typically
+  // one per ACCEPTED engagement). Includes both the consumer side (linked
+  // via this relation) and any messages they've sent.
+  conversationParticipations ConversationParticipant[]
+  conversationMessages       ConversationMessage[]    @relation("ConversationMessageSender")
 
   @@map("users")
 }
@@ -1494,6 +1511,10 @@ model Organization {
   // filter the inbox by org). Set on creation to the adviser's currentOrg.
   feedbackThreads FeedbackThread[]
 
+  // Phase 32C PR4d: conversations owned by this org (one per accepted
+  // request, plus org-attached client conversations from ClientLink).
+  conversations           ProfessionalConversation[]
+
   @@map("organizations")
 }
 
@@ -1515,6 +1536,9 @@ model OrganizationMember {
 
   // Phase 32C PR4c: marketplace requests this member has responded to.
   respondedRequests ProfessionalRequest[]
+
+  // Phase 32C PR4d: conversation participation as a professional-side seat.
+  conversationParticipations ConversationParticipant[]
 
   @@unique([organizationId, userId])
   @@index([organizationId])
@@ -4698,6 +4722,10 @@ model ProfessionalRequest {
   // that materialises the relationship after consent. NULL until accept.
   clientLinkId        String?             @unique
 
+  // Phase 32C PR4d: conversation auto-created on ACCEPT. NULL until
+  // accepted; one-to-one once it materialises.
+  conversation        ProfessionalConversation?
+
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
@@ -4815,4 +4843,149 @@ model FeedbackMessage {
   @@index([threadId])
   @@index([authorId])
   @@map("feedback_messages")
+}
+
+// =============================================================================
+// PHASE 32C PR4d: IN-APP CONVERSATIONS + EMAIL-THROUGH-APP
+// =============================================================================
+// One conversation per ACCEPTED ProfessionalRequest engagement. Both sides
+// post messages in the in-app thread; outbound email mirrors via SendGrid;
+// inbound email replies route via SendGrid Inbound Parse webhook. The
+// adviser's compliance archive retains every message for 7 years
+// (decision 2026-05-04 — "transcript retention model = soft-delete from
+// user view + 7yr retention for the professional's compliance archive,
+// with explicit disclosure at consent time").
+//
+// `replyToSlug` is the per-conversation reply-to address fragment so
+// inbound webhooks can route messages back to the right thread without
+// requiring database scans on the From header. Format:
+//   monitrax+conv-<replyToSlug>@<inbound-domain>
+// PROD hardening (DKIM/SPF strict mode, Cloud DLP attachment scanning,
+// rate-limiting, HTML→plaintext sanitisation) defers to PROD per
+// IMPLEMENTATION_PLAN.md DEFERRED bucket.
+
+model ProfessionalConversation {
+  id              String  @id @default(uuid())
+
+  // Origin — every conversation traces back to either an accepted public
+  // marketplace request OR an org-attached client link (org-side roster
+  // path from AskAPro picker, ships in this PR). Exactly one is set.
+  requestId       String? @unique
+  request         ProfessionalRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+
+  // Org context (always set — required for inbox scoping + audit)
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Public reply-to slug — used by SendGrid Inbound Parse to route email
+  // replies back to this thread. UUID-prefixed to keep it unguessable.
+  replyToSlug     String   @unique
+
+  // Subject — pre-populated from the ProfessionalRequest question (first
+  // 80 chars), editable by the professional after accept.
+  subject         String   @db.VarChar(160)
+
+  // Lifecycle metadata
+  isClosed        Boolean  @default(false)  // Either party can close; closed = read-only
+  closedAt        DateTime?
+  closedByUserId  String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastMessageAt   DateTime @default(now())
+
+  participants    ConversationParticipant[]
+  messages        ConversationMessage[]
+
+  @@index([organizationId, lastMessageAt(sort: Desc)])
+  @@index([replyToSlug])
+  @@map("professional_conversations")
+}
+
+model ConversationParticipant {
+  id              String  @id @default(uuid())
+
+  conversationId  String
+  conversation    ProfessionalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // The participant — exactly one of userId or memberId is set:
+  //   - userId    → consumer-side (User)
+  //   - memberId  → professional-side (OrganizationMember)
+  userId          String?
+  user            User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberId        String?
+  member          OrganizationMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  role            ConversationRole
+
+  // Soft-delete from user view — does NOT remove the row (compliance
+  // archive must persist 7yr). Hides from this participant's surface only.
+  hiddenFromUser  Boolean  @default(false)
+  hiddenAt        DateTime?
+
+  // Read-receipt tracking — used for unread badge count. Updated when the
+  // participant fetches messages with `markAsRead: true`.
+  lastReadAt      DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([conversationId, userId, memberId])
+  @@index([conversationId])
+  @@index([userId])
+  @@index([memberId])
+  @@map("conversation_participants")
+}
+
+enum ConversationRole {
+  CONSUMER       // The user who submitted the request (or org-attached client)
+  PROFESSIONAL   // OrganizationMember on the org side
+  AI_HELPER      // Reserved for Phase 33g (AI-suggested replies); not used at PR4d
+}
+
+model ConversationMessage {
+  id              String  @id @default(uuid())
+
+  conversationId  String
+  conversation    ProfessionalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Sender — always a User (the OrganizationMember.user for professional
+  // side; the participant.user for consumer side; null for system messages
+  // which are reserved for future use).
+  senderUserId    String?
+  sender          User? @relation("ConversationMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+
+  // Sender role at the time the message was sent (frozen — even if the
+  // person leaves the org later, the audit trail says "sent as PROFESSIONAL").
+  senderRole      ConversationRole
+
+  // Message content (plain-text only at v1; rich-text and attachments
+  // defer to PROD per DEFERRED bucket).
+  body            String  @db.Text
+
+  // Channel — was this composed in-app or bridged in/out via email?
+  channel         MessageChannel @default(IN_APP)
+  // Outbound email: SendGrid message ID (for delivery tracking)
+  externalMessageId String?
+  // Inbound email: original From header + raw subject for audit
+  inboundFromEmail String?
+  inboundSubject   String?
+
+  // 7-yr retention for the professional's compliance archive. Soft-delete
+  // from user view does NOT change this column — the row persists until
+  // retentionUntil passes, at which point a scheduled job (PROD) sweeps it.
+  retentionUntil  DateTime
+
+  createdAt       DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([retentionUntil])
+  @@map("conversation_messages")
+}
+
+enum MessageChannel {
+  IN_APP        // Composed in the in-app thread
+  EMAIL_OUT     // Outbound — sent via SendGrid mirroring an in-app message
+  EMAIL_IN      // Inbound — received via SendGrid Inbound Parse webhook
+  SYSTEM        // Reserved (welcome message on conversation creation, etc.)
 }

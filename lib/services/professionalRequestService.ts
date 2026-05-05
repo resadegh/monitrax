@@ -243,6 +243,9 @@ export async function listRequestsForUser(userId: string) {
           discipline: true,
         },
       },
+      // PR4d: surface the conversation id so the user-side tracker can
+      // deep-link to the conversation thread.
+      conversation: { select: { id: true } },
     },
   });
 }
@@ -291,6 +294,9 @@ export async function getRequestForOrg(requestId: string, organizationId: string
       respondedByMember: {
         select: { id: true, user: { select: { id: true, name: true, email: true } } },
       },
+      // PR4d: surface the auto-created conversation so the detail page
+      // can deep-link straight to the thread.
+      conversation: { select: { id: true } },
     },
   });
 }
@@ -333,8 +339,11 @@ export async function acceptRequest(input: RespondInput): Promise<ProfessionalRe
   }
 
   // Run the lifecycle transition + ClientLink materialisation in a single
-  // transaction so a half-applied state can never be observed.
-  return prisma.$transaction(async (tx) => {
+  // transaction so a half-applied state can never be observed. The
+  // conversation auto-create (PR4d) happens AFTER the transaction commits
+  // — it has its own transaction internally and must run against committed
+  // request state.
+  const accepted = await prisma.$transaction(async (tx) => {
     // Materialise the ClientLink (consent invite path — record starts in
     // INVITED status with PENDING consent so the existing consent flow
     // takes over from here. The pro side sees the request as ACCEPTED;
@@ -361,7 +370,7 @@ export async function acceptRequest(input: RespondInput): Promise<ProfessionalRe
 
     // Set the billing intent timestamp. Actual Stripe Invoice creation
     // wires in PR6 — this is the column the PR6 reader will key off.
-    return tx.professionalRequest.update({
+    const updated = await tx.professionalRequest.update({
       where: { id: request.id },
       data: {
         status: 'ACCEPTED',
@@ -371,7 +380,29 @@ export async function acceptRequest(input: RespondInput): Promise<ProfessionalRe
         clientLinkId: clientLink.id,
       },
     });
+
+    return updated;
   });
+
+  // Phase 32C PR4d — auto-create the conversation thread for the accepted
+  // engagement. Idempotent (safe under retries) and best-effort: a
+  // conversation creation failure does NOT roll back the accept (the
+  // accept already wrote audit + ClientLink). Operations team can re-run
+  // create-conversation if it ever fails.
+  try {
+    const { createForAcceptedRequest } = await import('./conversationService');
+    await createForAcceptedRequest({
+      requestId: accepted.id,
+      welcomeFromMemberId: input.respondedByMemberId,
+    });
+  } catch (err) {
+    // Log only; don't propagate. The conversation can be created lazily
+    // on the next adviser visit to the request detail page.
+    // eslint-disable-next-line no-console
+    console.warn('[acceptRequest] conversation auto-create failed', err);
+  }
+
+  return accepted;
 }
 
 export async function declineRequest(input: RespondInput): Promise<ProfessionalRequest> {
