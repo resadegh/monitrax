@@ -168,3 +168,173 @@ export const GET = withPermission<RouteContext>(
     }
   },
 );
+
+/**
+ * POST /api/tax/entity/[entityId] — per-entity tax position with
+ * caller-supplied dispatch inputs (Phase 41e.1 slice D-1).
+ *
+ * Same response shape as GET, but accepts a body to drive the slice-
+ * specific dispatch paths that GET cannot (because GET has no body):
+ *
+ * ```json
+ * {
+ *   "trustDistribution": {
+ *     "trustNetIncome": 100000,
+ *     "beneficiaries": [
+ *       { "id": "b1", "name": "Sarah", "presentlyEntitledShare": 1.0 }
+ *     ],
+ *     "hasFamilyTrustElection": true
+ *   }
+ * }
+ * ```
+ *
+ * For DISCRETIONARY_TRUST / UNIT_TRUST entities, providing
+ * `trustDistribution` flips the response from UNCOMPUTED to a real
+ * Div 6 allocation — first user-testable 41e.1 surface.
+ *
+ * Until a UI captures trust distribution data, this endpoint is the
+ * primary way to exercise the slice via curl. Future Phase 41 slices
+ * (Xero/MYOB import, manual distribution UI) will populate the body
+ * automatically and the GET handler will derive distribution data
+ * from persisted state.
+ */
+export const POST = withPermission<RouteContext>(
+  'tax_data.read',
+  async (request: NextRequest, auth, context) => {
+    try {
+      const { entityId } = await context!.params;
+      const body = await request.json().catch(() => ({}));
+      const { searchParams } = new URL(request.url);
+      const requestedFY = searchParams.get('fy');
+
+      const entity = await prisma.legalEntity.findFirst({
+        where: { id: entityId, userId: auth.userId },
+        select: { id: true, type: true, parentEntityId: true },
+      });
+
+      if (!entity) {
+        return NextResponse.json(
+          { success: false, error: 'Entity not found.' },
+          { status: 404 },
+        );
+      }
+
+      const config = requestedFY
+        ? getTaxYearConfig(requestedFY)
+        : getCurrentTaxYearConfig();
+
+      const fy: FYReference = {
+        financialYear: config.financialYear,
+        label: config.label,
+      };
+
+      // GET-equivalent income/expense lookup (same shape).
+      const [incomes, expenses] = await Promise.all([
+        prisma.income.findMany({
+          where: { userId: auth.userId, ownerEntityId: entityId },
+          select: {
+            id: true,
+            name: true,
+            amount: true,
+            frequency: true,
+            type: true,
+            grossAmount: true,
+            paygWithholding: true,
+            propertyId: true,
+            investmentAccountId: true,
+          },
+        }),
+        prisma.expense.findMany({
+          where: { userId: auth.userId, ownerEntityId: entityId },
+          select: {
+            id: true,
+            name: true,
+            amount: true,
+            frequency: true,
+            category: true,
+            isTaxDeductible: true,
+            propertyId: true,
+            loanId: true,
+          },
+        }),
+      ]);
+
+      // Validate trustDistribution body shape if present.
+      let trustDistribution: EntityTaxFacts['trustDistribution'] = undefined;
+      if (body && typeof body === 'object' && body.trustDistribution) {
+        const td = body.trustDistribution;
+        if (
+          typeof td.trustNetIncome !== 'number' ||
+          !Array.isArray(td.beneficiaries)
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                'Invalid trustDistribution body — requires { trustNetIncome: number, beneficiaries: [...] }.',
+            },
+            { status: 400 },
+          );
+        }
+        trustDistribution = {
+          trustNetIncome: td.trustNetIncome,
+          beneficiaries: td.beneficiaries.map((b: Record<string, unknown>) => ({
+            id: String(b.id),
+            name: String(b.name),
+            presentlyEntitledShare: Number(b.presentlyEntitledShare),
+            isNonResidentOrDisabled: !!b.isNonResidentOrDisabled,
+          })),
+          hasFamilyTrustElection: !!td.hasFamilyTrustElection,
+        };
+      }
+
+      const facts: EntityTaxFacts = {
+        entityId: entity.id,
+        entityType: entity.type,
+        parentEntityId: entity.parentEntityId ?? undefined,
+        fy,
+        incomes: incomes.map((i) => ({
+          id: i.id,
+          name: i.name,
+          type: i.type,
+          amount: Number(i.amount),
+          frequency: i.frequency,
+          propertyId: i.propertyId ?? undefined,
+          investmentAccountId: i.investmentAccountId ?? undefined,
+          grossAmount: i.grossAmount ? Number(i.grossAmount) : undefined,
+          paygWithholding: i.paygWithholding ? Number(i.paygWithholding) : undefined,
+        })),
+        expenses: expenses.map((e) => ({
+          id: e.id,
+          name: e.name,
+          category: e.category ?? 'OTHER',
+          amount: Number(e.amount),
+          frequency: e.frequency,
+          isTaxDeductible: e.isTaxDeductible,
+          propertyId: e.propertyId ?? undefined,
+          loanId: e.loanId ?? undefined,
+        })),
+        depreciations: [],
+        trustDistribution,
+      };
+
+      const entityPosition = calculateEntityTaxPosition(facts);
+      const boundary = renderBoundaryFootnote({
+        citations: entityPosition.citations,
+        uncomputed: entityPosition.uncomputed,
+        fyLabel: config.label,
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: { entityPosition, boundary },
+      });
+    } catch (error) {
+      console.error('Per-entity tax POST error:', error);
+      return NextResponse.json(
+        { success: false, error: 'Failed to calculate per-entity tax position' },
+        { status: 500 },
+      );
+    }
+  },
+);

@@ -1,5 +1,74 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e1-d1-trust-router (Phase 41e.1 slice D-1 — wire trustDistribution into entityTaxRouter)
+
+### Changes Made
+- **Type:** Feature — first user-testable Div 6 surface. Wires slice C's `allocateTrustDistribution` into the router. **First time a trust entity can produce a real `EntityTaxPosition.result` instead of an UNCOMPUTED placeholder.**
+- **Scope:** Conditional dispatch — TRUST entities WITH `trustDistribution` data → computed Div 6 allocation; WITHOUT data → still UNCOMPUTED (backward-compat). New POST endpoint to exercise the wiring via curl.
+- **Stacked on:** PR #647 (slice C). Stack chain: this PR → #647 → #645 → #644 → #641 → #639 → #637 → #636 → #634 → #633 → main.
+
+### Files Modified
+- `lib/tax-engine/types.ts` — `EntityTaxFacts.trustDistribution` optional field added (`trustNetIncome`, `beneficiaries[]`, `hasFamilyTrustElection?`). JSDoc cross-references slice C + UC-DIV-6E-STREAMING.
+- `lib/tax-engine/entity/entityTaxRouter.ts` — imports `allocateTrustDistribution`. New conditional branch: DISCRETIONARY_TRUST or UNIT_TRUST + `trustDistribution` provided → run distribution + return real result. New `entityHasConditionalComputedTax(type)` helper for callers to test the conditional capability matrix.
+- `app/api/tax/entity/[entityId]/route.ts` — new POST handler accepts `{ trustDistribution }` body. Validates shape (rejects 400 on malformed). Same response envelope as GET. Same Prisma ownership check. `tax_data.read` (read because it's a calc, not a mutation).
+- `tests/tax-engine/entity/entityTaxRouter.test.ts` — 6 new tests pinning the conditional dispatch contract. Existing UNCOMPUTED-branch tests unchanged (still pass without distribution data).
+- `docs/architecture/03_DATA_MODEL.md` §10.13 — slice D-1 row appended; slice D-2 status added.
+- `docs/architecture/07_API_STANDARDS.md` §15 — new POST endpoint row in the Phase 41e endpoints table.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D-1 status flip.
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed — new entry with the curl example for visual testing.
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npx vitest run tests/calculations tests/utils tests/tax-engine tests/legalEntityService` — **295 tests passed** (289 → 295, +6 new). Zero regressions.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual / config / GCP / identity / deployment / security / operational / data model — partial: new POST endpoint adds to the §15 API surface but no schema / config / IAM change.
+- [ ] strategic decision
+
+Per the going-forward commitment from PR #637, all relevant docs updated in this same PR:
+- `03_DATA_MODEL.md` §10.13 — slice D-1 shipped.
+- `07_API_STANDARDS.md` §15 — new POST endpoint.
+- `PHASE_41_REGULATORY_ARCHITECTURE.md` §11 — slice D-1 status.
+- `IMPLEMENTATION_PLAN.md` Recently Completed — new entry with curl example.
+
+### What's user-testable now (visual / API)
+
+**This is a visible flip.** Once this PR + the upstream stack merges:
+
+1. **Hit the new POST endpoint with a trust distribution body:**
+   ```bash
+   curl -X POST \
+     -H "Authorization: Bearer $TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "trustDistribution": {
+         "trustNetIncome": 100000,
+         "beneficiaries": [
+           { "id": "b1", "name": "Sarah", "presentlyEntitledShare": 1.0 }
+         ],
+         "hasFamilyTrustElection": true
+       }
+     }' \
+     https://yourenv/api/tax/entity/<discretionary_trust_entityId>
+   ```
+   
+   Response: `{ "success": true, "data": { "entityPosition": { "result": { "distributions": [...], "trusteeRetainedAmount": 0, ... }, "citations": [...s95, s97...], "uncomputed": [{ id: "UC-S100A-RISK", ... }, { id: "UC-DIV-6E-STREAMING", ... }] }, "boundary": { "computedPer": "Computed per ITAA 1936 s95, ITAA 1936 s97.", ... } } }`.
+
+2. **Try partial entitlement (50%):** trustee gets 50% × 47% = 23.5% s99A penalty. Response carries `s99A` in citations.
+
+3. **GET endpoint behaviour unchanged** — without distribution data in the body, trust entities still return UNCOMPUTED. **No regression on `/dashboard/tax` or any existing surface.**
+
+### What's next
+- **Slice D-2 (final 41e.1 slice)** — wire `cgtDiscount` + `capitalLossNetting` into `entityTaxRouter` for any entity type with `cgtEvents`. After D-2, **41e.1 is COMPLETE** and **41e.2 (SMSF contribution caps)** starts.
+
+### PR
+- Branch: `claude/phase-41e1-d1-trust-router` (stacked on `claude/phase-41e1-c-trust-distribution` / PR #647)
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e1-c-trust-distribution (Phase 41e.1 slice C — Div 6 basic + trustDistribution.ts skeleton)
 
 ### Changes Made

@@ -116,3 +116,128 @@ describe('entityHasComputedTax', () => {
     expect(entityHasComputedTax('PARTNERSHIP')).toBe(false);
   });
 });
+
+describe('Phase 41e.1 slice D-1 — TRUST entities flip when trustDistribution provided', () => {
+  it('DISCRETIONARY_TRUST WITHOUT trustDistribution → still UNCOMPUTED', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({ entityType: 'DISCRETIONARY_TRUST' }),
+    );
+    expect(result.result).toBeNull();
+    expect(result.uncomputed[0]?.id).toMatch(/^UC-ENTITY-DISCRETIONARY-TRUST/);
+  });
+
+  it('DISCRETIONARY_TRUST WITH trustDistribution → computed Div 6 result', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'DISCRETIONARY_TRUST',
+        trustDistribution: {
+          trustNetIncome: 100000,
+          beneficiaries: [
+            { id: 'b1', name: 'Sarah', presentlyEntitledShare: 1.0 },
+          ],
+          hasFamilyTrustElection: true,
+        },
+      }),
+    );
+    expect(result.result).not.toBeNull();
+    // Result is the trustDistribution payload — narrow to assert
+    const distResult = result.result as {
+      distributions: Array<{ amount: number }>;
+      trusteeRetainedAmount: number;
+    };
+    expect(distResult.distributions[0].amount).toBe(100000);
+    expect(distResult.trusteeRetainedAmount).toBe(0);
+    // Citations include ITAA 1936 s95 + s97 from the distribution module
+    expect(result.citations.some((c) => c.reference === 's95')).toBe(true);
+    expect(result.citations.some((c) => c.reference === 's97')).toBe(true);
+    // UNCOMPUTED still includes UC-S100A-RISK + UC-DIV-6E-STREAMING
+    expect(result.uncomputed.some((u) => u.id === 'UC-S100A-RISK')).toBe(true);
+    expect(result.uncomputed.some((u) => u.id === 'UC-DIV-6E-STREAMING')).toBe(true);
+    // No more UC-ENTITY-DISCRETIONARY-TRUST (the placeholder is gone)
+    expect(
+      result.uncomputed.some((u) => u.id === 'UC-ENTITY-DISCRETIONARY-TRUST'),
+    ).toBe(false);
+  });
+
+  it('UNIT_TRUST WITH trustDistribution → computed Div 6 result', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'UNIT_TRUST',
+        trustDistribution: {
+          trustNetIncome: 200000,
+          beneficiaries: [
+            { id: 'u1', name: 'Unit Holder A', presentlyEntitledShare: 0.6 },
+            { id: 'u2', name: 'Unit Holder B', presentlyEntitledShare: 0.4 },
+          ],
+        },
+      }),
+    );
+    expect(result.result).not.toBeNull();
+    const distResult = result.result as {
+      distributions: Array<{ amount: number }>;
+    };
+    expect(distResult.distributions[0].amount).toBe(120000);
+    expect(distResult.distributions[1].amount).toBe(80000);
+  });
+
+  it('partial entitlement → trustee retains residual at 47% s99A penalty', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'DISCRETIONARY_TRUST',
+        trustDistribution: {
+          trustNetIncome: 100000,
+          beneficiaries: [
+            { id: 'b1', name: 'A', presentlyEntitledShare: 0.5 },
+          ],
+        },
+      }),
+    );
+    const distResult = result.result as {
+      trusteeRetainedAmount: number;
+      trusteePenaltyTax: number;
+    };
+    expect(distResult.trusteeRetainedAmount).toBe(50000);
+    expect(distResult.trusteePenaltyTax).toBeCloseTo(50000 * 0.47, 6);
+    // s99A citation surfaces only when residual > 0
+    expect(result.citations.some((c) => c.reference === 's99A')).toBe(true);
+  });
+
+  it('COMPANY / SMSF still UNCOMPUTED even without distribution data', () => {
+    const company = calculateEntityTaxPosition(
+      baseFacts({ entityType: 'COMPANY' }),
+    );
+    expect(company.result).toBeNull();
+    const smsf = calculateEntityTaxPosition(
+      baseFacts({ entityType: 'SMSF' }),
+    );
+    expect(smsf.result).toBeNull();
+  });
+
+  it('PERSONAL_NAME ignores trustDistribution (it does not apply)', () => {
+    // Pass trustDistribution to a PERSONAL_NAME and verify the router
+    // routes through Phase 20 — trust distribution is silently ignored
+    // (PERSONAL_NAMEs cannot distribute as trustees).
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'PERSONAL_NAME',
+        trustDistribution: {
+          trustNetIncome: 100000,
+          beneficiaries: [{ id: 'b1', name: 'X', presentlyEntitledShare: 1.0 }],
+        },
+        incomes: [
+          {
+            id: 'i1',
+            name: 'Salary',
+            type: 'SALARY',
+            amount: 80000,
+            frequency: 'ANNUALLY',
+            grossAmount: 80000,
+          },
+        ],
+      }),
+    );
+    // PERSONAL_NAME used the Phase 20 path — no distribution payload.
+    const taxResult = result.result as { tax: { marginalRate: number } } | null;
+    expect(taxResult?.tax).toBeDefined();
+  });
+});

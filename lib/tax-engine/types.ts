@@ -597,6 +597,29 @@ export interface EntityTaxFacts {
    * default-distribution penalty rate per s99A.
    */
   trustDistributionResolutionAt?: string;
+  /**
+   * Phase 41e.1 slice D-1 — trust distribution allocation for
+   * DISCRETIONARY_TRUST / UNIT_TRUST entities. When provided, the
+   * router runs `allocateTrustDistribution` and produces a real
+   * `EntityTaxPosition.result` instead of the UNCOMPUTED-flagged
+   * placeholder. When absent, the router falls back to the
+   * UNCOMPUTED branch (audit §10.3 — never false numbers).
+   *
+   * `trustNetIncome` is the s95 net income (already computed by
+   * caller). `beneficiaries` carries presently-entitled shares.
+   * Streaming (Div 6E character allocation) lands in 41e.4 and
+   * surfaces a `UC-DIV-6E-STREAMING` flag until then.
+   */
+  trustDistribution?: {
+    trustNetIncome: number;
+    beneficiaries: ReadonlyArray<{
+      id: string;
+      name: string;
+      presentlyEntitledShare: number;
+      isNonResidentOrDisabled?: boolean;
+    }>;
+    hasFamilyTrustElection?: boolean;
+  };
 }
 
 /**
