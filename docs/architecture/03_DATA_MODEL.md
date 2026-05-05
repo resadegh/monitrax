@@ -1053,3 +1053,19 @@ Wires the existing `capTracker.trackContributionCaps` primitive into the entity 
 **POST endpoint extended** with `smsfContributions` body field. 5 new router tests covering: SMSF without data → still UNCOMPUTED, SMSF with data → CapTrackingResult populated, cap exceeded → isExceeded + excessContributionsTax, carry-forward applied with TSB < $500k threshold, SMSF with BOTH smsfContributions AND cgtEvents → both populated.
 
 After 41e.2: SMSF entities with contribution data return real cap-tracking figures. **41e.3 (TBC + Div 293 + Div 296 gated)** starts next.
+
+## **10.15 Phase 41e.3 — TBC + Div 293 + Div 296 (PR #652 — shipped 2026-05-05)**
+
+New `lib/tax-engine/super/highIncomeSuperTax.ts` exporting `calculateHighIncomeSuperTax(input, config)` — computes Division 293 (high-income concessional surcharge), Division 296 (high-balance super tax, **gated** until Royal Assent verified via config flag), and Transfer Balance Cap headroom (s294-35).
+
+**TaxYearConfig extended** with `transferBalanceCap` ($1.9M FY24-25), `div296CommencementVerified` (false until Royal Assent), `div296TsbThreshold` ($3M proposed), `div296Rate` (15%). All three FY configs (FY23-24, FY24-25, FY25-26) populated.
+
+**`EntityTaxFacts.highIncomeSuper`** optional input (companion to `smsfContributions`): `div293Income`, `concessionalContributions`, `totalSuperBalance`, optional `tsbEarnings`, optional `transferBalanceUsed`.
+
+**SMSF dispatch result shape extended** — `result` is now `{ capResult, highIncomeSuperTax }` instead of bare `capResult`. Pre-existing tests updated to access `.capResult.concessional` etc.
+
+**UNCOMPUTED flags raised:**
+- **UC-DIV-296-PENDING** — when TSB exceeds the proposed threshold but the Bill is not yet enacted. The flag flips off automatically once `div296CommencementVerified` is set to `true` in the FY config — no code change needed.
+- **UC-TBC-EXCESS** — when transfer balance exceeds the cap. Excess transfer tax (s294-230) computation deferred to a future sub-PR.
+
+**9 new tests** for `calculateHighIncomeSuperTax`: Div 293 below/above threshold (with `min(excess, contributions)` cap per s293-15), Div 296 pending vs verified, TSB ≤ threshold no flag, TBC reporting + excess flag, citation completeness. **1 router-integration test** asserting SMSF + highIncomeSuper produces `result.highIncomeSuperTax.div293.applies` + TBC headroom.

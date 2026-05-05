@@ -1,5 +1,29 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e3-tbc-div293-div296 (Phase 41e.3 — TBC + Div 293 + Div 296)
+
+### Changes
+- New module `lib/tax-engine/super/highIncomeSuperTax.ts` — Div 293 + Div 296 (gated) + TBC.
+- `TaxYearConfig` extended (4 new fields populated across all 3 FY configs).
+- Router SMSF branch composes `highIncomeSuperTax` when `EntityTaxFacts.highIncomeSuper` provided. Result shape now `{ capResult, highIncomeSuperTax }`.
+- POST endpoint accepts `highIncomeSuper` body.
+- 9 module tests + 1 router-integration test.
+
+### What's testable
+```bash
+curl -X POST -d '{
+  "smsfContributions": { "concessionalYTD": 30000, "nonConcessionalYTD": 0, "totalSuperBalance": 1000000 },
+  "highIncomeSuper": { "div293Income": 280000, "concessionalContributions": 30000, "totalSuperBalance": 1000000, "transferBalanceUsed": 1500000 }
+}' /api/tax/entity/<smsf_id>
+# → result.highIncomeSuperTax.div293.applies === true
+# → result.highIncomeSuperTax.div293.tax === 4500 (30000 * 0.15)
+# → result.highIncomeSuperTax.tbc.headroom === 400000
+```
+
+318 tests passing. tsc clean.
+
+---
+
 ## Session: claude/phase-41e2-smsf-contribution-caps (Phase 41e.2 — SMSF contribution caps wired into router)
 
 ### Changes Made

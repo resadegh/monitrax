@@ -400,7 +400,7 @@ describe('Phase 41e.2 — SMSF contribution caps wired into router', () => {
       }),
     );
     expect(result.result).not.toBeNull();
-    const cap = result.result as {
+    const cap = (result.result as { capResult: any }).capResult as {
       concessional: { cap: number; remaining: number; isExceeded: boolean };
       nonConcessional: { cap: number };
     };
@@ -429,7 +429,7 @@ describe('Phase 41e.2 — SMSF contribution caps wired into router', () => {
         },
       }),
     );
-    const cap = result.result as {
+    const cap = (result.result as { capResult: any }).capResult as {
       concessional: { isExceeded: boolean; excessAmount: number };
       excessContributionsTax: number;
     };
@@ -452,12 +452,42 @@ describe('Phase 41e.2 — SMSF contribution caps wired into router', () => {
         },
       }),
     );
-    const cap = result.result as {
+    const cap = (result.result as { capResult: any }).capResult as {
       concessional: { carryForwardAvailable: number; totalAvailable: number };
     };
     // Carry-forward grants extra $10k headroom; total available $40k
     expect(cap.concessional.carryForwardAvailable).toBe(10000);
     expect(cap.concessional.totalAvailable).toBe(40000);
+  });
+
+  it('SMSF with highIncomeSuper → Div 293 surcharge + TBC populated', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'SMSF',
+        smsfContributions: {
+          concessionalYTD: 30000,
+          nonConcessionalYTD: 0,
+          totalSuperBalance: 1000000,
+        },
+        highIncomeSuper: {
+          div293Income: 280000,
+          concessionalContributions: 30000,
+          totalSuperBalance: 1000000,
+          transferBalanceUsed: 1500000,
+        },
+      }),
+    );
+    const wrapper = result.result as {
+      capResult: unknown;
+      highIncomeSuperTax: {
+        div293: { applies: boolean; tax: number };
+        tbc: { headroom: number };
+      };
+    };
+    expect(wrapper.capResult).toBeDefined();
+    expect(wrapper.highIncomeSuperTax.div293.applies).toBe(true);
+    expect(wrapper.highIncomeSuperTax.div293.tax).toBeGreaterThan(0);
+    expect(wrapper.highIncomeSuperTax.tbc.headroom).toBe(400000); // $1.9M cap - $1.5M used
   });
 
   it('SMSF with both smsfContributions AND cgtEvents → both populated', () => {
