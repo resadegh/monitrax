@@ -13,6 +13,10 @@ import type {
   Finding,
   AnalysisResult,
 } from '../core/types';
+import {
+  getCurrentTaxYearConfig,
+  getMarginalRate,
+} from '@/lib/tax-engine/config/taxYearConfig';
 
 export async function analyzeTax(
   data: StrategyDataPacket
@@ -26,8 +30,18 @@ export async function analyzeTax(
     const lossHarvestFindings = analyzeTaxLossHarvesting(data);
     findings.push(...lossHarvestFindings);
 
-    // Capital gains tax planning
-    const cgtFindings = analyzeCapitalGainsTax(data);
+    // Capital gains tax planning — pass the user's actual marginal rate
+    // derived from cashflow data so high-bracket users see correct savings
+    // (resolves H-5 in PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md §3 / §10.1).
+    const config = getCurrentTaxYearConfig();
+    const inferredAnnualIncome =
+      (data.snapshot?.cashflowSummary as { totalAnnualIncome?: number } | undefined)
+        ?.totalAnnualIncome ?? 0;
+    const marginalRate =
+      inferredAnnualIncome > 0
+        ? getMarginalRate(inferredAnnualIncome, config)
+        : 0.30; // documented fallback when income unknown
+    const cgtFindings = analyzeCapitalGainsTax(data, marginalRate, config.cgtDiscount);
     findings.push(...cgtFindings);
 
   } catch (error) {
@@ -88,7 +102,11 @@ function analyzeTaxLossHarvesting(data: StrategyDataPacket): Finding[] {
   return findings;
 }
 
-function analyzeCapitalGainsTax(data: StrategyDataPacket): Finding[] {
+function analyzeCapitalGainsTax(
+  data: StrategyDataPacket,
+  marginalRate: number,
+  cgtDiscountRate: number,
+): Finding[] {
   const findings: Finding[] = [];
 
   const properties = data.snapshot?.properties || [];
@@ -104,15 +122,19 @@ function analyzeCapitalGainsTax(data: StrategyDataPacket): Finding[] {
     return gain > 10000 && monthsHeld >= 10 && monthsHeld < 12;
   });
 
+  const discountPercent = Math.round(cgtDiscountRate * 100);
+
   for (const asset of shortTermGains) {
     const monthsUntil12 = 12 - (asset.monthsHeld || 0);
+    const unrealizedGain = (asset.currentValue || 0) - (asset.purchasePrice || 0);
+    const estimatedTaxSaving = unrealizedGain * cgtDiscountRate * marginalRate;
 
     findings.push({
       id: `cgt-discount-${asset.id}`,
       type: 'TAX_CGT_DISCOUNT',
       severity: 'low',
       title: `CGT Discount Opportunity: ${asset.name || asset.address || 'Asset'}`,
-      description: `Hold for ${monthsUntil12} more months to qualify for 50% CGT discount on $${((asset.currentValue || 0) - (asset.purchasePrice || 0)).toFixed(0)} gain.`,
+      description: `Hold for ${monthsUntil12} more months to qualify for ${discountPercent}% CGT discount on $${unrealizedGain.toFixed(0)} gain.`,
       impactScore: {
         financial: 35,
         risk: 10,
@@ -125,10 +147,11 @@ function analyzeCapitalGainsTax(data: StrategyDataPacket): Finding[] {
         assetType: asset.type || 'property',
         monthsHeld: asset.monthsHeld || 0,
         monthsUntilDiscount: monthsUntil12,
-        unrealizedGain: (asset.currentValue || 0) - (asset.purchasePrice || 0),
-        estimatedTaxSaving: ((asset.currentValue || 0) - (asset.purchasePrice || 0)) * 0.50 * 0.30, // 50% discount * ~30% tax rate
+        unrealizedGain,
+        estimatedTaxSaving,
+        appliedMarginalRate: marginalRate,
       },
-      suggestedAction: `Defer sale ${monthsUntil12} months to qualify for CGT discount and save approximately $${(((asset.currentValue || 0) - (asset.purchasePrice || 0)) * 0.50 * 0.30).toFixed(0)} in tax.`,
+      suggestedAction: `Defer sale ${monthsUntil12} months to qualify for CGT discount and save approximately $${estimatedTaxSaving.toFixed(0)} in tax.`,
     });
   }
 

@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getCurrentFinancialYear, SuperContributionType } from '@/lib/tax-engine/types';
+import { getTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 
 // Type for contribution with relations
 interface ContributionWithRelations {
@@ -252,6 +253,11 @@ export const POST = withPermission('income.write', async (request, auth) => {
     ].includes(type);
 
     if (contributionFY === currentFY.year) {
+      // Taxable component for concessional contributions = amount × (1 − contributions tax rate)
+      // Per ITAA 1997 s295-485 (15% across all FYs covered).
+      const config = getTaxYearConfig(contributionFY);
+      const concessionalAfterTaxRate = 1 - config.superContributionsTaxRate;
+
       await prisma.superannuationAccount.update({
         where: { id: superAccountId },
         data: {
@@ -262,9 +268,8 @@ export const POST = withPermission('income.write', async (request, auth) => {
             ? { increment: amount }
             : undefined,
           currentBalance: { increment: amount },
-          // Update taxable component for concessional (after 15% tax)
           taxableComponent: isConcessional
-            ? { increment: amount * 0.85 }
+            ? { increment: amount * concessionalAfterTaxRate }
             : undefined,
           // Update tax-free component for non-concessional
           taxFreeComponent: !isConcessional

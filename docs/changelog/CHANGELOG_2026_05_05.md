@@ -1,5 +1,43 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e-cleanup-b-consumers (Phase 41e.−1 cleanup PR B — migrate consumers to canonical FY config)
+
+### Changes Made
+- **Type:** Refactor (Phase 41e.−1 cleanup, slice B — behaviour-preserving consumer migration; no public API changes; no schema changes)
+- **Scope:** Consumers across the tax-route layer + CFO decision support + strategy analyzer + dashboard tax page now read from `getCurrentTaxYearConfig()` / `getMarginalRate()` instead of hard-coding values. Builds on slice A (PR #626) which extended `TaxYearConfig` with the canonical homes for these constants.
+- **Audit findings resolved:** C-2 (concessional cap divergence), H-1 (×7 hard-coded `0.15` / `0.85`), H-2 ($60,400 co-contribution threshold), H-3 (11.5% SG rate hard-coded in dashboard), H-4 (hard-coded brackets table in dashboard), H-5 (assumed 30% marginal rate in `taxAnalyzer`). H-6 ($3k/property depreciation heuristic) renamed + flagged as `UC-PROPERTY-DEPRECIATION` per audit doc §10.3.
+
+### Files Modified
+- `app/api/tax/super/optimize/route.ts` — 6 hard-coded `0.15` / `0.85` replaced with `config.superContributionsTaxRate` / `(1 - config.superContributionsTaxRate)`. `60400` co-contribution threshold replaced with `config.coContributionIncomeThreshold`. (H-1 + H-2.)
+- `app/api/tax/super/contributions/route.ts` — `amount * 0.85` (concessional after-tax component) replaced with `amount * (1 - config.superContributionsTaxRate)`; new import of `getTaxYearConfig` keyed off the contribution's actual financial year. (H-1.)
+- `lib/cfo/decisionSupport/taxIntegration.ts` — `27500` (FY24 stale concessional cap) → `config.concessionalCap` (**resolves C-2**). `250000` Div 293 threshold → `config.division293Threshold`. Hard-coded `0.15` Div 293 impact → `config.superContributionsTaxRate`. `$3000`/property depreciation heuristic kept but renamed `HEURISTIC_PROPERTY_DEPRECIATION_PER_YEAR` with comment cross-referencing `UC-PROPERTY-DEPRECIATION` in audit doc §10.3 (H-6 renamed-as-flagged-heuristic).
+- `lib/strategy/analyzers/taxAnalyzer.ts` — 50% CGT discount + 30% assumed marginal rate replaced with config-driven values (`config.cgtDiscount`, `getMarginalRate(income, config)` derived from the snapshot's `cashflowSummary.totalAnnualIncome`). Documented fallback to 0.30 when income unknown. (**Resolves H-5.**) Discount percent rendered dynamically from `config.cgtDiscount` so trust beneficiaries (50%) and SMSF (33⅓%) will display correctly once Phase 41e.1 lands entity-aware overrides.
+- `app/dashboard/tax/page.tsx` — Hard-coded brackets table (`page.tsx:446-470`) replaced with a `taxConfig.brackets.map()` render that highlights the user's current bracket dynamically. Hard-coded "FY24-25" subtitle replaced with `taxConfig.label`. `30000` / `120000` / `11.5%` super cap + SG rate displays replaced with `taxConfig.concessionalCap` / `nonConcessionalCap` / `superGuaranteeRate`. Hard-coded `2%` Medicare Levy display replaced with `taxConfig.medicareRate`. Salary-sacrifice opportunity card now subtracts `taxConfig.superContributionsTaxRate * 100` (the canonical rate) from the user's marginal rate. (**Resolves H-3 + H-4.**)
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean.
+- [x] Behaviour-preserving: every replaced hard-code returns the same numeric value via the new config path on FY24-25 (verified by inspection — slice A populated FY24-25 with values matching what consumers were hard-coding).
+- [x] Grep audit confirms no remaining `* 0.85`, `* 0.15`, `27500`, `60400`, `250000` literals in the migrated files.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [ ] visual / config / GCP / identity / deployment / security / operational / data model / strategic decision
+
+(Slice B is a refactor delivering audit findings; full audit closure batched at slice D where the doc updates land.)
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_05.md` — this entry.
+
+### What's next
+- **Slice C** — replace `buildTaxSummary()` regression trap (`masterFinancialService.ts:1012-1077`) with delegation to `calculateTaxPosition()`. Snapshot test asserts numerical parity. **Resolves C-1.**
+- **Slice D** — Sarah Kim / David+Emma / Olivia archetype fixtures + master-config self-test + parity-baseline snapshots. After slice D, **41e.−1 is complete** and **41e.0 (foundation)** unblocks.
+
+### PR
+- Branch: `claude/phase-41e-cleanup-b-consumers`
+- PR URL: TBD on push
+
+---
+
 ## Session: claude/phase-41e-cleanup-a-constants (Phase 41e.−1 cleanup PR A — extend `TaxYearConfig` + add FY25-26)
 
 ### Changes Made
