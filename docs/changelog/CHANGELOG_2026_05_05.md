@@ -1,5 +1,75 @@
 # Changelog — 2026-05-05
 
+## Session: claude/phase-41e17-master-tax-position (Phase 41e.17 — MasterTaxPosition orchestrator — CLOSES PHASE 41e)
+
+### Changes
+**Closes Phase 41e** — the entity-aware AU tax engine. Wires every preceding sub-PR (41e.0 through 41e.16) into one orchestrator + AFSL footer envelope.
+
+- New `lib/tax-engine/orchestrator/masterTaxPosition.ts` + new directory
+- `buildMasterTaxPosition(input: MasterTaxPositionInput): MasterTaxPositionV2`
+- 5-stage deterministic pipeline:
+  1. **Per-entity dispatch** via `calculateEntityTaxPosition()` (entity router already wires Phase 41e.0/1/2/3/4/5/6/8/11)
+  2. **Cross-cutting modules** — cross-state land tax (41e.13), stamp duty per-transaction (41e.14), GST/BAS (41e.16). Each runs once per build.
+  3. **Per-entity loss-rule overlays** — `trustLossByEntity` (Sch 2F, 41e.15) + `companyLossByEntity` (Div 165, 41e.15) keyed by `entityId`. v1 decorates citations + UC flags without re-computing tax (v2 decision).
+  4. **Citation + UNCOMPUTED aggregation** — de-duped via `${kind}|${reference}` key. Insertion-order-stable.
+  5. **Boundary footer envelope** — calls `renderBoundaryFootnote()` so consumers get a structured AFSL/TPB/NCCP footer ready to render.
+- New `MasterTaxPositionV2` interface extends existing `MasterTaxPosition` (in `types.ts`) with:
+  - `crossCutting?: CrossCuttingTaxResult` (only populated when ≥1 cross-cutting module ran)
+  - `boundary: BoundaryFootnote` (always populated)
+  - `modulesInvoked: string[]` (audit trail for the AFSL footer)
+- New `CrossCuttingTaxResult` interface — `landTax?` / `stampDuty?` / `gst?` / `trustLossByEntity?` / `companyLossByEntity?`
+- 21 module tests; 449 total tax-engine tests (428 → 449, +21); tsc clean
+
+### Architecture notes
+- **Pure / deterministic** — no DB calls, no side effects. Same inputs → same output.
+- **Backwards-compatible** — `MasterTaxPosition` base type unchanged; `MasterTaxPositionV2` is a strict superset.
+- **Skip-when-empty** — orchestrator only runs cross-cutting modules when their inputs are non-empty (no `landTax.properties.length === 0` waste, no GST when `gst === undefined`). `modulesInvoked` reflects exactly what ran.
+
+### Testable
+```ts
+import { buildMasterTaxPosition } from '@/lib/tax-engine/orchestrator/masterTaxPosition';
+
+// Full household: salary individual + investment trust + foreign-owned property
+const r = buildMasterTaxPosition({
+  userId: 'user-1',
+  fy: { financialYear: '2024-25', label: 'FY24-25' },
+  entities: [
+    { entityId: 'e1', entityType: 'PERSONAL_NAME', fy, incomes: [...], expenses: [], depreciations: [] },
+    { entityId: 'e2', entityType: 'DISCRETIONARY_TRUST', fy, incomes: [...], expenses: [], depreciations: [] },
+  ],
+  landTax: {
+    ownershipType: 'INDIVIDUAL',
+    isForeignOwner: false,
+    properties: [
+      { propertyId: 'p1', state: 'NSW', taxableLandValue: 1_500_000, isResidential: true },
+      { propertyId: 'p2', state: 'VIC', taxableLandValue: 600_000, isResidential: true },
+    ],
+  },
+  gst: { transactions: [...], annualTurnover: 500_000, isRegistered: true },
+  trustLossByEntity: {
+    'e2': { trustType: 'FAMILY_TRUST_FTE', lossAmount: 30_000, testOutcomes: { incomeInjectionTest: 'PASS' } },
+  },
+});
+
+// → r.entities (per-entity income tax + CGT)
+// → r.totals (household assessableIncome / taxableIncome / netTax / paygWithheld / estimatedRefund)
+// → r.crossCutting.landTax (cross-state aggregator output)
+// → r.crossCutting.gst (BAS labels + netGst)
+// → r.crossCutting.trustLossByEntity['e2'] (LOSSES_DEDUCTIBLE / LOSSES_DENIED / INCONCLUSIVE)
+// → r.modulesInvoked (audit trail: ['entityTaxRouter', 'crossStateLandTax', 'gst', 'trustLossRules'])
+// → r.boundary (AFSL/TPB/NCCP footer envelope ready for render)
+// → r.authoritySources (de-duped citations across every module)
+// → r.uncomputed (de-duped UC flags across every module)
+```
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.29
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11 (41e.17 SHIPPED — Phase 41e COMPLETE)
+
+**Phase 41e is COMPLETE.** Next phase: **41h** (AI advisor pitch using these calcs as the regulatory engine).
+
+---
+
 ## Session: claude/phase-41e14-15-16-stamp-loss-gst (Phase 41e.14 + 41e.15 + 41e.16 — Stamp duty / Loss rules / GST-BAS bundled)
 
 ### Changes
