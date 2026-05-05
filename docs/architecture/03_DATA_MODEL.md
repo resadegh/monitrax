@@ -1279,3 +1279,223 @@ Every layer enforces these rules at the **service boundary**:
    dev/demo environments to run without secrets. The architectural
    pattern is visible (events are logged; messages are recorded; UI
    renders friendly notices) without requiring real keys.
+=======
+
+## **10.11 Phase 41g — Adviser drill-in entity layer**
+
+Added 2026-05-05 (PR-41g). Mounts the Phase 41c `EntityTree` and Phase 41d `MoneyFlowSankey` inside the adviser drill-in surface at `/portal/clients/[id]/view`, populated with the **client's** data (not the adviser's). The brief: *"the adviser cannot give wealth advice without seeing the structure first; this surfaces it prominently."*
+
+### What changed
+
+- New 3-tab toggle on `/portal/clients/[id]/view`: **Structure** (default — entity tree) | **Money Flow** (Sankey) | **Dashboard** (the existing `ClientCanonicalDashboard` from Phase 32B PR3).
+- Two new portal endpoints (`GET /api/portal/clients/[id]/entities` and `GET /api/portal/clients/[id]/money-flow`) that delegate to the same canonical services as the consumer endpoints (`listEntitiesForUser`, `getMoneyFlow`), but pass the **client's** userId.
+- New shared helper `lib/portal/adviserClientAccess.ts` extracts the consent + membership + role + assignment guard from the existing `/snapshot` route. All three portal endpoints (snapshot, entities, money-flow) now share one canonical access check.
+
+### Auth guard — `verifyAdviserClientAccess`
+
+Layered checks (rejection at any layer returns a structured error that the page surfaces):
+1. `OrganizationClient` row exists for `params.id`
+2. Status === 'ACTIVE' AND consentStatus === 'GRANTED'
+3. Caller has an active `OrganizationMember` seat on the same org
+4. Caller's role permits viewing client data (`PermissionGuards.canViewClientData`)
+5. If caller is `PORTAL_ADVISOR`, they're assigned to this client (`PORTAL_OWNER` / `PORTAL_ADMIN` see the whole book)
+
+Returns the canonical `accessScopes` from the DB row — never from caller-provided input. Per CLAUDE.md §0 architect lens, the consent source-of-truth is the database, never URL params or headers.
+
+**Reviewers reject any new portal client-data endpoint that doesn't route through this helper.**
+
+### Audit
+
+The page-level `/snapshot` request already writes a `PRO_DASHBOARD_VIEW` row to `ClientAccessLog` for the view session. The new entities + money-flow endpoints **piggyback on that row** — they don't write their own. Multiplying audit rows per component would pollute the compliance log without adding signal. If component-level access logs are ever required, we add new action codes (`PRO_ENTITY_VIEW`, `PRO_MONEY_FLOW_VIEW`) and emit them at the route layer.
+
+### Read-only in adviser view
+
+Advisers can NOT edit a client's entity layer:
+- The `EntityTree`'s `onEntityClick` is a no-op (no edit dialog opens)
+- The `EntityTree`'s `onAdd` is a no-op (no Add CTA fires)
+- No `EntityFormDialog` mounted on the adviser page
+
+This is deliberate. Editing a client's structure is a personal-advice activity that needs to happen through the proper Ask-a-Pro / consent channels (Phase 32C) — not via a side-door API the adviser can hit because they have a viewing seat. A future Phase 41 slice may surface a *"Suggest a structural change"* affordance that opens an Ask-a-Pro thread for the client to action.
+
+### Failure modes
+
+- **Snapshot fails** → page shows the existing `Cannot view this client` error; entities/flow don't load.
+- **Entities fail** (e.g. Prisma schema drift, network) → the Structure tab renders with empty arrays; the EntityTree's empty-state hero shows.
+- **Money flow fails** → the Money Flow tab renders the friendly "No money flow data available for this client yet" message.
+- **Dashboard tab is unaffected** by entities/flow failures — it only depends on the snapshot.
+
+### What this unblocks (41h)
+
+- The AI advisor (Phase 41h) composes the same flow shape and entity tree to produce entity-aware diagnostics ("Olivia's trust holds property X with $300k unrealised CGT"). Both visualisations are now reachable from the adviser drill-in, so the AI's recommendations show up next to the same evidence the adviser is reading.
+
+## **10.12 Phase 41e.−1 cleanup + 41e.0 foundation — schema-relevant changes**
+
+The Phase 41e.−1 cleanup PR (slices A/B/C/D — PRs #626/#629/#630/#633) and Phase 41e.0 foundation (slices A/B in flight via PRs #634/#636) introduce schema-adjacent changes worth recording here even though most of 41e is calc-engine and type-system work.
+
+### `TaxYearConfig` extended (slice A — PR #626)
+
+`lib/tax-engine/types.ts` extended with 7 new required fields on `TaxYearConfig` carrying primary-authority citations in JSDoc. These are **type-only** changes (no DB schema impact) but they are the canonical SSOT for AU tax thresholds (CLAUDE.md §12.2):
+
+| Field | Purpose | Authority |
+|---|---|---|
+| `label` | Display string ("FY24-25") | — |
+| `superGuaranteeQuarterlyCap` | ATO maximum super contribution base | ATO annual publication |
+| `superContributionsTaxRate` | Taxed-in-fund rate (15% across all FYs) | ITAA 1997 s295-485 |
+| `coContributionIncomeThreshold` | Phase-out upper bound | ATO annual indexation |
+| `carryForwardTsbThreshold` | TSB threshold for carry-forward concessional | ITAA 1997 s291-20(3) |
+| `bringForwardThresholds` | TSB tiers for non-concessional bring-forward | ITAA 1997 s292-85(2) |
+| `reviewSchedule` | Per-FY review checkpoint (forces explicit human review before each new FY) | Audit doc §10.2 |
+
+`TAX_YEAR_2025_26` added (resolves audit C-4). SG rises to 12% per ATO schedule.
+
+### LegalEntity DB CHECK constraint (slice B — PR #636)
+
+Migration `20260506110000_legal_entity_no_self_parent` adds:
+
+```sql
+ALTER TABLE "legal_entities"
+  ADD CONSTRAINT "legal_entities_no_self_parent"
+  CHECK ("id" <> "parentEntityId" OR "parentEntityId" IS NULL);
+```
+
+**Defence-in-depth** for the `parentEntityId` cycle-detection contract documented in audit §7. The application-layer `validateParentChain()` helper in `lib/services/legalEntityService.ts` is the primary guard (SELF_PARENT / CYCLE_DETECTED / MAX_DEPTH_EXCEEDED at chain depth 10 / PARENT_NOT_FOUND); this CHECK constraint catches the simplest cycle (`id = parent_entity_id`) at the storage layer regardless of how a row reaches the database.
+
+Pure additive — only rejects rows the application has been blocking since 41a. §12.11 N/A.
+
+### Phase 41e.0 entity-aware orchestration types (slice A — PR #634)
+
+New type contracts in `lib/tax-engine/types.ts` (no DB schema impact, but they're the canonical contract for the new layer per architecture doc §4):
+
+- `AuthorityCitation` — primary AU authority reference (ITAA 1936/1997 / SIS Act / TR / TD / PCG / PS LA / state acts) attached to every rule result.
+- `FYReference` — FY-indexed lookup contract.
+- `EntityTaxFacts` — per-entity dispatcher input.
+- `EntityTaxPosition` — output of single-entity dispatch.
+- `UncomputedFlag` — audit-friendly "deliberately not computed" structure.
+- `MasterTaxPosition` — household-wide roll-up; the canonical replacement for `buildTaxSummary()` once 41e.17 lands.
+
+### Aggregator extensions (slice C — shipped 2026-05-05, PR #639)
+
+The 5 financial aggregators gained an optional `ownerEntityId?: string` parameter (default = no filter, backward-compatible). This is the application-layer flow that activates the existing `ownerEntityId` FK on every owned object. **No DB schema change** — pure application code.
+
+| Aggregator | New signature |
+|---|---|
+| `aggregateIncome(income, targetFrequency, ownerEntityId?)` | filter applied to the income array before aggregation |
+| `aggregateExpenses(expenses, targetFrequency, ownerEntityId?)` | filter applied before category breakdown |
+| `aggregateLoanRepayments(loans, targetFrequency, ownerEntityId?)` | filter applied before principal/interest summation |
+| `calculateCashflow(input, ownerEntityId?)` | filter applied to all three sub-arrays (`income` / `expenses` / `loans`) once at the top |
+| `calculateTotalAssets(properties, accounts, investments, super, personalAssets, ownerEntityId?)` | filter applied to each asset class via internal helper |
+| `calculateTotalLiabilities(loans, ownerEntityId?)` | filter applied before mortgage / personal / credit-card classification |
+
+Every `*Input` interface gained an `ownerEntityId?: string | null` field — additive, optional, nullable. Existing callers that don't read the column see `undefined` and the aggregator's filter param defaults to "no filter" so the resulting numbers match pre-41e behaviour exactly.
+
+**18 tests** in `tests/calculations/aggregatorEntityScoping.test.ts` pin the contract for both halves: (1) omitting the filter param reproduces pre-41e household-wide totals; (2) providing it returns only matching items; (3) per-entity sums equal the household total (proves no double-counting). The third assertion is the structural correctness guarantee — `e1.total + e2.total === household.total`.
+
+**Resolves audit C-3** — the last open audit critical. With this slice, all four C-class findings (C-1, C-2, C-3, C-4) are resolved. 41e.0 needs only slice D (router skeleton + boundaries renderer + new endpoints) before 41e.1 starts.
+
+### Entity tax router + boundaries renderer + new endpoints (slice D — shipped 2026-05-05, PR #642)
+
+Slice D ships the orchestration scaffolding that makes the entity-aware layer reachable from the UI:
+
+- **`lib/tax-engine/entity/entityTaxRouter.ts`** — `calculateEntityTaxPosition(facts)` dispatches by `LegalEntityType`. PERSONAL_NAME / SOLE_TRADER → wraps Phase 20's `calculateTaxPosition()` with citations (ITAA 1997 s4-10 + Div 1-6 / s8-1). COMPANY / DISCRETIONARY_TRUST / UNIT_TRUST / SMSF / PARTNERSHIP → returns `null` result + structured `UncomputedFlag` documenting which sub-PR (41e.1, 41e.2/3, 41e.4, 41e.6, 41e.11) will produce the real number. **Never false numbers** per audit §10.3.
+- **`lib/tax-engine/boundaries/index.ts`** — `renderBoundaryFootnote(input)` assembles the AFSL / TPB / NCCP footer from authority citations + UNCOMPUTED flags + the canonical `BOUNDARY_STATEMENT` constant. De-duplicates citations + flags so repeat sources don't pollute the footer.
+- **`components/tax/BoundaryFootnote.tsx`** — the React component. Renders the footer in 5 stacked rows: FY context → computed-per audit trail → UNCOMPUTED disclosures (one row per flag, with amber alert icon) → boundary statement (bold) → last-calculated timestamp. Compact variant for tile use.
+- **`GET /api/tax/config`** — returns `TaxYearConfig` for `?fy=YYYY-YY` (default current FY) + the available FY list. `tax_data.read` permission. Closes audit §6.8 entry — was originally tagged as 41e.−1 work but landed in slice D for tighter scoping.
+- **`GET /api/tax/entity/[entityId]`** — per-entity tax position via the router skeleton. `tax_data.read`. Caller must own the entity (Prisma `findFirst` with `userId` scoping). Response shape: `{ success, data: { entityPosition, boundary } }`.
+
+`/dashboard/tax` page now renders `<BoundaryFootnote citations={TAX_PAGE_CITATIONS} fyLabel={taxConfig.label} calculatedAt={taxPosition?.metadata.calculatedAt} />` at the page bottom — replaces the old free-text Disclaimer card. **First user-visible 41e.0 surface.**
+
+26 new tests: `tests/tax-engine/entity/entityTaxRouter.test.ts` (11 tests — both halves of the dispatch contract) and `tests/tax-engine/boundaries/boundaries.test.ts` (15 tests — citation formatting, de-duplication, UNCOMPUTED rendering, BOUNDARY_STATEMENT contains TPB/AFSL/NCCP).
+
+After slice D, **41e.0 is COMPLETE.** 41e.1 (Div 115 + Div 6 basic + capital loss netting) starts.
+
+## **10.13 Phase 41e.1 — Div 115 CGT discount, Div 6 basic, capital loss netting (in flight)**
+
+41e.1 is the first **rule** sub-PR. Sliced for digestibility:
+
+- **Slice A (PR #644 — shipped 2026-05-05):** Div 115 CGT discount module. New `lib/tax-engine/divisions/cgtDiscount.ts` with the entity-aware rate dispatch:
+  - PERSONAL_NAME / SOLE_TRADER / DISCRETIONARY_TRUST / UNIT_TRUST / PARTNERSHIP → 50% per ITAA 1997 s115-25
+  - SMSF (complying) → 33⅓% per ITAA 1997 s115-100
+  - SMSF (non-complying) → 0% (s115-100 carve-out)
+  - COMPANY → 0% per ITAA 1997 s115-280 (companies not eligible)
+  - Any entity, < 12 months held → 0% per ITAA 1997 s115-25
+  - Foreign-resident → flagged `UC-FOREIGN-RESIDENT-CGT` (Subdiv 115-D apportionment deferred to a future sub-PR)
+  
+  Pure functions; no consumers yet — slice D wires the router to call this for `cgt_event` inputs. 24 unit tests covering every entity branch + holding-period gate + SMSF complying/non-complying split + foreign-resident UNCOMPUTED + edge cases (zero gain, negative gain).
+
+- **Slice B (PR #645 — shipped 2026-05-05):** Capital loss netting + ordering. New `lib/tax-engine/divisions/capitalLossNetting.ts` exporting `applyCapitalLossNetting(input)`. Implements ITAA 1997 s100-50 (loss-method ordering) + s115-100 (discount applied to net gain after losses, NOT to gross gains then summed) + Div 102-A (assessable net capital gain). Composes slice A's `calculateCgtDiscount` per entity. Handles current-year + prior-year carry-forward losses (FIFO by FY); when losses > gains, surfaces the unconsumed residual via `carryForwardOut`. Mixed holding periods raise `UC-CGT-MIXED-HOLDING` with proportional discount applied to the qualifying-share of the net gain. The **critical s115-100 ordering rule** is pinned by a dedicated test: gain $100k + loss $30k under 50% discount must produce $35k assessable (not $20k — applying discount to gross then subtracting loss is the consumer-tax mistake we explicitly catch). 18 unit tests covering current-year netting, prior-year carry-forward, FIFO ordering, entity dispatch (PERSONAL/SMSF/COMPANY/TRUST), mixed holding period UNCOMPUTED, carry-forward residual, edge cases.
+- **Slice C (PR #647 — shipped 2026-05-05):** Div 6 basic + `trustDistribution.ts` skeleton. New `lib/tax-engine/divisions/trustDistribution.ts` exporting `allocateTrustDistribution(input)`. Implements ITAA 1936 s95 (net income definition), s97 (presently-entitled beneficiary assessment), s99A (trustee penalty rate **47%** on undistributed residual when no beneficiary is presently entitled). Validates beneficiary shares (≥ 0; sum ≤ 1.0 with floating-point tolerance; throws on negative or over-distribution). Always flags `UC-S100A-RISK` (zone classifier per TR 2022/4 + PCG 2022/2 lands in 41e.5 — different rationale wording for FTE vs non-FTE trusts) and `UC-DIV-6E-STREAMING` (character allocation lands in 41e.4 — v1 distributes franking + capital gains generically pro-rata to net-income share). Flags `UC-S98-TRUSTEE-ASSESSMENT` when any beneficiary is non-resident or under legal disability. The `S99A_TRUSTEE_PENALTY_RATE` constant is exported for direct AFSL footer use. 20 unit tests covering basic distribution, s99A penalty (no/partial entitlement), validation errors (negative, over-distribution, floating-point tolerance), all UNCOMPUTED flags, citation rules (s99A only when residual > 0), edge cases.
+- **Slice D-1 (PR #649 — shipped 2026-05-05):** Wire `trustDistribution` into `entityTaxRouter`. New optional `EntityTaxFacts.trustDistribution` field carrying `trustNetIncome` + `beneficiaries` + `hasFamilyTrustElection`. When provided for a DISCRETIONARY_TRUST or UNIT_TRUST entity, the router runs `allocateTrustDistribution` (slice C) and produces a real `EntityTaxPosition.result` with the per-beneficiary breakdown + s95/s97 citations + the always-on UC-S100A-RISK / UC-DIV-6E-STREAMING flags. Without distribution data, trust entities still flag UNCOMPUTED (audit §10.3 — never false numbers). New `entityHasConditionalComputedTax(type)` helper exposes the conditional capability matrix. New `POST /api/tax/entity/[entityId]` handler accepts a body with `trustDistribution` so callers can exercise the wiring via curl until a UI captures distribution data — first user-testable Div 6 surface. 6 new router tests covering: TRUST without data → UNCOMPUTED, TRUST with data → computed, UNIT_TRUST with data → pro-rata, partial entitlement → s99A penalty, COMPANY/SMSF still UNCOMPUTED, PERSONAL_NAME ignores trustDistribution.
+- **Slice D-2 (PR #650 — shipped 2026-05-05):** Wire `cgtDiscount` + `capitalLossNetting` into `entityTaxRouter` for any entity with `cgtEvents`. **Closes 41e.1.** New optional `EntityTaxFacts.cgtEvents` + `carryForwardCapitalLosses` + `smsfIsComplying` + `isForeignResident` fields. New optional `EntityTaxPosition.cgtResult` — independent of `result` so a COMPANY entity (income tax UNCOMPUTED) can carry a fully-computed CGT figure with the right per-entity discount rate (0% per s115-280). For TRUST entities with BOTH `trustDistribution` AND `cgtEvents`, the router populates both `result` (Div 6 distribution) AND `cgtResult` (Div 115 net capital gain) with deduplicated cumulative citations. POST `/api/tax/entity/[entityId]` extended to accept `cgtEvents` + `carryForwardCapitalLosses` body fields. 8 new router tests covering: PERSONAL_NAME with cgtEvents → 50% discount; **COMPANY with cgtEvents → cgtResult populated even though result still null** (the audit's "never false silence" complement to "never false numbers"); SMSF with cgtEvents → 33⅓%; TRUST with both inputs → both populated independently; losses > gains → carry-forward; prior-year losses applied; no cgtEvents → cgtResult undefined; empty array → undefined.
+
+After 41e.1, the audit's "never false numbers" principle relaxes for the v1-supported scope: TRUST entities with distribution data + ANY entity with disposal events return computed figures, paired with the boundary footer citing exactly which sections were applied. **41e.1 is COMPLETE.** **41e.2 (SMSF contribution caps)** starts next.
+
+## **10.14 Phase 41e.2 — SMSF contribution caps (PR #651 — shipped 2026-05-05)**
+
+Wires the existing `capTracker.trackContributionCaps` primitive into the entity router. New optional `EntityTaxFacts.smsfContributions` field carrying YTD contributions + total super balance + carry-forward unused amounts. When provided for an SMSF entity, the router runs `trackContributionCaps(input, config)` and produces an `EntityTaxPosition.result` containing the `CapTrackingResult` shape — concessional + non-concessional cap headroom, carry-forward (s291-20(3) TSB threshold) + bring-forward (s292-85(2) TSB tiers) eligibility, excess-contribution warnings.
+
+**SMSF UNCOMPUTED flag retained:** the contribution-cap dispatch ships, but the **SMSF triumvirate** (sole purpose test s62 / in-house asset 5% cap Pt 8 SIS / LRBA per PCG 2016/5) is still flagged as `UC-SMSF-SOLE-PURPOSE` until 41e.11. The `UC-ENTITY-SMSF` placeholder flag is gone — replaced with the more specific UC-SMSF-SOLE-PURPOSE that documents exactly which compliance dispatch is still UNCOMPUTED.
+
+**POST endpoint extended** with `smsfContributions` body field. 5 new router tests covering: SMSF without data → still UNCOMPUTED, SMSF with data → CapTrackingResult populated, cap exceeded → isExceeded + excessContributionsTax, carry-forward applied with TSB < $500k threshold, SMSF with BOTH smsfContributions AND cgtEvents → both populated.
+
+After 41e.2: SMSF entities with contribution data return real cap-tracking figures. **41e.3 (TBC + Div 293 + Div 296 gated)** starts next.
+
+## **10.15 Phase 41e.3 — TBC + Div 293 + Div 296 (PR #652 — shipped 2026-05-05)**
+
+New `lib/tax-engine/super/highIncomeSuperTax.ts` exporting `calculateHighIncomeSuperTax(input, config)` — computes Division 293 (high-income concessional surcharge), Division 296 (high-balance super tax, **gated** until Royal Assent verified via config flag), and Transfer Balance Cap headroom (s294-35).
+
+**TaxYearConfig extended** with `transferBalanceCap` ($1.9M FY24-25), `div296CommencementVerified` (false until Royal Assent), `div296TsbThreshold` ($3M proposed), `div296Rate` (15%). All three FY configs (FY23-24, FY24-25, FY25-26) populated.
+
+**`EntityTaxFacts.highIncomeSuper`** optional input (companion to `smsfContributions`): `div293Income`, `concessionalContributions`, `totalSuperBalance`, optional `tsbEarnings`, optional `transferBalanceUsed`.
+
+**SMSF dispatch result shape extended** — `result` is now `{ capResult, highIncomeSuperTax }` instead of bare `capResult`. Pre-existing tests updated to access `.capResult.concessional` etc.
+
+**UNCOMPUTED flags raised:**
+- **UC-DIV-296-PENDING** — when TSB exceeds the proposed threshold but the Bill is not yet enacted. The flag flips off automatically once `div296CommencementVerified` is set to `true` in the FY config — no code change needed.
+- **UC-TBC-EXCESS** — when transfer balance exceeds the cap. Excess transfer tax (s294-230) computation deferred to a future sub-PR.
+
+**9 new tests** for `calculateHighIncomeSuperTax`: Div 293 below/above threshold (with `min(excess, contributions)` cap per s293-15), Div 296 pending vs verified, TSB ≤ threshold no flag, TBC reporting + excess flag, citation completeness. **1 router-integration test** asserting SMSF + highIncomeSuper produces `result.highIncomeSuperTax.div293.applies` + TBC headroom.
+
+## **10.16 Phase 41e.4 — Div 6E character streaming (PR #653 — shipped 2026-05-05)**
+
+**Flips off `UC-DIV-6E-STREAMING`** when a valid streaming resolution is provided. Trust beneficiaries now have a `streaming` allocation field carrying absolute dollars of franked dividends + capital gains; trust input now has `characterPools` (the franked + CGT pools in net income) + `streamingResolutionAt` (ISO date the trustee resolution was passed).
+
+**Validation:** `streamingResolutionAt` must fall within the FY (parsed from `financialYear` field — e.g. "2024-25" → between 1 July 2024 and 30 June 2025) per s207-58 + s115-228. Post-30-June resolution → falls back to pro-rata + `UC-DIV-6E-STREAMING-INVALID-RESOLUTION` flag.
+
+**Citations added when streaming applies:** Div 6E + s207-58 + s115-228.
+
+**`BeneficiaryDistribution.character`** is new — `{ frankedDividends, capitalGains, ordinaryIncome }` — sums to `amount`. Without character pools, all amount is ordinary; with pools but no streaming, character flows pro-rata; with streaming + valid resolution, character is allocated explicitly.
+
+**Five FY-end states**:
+1. No characterPools provided → all amount classified as ordinary income; UC-DIV-6E-STREAMING surfaces.
+2. characterPools provided, no streaming requested → character flows pro-rata; UC-DIV-6E-STREAMING surfaces.
+3. Streaming requested + valid resolution + characterPools → explicit allocation; UC-DIV-6E-STREAMING flag **gone**; citations include Div 6E + s207-58 + s115-228.
+4. Streaming requested but invalid/missing resolution → fallback to pro-rata; UC-DIV-6E-STREAMING-INVALID-RESOLUTION surfaces.
+5. Streaming requested but no characterPools → silently ignored (nothing to stream); UC-DIV-6E-STREAMING surfaces.
+
+6 new tests in `trustDistribution.test.ts` covering all five states.
+
+POST endpoint validates the streaming body shape and passes it through.
+
+**41e.5 — s100A zone classifier per TR 2022/4 + PCG 2022/2** is next. After 41e.5 lands, the UC-S100A-RISK flag's wording will go from "review with a tax agent" to "this distribution is a green/blue/yellow/red zone risk per the classifier".
+
+## **10.17 Phase 41e.5 — s100A reimbursement-agreement zone classifier (PR #654 — shipped 2026-05-05)**
+
+New `lib/tax-engine/divisions/s100aZoneClassifier.ts` exporting `classifyS100AZones(input)` — per ITAA 1936 s100A + TR 2022/4 + PCG 2022/2. Replaces the always-on `UC-S100A-RISK` flag from 41e.1 slice C with a real per-beneficiary WHITE/GREEN/BLUE/RED zone classification when input data permits.
+
+**Decision priority (highest → lowest):**
+1. **RED** — UPE + (funds used by another OR funds NOT received)
+2. **RED** — funds used by another (no UPE)
+3. **RED** — minor + funds NOT received
+4. **WHITE** — testamentary trust (PCG 2022/2 ¶13)
+5. **GREEN** — FTE + (CONTROLLER or IMMEDIATE_FAMILY) + funds received + no UPE (PCG 2022/2 ¶17-19)
+6. **BLUE** — default (PCG 2022/2 ¶20-21)
+
+**Conservative by design:** v1 confidently classifies WHITE / GREEN / RED only when input carries strong signals. Everything else falls into BLUE — review-warranted but no commissioner action expected on facts alone.
+
+**`TrustDistributionInput.s100aFacts`** (per beneficiary): `relationshipToController`, `isMinor`, `beneficiaryReceivedFunds`, `unpaidPresentEntitlement`, `fundsUsedByOther`. **`TrustDistributionInput.isTestamentaryTrust`** for the testamentary white-zone path.
+
+**`TrustDistributionResult.s100aClassification`** carries the full classifier result when facts are provided. The conservative blanket `UC-S100A-RISK` flag is REPLACED by `UC-S100A-NUANCED` when any classification falls into BLUE or RED.
+
+**20 new classifier tests + 3 router-integration tests.** Zero regressions on existing 26 trustDistribution tests — the new fields are fully optional/backward-compat.
+
+**41e.6 — Div 7A loan classifier** is next.

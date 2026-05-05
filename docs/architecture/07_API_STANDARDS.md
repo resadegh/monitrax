@@ -582,3 +582,44 @@ reports via webhooks. This means:
 - Don't trust caller-provided "current status"; always look up server-side.
 - Don't try to sync from local back to external (the `cancelAtPeriodEnd` action calls Stripe first, then mirrors the result locally — Stripe stays the source of truth).
 - When the external system has a richer state model than ours, store the verbatim mirror + a derived field for our use (e.g. `SubscriptionStatus` enum mirrors Stripe's status names exactly; `BillingPlanTier` is our derived column resolved from price-id + metadata).
+=======
+# **15. Phase 41e — Entity-aware tax endpoints**
+
+Per `docs/blueprint/PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §6.8. New endpoints landing in 41e.0 slice D + 41e.−1 cleanup, all using the `tax_data.*` permission family (Phase 41e.0 slice A).
+
+| Endpoint | Method | Sub-PR | Permission | Purpose |
+|---|---|---|---|---|
+| `/api/tax/config` | GET | 41e.0 slice D | `tax_data.read` | Returns the canonical FY config (`TaxYearConfig`) for `?fy=YYYY-YY` (default current FY). Replaces hard-coded thresholds. |
+| `/api/tax/entity/[entityId]` | GET | 41e.0 slice D | `tax_data.read` | Returns per-entity tax position via the `entityTaxRouter`. PERSONAL_NAME / SOLE_TRADER → real Phase 20 result + boundary footnote; COMPANY / TRUST / SMSF / PARTNERSHIP → null result + UNCOMPUTED flag (per audit §10.3). Caller must own the entity. |
+| `/api/tax/entity/[entityId]` | POST | 41e.1 - 41e.3 | `tax_data.read` | Same response shape as GET. Body fields: `trustDistribution` (Div 6 allocation), `cgtEvents` + `carryForwardCapitalLosses` (Div 115 + s100-50 netting), `smsfContributions` (cap tracking), `highIncomeSuper` (Div 293 surcharge + Div 296 gated + TBC headroom). Caller must own the entity. |
+| `/api/tax/master-position` | GET | 41e.17 (queued) | `tax_data.read` | Household-wide tax position roll-up. Replaces the `buildTaxSummary()` adapter from cleanup PR C. |
+| `/api/tax/trust-distribution` | POST | 41e.4 (queued) | `tax_data.write` | Computes Div 6/6E streaming + per-beneficiary share + character. |
+| `/api/tax/div7a-check` | POST | 41e.6 (queued) | `tax_data.write` | Compliance check on a COMPANY → shareholder loan. |
+| `/api/tax/cgt-disposal` | POST | 41e.1 (queued) | `tax_data.write` | Entity-aware CGT (50% / 33⅓% / 0% / nil discount). |
+| `/api/tax/state-tax/[entityId]?state=NSW` | GET | 41e.12-14 (queued) | `tax_data.read` | Land tax + stamp duty + foreign-person surcharge. |
+
+### Response shape — boundary footnote
+
+Per architecture doc §1(5) + §5, every endpoint returning a tax-shaped figure surfaces a `boundary` field alongside the data, computed by `lib/tax-engine/boundaries/index.ts:renderBoundaryFootnote()`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "entityPosition": { ... },
+    "boundary": {
+      "computedPer": "Computed per ITAA 1997 s4-10, ITAA 1997 Div 1-6.",
+      "uncomputedNotes": [
+        "FBT not computed for personal-use Pty Ltd assets."
+      ],
+      "boundary": "These figures are general information only — not personal financial, tax, or credit advice. Confirm with a registered tax agent (TPB), financial adviser (AFSL), or credit assistant (NCCP) before acting.",
+      "fyContext": "Figures for FY24-25."
+    }
+  }
+}
+```
+
+UI consumers render this via `<BoundaryFootnote citations={...} uncomputed={...} fyLabel="FY24-25" />` (component at `components/tax/BoundaryFootnote.tsx`). One source of truth for legal copy across every tax surface.
+
+---
+

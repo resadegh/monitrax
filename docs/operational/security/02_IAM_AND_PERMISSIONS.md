@@ -70,11 +70,18 @@ Examples:
   cdr_data.read
   cdr_data.write
   cdr_data.delete
+  entity.read         # Phase 41a — LegalEntity (Entity Layer) management
+  entity.write
+  entity.delete
+  tax_data.read       # Phase 41e.0 — entity-aware tax dispatch endpoints
+  tax_data.write      # Mirrors report.read audience for read; CONTRIBUTOR+ for write
   admin.users
   admin.audit_log
   org.settings
   org.billing
 ```
+
+**Phase 41e tax-data permissions** — `tax_data.read` gates per-entity tax position queries (`/api/tax/entity/[id]`, `/api/tax/master-position`, `/api/tax/config` — endpoints landing in 41e.0 slice D). `tax_data.write` gates computational mutations like trust-distribution composition and CGT-disposal calc (when 41e.4 / 41e.1 ship them). These permissions gate **route access**; CDR sanitisation rules of CLAUDE.md §13.3 still govern CDR-content visibility. See `lib/auth/permissions.ts` for the canonical role mapping.
 
 ### Permission Check Flow
 

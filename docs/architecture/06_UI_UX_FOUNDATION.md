@@ -359,6 +359,55 @@ Consistency is the north star.
 
 ---
 
+# **13. AFSL / TPB / NCCP Boundary Footnote Pattern (Phase 41e.0)**
+
+Per `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §1(5) + §5 — Monitrax surfaces tax + financial calculations as **general information**, never personal advice. **Every UI surface that renders a tax-shaped number MUST end with the boundary footnote.**
+
+### **13.1 Canonical component**
+
+`components/tax/BoundaryFootnote.tsx`
+
+```tsx
+<BoundaryFootnote
+  citations={[
+    { kind: 'ITAA_1997', reference: 's4-10', lastReviewed: '2026-05-05' },
+    { kind: 'ITAA_1997', reference: 'Div 1-6', lastReviewed: '2026-05-05' },
+  ]}
+  uncomputed={[
+    { id: 'UC-FBT', rationale: 'FBT not computed ...' },
+  ]}
+  fyLabel="FY24-25"
+  calculatedAt={taxPosition.metadata.calculatedAt}
+/>
+```
+
+### **13.2 What it renders (in order)**
+
+1. **FY context** — *"Figures for FY24-25."* (optional)
+2. **Computed-per audit trail** — *"Computed per ITAA 1997 s4-10, ITAA 1997 Div 1-6."*
+3. **UNCOMPUTED rows** — one per `UncomputedFlag`, with `AlertCircle` icon + amber colour. Plain-English rationale only — never the raw `UC-*` id.
+4. **Boundary statement (bold)** — the canonical *"These figures are general information only — not personal financial, tax, or credit advice. Confirm with a registered tax agent (TPB), financial adviser (AFSL), or credit assistant (NCCP) before acting."*
+5. **Last-calculated timestamp** (optional) — small + low-opacity.
+
+### **13.3 The legal copy lives in ONE place**
+
+`lib/tax-engine/boundaries/index.ts:BOUNDARY_STATEMENT`. Never hand-write the boundary phrase in JSX. If legal copy ever changes, every surface updates in lock-step from the constant.
+
+### **13.4 When to use the compact variant**
+
+Pass `compact` prop when rendering inside a tile / card with limited vertical space. Compact uses `text-[0.7rem]` and `space-y-1` instead of the standard `text-xs` + `space-y-2`. UNCOMPUTED rows still render — never collapse the disclosure to save space.
+
+### **13.5 Surfaces that MUST render the footnote**
+
+- ✅ `/dashboard/tax` — full footer at page bottom (replaces the old free-text Disclaimer block as of 41e.0 slice D)
+- 🟡 `/dashboard/cfo` — every AI-generated tax recommendation card (queued — wire up when slice 41e.1 lands per-entity figures)
+- 🟡 `/dashboard/entities` Money Flow tab — under the Sankey canvas (queued — replaces the v1 "Annual reference period. Tax allocated proportionally..." caveat once 41e.4 ships Div 6E streaming)
+- 🟡 `/portal/clients/[id]/view` — adviser drill-in tax surface (queued — adviser context needs the same boundary because read-only ≠ scope-of-advice)
+
+The matrix expands as 41e.1+ surfaces land. Reviewers reject any new tax-shaped surface that doesn't include `<BoundaryFootnote />`.
+
+---
+
 
 
 ---
