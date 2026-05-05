@@ -18,6 +18,7 @@ import {
 import { formatCurrency } from '@/lib/utils/formatters';
 import { PropertyGlyph } from '@/components/wealth/wealthGlyphs';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { HelpTooltip } from '@/components/help/HelpTooltip';
 
 /**
  * PropertyTile — premium glassmorphic property card.
@@ -319,14 +320,20 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
             {/* Equity + LVR row */}
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 px-3.5 py-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Equity</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Equity</p>
+                  <HelpTooltip term="equity" iconSize={11} />
+                </div>
                 <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
                   {formatCurrency(metrics.equity)}
                 </p>
               </div>
               <div className={`rounded-xl border px-3.5 py-3 ${lvr.bg} ring-1 ${lvr.ring} border-transparent`}>
                 <div className="flex items-center justify-between">
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${lvr.text}`}>LVR</p>
+                  <div className="flex items-center gap-1">
+                    <p className={`text-[10px] font-semibold uppercase tracking-wider ${lvr.text}`}>LVR</p>
+                    <HelpTooltip term="lvr" iconSize={11} />
+                  </div>
                   <span className={`text-[9px] font-bold uppercase tracking-wider ${lvr.text} opacity-70`}>{lvr.label}</span>
                 </div>
                 <p className={`mt-0.5 text-lg font-semibold tabular-nums ${lvr.text}`}>

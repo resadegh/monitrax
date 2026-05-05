@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { HelpTooltip } from '@/components/help/HelpTooltip';
 import { PageHeader } from '@/components/PageHeader';
 import { StatCard } from '@/components/StatCard';
 import { Button } from '@/components/ui/button';
@@ -301,7 +302,10 @@ export default function TaxPage() {
                         <span>{formatCurrency(taxPosition.tax.taxOnIncome)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Medicare Levy</span>
+                        <span className="text-muted-foreground inline-flex items-center gap-1">
+                          Medicare Levy
+                          <HelpTooltip term="medicare-levy" />
+                        </span>
                         <span>{formatCurrency(taxPosition.tax.medicareLevy)}</span>
                       </div>
                       {taxPosition.tax.medicareSurcharge > 0 && (
@@ -723,7 +727,10 @@ export default function TaxPage() {
                   <CardContent className="space-y-4">
                     <div>
                       <div className="flex justify-between text-sm mb-1">
-                        <span>Concessional (Pre-tax)</span>
+                        <span className="inline-flex items-center gap-1">
+                          Concessional (Pre-tax)
+                          <HelpTooltip term="concessional-cap" />
+                        </span>
                         <span className="font-medium">{formatCurrency(taxPosition.super.concessional)}</span>
                       </div>
                       <Progress value={(taxPosition.super.concessional / taxConfig.concessionalCap) * 100} className="h-2" />
@@ -733,7 +740,10 @@ export default function TaxPage() {
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-1">
-                        <span>Non-Concessional (After-tax)</span>
+                        <span className="inline-flex items-center gap-1">
+                          Non-Concessional (After-tax)
+                          <HelpTooltip term="non-concessional-cap" />
+                        </span>
                         <span className="font-medium">{formatCurrency(taxPosition.super.nonConcessional)}</span>
                       </div>
                       <Progress value={(taxPosition.super.nonConcessional / taxConfig.nonConcessionalCap) * 100} className="h-2" />

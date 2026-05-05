@@ -21,12 +21,34 @@ export interface ArticleFrontmatter {
   audience: 'consumer' | 'org-admin' | 'org-professional' | 'org-client' | 'monitrax-internal' | 'compliance';
   category?: string;
   slug: string;
-  routeContext?: string;
+  /**
+   * Phase 33h: route → article binding for the in-app `?` drawer.
+   *
+   * Single string  — exact path or single glob (e.g. `/dashboard/properties` or `/dashboard/properties/*`)
+   * Array of strings — multiple paths/globs that all map to this article (e.g.
+   *   `[/dashboard/properties, /dashboard/properties/*, /dashboard/balances]`)
+   *
+   * Glob support is suffix-only (`/foo/*` matches `/foo` and `/foo/bar/baz`).
+   * Resolver in `lib/help/routeContext.ts` picks the longest matching prefix.
+   *
+   * Optional — articles without `routeContext` simply don't appear as the
+   * route-mapped primary; they remain reachable via search and the audience
+   * landing list.
+   */
+  routeContext?: string | string[];
   lastReviewed: string;
   complianceClass?: 'general' | 'cdr' | 'afsl' | 'tpb' | 'privacy';
   summary?: string;
   order?: number;
   tags?: string[];
+  /**
+   * Phase 33i: editorial workflow flag. When set to `DRAFT_AI_SCAFFOLD`, the
+   * article is excluded from the public Help Center index AND from drawer
+   * route resolution — the human edit pass clears the flag (deletes the
+   * field) before the article goes live. Articles in this state stay
+   * checked into the repo so the scaffold isn't lost between sessions.
+   */
+  status?: 'DRAFT_AI_SCAFFOLD' | 'PUBLISHED';
 }
 
 const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;

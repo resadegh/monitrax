@@ -1,80 +1,117 @@
 /**
  * Help Center — route → primary article registry.
  *
- * Maps a pathname (or pathname pattern) to the help article that should
- * surface FIRST when the in-app `?` drawer opens on that route. The drawer
- * still falls back to the user's audience landing list if no entry matches,
- * so this registry is *additive* — it sharpens the answer for routes we
- * have curated content for, and degrades gracefully everywhere else.
+ * Maps a pathname to the help article that should surface FIRST when the
+ * in-app `?` drawer opens on that route. Falls back to the user's audience
+ * landing list when no rule matches.
  *
- * Matching is longest-prefix-wins so that the more specific entry (e.g.
- * `/dashboard/cfo`) trumps the broader one (e.g. `/dashboard`).
+ * Phase 33h (2026-05-09): the registry is now **derived from article
+ * frontmatter** — each article in `docs/help/<audience>/<slug>.md` declares
+ * its own `routeContext` (single string, single glob, or array of either).
+ * Adding a new mapping = author the article + set the field. No code edit.
  *
- * Adding a new mapping:
- *   1. Author the article under `docs/help/<audience>/<slug>.md`
- *   2. Add a row below pointing the relevant route at it
- *   3. Done — the drawer picks it up at next request (no client rebuild)
+ * Glob support is suffix-only:
+ *   - `/foo`     matches only `/foo`
+ *   - `/foo/*`   matches `/foo` AND `/foo/bar` AND `/foo/bar/baz` etc.
  *
- * Phase 33b — see `docs/changelog/CHANGELOG_2026_05_04.md`.
+ * Longest-matching-prefix wins. Articles flagged
+ * `status: DRAFT_AI_SCAFFOLD` are excluded from resolution.
+ *
+ * The previous hardcoded `RULES` array (5 entries from Phase 33b) is
+ * removed — its content is now expressed inside the article frontmatter
+ * of each target article.
  */
-import type { HelpAudience } from './content';
+import 'server-only';
+import { listAllArticles, type HelpAudience } from './content';
 
 export interface HelpRouteTarget {
   audience: HelpAudience;
   slug: string;
 }
 
-export interface HelpRouteRule {
-  /**
-   * Pathname prefix to match (longest match wins). Trailing slash optional.
-   * Use `/` to match the root only, `/dashboard` to match `/dashboard` and
-   * its descendants.
-   */
-  prefix: string;
+/**
+ * Internal: a single route → target binding derived from one article's
+ * `routeContext` field. One article with `routeContext: [a, b]` produces
+ * two of these.
+ */
+interface DerivedRule {
+  pattern: string; // exact path or `/foo/*` suffix-glob
+  prefix: string;  // for matching: `/foo/*` becomes `/foo`
+  isGlob: boolean;
   target: HelpRouteTarget;
 }
 
+const normalisePath = (p: string): string =>
+  p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p;
+
 /**
- * Curated mappings. Order doesn't matter — resolver picks longest match.
- * Targets must be authored articles in `docs/help/<audience>/<slug>.md`.
+ * Build the resolver rule set from every published article's frontmatter.
+ * Called fresh on each `resolveRouteTarget` invocation — `listAllArticles`
+ * walks the file tree but at our scale (10s of articles) this is fine and
+ * keeps the resolver hot-reloadable in dev.
  */
-const RULES: readonly HelpRouteRule[] = [
-  // Consumer surfaces
-  { prefix: '/dashboard/cfo', target: { audience: 'consumer', slug: 'what-is-trail' } },
-  { prefix: '/dashboard', target: { audience: 'consumer', slug: 'what-is-trail' } },
-  { prefix: '/cashflow', target: { audience: 'consumer', slug: 'what-is-trail' } },
-  { prefix: '/health', target: { audience: 'consumer', slug: 'what-is-trail' } },
-
-  // Portal / org-pro surfaces
-  { prefix: '/portal/clients', target: { audience: 'org-admin', slug: 'inviting-clients' } },
-  { prefix: '/portal/team', target: { audience: 'org-admin', slug: 'inviting-clients' } },
-  { prefix: '/portal/dashboard', target: { audience: 'org-admin', slug: 'inviting-clients' } },
-  { prefix: '/portal', target: { audience: 'org-admin', slug: 'inviting-clients' } },
-
-  // Public / consent
-  { prefix: '/portal/consent', target: { audience: 'compliance', slug: 'cdr-consent-walkthrough' } },
-] as const;
+function buildRules(): DerivedRule[] {
+  const articles = listAllArticles();
+  const out: DerivedRule[] = [];
+  for (const a of articles) {
+    if (a.frontmatter.status === 'DRAFT_AI_SCAFFOLD') continue;
+    const rc = a.frontmatter.routeContext;
+    if (!rc) continue;
+    const patterns = Array.isArray(rc) ? rc : [rc];
+    for (const raw of patterns) {
+      const pattern = String(raw).trim();
+      if (!pattern) continue;
+      const isGlob = pattern.endsWith('/*');
+      const prefix = isGlob ? pattern.slice(0, -2) : pattern;
+      out.push({
+        pattern,
+        prefix: normalisePath(prefix),
+        isGlob,
+        target: {
+          audience: a.frontmatter.audience,
+          slug: a.frontmatter.slug,
+        },
+      });
+    }
+  }
+  return out;
+}
 
 /**
  * Resolve the primary help article for a pathname. Returns null when no
- * mapping is registered — caller should fall back to the audience landing
- * list.
+ * rule matches — caller should fall back to the audience landing list.
+ *
+ * Match precedence: longest matching prefix wins. Within equal-length
+ * prefixes, exact (non-glob) wins over glob.
  */
-export function resolveRouteTarget(pathname: string | null | undefined): HelpRouteTarget | null {
+export function resolveRouteTarget(
+  pathname: string | null | undefined,
+): HelpRouteTarget | null {
   if (!pathname) return null;
-  // Normalise trailing slash (except root).
-  const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+  const path = normalisePath(pathname);
 
-  let bestMatch: HelpRouteRule | null = null;
-  for (const rule of RULES) {
-    const prefix = rule.prefix;
-    if (path === prefix || path.startsWith(prefix + '/')) {
-      if (!bestMatch || prefix.length > bestMatch.prefix.length) {
-        bestMatch = rule;
-      }
+  let best: DerivedRule | null = null;
+  for (const rule of buildRules()) {
+    const exactMatch = !rule.isGlob && path === rule.prefix;
+    const globMatch =
+      rule.isGlob && (path === rule.prefix || path.startsWith(rule.prefix + '/'));
+    if (!exactMatch && !globMatch) continue;
+    if (!best) {
+      best = rule;
+      continue;
+    }
+    // Longest prefix wins; tie → exact beats glob.
+    if (rule.prefix.length > best.prefix.length) {
+      best = rule;
+    } else if (
+      rule.prefix.length === best.prefix.length &&
+      !rule.isGlob &&
+      best.isGlob
+    ) {
+      best = rule;
     }
   }
-  return bestMatch ? bestMatch.target : null;
+  return best ? best.target : null;
 }
 
 /**
