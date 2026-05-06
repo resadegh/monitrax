@@ -2396,3 +2396,58 @@ All sub-PRs shipped:
 **Calc audit safety net** (Phase 41i) catches calc drift silently before users see wrong numbers (HR-3).
 
 **Next phase:** Phase 41 is COMPLETE for its core scope. Future iterations can add more SCENARIO_RUN tools (`runCgtScenario`, `runLandTaxScenario`, `runDiv7aRefinanceScenario`) and graduate the advisor surface from `/dashboard/cfo/ask` to natural-IA placement (e.g. under "My Guide" per TRAIL framework). 41i.2-5 follow-ups extend the calc-audit system (more engines / L3 on-demand audit / alerting / L2 anomaly detection).
+
+## **10.37 Phase 41i.2 — Calc audit engine adapter expansion (PR — shipped 2026-05-07)**
+
+Extends the calc audit registry from **14 → 36 engines** (45 fixtures, all green). Closes the "more engines" item in the Phase 41i sequence — every Phase 41e module the AI advisor relies on now has assertion-based audit coverage.
+
+### What ships
+
+```
+lib/calc-audit/engines/
+├── tax.ts              # (existing) NSW + cross-state aggregator + loss rules + GST + capTracker
+├── tax-divisions.ts    # NEW — 8 division/classifier adapters
+├── tax-state.ts        # NEW — 14 state adapters (7 land tax + 7 stamp duty)
+├── core.ts             # (existing) net worth, income/expense/loan aggregators
+└── property.ts         # (existing) LVR / equity / rental yield
+```
+
+### New TAX adapters (8 in `tax-divisions.ts`)
+
+| Engine | Wraps | Authority |
+|---|---|---|
+| `tax.cgtNetting` | `applyCapitalLossNetting` | Div 102-A / s100-50 / s115-100 |
+| `tax.div7aClassifier` | `classifyDiv7ALoans` | ITAA 1936 s109B-s109ZE |
+| `tax.psiClassifier` | `classifyPsi` | ITAA 1997 Part 2-42 + s86-15 |
+| `tax.fteIeeClassifier` | `classifyFteIeeDistributions` | Sch 2F ITAA 1936 |
+| `tax.div152` | `applyDiv152` | ITAA 1997 Div 152 |
+| `tax.smsfTriumvirate` | `classifySmsfTriumvirate` (full) | SIS Act s62 + Pt 8 + s67A; s295-550/-160 |
+| `tax.highIncomeSuperTax` | `calculateHighIncomeSuperTax` | ITAA 1997 Div 293 |
+| `tax.masterTaxPosition` | `buildMasterTaxPosition` (Phase 41e.17 orchestrator) | Aggregates entity router + Phase 41e modules |
+
+### New state adapters (14 in `tax-state.ts`)
+
+7 land tax + 7 stamp duty adapters covering VIC / QLD / SA / WA / TAS / ACT / NT — bringing both regimes to **all 8 states/territories** (NSW shipped in 41i.0+1).
+
+### Registry now 36 engines / 45 fixtures
+
+| Category | Count |
+|---|---|
+| TAX | 29 (was 7) |
+| CORE | 4 |
+| PROPERTY | 3 |
+
+All 45 fixtures green. tsc clean.
+
+### Tests added (2 new specifically for new engines)
+
+| Test | Locks in |
+|---|---|
+| TAX includes Phase 41i.2 division/classifier adapters | All 8 new adapters from `tax-divisions.ts` |
+| TAX covers all 8 states for land tax + stamp duty | `tax.landTax.{state}` + `tax.stampDuty.{state}` for every state |
+
+The existing "every fixture passes against current implementation" test now enforces 45 PASSes (was 19) — any future engine refactor that changes the canonical output forces a deliberate fixture update.
+
+**597 total tests** (595 → 597, +2). tsc clean.
+
+**41i.3 — L3 on-demand "Audit this user"** is next — adds the `CalcAuditFinding` Prisma model + admin portal action that re-runs every registered engine for a specific user with their stored data, surfaces drift findings.

@@ -16,6 +16,8 @@
 // Importing each adapter module triggers the registration side
 // effect via the top-level `calcEngineRegistry.register(...)` calls.
 import './engines/tax';
+import './engines/tax-divisions';
+import './engines/tax-state';
 import './engines/core';
 import './engines/property';
 
