@@ -25,7 +25,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOrganization } from '@/lib/portal';
-import { PracticeGlassCard, PracticeHeader } from '@/components/portal/practice';
+import { PracticeGlassCard } from '@/components/portal/practice';
+import { PortalPageHero } from '@/components/shell';
 import { getPracticeProfessionConfig } from '@/lib/portal/practice';
 import { MarketplaceListingEditor } from '@/components/portal/marketplace/MarketplaceListingEditor';
 
@@ -116,24 +117,14 @@ export default function PortalMarketplaceListingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 space-y-8">
-        <PracticeHeader
-          organisationName={currentOrg?.name?.split(' ')[0] ?? 'there'}
-          profession={profession as never}
+        <PortalPageHero
+          atmosphere="emerald"
+          greetingName={currentOrg?.name?.split(' ')[0] ?? 'there'}
           practiceLabel={practiceLabel}
+          title="Marketplace listing"
+          subtitle={`Your public profile on the Monitrax marketplace — where individuals looking for a ${practiceLabel.toLowerCase()} can find you. Listings are reviewed by Monitrax before going live.`}
+          actions={statusBadge}
         />
-
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-[28px] font-semibold tracking-tight text-slate-900">
-              Marketplace listing
-            </h1>
-            <p className="mt-1 text-[14px] text-slate-600 max-w-2xl">
-              Your public profile on the Monitrax marketplace — where individuals looking for a {practiceLabel.toLowerCase()} can find you.
-              Listings are reviewed by Monitrax before going live.
-            </p>
-          </div>
-          {statusBadge}
-        </div>
 
         {listing?.status === 'REJECTED' && listing.rejectionReason && (
           <PracticeGlassCard padding="md" accentTone="critical">

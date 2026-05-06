@@ -10,10 +10,11 @@
 
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { OrganizationProvider, useOrganization } from '@/lib/portal';
+import { isPortalFeatureEnabled } from '@/lib/portal/featureFlags';
 import { PortalSidebar, NavIcons } from '@/components/portal/layout/PortalSidebar';
 import { HelpDrawerButton } from '@/components/help/HelpDrawerButton';
 
@@ -21,51 +22,32 @@ interface PortalLayoutClientProps {
   children: ReactNode;
 }
 
-// Navigation configuration - easily customizable
-const mainNavigation = [
-  {
-    label: 'Dashboard',
-    href: '/portal/dashboard',
-    icon: <NavIcons.Dashboard />,
-  },
-  {
-    label: 'Clients',
-    href: '/portal/clients',
-    icon: <NavIcons.Clients />,
-  },
-  {
-    label: 'Team',
-    href: '/portal/team',
-    icon: <NavIcons.Team />,
-  },
-  {
-    label: 'Tasks',
-    href: '/portal/tasks',
-    icon: <NavIcons.Tasks />,
-  },
-  {
-    label: 'Integrations',
-    href: '/portal/integrations',
-    icon: <NavIcons.Integrations />,
-  },
+// Navigation configuration. Items behind a `featureFlag` are hidden
+// unless the corresponding `PORTAL_*` env var is set to 'true' AND the
+// underlying page is implemented. Defaults are all `false` (see
+// `lib/portal/featureFlags.ts`) which keeps Tasks / API Keys / Reports /
+// Settings out of the sidebar until those phases ship — preventing
+// 404 dead-ends in the live demo (CLAUDE.md §0 designer + behaviour
+// psychologist lenses: dead nav items cost trust during pitch).
+type NavConfigItem = {
+  label: string;
+  href: string;
+  icon: ReactNode;
+  featureFlag?: 'advisorTasks' | 'apiKeyManagement' | 'exportReporting';
+};
+
+const mainNavigation: NavConfigItem[] = [
+  { label: 'Dashboard', href: '/portal/dashboard', icon: <NavIcons.Dashboard /> },
+  { label: 'Clients', href: '/portal/clients', icon: <NavIcons.Clients /> },
+  { label: 'Team', href: '/portal/team', icon: <NavIcons.Team /> },
+  { label: 'Tasks', href: '/portal/tasks', icon: <NavIcons.Tasks />, featureFlag: 'advisorTasks' },
+  { label: 'Integrations', href: '/portal/integrations', icon: <NavIcons.Integrations /> },
 ];
 
-const secondaryNavigation = [
-  {
-    label: 'API Keys',
-    href: '/portal/api-keys',
-    icon: <NavIcons.ApiKeys />,
-  },
-  {
-    label: 'Reports',
-    href: '/portal/reports',
-    icon: <NavIcons.Reports />,
-  },
-  {
-    label: 'Feedback',
-    href: '/portal/feedback',
-    icon: <NavIcons.Feedback />,
-  },
+const secondaryNavigation: NavConfigItem[] = [
+  { label: 'API Keys', href: '/portal/api-keys', icon: <NavIcons.ApiKeys />, featureFlag: 'apiKeyManagement' },
+  { label: 'Reports', href: '/portal/reports', icon: <NavIcons.Reports />, featureFlag: 'exportReporting' },
+  { label: 'Feedback', href: '/portal/feedback', icon: <NavIcons.Feedback /> },
 ];
 
 // Pages that should NOT require authentication
@@ -83,6 +65,18 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
   const { user, isLoading } = useAuth();
   const { currentOrg, isLoading: orgLoading } = useOrganization();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Filter nav items by their feature flag at render time so unbuilt
+  // pages (Tasks / API Keys / Reports) disappear from the sidebar
+  // entirely until their flag is on. Non-flagged items always show.
+  const visibleMainNav = useMemo(
+    () => mainNavigation.filter((i) => !i.featureFlag || isPortalFeatureEnabled(i.featureFlag)),
+    [],
+  );
+  const visibleSecondaryNav = useMemo(
+    () => secondaryNavigation.filter((i) => !i.featureFlag || isPortalFeatureEnabled(i.featureFlag)),
+    [],
+  );
 
   // Check if current page is public (no auth required)
   const isPublicPage = PUBLIC_PAGES.some(
@@ -182,8 +176,8 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
       {/* Sidebar Navigation */}
       <PortalSidebar
         organizationName={currentOrg?.name || 'Select Organization'}
-        navigation={mainNavigation}
-        secondaryNavigation={secondaryNavigation}
+        navigation={visibleMainNav}
+        secondaryNavigation={visibleSecondaryNav}
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
       />

@@ -558,6 +558,15 @@ Canonical reusable primitives at `components/shell/`:
   tile with tone families (`sky` | `emerald` | `amber` | `rose` |
   `violet` | `slate`), filled-silhouette glyph watermark slot, springy
   hover lift, staggered entry.
+- `PortalPageHero` — thin wrapper around `GlassHero` for non-dashboard
+  portal page headers (clients, conversations, requests, marketplace,
+  billing, team, integrations). Composes the eyebrow + greeting +
+  practice-label badge + page title + subtitle + optional actions
+  pattern. Use this for any new portal surface that needs a page
+  header. Each page picks its `atmosphere` to encode emotional fit:
+  sky for engaged data, emerald for healthy/management, amber for
+  billing/payments, rose for inbox/attention, violet for
+  conversations/integrations.
 - `motion.ts` — single source of truth for `appleEase`
   `[0.25, 0.46, 0.45, 0.94]`, `springSnap` (stiffness 320 / damping 28
   / mass 0.8), `tileEnter(index)` (0.55s with 40ms stagger),

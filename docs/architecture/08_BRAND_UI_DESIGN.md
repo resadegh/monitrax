@@ -368,3 +368,26 @@ than by aesthetic richness. Admin Portal type-aligns (canonical type
 scale, `tabular-nums`, eyebrow `tracking-[0.18em]`, emerald focus
 rings, `appleEase` for any new transition) but does NOT consume
 `GlassHero` or `MetricTile`.
+
+## Sidebar nav gating policy (Phase 32-design-A2, 2026-05-06)
+
+Every sidebar nav item that links to a not-yet-implemented page MUST
+be gated behind its corresponding feature flag in
+`lib/portal/featureFlags.ts`. Defaults are `false` so the link
+disappears in production until the page lands.
+
+Rationale (designer + behaviour-psychology lens): dead navigation
+links cost trust, especially during pitch sessions. A would-be
+customer clicking "Tasks" and seeing 404 reads as "this product
+isn't real." Hiding the items entirely until they ship is the
+premium-product move (Apple, Linear, Stripe). When a phase ships
+the corresponding page, set the env var on Vercel and the link
+appears immediately — no code change needed.
+
+Currently gated:
+- `Tasks` → `advisorTasks` (Phase 32.6, not built)
+- `API Keys` → `apiKeyManagement` (Phase 32.13, not built)
+- `Reports` → `exportReporting` (Phase 32.7, not built)
+- `Settings` → `organizationManagement` (component exists at
+  `components/portal/settings/OrganizationSettings.tsx` but no
+  page wrapper at `/portal/settings`)

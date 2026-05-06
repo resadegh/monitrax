@@ -13,6 +13,8 @@ export type { GlassHeroProps, GlassHeroAtmosphere } from './GlassHero';
 export { MetricTile, MetricTileHeadline } from './MetricTile';
 export type { MetricTileProps, MetricTileTone } from './MetricTile';
 
+export { PortalPageHero } from './PortalPageHero';
+
 export {
   appleEase,
   springSnap,

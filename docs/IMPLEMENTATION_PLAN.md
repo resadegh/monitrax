@@ -30,23 +30,36 @@
 
 > Sorted by priority. Top of list = work in flight right now.
 
-### 0a. Phase 32-design-A1 — Org Portal design alignment (shared shell layer)
+### 0a. Phase 32-design-A2 — Org Portal full propagation + nav gating + admin polish
 
-- **Status:** 🟡 In flight — PR (this one) ships shared `components/shell/` layer (`GlassHero`, `MetricTile`, `motion.ts`, `practiceGlyphs.tsx`) + Org Portal sidebar/topbar polish + new `/portal/dashboard` hero + 3 click-through metric tiles + Admin Portal eyebrow tracking polish.
+- **Status:** 🟡 In flight — PR (this one) follows A1 and propagates the shell layer to every Org Portal page that had a `PracticeHeader` or no hero, gates the broken sidebar nav links behind their feature flags, and sweeps Admin Portal blue focus rings → emerald.
 - **Started:** 2026-05-06
 - **Owner:** Reza + Claude
 - **Last touched:** 2026-05-06
-- **Phases:**
+- **Phases (A1 — already shipped):**
   - [x] Extract shared shell layer at `components/shell/` (motion + GlassHero + MetricTile + practiceGlyphs)
   - [x] Org Portal sidebar palette → consumer-app gradient/sky-indigo active state
   - [x] Org Portal mobile top bar → glass + brand pill
   - [x] `/portal/dashboard` rebuilt against `GlassHero` + 3 `MetricTile`
   - [x] Admin Portal eyebrow tracking `0.08em → 0.18em`
-  - [ ] Propagate shell layer to other Org Portal pages (clients, marketplace, requests, conversations, billing) — ONE PR PER PAGE, not all-at-once
-  - [ ] Migrate consumer wealth tiles/heroes to consume `components/shell/` (currently they have their own copies)
-  - [ ] Sweep Admin Portal blue focus rings → emerald (low-priority polish, deferred)
-- **Risk:** propagating to every portal page in one go would explode the diff. Doing dashboard first as proof, then page-by-page based on real screenshot review.
-- **Why this matters:** Org Portal is the sales surface — when an adviser sits opposite a client running through Monitrax, the portal IS the pitch. Five lenses (financial-adviser, psychology, UX/UI, visual, growth) converge on visual-quality investment paying back in adviser virality + sales conversion. Admin Portal stays dense by design — wrong tool for glass-morphism.
+- **Phases (A2 — this PR):**
+  - [x] New `PortalPageHero` wrapper at `components/shell/` for non-dashboard portal surfaces
+  - [x] `/portal/clients` — added hero (sky atmosphere, role badge in actions slot)
+  - [x] `/portal/team` — added hero (emerald, role badge)
+  - [x] `/portal/integrations` — added hero (violet)
+  - [x] `/portal/conversations` — replaced PracticeHeader (violet)
+  - [x] `/portal/requests` — replaced PracticeHeader (rose)
+  - [x] `/portal/marketplace/listing` — replaced PracticeHeader (emerald, status badge in actions)
+  - [x] `/portal/billing` — replaced PracticeHeader (amber)
+  - [x] Sidebar nav gating — Tasks / API Keys / Reports gated on their existing feature flags; Settings link gated on `organizationManagement`. Defaults are `false` so all four links disappear in prod until those phases ship — kills 4 trust-leaking 404s.
+  - [x] Auth pages polish — `/portal/signin`, `/portal/register`, `/portal/invite` blue focus rings → emerald
+  - [x] Admin Portal blue → emerald focus ring sweep (`AdminForm.tsx`, `HelpTip.tsx`)
+- **Phases (deferred to follow-up PRs):**
+  - [ ] Migrate consumer wealth tiles/heroes (Phase 39 PropertyTile / PropertiesHero / InvestmentsHero / AssetsHero / etc.) to consume `components/shell/` instead of their own local copies. Out of scope for this PR — would expand the diff into the most-touched consumer surface and create regression risk.
+  - [ ] `/portal/feedback` — Phase 33g surface uses its own master-detail layout; hero treatment deferred until that surface is otherwise reviewed
+  - [ ] Drill-in `/portal/clients/[id]` — separate workstream
+- **Risk:** large diff (many pages touched), but each page-level edit is structurally identical (drop-in `PortalPageHero` swap). Each page tested independently via type-check + visual screenshot at preview deploy.
+- **Why this matters:** Reza requested "fix all items and give me one complete PR to merge in PROD." Architect-mode pushed back on consumer wealth migration in the same PR (regression risk on the most-touched user surface) — that goes in a follow-up. Everything else lands here.
 
 ### 0. Phase 32B — B2B2C Practice surface (adviser / broker / accountant lighthouse)
 

@@ -63,7 +63,7 @@ export function HelpTip({ content, align = 'left', size = 'sm', className }: Hel
         aria-expanded={open}
         aria-label={`Help: ${content.title}`}
         className={cn(
-          'inline-flex items-center justify-center rounded-full p-0.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40',
+          'inline-flex items-center justify-center rounded-full p-0.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/40',
           open && 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10'
         )}
       >
