@@ -172,3 +172,57 @@ N/A for the migration (additive only — ALTER TABLE ADD COLUMN nullable + CREAT
 ### PR
 - Branch: `claude/phase-32c-demo-complete`
 - Status: pending push + open
+
+
+---
+
+## Session: phase-42-bookkeeping-completion-spec (Phase 42 spec doc + IMPLEMENTATION_PLAN registration)
+
+### Changes Made
+- **Type**: Doc / Spec (planning, not code)
+- **Scope**: Phase 42 — Consumer Bookkeeping Completion (XERO-Complementary)
+- **Description**: Following Reza's directive 2026-05-08 ("Monitrax is the all-in-one user side tool. Xero is the accountant side. We do not replace Xero, we complement it"), this PR documents the full Phase 42 proposal — the consumer-side bookkeeping completion that fulfils the user-side half of the Monitrax + Xero handshake. Pairs with Phase 41f (entity-level Xero pull): 41f imports SUMMARY from Xero into Monitrax for tax-engine inputs; 42 produces personal HANDOFF from Monitrax to Xero (tax pack export). Mid-session expansion per Reza directive: "the user has to be engaged emotionally and mentally to perform the categorisation tasks — not a chore" — added a full §6 Categorisation Experience spec (engagement principle, Up Bank-grade swipe gestures, micro-rewards, Duolingo-style streak with shield, 100% completion celebration with confetti scarcity, Daily Pulse Home card, hard-NO list against fintech UX patterns that undermine engagement).
+
+### Files Modified / Added
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — NEW. ~720 lines. Sections: §1 Strategic positioning + the line we are NOT crossing (10-row in-scope/out-of-scope table; explicit boundary against Xero territory). §2 Engagement Principle (the load-bearing constraint). §2.1 Four-lens design rationale. §3 Seven strategic decisions (D-42-1 through D-42-7) requiring Reza sign-off. §4 Six sub-PR sequence (~6 weeks single-engineer). §5 New schema additions (`CanonicalCategoryRegistry`, `BookkeepingPeriod`, `TransactionEdit`, `TransactionSplit`, `Vendor`, `TaxCategoryMapping` — all additive). §6 The Categorisation Experience (engagement spec — reference benchmarks, three-state surface model, 5-second micro-interaction anatomy, streak system, completion celebration choreography, Daily Pulse card spec, explicit reject-list, accessibility, chore-vs-ritual test). §7 UNCOMPUTED register (what the Tax Pack acknowledges it does NOT compute). §8 CDR / privacy. §9 BASIQ-onboarding readiness (per-PR matrix). §10 Out of scope. §11 Sign-off block. §12 Build risks. §13 Test plan. §14 Approval status.
+- `docs/IMPLEMENTATION_PLAN.md` — NEW Up Next #42 entry. Full per-PR summary with engagement-layer call-out per Reza directive. Trigger: after Reza signs off D-42-1 through D-42-7.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Documentation Updated (per CLAUDE.md §3.1 + §16)
+
+This is a strategic-decision surface (per CLAUDE.md §16.2 row "strategic decision the user makes"). Doc-sync requirements per §16.3:
+
+- [x] `IMPLEMENTATION_PLAN.md` Up Next register updated with new workstream
+- [x] New phase doc created at `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md`
+- [x] Changelog entry created
+- [N/A] No code changes; no test coverage required for spec-only PR
+- [N/A] No schema migration — all schema additions are documented in spec for future PR1 to ship
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Reza directive 2026-05-08 documented as the §1 Strategic Positioning + §2 Engagement Principle; full proposal documented in spec; queued in IMPLEMENTATION_PLAN.md)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — NEW spec doc
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #42 — registered with full PR sequence
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — doc-only PR; no Prisma operations of any kind.
+
+### Build Status
+- [N/A] No code changes; typecheck / build skipped
+
+### PR
+- Branch: `claude/phase-42-bookkeeping-completion-spec`
+- Status: pending push + open
+
