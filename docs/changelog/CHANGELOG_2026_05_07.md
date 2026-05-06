@@ -1,5 +1,68 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41f0-design-doc (Phase 41f.0 — Bookkeeping Integration design doc)
+
+### Strategy
+Kicks off Phase 41f (personal Xero / MYOB / QuickBooks integration, Up Next #30). Following the locked-in 41e pattern: a design doc PR ships before any code or schema, gating the work on Reza's strategic sign-off across 5 decisions (D-41F-1 through D-41F-5). The sub-PR sequence matches Reza's ~10-day estimate: 41f.0 design (this PR, 1 day) → 41f.1 schema (1 day) → 41f.2 Xero OAuth (3 days) → 41f.3 snapshot import + Div 7A wiring (3 days) → 41f.4 trust-deed parser (2-3 days).
+
+### Type
+- **Type**: Docs (design doc; doc-only PR; no code)
+- **Scope**: New `docs/blueprint/PHASE_41F_BOOKKEEPING_INTEGRATION.md` + cross-links from `MASTER_BLUEPRINT.md` + `PHASE_41_REGULATORY_ARCHITECTURE.md` + new Active Workstream entry in `IMPLEMENTATION_PLAN.md` + flipped Up Next #30 row.
+
+### Files Created
+- `docs/blueprint/PHASE_41F_BOOKKEEPING_INTEGRATION.md` — 15 sections covering: strategic positioning ("Monitrax CONSUMES Xero, never replaces it"), the four-lens design rationale, building-blocks recon (Phase 32 portal stubs / Phase 41a `LegalEntity` / Phase 26 OCR + Gemini SDK), architecture decision §4 (Option A extend `AccountingIntegration` with scope discriminator vs Option B new model — recommended A), full sub-PR sequence §5, new `EntityAccountingSnapshot` + `TrustDeedExtractedRules` Prisma model definitions §6, 4-step trust-deed confirm-before-apply flow §7, the 5 strategic decisions §8 (D-41F-1 through D-41F-5), UNCOMPUTED v1 register §9 (8 items), CDR / privacy posture §10 (Xero is non-CDR business data; OAuth tokens CMEK-encrypted; trust-deed PDFs in existing Phase 26 vault), out-of-scope §11 (bidirectional sync, transaction-level data, MYOB / QB, multi-tenant, real-time webhooks, adviser-impersonation, Sankey integration — all PROD), Reza sign-off block §12 (9 ticks gating 41f.1 start), risks + mitigations §13, per-sub-PR test plan §14.
+
+### Files Modified
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - `Last updated` header rewritten — Phase 41f kicked off with 41f.0 design doc; positioning preserved verbatim ("Monitrax CONSUMES Xero data, never replaces it").
+  - New Active Workstream §5 "Phase 41f — Personal Bookkeeping Integration (Xero v1)" with 5-sub-PR checklist + 5 D-41F decisions + hard constraints + risk/blocking/closes.
+  - Up Next #30 (Phase 41f) row rewritten to reflect 🟡 IN FLIGHT state + sub-PR sequence + 5 D-41F decisions + cross-link to design doc; trigger flipped from "After 41c" (long-shipped) → "After 41c (✅ shipped) — UNBLOCKED, IN FLIGHT".
+- `docs/blueprint/MASTER_BLUEPRINT.md`:
+  - Phase 41f row rewritten from "Xero Bidirectional Sync — 📋 Planned (~10 days)" to "Personal Bookkeeping Integration — 🟡 In Progress (~10 days, 5 sub-PRs)" with full sub-PR map, positioning quote, v1 vs v2 vs PROD scope cuts.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md`:
+  - New §11.1.1 "Phase 41f — Personal Bookkeeping Integration" inserted between §11.1 (Phase 41h sub-PR sequence) and §11.2 (Phase 41i). Cross-links to the spec doc, full sub-PR table, HR-1 / HR-2 / D-2 preservation in 41f context.
+
+### Architecture Decisions (5 gated on Reza sign-off — see PHASE_41F_BOOKKEEPING_INTEGRATION.md §8)
+- **D-41F-1 (recommended A)** — extend `AccountingIntegration` with scope discriminator. Reuses Phase 32 OAuth + sync-log + entity-mapping infrastructure verbatim; additive migration; future-proofs adviser-impersonation use case (Phase 32 adviser connecting client books on behalf).
+- **D-41F-2 (recommended Xero only at v1)** — Reza's positioning quote names Xero specifically. MYOB + QuickBooks → v2 (the existing enum keeps them open). UI can show "MYOB — Coming soon" tile.
+- **D-41F-3 (recommended 4-step)** — trust deed parsing runs as upload → extract → user-confirms-each-rule → apply. Trust deed is a legal instrument; misinterpretation has tax + legal blast radius; the 5-minute friction is the feature.
+- **D-41F-4 (recommended entity-detail-only at v1)** — imported P&L renders on entity detail at v1; Money Flow Sankey integration → v2. Avoids re-thinking Phase 41d under time pressure.
+- **D-41F-5 (recommended auto-feed with override)** — distributable surplus auto-feeds Phase 41e.6 Div 7A classifier with audit log + per-loan override. Keeps the engine flowing; user friction only when they want to override.
+
+### Build Status
+- N/A — docs-only.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture (CDR posture documented in spec doc §10 but no live code change yet)
+- [ ] operational procedure
+- [x] strategic decision (5 strategic decisions D-41F-1 through D-41F-5 surfaced in `PHASE_41F_BOOKKEEPING_INTEGRATION.md` §8 + §12 Reza sign-off block; phase moved from queued → in-flight in `IMPLEMENTATION_PLAN.md` + `MASTER_BLUEPRINT.md`)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_41F_BOOKKEEPING_INTEGRATION.md` — new spec doc.
+- `docs/IMPLEMENTATION_PLAN.md` — Last updated header + new Active Workstream §5 + Up Next #30 flipped to in-flight.
+- `docs/blueprint/MASTER_BLUEPRINT.md` — Phase 41f row rewritten (Planned → In Progress).
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` — new §11.1.1 cross-linking to the spec doc.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+N/A for this PR (docs-only). The §12.11 checklist for the 41f.1 schema migration is **filled in advance** in `PHASE_41F_BOOKKEEPING_INTEGRATION.md` §4: the only existing-constraint touch is `ALTER COLUMN organization_id DROP NOT NULL` on `accounting_integrations`; pre-flight verified zero existing rows. The XOR check constraint catches malformed inserts. 41f.1 will re-validate before merge.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A for this PR (docs-only). The 41f.1 migration plan is fully scripted in spec doc §4 and will be Prisma-generated at 41f.1 implementation time per the §12.12 protocol.
+
+### PR
+- Branch: `claude/phase-41f0-design-doc`
+- Status: pending push + open
+
+---
+
 ## Session: claude/docs-post-688-merge (Doc-sync — Phase 41 status reflection)
 
 ### Strategy
