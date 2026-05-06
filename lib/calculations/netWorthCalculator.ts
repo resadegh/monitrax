@@ -149,6 +149,23 @@ export function calculateTotalAssets(
  * whose `ownerEntityId` matches are summed. Default = no filter for
  * backward-compat. Per audit doc §6.3.
  */
+/**
+ * Calculate total liabilities, classified into mortgages / personal
+ * loans / credit cards.
+ *
+ * **Contract** (verified by Phase 41i calc-audit fixture
+ * `core.netWorth`):
+ * - Loan classified as **mortgage** when `loan.type` (case-insensitive)
+ *   is `'HOME'` or `'INVESTMENT'`, OR when `loan.propertyId` is set.
+ *   This vocabulary matches `intelligence/portfolioEngine.ts`,
+ *   `health/types.ts`, and `testing/types.ts`.
+ * - Loan classified as **credit card** when `loan.type === 'CREDIT_CARD'`
+ *   (case-insensitive).
+ * - Anything else falls through to **personal loans** — including
+ *   common typos like `'MORTGAGE'`, `'mortgage'`, etc. Reviewers
+ *   touching loan-creation flows MUST use `'HOME'` / `'INVESTMENT'`
+ *   for property loans.
+ */
 export function calculateTotalLiabilities(
   loans: LoanInput[],
   ownerEntityId?: string,

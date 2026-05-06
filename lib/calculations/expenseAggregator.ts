@@ -60,6 +60,18 @@ export interface CategoryBreakdown {
  * whose `ownerEntityId` matches are aggregated. Default = no filter
  * for backward-compat. Per audit doc §6.3.
  */
+/**
+ * Aggregate expense items.
+ *
+ * **Contract** (verified by Phase 41i calc-audit fixture
+ * `core.expenseAggregator`):
+ * - `expense.frequency` MUST use the UPPERCASE `Frequency` enum
+ *   (`'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'`).
+ *   Lowercase strings fall through `toAnnual`'s default branch and
+ *   return raw amounts unchanged — leading to silently-wrong totals.
+ * - `targetFrequency` defaults to `'monthly'`. Conversion via
+ *   `toMonthly` / `toAnnual` from `lib/utils/frequencies.ts`.
+ */
 export function aggregateExpenses(
   expenses: ExpenseInput[],
   targetFrequency: 'monthly' | 'annual' = 'monthly',

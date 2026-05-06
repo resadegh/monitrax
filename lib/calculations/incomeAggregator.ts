@@ -53,6 +53,21 @@ export interface IncomeAggregation {
 /**
  * Get gross income amount for an income item
  */
+/**
+ * Get gross income amount for an income item.
+ *
+ * **Contract** (verified by Phase 41i calc-audit fixture
+ * `core.incomeAggregator`):
+ * - `frequency` MUST use the UPPERCASE `Frequency` enum
+ *   (`'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL'`).
+ *   Lowercase strings fall through `toAnnual`'s default branch and
+ *   return raw amounts unchanged.
+ * - For `type === 'SALARY'`, the resolution depends on `salaryType`:
+ *   - `salaryType === 'GROSS'` → use `amount` × frequency conversion
+ *   - `salaryType === 'NET'` + `grossAmount` set → use `grossAmount`
+ *     directly (already-annual; divided by 12 for monthly target)
+ * - For non-salary income, `amount` × frequency conversion.
+ */
 function getGrossAmount(item: IncomeInput, targetFrequency: 'monthly' | 'annual'): number {
   const converter = targetFrequency === 'monthly' ? toMonthly : toAnnual;
 
@@ -91,7 +106,14 @@ function getNetAmount(item: IncomeInput, targetFrequency: 'monthly' | 'annual'):
 }
 
 /**
- * Get PAYG withholding for an income item
+ * Get PAYG withholding for an income item.
+ *
+ * **Contract** (verified by Phase 41i calc-audit fixture):
+ * `paygWithholding` is an **already-annual figure** (asymmetric with
+ * `amount` which uses `frequency`). Caller must convert PAYG to
+ * annual before storing. For monthly target, divides by 12; for
+ * annual target, returns as-is. Only applies when `type === 'SALARY'`
+ * AND `paygWithholding != null`.
  */
 function getPaygAmount(item: IncomeInput, targetFrequency: 'monthly' | 'annual'): number {
   if (item.type !== 'SALARY' || item.paygWithholding == null) {

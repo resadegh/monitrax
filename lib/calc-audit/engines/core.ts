@@ -52,13 +52,13 @@ calcEngineRegistry.register({
     ),
   fixtures: [
     {
-      name: 'Single property + cash + mortgage',
-      description: '$800k property, $50k cash, $400k loan. Net worth: $450,000. Note: loan type "MORTGAGE" is currently classified as personalLoan by the calculator; propertyEquity reflects full property value (no mortgage offset). Audit baseline locked against current behaviour — separate engineering review for type-classification correctness.',
+      name: 'Single home + cash + home loan',
+      description: '$800k property, $50k cash, $400k home loan. Loan type "HOME" classifies as mortgage per app-wide convention (intelligence/portfolioEngine, health/types, testing/types).',
       input: {
         properties: [{ currentValue: 800_000 }],
         accounts: [{ currentBalance: 50_000, type: 'SAVINGS' }],
         investments: [],
-        loans: [{ principal: 400_000, type: 'MORTGAGE' }],
+        loans: [{ principal: 400_000, type: 'HOME' }],
       },
       assertions: [
         {
@@ -66,15 +66,44 @@ calcEngineRegistry.register({
           check: (r) => Math.round(r.assets.total) === 850_000,
         },
         {
+          description: 'Liabilities mortgages = $400,000 (HOME loan correctly classified)',
+          check: (r) => Math.round(r.liabilities.mortgages) === 400_000,
+        },
+        {
           description: 'Liabilities total = $400,000',
           check: (r) => Math.round(r.liabilities.total) === 400_000,
         },
         {
-          description: 'Net worth = $450,000 (assets − liabilities)',
+          description: 'Net worth = $450,000',
           check: (r) => Math.round(r.netWorth) === 450_000,
         },
+        {
+          description: 'Property equity = $400,000 ($800k value − $400k mortgage)',
+          check: (r) => Math.round(r.breakdown.propertyEquity) === 400_000,
+        },
       ],
-      authoritySource: 'Hand-calculation: $800k + $50k − $400k = $450k. Audit baseline locked at current engine behaviour 2026-05-06.',
+      authoritySource: 'Hand-calculation: assets $850k − liabilities $400k = $450k net worth; property equity $800k − $400k mortgage = $400k. Loan type vocabulary verified against intelligence/portfolioEngine.ts and health/types.ts.',
+    },
+    {
+      name: 'Loan with unrecognised type → personal loan (negative test)',
+      description: 'Locks in current classifier behaviour: any loan type other than HOME/INVESTMENT/CREDIT_CARD (case-insensitive) falls through to personalLoans bucket. Captures the contract so any future change to the classifier is detected.',
+      input: {
+        properties: [],
+        accounts: [],
+        investments: [],
+        loans: [{ principal: 50_000, type: 'PERSONAL' }],
+      },
+      assertions: [
+        {
+          description: 'Mortgages = $0 (PERSONAL is not a mortgage type)',
+          check: (r) => r.liabilities.mortgages === 0,
+        },
+        {
+          description: 'Personal loans = $50,000',
+          check: (r) => r.liabilities.personalLoans === 50_000,
+        },
+      ],
+      authoritySource: 'Engine contract: calculateTotalLiabilities classifies HOME/INVESTMENT/property-bound → mortgages; CREDIT_CARD → creditCards; everything else → personalLoans.',
     },
   ],
 });
@@ -92,17 +121,18 @@ calcEngineRegistry.register({
     aggregateIncome(input.items, input.targetFrequency ?? 'annual'),
   fixtures: [
     {
-      name: 'Salary + dividend (raw amounts)',
-      description: 'Two income items at their raw amounts. Note: aggregator currently sums raw amounts without frequency conversion — audit baseline locked against current behaviour. Separate engineering review for whether targetFrequency should drive conversion.',
+      name: 'Weekly salary + annual dividend → annual aggregation',
+      description: '$2k weekly GROSS salary ($104k/yr) + $5.2k annual dividend = $109,200/yr gross. PAYG passed as annual ($26k = $500 × 52, pre-converted by caller per engine contract — see getPaygAmount JSDoc).',
       input: {
         items: [
           {
             amount: 2_000,
-            grossAmount: 2_000,
-            netAmount: 2_000,
-            paygWithholding: 500,
-            frequency: 'weekly',
+            grossAmount: 104_000, // pre-converted annual (engine contract for SALARY+GROSS)
+            netAmount: 78_000, // $1,500 × 52 weeks
+            paygWithholding: 26_000, // pre-converted annual (engine contract)
+            frequency: 'WEEKLY', // UPPERCASE Frequency enum
             type: 'SALARY',
+            salaryType: 'GROSS',
             isTaxable: true,
           },
           {
@@ -110,7 +140,7 @@ calcEngineRegistry.register({
             grossAmount: 5_200,
             netAmount: 5_200,
             paygWithholding: 0,
-            frequency: 'annual',
+            frequency: 'ANNUAL',
             type: 'DIVIDEND',
             isTaxable: true,
           },
@@ -119,23 +149,23 @@ calcEngineRegistry.register({
       },
       assertions: [
         {
-          description: 'Gross total = $7,200 (sum of raw gross amounts)',
-          check: (r) => Math.round(r.grossTotal) === 7_200,
+          description: 'Gross total = $109,200/yr ($2k × 52 + $5,200)',
+          check: (r) => Math.round(r.grossTotal) === 109_200,
         },
         {
-          description: 'PAYG withholding = $500 (single salary entry)',
-          check: (r) => Math.round(r.paygWithholding) === 500,
+          description: 'PAYG withholding = $26,000/yr (annual figure passed through)',
+          check: (r) => Math.round(r.paygWithholding) === 26_000,
         },
         {
-          description: 'Salary classified by type',
-          check: (r) => Math.round(r.byType.SALARY?.gross ?? 0) === 2_000,
+          description: 'SALARY type breakdown gross = $104,000',
+          check: (r) => Math.round(r.byType.SALARY?.gross ?? 0) === 104_000,
         },
         {
-          description: 'Dividend classified by type',
+          description: 'DIVIDEND type breakdown gross = $5,200',
           check: (r) => Math.round(r.byType.DIVIDEND?.gross ?? 0) === 5_200,
         },
       ],
-      authoritySource: 'Audit baseline locked at current engine behaviour 2026-05-06.',
+      authoritySource: 'Hand-calc: $2k × 52 weeks + $5,200 = $109,200. Engine contracts: frequency uses UPPERCASE Frequency enum; paygWithholding is pre-converted annual.',
     },
   ],
 });
@@ -153,30 +183,38 @@ calcEngineRegistry.register({
     aggregateExpenses(input.items, input.targetFrequency ?? 'annual'),
   fixtures: [
     {
-      name: 'Two recurring expenses',
-      description: '$2k housing + $1k food (raw amounts). Note: aggregator currently sums raw amounts without frequency conversion — audit baseline locked against current behaviour.',
+      name: '$2k/month rent + $1k/month food → annual = $36,000',
+      description: 'Two MONTHLY expenses (UPPERCASE Frequency enum required by toAnnual). Annual total: ($2k + $1k) × 12 = $36,000.',
       input: {
         items: [
-          { amount: 2_000, frequency: 'monthly', category: 'HOUSING', isTaxDeductible: false },
-          { amount: 1_000, frequency: 'monthly', category: 'FOOD', isTaxDeductible: false },
+          { amount: 2_000, frequency: 'MONTHLY', category: 'HOUSING', isEssential: true, isTaxDeductible: false },
+          { amount: 1_000, frequency: 'MONTHLY', category: 'FOOD', isEssential: true, isTaxDeductible: false },
         ],
         targetFrequency: 'annual',
       },
       assertions: [
         {
-          description: 'Total = $3,000 (sum of raw amounts)',
-          check: (r) => Math.round(r.total) === 3_000,
+          description: 'Total annual expense = $36,000 (($2k + $1k) × 12)',
+          check: (r) => Math.round(r.total) === 36_000,
         },
         {
-          description: 'HOUSING category total = $2,000',
-          check: (r) => r.byCategory.HOUSING === 2_000,
+          description: 'Essential = $36,000 (both flagged isEssential)',
+          check: (r) => Math.round(r.essential) === 36_000,
         },
         {
-          description: 'FOOD category total = $1,000',
-          check: (r) => r.byCategory.FOOD === 1_000,
+          description: 'Tax deductible = $0 (neither isTaxDeductible)',
+          check: (r) => r.taxDeductible === 0,
+        },
+        {
+          description: 'HOUSING category = $24,000',
+          check: (r) => r.byCategory.HOUSING === 24_000,
+        },
+        {
+          description: 'FOOD category = $12,000',
+          check: (r) => r.byCategory.FOOD === 12_000,
         },
       ],
-      authoritySource: 'Audit baseline locked at current engine behaviour 2026-05-06.',
+      authoritySource: 'Hand-calc: ($2,000 + $1,000) × 12 = $36,000. Engine contract: frequency uses UPPERCASE Frequency enum.',
     },
   ],
 });
@@ -196,24 +234,24 @@ calcEngineRegistry.register({
   }) => aggregateLoanRepayments(input.loans, input.targetFrequency ?? 'annual'),
   fixtures: [
     {
-      name: 'Single $2,500/month mortgage',
-      description: '$400k principal at 6%; raw $2,500 minRepayment. Note: aggregator currently sums raw repayments without frequency conversion — audit baseline locked against current behaviour.',
+      name: '$2,500/month mortgage → $30,000/year',
+      description: '$400k principal at 6% with $2,500 MONTHLY repayments (UPPERCASE RepaymentFrequency enum). Annual: $2,500 × 12 = $30,000.',
       input: {
         loans: [
           {
             principal: 400_000,
             minRepayment: 2_500,
-            repaymentFrequency: 'monthly',
+            repaymentFrequency: 'MONTHLY',
             interestRateAnnual: 6,
-            type: 'MORTGAGE',
+            type: 'HOME',
           },
         ],
         targetFrequency: 'annual',
       },
       assertions: [
         {
-          description: 'Total repayments = $2,500 (raw amount, no frequency conversion)',
-          check: (r) => Math.round(r.totalRepayments) === 2_500,
+          description: 'Total annual repayments = $30,000 ($2,500 × 12)',
+          check: (r) => Math.round(r.totalRepayments) === 30_000,
         },
         {
           description: 'Total principal = $400,000',
@@ -224,7 +262,7 @@ calcEngineRegistry.register({
           check: (r) => Math.abs(r.weightedInterestRate - 6) < 0.01,
         },
       ],
-      authoritySource: 'Audit baseline locked at current engine behaviour 2026-05-06.',
+      authoritySource: 'Hand-calc: $2,500 × 12 = $30,000. Engine contract: repaymentFrequency uses UPPERCASE RepaymentFrequency enum.',
     },
   ],
 });
