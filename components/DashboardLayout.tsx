@@ -176,8 +176,15 @@ const reachNavItems: NavItem[] = [
     // non-duplicated /dashboard/tax data into the Actions surface (the
     // Actions page already shows a Tax Position card) and retire the
     // standalone Tax route — see IMPLEMENTATION_PLAN.md Up Next #8.
+    //
+    // Phase 41h.7: "Ask the Advisor" added as a 4th sibling. Graduates the
+    // AI advisor from `/dashboard/cfo/ask` (orphan deep-link from 41h.4)
+    // to natural-IA placement under My Guide (TRAIL Stage 5 — Live).
+    // The conversation surface stays focused on its own page rather than
+    // folding into the already-rich CFO Actions tab.
     matchRoutes: [
       '/dashboard/cfo',
+      '/dashboard/cfo/ask',
       '/health',
       '/dashboard/tax',
     ],
@@ -185,6 +192,7 @@ const reachNavItems: NavItem[] = [
       { name: 'Actions', href: '/dashboard/cfo' },
       { name: 'Health', href: '/health' },
       { name: 'Tax', href: '/dashboard/tax' },
+      { name: 'Ask the Advisor', href: '/dashboard/cfo/ask' },
     ],
   },
   {
