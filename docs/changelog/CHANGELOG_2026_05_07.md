@@ -1,5 +1,81 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41f2-xero-oauth (Phase 41f.2 — Xero OAuth + connect surface)
+
+### Strategy
+Implements the OAuth handshake + persistence layer per `PHASE_41F_BOOKKEEPING_INTEGRATION.md` §5 (sub-PR #41f.2) on top of the schema landed by PR #691. No data import yet — the integration sits idle in `isConnected: true` state until 41f.3 ships the snapshot puller. **No new dependencies.** The official `xero-node` SDK was evaluated and rejected for v1: the OAuth 2.0 flow is so standard (RFC 6749 / RFC 7009) that 200 lines of `fetch`-based code is simpler than the SDK's transitive dependency footprint, and aligns with CLAUDE.md §12.7+§12.8 (minimum-custom-code / managed-service-first / simplicity-over-cleverness).
+
+### Type
+- **Type**: Feature (Phase 41f sub-PR — closes 41f.2 in the active workstream; unblocks 41f.3)
+- **Scope**: New `lib/integrations/xero/` module + 4 API routes + 1 consumer page + 23 tests. Zero changes to existing files outside docs.
+
+### Files Created
+- `lib/integrations/xero/config.ts` — env-var resolution + `isXeroConfigured()` guard. Constants for Xero endpoint URLs + `XERO_SCOPES` (read-only — `offline_access` + `accounting.reports.read` + `accounting.transactions.read` + `accounting.contacts.read`; no write scopes per §1.1 boundary). Falls back to `NEXTAUTH_SECRET` for the state HMAC if `XERO_OAUTH_STATE_SECRET` is unset.
+- `lib/integrations/xero/state.ts` — HMAC-SHA256-signed stateless OAuth state token. 15-minute TTL. Tamper rejection (signature mismatch, mutated payload, malformed token, missing fields, expired). Stateless because Vercel functions don't share memory — the request that issues state runs on a different instance from the request that validates it on callback.
+- `lib/integrations/xero/oauth.ts` — `buildAuthorizeUrl(entityId, userId, config)` + `exchangeCodeForTokens(code, config)` + `refreshAccessToken(refreshToken, config)` + `revokeRefreshToken(refreshToken, config)` (RFC 7009; best-effort) + `listConnectedTenants(accessToken)`. `XeroOAuthError` thrown on any non-200 from Xero with the status code attached. Pure `fetch` — zero new deps.
+- `lib/integrations/xero/index.ts` — public surface re-exports.
+- `app/api/entities/[id]/accounting/route.ts` — `GET` returns the integration status (configured + entity summary + integration row) for the connect surface. USER_ENTITY scope only via `where: { scope: 'USER_ENTITY', legalEntityId, userId }`.
+- `app/api/entities/[id]/accounting/connect/route.ts` — `POST` returns the Xero authorize URL with HMAC state. 503 with `XERO_NOT_CONFIGURED` when env vars unset. Gated by `entity.write` permission. No `AccountingIntegration` row created here — we wait for the verified callback.
+- `app/api/entities/[id]/accounting/disconnect/route.ts` — `POST` best-effort revokes the Xero refresh token + soft-disconnects locally (clears tokens, sets `isConnected = false`, stamps `connectionError = 'USER_DISCONNECTED'`). Audit log via `logCRUD()`.
+- `app/api/integrations/xero/callback/route.ts` — `GET` single registered redirect URI. Verifies HMAC state (the auth anchor — only authenticated `entity.write` requests can issue valid state). Exchanges code for tokens. Lists Xero tenants and picks the first (multi-tenant deferred to v2 per UC-XERO-MULTI-ENTITY-SAME-TENANT). Upserts the `AccountingIntegration` row (USER_ENTITY scope) via `findFirst → update | create` (Prisma upsert can't model the partial unique index — same effective semantics). Redirects back to the connect-bookkeeping page with `?result=success` or `?result=error&reason=...`.
+- `app/dashboard/entities/[id]/connect-bookkeeping/page.tsx` — three-state UI (not-configured / not-connected / connected) + warm-tone `Connect Xero` CTA + `Disconnect` affordance + dedicated §1.1 scope-boundary card explaining DOES vs DOES NOT. Reads `?result=` + `?reason=` query params to render success / error toast after the user returns from Xero.
+- `tests/integrations/xero/state.test.ts` — 12 tests: round-trip, unique nonces, tamper rejection (wrong secret / mutated payload / mutated signature / malformed / empty / empty payload), expired token, near-boundary acceptance, non-string token, missing fields.
+- `tests/integrations/xero/config.test.ts` — 6 tests: empty env, partial env, state-secret missing, NEXTAUTH_SECRET fallback, full config, secret precedence.
+- `tests/integrations/xero/oauth.test.ts` — 5 tests: RFC 6749 params, distinct state per (entityId, userId), client_secret never exposed, redirect_uri encoding, read-only scopes only.
+
+### Architecture Decisions
+- **Stateless HMAC OAuth state** instead of the in-memory store pattern in `lib/auth/oauth.ts`. The existing pattern works in dev but breaks in serverless prod (each Vercel function has its own memory). HMAC-SHA256 over `{e: entityId, u: userId, n: nonce, x: expiresAt}` truncated to 32 bytes is stateless, tamper-proof, and short-lived (15 min). Tested against tampering at every layer.
+- **HMAC state IS the auth anchor on the callback** — browser redirects from Xero don't carry our `Authorization: Bearer` token, so the standard `withPermission()` pattern can't gate the callback. Instead we trust the signed state because issuing it requires going through `/api/entities/[id]/accounting/connect` which IS `withPermission('entity.write')`-gated. Result: the callback validates state + does defence-in-depth ownership check + persists. Documented in the callback file's top-of-file JSDoc.
+- **Single registered redirect URI** (`/api/integrations/xero/callback`). Xero rejects per-entity callback paths as unregistered. The state encodes the `entityId` so the callback can route the resulting tokens to the right `LegalEntity`.
+- **Best-effort Xero revoke on disconnect** — failures don't block the local soft-disconnect. Local row is the source of truth for "no longer connected." Per CLAUDE.md §12.10 fire-and-forget pattern.
+- **Soft-disconnect (not hard-delete)** — `AccountingIntegration` row stays, tokens are nulled, `connectionError = 'USER_DISCONNECTED'`. Historical sync logs + audit trail remain queryable. Hard-delete affordance deferred to PROD per spec doc §11.
+- **Read-only Xero scopes** — never request write scopes. `accounting.transactions.read` is on the consent screen even though Phase 41f v1 doesn't pull transactions (deferred to v2) — the consent screen is consistent with the eventual full read scope so users don't need to re-consent later.
+- **Tenant selection v1 is "first one"** — the user typically has one Xero tenant per accounting integration. Multi-tenant selection deferred to v2 per UC-XERO-MULTI-ENTITY-SAME-TENANT. The `AccountingIntegration.providerOrganization` field stores the chosen tenant name for UI display.
+- **No `xero-node` SDK** — the OAuth flow + tenant list is `fetch`-based. Per CLAUDE.md §12.7+§12.8: minimum custom code, simplicity over cleverness. We re-evaluate at 41f.3 if the BS/P&L parsing outgrows our typed wrappers.
+- **Token storage is plain `@db.Text` columns** — no app-layer encryption. Cloud SQL CMEK at-rest encryption (Phase 9) is the authoritative protection per CLAUDE.md §13.6. Tokens never leave the server (refresh runs server-side per request).
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripeBillingService.ts` "stripe" module-not-found, unrelated)
+- [x] `npx vitest run tests/integrations/xero` — 23 / 23 pass
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new connect-bookkeeping page composes existing Card / Button / lucide-icon primitives + the warm-amber + emerald palettes already in use; no new reusable primitive — `06_UI_UX_FOUNDATION.md` not touched per §16.3 "single component, no system change")
+- [x] application config (new env vars: `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_OAUTH_REDIRECT_URI`, `XERO_OAUTH_STATE_SECRET` — all non-CDR business credentials per §1.1; runtime resolution gated by `isXeroConfigured()` so dev/demo works without keys)
+- [ ] GCP infrastructure
+- [ ] identity / auth (no new auth provider; Firebase Auth unchanged; Xero OAuth is a SECONDARY identity for a third-party integration, not a Monitrax sign-in path)
+- [ ] deployment / build
+- [x] security / CDR posture (HMAC-signed stateless OAuth state with tamper rejection; Xero tokens stored as `@db.Text` with CMEK at-rest encryption; CDR posture explicitly Privacy Act 1988 not CDR per spec doc §10; right-to-erasure via existing ON DELETE CASCADE FKs from 41f.1)
+- [ ] operational procedure
+- [x] strategic decision (zero new dependencies — `xero-node` SDK explicitly evaluated and rejected; documented inline in `lib/integrations/xero/oauth.ts` JSDoc + this changelog)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header rewritten + Active Workstream §5 sub-PR ticks (41f.0 ✅ + 41f.1 ✅ + 41f.2 ✅ — duplicate 41f.3 line removed) + Up Next #30 row + Blocking line.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+The disconnect route does an `update` and the callback does `findFirst → update | create`. Both are filled in advance:
+
+**`update` in `disconnect/route.ts`:**
+1. WHERE clause matches: `{ id: integration.id }` where `integration` was just `findFirst({ where: { scope: 'USER_ENTITY', legalEntityId, userId: auth.userId } })`. Only the row uniquely owned by the calling user for this entity.
+2. Columns overwritten: `accessToken`, `refreshToken`, `tokenExpiresAt`, `tokenScope`, `isConnected`, `connectionError`, `syncEnabled`, `autoSyncEnabled`. All integration-lifecycle state owned by this code path.
+3. Guard: the rows being updated were created by this code path (the connect callback is the only writer of these fields).
+
+**`update | create` in `callback/route.ts`:**
+1. WHERE clause matches: `{ scope: 'USER_ENTITY', legalEntityId, provider: 'XERO' }` for findFirst, then `{ id }` for the update. Only the unique-per-(entity, scope, provider) row.
+2. Columns overwritten / created: tokens + tenant metadata + connection state. All written exclusively by this callback.
+3. Guard: the partial unique index `accounting_integrations_entity_provider_uniq` (Phase 41f.1 migration) prevents two USER_ENTITY rows for the same (entityId, provider). New rows are this callback's; existing rows were created by this same callback on a prior connection.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A — no `prisma/schema.prisma` changes (schema landed in PR #691).
+
+### PR
+- Branch: `claude/phase-41f2-xero-oauth`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41f1-schema-migration (Phase 41f.1 — Schema migration)
 
 ### Strategy
