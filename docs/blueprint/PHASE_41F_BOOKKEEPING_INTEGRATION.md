@@ -1,9 +1,9 @@
 # Phase 41f — Personal Bookkeeping Integration
 
-> **Status:** 🟡 **DRAFT — awaiting Reza sign-off** on the strategic decisions in §10 before any code lands.
+> **Status:** 🟢 **APPROVED 2026-05-07** — Reza signed off on D-41F-1 through D-41F-5 ("go with your recommendations" + deed-flow scope confirmation 2026-05-07). 41f.1 (schema migration) starts.
 > **Estimated effort:** ~10 days across 5 sub-PRs (41f.0 design doc → 41f.4 trust-deed parser).
 > **Hard prerequisite:** Phase 41a (`LegalEntity`) ✅, Phase 41e (`MasterTaxPosition` orchestrator) ✅, Phase 26 (Document Intelligence) ✅. All shipped.
-> **Last updated:** 2026-05-07 — Claude (initial draft).
+> **Last updated:** 2026-05-07 — Reza sign-off + §1.1 scope clarification added.
 
 ---
 
@@ -13,7 +13,29 @@ Reza's brief, locked in via `IMPLEMENTATION_PLAN.md` Up Next #30:
 
 > "Monitrax does **NOT** replace Xero — Monitrax **CONSUMES** Xero data and re-presents it through the wealth-strategy lens."
 
-This single sentence constrains the entire phase. We are **not** building accounting software. We are pulling a **snapshot** (Balance Sheet + P&L summary + key metrics) from a user's existing bookkeeping system and re-presenting it inside their **wealth view** so that:
+This single sentence constrains the entire phase. See §1.1 immediately below for the explicit scope boundary on legal-document handling.
+
+---
+
+## 1.1 What Phase 41f is NOT — explicit scope boundary
+
+> **Reza confirmation 2026-05-07**: *"I don't want Monitrax to create legal documents. Just storing them and understanding the structure or contents is enough."*
+
+Phase 41f is **storage + understanding only**. Locked in to prevent scope drift in any future sub-PR or follow-up:
+
+| Monitrax DOES | Monitrax DOES NOT |
+|---|---|
+| Store the user's existing trust deed PDF (Phase 26 vault) | ❌ Generate, draft, or create new trust deeds (that is a solicitor's job) |
+| Read + structurally understand the deed (OCR + Gemini extract) | ❌ Provide template trust deeds |
+| Surface our reading to the user for confirmation (4-step flow §7) | ❌ Modify the user's uploaded PDF in any way |
+| Use the user's CONFIRMED reading as input to OUR tax engine (Phase 41e) | ❌ Issue distribution minutes / resolutions on the user's behalf |
+| Pull a Balance Sheet + P&L SNAPSHOT from Xero (read-only) | ❌ Write back to Xero (no bidirectional sync, ever — at least not in 41f scope) |
+| Cache the snapshot in `EntityAccountingSnapshot` for tax-engine consumption | ❌ File anything with the ATO, ASIC, or any regulator |
+| Surface UNCOMPUTED notes when the AI is unsure ("Clause 5.2 references 'majority quorum' — review with adviser") | ❌ Replace what a solicitor / accountant / tax agent does — these surfaces ROUTE TO the Phase 32C marketplace via Ask-a-Pro CTAs |
+
+**Why this boundary matters.** Creating legal documents requires AFSL / TPB / NCCP licensing Monitrax does not hold (the same D-2 boundary Phase 41h enforces structurally in the AI advisor). Trust-deed parsing is in scope because **reading and understanding what's already there** is fundamentally different from **drafting new clauses**. The 4-step confirm-before-apply flow (§7) is the user-facing contract that "we read it, you confirm it, we use it for OUR tax math — your deed and your solicitor relationship are unchanged."
+
+**Reviewer enforcement.** Any future PR that introduces deed-generation, distribution-minute issuance, regulator-filing, or Xero write-back must be rejected by reviewers and re-scoped through a fresh design doc with explicit Reza sign-off on a new D-41F-N decision. The current §1.1 boundary is non-negotiable for the duration of Phase 41f. We are **not** building accounting software. We are pulling a **snapshot** (Balance Sheet + P&L summary + key metrics) from a user's existing bookkeeping system and re-presenting it inside their **wealth view** so that:
 
 - The user sees their personal Pty Ltd / Sole Trader / Trust / SMSF as a first-class node in their **net-worth** calculation, with real numbers, not user-entered estimates.
 - The **Phase 41e tax engine** receives high-confidence inputs for Div 7A (`distributableSurplus`), Div 6E (trust streaming), Div 165 (company loss continuity), Sch 2F (trust loss continuity), GST (BAS labels), and depreciation schedules.
@@ -423,19 +445,20 @@ Items where Phase 41f explicitly does NOT compute and surfaces an UNCOMPUTED fla
 
 ---
 
-## 12. Reza sign-off block
+## 12. Reza sign-off block — ✅ APPROVED 2026-05-07
 
-Tick each before 41f.1 starts:
+All ticks confirmed via Reza's "go with your recommendations" 2026-05-07 + deed-flow scope confirmation 2026-05-07. 41f.1 (schema migration) starts immediately.
 
-- [ ] **D-41F-1** confirmed: extend `AccountingIntegration` with scope discriminator (Option A)
-- [ ] **D-41F-2** confirmed: Xero only at v1; MYOB + QuickBooks → v2
-- [ ] **D-41F-3** confirmed: 4-step trust deed flow (upload → extract → review → apply)
-- [ ] **D-41F-4** confirmed: imported P&L renders on entity detail only at v1; Sankey = v2
-- [ ] **D-41F-5** confirmed: distributable surplus auto-feeds Div 7A with audit log + per-loan override
-- [ ] **CDR posture** confirmed: Xero data treated as non-CDR business data + standard Privacy Act 1988
-- [ ] **UNCOMPUTED v1 register** approved (8 items in §9)
-- [ ] **Sub-PR sequence** approved (5 PRs, ~10 days)
-- [ ] **§12.11 destructive-write checklist** acknowledged for the 41f.1 schema migration (`ALTER COLUMN ... DROP NOT NULL` on `organization_id`)
+- [x] **D-41F-1** confirmed: extend `AccountingIntegration` with scope discriminator (Option A)
+- [x] **D-41F-2** confirmed: Xero only at v1; MYOB + QuickBooks → v2
+- [x] **D-41F-3** confirmed: 4-step trust deed flow (upload → extract → review → apply) — reinforced by Reza's §1.1 scope boundary clarification
+- [x] **D-41F-4** confirmed: imported P&L renders on entity detail only at v1; Sankey = v2
+- [x] **D-41F-5** confirmed: distributable surplus auto-feeds Div 7A with audit log + per-loan override
+- [x] **CDR posture** confirmed: Xero data treated as non-CDR business data + standard Privacy Act 1988
+- [x] **UNCOMPUTED v1 register** approved (8 items in §9)
+- [x] **Sub-PR sequence** approved (5 PRs, ~10 days)
+- [x] **§12.11 destructive-write checklist** acknowledged for the 41f.1 schema migration (`ALTER COLUMN ... DROP NOT NULL` on `organization_id`)
+- [x] **§1.1 scope boundary** confirmed: storage + understanding only; no legal-document generation; no Xero write-back; no regulator-filing
 
 ---
 

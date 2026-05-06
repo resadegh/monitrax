@@ -300,8 +300,8 @@ Bank-import codepaths (`components/bank/ImportWizard`, `components/bank/Transact
 - **§12.11 destructive-write checklist filled in advance** for the 41f.1 migration (`ALTER COLUMN organization_id DROP NOT NULL` is the only existing-constraint touch — pre-flight verified zero rows in `accounting_integrations` before drop).
 
 **Sub-PRs:**
-- [x] **41f.0** — Design doc + Reza sign-off block (this PR, 1 day) — `docs/blueprint/PHASE_41F_BOOKKEEPING_INTEGRATION.md`
-- [ ] **41f.1** — Schema migration (Option A scope discriminator) + new `EntityAccountingSnapshot` + `TrustDeedExtractedRules` models + UNCOMPUTED register entries (1 day)
+- [x] **41f.0** — Design doc + Reza sign-off block — `docs/blueprint/PHASE_41F_BOOKKEEPING_INTEGRATION.md`. ✅ **APPROVED 2026-05-07** (D-41F-1 through D-41F-5 + §1.1 scope-boundary callout: storage + understanding only; no legal-document generation)
+- [ ] **41f.1** — Schema migration (Option A scope discriminator) + new `EntityAccountingSnapshot` + `TrustDeedExtractedRules` models + UNCOMPUTED register entries (1 day) — **STARTING NOW**
 - [ ] **41f.2** — Xero OAuth + `lib/integrations/xero/` module + connect surface at `/dashboard/entities/[id]/connect-bookkeeping` + OAuth API routes (3 days)
 - [ ] **41f.3** — Snapshot import pipeline (BS / P&L / s109Y simplified distributable surplus) + entity-detail render + Phase 41e.6 Div 7A wiring (3 days)
 - [ ] **41f.4** — Trust-deed parser (Vision OCR + Gemini structurer + 4-step UI + Phase 41e.4/e.5 wiring) (2-3 days)
