@@ -2265,3 +2265,63 @@ Tests use `react-dom/server.renderToString` (no RTL setup needed — pure SSR ch
 If `GEMINI_API_KEY` is unset, the page renders the form but submission shows a clear "AI advisor not configured" message — never a silent failure.
 
 **Phase 41h.4 — Ask-a-Pro router** is next (detects recommendation-shaped questions and routes to marketplace per Phase 32C; graduates the advisor surface to user-facing dashboards).
+
+## **10.35 Phase 41h.4 — Ask-a-Pro router + user-facing surface (PR — shipped 2026-05-07)**
+
+**Graduates the AI advisor from admin-demo to user-facing.** The Tier 2 routing card now links to the existing Phase 32C marketplace, scoped to the right discipline based on the AI's `askAProRouting.profession`. Same gateway, same components — just the surface graduates.
+
+### What ships
+
+```
+lib/ai/tax-advisor/
+├── askAProRouting.ts       # NEW — profession → marketplace.discipline mapping
+└── runAdvisorQuery.ts      # NEW — shared helper for both admin + user routes
+
+app/api/ai-advisor/ask/route.ts                # NEW — user-facing endpoint (report.read)
+app/api/admin/ai-advisor/ask/route.ts          # refactored to use runAdvisorQuery
+app/dashboard/cfo/ask/page.tsx                 # NEW — user-facing AI advisor page
+
+components/ai-advisor/TaxAdvisorAnswer.tsx     # RouteToPro now has clickable CTA
+```
+
+### Routing (HR-3 + D-2 alignment)
+
+| Profession | Marketplace `discipline` | Licensing |
+|---|---|---|
+| `ADVISER` | `FINANCIAL_ADVISOR` | AFSL — personal financial advice + product recommendations |
+| `ACCOUNTANT` | `TAX_AGENT` | TPB — personal tax advice |
+| `BROKER` | `MORTGAGE_BROKER` | NCCP — credit advice + product recommendations |
+
+The mapping is **intentionally narrow** — an advisory question routes to AFSL-licensed pros, a tax question routes to TPB-registered agents, a credit question routes to NCCP-authorised brokers. **Reviewers reject any change that broadens the mapping** (e.g. routing AFSL questions to TPB-only agents).
+
+### Deep-link contract
+
+`buildAskAProDeepLink({ profession, question?, reason? })` produces `/marketplace?discipline=<mapped>&question=<encoded>&reason=<encoded>`. The marketplace listing detail page can pick up the URL params to pre-fill the request submission form (Phase 32C `submitRequest`). **Sensitive context (CDR data) is NEVER placed in the URL** — the user opts in to sharing snapshot context inside the request form.
+
+### User-facing surface
+
+- Route: `/dashboard/cfo/ask`
+- Auth: `report.read` permission (lightest authenticated touch — surface returns facts; HR-1 + HR-2 structurally enforce that the AI never invents either)
+- Components: same `TaxAdvisorAskForm` + `TaxAdvisorAnswer` from 41h.3
+- 503 path identical to admin route — clear "AI advisor not configured" message when `GEMINI_API_KEY` is unset
+
+### Why both routes coexist
+
+- `/api/admin/ai-advisor/ask` — admin diagnostic; `audit:read` permission; access via `/admin/ai-advisor`
+- `/api/ai-advisor/ask` — user-facing; `report.read` permission; access via `/dashboard/cfo/ask`
+
+Both delegate to `runAdvisorQuery` so provider wiring + validation logic live in one place. The auth surface is the only difference.
+
+### Tests (17 new — 561 total)
+
+| Section | Coverage |
+|---|---|
+| `professionToDiscipline` (3) | ADVISER → FINANCIAL_ADVISOR, ACCOUNTANT → TAX_AGENT, BROKER → MORTGAGE_BROKER |
+| `buildAskAProDeepLink` (5) | base path; discipline param; question + reason encoding; omits when not supplied; URL-special chars |
+| `runAdvisorQuery` validation (4) | empty / whitespace / over-cap rejected; cap edge accepted |
+| `runAdvisorQuery` config (1) | NOT_CONFIGURED when `GEMINI_API_KEY` unset |
+| `RouteToPro` CTA wiring (4) | Tier 2 ADVISER href + copy; BLOCKED_RECOMMENDATION default; ACCOUNTANT → TAX_AGENT; BROKER → MORTGAGE_BROKER |
+
+**561 total tests** (544 → 561, +17). tsc clean.
+
+**Phase 41h.5 — Tool registry expansion** is next (`runScenario` SCENARIO_RUN tool + additional fact lookups: CGT exposure, Div 7A risk, in-house asset ratio, contribution-cap deltas). Closes Phase 41h.

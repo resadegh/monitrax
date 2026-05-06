@@ -214,6 +214,86 @@ describe('TaxAdvisorAnswer — status routing', () => {
     expect(html).toContain('Trust restructure question');
   });
 
+  it('Tier 2 routing card has clickable CTA linking to /marketplace with discipline filter', () => {
+    const html = renderToString(
+      <TaxAdvisorAnswer
+        originalQuestion="Should I transfer my property into a trust?"
+        response={baseResponse({
+          status: 'OK',
+          answer: {
+            tier: 'TIER_2_ROUTE_TO_PRO',
+            segments: [{ type: 'TEXT', text: 'Adviser scope.' }],
+            askAProRouting: {
+              profession: 'ADVISER',
+              reason: 'Structural restructure question.',
+            },
+          },
+        })}
+      />,
+    );
+    // Anchor href must point at marketplace with discipline filter
+    expect(html).toMatch(/href="\/marketplace\?[^"]*discipline=FINANCIAL_ADVISOR/);
+    // Question + reason carried as URL params
+    expect(html).toContain('question=');
+    expect(html).toContain('reason=');
+    // CTA copy is profession-specific
+    expect(html).toMatch(/Find a[^a-z]*financial adviser/i);
+  });
+
+  it('BLOCKED_RECOMMENDATION CTA defaults to ADVISER discipline with original question', () => {
+    const html = renderToString(
+      <TaxAdvisorAnswer
+        originalQuestion="Should I salary sacrifice?"
+        response={baseResponse({
+          status: 'BLOCKED_RECOMMENDATION',
+          traceId: 'trace_blocked_rec',
+        })}
+      />,
+    );
+    expect(html).toMatch(/href="\/marketplace\?[^"]*discipline=FINANCIAL_ADVISOR/);
+    expect(html).toMatch(/Find a[^a-z]*financial adviser/i);
+  });
+
+  it('Tier 2 ACCOUNTANT routing → TAX_AGENT discipline + tax-agent CTA copy', () => {
+    const html = renderToString(
+      <TaxAdvisorAnswer
+        response={baseResponse({
+          status: 'OK',
+          answer: {
+            tier: 'TIER_2_ROUTE_TO_PRO',
+            segments: [{ type: 'TEXT', text: 'Tax agent scope.' }],
+            askAProRouting: {
+              profession: 'ACCOUNTANT',
+              reason: 'BAS / GST registration question.',
+            },
+          },
+        })}
+      />,
+    );
+    expect(html).toMatch(/discipline=TAX_AGENT/);
+    expect(html).toMatch(/Find a[^a-z]*tax agent/i);
+  });
+
+  it('Tier 2 BROKER routing → MORTGAGE_BROKER discipline + broker CTA copy', () => {
+    const html = renderToString(
+      <TaxAdvisorAnswer
+        response={baseResponse({
+          status: 'OK',
+          answer: {
+            tier: 'TIER_2_ROUTE_TO_PRO',
+            segments: [{ type: 'TEXT', text: 'Broker scope.' }],
+            askAProRouting: {
+              profession: 'BROKER',
+              reason: 'Refinance question.',
+            },
+          },
+        })}
+      />,
+    );
+    expect(html).toMatch(/discipline=MORTGAGE_BROKER/);
+    expect(html).toMatch(/Find a[^a-z]*mortgage broker/i);
+  });
+
   it('UNCOMPUTED flags render in their own section', () => {
     const html = renderToString(
       <TaxAdvisorAnswer

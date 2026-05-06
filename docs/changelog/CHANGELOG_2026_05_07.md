@@ -1,5 +1,54 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41h4-ask-a-pro-router (Phase 41h.4 — Ask-a-Pro router + user-facing surface graduation SHIPPED)
+
+### Strategy
+Graduates the AI advisor from admin-demo to user-facing. The Tier 2 routing card now links to the existing Phase 32C marketplace, scoped to the right discipline based on the AI's `askAProRouting.profession`. Same gateway, same components — just the surface graduates.
+
+### Profession → Discipline mapping (locked in)
+| Profession | Marketplace `discipline` | Licensing |
+|---|---|---|
+| ADVISER | FINANCIAL_ADVISOR | AFSL — personal financial advice + product recommendations |
+| ACCOUNTANT | TAX_AGENT | TPB — personal tax advice |
+| BROKER | MORTGAGE_BROKER | NCCP — credit advice + product recommendations |
+
+**Intentionally narrow** — reviewers reject any change that broadens it (e.g. routing AFSL questions to TPB-only agents).
+
+### Files
+- `lib/ai/tax-advisor/askAProRouting.ts` — `professionToDiscipline()` + `buildAskAProDeepLink()`
+- `lib/ai/tax-advisor/runAdvisorQuery.ts` — shared gateway helper used by both admin + user-facing routes
+- `app/api/ai-advisor/ask/route.ts` — user-facing endpoint (`report.read` permission via `withPermission`)
+- `app/api/admin/ai-advisor/ask/route.ts` — refactored to delegate to `runAdvisorQuery`
+- `app/dashboard/cfo/ask/page.tsx` — user-facing page using existing 41h.3 components
+- `components/ai-advisor/TaxAdvisorAnswer.tsx` — `RouteToPro` now has clickable CTA + accepts `originalQuestion` prop
+
+### Deep-link contract
+`buildAskAProDeepLink({ profession, question?, reason? })` → `/marketplace?discipline=<mapped>&question=<encoded>&reason=<encoded>`. CDR data is NEVER placed in URL — sensitive snapshot context is opt-in inside the request submission form.
+
+### Both routes coexist
+- `/api/admin/ai-advisor/ask` — admin diagnostic; `audit:read`; `/admin/ai-advisor`
+- `/api/ai-advisor/ask` — user-facing; `report.read`; `/dashboard/cfo/ask`
+
+Both delegate to `runAdvisorQuery` — single source of truth for provider wiring + validation.
+
+### Tests (17 new — 561 total, 544 → 561, +17)
+- `professionToDiscipline` (3) — all three professions correctly mapped
+- `buildAskAProDeepLink` (5) — base path; discipline param; question + reason encoding; omits when not supplied; URL-special chars round-trip
+- `runAdvisorQuery` validation (4) — empty / whitespace / over-cap rejected; cap edge accepted
+- `runAdvisorQuery` config (1) — `NOT_CONFIGURED` when `GEMINI_API_KEY` unset
+- `RouteToPro` CTA wiring (4) — Tier 2 ADVISER href + copy; BLOCKED_RECOMMENDATION default to ADVISER; ACCOUNTANT → TAX_AGENT; BROKER → MORTGAGE_BROKER
+
+tsc clean.
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.35
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.1 41h.4 SHIPPED row
+
+### Next
+**41h.5** — Tool registry expansion (`runScenario` SCENARIO_RUN tool + additional fact lookups: CGT exposure, Div 7A risk, in-house asset ratio, contribution-cap deltas). Closes Phase 41h.
+
+---
+
 ## Session: claude/phase-41h3-practice-surface-ui (Phase 41h.3 — AI Advisor Practice surface UI SHIPPED)
 
 ### Strategy

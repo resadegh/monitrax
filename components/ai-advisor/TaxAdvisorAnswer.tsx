@@ -29,6 +29,10 @@ import type {
 import type { IdentifiedCitation } from '@/lib/ai/tax-advisor/types';
 import type { UncomputedFlag } from '@/lib/tax-engine/types';
 import type { GatewayResponse } from '@/lib/ai/tax-advisor';
+import {
+  buildAskAProDeepLink,
+  type AdvisorProfession,
+} from '@/lib/ai/tax-advisor/askAProRouting';
 import { TaxAdvisorBoundaryFooter } from './TaxAdvisorBoundaryFooter';
 import { TaxAdvisorUncomputedFlag } from './TaxAdvisorUncomputedFlag';
 
@@ -36,9 +40,14 @@ interface TaxAdvisorAnswerProps {
   response: GatewayResponse;
   /** Optional FY label override for the boundary footer. */
   fyLabel?: string;
+  /**
+   * Question the user originally asked. Used to pre-fill the
+   * Ask-a-Pro deep link for context.
+   */
+  originalQuestion?: string;
 }
 
-export function TaxAdvisorAnswer({ response, fyLabel }: TaxAdvisorAnswerProps) {
+export function TaxAdvisorAnswer({ response, fyLabel, originalQuestion }: TaxAdvisorAnswerProps) {
   // Status surfaces from the gateway — the UI must handle every one.
   if (response.status === 'PROVIDER_ERROR') {
     return (
@@ -66,6 +75,7 @@ export function TaxAdvisorAnswer({ response, fyLabel }: TaxAdvisorAnswerProps) {
         reason="Recommendations are out of scope for the AI advisor — a registered professional is the right resource."
         profession="ADVISER"
         traceId={response.traceId}
+        originalQuestion={originalQuestion}
       />
     );
   }
@@ -104,6 +114,7 @@ export function TaxAdvisorAnswer({ response, fyLabel }: TaxAdvisorAnswerProps) {
           reason={answer.askAProRouting.reason}
           profession={answer.askAProRouting.profession}
           traceId={response.traceId}
+          originalQuestion={originalQuestion}
         />
       )}
 
@@ -230,25 +241,42 @@ function RouteToPro({
   reason,
   profession,
   traceId,
+  originalQuestion,
 }: {
   reason: string;
-  profession: 'ADVISER' | 'ACCOUNTANT' | 'BROKER';
+  profession: AdvisorProfession;
   traceId: string;
+  originalQuestion?: string;
 }) {
-  const professionLabel: Record<typeof profession, string> = {
+  const professionLabel: Record<AdvisorProfession, string> = {
     ADVISER: 'a registered financial adviser (AFSL)',
     ACCOUNTANT: 'a registered tax agent (TPB)',
     BROKER: 'a credit assistant (NCCP)',
   };
+  const askAProHref = buildAskAProDeepLink({
+    profession,
+    question: originalQuestion,
+    reason,
+  });
   return (
-    <div className="rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/20 p-4">
-      <h4 className="font-semibold text-blue-900 dark:text-blue-200 text-sm">
-        This question is best answered by {professionLabel[profession]}
-      </h4>
-      <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">{reason}</p>
-      <p className="text-xs text-blue-700/60 mt-2">
-        Trace: <code>{traceId}</code>
-      </p>
+    <div className="rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/20 p-4 space-y-3">
+      <div>
+        <h4 className="font-semibold text-blue-900 dark:text-blue-200 text-sm">
+          This question is best answered by {professionLabel[profession]}
+        </h4>
+        <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">{reason}</p>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <a
+          href={askAProHref}
+          className="inline-flex items-center px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+        >
+          Find a {profession === 'ADVISER' ? 'financial adviser' : profession === 'ACCOUNTANT' ? 'tax agent' : 'mortgage broker'} →
+        </a>
+        <p className="text-xs text-blue-700/60">
+          Trace: <code>{traceId}</code>
+        </p>
+      </div>
     </div>
   );
 }
