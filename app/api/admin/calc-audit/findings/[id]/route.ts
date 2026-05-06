@@ -34,8 +34,9 @@ interface PatchBody {
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   if (!isAdminPortalAccessible()) {
     return NextResponse.json(
       {
@@ -89,7 +90,7 @@ export async function PATCH(
 
   try {
     const updated = await updateFindingResolution({
-      findingId: params.id,
+      findingId: id,
       toResolution: body.toResolution as CalcAuditFindingResolution,
       resolvedBy: authResult.context.email,
       adminNotes: body.adminNotes,
