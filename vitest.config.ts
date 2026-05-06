@@ -19,6 +19,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './'),
+      // `server-only` is a Next.js runtime guard. In vitest's node
+      // environment we stub it so server-side libs can still be
+      // unit-tested without spinning up Next.
+      'server-only': path.resolve(__dirname, './tests/setup/server-only-stub.ts'),
     },
   },
 });

@@ -1,5 +1,66 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41i4-alerting-workflow (Phase 41i.4 — Alerting + workflow SHIPPED)
+
+### Strategy
+Closes the alerting layer on top of 41i.3's lifecycle. With L1 (fixtures) + L3 foundation (persistent findings + lifecycle) + alerting now live, the calc audit safety net is functionally complete. Per HR-3 — admin-side only.
+
+### What ships
+- `lib/calc-audit/alertingService.ts` (NEW): two-channel dispatcher (Slack + email) with severity threshold gating
+- `lib/calc-audit/findingService.ts` (MODIFIED): fire-and-forget alert hooks on creation + escalation
+- `docs/operational/calc-audit/backfill-runbook.md` (NEW): admin SOP for fixing engine bugs + remediating affected users
+- `tests/setup/server-only-stub.ts` (NEW): vitest alias for the Next.js `server-only` runtime guard
+- `vitest.config.ts` (MODIFIED): wires the stub via `resolve.alias`
+
+### Channels
+| Channel | Activation env vars | Behaviour when unset |
+|---|---|---|
+| Slack webhook | `SLACK_CALC_AUDIT_WEBHOOK_URL` | No-op |
+| Email (SendGrid) | `SENDGRID_API_KEY` + `MONITRAX_CALC_AUDIT_ALERT_EMAIL` | No-op (both vars required together) |
+
+### Threshold
+- Default: HIGH (only HIGH + CRITICAL findings fire)
+- Override: `CALC_AUDIT_ALERT_THRESHOLD` env var
+- Invalid values fall back to HIGH (misconfig must not break audit pipeline)
+
+### Triggers
+- `CREATED` — new finding ≥ threshold
+- `ESCALATED_TO_FIX_REQUIRED` — admin transition (real bug confirmed)
+- NO alert on refresh (existing OPEN/INVESTIGATING re-detected) or on FIXED / FALSE_POSITIVE close
+
+### Fire-and-forget
+Per CLAUDE.md §12.10. `Promise.all` with per-channel `.catch(() => {})` wrapping. Delivery failures NEVER block the underlying audit operation.
+
+### Backfill runbook (`docs/operational/calc-audit/backfill-runbook.md`)
+Admin SOP for the workflow after a confirmed bug:
+1. Decision tree from finding → FIX_REQUIRED → backfill scope
+2. Identifying affected users (default assumption: most engines pure)
+3. Three remediation strategies (re-compute on next access / active backfill / compensating snapshot)
+4. Notification policy per HR-3 (existing support tooling, never in-app banners; warm-words copy guidance)
+5. Severity → response time SLA matrix
+6. CLAUDE.md compliance reminders (§12.11 / §12.12 / §13.3 / §0.4)
+
+### Tests (26 new — 632 total)
+- resolveThreshold (3) — default HIGH; valid env override; invalid env fallback
+- meetsThreshold (6) — all severity levels against thresholds
+- recordAlert threshold gating (4) — CRITICAL fires; MEDIUM/LOW don't; lowered threshold raises gate
+- recordAlert no-channels safety (5) — graceful degradation across env permutations
+- buildSlackPayload (4) — trigger labels; severity emojis; structured fields contain key data
+- buildEmailBody (4) — trigger copy; engine/severity rendered; finding id + portal link; failed assertions
+
+### Test infra
+New `tests/setup/server-only-stub.ts` + vitest config alias so any module importing Next.js's `server-only` runtime guard can be unit-tested in node environment. Future server-side libs benefit too.
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.39
+- `docs/operational/calc-audit/backfill-runbook.md` (new admin runbook)
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.2 41i.4 SHIPPED row
+
+### Next
+**41i.5** — L2 Cloud Scheduler anomaly detection. Deferred until Cloud Scheduler infra is in place; not an immediate dependency since L1 + L3 + alerting are live.
+
+---
+
 ## Session: claude/phase-41i3-l3-persistent-findings (Phase 41i.3 — L3 audit foundation: persistent findings + lifecycle SHIPPED)
 
 ### Strategy

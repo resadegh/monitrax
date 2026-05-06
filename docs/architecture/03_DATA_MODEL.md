@@ -2575,3 +2575,105 @@ End-to-end persistence is exercised via manual smoke against the admin endpoint 
 - `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.2 41i.3 SHIPPED row
 
 **41i.4 — Alerting + workflow** is next (Slack / email when severity ≥ HIGH; the lifecycle is now in place to support it).
+
+## **10.39 Phase 41i.4 — Alerting + workflow (PR — shipped 2026-05-07)**
+
+Alerting layer + operational runbook on top of the 41i.3 finding lifecycle. Per HR-3 — admin-side only; users never see calc-audit alerts.
+
+### What ships
+
+```
+lib/calc-audit/
+├── alertingService.ts          # NEW — Slack + email channels, threshold gating
+└── findingService.ts           # MODIFIED — fire-and-forget alert calls
+
+docs/operational/calc-audit/
+└── backfill-runbook.md         # NEW — admin SOP for fixing engine bugs +
+                                 # remediating affected users without
+                                 # user-facing anxiety surfaces
+
+tests/setup/server-only-stub.ts # NEW — vitest alias for Next.js
+                                 # `server-only` runtime guard
+```
+
+### Channels
+
+| Channel | Activation env vars | Behaviour when unset |
+|---|---|---|
+| **Slack** | `SLACK_CALC_AUDIT_WEBHOOK_URL` | No-op (returns `delivered: false`) |
+| **Email (SendGrid)** | `SENDGRID_API_KEY` + `MONITRAX_CALC_AUDIT_ALERT_EMAIL` | No-op (both vars must be set together) |
+
+Both channels are **fire-and-forget**: a delivery failure NEVER blocks the underlying audit operation. Alerts run via `Promise.all` with per-channel `.catch(() => {})` wrapping.
+
+### Severity threshold
+
+- Default: `HIGH` — only HIGH + CRITICAL findings fire alerts
+- Override: `CALC_AUDIT_ALERT_THRESHOLD` env var
+- Invalid env values fall back to `HIGH` (misconfiguration must not break the audit pipeline)
+
+### Trigger events
+
+| Trigger | Fires alert when |
+|---|---|
+| `CREATED` | A new finding is persisted with severity ≥ threshold |
+| `ESCALATED_TO_FIX_REQUIRED` | Admin moves a finding to `FIX_REQUIRED` (real bug confirmed) |
+
+**No alert** when a finding is *refreshed* (existing OPEN/INVESTIGATING with new detection). Re-firing on every CI run would spam — admin already knows.
+
+**No alert** when a finding is closed to `FIXED` or `FALSE_POSITIVE`. The admin chose to close it.
+
+### Slack payload shape
+
+Block-kit structured layout:
+- Header with severity emoji (`🚨` CRITICAL / `⚠️` HIGH)
+- Fields section: Engine / Fixture / Severity / Source
+- Summary section
+- Footer: Finding id + detected timestamp
+
+### Email body shape
+
+Plain-text body with:
+- Trigger label ("A new finding has been recorded" / "Escalated to FIX_REQUIRED")
+- Engine / Fixture / Severity / Source / Detected / Finding id
+- Summary
+- Failed assertions (when present)
+- Admin portal link `/admin/calc-audit`
+
+### Backfill runbook (`docs/operational/calc-audit/backfill-runbook.md`)
+
+Operational SOP for the workflow after a confirmed bug:
+
+1. Decision tree from finding → FIX_REQUIRED → backfill scope
+2. Identifying affected users (default assumption: most engines are pure; verify before backfilling)
+3. **Three remediation strategies**:
+   - A: Re-compute on next access (cache invalidation)
+   - B: Active backfill via batch (idempotent script + dry-run pass)
+   - C: Compensating snapshot (when historic value can't be overwritten)
+4. **Notification policy** per HR-3 — users contacted via existing support tooling, NEVER via in-app calc-error UI
+5. Severity → response time SLA matrix
+6. CLAUDE.md compliance reminders (§12.11 destructive writes, §12.12 schema migrations, §13.3 CDR sanitisation, §0.4 warm-words rule)
+
+### Test infra change
+
+New `tests/setup/server-only-stub.ts` aliased in `vitest.config.ts` so any module importing the Next.js `server-only` runtime guard can still be unit-tested. Future server-side libs benefit too.
+
+### Tests (26 new — 632 total)
+
+| Section | Coverage |
+|---|---|
+| `resolveThreshold` (3) | Default HIGH; valid env override; invalid env fallback |
+| `meetsThreshold` (6) | All severity levels against default + custom thresholds |
+| `recordAlert` threshold gating (4) | CRITICAL fires, MEDIUM doesn't, custom threshold lowers gate |
+| `recordAlert` no-channels safety (5) | Graceful when no env / Slack only / email only / each var alone insufficient |
+| `buildSlackPayload` (4) | Trigger labels, severity emojis, structured fields contain key data |
+| `buildEmailBody` (4) | Trigger copy, engine/severity rendered, finding id + portal link, failed assertions surfaced |
+
+**632 total tests** (606 → 632, +26). tsc clean.
+
+### Per going-forward commitment
+
+- `docs/architecture/03_DATA_MODEL.md` new §10.39 (this entry)
+- `docs/operational/calc-audit/backfill-runbook.md` (new admin runbook)
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.2 41i.4 SHIPPED row
+
+**41i.5 — L2 Cloud Scheduler anomaly detection** is next (deferred until Cloud Scheduler infra is in place — not an immediate dependency since L1 + L3 + alerting are now live).

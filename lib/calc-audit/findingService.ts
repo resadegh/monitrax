@@ -29,6 +29,7 @@ import type {
   CalcAuditFindingSource,
 } from '@prisma/client';
 import type { DifferentialReport, FixtureRunResult } from './types';
+import { recordAlert } from './alertingService';
 
 // ---------- Recording ----------
 
@@ -87,8 +88,10 @@ export async function recordDifferentialFindings(
         },
       });
       refreshed++;
+      // Refreshed findings do NOT re-fire alerts — admin already
+      // knew about this. Re-firing on every CI run would spam.
     } else {
-      await prisma.calcAuditFinding.create({
+      const created_finding = await prisma.calcAuditFinding.create({
         data: {
           source: 'L1_DIFFERENTIAL',
           engineName: result.engineName,
@@ -103,6 +106,14 @@ export async function recordDifferentialFindings(
         },
       });
       created++;
+      // Phase 41i.4 — fire-and-forget alert on creation. Severity
+      // threshold is enforced inside recordAlert; we don't gate
+      // here so the threshold env var is the single tuning knob.
+      void recordAlert({ trigger: 'CREATED', finding: created_finding }).catch(
+        () => {
+          /* alert delivery failures must not block the audit pipeline */
+        },
+      );
     }
   }
 
@@ -225,7 +236,7 @@ export async function updateFindingResolution(
     input.toResolution === 'FALSE_POSITIVE' ||
     input.toResolution === 'FIXED';
 
-  return prisma.calcAuditFinding.update({
+  const updated = await prisma.calcAuditFinding.update({
     where: { id: input.findingId },
     data: {
       resolution: input.toResolution,
@@ -234,6 +245,20 @@ export async function updateFindingResolution(
       resolvedBy: isTerminal ? input.resolvedBy : existing.resolvedBy,
     },
   });
+
+  // Phase 41i.4 — escalation alert when a finding is moved to
+  // FIX_REQUIRED. Fire-and-forget. No alert on FIXED / FALSE_POSITIVE
+  // (admin chose to close — no need to re-notify).
+  if (input.toResolution === 'FIX_REQUIRED') {
+    void recordAlert({
+      trigger: 'ESCALATED_TO_FIX_REQUIRED',
+      finding: updated,
+    }).catch(() => {
+      /* fire-and-forget */
+    });
+  }
+
+  return updated;
 }
 
 // ---------- Helpers ----------
