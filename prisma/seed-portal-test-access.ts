@@ -32,9 +32,7 @@
  *      `lib/portal/featureFlags.ts` line 117. This script grants
  *      database access; the env var is the master toggle.
  */
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/db';
 
 const SMITHFIELD_ORG_ID = 'lh-org-smithfield';
 
@@ -77,7 +75,13 @@ async function grantPortalAccess(email: string): Promise<'granted' | 'already' |
   return 'granted';
 }
 
-async function main() {
+/**
+ * Importable entry point — called by `app/api/admin/run-seed/route.ts` so the
+ * grant can be applied through Vercel runtime auth (WIF) without a Cloud SQL
+ * Proxy. The CLI bootstrap below remains for local use via
+ * `npm run seed:portal-access`.
+ */
+export async function runPortalAccessSeed(extraEmails: string[] = []): Promise<void> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('PORTAL TEST ACCESS SEED');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -88,20 +92,17 @@ async function main() {
     select: { id: true, name: true },
   });
   if (!org) {
-    console.error('❌ Smithfield Wealth Advisers Org not found.');
-    console.error('   Run `npm run seed:lighthouse` first to create it.');
-    process.exit(1);
+    throw new Error(
+      'Smithfield Wealth Advisers Org not found. Run the lighthouse seed first to create it.',
+    );
   }
   console.log(`Target org: ${org.name} (${org.id})`);
   console.log('');
 
   const emails = ['admin@monitrax.com.au'];
-
-  const extra = process.env.EXTRA_PORTAL_OWNERS;
-  if (extra) {
-    extra.split(',').map((e) => e.trim()).filter(Boolean).forEach((e) => {
-      if (!emails.includes(e.toLowerCase())) emails.push(e);
-    });
+  for (const e of extraEmails) {
+    const trimmed = e.trim().toLowerCase();
+    if (trimmed && !emails.includes(trimmed)) emails.push(trimmed);
   }
 
   for (const email of emails) {
@@ -133,11 +134,19 @@ async function main() {
   console.log('  • Redeploy after setting the env var.');
 }
 
-main()
-  .catch((err) => {
-    console.error('❌ Seed failed:', err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// CLI bootstrap — only runs when invoked directly via
+// `npm run seed:portal-access`, NOT when imported.
+if (require.main === module) {
+  const extra = process.env.EXTRA_PORTAL_OWNERS
+    ? process.env.EXTRA_PORTAL_OWNERS.split(',').map((e) => e.trim()).filter(Boolean)
+    : [];
+
+  runPortalAccessSeed(extra)
+    .catch((err) => {
+      console.error('❌ Seed failed:', err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
