@@ -9,6 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import { IntegrationsList } from '@/components/portal/integrations';
+import { PortalPageHero } from '@/components/shell';
 import {
   createIntegrationsService,
   type AccountingIntegration,
@@ -93,13 +94,12 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Integrations</h1>
-        <p className="text-slate-500 mt-1">
-          Connect your accounting software to sync client data
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+      <PortalPageHero
+        atmosphere="violet"
+        title="Integrations"
+        subtitle="Connect your accounting software to sync client data."
+      />
 
       <IntegrationsList
         integrations={integrations}

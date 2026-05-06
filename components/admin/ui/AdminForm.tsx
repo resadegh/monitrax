@@ -38,7 +38,7 @@ export function Input({
       <input
         id={inputId}
         className={cn(
-          'w-full px-3 py-2 border rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors',
+          'w-full px-3 py-2 border rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors',
           error
             ? 'border-red-500 focus:ring-red-500'
             : 'border-gray-300 dark:border-gray-600',
@@ -83,7 +83,7 @@ export function Textarea({
       <textarea
         id={textareaId}
         className={cn(
-          'w-full px-3 py-2 border rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors resize-y',
+          'w-full px-3 py-2 border rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors resize-y',
           error
             ? 'border-red-500 focus:ring-red-500'
             : 'border-gray-300 dark:border-gray-600',
@@ -138,7 +138,7 @@ export function Select({
       <select
         id={selectId}
         className={cn(
-          'w-full px-3 py-2 border rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors',
+          'w-full px-3 py-2 border rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors',
           error
             ? 'border-red-500 focus:ring-red-500'
             : 'border-gray-300 dark:border-gray-600',
@@ -180,7 +180,7 @@ export function Checkbox({ label, description, className, id, ...props }: Checkb
           id={checkboxId}
           type="checkbox"
           className={cn(
-            'w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800',
+            'w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-800',
             className
           )}
           {...props}
@@ -270,7 +270,7 @@ export function SearchInput({ onClear, value, className, ...props }: SearchInput
         type="search"
         value={value}
         className={cn(
-          'w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors',
+          'w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors',
           className
         )}
         {...props}

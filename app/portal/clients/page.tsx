@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ClientList, type ClientFilters } from '@/components/portal/clients';
 import { InviteModal, type InviteData } from '@/components/portal/team';
+import { PortalPageHero } from '@/components/shell';
 import { createClientsService } from '@/lib/portal/services/clients';
 import { useOrganization } from '@/lib/portal';
 import type { PortalClient } from '@/lib/portal/types';
@@ -165,21 +166,21 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Clients</h1>
-        <p className="text-slate-500 mt-1">
-          Manage your client relationships and access their financial data
-        </p>
-        {/* Role indicator */}
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-sm text-slate-600">Your role:</span>
-          <RoleBadge role={currentUserRole} />
-          {!canInviteClients && (
-            <span className="text-xs text-slate-500">(View only)</span>
-          )}
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+      <PortalPageHero
+        atmosphere="sky"
+        title="Clients"
+        subtitle="Manage your client relationships and access their financial data."
+        actions={
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-600">Your role</span>
+            <RoleBadge role={currentUserRole} />
+            {!canInviteClients && (
+              <span className="text-[11px] text-slate-500">(View only)</span>
+            )}
+          </div>
+        }
+      />
 
       <ClientList
         clients={clients}

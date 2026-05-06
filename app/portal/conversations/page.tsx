@@ -14,7 +14,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/portal';
-import { PracticeGlassCard, PracticeHeader } from '@/components/portal/practice';
+import { PracticeGlassCard } from '@/components/portal/practice';
+import { PortalPageHero } from '@/components/shell';
 import { getPracticeProfessionConfig } from '@/lib/portal/practice';
 import type { OrganizationType } from '@prisma/client';
 
@@ -82,18 +83,13 @@ export default function PortalConversationsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-10 space-y-8">
-        <PracticeHeader
-          organisationName={currentOrg?.name?.split(' ')[0] ?? 'there'}
-          profession={profession}
+        <PortalPageHero
+          atmosphere="violet"
+          greetingName={currentOrg?.name?.split(' ')[0] ?? 'there'}
           practiceLabel={practiceLabel}
+          title="Conversations"
+          subtitle="All your active engagements. In-app messages and email replies land in the same thread."
         />
-
-        <div>
-          <h1 className="text-[28px] font-semibold tracking-tight text-slate-900">Conversations</h1>
-          <p className="mt-1 text-[14px] text-slate-600 max-w-2xl">
-            All your active engagements. In-app messages and email replies land in the same thread.
-          </p>
-        </div>
 
         {error && (
           <PracticeGlassCard padding="md" accentTone="critical">

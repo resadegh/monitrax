@@ -304,7 +304,7 @@ export default function OrganizationRegisterPage() {
                   value={formData.organizationName}
                   onChange={(e) => updateFormData('organizationName', e.target.value)}
                   placeholder="ABC Accounting"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -315,7 +315,7 @@ export default function OrganizationRegisterPage() {
                 <select
                   value={formData.organizationType}
                   onChange={(e) => updateFormData('organizationType', e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 >
                   {ORGANIZATION_TYPES.map((type) => (
                     <option key={type.id} value={type.id}>
@@ -334,7 +334,7 @@ export default function OrganizationRegisterPage() {
                   value={formData.businessEmail}
                   onChange={(e) => updateFormData('businessEmail', e.target.value)}
                   placeholder="contact@abcaccounting.com.au"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -347,7 +347,7 @@ export default function OrganizationRegisterPage() {
                   value={formData.businessPhone}
                   onChange={(e) => updateFormData('businessPhone', e.target.value)}
                   placeholder="02 9000 0000"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -360,7 +360,7 @@ export default function OrganizationRegisterPage() {
                   value={formData.abn}
                   onChange={(e) => updateFormData('abn', e.target.value)}
                   placeholder="00 000 000 000"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -400,7 +400,7 @@ export default function OrganizationRegisterPage() {
                   value={formData.adminName}
                   onChange={(e) => updateFormData('adminName', e.target.value)}
                   placeholder="John Smith"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -411,7 +411,7 @@ export default function OrganizationRegisterPage() {
                   value={formData.adminEmail}
                   onChange={(e) => updateFormData('adminEmail', e.target.value)}
                   placeholder="john@abcaccounting.com.au"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -422,7 +422,7 @@ export default function OrganizationRegisterPage() {
                   value={formData.adminPassword}
                   onChange={(e) => updateFormData('adminPassword', e.target.value)}
                   placeholder="Minimum 8 characters"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
@@ -435,7 +435,7 @@ export default function OrganizationRegisterPage() {
                   value={formData.adminPasswordConfirm}
                   onChange={(e) => updateFormData('adminPasswordConfirm', e.target.value)}
                   placeholder="Confirm your password"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
             </div>
