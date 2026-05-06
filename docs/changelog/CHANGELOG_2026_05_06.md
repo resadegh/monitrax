@@ -1,5 +1,47 @@
 # Changelog — 2026-05-06
 
+## Session: claude/phase-41h2-gemini-provider (Phase 41h.2 — Gemini provider adapter + production audit sink SHIPPED)
+
+### Strategy lock-in (Reza brief 2026-05-06 part 2)
+**HR-3 added to Phase 41 §1 operating principles** as the third hard rule: *"User-visible calc errors are unacceptable. The Calculation Audit System is a silent admin-side safety net — never a user-facing surface."* Errors flow detect → admin alert → admin investigates → if real bug, fix code + backfill via existing data-update flow → user contacted via existing support tooling. Reviewers reject any PR that adds a user-facing surface for calc-correctness warnings.
+
+Phase 41i (Calculation Audit System) sub-PR sequence locked in §11.2 of Phase 41 doc. Cross-app scope — not just tax-engine. Three layers: L1 deterministic fixture differential (CI-gated, no AI), L2 anomaly detection agent (AI batch via Cloud Scheduler — deferred), L3 on-demand admin-portal "Audit this user" (AI grounded in tool calls — same HR-1/HR-2 discipline).
+
+Sequencing: option 2 — pause Phase 41h after this PR, build 41i, then resume 41h.3+.
+
+### Changes
+- New `lib/ai/tax-advisor/providers/geminiProvider.ts` — `GeminiProvider` implements `AIProvider`:
+  - `toolToFunctionDeclaration()` converts `TaxAdvisorTool` → Gemini `FunctionDeclaration` (OpenAPI subset)
+  - Chat session with `systemInstruction` (Monitrax persona) + `tools` parameter + `responseMimeType: 'application/json'`
+  - Multi-turn dispatch loop capped at MAX_TURNS=8: send → check `response.functionCalls()` → execute via `request.executeTool()` callback → send back as `functionResponse` parts → repeat until final JSON text
+  - Token usage aggregated across all turns from `usageMetadata`
+  - 30s default timeout per turn (`withTimeout` Promise.race guard)
+  - Dependency-injection constructor — tests inject mock client, production reads `GEMINI_API_KEY` env
+  - Throws typed `ProviderError` on API key missing / non-JSON response / MAX_TURNS exceeded / timeout
+- New `lib/ai/tax-advisor/audit/productionAuditSink.ts` — `ProductionAuditSink` implements `AuditSink`:
+  - Wires gateway `AuditEntry` → existing `createAuditLog()` pipeline (`lib/security/auditLog.ts` → Prisma `AuditLog` table)
+  - Action: `AI_ADVISOR_INVOCATION`; entityType: `AI_ADVISOR`; entityId: traceId
+  - Outcome→status mapping: `OK→SUCCESS` / `BLOCKED_VALIDATION→BLOCKED` / `BLOCKED_RECOMMENDATION→BLOCKED` / `PROVIDER_ERROR→FAILURE` / `SCHEMA_INVALID→FAILURE`
+  - CDR-safe metadata only (CLAUDE.md §13.3) — no raw question / response text
+  - Fire-and-forget per CLAUDE.md §12.10 — DB write failure logs to `console.error` and trace ID lets us reconstruct from Cloud Logging; never blocks response
+
+### Tests (8 new)
+- Tool schema conversion (1) — `toolToFunctionDeclaration` produces OpenAPI-shaped declaration with type/properties/required
+- Constructor (2) — no API key throws ProviderError; injected client OK
+- Single-turn invoke (2) — JSON response parsed correctly with token usage; non-JSON throws ProviderError
+- Multi-turn function calling (3) — function call dispatched via `executeTool` callback then continues to final answer; token usage aggregated across turns; MAX_TURNS guard throws after 8 turns
+
+### 513 total tests (505 → 513, +8). tsc clean.
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.32
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.1 41h.2 SHIPPED + new §1 invariant 11 (HR-3) + new §11.2 (Phase 41i sub-PR sequence)
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed
+
+41i.0 (Calculation Audit System foundation — cross-app) is next.
+
+---
+
 ## Session: claude/phase-41h1-ai-policy-gateway (Phase 41h.1 — AI Policy Gateway SHIPPED)
 
 ### Strategy reframe (Reza brief 2026-05-06)

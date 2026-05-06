@@ -2032,3 +2032,76 @@ const response = await gateway.ask({
 **Total tests:** 472 → 505 (+33). tsc clean.
 
 **Phase 41h.2 — Gemini provider adapter** is next (lives behind the gateway; just translates gateway → Gemini API).
+
+## **10.32 Phase 41h.2 — Gemini provider adapter + production audit sink (PR — shipped 2026-05-06)**
+
+Implements `AIProvider` for Google's Gemini API. **No code outside `lib/ai/tax-advisor/providers/` should import the Gemini SDK directly** — reviewers reject any PR that does. The gateway now has a real production-ready provider plus an in-memory mock for tests.
+
+### Architecture
+
+```
+lib/ai/tax-advisor/providers/
+├── types.ts                # (existing) AIProvider interface + ProviderError
+├── mockProvider.ts         # (existing) Deterministic provider for tests
+└── geminiProvider.ts       # NEW — real Gemini SDK adapter
+
+lib/ai/tax-advisor/audit/
+├── auditLogger.ts          # (existing) AuditEntry + AuditSink + InMemorySink + ConsoleSink
+└── productionAuditSink.ts  # NEW — wires gateway audit into existing AuditLog pipeline
+```
+
+### `GeminiProvider` — what it does
+
+1. **Tool schema conversion** — `toolToFunctionDeclaration()` converts each `TaxAdvisorTool` to a Gemini `FunctionDeclaration` (Gemini's schema dialect is a subset of OpenAPI; our `ToolInputSchema` maps cleanly).
+2. **Chat session with system prompt** — `model.startChat()` with `systemInstruction` set to the Monitrax persona (from `buildSystemPrompt`); `tools: [{ functionDeclarations }]`; `responseMimeType: 'application/json'`.
+3. **Multi-turn dispatch loop** — capped at `MAX_TURNS = 8` to prevent runaway loops:
+   - Send message → read response
+   - If `response.functionCalls()` non-empty → execute each via `request.executeTool()` (the gateway-supplied callback that records into `ToolSession`); send back as `functionResponse` parts; continue
+   - Otherwise → expect final JSON text → parse → return
+4. **Token usage aggregation** across all turns (`usageMetadata.promptTokenCount` + `candidatesTokenCount` + `totalTokenCount`).
+5. **Timeout guard** — defaults to 30s per turn; throws `ProviderError` with provider-specific cause.
+6. **Structured output** — relies on Gemini's `responseMimeType: 'application/json'` mode + post-parse Zod validation in the gateway. We don't pass a `responseSchema` to Gemini because Zod's `discriminatedUnion` doesn't translate cleanly to Gemini's schema dialect.
+
+### `ProductionAuditSink` — what it does
+
+Wires `AuditEntry` from the gateway into Monitrax's existing audit pipeline (`lib/security/auditLog.ts` → Prisma `AuditLog` table, action `AI_ADVISOR_INVOCATION`).
+
+**Outcome → status mapping:**
+- `OK` → `SUCCESS`
+- `BLOCKED_VALIDATION` / `BLOCKED_RECOMMENDATION` → `BLOCKED`
+- `PROVIDER_ERROR` / `SCHEMA_INVALID` → `FAILURE`
+
+**CDR-safe metadata (CLAUDE.md §13.3):** only structural fields persisted — `traceId`, `provider`, `toolsInvoked`, `outcome`, `validationIssueCodes`, `durationMs`, `tokenUsage`. Raw question + AI response text never reach this sink (gateway never passes them in).
+
+**Fire-and-forget** per CLAUDE.md §12.10 — DB write failure logs to `console.error` and the trace ID lets us reconstruct from Cloud Logging; never blocks the response.
+
+### Constructor pattern
+
+```ts
+// Production:
+const provider = new GeminiProvider();  // reads GEMINI_API_KEY from env
+
+// Test:
+const provider = new GeminiProvider({ client: mockClient });  // injected SDK
+```
+
+The dependency-injection pattern lets every test run deterministically without network calls.
+
+### Tests (8 new)
+
+- Tool schema conversion (1 case)
+- Constructor (2 cases — throws without API key; accepts injected client)
+- Single-turn invoke (2 cases — JSON response parsed correctly with token usage; non-JSON throws ProviderError)
+- Multi-turn function calling (3 cases — function call dispatched via callback then continues; token usage aggregated across turns; MAX_TURNS guard throws)
+
+**Total tests:** 505 → 513 (+8). tsc clean.
+
+### Three Phase 41 invariants now active
+
+| Rule | Where | What it forbids |
+|---|---|---|
+| **HR-1** | 41h.0 type system + 41h.1 validator | AI authoring numbers |
+| **HR-2** | 41h.0 type system + 41h.1 validator | AI fabricating citations |
+| **HR-3** *(locked in this PR)* | Phase 41 §1 invariant 11 + Phase 41i (next) | User-visible calc errors |
+
+**Phase 41i — Calculation Audit System** is next. Cross-app silent admin-side safety net per HR-3. Layered: L1 deterministic fixture differential (CI-gated), L3 on-demand admin-portal "audit this user" route. L2 anomaly-detection agent deferred to 41i.5 (needs Cloud Scheduler infra).
