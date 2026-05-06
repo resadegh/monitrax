@@ -240,8 +240,34 @@ function classifyLoan(input: Div7ALoanInput): Div7ALoanClassification {
  * dividend exposure + UNCOMPUTED flags for distributable-surplus and
  * sub-trust UPE deep cases.
  */
+/**
+ * Optional inputs for Phase 41f.3+ — distributable-surplus cap.
+ * When the calling code can resolve the company's simplified s109Y
+ * surplus (typically from `EntityAccountingSnapshot.distributableSurplus`),
+ * pass it here. The classifier then caps `totalDeemedDividend` at the
+ * surplus and pro-rata-distributes the cap across each loan's
+ * `deemedDividendAmount`.
+ *
+ * When omitted, behaviour is unchanged from Phase 41h.5 — the
+ * classifier surfaces UC-DIV7A-DISTRIBUTABLE-SURPLUS with the
+ * "engage a registered tax agent" caveat.
+ */
+export interface Div7AClassifyOptions {
+  /**
+   * The simplified s109Y surplus per Phase 41f.3 (retained earnings +
+   * net profit after tax, floored at 0). Applies to ALL loans in the
+   * call — multi-company callers should call once per company. When
+   * the cap binds, a UC-DIV7A-SURPLUS-CAPPED flag surfaces so the AI
+   * advisor can narrate the cap accurately. The simplified-surplus
+   * caveat (UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE) is preserved
+   * because the full s109Y formula needs off-Xero franking-account data.
+   */
+  distributableSurplus?: number;
+}
+
 export function classifyDiv7ALoans(
   loans: Div7ALoanInput[],
+  options: Div7AClassifyOptions = {},
 ): Div7AClassificationResult {
   if (loans.length === 0) {
     return {
@@ -254,10 +280,32 @@ export function classifyDiv7ALoans(
   }
 
   const classifications = loans.map((l) => classifyLoan(l));
-  const totalDeemedDividend = classifications.reduce(
+  const grossDeemedDividend = classifications.reduce(
     (sum, c) => sum + c.deemedDividendAmount,
     0,
   );
+
+  // Phase 41f.3 — apply the surplus cap when available. Pro-rata
+  // distribute the capped total back to each loan's deemedDividendAmount
+  // so per-loan numbers stay consistent with the aggregate.
+  let totalDeemedDividend = grossDeemedDividend;
+  let surplusCapApplied = false;
+  if (
+    typeof options.distributableSurplus === 'number' &&
+    Number.isFinite(options.distributableSurplus) &&
+    options.distributableSurplus >= 0 &&
+    grossDeemedDividend > options.distributableSurplus
+  ) {
+    const capRatio = options.distributableSurplus / grossDeemedDividend;
+    for (const c of classifications) {
+      if (c.deemedDividendAmount > 0) {
+        c.deemedDividendAmount = Math.round(c.deemedDividendAmount * capRatio * 100) / 100;
+      }
+    }
+    totalDeemedDividend = options.distributableSurplus;
+    surplusCapApplied = true;
+  }
+
   const highestSeverity = classifications.reduce<Div7AStatus>((acc, c) => {
     return SEVERITY_RANK[c.status] > SEVERITY_RANK[acc] ? c.status : acc;
   }, 'COMPLIANT');
@@ -265,8 +313,36 @@ export function classifyDiv7ALoans(
   const citations = [...BASE_CITATIONS];
   const uncomputed: UncomputedFlag[] = [];
 
-  // Surplus cap flag — always when deemed dividend > 0.
-  if (totalDeemedDividend > 0) {
+  // Surplus handling — three paths:
+  //   1. surplus provided + cap applied → emit UC-DIV7A-SURPLUS-CAPPED
+  //   2. surplus provided + did NOT cap → emit UC-DIV7A-SURPLUS-NOT-BINDING
+  //   3. surplus NOT provided + deemed > 0 → emit legacy
+  //      UC-DIV7A-DISTRIBUTABLE-SURPLUS (unchanged from Phase 41h.5)
+  if (typeof options.distributableSurplus === 'number') {
+    citations.push({
+      kind: 'ITAA_1936',
+      reference: 's109Y',
+      lastReviewed: '2026-05-05',
+    });
+    if (surplusCapApplied) {
+      uncomputed.push({
+        id: 'UC-DIV7A-SURPLUS-CAPPED',
+        rationale: `Aggregate deemed-dividend exposure of $${grossDeemedDividend.toLocaleString()} exceeded the company's simplified s109Y distributable surplus of $${options.distributableSurplus.toLocaleString()}. Per s109Y the deemed-dividend amount cannot exceed the surplus; per-loan amounts have been pro-rata reduced. The simplified surplus uses retained earnings + net profit after tax — the full s109Y formula additionally accounts for paid-up capital + non-commercial loans + prior-year frankable distributions, which require off-Xero data. Engage a registered tax agent before lodgment.`,
+        citation: { kind: 'ITAA_1936', reference: 's109Y', lastReviewed: '2026-05-05' },
+      });
+    }
+    // Always raise the simplified-surplus caveat per spec doc §9
+    // (UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE).
+    if (grossDeemedDividend > 0) {
+      uncomputed.push({
+        id: 'UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE',
+        rationale:
+          'The s109Y surplus used here is the simplified estimate (retained earnings + net profit after tax, floored at 0). The full s109Y formula additionally accounts for paid-up capital + non-commercial loans + prior-year frankable distributions; those values require off-Xero data (typically the prior FY tax return). Treat this surplus as a best-estimate; engage a registered tax agent for the binding figure.',
+        citation: { kind: 'ITAA_1936', reference: 's109Y', lastReviewed: '2026-05-05' },
+      });
+    }
+  } else if (grossDeemedDividend > 0) {
+    // Legacy path — no surplus passed. Behaviour unchanged from 41h.5.
     citations.push({
       kind: 'ITAA_1936',
       reference: 's109Y',

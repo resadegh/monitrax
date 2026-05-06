@@ -42,3 +42,29 @@ export {
   type XeroTokens,
   type XeroTenant,
 } from './oauth';
+
+// Phase 41f.3 — token-refresh + report parsing + snapshot pull
+export {
+  getValidAccessToken,
+  TokenRefreshError,
+  type RefreshedTokens,
+} from './tokenRefresh';
+
+export {
+  parseBalanceSheet,
+  parseProfitAndLoss,
+  XeroReportParseError,
+  type XeroBalanceSheet,
+  type XeroProfitAndLoss,
+} from './reportParser';
+
+export {
+  pullSnapshot,
+  resolveFiscalPeriod,
+  currentAustralianFY,
+  computeSimplifiedDistributableSurplus,
+  SnapshotPullError,
+  type PullSnapshotInput,
+  type PullSnapshotResult,
+  type FiscalPeriod,
+} from './snapshotPuller';

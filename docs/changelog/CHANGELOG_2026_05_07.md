@@ -1,5 +1,89 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41f3-snapshot-import (Phase 41f.3 — Xero snapshot import + Div 7A surplus wiring)
+
+### Strategy
+Implements PHASE_41F_BOOKKEEPING_INTEGRATION.md §5 sub-PR #41f.3 on top of the OAuth handshake landed in PR #692. End-to-end Xero snapshot pull pipeline + first wiring point into the Phase 41e tax engine. **Zero new dependencies** — `fetch`-based Xero reports + tolerant JSON parsing.
+
+### Type
+- **Type**: Feature (Phase 41f sub-PR — closes 41f.3 in the active workstream; unblocks 41f.4)
+- **Scope**: Three new lib modules + two new API routes + UI snapshot card + opt-in Div 7A signature extension. **Phase 41e.6 Div 7A classifier signature change is opt-in** — no legacy caller breaks (449 existing tax-engine tests still pass).
+
+### Files Created
+- `lib/integrations/xero/tokenRefresh.ts` — `getValidAccessToken(integration)` returns a fresh access token, refreshing via Xero's token endpoint when expired (60-second skew buffer to avoid races). Persists rotated tokens (Xero rotates the refresh token on every refresh — both must be persisted atomically). On refresh failure stamps `connectionError = 'TOKEN_REFRESH_FAILED'` + clears `isConnected` so the UI surfaces a re-connect prompt. Throws typed `TokenRefreshError` with `code: NOT_CONFIGURED | NO_REFRESH_TOKEN | NOT_CONNECTED | REFRESH_FAILED`.
+- `lib/integrations/xero/reportParser.ts` — typed parsers for Xero BalanceSheet + ProfitAndLoss responses. Tolerant: required totals (Total Assets / Liabilities / Equity / Revenue / Net Profit Before Tax) throw `XeroReportParseError`; optional line items (cash / receivables / payables / debt / depreciation / interest / etc.) return `undefined` when not present in the org's chart of accounts. Walks the `Reports[0].Rows` tree by section title regex (case-insensitive). Parses comma-formatted numerics. Extracts period from `ReportTitles` ("For the period 1 Jul 2024 to 30 Jun 2025") with month-year fallback.
+- `lib/integrations/xero/snapshotPuller.ts` — `pullSnapshot({ integrationId, fiscalPeriod?, pulledByUserId })` orchestrates the end-to-end pull: (1) refresh-if-needed access token via tokenRefresh; (2) parallel fetch of BS + P&L for the resolved period (defaults to current AU FY); (3) parse via reportParser; (4) compute simplified s109Y surplus (`max(0, retainedEarnings + netProfitAfterTax)`); (5) idempotent persist via findUnique on `legalEntityId_fiscalPeriod` + update | create (Prisma upsert can't model the partial unique index from 41f.1); (6) stamp `lastSyncAt + lastSyncStatus = COMPLETED` on the integration. Throws typed `SnapshotPullError` with `code: NOT_CONNECTED | TOKEN_REFRESH_FAILED | XERO_API_ERROR | PARSE_ERROR`. Stamps `lastSyncStatus = FAILED` + `lastSyncError` on any error before re-throwing. Exports `resolveFiscalPeriod`, `currentAustralianFY`, `computeSimplifiedDistributableSurplus` for unit-test consumption.
+- `app/api/entities/[id]/accounting/refresh/route.ts` — `POST` with optional `{ fiscalPeriod }` body. Defence-in-depth ownership via `listEntitiesForUser`. 404 ENTITY_NOT_FOUND / NO_INTEGRATION; 409 NOT_CONNECTED; 502 XERO_API_ERROR; 500 PARSE_ERROR; 503 XERO_NOT_CONFIGURED via typed `SnapshotPullError.code → HTTP status` map. Audit log via `logCRUD` with CDR-safe metadata (no balances or P&L line items — only entity / tenant / fiscal-period identifiers). Decimal columns serialized as numbers; rawProviderPayload omitted from the response.
+- `app/api/entities/[id]/accounting/snapshots/route.ts` — `GET ?limit=N` (default 12, max 50). Returns the latest N `EntityAccountingSnapshot` rows for the entity, newest first. Raw payload omitted. Decimal serialization same as refresh route.
+- `tests/integrations/xero/snapshotPuller.test.ts` — 10 tests: fiscal period resolution (FY label / ISO range / default current FY / July boundary / June boundary); simplified s109Y surplus (retained + net profit / fallback to net profit alone / floors at 0 for net loss / handles current-year loss against prior retained).
+- `tests/integrations/xero/reportParser.test.ts` — 8 tests: BS extraction (totals + retained + receivables + payables + cash); comma-formatted numerics; optional line items return undefined; missing top-level section throws; empty envelope throws; P&L extraction (revenue + COGS + opex + NPBT + tax + NPAT + depreciation + interest + period); fallback to before-tax when after-tax absent; missing required throws.
+- `tests/tax-engine/divisions/div7aLoanClassifierSurplusCap.test.ts` — 11 tests: legacy path (no surplus → UC-DIV7A-DISTRIBUTABLE-SURPLUS); cap binds (gross > surplus → caps total + pro-rata distribute + UC-DIV7A-SURPLUS-CAPPED + UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE); cap doesn't bind (gross ≤ surplus → unchanged + only ESTIMATE flag); surplus = 0 (zeroes deemed); negative/NaN surplus treated as "not provided" (forgiving); citations always include s109Y when surplus opt used.
+
+### Files Modified
+- `lib/integrations/xero/index.ts` — re-exports the three new modules + their public types.
+- `lib/tax-engine/divisions/div7aLoanClassifier.ts` — `classifyDiv7ALoans(loans, options?)` extended with optional `Div7AClassifyOptions.distributableSurplus`. When provided + cap binds: caps `totalDeemedDividend` at the surplus + pro-rata distributes `deemedDividendAmount` across loans (rounded to 2dp); emits `UC-DIV7A-SURPLUS-CAPPED` + `UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE`. When provided + cap doesn't bind: emits only `UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE`. When NOT provided: legacy `UC-DIV7A-DISTRIBUTABLE-SURPLUS` flag (unchanged from Phase 41h.5). Negative or NaN surplus treated as "not provided" (forgiving caller error).
+- `app/dashboard/entities/[id]/connect-bookkeeping/page.tsx` — added `latestSnapshot` state + `fetchLatestSnapshot` (auto-fetched when integration is connected) + `handleRefresh` + Refresh button on `<ConnectedCard />`. New `<SnapshotCard />` component renders: pulled-at timestamp; BS section (Total Assets / Liabilities / Equity / Retained Earnings); P&L section (Revenue / Operating Expenses / NPBT / NPAT); Tax-engine input section (simplified s109Y surplus + caveat). Loading + refreshing states inline. New `<Section>` + `<Metric>` helpers with currency formatting + tabular-nums alignment.
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header + Active Workstream §5 sub-PR ticks (41f.0 ✅ + 41f.1 ✅ + 41f.2 ✅ + 41f.3 ✅) + Blocking line.
+
+### Architecture Decisions
+- **Lazy token refresh, not proactive scheduler.** The refresh helper inspects `tokenExpiresAt` on every call and refreshes if within 60s of expiry. No Cloud Scheduler cron — Xero refresh tokens last 60 days (60-day inactivity TTL), so a daily cron would be wasteful for users who pull snapshots regularly anyway.
+- **Idempotent overwrite on `(legalEntityId, fiscalPeriod)`.** Re-pulling the same period overwrites the existing row. Persisted `pulledAt` stamps the latest pull. Historical snapshots for prior fiscal periods stay queryable via the snapshots list endpoint. Caller never has to check "does this snapshot exist already?" — just `pullSnapshot()` and the puller handles upsert semantics.
+- **Tolerant report parsing.** Real Xero orgs vary in chart-of-accounts naming (some use "Bank", others "Cash on Hand"; some use "Trade Debtors", others "Accounts Receivable"). The parser uses regex section + row matchers that cover both Australian and Anglo-American accounting vocabularies. Required totals throw — those exist on every BS/P&L.
+- **`computeSimplifiedDistributableSurplus` is exported.** Unit-testable separately from the puller orchestration. Documented in the file's JSDoc as the simplified estimate per spec doc §9 (UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE) — the full s109Y formula additionally accounts for paid-up capital + non-commercial loans + prior-year frankable distributions, which require off-Xero data.
+- **Div 7A signature change is opt-in.** Adding `options?: Div7AClassifyOptions` as the 2nd parameter is fully backward-compatible. Every existing caller (Phase 41h.5 `getDiv7aRiskTool` + Phase 41h.6 `runDiv7aRefinanceScenarioTool` + Phase 41i.2 calc-audit fixture) compiles unchanged. Future callers (the eventual D-41F-5 wiring service that resolves the latest snapshot for a company entity and feeds it into Div 7A) opt in by passing the surplus.
+- **Pro-rata cap distribution preserves per-loan visibility.** When the surplus cap binds, the AI advisor still needs to narrate per-loan numbers ("loan L1's deemed dividend is capped at $30k of the $60k structural exposure due to s109Y"). Pro-rata distribution maintains that narrative.
+- **`UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE` always fires when surplus is provided + deemed > 0.** Even when the cap doesn't bind, the simplified-surplus caveat must reach the user — the full s109Y might bind even if our simplified estimate doesn't.
+- **`logCRUD` with CDR-safe metadata only.** The refresh-route audit log captures entity / tenant / fiscal-period identifiers — never balances or P&L line items. Per CLAUDE.md §13.3.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripeBillingService.ts` "stripe" module-not-found, unrelated)
+- [x] `npx vitest run tests/integrations/xero` — 41 / 41 pass (was 23 from 41f.2; +18 from 41f.3 — 10 snapshotPuller + 8 reportParser)
+- [x] `npx vitest run tests/tax-engine/divisions/div7aLoanClassifierSurplusCap.test.ts` — 11 / 11 pass
+- [x] `npx vitest run tests/tax-engine` — 449 / 449 pass (existing Div 7A + Phase 41h tools + Phase 41e + 41i suites all green; signature change is opt-in)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new `<SnapshotCard />` + `<Section>` + `<Metric>` helpers — composes existing primitives; no new reusable design primitive)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (audit-log metadata explicitly CDR-safe per §13.3 — no balances or P&L line items in the refresh route audit row; raw provider payload kept server-side, never returned to the client)
+- [ ] operational procedure
+- [x] strategic decision (Div 7A surplus wiring is opt-in via Div7AClassifyOptions — preserves backward compatibility with all Phase 41h tool callers; new UNCOMPUTED flag set replaces legacy flag for surplus-aware callers per spec doc §9)
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header + Active Workstream §5 sub-PR ticks + Blocking line.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+The snapshot puller does an `update | create` and the refresh route's puller call also stamps `lastSyncAt` on the integration. Both are filled in advance:
+
+**`snapshotPuller.ts` `update | create` on `EntityAccountingSnapshot`:**
+1. WHERE for update: `{ id: existing.id }` where existing was just `findUnique({ where: { legalEntityId_fiscalPeriod: { legalEntityId, fiscalPeriod } } })`. Only the row uniquely owned by `(legalEntityId, fiscalPeriod)` per the 41f.1 unique index.
+2. Columns overwritten: every snapshot field (BS / P&L / tax-engine inputs / pulledAt). All snapshot data owned exclusively by this puller.
+3. Guard: the row, if it exists, was created by this same puller on a prior pull for the same period. Overwrite is the intent (idempotent re-pull).
+
+**`snapshotPuller.ts` `update` on `AccountingIntegration` (lastSyncAt stamping):**
+1. WHERE: `{ id: integration.id }` — the row that was passed in.
+2. Columns overwritten: `lastSyncAt`, `lastSyncStatus`, `lastSyncError`. All sync-tracking fields owned by this code path.
+3. Guard: the integration row was loaded inside the same `pullSnapshot` call.
+
+**`tokenRefresh.ts` `update` on `AccountingIntegration` (token rotation):**
+1. WHERE: `{ id: integration.id }`.
+2. Columns overwritten: `accessToken`, `refreshToken`, `tokenExpiresAt`, `tokenScope`, `connectionError` (or `isConnected = false` + `connectionError` on refresh failure). All OAuth-token state owned by this code path + 41f.2 callback.
+3. Guard: same as above — integration row passed in from caller.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A — no `prisma/schema.prisma` changes (schema landed in PR #691).
+
+### PR
+- Branch: `claude/phase-41f3-snapshot-import`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41f2-xero-oauth (Phase 41f.2 — Xero OAuth + connect surface)
 
 ### Strategy
