@@ -1,9 +1,9 @@
 # Phase 41f — Personal Bookkeeping Integration
 
-> **Status:** 🟡 **DRAFT — awaiting Reza sign-off** on the strategic decisions in §10 before any code lands.
-> **Estimated effort:** ~10 days across 5 sub-PRs (41f.0 design doc → 41f.4 trust-deed parser).
+> **Status:** 🟢 **APPROVED 2026-05-07** — Reza signed off on D-41F-1 → D-41F-5 + §1.1 scope boundary + §1.2 data-conflict strategy. 41f.0 ✅ PR #690; 41f.1 ✅ PR #691; 41f.2 ✅ PR #692; 41f.3 ✅ PR #693; 41f.4 next.
+> **Estimated effort:** ~10 days across 5 sub-PRs (41f.0 design doc → 41f.4 trust-deed parser). +5 days for **Phase 41f.5 Monitrax Express** (separate doc — see §16 + `PHASE_41F_5_MONITRAX_EXPRESS.md`).
 > **Hard prerequisite:** Phase 41a (`LegalEntity`) ✅, Phase 41e (`MasterTaxPosition` orchestrator) ✅, Phase 26 (Document Intelligence) ✅. All shipped.
-> **Last updated:** 2026-05-07 — Claude (initial draft).
+> **Last updated:** 2026-05-07 — §1.1 + §1.2 + §16 added; sign-off ticks flipped.
 
 ---
 
@@ -25,6 +25,65 @@ What we are **NOT** building (always-deferred to PROD):
 - Transaction-level data import (only summary-level metrics)
 - Multi-tenant Xero support per user (one entity = one tenant connection at v1)
 - Custom chart-of-accounts mapping (we accept Xero's defaults at v1)
+
+---
+
+## 1.1 What Phase 41f is NOT — explicit scope boundary
+
+> **Reza confirmation 2026-05-07**: *"I don't want Monitrax to create legal documents. Just storing them and understanding the structure or contents is enough."*
+
+Phase 41f is **storage + understanding only**. Locked in to prevent scope drift in any future sub-PR or follow-up:
+
+| Monitrax DOES | Monitrax DOES NOT |
+|---|---|
+| Store the user's existing trust deed PDF (Phase 26 vault) | ❌ Generate, draft, or create new trust deeds (that is a solicitor's job) |
+| Read + structurally understand the deed (OCR + Gemini extract) | ❌ Provide template trust deeds |
+| Surface our reading to the user for confirmation (4-step flow §7) | ❌ Modify the user's uploaded PDF in any way |
+| Use the user's CONFIRMED reading as input to OUR tax engine (Phase 41e) | ❌ Issue distribution minutes / resolutions on the user's behalf |
+| Pull a Balance Sheet + P&L SNAPSHOT from Xero (read-only) | ❌ Write back to Xero (no bidirectional sync, ever — at least not in 41f scope) |
+| Cache the snapshot in `EntityAccountingSnapshot` for tax-engine consumption | ❌ File anything with the ATO, ASIC, or any regulator |
+| Surface UNCOMPUTED notes when the AI is unsure ("Clause 5.2 references 'majority quorum' — review with adviser") | ❌ Replace what a solicitor / accountant / tax agent does — these surfaces ROUTE TO the Phase 32C marketplace via Ask-a-Pro CTAs |
+
+**Why this boundary matters.** Creating legal documents requires AFSL / TPB / NCCP licensing Monitrax does not hold (the same D-2 boundary Phase 41h enforces structurally in the AI advisor). Trust-deed parsing is in scope because **reading and understanding what's already there** is fundamentally different from **drafting new clauses**. The 4-step confirm-before-apply flow (§7) is the user-facing contract that "we read it, you confirm it, we use it for OUR tax math — your deed and your solicitor relationship are unchanged."
+
+**Reviewer enforcement.** Any future PR that introduces deed-generation, distribution-minute issuance, regulator-filing, or Xero write-back must be rejected by reviewers and re-scoped through a fresh design doc with explicit Reza sign-off on a new D-41F-N decision. The current §1.1 boundary is non-negotiable for the duration of Phase 41f.
+
+---
+
+## 1.2 Data-conflict strategy — when Xero and Monitrax disagree
+
+> **Reza brief 2026-05-07**: *"For example if we have a transaction that has 2 different categories in the Xero and Monitrax what will be the action ? or any other concerns that you can think of ?"*
+
+**The good news for v1**: Phase 41f.3 (shipped) only pulls **aggregated** data — Balance Sheet totals + P&L summary. There's no transaction-level data, so per-transaction category conflict is **structurally impossible** in 41f's current scope. The strategy below is the locked-in plan for the eventual transaction-level pull (PROD-deferred per §11).
+
+**The model when transactions land**: **Xero owns the transaction record. Monitrax owns the wealth-strategy lens on top.** They're orthogonal views of the same data, not competing sources of truth.
+
+| Concern | What we DO | What we DON'T do |
+|---|---|---|
+| Categorisation conflict (Xero says "Office Supplies", Monitrax wealth-lens says "Business · Operations") | Display **both** — `[Xero] Office Supplies` AND `[Wealth lens] Business · Operations`. Same row, two perspectives. | Never overwrite Xero's category. Never silently re-classify. |
+| Amount mismatch (rounding, FX) | Use Xero's AUD-equivalent. Surface FX rate + date stamp. | Re-derive amounts from raw FX feeds. |
+| Reconciliation status (un-reconciled invoice) | Mark as `UNRECONCILED` in our import; exclude from cashflow tile by default; surface UNCOMPUTED `UC-XERO-UNRECONCILED-EXCLUDED`. | Treat un-reconciled txns as final. |
+| Year-end adjustments missing mid-year | Surface UNCOMPUTED `UC-XERO-MID-YEAR-PROVISION` on every snapshot pulled before EOFY rollover. | Pretend mid-year P&L is the final position. |
+| User edits a number we imported | Block the edit on imported fields with a tooltip: *"This figure comes from Xero. Disconnect to manually edit, or make the change in Xero."* | Allow silent local override. |
+
+**Provenance is the structural defence**: every imported number stamps `sourceProvider + sourceTenantId + pulledAt + pulledByUserId` (already shipped in the 41f.1 schema + 41f.3 puller). This means we can ALWAYS answer "where did this number come from?" — and the user always sees that source label.
+
+### 1.2.1 Risks logged for the transaction-level scope-up
+
+These are deferred to a future PR (post-41f core); listed here so they're not lost:
+
+| # | Risk | v1 Mitigation | Future scope |
+|---|---|---|---|
+| 1 | **Multi-currency** (USD invoices on AUD-reported entity) | Pull AUD-equivalent from Xero's report; surface `UC-XERO-MULTI-CCY` if FX activity is detected | Pull both currencies in transaction-level PR |
+| 2 | **Custom fiscal year** (calendar year for SMSF; 52-week for retail) | v1 default = AU FY. Add `LegalEntity.fiscalYearEnd` field + per-entity override | Phase 41f.6 follow-up |
+| 3 | **Multiple Xero tenants per user** | UC-XERO-MULTI-ENTITY-SAME-TENANT (§9). v1 picks the first; user can disconnect/reconnect | UI to select tenant |
+| 4 | **Bank reconciliation status** | Pull only `Reconciled = true` transactions when transactions land; flag un-reconciled separately | Live recon-state polling |
+| 5 | **Stale data after Xero change** | Show *"Pulled N hours ago"* + manual Refresh (already shipped 41f.3) | Cloud Tasks scheduled refresh + Xero webhooks |
+| 6 | **Rate-limiting** (Xero: 60/min/tenant, 10K/day/app) | 24h `EntityAccountingSnapshot` cache + manual-refresh debounce + exponential backoff in `snapshotPuller` | Per-user request budget tracker |
+| 7 | **Year-end accountant adjustments missed** | UNCOMPUTED `UC-XERO-MID-YEAR-PROVISION` whenever pull-date is between Jul 1 and accountant lodgment cutoff | Detect EOFY adjustment journal posts via webhook |
+| 8 | **Snapshot becomes stale after disconnect** | Mark snapshot rows with `staleSince: Date` when integration disconnects; tax engine reads stale flag and surfaces UNCOMPUTED rather than silently consuming | Hard-delete option |
+| 9 | **Sensitive data in P&L line items** (employee names in payroll) | `sanitizeMetadata()` strips before any audit log; `rawProviderPayload` JSON server-side-only (already shipped 41f.3) | Cloud DLP scan on raw payload before persist |
+| 10 | **Tracking categories / cost centres** (Xero feature) | v1 ignores them; surface `UC-XERO-TRACKING-CATEGORIES-IGNORED` if any are present | Phase 41f.7 follow-up if user demand emerges |
 
 ---
 
@@ -423,19 +482,22 @@ Items where Phase 41f explicitly does NOT compute and surfaces an UNCOMPUTED fla
 
 ---
 
-## 12. Reza sign-off block
+## 12. Reza sign-off block — ✅ APPROVED 2026-05-07
 
-Tick each before 41f.1 starts:
+All ticks confirmed via Reza's "go with your recommendations" 2026-05-07 + deed-flow scope confirmation 2026-05-07 + data-conflict strategy + Monitrax Express scope confirmation 2026-05-07.
 
-- [ ] **D-41F-1** confirmed: extend `AccountingIntegration` with scope discriminator (Option A)
-- [ ] **D-41F-2** confirmed: Xero only at v1; MYOB + QuickBooks → v2
-- [ ] **D-41F-3** confirmed: 4-step trust deed flow (upload → extract → review → apply)
-- [ ] **D-41F-4** confirmed: imported P&L renders on entity detail only at v1; Sankey = v2
-- [ ] **D-41F-5** confirmed: distributable surplus auto-feeds Div 7A with audit log + per-loan override
-- [ ] **CDR posture** confirmed: Xero data treated as non-CDR business data + standard Privacy Act 1988
-- [ ] **UNCOMPUTED v1 register** approved (8 items in §9)
-- [ ] **Sub-PR sequence** approved (5 PRs, ~10 days)
-- [ ] **§12.11 destructive-write checklist** acknowledged for the 41f.1 schema migration (`ALTER COLUMN ... DROP NOT NULL` on `organization_id`)
+- [x] **D-41F-1** confirmed: extend `AccountingIntegration` with scope discriminator (Option A) — shipped 41f.1 PR #691
+- [x] **D-41F-2** confirmed: Xero only at v1; MYOB + QuickBooks → v2
+- [x] **D-41F-3** confirmed: 4-step trust deed flow (upload → extract → review → apply) — reinforced by §1.1 scope-boundary
+- [x] **D-41F-4** confirmed: imported P&L renders on entity detail only at v1; Sankey = v2 — shipped 41f.3 PR #693
+- [x] **D-41F-5** confirmed: distributable surplus auto-feeds Div 7A with audit log + per-loan override — shipped 41f.3 PR #693
+- [x] **CDR posture** confirmed: Xero data treated as non-CDR business data + standard Privacy Act 1988
+- [x] **UNCOMPUTED v1 register** approved (8 items in §9)
+- [x] **Sub-PR sequence** approved (5 PRs, ~10 days; +5 days for 41f.5 Monitrax Express follow-up)
+- [x] **§12.11 destructive-write checklist** acknowledged for the 41f.1 schema migration — shipped PR #691
+- [x] **§1.1 scope boundary** confirmed: storage + understanding only; no legal-document generation; no Xero write-back; no regulator-filing
+- [x] **§1.2 data-conflict strategy** confirmed: Xero owns transactions; Monitrax owns wealth lens; provenance + UNCOMPUTED for ambiguous cases; 10-row risk register logged for transaction-level scope-up
+- [x] **§16 Monitrax Express follow-up** confirmed: Phase 41f.5 captured in `PHASE_41F_5_MONITRAX_EXPRESS.md` for users without Xero subscription
 
 ---
 
@@ -465,6 +527,42 @@ Tick each before 41f.1 starts:
 
 ## 15. Approval status
 
-🟡 **DRAFT — awaiting Reza sign-off.**
+🟢 **APPROVED 2026-05-07.** Sub-PRs 41f.0 → 41f.3 ✅ shipped (PRs #690 / #691 / #692 / #693). 41f.4 (trust-deed parser) is the last sub-PR closing Phase 41f core. After 41f.4, **Phase 41f.5 Monitrax Express** (separate doc) ships next per the sequence in §16 + `IMPLEMENTATION_PLAN.md` Active Workstream §5.
 
-Once §12 ticks are complete, this doc moves to **APPROVED** and 41f.1 (schema migration) starts. No code lands until then.
+---
+
+## 16. Phase 41f.5 follow-up — Monitrax Express
+
+> **Spec:** `docs/blueprint/PHASE_41F_5_MONITRAX_EXPRESS.md` (this PR).
+
+**Strategic positioning (Reza brief 2026-05-07):**
+
+> "Can Monitrax by itself act as a mini XERO for the user so they don't need to have both systems, and only send the data to the accountant XERO account for professional tidy up?"
+
+**Locked-in answer (full rationale in the 41f.5 spec doc):**
+
+- **Monitrax does NOT replace Xero.** Building a full bookkeeping operating system is a different category — 12+ months of focused engineering against 200+ Xero engineers. Replacing Xero crowds out the wealth-strategy moat.
+- **Monitrax DOES offer "Monitrax Express"** — lightweight bookkeeping-lite tier for users who have a personal Pty Ltd / Sole Trader / Trust **but no Xero subscription yet**. Scope: per-entity P&L summary + categorised income/expense (already shipped Phases 1–19 + 41a + 41d) + receipt OCR linkage (Phase 26 already does this) + **NEW: Export-for-Accountant CSV bundle** + **NEW: "Pre-Xero mode" badge** that flips when 41f.2 OAuth lands an integration.
+
+**The migration story:**
+
+| User shape | Monitrax mode |
+|---|---|
+| No accountant + no Pty Ltd | Personal-name only — already covered by Monitrax core |
+| Pty Ltd + no Xero subscription | **Monitrax Express (41f.5)** — categorised income/expense per entity + Export-for-Accountant CSV |
+| Pty Ltd + Xero subscribed | **41f.3 connect-flow** ✅ shipped — Monitrax CONSUMES Xero, surfaces wealth lens |
+| Complex entities + accountant on Xero | **41f.3 + 41g adviser overlay** ✅ shipped |
+
+The user **never has to choose** "do I do bookkeeping in Monitrax or Xero?" — they migrate naturally as their structure complexity grows. Their accountant gets data they can import on day 1.
+
+**Out of scope for 41f.5** (still PROD-deferred):
+- Bank reconciliation
+- BAS preparation / lodgment
+- STP / payroll
+- Inventory / manufacturing / project costing
+- Multi-currency invoicing
+- Direct Xero write (the user exports CSV; no API push)
+
+**Sequence**: 41f.4 (trust-deed parser, the last sub-PR closing 41f core) → 41i.6 (surface-level audit, the trustworthiness commitment) → 41f.5 (Monitrax Express). Shipping 41i.6 before 41f.5 means Monitrax Express's new surfaces (Books tab + P&L + BS render) get audit coverage from day 1.
+
+See `PHASE_41F_5_MONITRAX_EXPRESS.md` for the full design.

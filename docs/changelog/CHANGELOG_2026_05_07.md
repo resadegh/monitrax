@@ -1,5 +1,99 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41i6-and-41f5-design (Phase 41i.6 + 41f.5 design docs + 41F spec doc data-conflict strategy)
+
+### Strategy
+Substantive doc-sync session captures three strategic Reza directives from 2026-05-07:
+
+1. **The trustworthiness commitment.** Reza brief: *"I need the calc Audit agent to be able to review all relevant calculations of monitrax and the results... continuously make sure all calculations and produced numbers in monitrax is accurate and trustworthy and not some made up incorrect numbers."* Captured as **Phase 41i.6 — Surface-Level Numerical Audit**. Extends HR-3 from "calc-engine drift" to "surface-rendering drift." This was the missing layer: L1/L2/L3 catch engine-level bugs; L4 catches the bridge between engine and rendered UI.
+
+2. **The Xero data-conflict strategy.** Reza brief: *"how do we make sure the integration doesn't fail due to inconsistency of data... if we have a transaction that has 2 different categories in the Xero and Monitrax what will be the action ?"* Captured as `PHASE_41F_BOOKKEEPING_INTEGRATION.md` §1.2 — locked-in model: Xero owns the transaction record, Monitrax owns the wealth-strategy lens on top, never overwrite, always show both perspectives, provenance is the structural defence. 10-row risk register logged for the eventual transaction-level scope-up.
+
+3. **The "mini-Xero" answer.** Reza brief: *"Can Monitrax by itself act as a mini XERO for the user so they don't need to have both systems...?"* Captured as **Phase 41f.5 Monitrax Express** (separate spec doc) — locked-in answer: Monitrax does NOT replace Xero (different category, 12+ months of engineering, crowds out wealth-strategy moat); Monitrax DOES offer "Monitrax Express" for users with personal entities but no Xero subscription yet — categorised income/expense per entity (already shipped Phases 1–19 + 41a) + receipt OCR linkage (Phase 26) + Money Flow Sankey (Phase 41d) + NEW "Export for accountant" CSV bundle. Scope explicitly excludes GL / AR/AP / payroll / BAS / bank reconciliation / lodgment.
+
+Locked sequence going forward: 41f.4 (close 41f core) → 41i.6 (the trustworthiness layer) → 41f.5 (Monitrax Express). ~13-14 days total.
+
+### Type
+- **Type**: Docs (two new spec docs + four canonical-doc updates; no code)
+- **Scope**: New `PHASE_41I_6_SURFACE_AUDIT.md` + new `PHASE_41F_5_MONITRAX_EXPRESS.md`; updates to `PHASE_41F_BOOKKEEPING_INTEGRATION.md` + `PHASE_41_REGULATORY_ARCHITECTURE.md` + `IMPLEMENTATION_PLAN.md` + `MASTER_BLUEPRINT.md`.
+
+### Files Created
+- `docs/blueprint/PHASE_41I_6_SURFACE_AUDIT.md` — 14 sections: strategic positioning + how 41i.6 extends Phase 41i (L1/L2/L3/L3b/L4 layer table) + four-lens design rationale + 5 strategic decisions (D-41i.6-1 through D-41i.6-5) + 3-sub-PR sequence + `SurfaceDescriptor` typed shape with example + CI static-analysis pass detail (lint pattern matrix + exception annotation pattern) + runtime audit harness algorithm + schema additions (`L4_SURFACE_AUDIT` enum value) + UI changes (`[Full scan]` button + `[L4_SURFACE_AUDIT]` filter chip + per-finding card variant) + per-sub-PR test plan + Reza sign-off block (9 ticks).
+- `docs/blueprint/PHASE_41F_5_MONITRAX_EXPRESS.md` — 14 sections: strategic positioning (the "mini-Xero" answer) + scope boundary (DOES vs DOES NOT) + four-lens design rationale + storage-model decision (D-41F.5-1 — extend Income/Expense vs new model — recommended A) + single-PR sequence + new `BookkeepingClassification` enum + `Income.bookkeepingClassification` + `Expense.bookkeepingClassification` + `LegalEntity.expressMode` schema additions (additive migration) + CSV export bundle structure + 4 strategic decisions (D-41F.5-1 through D-41F.5-4) + UNCOMPUTED v1 register (6 items) + CDR posture + Reza sign-off block (8 ticks) + out-of-scope explicit list + build risks.
+
+### Files Modified
+- `docs/blueprint/PHASE_41F_BOOKKEEPING_INTEGRATION.md`:
+  - Status header flipped 🟡 DRAFT → 🟢 APPROVED 2026-05-07; reflects PR #690/#691/#692/#693 all merged.
+  - **New §1.1 — explicit scope boundary** (storage + understanding only; never create legal documents; never write back to Xero; never file with regulators) with DOES vs DOES NOT table + reviewer enforcement clause.
+  - **New §1.2 — data-conflict strategy** (Xero owns transactions, Monitrax owns wealth lens; provenance is the structural defence; UNCOMPUTED for ambiguous cases; 10-row risk register for transaction-level scope-up).
+  - **New §16 — Phase 41f.5 follow-up** cross-link to `PHASE_41F_5_MONITRAX_EXPRESS.md` with the migration-story matrix (4 user shapes × 4 Monitrax modes).
+  - §12 sign-off block flipped to all ticked + new ticks for §1.1 / §1.2 / §16.
+  - §15 Approval status flipped to APPROVED.
+
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md`:
+  - **§1 invariant 11 (HR-3) extended** from "calc-engine drift" to ALSO cover "surface-rendering drift." Reviewers reject any PR introducing a financial surface without a corresponding `SurfaceDescriptor` registration once Phase 41i.6 ships.
+  - **§11.2 sub-PR table extended** with new 41i.6 row (queued; 3 sub-PRs ~6 days; reframes 41i.5 as "CLOSES PHASE 41i CORE" rather than "CLOSES PHASE 41i").
+
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - Last-updated header rewritten — captures both spec-doc ships + 41F doc updates + locked sequence.
+  - §5 Active Workstream Phase 41f — sub-PR ticks (41f.0 ✅ + 41f.1 ✅ + 41f.2 ✅ + 41f.3 ✅) + new 41f.4 NEXT row + new 41f.5 ROW (after 41i.6); Blocking line updated.
+  - **New §6 Active Workstream — Phase 41i.6 Surface-Level Numerical Audit** with 4-sub-PR checklist + 5 D-41i.6 decisions + hard constraints + risk + blocking + dependencies.
+
+- `docs/blueprint/MASTER_BLUEPRINT.md`:
+  - Phase 41f row reflects shipped sub-PRs (#690–#693) + cross-links to §1.1 + §1.2 + Phase 41f.5.
+  - **New Phase 41f.5 row** below 41f.
+  - **New Phase 41i.6 row** below the existing Phase 41i row (which is reframed from "Complete" → "Core complete; 41i.6 surface-audit IN FLIGHT").
+
+### Architecture Decisions
+- **41i.6 is L4, not a fork.** Reuse `CalcAuditFinding` lifecycle + `findingService` + alerting. New enum value `L4_SURFACE_AUDIT` on `CalcAuditFindingSource`. Same admin queue, new filter chip.
+- **Static + runtime, both.** 41i.6b CI lint catches the bug class at PR review (fast feedback, prevents the bug from ever shipping); 41i.6c runtime harness catches data-dependent drift. Complementary.
+- **Top 10 surfaces at v1, expandable.** Don't try to register every surface day-one; ship the highest-impact surfaces first (cashflow / expense / income / net-worth / health / tax / debt-freedom / emergency-fund / property-equity / investment-total) + grow the registry as descriptors become a habit.
+- **41i.6 ships AFTER 41f.4 to cover 41f's surfaces in its first pass.** Sequencing matters — running the audit before 41f's snapshot card has a registered descriptor would create a coverage gap.
+- **41f.5 ships AFTER 41i.6 so its new Books tab + Express CSV-export surface lands with audit coverage from day 1.** Same logic — the audit is the structural floor; new surfaces sit on top of it.
+- **41f.5 is "feeder, not substitute".** The CSV export's README is canonical: *"Express produces categorised records for your accountant. Bank reconciliation, journal entries, depreciation, and BAS lodgment remain your accountant's responsibility."* Locked-in copy.
+- **41f.5 storage = Option A (extend Income/Expense).** Reuses ALL existing UI + service layer + audit + Phase 26 receipt linkage. Schema additions are tiny (3 columns + 1 enum). Zero parallel infrastructure.
+- **41f spec doc §1.2 data-conflict strategy is forward-looking.** No code change ships in this PR — the strategy is locked-in for the eventual transaction-level scope-up (currently PROD-deferred per §11). 10-row risk register documents what we'll need to handle when we get there.
+
+### Build Status
+- N/A — docs-only.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (HR-3 invariant 11 extended in `PHASE_41_REGULATORY_ARCHITECTURE.md`; the structural commitment that calc-correctness flows admin-only is reinforced and broadened)
+- [ ] operational procedure
+- [x] strategic decision (5 D-41i.6 decisions surfaced for sign-off; 4 D-41F.5 decisions surfaced for sign-off; 41F spec doc §1.1 scope boundary + §1.2 data-conflict strategy + §16 cross-link locked in; sequence locked: 41f.4 → 41i.6 → 41f.5)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_41I_6_SURFACE_AUDIT.md` (new)
+- `docs/blueprint/PHASE_41F_5_MONITRAX_EXPRESS.md` (new)
+- `docs/blueprint/PHASE_41F_BOOKKEEPING_INTEGRATION.md` (§1.1 + §1.2 + §16 + §12 ticks + §15 status)
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` (HR-3 extended + 41i.6 row in §11.2)
+- `docs/IMPLEMENTATION_PLAN.md` (Last-updated header + §5 sub-PR ticks + new §6 active workstream + Up Next sequence)
+- `docs/blueprint/MASTER_BLUEPRINT.md` (Phase 41f row updated; new Phase 41f.5 row; new Phase 41i.6 row; Phase 41i row reframed as "Core complete")
+- `docs/changelog/CHANGELOG_2026_05_07.md` (this entry)
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+N/A for this PR (docs-only). The 41i.6a + 41f.5 schema migrations are scoped in their respective spec docs:
+- **41i.6a**: `ALTER TYPE "CalcAuditFindingSource" ADD VALUE 'L4_SURFACE_AUDIT'` — pure enum extension; no row mutations.
+- **41f.5**: 3 column additions + 1 new enum (`BookkeepingClassification`) — pure additive; sane defaults; no row mutations; no constraint relaxation.
+
+Both checklists will be re-validated at implementation-PR time.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A for this PR (docs-only). Each implementation PR will Prisma-generate its migration per the §12.12 protocol.
+
+### PR
+- Branch: `claude/phase-41i6-and-41f5-design`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41f3-snapshot-import (Phase 41f.3 — Xero snapshot import + Div 7A surplus wiring)
 
 ### Strategy
