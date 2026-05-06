@@ -1915,4 +1915,120 @@ Every tool result is a `ToolResult` carrying `numericFields[]` (path-addressed n
 
 **Total tests:** 449 → 472 (+23). tsc clean.
 
-**Phase 41h.1 — Response schema + validators** is next.
+**Phase 41h.1 — AI Policy Gateway** is next.
+
+## **10.31 Phase 41h.1 — AI Policy Gateway (PR — shipped 2026-05-06)**
+
+The **single entry point** every Gemini (or future Claude / OpenAI) call in the app must go through. Per Reza brief 2026-05-06, the gateway makes the AI **Monitrax-centric** — generic LLM smarts for paraphrasing / education / structure, but bound by Monitrax's rules for numbers and citations.
+
+**No code outside `lib/ai/tax-advisor/` may call a provider SDK directly.** Reviewers reject any PR that does. The gateway is the choke point that guarantees HR-1 / HR-2 / D-2 enforcement at runtime, complementing the type-system enforcement from 41h.0.
+
+### Architecture (industry-standard layered pattern)
+
+```
+lib/ai/tax-advisor/
+├── gateway.ts                  # createTaxAdvisorGateway() — public surface
+├── policy/
+│   ├── systemPrompt.ts         # Monitrax persona + tool catalogue + HR-1/HR-2/D-2 in prose
+│   ├── responseSchema.ts       # Zod schema for AI responses (4 segment types)
+│   └── validators.ts           # HR-1/HR-2/D-2 runtime post-processor
+├── providers/
+│   ├── types.ts                # AIProvider interface + ProviderError
+│   └── mockProvider.ts         # Deterministic provider for tests + dev
+├── audit/
+│   └── auditLogger.ts          # AuditEntry + AuditSink (CDR-safe, no raw question/response)
+├── tools/                      # (existing — 3 canonical FACT_LOOKUP tools)
+├── registry.ts                 # (existing — closed-set ToolKind discriminant)
+├── types.ts                    # (existing — NumericField / IdentifiedCitation / ToolSession)
+└── index.ts                    # bootstrap + public re-exports
+```
+
+### Pipeline (per call)
+
+1. Generate trace ID + start clock
+2. Build the Monitrax system prompt (persona + tool catalogue derived from the registry)
+3. Construct an empty `ToolSession`
+4. Invoke the provider with an `executeTool` callback that records every tool call into the session
+5. Provider returns raw structured output
+6. **Zod-validate** the response shape (`responseSchema.ts`) — catches malformed responses
+7. **HR-1/HR-2/D-2 validate** against the session (`validators.ts`) — catches fabrications
+8. Assemble citations + UNCOMPUTED + AFSL boundary footer via `renderBoundaryFootnote`
+9. Audit-log the outcome via the injected `AuditSink`
+10. Return a typed `GatewayResponse` with `status: 'OK' | 'BLOCKED_VALIDATION' | 'BLOCKED_RECOMMENDATION' | 'PROVIDER_ERROR' | 'SCHEMA_INVALID'`
+
+**Failure modes:** the gateway never throws. Every failure produces a structured response with the appropriate `status`. Callers render based on status (e.g. `BLOCKED_RECOMMENDATION` → automatic Tier 2 routing surface).
+
+### Response schema (Zod)
+
+The AI returns a JSON object with 4 segment types — every number, every citation, every UNCOMPUTED reference points back to a tool result:
+
+| Segment | Purpose | What the validator checks |
+|---|---|---|
+| `TEXT` | Plain-English paraphrase / context (general knowledge OK here, **except** bare financial numbers and recommendation language) | Bare `$N`/`N%` → HR-1 leak. "you should", "I recommend" → D-2 leak in TIER_1. |
+| `NUMBER_REF` | A number from a tool result, ref `<toolName>#<path>` | Path must resolve in `ToolSession` (`findNumericFieldInSession`) |
+| `CITATION_REF` | A citation from a tool result, ref `<toolName>#cit-<id>` | Composite id must resolve (`findCitationInSession`) |
+| `UNCOMPUTED_NOTE` | A deferred-rule flag, `flagId` from a tool result | Flag id must exist in any session invocation's `uncomputed[]` |
+
+Plus a `tier` field — `TIER_1_FACTS` (AI surfaces facts) or `TIER_2_ROUTE_TO_PRO` (AI defers to Ask-a-Pro per D-2). Tier 2 requires `askAProRouting: { profession, reason }`.
+
+### Three structural enforcement layers (now complete)
+
+| Layer | Where | What it does |
+|---|---|---|
+| **Tool layer** (41h.0) | `registry.ts` + `types.ts` | Closed-set `ToolKind` discriminant. No `RECOMMENDATION` kind exists at the type level. |
+| **Schema layer** (this PR) | `responseSchema.ts` (Zod) | Runtime shape validation. Every numeric/citation/UC reference must use the typed segment, not free text. |
+| **Validator layer** (this PR) | `validators.ts` | Runtime resolution against the `ToolSession`. Fabricated paths/ids/flags rejected before reaching the user. |
+
+### Provider abstraction
+
+Industry-standard pattern: gateway calls `AIProvider.invoke(request)`, not a specific SDK. Swapping Gemini → Claude → OpenAI is a one-file change in 41h.2 (the upcoming Gemini adapter). 41h.1 ships a `MockProvider` for tests + dev.
+
+```ts
+interface AIProvider {
+  name: string;
+  invoke(request: ProviderInvokeRequest): Promise<ProviderInvokeResponse>;
+}
+```
+
+### Audit logger (CDR-safe)
+
+Per CLAUDE.md §13.3, financial data MUST be sanitised from log metadata. The audit entry carries: `traceId` / `userId` / `provider` / `toolsInvoked` / `outcome` / `validationIssueCodes` / `durationMs` / `tokenUsage` — but NOT the user's raw question or the AI's response text (either could echo CDR data). For full-payload reproduction, the trace ID retrieves from the production-store-of-record (sealed, access-logged).
+
+`InMemoryAuditSink` for tests; `ConsoleAuditSink` for dev; Cloud Logging wire-up lands in 41h.2.
+
+### Public surface
+
+```ts
+import { createTaxAdvisorGateway, MockProvider, InMemoryAuditSink } from '@/lib/ai/tax-advisor';
+
+const gateway = createTaxAdvisorGateway({
+  provider: new MockProvider(), // or GeminiProvider in 41h.2
+  auditSink: new InMemoryAuditSink(),
+});
+
+const response = await gateway.ask({
+  userId: 'user-1',
+  question: "What's my super contribution cap headroom?",
+  fyLabel: 'FY24-25',
+});
+
+// response.status, .answer, .citations, .uncomputed, .boundary,
+// .durationMs, .tokenUsage, .validationIssues (if blocked)
+```
+
+### Tests (33 new)
+
+| Section | Coverage |
+|---|---|
+| Zod schema | 6 cases (well-formed Tier 1 / Tier 2; rejects malformed NUMBER_REF / CITATION_REF / empty segments / unknown tier) |
+| HR-1 validator | 6 cases (resolves real path; rejects unknown tool; rejects fabricated path; rejects bare `$30,000` in TEXT; rejects bare `50%` in TEXT; passes TEXT with no numbers) |
+| HR-2 validator | 3 cases (resolves real cit; rejects fabricated cit-id; rejects cit for un-invoked tool) |
+| D-2 validator | 3 cases (rejects "you should" in Tier 1; rejects "I recommend"; allows same language in Tier 2 routing) |
+| UC + Tier 2 routing | 2 cases (rejects fabricated UC flag; rejects Tier 2 missing routing) |
+| System prompt | 3 cases (embeds HR-1/HR-2/D-2; lists every tool; explicitly forbids recommending) |
+| Gateway end-to-end | 8 cases (OK; fabricated number BLOCKED; fabricated citation BLOCKED; recommendation BLOCKED; valid Tier 2 OK; SCHEMA_INVALID; PROVIDER_ERROR; unregistered-tool ProviderError) |
+| Audit logger | 2 cases (records all metadata fields; CDR-safe — no raw question/response leaks) |
+
+**Total tests:** 472 → 505 (+33). tsc clean.
+
+**Phase 41h.2 — Gemini provider adapter** is next (lives behind the gateway; just translates gateway → Gemini API).
