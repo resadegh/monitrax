@@ -1869,3 +1869,50 @@ export interface CrossCuttingTaxResult {
 **Total tax-engine tests:** 428 → 449 (+21). tsc clean.
 
 **Phase 41e is COMPLETE.** Next phase: 41h (the AI advisor pitch using these calcs as the regulatory engine).
+
+## **10.30 Phase 41h.0 — AI Tax Advisor tool registry foundation (PR — shipped 2026-05-05)**
+
+First sub-PR of Phase 41h. Establishes the structural contract for the AI advisor — the surface that lets users ask the Gemini-powered AI questions about their tax position. Reza brief 2026-05-05 locks in two **hard rules** that join D-1 (full demo scope) and D-2 (structural AFSL boundary) as Phase 41 invariants:
+
+| Rule | What it forbids the AI to do | How it's enforced |
+|---|---|---|
+| **HR-1** — Numbers come from the app, never the AI | Estimating, rounding, projecting, or fabricating any monetary figure, percentage, ratio, or threshold. | (a) AI can only emit numbers from a tool result's `numericFields[]`. (b) Registry has no `estimate*` / `guess*` primitive. (c) Validator (41h.1) rejects any AI output number that doesn't match a tool-result value. |
+| **HR-2** — Claims come from AU law, never AI memory | Citing a section / ruling / threshold from training-data recall ("ITAA usually says…"). | (a) Tool results carry `IdentifiedCitation[]` lifted from Phase 41e calc engines. (b) Registry has no `lookupRule` / `searchTaxLaw` primitive that hits the open web or model memory. (c) Validator (41h.1) rejects fabricated citations. |
+
+**Three structural enforcement layers:**
+
+1. **Tool layer** (this PR — `lib/ai/tax-advisor/`). Finite, code-reviewed registry. The registry's `ToolKind` discriminant is a closed set of `'FACT_LOOKUP' | 'SCENARIO_RUN'` — there is **no `RECOMMENDATION` kind**, so a recommendation tool literally cannot be added without changing the type system. Reviewers MUST reject any PR that adds a kind here.
+2. **Schema layer** (Phase 41h.1 — next PR). AI response objects are typed: every numeric field references a `numericFields[].path`; every citation field references a `citations[].id`.
+3. **Validator layer** (Phase 41h.1). Post-processor rejects responses whose numbers / citations don't resolve back to the `ToolSession`.
+
+**Module shape:**
+
+```
+lib/ai/tax-advisor/
+├── types.ts            # ToolKind, NumericField, IdentifiedCitation, ToolResult,
+│                       # TaxAdvisorTool, ToolSession + session-lookup helpers
+├── registry.ts         # Singleton registry + assertToolKind guard
+├── index.ts            # Bootstrap (auto-registers canonical tools on import)
+└── tools/
+    ├── getContributionCapHeadroom.ts  # wraps capTracker (s291-20 + s292-85)
+    ├── getLandTaxPosition.ts          # wraps crossStateAggregator (8-state Land Tax Acts)
+    └── getEntityTaxPosition.ts        # wraps entityTaxRouter (full Phase 41e dispatch)
+```
+
+**3 canonical tools shipped (all `FACT_LOOKUP` kind):**
+
+| Tool | Wraps | Citations surfaced |
+|---|---|---|
+| `getContributionCapHeadroom` | `capTracker.trackContributionCaps` | s291-20, s291-20(3), s292-85, s292-85(2) |
+| `getLandTaxPosition` | `landTax.calculateCrossStateLandTax` | All 8 states' Land Tax Acts (NSW 1956 / VIC 2005 / QLD 2010 / SA 1936 / WA 2002 / TAS 2000 / ACT Rates Act 2004) |
+| `getEntityTaxPosition` | `entity.calculateEntityTaxPosition` | ITAA 1997 s4-10 / Div 1-6 / Div 115 / Div 6 + Div 6E (varies by entity type) |
+
+Every tool result is a `ToolResult` carrying `numericFields[]` (path-addressed numbers the AI may emit), `citations[]` (id-addressed authority entries the AI may reference), `uncomputed[]` (deferred-rule flags surfaced verbatim from the calc engine), and a `narrativeText` paraphrase hint that embeds `[cit:cit-N]` reference tokens — never raw legal claims.
+
+**Session-lookup helpers** (`findNumericFieldInSession`, `findCitationInSession`, `collectSessionCitations`, `collectSessionUncomputed`) — used by the upcoming validator (41h.1) to resolve every number / citation referenced in the AI's response back to a tool result that actually produced it.
+
+**23 tests** covering: registry bootstrap (3 tools, alphabetical, duplicate-throws), HR-1/HR-2/D-2 structural enforcement (no RECOMMENDATION kind, every numeric field has a stable path, every `citationIds` entry resolves to an actual citation, every citation has `kind`/`reference`/`lastReviewed`/`id`), per-tool fact correctness (FY24-25 cap = $30k; cross-state aggregation; entity router PERSONAL_NAME path), session-lookup helpers (resolve real paths, return undefined for fabricated paths/ids — the structural defence against HR-1/HR-2 violations), and tool-description / tool-name banned-word checks (no `recommend` / `estimate` / `guess` / `suggest`).
+
+**Total tests:** 449 → 472 (+23). tsc clean.
+
+**Phase 41h.1 — Response schema + validators** is next.

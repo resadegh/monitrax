@@ -1,5 +1,41 @@
 # Changelog — 2026-05-06
 
+## Session: claude/phase-41h0-tool-registry-foundation (Phase 41h.0 — AI Tax Advisor tool registry foundation SHIPPED)
+
+### Strategy lock-in (Reza brief 2026-05-05)
+Two **hard rules** added as Phase 41 invariants alongside D-1 (full demo scope) and D-2 (structural AFSL boundary):
+- **HR-1: Numbers come from the app, never the AI.** AI may not estimate / round / project / fabricate any monetary figure, percentage, ratio, or threshold. Numbers come from Phase 41e + Phase 20 calc engines.
+- **HR-2: Claims come from AU law, never AI memory.** AI may not cite a section / ruling / threshold from training-data recall. Citations come from `AuthorityCitation[]` lifted from Phase 41e modules.
+
+Enforced structurally at three layers:
+1. **Tool layer** (this PR) — finite, code-reviewed registry. `ToolKind` discriminant is a closed set `'FACT_LOOKUP' | 'SCENARIO_RUN'`. **No `RECOMMENDATION` kind exists** — a recommendation tool cannot be added without changing the type system. Reviewers reject any PR that adds a kind here.
+2. **Schema layer** (Phase 41h.1) — typed AI response objects: every numeric field references a `numericFields[].path`; every citation references a `citations[].id`.
+3. **Validator layer** (Phase 41h.1) — post-processor rejects responses whose numbers / citations don't resolve back to the `ToolSession`.
+
+### Changes
+- New module `lib/ai/tax-advisor/`:
+  - `types.ts` — `ToolKind`, `NumericField` (path / unit / label / citationIds), `IdentifiedCitation` extends `AuthorityCitation` with stable `id`, `ToolResult` (numericFields + citations + uncomputed + narrativeText + raw), `TaxAdvisorTool<TInput>` execute contract, `ToolInputSchema` (Gemini-compatible), `ToolSession` aggregator + 4 lookup helpers (`findNumericFieldInSession`, `findCitationInSession`, `collectSessionCitations`, `collectSessionUncomputed`)
+  - `registry.ts` — singleton `ToolRegistry` (register / get / list / size) + `assertToolKind` runtime guard
+  - `index.ts` — auto-bootstrap on import (idempotent)
+  - `tools/getContributionCapHeadroom.ts` — wraps `capTracker.trackContributionCaps`; 10 numeric fields with citations s291-20, s291-20(3), s292-85, s292-85(2)
+  - `tools/getLandTaxPosition.ts` — wraps `crossStateAggregator.calculateCrossStateLandTax`; grand totals + per-state breakdown with all 8 states' Land Tax Acts surfaced
+  - `tools/getEntityTaxPosition.ts` — wraps `entityTaxRouter.calculateEntityTaxPosition`; assessableIncome / taxableIncome / netTax / paygWithheld / estimatedRefund + (when present) netCapitalGain / cgtDiscountAmount
+
+### Tests (23 new; 472 total, 449 → 472, +23; tsc clean)
+- Registry bootstrap (3 tools, alphabetical, duplicate-throws, undefined-for-unknown)
+- HR-1/HR-2/D-2 structural enforcement (no RECOMMENDATION kind allowed; every numericField has stable path/unit/label/citationIds; every citationId resolves to actual citation; every citation has kind/reference/lastReviewed/id)
+- Per-tool fact correctness (FY24-25 cap = $30k; cross-state aggregation; entity router PERSONAL_NAME path)
+- Session lookup helpers (resolve real paths/ids; return undefined for fabricated paths/ids — the structural defence against HR-1/HR-2 violations)
+- Tool description / tool name banned-word checks (no `recommend` / `estimate` / `guess` / `suggest`)
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.30 (Phase 41h.0)
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` new §11.1 (Phase 41h sub-PR sequence + HR-1/HR-2 hard rules formalised)
+
+41h.1 (response schema + validator that rejects fabricated numbers / citations at runtime) is next.
+
+---
+
 ## Session: claude/phase-32c-pr4c-request-lifecycle (Phase 32C PR4c — ProfessionalRequest lifecycle SHIPPED)
 
 ### Changes Made

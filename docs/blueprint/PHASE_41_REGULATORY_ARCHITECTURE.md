@@ -553,6 +553,25 @@ Given the surface area, 41e is not one PR. It's a sequence of 18 sub-PRs (the or
 
 **41h (AI entity-aware diagnosis) prerequisites:** can start as soon as 41e.0 + 41e.17 land (it needs the foundation types + the master orchestrator). Individual rule modules can be incorporated into the AI's tool registry as they ship.
 
+### 11.1 Phase 41h sub-PR sequence (added 2026-05-05)
+
+Reza brief 2026-05-05 added two **hard rules** that join D-1 and D-2 as Phase 41 invariants:
+
+> **HR-1: Numbers come from the app, never the AI.** The AI may not estimate, round, project, or fabricate any monetary figure. Numbers come from the calc engines (Phase 41e + Phase 20).
+>
+> **HR-2: Claims come from AU law, never AI memory.** The AI may not cite a section / ruling / threshold from training-data recall. Citations come from `AuthorityCitation[]` lifted from Phase 41e modules.
+
+Enforced structurally at three layers — **Tool layer** (registry; closed-set `ToolKind` discriminant), **Schema layer** (typed AI response objects), **Validator layer** (post-processor rejects fabricated numbers / citations).
+
+| Sub-PR | Scope | Status |
+|---|---|---|
+| **41h.0** | Tool registry foundation (`lib/ai/tax-advisor/`) — `ToolKind` closed set (`FACT_LOOKUP \| SCENARIO_RUN`, no `RECOMMENDATION`) + `NumericField` / `IdentifiedCitation` / `ToolResult` / `TaxAdvisorTool` / `ToolSession` types + 3 canonical tools wrapping 41e calc engines (`getContributionCapHeadroom`, `getLandTaxPosition`, `getEntityTaxPosition`) + session-lookup helpers + 23 structural-enforcement tests. | **SHIPPED 2026-05-05** |
+| **41h.1** | Response schema + validator (numbers / citations must trace to tool-result session; rejects fabricated entries). | Queued |
+| **41h.2** | Gemini integration — client wiring + tool dispatch loop with HR-1/HR-2 enforcement at the model boundary. | Queued |
+| **41h.3** | Practice surface UI — structured answer card with citations rendered next to numbers + AFSL boundary footer. | Queued |
+| **41h.4** | Ask-a-Pro router — detects recommendation-shaped questions ("should I…?") and routes to marketplace per Phase 32C. | Queued |
+| **41h.5** | Tool registry expansion — `runScenario` (SCENARIO_RUN kind) + additional fact lookups (CGT exposure, Div 7A risk, in-house asset ratio, contribution-cap deltas). | Queued |
+
 **Sequencing note for sessions running in parallel with 41e:** 41e is *additive* — it lives entirely under `lib/calculations/tax/` and doesn't touch the canonical Master Financial Service or any existing route. Phase 41b (wizard), 41c (entity tree), 41d (Sankey), 41f (Xero), 41g (adviser overlay extension) can all proceed in parallel sessions without merge conflict, and only need to integrate with 41e once the master orchestrator (41e.17) ships.
 
 ---
