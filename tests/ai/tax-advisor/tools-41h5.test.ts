@@ -26,15 +26,23 @@ beforeEach(() => {
   bootstrapTaxAdvisorRegistry();
 });
 
-describe('Phase 41h.5 — registry now contains 7 tools (1 SCENARIO_RUN + 6 FACT_LOOKUP)', () => {
-  it('registry size = 7', () => {
-    expect(taxAdvisorToolRegistry.size()).toBe(7);
+describe('Phase 41h.5/6 — registry contains 10 tools (4 SCENARIO_RUN + 6 FACT_LOOKUP)', () => {
+  it('registry size = 10', () => {
+    expect(taxAdvisorToolRegistry.size()).toBe(10);
   });
 
-  it('exactly one SCENARIO_RUN tool registered', () => {
-    const scenarios = taxAdvisorToolRegistry.list().filter((t) => t.kind === 'SCENARIO_RUN');
-    expect(scenarios).toHaveLength(1);
-    expect(scenarios[0]?.name).toBe('runContributionScenario');
+  it('exactly four SCENARIO_RUN tools registered (41h.5 + 41h.6)', () => {
+    const scenarios = taxAdvisorToolRegistry
+      .list()
+      .filter((t) => t.kind === 'SCENARIO_RUN')
+      .map((t) => t.name)
+      .sort();
+    expect(scenarios).toEqual([
+      'runCgtScenario',
+      'runContributionScenario',
+      'runDiv7aRefinanceScenario',
+      'runLandTaxScenario',
+    ]);
   });
 
   it('all other tools remain FACT_LOOKUP', () => {
@@ -42,7 +50,7 @@ describe('Phase 41h.5 — registry now contains 7 tools (1 SCENARIO_RUN + 6 FACT
     expect(facts).toHaveLength(6);
   });
 
-  it('every new tool name appears in the registry', () => {
+  it('every 41h.5 tool name appears in the registry', () => {
     const names = taxAdvisorToolRegistry.list().map((t) => t.name);
     expect(names).toContain('getCgtExposure');
     expect(names).toContain('getDiv7aRisk');

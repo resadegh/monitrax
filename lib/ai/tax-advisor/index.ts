@@ -25,6 +25,9 @@ import { getCgtExposureTool } from './tools/getCgtExposure';
 import { getDiv7aRiskTool } from './tools/getDiv7aRisk';
 import { getInHouseAssetRatioTool } from './tools/getInHouseAssetRatio';
 import { runContributionScenarioTool } from './tools/runContributionScenario';
+import { runCgtScenarioTool } from './tools/runCgtScenario';
+import { runLandTaxScenarioTool } from './tools/runLandTaxScenario';
+import { runDiv7aRefinanceScenarioTool } from './tools/runDiv7aRefinanceScenario';
 
 import type { TaxAdvisorTool } from './types';
 
@@ -34,6 +37,7 @@ import type { TaxAdvisorTool } from './types';
  *
  * Phase 41h.0 shipped 3 (FACT_LOOKUP × 3).
  * Phase 41h.5 expands to 7 (FACT_LOOKUP × 6 + SCENARIO_RUN × 1).
+ * Phase 41h.6 expands to 10 (FACT_LOOKUP × 6 + SCENARIO_RUN × 4).
  */
 const CANONICAL_TOOLS: ReadonlyArray<TaxAdvisorTool<any>> = [
   getContributionCapHeadroomTool,
@@ -44,6 +48,10 @@ const CANONICAL_TOOLS: ReadonlyArray<TaxAdvisorTool<any>> = [
   getDiv7aRiskTool,
   getInHouseAssetRatioTool,
   runContributionScenarioTool,
+  // 41h.6 additions (SCENARIO_RUN expansion):
+  runCgtScenarioTool,
+  runLandTaxScenarioTool,
+  runDiv7aRefinanceScenarioTool,
 ];
 
 /**
@@ -73,6 +81,9 @@ export {
   getDiv7aRiskTool,
   getInHouseAssetRatioTool,
   runContributionScenarioTool,
+  runCgtScenarioTool,
+  runLandTaxScenarioTool,
+  runDiv7aRefinanceScenarioTool,
 };
 export * from './types';
 
