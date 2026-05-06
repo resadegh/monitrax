@@ -1,5 +1,61 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41i5-l2-anomaly-detection (Phase 41i.5 — L2 anomaly detection. CLOSES PHASE 41i.)
+
+### Strategy
+Closes Phase 41i. The L2 layer — temporal pattern detection over the `CalcAuditFinding` history. Per HR-3 admin-side only. Per the architect call, scoped to operate on **existing finding history** (not per-user calc data) so it ships useful from day 1, not gated on production user volume.
+
+### Two patterns
+| Pattern | Fires when | Severity |
+|---|---|---|
+| `HIGH_FREQUENCY` | Engine produces > threshold findings in `lookbackDays` (default 5/7d) | MEDIUM (or HIGH if > 2× threshold) |
+| `REGRESSION_AFTER_STABLE_PERIOD` | Engine quiet ≥ 30 days then sudden new findings with prior-to-recent gap ≥ 14 days | HIGH |
+
+Both surface as `source: 'L2_ANOMALY'` findings flowing through the existing 41i.3 lifecycle + 41i.4 alerting.
+
+### What ships
+- `lib/calc-audit/anomalyDetection.ts` (NEW): scanner + pure-logic helpers (`detectHighFrequencyPatterns`, `detectRegressionPattern`)
+- `app/api/admin/calc-audit/anomaly-scan/route.ts` (NEW): endpoint with two auth paths — admin session OR Cloud Scheduler shared secret
+- `docs/operational/calc-audit/cloud-scheduler-setup.md` (NEW): gcloud + Vercel ops runbook
+- `tests/calc-audit/anomalyDetection.test.ts` (NEW): 17 tests for both patterns
+
+### Cloud Scheduler integration
+Single `gcloud scheduler jobs create http` command. 3 AM AEST daily default. Shared-secret bearer auth via `CALC_AUDIT_SCHEDULER_SHARED_SECRET` env var (constant-time-ish comparison). Pause/resume/delete + body-tuning commands documented.
+
+### Dedup
+Same pattern as 41i.3's `recordDifferentialFindings` — existing OPEN/INVESTIGATING `L2_ANOMALY` findings for `(engineName, kind)` are refreshed instead of duplicated. Daily scans don't spam the queue.
+
+### Tests (17 new — 649 total)
+- `detectHighFrequencyPatterns` (6) — empty input; over-threshold; boundary case; HIGH escalation; multi-engine independence; evidence shape
+- `detectRegressionPattern` (6) — long quiet period; first-ever findings; recent prior doesn't fire; gap < threshold doesn't fire; evidence shape; prior inside lookback returns null
+- Default constants (5) — exposed; sanity invariant (stable period > regression gap)
+
+### Phase 41i is COMPLETE
+All 5 sub-PRs shipped:
+- 41i.0 + 41i.1 — Foundation + L1 fixture differential
+- 41i.2 — Engine adapter expansion (14 → 36 engines)
+- 41i.3 — L3 audit foundation: persistent findings + lifecycle
+- 41i.4 — Alerting + workflow + backfill runbook
+- 41i.5 — L2 anomaly detection (this PR)
+
+Three calc-audit layers all live (L1 deterministic + L2 temporal + L3 foundation). HR-3 maintained — admin-side only.
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.40
+- `docs/operational/calc-audit/cloud-scheduler-setup.md` (new ops runbook)
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.2 41i.5 SHIPPED row marked **CLOSES PHASE 41i**
+
+### Deferred (not blocking)
+- 41i.3b — Per-user "Audit this user" (needs per-engine user-data adapters)
+- Prisma mock layer for unit tests (currently DB-touching paths smoke-tested manually)
+- OIDC auth for Cloud Scheduler (v1 uses shared-secret bearer)
+
+### Next per Reza's roadmap
+1. SCENARIO_RUN tools expansion — `runCgtScenario`, `runLandTaxScenario`, `runDiv7aRefinanceScenario`
+2. TRAIL-aligned IA — graduate AI advisor from `/dashboard/cfo/ask` to "My Guide" placement (CLAUDE.md §14)
+
+---
+
 ## Session: claude/phase-41i4-alerting-workflow (Phase 41i.4 — Alerting + workflow SHIPPED)
 
 ### Strategy
