@@ -5,13 +5,13 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
     exclude: ['node_modules', '.next'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['lib/**/*.ts', 'app/api/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/*.d.ts'],
+      include: ['lib/**/*.ts', 'app/api/**/*.ts', 'components/**/*.{ts,tsx}'],
+      exclude: ['**/*.test.{ts,tsx}', '**/*.d.ts'],
     },
     testTimeout: 30000,
     hookTimeout: 30000,

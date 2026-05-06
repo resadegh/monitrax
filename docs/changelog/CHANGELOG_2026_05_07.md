@@ -1,5 +1,70 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41h3-practice-surface-ui (Phase 41h.3 — AI Advisor Practice surface UI SHIPPED)
+
+### Strategy
+Resumes Phase 41h after 41i's calc-audit safety net shipped. First user-shaped surface for the AI advisor: components that take the gateway's `GatewayResponse` and render it with citations next to numbers, AFSL/TPB/NCCP boundary footer, UNCOMPUTED flags surfaced explicitly, and Tier 2 → Ask-a-Pro routing card. Lives behind admin portal as the integration surface until 41h.4 (Ask-a-Pro routing) and 41h.5 (tool registry expansion) graduate it to user-facing dashboards.
+
+### Architecture
+```
+components/ai-advisor/
+├── TaxAdvisorAnswer.tsx           # Top-level renderer — branches per response.status
+├── TaxAdvisorBoundaryFooter.tsx   # AFSL/TPB/NCCP footer with citations
+├── TaxAdvisorUncomputedFlag.tsx   # Per-flag amber-accent renderer
+├── TaxAdvisorAskForm.tsx          # Question textarea + example chips
+└── index.ts                       # public surface
+
+app/api/admin/ai-advisor/ask/route.ts  # POST — wraps gateway w/ GeminiProvider + ProductionAuditSink
+app/admin/ai-advisor/page.tsx          # admin demo page (AdminFeatureGate)
+```
+
+### Status routing (5 outcomes)
+| Gateway status | UI surface |
+|---|---|
+| `OK` + `TIER_1_FACTS` | Inline segments + UNCOMPUTED section + boundary footer + trace metadata |
+| `OK` + `TIER_2_ROUTE_TO_PRO` | Routing card with profession-specific copy + reason + trace |
+| `BLOCKED_RECOMMENDATION` | Auto-routes to default ADVISER Tier 2 card |
+| `BLOCKED_VALIDATION` / `SCHEMA_INVALID` | Generic accuracy error (don't expose validator detail) + trace |
+| `PROVIDER_ERROR` | "AI is temporarily unavailable" + trace |
+
+### API route behaviour
+- Admin-only (`audit:read` permission via `verifyAdminGCPAuth`)
+- 503 `AI_ADVISOR_NOT_CONFIGURED` when `GEMINI_API_KEY` unset (clear message, never silent fail)
+- Question length capped at 2,000 chars (defensive)
+- Wraps gateway with `GeminiProvider` (real Gemini calls) + `ProductionAuditSink` (writes to existing AuditLog Prisma table; CDR-safe metadata only per CLAUDE.md §13.3; fire-and-forget per §12.10)
+
+### Test infra change
+Updated `vitest.config.ts`:
+- `include: ['tests/**/*.test.{ts,tsx}']` (was just `.ts`) — unblocks future React component tests
+- Coverage `include` adds `components/**/*.{ts,tsx}`
+
+### Tests (12 new — 544 total)
+- Boundary footer (2) — renders boundary statement verbatim; renders citations inline
+- UNCOMPUTED flag (2) — with citation; without citation
+- Status routing (5) — PROVIDER_ERROR + trace; BLOCKED_VALIDATION generic; SCHEMA_INVALID same; BLOCKED_RECOMMENDATION → ADVISER; OK + TIER_1 + segments + boundary
+- Tier 2 routing (1) — TIER_2_ROUTE_TO_PRO renders profession-specific copy + reason
+- UNCOMPUTED section (1) — flags render in dedicated section
+- Trace metadata (1) — trace + duration + tokens always at bottom
+
+Tests use `react-dom/server.renderToString` — no RTL setup needed.
+
+### Smoke-test path
+1. Set `GEMINI_API_KEY` in env
+2. Navigate to `/admin/ai-advisor` (admin portal enabled)
+3. Pick example question or type one
+4. Real Gemini call → tool dispatch → validated answer with citations + boundary footer
+
+If `GEMINI_API_KEY` unset, page loads but submission shows clear "not configured" error.
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.34
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.1 41h.3 SHIPPED row
+
+### Next
+**41h.4** — Ask-a-Pro router (detects recommendation-shaped questions; routes to marketplace per Phase 32C; graduates advisor to user-facing dashboards).
+
+---
+
 ## Session: claude/phase-41i-fixture-contract-corrections (Phase 41i — Audit anomaly triage + JSDoc contract docs)
 
 ### Triage outcome

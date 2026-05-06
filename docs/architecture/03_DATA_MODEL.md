@@ -2198,3 +2198,70 @@ When I first wrote fixtures with hand-calculated expected values, the audit caug
 2. Each fixture must have ≥1 `assertion` with hardcoded values from source authority — never `engine(input)` self-reference.
 3. Import the adapter from `lib/calc-audit/index.ts`.
 4. Run tests — the existing differential sweep test enforces 0 failures.
+
+
+## **10.34 Phase 41h.3 — AI Advisor Practice surface UI (PR — shipped 2026-05-07)**
+
+Resumes Phase 41h after the 41i calc-audit safety net landed. Ships the **first real user-shaped surface** for the AI advisor — a structured renderer that takes the gateway's `GatewayResponse` and presents it with citations next to numbers, AFSL/TPB/NCCP boundary footer, UNCOMPUTED flags surfaced explicitly, and Tier 2 → Ask-a-Pro routing card. Lives behind the admin portal as the integration surface (`/admin/ai-advisor`) until 41h.4 (Ask-a-Pro routing) and 41h.5 (tool registry expansion) graduate it to user-facing dashboards.
+
+### Architecture
+
+```
+components/ai-advisor/
+├── TaxAdvisorAnswer.tsx           # Top-level renderer — branches per response.status
+├── TaxAdvisorBoundaryFooter.tsx   # AFSL/TPB/NCCP footer with citations
+├── TaxAdvisorUncomputedFlag.tsx   # Per-flag amber-accent renderer
+├── TaxAdvisorAskForm.tsx          # Question textarea + example chips
+└── index.ts                       # public surface
+
+app/api/admin/ai-advisor/ask/route.ts
+└── POST endpoint — wraps gateway with GeminiProvider + ProductionAuditSink;
+    503 if GEMINI_API_KEY not configured
+
+app/admin/ai-advisor/page.tsx
+└── Admin demo page — gated by AdminFeatureGate adminPortalEnabled
+```
+
+### Status routing in the renderer
+
+| Gateway status | UI surface |
+|---|---|
+| `OK` + `TIER_1_FACTS` | Renders segments inline (TEXT / NUMBER_REF / CITATION_REF / UNCOMPUTED_NOTE) + UNCOMPUTED section + boundary footer + trace metadata |
+| `OK` + `TIER_2_ROUTE_TO_PRO` | Routing card with profession-specific copy (ADVISER / ACCOUNTANT / BROKER) + reason + trace |
+| `BLOCKED_RECOMMENDATION` | Auto-routes to default ADVISER Tier 2 card (HR-3 boundary) |
+| `BLOCKED_VALIDATION` / `SCHEMA_INVALID` | Generic accuracy error (don't expose validator detail to users) + trace |
+| `PROVIDER_ERROR` | "AI is temporarily unavailable" + trace |
+
+**Trace metadata always rendered** at the bottom — `traceId`, `durationMs`, `tokenUsage.total`. Lets ops correlate user reports with audit log entries.
+
+### Gating
+
+- API route: admin-only (`audit:read` permission), 503 if `GEMINI_API_KEY` is unset (clear "not configured" message rather than silent failure)
+- Admin page: `AdminFeatureGate adminPortalEnabled`
+- Component lives in `components/ai-advisor/` — provider-agnostic, ready to be embedded in user-facing dashboards in 41h.4+
+
+### Tests (12 new — 544 total)
+
+| Section | Coverage |
+|---|---|
+| Boundary footer (2) | renders boundary statement verbatim; renders citations inline |
+| UNCOMPUTED flag (2) | with citation; without citation |
+| Status routing (5) | PROVIDER_ERROR + trace; BLOCKED_VALIDATION generic; SCHEMA_INVALID same; BLOCKED_RECOMMENDATION → ADVISER; OK + TIER_1 segments + boundary |
+| Tier 2 routing (1) | TIER_2_ROUTE_TO_PRO renders profession-specific copy + reason |
+| UNCOMPUTED section (1) | flags render in dedicated section |
+| Trace metadata (1) | trace + duration + tokens always at bottom |
+
+Tests use `react-dom/server.renderToString` (no RTL setup needed — pure SSR check). Updated `vitest.config.ts` to include `.test.tsx` files going forward.
+
+**544 total tests** (532 → 544, +12). tsc clean.
+
+### Smoke-test path (admin)
+
+1. Set `GEMINI_API_KEY` in env
+2. Navigate to `/admin/ai-advisor` (admin portal enabled)
+3. Pick an example question or type one
+4. Observe: real Gemini call → tool dispatch → validated answer with citations + boundary footer
+
+If `GEMINI_API_KEY` is unset, the page renders the form but submission shows a clear "AI advisor not configured" message — never a silent failure.
+
+**Phase 41h.4 — Ask-a-Pro router** is next (detects recommendation-shaped questions and routes to marketplace per Phase 32C; graduates the advisor surface to user-facing dashboards).
