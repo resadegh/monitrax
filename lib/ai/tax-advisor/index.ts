@@ -21,17 +21,29 @@ import { taxAdvisorToolRegistry, assertToolKind } from './registry';
 import { getContributionCapHeadroomTool } from './tools/getContributionCapHeadroom';
 import { getLandTaxPositionTool } from './tools/getLandTaxPosition';
 import { getEntityTaxPositionTool } from './tools/getEntityTaxPosition';
+import { getCgtExposureTool } from './tools/getCgtExposure';
+import { getDiv7aRiskTool } from './tools/getDiv7aRisk';
+import { getInHouseAssetRatioTool } from './tools/getInHouseAssetRatio';
+import { runContributionScenarioTool } from './tools/runContributionScenario';
 
 import type { TaxAdvisorTool } from './types';
 
 /**
  * Canonical tools registered at module load. Adding a tool requires
  * editing this list (and CLAUDE.md §13 / Phase 41 §5.2 reviewers).
+ *
+ * Phase 41h.0 shipped 3 (FACT_LOOKUP × 3).
+ * Phase 41h.5 expands to 7 (FACT_LOOKUP × 6 + SCENARIO_RUN × 1).
  */
 const CANONICAL_TOOLS: ReadonlyArray<TaxAdvisorTool<any>> = [
   getContributionCapHeadroomTool,
   getLandTaxPositionTool,
   getEntityTaxPositionTool,
+  // 41h.5 additions:
+  getCgtExposureTool,
+  getDiv7aRiskTool,
+  getInHouseAssetRatioTool,
+  runContributionScenarioTool,
 ];
 
 /**
@@ -57,6 +69,10 @@ export {
   getContributionCapHeadroomTool,
   getLandTaxPositionTool,
   getEntityTaxPositionTool,
+  getCgtExposureTool,
+  getDiv7aRiskTool,
+  getInHouseAssetRatioTool,
+  runContributionScenarioTool,
 };
 export * from './types';
 

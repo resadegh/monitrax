@@ -2325,3 +2325,74 @@ Both delegate to `runAdvisorQuery` so provider wiring + validation logic live in
 **561 total tests** (544 → 561, +17). tsc clean.
 
 **Phase 41h.5 — Tool registry expansion** is next (`runScenario` SCENARIO_RUN tool + additional fact lookups: CGT exposure, Div 7A risk, in-house asset ratio, contribution-cap deltas). Closes Phase 41h.
+
+## **10.36 Phase 41h.5 — Tool registry expansion + SCENARIO_RUN (PR — shipped 2026-05-07). CLOSES PHASE 41h.**
+
+**Closes Phase 41h.** The AI advisor surface is now feature-complete: gateway + 7 tools + admin/user surfaces + Ask-a-Pro routing + calc-audit safety net underpinning everything.
+
+### What ships
+
+```
+lib/ai/tax-advisor/tools/
+├── getCgtExposure.ts            # NEW (FACT_LOOKUP) — wraps applyCapitalLossNetting
+├── getDiv7aRisk.ts              # NEW (FACT_LOOKUP) — wraps classifyDiv7ALoans
+├── getInHouseAssetRatio.ts      # NEW (FACT_LOOKUP) — wraps classifySmsfTriumvirate (in-house portion)
+└── runContributionScenario.ts   # NEW (SCENARIO_RUN) — first SCENARIO_RUN tool in registry
+```
+
+Registry size: **3 → 7** (4 new). `ToolKind` discriminant now exercises both values:
+- **FACT_LOOKUP × 6** — `getCgtExposure`, `getContributionCapHeadroom`, `getDiv7aRisk`, `getEntityTaxPosition`, `getInHouseAssetRatio`, `getLandTaxPosition`
+- **SCENARIO_RUN × 1** — `runContributionScenario`
+
+### SCENARIO_RUN pattern (established this PR)
+
+Structurally identical to FACT_LOOKUP — same `ToolResult` shape with `numericFields[]` + `citations[]` + `uncomputed[]` + `narrativeText`. The only difference is **semantic intent**:
+- `FACT_LOOKUP` = current state from calc engine (what IS)
+- `SCENARIO_RUN` = re-invokes calc engine with hypothetical inputs (what WOULD be)
+
+`runContributionScenario` returns BOTH baseline + scenario results + delta numerical fields, so the AI can narrate the change without computing it itself (HR-1 still applies — the delta is computed in the tool, not by the AI).
+
+**Why SCENARIO_RUN does NOT breach D-2:** returning a scenario number is NOT a recommendation. *"If you contribute $5k more, your headroom becomes $3k"* is a fact. *"You should contribute $5k more"* remains forbidden — there is no recommendation tool in the registry, and the gateway's validator catches recommendation language in TIER_1 responses.
+
+### What's available to the AI now
+
+| Domain | FACT_LOOKUP | SCENARIO_RUN |
+|---|---|---|
+| Super contributions | `getContributionCapHeadroom` (s291-20 / s292-85) | `runContributionScenario` ("what if I contribute $X more?") |
+| CGT | `getCgtExposure` (Div 102-A / s100-50 / s115-100) | — |
+| Land tax | `getLandTaxPosition` (cross-state aggregator + per-state Land Tax Acts) | — |
+| Stamp duty + entity tax | `getEntityTaxPosition` (entity router — wires Phase 41e) | — |
+| Div 7A | `getDiv7aRisk` (s109B-s109ZE) | — |
+| SMSF | `getInHouseAssetRatio` (Pt 8 SIS Act — 5% cap) | — |
+
+### Tests (34 new — 595 total)
+
+| Section | Coverage |
+|---|---|
+| Registry size + kind discriminator (4) | 7 tools; 1 SCENARIO_RUN; 6 FACT_LOOKUP; all new names present |
+| `getCgtExposure` (3) | net gain after netting + discount; cites Div 102-A/s100-50/s115; citationIds resolve |
+| `getDiv7aRisk` (3) | compliant loan; NO_AGREEMENT deemed dividend; zero-loan input |
+| `getInHouseAssetRatio` (3) | within 5% cap; exceed cap → BREACH with breach amount + percentage; cites Pt 8 |
+| `runContributionScenario` (5) | baseline + scenario + delta fields; zero-hypothetical produces zero delta; cap-crossing surfaces excess tax delta; cites s291-20 / s292-85 / Div 291; citationIds resolve |
+| HR-1/HR-2/D-2 contract per tool (16) | 4 tools × 4 contract checks (stable path; well-formed citations; no banned words; description disclaim) |
+
+**595 total tests** (561 → 595, +34). tsc clean.
+
+### Phase 41h is COMPLETE
+
+All sub-PRs shipped:
+- **41h.0** — Tool registry foundation (3 FACT_LOOKUP tools)
+- **41h.1** — AI Policy Gateway (5-status pipeline; HR-1/HR-2/D-2 enforcement)
+- **41h.2** — Gemini provider adapter + production audit sink
+- **41h.3** — Practice surface UI (admin demo)
+- **41h.4** — Ask-a-Pro router + user-facing surface graduation
+- **41h.5** — Tool registry expansion + SCENARIO_RUN pattern (this PR)
+
+**Three structural enforcement layers** all live:
+1. Tool layer — closed `ToolKind` discriminant; no `RECOMMENDATION` kind
+2. Schema layer — Zod `RawAIResponseSchema`; typed segments
+3. Validator layer — runtime resolution against `ToolSession`; rejects fabricated numbers / citations / recommendation language
+
+**Calc audit safety net** (Phase 41i) catches calc drift silently before users see wrong numbers (HR-3).
+
+**Next phase:** Phase 41 is COMPLETE for its core scope. Future iterations can add more SCENARIO_RUN tools (`runCgtScenario`, `runLandTaxScenario`, `runDiv7aRefinanceScenario`) and graduate the advisor surface from `/dashboard/cfo/ask` to natural-IA placement (e.g. under "My Guide" per TRAIL framework). 41i.2-5 follow-ups extend the calc-audit system (more engines / L3 on-demand audit / alerting / L2 anomaly detection).

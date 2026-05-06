@@ -1,5 +1,75 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41h5-tool-registry-expansion (Phase 41h.5 — Tool registry expansion + SCENARIO_RUN. CLOSES PHASE 41h.)
+
+### Strategy
+Closes Phase 41h by expanding the tool registry from 3 → 7 (4 new tools: 3 FACT_LOOKUP + 1 SCENARIO_RUN). Establishes the SCENARIO_RUN pattern for "what if" simulations while preserving all HR-1 / HR-2 / D-2 boundaries.
+
+### What ships
+```
+lib/ai/tax-advisor/tools/
+├── getCgtExposure.ts            # NEW (FACT_LOOKUP) wraps applyCapitalLossNetting
+├── getDiv7aRisk.ts              # NEW (FACT_LOOKUP) wraps classifyDiv7ALoans
+├── getInHouseAssetRatio.ts      # NEW (FACT_LOOKUP) wraps classifySmsfTriumvirate (Pt 8 portion)
+└── runContributionScenario.ts   # NEW (SCENARIO_RUN) — first SCENARIO_RUN tool
+```
+
+### Registry now (7 tools)
+| Domain | FACT_LOOKUP | SCENARIO_RUN |
+|---|---|---|
+| Super | `getContributionCapHeadroom` | `runContributionScenario` |
+| CGT | `getCgtExposure` | — |
+| Land tax | `getLandTaxPosition` | — |
+| Stamp duty + entity tax | `getEntityTaxPosition` | — |
+| Div 7A | `getDiv7aRisk` | — |
+| SMSF | `getInHouseAssetRatio` | — |
+
+### SCENARIO_RUN pattern (locked in this PR)
+- Structurally identical to FACT_LOOKUP — same `ToolResult` shape
+- Semantic difference: FACT_LOOKUP = current state; SCENARIO_RUN = hypothetical
+- Returns BOTH baseline + scenario + delta numerical fields so AI narrates the change without computing it (HR-1 preserved — delta is computed in the tool, not by the AI)
+- D-2 preserved: "if you contribute $5k more, your headroom becomes $3k" is a fact; "you should contribute $5k more" remains forbidden (no recommendation tool exists in registry)
+
+### Tests (34 new — 595 total, +34)
+- Registry size + kind discriminator (4)
+- getCgtExposure (3) — net gain after netting + discount; cites Div 102-A/s100-50/s115; citationIds resolve
+- getDiv7aRisk (3) — compliant loan; NO_AGREEMENT deemed dividend; zero-loan input
+- getInHouseAssetRatio (3) — within 5% cap; exceed cap → BREACH with breach amount + percentage; cites Pt 8 SIS Act
+- runContributionScenario (5) — baseline+scenario+delta; zero-hypothetical = zero-delta; cap-crossing surfaces excess tax delta; cites s291-20/s292-85/Div 291; citationIds resolve
+- HR-1/HR-2/D-2 contract per tool (16) — 4 tools × 4 contract checks (stable path, well-formed citations, no banned words, description disclaim)
+
+Updated existing 41h.0 registry test to expect `size = 7` + alphabetical with new tools.
+
+tsc clean.
+
+### Phase 41h is COMPLETE
+All 6 sub-PRs shipped:
+- 41h.0 — Tool registry foundation (3 FACT_LOOKUP)
+- 41h.1 — AI Policy Gateway (5-status pipeline; HR-1/HR-2/D-2 enforcement)
+- 41h.2 — Gemini provider adapter + production audit sink
+- 41h.3 — Practice surface UI (admin demo)
+- 41h.4 — Ask-a-Pro router + user-facing surface graduation
+- 41h.5 — Tool registry expansion + SCENARIO_RUN (this PR)
+
+**Three structural enforcement layers all live:**
+1. Tool layer — closed `ToolKind` discriminant; no `RECOMMENDATION` kind
+2. Schema layer — Zod `RawAIResponseSchema`; typed segments
+3. Validator layer — runtime resolution against `ToolSession`; rejects fabricated numbers / citations / recommendation language
+
+**Calc audit safety net** (Phase 41i) catches calc drift silently before users see wrong numbers (HR-3).
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.36
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.1 41h.5 SHIPPED row marked **CLOSES PHASE 41h**
+
+### Next
+Phase 41 core scope is complete. Future iterations:
+- More SCENARIO_RUN tools (`runCgtScenario`, `runLandTaxScenario`, `runDiv7aRefinanceScenario`)
+- Graduate advisor surface from `/dashboard/cfo/ask` to "My Guide" per TRAIL framework
+- 41i.2-5 follow-ups (more audit engines, L3 on-demand, alerting, L2 anomaly detection)
+
+---
+
 ## Session: claude/phase-41h4-ask-a-pro-router (Phase 41h.4 — Ask-a-Pro router + user-facing surface graduation SHIPPED)
 
 ### Strategy
