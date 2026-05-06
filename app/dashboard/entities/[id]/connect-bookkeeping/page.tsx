@@ -1,10 +1,16 @@
 'use client';
 
 /**
- * Phase 41f.2 — /dashboard/entities/[id]/connect-bookkeeping
+ * Phase 41f.2 + 41f.3 — /dashboard/entities/[id]/connect-bookkeeping
  *
  * Connect-Xero surface for a personal LegalEntity (Pty Ltd / Sole
- * Trader / Trust trustee / SMSF). Renders three states:
+ * Trader / Trust trustee / SMSF). 41f.2 ships the OAuth flow + three
+ * states (not-configured / not-connected / connected). 41f.3 adds
+ * the latest-snapshot card + manual Refresh button on the connected
+ * state, surfacing BS + P&L totals + simplified s109Y distributable
+ * surplus.
+ *
+ * Renders four states:
  *
  *   - Not configured     → friendly "coming soon" notice (env vars
  *                          unset; mirrors the Phase 41h.3 pattern)
@@ -35,8 +41,10 @@ import {
   Plug,
   Unplug,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { formatCurrency } from '@/lib/utils/formatters';
 
 interface IntegrationStatus {
   configured: boolean;
@@ -53,6 +61,24 @@ interface IntegrationStatus {
     lastSyncAt: string | null;
     lastSyncStatus: string | null;
   } | null;
+}
+
+// Phase 41f.3 — snapshot summary returned by GET .../snapshots
+interface AccountingSnapshotSummary {
+  id: string;
+  fiscalPeriod: string;
+  pulledAt: string;
+  periodStartDate: string;
+  periodEndDate: string;
+  totalAssets: number | null;
+  totalLiabilities: number | null;
+  totalEquity: number | null;
+  retainedEarnings: number | null;
+  revenue: number | null;
+  operatingExpenses: number | null;
+  netProfitBeforeTax: number | null;
+  netProfitAfterTax: number | null;
+  distributableSurplus: number | null;
 }
 
 const CALLBACK_REASONS: Record<string, string> = {
@@ -78,6 +104,11 @@ export default function ConnectBookkeepingPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Phase 41f.3 — latest snapshot + refresh handler
+  const [latestSnapshot, setLatestSnapshot] = useState<AccountingSnapshotSummary | null>(null);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   const callbackResult = search?.get('result') ?? null;
   const callbackReason = search?.get('reason') ?? null;
   const callbackDetail = search?.get('detail') ?? null;
@@ -102,9 +133,69 @@ export default function ConnectBookkeepingPage() {
     }
   }, [entityId, token]);
 
+  const fetchLatestSnapshot = useCallback(async () => {
+    if (!entityId || !token) return;
+    setSnapshotsLoading(true);
+    try {
+      const res = await fetch(`/api/entities/${entityId}/accounting/snapshots?limit=1`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        // 404 here means "entity not found" — surface via the main error
+        // path. 5xx means transient — silently leave latestSnapshot null.
+        setLatestSnapshot(null);
+        return;
+      }
+      const json = (await res.json()) as { snapshots: AccountingSnapshotSummary[] };
+      setLatestSnapshot(json.snapshots[0] ?? null);
+    } catch {
+      setLatestSnapshot(null);
+    } finally {
+      setSnapshotsLoading(false);
+    }
+  }, [entityId, token]);
+
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
+
+  // After integration status loads, fetch the latest snapshot if connected
+  useEffect(() => {
+    if (status?.integration?.isConnected) {
+      fetchLatestSnapshot();
+    } else {
+      setLatestSnapshot(null);
+    }
+  }, [status?.integration?.isConnected, fetchLatestSnapshot]);
+
+  const handleRefresh = async () => {
+    if (!entityId || !token) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/entities/${entityId}/accounting/refresh`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+      const json = (await res.json()) as
+        | { snapshot: AccountingSnapshotSummary }
+        | { error: string; code?: string };
+      if (!res.ok || !('snapshot' in json)) {
+        const msg = 'error' in json ? json.error : `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+      setLatestSnapshot(json.snapshot);
+      await fetchStatus(); // refresh `lastSyncAt` etc.
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Refresh failed');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleConnect = async () => {
     if (!entityId || !token) return;
@@ -200,11 +291,20 @@ export default function ConnectBookkeepingPage() {
             {!status.configured && <NotConfiguredCard />}
 
             {status.configured && status.integration?.isConnected && (
-              <ConnectedCard
-                integration={status.integration}
-                onDisconnect={handleDisconnect}
-                disabled={actionLoading}
-              />
+              <>
+                <ConnectedCard
+                  integration={status.integration}
+                  onDisconnect={handleDisconnect}
+                  onRefresh={handleRefresh}
+                  refreshing={refreshing}
+                  disabled={actionLoading || refreshing}
+                />
+                <SnapshotCard
+                  snapshot={latestSnapshot}
+                  loading={snapshotsLoading}
+                  refreshing={refreshing}
+                />
+              </>
             )}
 
             {status.configured && !status.integration?.isConnected && (
@@ -323,10 +423,14 @@ function ConnectCard({ onConnect, disabled }: { onConnect: () => void; disabled:
 function ConnectedCard({
   integration,
   onDisconnect,
+  onRefresh,
+  refreshing,
   disabled,
 }: {
   integration: NonNullable<IntegrationStatus['integration']>;
   onDisconnect: () => void;
+  onRefresh: () => void;
+  refreshing: boolean;
   disabled: boolean;
 }) {
   return (
@@ -351,21 +455,145 @@ function ConnectedCard({
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Last sync</p>
           <p className="font-medium">
-            {integration.lastSyncAt ? formatTimestamp(integration.lastSyncAt) : 'Not synced yet — pulling on next refresh.'}
+            {integration.lastSyncAt ? formatTimestamp(integration.lastSyncAt) : 'Not synced yet — tap Refresh to pull a snapshot.'}
           </p>
         </div>
-        <Button
-          onClick={onDisconnect}
-          disabled={disabled}
-          size="sm"
-          variant="outline"
-          className="mt-2"
-        >
-          {disabled ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Unplug className="mr-2 h-4 w-4" />}
-          Disconnect
-        </Button>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button
+            onClick={onRefresh}
+            disabled={disabled}
+            size="sm"
+          >
+            {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Refresh snapshot
+          </Button>
+          <Button
+            onClick={onDisconnect}
+            disabled={disabled}
+            size="sm"
+            variant="outline"
+          >
+            <Unplug className="mr-2 h-4 w-4" />
+            Disconnect
+          </Button>
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+function SnapshotCard({
+  snapshot,
+  loading,
+  refreshing,
+}: {
+  snapshot: AccountingSnapshotSummary | null;
+  loading: boolean;
+  refreshing: boolean;
+}) {
+  if (loading || refreshing) {
+    return (
+      <Card>
+        <CardContent className="flex items-center gap-3 py-8 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {refreshing ? 'Pulling snapshot from Xero…' : 'Loading snapshot…'}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!snapshot) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Latest snapshot</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          No snapshot pulled yet. Tap <span className="font-medium">Refresh snapshot</span> above to pull your latest Balance Sheet + Profit &amp; Loss from Xero.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">
+            {snapshot.fiscalPeriod} snapshot
+          </CardTitle>
+          <span className="text-xs text-muted-foreground">
+            Pulled {formatTimestamp(snapshot.pulledAt)}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5 text-sm">
+        <Section title="Balance Sheet">
+          <Metric label="Total assets" value={snapshot.totalAssets} />
+          <Metric label="Total liabilities" value={snapshot.totalLiabilities} />
+          <Metric label="Total equity" value={snapshot.totalEquity} highlight />
+          {snapshot.retainedEarnings !== null && (
+            <Metric label="Retained earnings" value={snapshot.retainedEarnings} muted />
+          )}
+        </Section>
+
+        <Section title="Profit & Loss">
+          <Metric label="Revenue" value={snapshot.revenue} />
+          <Metric label="Operating expenses" value={snapshot.operatingExpenses} />
+          <Metric label="Net profit before tax" value={snapshot.netProfitBeforeTax} />
+          <Metric label="Net profit after tax" value={snapshot.netProfitAfterTax} highlight />
+        </Section>
+
+        {snapshot.distributableSurplus !== null && (
+          <Section title="Tax-engine input">
+            <Metric
+              label="Distributable surplus (s109Y simplified)"
+              value={snapshot.distributableSurplus}
+              muted
+            />
+            <p className="col-span-full text-xs text-muted-foreground">
+              Best-estimate per spec doc §9 (UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE) — full s109Y formula additionally accounts for paid-up capital + non-commercial loans + prior-year frankable distributions, which require off-Xero data. Engage a registered tax agent for the binding figure.
+            </p>
+          </Section>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">{title}</p>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">{children}</div>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  highlight,
+  muted,
+}: {
+  label: string;
+  value: number | null;
+  highlight?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <div className={`flex items-center justify-between ${muted ? 'text-muted-foreground' : ''}`}>
+      <span className={highlight ? 'font-medium' : ''}>{label}</span>
+      <span className={`tabular-nums ${highlight ? 'font-semibold' : 'font-medium'}`}>
+        {value === null ? '—' : formatCurrency(value)}
+      </span>
+    </div>
   );
 }
 
