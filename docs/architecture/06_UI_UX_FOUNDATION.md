@@ -546,6 +546,42 @@ Never use *"Nothing to see here"* / *"Empty"* / *"You haven't done X
 yet"*. Per CLAUDE.md §0 behaviour-psychology lens — surface helps
 the user act, doesn't shame them for not having acted.
 
+## **15.10 Shared shell layer (Phase 32-design-A1)**
+
+Canonical reusable primitives at `components/shell/`:
+- `GlassHero` + `GlassHeroEyebrow` / `GlassHeroHeadline` /
+  `GlassHeroKpiCell` — `rounded-[28px]` glass surface with
+  configurable atmosphere (`sky` | `emerald` | `amber` | `rose` |
+  `slate`), breathing-glow, gradient-text headline, KPI cells. Honours
+  `prefers-reduced-motion` from day one.
+- `MetricTile` + `MetricTileHeadline` — `rounded-[22px]` atmospheric
+  tile with tone families (`sky` | `emerald` | `amber` | `rose` |
+  `violet` | `slate`), filled-silhouette glyph watermark slot, springy
+  hover lift, staggered entry.
+- `motion.ts` — single source of truth for `appleEase`
+  `[0.25, 0.46, 0.45, 0.94]`, `springSnap` (stiffness 320 / damping 28
+  / mass 0.8), `tileEnter(index)` (0.55s with 40ms stagger),
+  `heroEnter`, `breathingGlow`, `useReducedMotionSafe()`. **Any new
+  Monitrax surface that wants to feel like the consumer app imports
+  from here — DO NOT redefine `appleEase` locally.**
+- `practiceGlyphs.tsx` — companion to `wealthGlyphs.tsx` for the
+  Org-Portal domain (`ClientsGlyph` / `RequestsGlyph` /
+  `ConversationsGlyph` / `AnalyticsGlyph` / `HealthGlyph`). Same rules:
+  `viewBox 0 0 120 120`, `fill="currentColor"`, no strokes,
+  `preserveAspectRatio="xMaxYMid meet"`, single closed silhouette.
+
+### Cross-surface alignment policy
+
+| Surface | Policy |
+|---|---|
+| Consumer (`app/dashboard/*`) | Currently has its own copies of the same patterns (Phase 39 wealth tiles + heroes). Will migrate to `components/shell/` in a follow-up PR. Do NOT duplicate the patterns again. |
+| Org Portal (`app/portal/*`) | **Aligns to consumer language via `components/shell/*`.** Phase 32-design-A1 ships dashboard hero + 3 click-through MetricTiles. Other portal pages propagate one-PR-at-a-time. |
+| Admin Portal (`app/admin/*`) | **Type-aligns only — does NOT adopt glass tiles.** Stays dense + dark + functional (Linear/GCP-Console aesthetic). Adopts canonical type scale, `tabular-nums` on every number, eyebrow `tracking-[0.18em]`, emerald focus rings, `appleEase` for any new transition. Glass-morphism on a dense ops console reduces scanability — wrong tool for the job. |
+
+Reviewers MUST reject any PR that re-implements `appleEase` or
+re-rolls the rounded-22px / rounded-28px glass tile pattern locally
+instead of importing from `components/shell/`.
+
 ## **15.9 Accessibility checklist (B2B2C surfaces)**
 
 Every interactive component in the B2B2C surface meets:

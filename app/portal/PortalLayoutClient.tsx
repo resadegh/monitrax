@@ -148,20 +148,23 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
   return (
     <div className="lg:flex min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Mobile top bar — hidden at lg+ where the persistent sidebar makes
-          the brand visible already. Houses the hamburger that opens the
-          drawer + the brand wordmark for orientation. */}
-      <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 h-14 px-4 bg-white/90 backdrop-blur border-b border-slate-200/70">
+          the brand visible already. Glass surface matching consumer-app
+          vocabulary, brand pill + current org name. */}
+      <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 h-14 px-4 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <button
           type="button"
           onClick={() => setMobileNavOpen(true)}
           aria-label="Open navigation"
-          className="p-2 -ml-2 rounded-md text-slate-700 hover:bg-slate-100"
+          className="p-2 -ml-2 rounded-md text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
           </svg>
         </button>
-        <span className="font-semibold text-sm text-slate-900 truncate">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 shadow-sm shadow-sky-500/20">
+          <span className="text-[11px] font-bold text-white">M</span>
+        </div>
+        <span className="font-semibold text-sm text-slate-900 tracking-tight truncate">
           {currentOrg?.name || 'Monitrax Portal'}
         </span>
       </header>
