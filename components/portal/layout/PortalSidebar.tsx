@@ -68,8 +68,11 @@ export function PortalSidebar({
         // Layout — fixed slide-in drawer below lg, persistent column at lg+
         'fixed inset-y-0 left-0 z-40 w-64 lg:sticky lg:top-0 lg:z-auto',
         'h-screen flex flex-col',
-        'bg-white/95 lg:bg-white/70 backdrop-blur-md text-slate-700',
-        'border-r border-slate-200/70',
+        // Consumer-app palette: glassy gradient surface, subtle border.
+        'bg-gradient-to-b from-white via-slate-50 to-white lg:bg-card/70 lg:backdrop-blur-xl',
+        'text-slate-700',
+        'border-r border-slate-200/60',
+        'shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.04)]',
         'transform transition-transform duration-200 ease-out',
         'lg:translate-x-0',
         mobileOpen ? 'translate-x-0' : '-translate-x-full',
@@ -78,13 +81,18 @@ export function PortalSidebar({
     >
       {/* Mobile-only header row: brand + close button. Hidden at lg+ where
           the persistent sidebar doesn't need its own close affordance. */}
-      <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-slate-200/70">
-        <span className="font-semibold text-sm text-slate-900">Monitrax Portal</span>
+      <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-slate-200/60">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 shadow-sm shadow-sky-500/20">
+            <span className="text-[11px] font-bold text-white">M</span>
+          </div>
+          <span className="font-semibold text-sm text-slate-900">Monitrax Portal</span>
+        </div>
         <button
           type="button"
           onClick={onMobileClose}
           aria-label="Close navigation"
-          className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+          className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -93,7 +101,7 @@ export function PortalSidebar({
       </div>
 
       {/* Organization Selector */}
-      <div className="p-2 border-b border-slate-200/70">
+      <div className="p-2 border-b border-slate-200/60">
         <OrganizationSelector />
       </div>
 
@@ -111,7 +119,7 @@ export function PortalSidebar({
 
       {/* Secondary Navigation */}
       {secondaryNavigation && secondaryNavigation.length > 0 && (
-        <div className="p-3 border-t border-slate-200/70 space-y-1">
+        <div className="p-3 border-t border-slate-200/60 space-y-1">
           {secondaryNavigation.map((item) => (
             <NavLink
               key={item.href}
@@ -124,21 +132,21 @@ export function PortalSidebar({
       )}
 
       {/* User/Help Section */}
-      <div className="p-3 border-t border-slate-200/70 space-y-1">
+      <div className="p-3 border-t border-slate-200/60 space-y-1">
         <Link
           href="/help"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
         >
           <HelpIcon />
           <span>Help Center</span>
         </Link>
         <Link
           href="/portal/settings"
-          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
+          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 ${
             isActive('/portal/settings')
-              ? 'bg-slate-900 text-white shadow-sm'
+              ? 'bg-gradient-to-r from-sky-500/10 to-indigo-500/10 text-slate-900 ring-1 ring-sky-500/25'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
@@ -147,7 +155,7 @@ export function PortalSidebar({
         </Link>
         <Link
           href="/"
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
         >
           <ExitIcon />
           <span>Exit Portal</span>
@@ -178,19 +186,27 @@ function NavLink({
     <div>
       <Link
         href={item.href}
-        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
+        className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 ${
           isActive || isChildActive
-            ? 'bg-slate-900 text-white shadow-sm'
-            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            ? 'bg-gradient-to-r from-sky-500/10 to-indigo-500/10 text-slate-900 ring-1 ring-sky-500/25 shadow-sm shadow-sky-500/10'
+            : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
         }`}
       >
-        <span className="w-5 h-5 flex-shrink-0">{item.icon}</span>
-        <span className="flex-1 font-medium">{item.label}</span>
+        <span
+          className={`w-5 h-5 flex-shrink-0 transition-colors ${
+            isActive || isChildActive
+              ? 'text-sky-600'
+              : 'text-slate-500 group-hover:text-slate-700'
+          }`}
+        >
+          {item.icon}
+        </span>
+        <span className="flex-1 font-medium tracking-tight">{item.label}</span>
         {item.badge !== undefined && (
           <span
-            className={`px-2 py-0.5 text-[10px] rounded-full font-medium ${
+            className={`px-2 py-0.5 text-[10px] rounded-full font-semibold tabular-nums ${
               isActive || isChildActive
-                ? 'bg-white/20 text-white'
+                ? 'bg-sky-500/20 text-sky-700'
                 : 'bg-slate-200 text-slate-700'
             }`}
           >

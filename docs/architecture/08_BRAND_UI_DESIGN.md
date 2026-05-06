@@ -333,3 +333,38 @@ info: 'hsl(var(--color-info))'
 - [ ] Update remaining entity cards (Properties, Loans, etc.) with rounded-xl
 - [ ] Audit all buttons for brand secondary (emerald) usage
 - [ ] Update chart components to use `--chart-*` colors
+
+---
+
+## Cross-portal shell layer (Phase 32-design-A1, 2026-05-06)
+
+Org Portal aligns visually with the consumer app via the shared
+`components/shell/` layer (see `06_UI_UX_FOUNDATION.md` §15.10).
+
+**Responsive shell breakpoint contract (project standard):**
+
+| Viewport | Behaviour |
+|---|---|
+| `< 1024px` (phone, iPad portrait) | Sidebar collapses to slide-in drawer; mobile top bar with hamburger + brand pill. |
+| `≥ 1024px` (`lg+`, iPad landscape, desktop) | Sidebar persistent alongside content. |
+
+Same breakpoint applies to Admin Portal. Same drawer pattern. Source:
+`components/portal/layout/PortalSidebar.tsx` and
+`components/admin/layout/AdminSidebar.tsx`.
+
+**Glyph families:**
+- Consumer wealth: `components/wealth/wealthGlyphs.tsx`
+- Practice / Org Portal: `components/shell/practiceGlyphs.tsx`
+
+Both follow the same rules (viewBox `0 0 120 120`, `fill="currentColor"`,
+filled silhouette only, `preserveAspectRatio="xMaxYMid meet"`,
+opacity 0.06 default → 0.12 hover when used as MetricTile watermark).
+
+**Admin Portal exception:** Admin Portal does NOT adopt the glass /
+atmospheric tile vocabulary — it stays Linear/GCP-Console-style dense
+and dark, because the operator job (scanning audit logs, error
+tracking, security findings) is served better by information density
+than by aesthetic richness. Admin Portal type-aligns (canonical type
+scale, `tabular-nums`, eyebrow `tracking-[0.18em]`, emerald focus
+rings, `appleEase` for any new transition) but does NOT consume
+`GlassHero` or `MetricTile`.

@@ -30,6 +30,24 @@
 
 > Sorted by priority. Top of list = work in flight right now.
 
+### 0a. Phase 32-design-A1 — Org Portal design alignment (shared shell layer)
+
+- **Status:** 🟡 In flight — PR (this one) ships shared `components/shell/` layer (`GlassHero`, `MetricTile`, `motion.ts`, `practiceGlyphs.tsx`) + Org Portal sidebar/topbar polish + new `/portal/dashboard` hero + 3 click-through metric tiles + Admin Portal eyebrow tracking polish.
+- **Started:** 2026-05-06
+- **Owner:** Reza + Claude
+- **Last touched:** 2026-05-06
+- **Phases:**
+  - [x] Extract shared shell layer at `components/shell/` (motion + GlassHero + MetricTile + practiceGlyphs)
+  - [x] Org Portal sidebar palette → consumer-app gradient/sky-indigo active state
+  - [x] Org Portal mobile top bar → glass + brand pill
+  - [x] `/portal/dashboard` rebuilt against `GlassHero` + 3 `MetricTile`
+  - [x] Admin Portal eyebrow tracking `0.08em → 0.18em`
+  - [ ] Propagate shell layer to other Org Portal pages (clients, marketplace, requests, conversations, billing) — ONE PR PER PAGE, not all-at-once
+  - [ ] Migrate consumer wealth tiles/heroes to consume `components/shell/` (currently they have their own copies)
+  - [ ] Sweep Admin Portal blue focus rings → emerald (low-priority polish, deferred)
+- **Risk:** propagating to every portal page in one go would explode the diff. Doing dashboard first as proof, then page-by-page based on real screenshot review.
+- **Why this matters:** Org Portal is the sales surface — when an adviser sits opposite a client running through Monitrax, the portal IS the pitch. Five lenses (financial-adviser, psychology, UX/UI, visual, growth) converge on visual-quality investment paying back in adviser virality + sales conversion. Admin Portal stays dense by design — wrong tool for glass-morphism.
+
 ### 0. Phase 32B — B2B2C Practice surface (adviser / broker / accountant lighthouse)
 
 - **Status:** 🟡 In flight — PR1 of ~3 ships schema + design primitives + demo dataset; PR2 wires Practice dashboard + repaints sidebar; PR3 wires drill-in (canonical consumer dashboard with adviser overlay) + alert engine v1 against real snapshot deltas.

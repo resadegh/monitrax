@@ -220,7 +220,7 @@ export function AdminSidebar({
 
           return (
             <div key={section.label} className={cn(sectionIdx > 0 && 'mt-6')}>
-              <p className="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-[0.08em] mb-2">
+              <p className="px-3 text-[10px] font-semibold text-gray-500 uppercase tracking-[0.18em] mb-2">
                 {section.label}
               </p>
               <div className="space-y-0.5">
