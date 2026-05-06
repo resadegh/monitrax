@@ -59,3 +59,23 @@ export {
   getEntityTaxPositionTool,
 };
 export * from './types';
+
+// Phase 41h.1 — AI Policy Gateway exports
+export { createTaxAdvisorGateway } from './gateway';
+export type {
+  TaxAdvisorGateway,
+  GatewayResponse,
+  GatewayAskInput,
+  GatewayOptions,
+  GatewayStatus,
+} from './gateway';
+export type { AIProvider, ProviderInvokeRequest, ProviderInvokeResponse } from './providers/types';
+export { ProviderError } from './providers/types';
+export { MockProvider } from './providers/mockProvider';
+export { ConsoleAuditSink, InMemoryAuditSink } from './audit/auditLogger';
+export type { AuditEntry, AuditSink, AuditOutcome } from './audit/auditLogger';
+export { buildSystemPrompt, BASE_PROMPT } from './policy/systemPrompt';
+export { parseRawAIResponse, RawAIResponseSchema } from './policy/responseSchema';
+export type { RawAIResponse, AnswerSegment } from './policy/responseSchema';
+export { validateAIResponse } from './policy/validators';
+export type { ValidationIssue, ValidationOutcome } from './policy/validators';

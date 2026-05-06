@@ -1,5 +1,100 @@
 # Changelog — 2026-05-06
 
+## Session: claude/phase-41h1-ai-policy-gateway (Phase 41h.1 — AI Policy Gateway SHIPPED)
+
+### Strategy reframe (Reza brief 2026-05-06)
+Reza proposed a **centralised AI engine** that defines rules and guidelines for Gemini, making Gemini Monitrax-centric (not generic). The reframe expands Phase 41h.1 from "just a validator" to a full **AI Policy Gateway** — the single entry point every Gemini call goes through, holding system prompt + tool registry binding + HR-1/HR-2/D-2 enforcement + audit logging + boundary footer assembly + provider abstraction.
+
+This is the industry-standard pattern for regulated AI deployments (Anthropic constitutional AI wrapper, Azure AI Content Safety + grounding gateway, financial-firm LLM gateways). The gateway lets Gemini retain general-knowledge smarts for paraphrasing / education / structure while binding numbers + citations to Monitrax's calc engines.
+
+### Three structural enforcement layers (now complete)
+1. **Tool layer** (41h.0) — closed `ToolKind` discriminant; no `RECOMMENDATION` kind exists at the type level.
+2. **Schema layer** (this PR) — Zod runtime shape validation. Every numeric/citation/UC reference must use the typed segment, not free text.
+3. **Validator layer** (this PR) — Runtime resolution against the `ToolSession`. Fabricated paths/ids/flags rejected before reaching the user.
+
+### Architecture (industry-standard layered pattern)
+```
+lib/ai/tax-advisor/
+├── gateway.ts                  # createTaxAdvisorGateway() — public surface
+├── policy/
+│   ├── systemPrompt.ts         # Monitrax persona + HR-1/HR-2/D-2 in prose + tool catalogue
+│   ├── responseSchema.ts       # Zod schema (4 segment types + tier discriminator)
+│   └── validators.ts           # HR-1/HR-2/D-2 runtime post-processor (6 issue codes)
+├── providers/
+│   ├── types.ts                # AIProvider interface + ProviderError + invoke req/resp shapes
+│   └── mockProvider.ts         # Deterministic provider for tests + dev
+├── audit/
+│   └── auditLogger.ts          # AuditEntry + AuditSink (CDR-safe, InMemorySink + ConsoleSink)
+├── tools/                      # (existing — 3 canonical FACT_LOOKUP tools)
+├── registry.ts                 # (existing — closed-set ToolKind discriminant)
+├── types.ts                    # (existing — NumericField / IdentifiedCitation / ToolSession)
+└── index.ts                    # bootstrap + public re-exports
+```
+
+### Public surface
+```ts
+import { createTaxAdvisorGateway, MockProvider, InMemoryAuditSink } from '@/lib/ai/tax-advisor';
+
+const gateway = createTaxAdvisorGateway({
+  provider: new MockProvider(), // or GeminiProvider in 41h.2
+  auditSink: new InMemoryAuditSink(),
+});
+
+const r = await gateway.ask({
+  userId: 'user-1',
+  question: "What's my super contribution cap headroom?",
+  fyLabel: 'FY24-25',
+});
+
+// r.status: 'OK' | 'BLOCKED_VALIDATION' | 'BLOCKED_RECOMMENDATION' | 'PROVIDER_ERROR' | 'SCHEMA_INVALID'
+// r.answer: validated RawAIResponse (only when status === 'OK')
+// r.citations: aggregated IdentifiedCitation[] across all tools called
+// r.uncomputed: aggregated UncomputedFlag[]
+// r.boundary: AFSL/TPB/NCCP boundary footer envelope
+// r.validationIssues: ValidationIssue[] (when blocked)
+// r.tokenUsage / r.durationMs / r.traceId: observability
+```
+
+### Pipeline (per call)
+1. Trace ID + start clock
+2. Build Monitrax system prompt (persona + tool catalogue from registry)
+3. Empty `ToolSession`
+4. Provider.invoke with `executeTool` callback that records every call into session
+5. Zod shape validation (`responseSchema.ts`)
+6. HR-1/HR-2/D-2 validation against session (`validators.ts`)
+7. Assemble citations + UNCOMPUTED + AFSL boundary via existing `renderBoundaryFootnote`
+8. Audit-write via injected `AuditSink` (CDR-safe — no raw question/response leakage)
+9. Return typed `GatewayResponse`. Never throws.
+
+### Validator catches (6 issue codes)
+- `HR1_NUMBER_NOT_IN_SESSION` — NUMBER_REF whose path doesn't resolve in session
+- `HR1_BARE_FINANCIAL_NUMBER_IN_TEXT` — `$30,000` / `27%` embedded in TEXT (must be NUMBER_REF)
+- `HR2_CITATION_NOT_IN_SESSION` — CITATION_REF whose composite id doesn't resolve
+- `D2_RECOMMENDATION_LEAK` — "you should" / "I recommend" / "transfer to" / "salary sacrifice more" in TIER_1
+- `UC_FLAG_NOT_IN_SESSION` — UNCOMPUTED_NOTE flagId not in any tool result
+- `TIER2_MISSING_ROUTING` — `tier === 'TIER_2_ROUTE_TO_PRO'` without `askAProRouting`
+
+### CDR-safe audit
+Per CLAUDE.md §13.3, the audit entry carries traceId / userId / provider / toolsInvoked / outcome / validationIssueCodes / durationMs / tokenUsage — but **NOT** the user's raw question or AI's response text. Trace ID retrieves full payload from the production-store-of-record (sealed, access-logged).
+
+### Tests (33 new; 505 total, 472 → 505, +33; tsc clean)
+- Zod schema (6) — well-formed Tier 1/Tier 2; rejects malformed NUMBER_REF / CITATION_REF / empty segments / unknown tier
+- HR-1 validator (6) — real path passes; unknown tool rejected; fabricated path rejected; bare `$30,000` in TEXT rejected; bare `50%` in TEXT rejected; clean TEXT passes
+- HR-2 validator (3) — real cit passes; fabricated cit-id rejected; cit for un-invoked tool rejected
+- D-2 validator (3) — "you should" rejected in Tier 1; "I recommend" rejected; same language allowed in Tier 2
+- UC + Tier 2 (2) — fabricated UC flag rejected; Tier 2 missing routing rejected
+- System prompt (3) — embeds HR-1/HR-2/D-2; lists every tool; explicitly forbids recommending
+- Gateway end-to-end (8) — OK / fabricated-number BLOCKED / fabricated-cit BLOCKED / "you should" BLOCKED_RECOMMENDATION / valid Tier 2 OK / SCHEMA_INVALID / PROVIDER_ERROR / unregistered-tool ProviderError
+- Audit (2) — records all metadata; CDR-safe (no raw question/response leak)
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.31
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.1 row updated (41h.1 SHIPPED 2026-05-06)
+
+41h.2 (Gemini provider adapter — implements `AIProvider` to translate gateway → Gemini SDK → gateway response) is next.
+
+---
+
 ## Session: claude/phase-41h0-tool-registry-foundation (Phase 41h.0 — AI Tax Advisor tool registry foundation SHIPPED)
 
 ### Strategy lock-in (Reza brief 2026-05-05)
