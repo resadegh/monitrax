@@ -2451,3 +2451,127 @@ The existing "every fixture passes against current implementation" test now enfo
 **597 total tests** (595 → 597, +2). tsc clean.
 
 **41i.3 — L3 on-demand "Audit this user"** is next — adds the `CalcAuditFinding` Prisma model + admin portal action that re-runs every registered engine for a specific user with their stored data, surfaces drift findings.
+
+## **10.38 Phase 41i.3 — L3 audit foundation: persistent findings + lifecycle (PR — shipped 2026-05-07)**
+
+Persistence layer for the calc audit system. Every drift / error event from `runDifferential()` is now recorded in the `calc_audit_findings` table with a full lifecycle workflow. Foundation for 41i.4 alerting and the per-user "Audit this user" pre-existing audit-this-user adapter set (deferred — see "What's deferred" below).
+
+### Schema additions
+
+```prisma
+enum CalcAuditFindingSource {
+  L1_DIFFERENTIAL  L3_ON_DEMAND  L2_ANOMALY
+}
+enum CalcAuditFindingSeverity {
+  INFO  LOW  MEDIUM  HIGH  CRITICAL
+}
+enum CalcAuditFindingResolution {
+  OPEN  INVESTIGATING  FALSE_POSITIVE  FIX_REQUIRED  FIXED
+}
+
+model CalcAuditFinding {
+  id, detectedAt, source, engineName, fixtureName?, userId?,
+  severity, resolution, summary, failedAssertions?, errorMessage?,
+  adminNotes?, resolvedAt?, resolvedBy?, createdAt, updatedAt
+  @@map("calc_audit_findings")
+}
+```
+
+CLAUDE.md §12.11 N/A — additive table, no existing rows touched. CLAUDE.md §12.12 satisfied — migration ships in same PR.
+
+### Lifecycle (state machine)
+
+```
+         ┌─────────────┐
+         │    OPEN     │← initial state on creation
+         └──────┬──────┘
+                ↓
+         ┌─────────────┐         ┌──────────────┐
+   ┌─────┤INVESTIGATING│←───────┤FALSE_POSITIVE│
+   │     └──────┬──────┘         └──────────────┘
+   ↓            ↓                       ↑
+ FALSE_         FIX_REQUIRED ────→ FIXED ┘
+ POSITIVE       (admin works on it)
+```
+
+**Allowed transitions (locked in `findingService.ts`):**
+
+| From | To |
+|---|---|
+| `OPEN` | INVESTIGATING / FALSE_POSITIVE / FIX_REQUIRED |
+| `INVESTIGATING` | FALSE_POSITIVE / FIX_REQUIRED / OPEN |
+| `FIX_REQUIRED` | FIXED / INVESTIGATING |
+| `FALSE_POSITIVE` | INVESTIGATING (re-open) |
+| `FIXED` | INVESTIGATING (regression) |
+
+Self-transitions are forbidden (every state's allowed-list excludes itself). Terminal states (`FIXED`, `FALSE_POSITIVE`) re-open ONLY via `INVESTIGATING` — forces an admin to deliberately re-investigate before re-classifying.
+
+### What ships
+
+```
+prisma/
+├── schema.prisma                                       # adds CalcAuditFinding + 3 enums
+└── migrations/20260507120000_add_calc_audit_finding/
+    └── migration.sql                                   # hand-crafted (no DB access in env)
+
+lib/calc-audit/findingService.ts                        # NEW — record / list / transition
+
+app/api/admin/calc-audit/route.ts                       # MODIFIED — auto-persist on differential run
+app/api/admin/calc-audit/findings/route.ts              # NEW — GET findings list (paginated, filtered)
+app/api/admin/calc-audit/findings/[id]/route.ts         # NEW — PATCH lifecycle update
+
+app/admin/calc-audit/page.tsx                           # MODIFIED — Findings queue section + lifecycle buttons
+```
+
+### Auto-persist + dedup behaviour
+
+Every call to `GET /api/admin/calc-audit` now:
+1. Runs the differential
+2. **Persists every FAIL/ERROR result** as a `CalcAuditFinding`
+3. Dedupes: if an OPEN/INVESTIGATING finding already exists for the same `(engineName, fixtureName)`, the existing finding's `detectedAt` + `summary` are refreshed instead of creating a duplicate
+
+This prevents queue spam when a single bug causes the same fixture to fail every CI run while still capturing the LATEST occurrence.
+
+### Severity defaults
+
+- `FAIL` outcome → `MEDIUM` (overridable per-call)
+- `ERROR` outcome (engine threw) → `HIGH`
+
+### Admin endpoints (all `audit:read`)
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/admin/calc-audit` | Run differential + auto-persist + return report (existing endpoint, extended) |
+| GET | `/api/admin/calc-audit/findings` | Paginated findings list with filters (`resolution`, `source`, `engineName`) |
+| PATCH | `/api/admin/calc-audit/findings/[id]` | Apply lifecycle transition + admin notes |
+
+### Admin UI changes
+
+- New **Findings queue** section above the engine catalogue
+- **Lifecycle counts tile** (OPEN / INVESTIGATING / FIX_REQUIRED / FIXED / FALSE_POSITIVE)
+- **Per-finding card** shows badge + summary + failed assertions + admin notes + transition buttons (context-aware per current state)
+- Empty state: *"No open findings. The audit system is silent — that's the goal (HR-3)."*
+
+### Tests (9 new — 606 total)
+
+The codebase doesn't carry a Prisma mocking layer (`tests/sanity/` uses real DB). For 41i.3 v1 the **pure-logic tests** lock in:
+- All 5 lifecycle states have correct allowed-next-state lists
+- Self-transitions forbidden (no FIXED → OPEN, no OPEN → OPEN, etc.)
+- Terminal states re-open only via INVESTIGATING (regression / re-investigate path)
+- `FindingTransitionError` carries structured `code` (`NOT_FOUND` | `INVALID_TRANSITION`) + message
+
+End-to-end persistence is exercised via manual smoke against the admin endpoint after deploy. Future PR can add a Prisma mock layer for full integration tests.
+
+**606 total tests** (597 → 606, +9). tsc clean.
+
+### What's deferred
+
+- **Per-user L3 "Audit this user"** — requires per-engine adapters that fetch user data from DB and reconstruct the engine's input. 36 engines × 36 different input shapes = substantial workstream. Foundation (the `calcEngineRegistry` + `recordDifferentialFindings(report, source)`) is already in place; per-engine "fetch from user state" adapters are the missing piece. Tracked as **41i.3b** for a follow-up PR.
+- **Prisma mock layer for unit tests** — would let us test `recordDifferentialFindings` / `listFindings` / `updateFindingResolution` end-to-end in CI without a real DB. Tracked as cross-cutting infra.
+
+### Per going-forward commitment
+
+- `docs/architecture/03_DATA_MODEL.md` new §10.38 (this entry)
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.2 41i.3 SHIPPED row
+
+**41i.4 — Alerting + workflow** is next (Slack / email when severity ≥ HIGH; the lifecycle is now in place to support it).

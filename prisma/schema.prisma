@@ -5148,3 +5148,69 @@ enum BillingPlanTier {
   PRACTICE      // AU$599/mo — 10 seats, 250 clients
   ENTERPRISE    // From AU$1,499/mo — custom seats + clients
 }
+
+// =============================================================================
+// PHASE 41i.3 — Calculation Audit Findings (persistent storage)
+// =============================================================================
+//
+// Per HR-3 (Phase 41 §1 invariant 11) — calc audit is admin-side. This table
+// persists every drift / error event the audit system catches so admins have
+// a queue to triage instead of relying on point-in-time dashboards.
+//
+// Lifecycle: OPEN → INVESTIGATING → (FALSE_POSITIVE | FIX_REQUIRED → FIXED).
+// CLAUDE.md §12.11 N/A — additive table, no existing rows touched.
+
+enum CalcAuditFindingSource {
+  L1_DIFFERENTIAL  // Caught by runDifferential() against fixtures (CI / on-demand)
+  L3_ON_DEMAND     // Caught by per-user audit run ("Audit this user" admin action)
+  L2_ANOMALY       // Caught by Cloud Scheduler anomaly detection (Phase 41i.5)
+}
+
+enum CalcAuditFindingSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CalcAuditFindingResolution {
+  OPEN              // Freshly detected, not yet triaged
+  INVESTIGATING     // Admin is looking at it
+  FALSE_POSITIVE    // Admin reviewed and dismissed
+  FIX_REQUIRED      // Confirmed bug, code fix needed
+  FIXED             // Bug resolved, finding closed
+}
+
+model CalcAuditFinding {
+  id              String                       @id @default(cuid())
+  detectedAt      DateTime                     @default(now())
+  source          CalcAuditFindingSource
+  /// Engine that produced the finding (e.g. "tax.capTracker").
+  engineName      String
+  /// Fixture that caught the drift (only present for L1_DIFFERENTIAL).
+  fixtureName     String?
+  /// User scope — present only when the finding came from an L3 audit.
+  userId          String?
+  severity        CalcAuditFindingSeverity     @default(MEDIUM)
+  resolution      CalcAuditFindingResolution   @default(OPEN)
+  /// Plain-English summary surfaced in the admin queue.
+  summary         String                       @db.Text
+  /// Failed assertion descriptions, when applicable (Json[] of strings).
+  failedAssertions Json?
+  /// Captured engine error message when status was ERROR.
+  errorMessage    String?                      @db.Text
+  /// Free-form admin notes during triage.
+  adminNotes      String?                      @db.Text
+  resolvedAt      DateTime?
+  /// Admin user id (or email) who resolved the finding.
+  resolvedBy      String?
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+
+  @@index([source, resolution])
+  @@index([engineName])
+  @@index([detectedAt])
+  @@index([resolution, severity])
+  @@map("calc_audit_findings")
+}
