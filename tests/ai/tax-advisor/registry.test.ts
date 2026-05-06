@@ -35,16 +35,20 @@ beforeEach(() => {
 });
 
 describe('Tool registry — bootstrap + listing', () => {
-  it('registers exactly 3 canonical tools at bootstrap', () => {
-    expect(taxAdvisorToolRegistry.size()).toBe(3);
+  it('registers exactly 7 canonical tools at bootstrap (3 from 41h.0 + 4 from 41h.5)', () => {
+    expect(taxAdvisorToolRegistry.size()).toBe(7);
   });
 
   it('lists tools alphabetically', () => {
     const names = taxAdvisorToolRegistry.list().map((t) => t.name);
     expect(names).toEqual([
+      'getCgtExposure',
       'getContributionCapHeadroom',
+      'getDiv7aRisk',
       'getEntityTaxPosition',
+      'getInHouseAssetRatio',
       'getLandTaxPosition',
+      'runContributionScenario',
     ]);
   });
 
