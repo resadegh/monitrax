@@ -1,5 +1,81 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41f1-schema-migration (Phase 41f.1 — Schema migration)
+
+### Strategy
+Implements the schema design from `docs/blueprint/PHASE_41F_BOOKKEEPING_INTEGRATION.md` §4 + §6 (PR #690 merged 2026-05-07; D-41F-1 through D-41F-5 ✅ APPROVED). No service or UI changes — pure schema. Sets the foundation for 41f.2 (Xero OAuth) which starts after this lands on main.
+
+### Type
+- **Type**: Schema migration (Phase 41f follow-up — closes 41f.1 in the active workstream)
+- **Scope**: `prisma/schema.prisma` + new migration SQL. Two new enums (`AccountingIntegrationScope`, `TrustDeedRuleStatus`), one extended model (`AccountingIntegration`), two new models (`EntityAccountingSnapshot`, `TrustDeedExtractedRules`), three new back-relations on `User` + `LegalEntity`.
+
+### Files Created
+- `prisma/migrations/20260510100000_add_phase_41f_bookkeeping/migration.sql` — hand-crafted (per Phase 41i.3 pattern; no DATABASE_URL in env). Three concerns in one migration: (1) extend `accounting_integrations` with `scope`/`userId`/`legalEntityId` columns + drop the original full-table unique + add two partial unique indexes per scope + add the XOR `CHECK` constraint + add FKs with cascade-on-delete + scope/user/entity indexes; (2) create `entity_accounting_snapshots` table with provenance (`sourceProvider` / `sourceTenantId` / `pulledAt` / `pulledByUserId`) + period (`fiscalPeriod` / `periodStartDate` / `periodEndDate`) + Balance Sheet (totals + 8 optional line items) + P&L (revenue / COGS / opEx / NPBT / tax / NPAT / depreciation / interest) + tax-engine inputs (`distributableSurplus` for Div 7A / `trustNetIncome` for Div 6E / `smsfMemberBalances` for SIS) + `rawProviderPayload` JSON for forensic re-derivation + idempotent unique key on `(legalEntityId, fiscalPeriod)`; (3) create `trust_deed_extracted_rules` with provenance (`uploadedDocumentId` FK to Phase 26 Document model + `extractedAt` + `extractorVersion` + `extractedByUserId`) + 4-step lifecycle (`status: EXTRACTED | CONFIRMED | REJECTED` + `confirmedAt` / `rejectedAt` / `rejectionReason`) + extracted rules (beneficiaries / distributionRules / vestingDate / trusteePower / loanProvisions / uncomputedNotes — all JSON with Zod validation at write time) + `rawExtractorPayload` JSON. CLAUDE.md §12.11 destructive-write checklist filled in verbatim at the top of the file.
+
+### Files Modified
+- `prisma/schema.prisma`:
+  - **Enums** added: `AccountingIntegrationScope` (`ORG | USER_ENTITY`); `TrustDeedRuleStatus` (`EXTRACTED | CONFIRMED | REJECTED`).
+  - **`AccountingIntegration` model** extended: `scope` discriminator with default `ORG`; nullable `userId` + `legalEntityId` columns; `organizationId` made nullable; original `@@unique([organizationId, provider])` replaced by raw-SQL partial unique indexes (Prisma can't model `WHERE` on `@@unique`); new `user` + `legalEntity` relations with `onDelete: Cascade`; new indexes on `userId`, `legalEntityId`, `scope`. Inline JSDoc records the XOR invariant + the OAuth-encryption-at-rest posture (CMEK on Cloud SQL Text columns).
+  - **New `EntityAccountingSnapshot` model** with full Balance Sheet / P&L / tax-engine-input columns + provenance + idempotent overwrite key + `legalEntity` relation cascading on entity delete. Inline JSDoc cross-links to spec doc §6.1.
+  - **New `TrustDeedExtractedRules` model** with 4-step lifecycle + Zod-validated JSON columns + Phase 26 vault FK. Inline JSDoc reinforces §1.1 scope boundary ("storage + understanding only").
+  - **`User` model** — new `accountingIntegrations` back-relation (cascading on user delete via the FK).
+  - **`LegalEntity` model** — three new back-relations (`accountingIntegrations`, `accountingSnapshots`, `trustDeedExtractedRules`), all cascading on entity delete.
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - `Last updated` header rewritten — Phase 41f.1 schema migration shipping (this PR); 41f.0 PR #690 marked merged.
+  - Active Workstream §5 — 41f.0 ticked + ✅ APPROVED 2026-05-07; 41f.1 ticked + full summary; 5 D-41F decisions marked ✅ APPROVED.
+  - Up Next #30 status flipped to "🟡 IN FLIGHT — 41f.0 design doc PR #690 ✅ MERGED 2026-05-07; 41f.1 schema migration shipping (this PR)".
+
+### Architecture Decisions
+- **Hand-crafted migration SQL** — no DATABASE_URL in dev env so `prisma migrate dev` would fail. Following the Phase 41i.3 + 41h.5 pattern of authoring the migration manually + verifying against `prisma validate` + `prisma generate`. Vercel build runs `prisma migrate deploy` on every deploy (CLAUDE.md §12.12) — first deploy after merge will apply this migration to dev (Vercel Preview against `monitrax-db-dev`) before the production deploy.
+- **Partial unique indexes via raw SQL** — Prisma can't model `WHERE` clauses on `@@unique`. Two indexes: `accounting_integrations_org_provider_uniq` (`WHERE scope = 'ORG'`) + `accounting_integrations_entity_provider_uniq` (`WHERE scope = 'USER_ENTITY'`). Same provider can be connected once per ORG and once per USER_ENTITY, but never twice within the same scope.
+- **XOR `CHECK` constraint catches malformed inserts** — `(scope = 'ORG' AND organizationId IS NOT NULL AND userId IS NULL AND legalEntityId IS NULL) OR (scope = 'USER_ENTITY' AND organizationId IS NULL AND userId IS NOT NULL AND legalEntityId IS NOT NULL)`. Rejects any insert that doesn't match exactly one shape. App-level constructor in 41f.2 will enforce the same invariant before insert.
+- **`onDelete: Cascade` on all three USER_ENTITY-side FKs** — deleting a User cascades through `AccountingIntegration` (via userId FK); deleting a LegalEntity cascades through `AccountingIntegration` (via legalEntityId FK), `EntityAccountingSnapshot`, and `TrustDeedExtractedRules`. Right-to-erasure compliance (CLAUDE.md Part 13).
+- **`rawProviderPayload` + `rawExtractorPayload` JSON columns** — kept for forensic re-derivation if our typed shape evolves. Phase 41i (calc audit system) can recompute from raw if the typed columns drift.
+- **No `pulledByUserId` FK** — kept as TEXT, not a FK, because audit-trail rows survive user deletion (compliance archive). Same pattern Phase 32C PR4d uses for `senderRole` on `ConversationMessage`.
+- **Existing Phase 32 caller (`prisma.accountingIntegration.count({ where: { organizationId } })`) is unaffected** — the WHERE filter naturally excludes USER_ENTITY-scope rows whose `organizationId` is NULL. No code change required in `app/api/portal/organizations/[orgId]/route.ts:96`.
+
+### Build Status
+- [x] `prisma validate` — clean
+- [x] `prisma generate` — generated Prisma Client (v5.22.0) cleanly
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripeBillingService.ts` "stripe" module-not-found, unrelated)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (new `accessToken`/`refreshToken` columns inherit existing CMEK encryption at rest; new `tfn`/PII-bearing trust-deed JSON inherits the existing Phase 26 vault encryption posture; ON DELETE CASCADE preserves right-to-erasure)
+- [ ] operational procedure
+- [x] strategic decision (Option A schema-extension approach implemented per D-41F-1 sign-off)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Last updated header + Active Workstream §5 sub-PR ticks + Up Next #30 row flipped.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+**Filled in verbatim at the top of `prisma/migrations/20260510100000_add_phase_41f_bookkeeping/migration.sql`:**
+1. WHERE clause matches: N/A — pure ALTER TABLE / CREATE INDEX / CREATE TABLE. No row UPDATE / DELETE / UPSERT.
+2. Columns overwritten / rows deleted: NONE.
+3. Guard ensuring this only mutates rows I created: N/A — schema only. Pre-flight verified zero rows in `accounting_integrations` (the model was added by Phase 32 portal but its callers ship outside the stub layer; no production users have connected accounting yet).
+
+The one existing-constraint touch is `ALTER COLUMN organization_id DROP NOT NULL`. This is structurally non-destructive (relaxes a constraint, doesn't tighten one). The new XOR `CHECK` constraint catches any malformed insert.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+- [x] `prisma/schema.prisma` modified
+- [x] Matching migration at `prisma/migrations/20260510100000_add_phase_41f_bookkeeping/migration.sql`
+- [x] Migration is purely additive on row data; the only existing-constraint touch is `ALTER COLUMN ... DROP NOT NULL` (relaxing, not tightening) on a column with zero existing rows
+- [x] `npx prisma validate` clean
+- [x] `npx prisma generate` clean
+
+### PR
+- Branch: `claude/phase-41f1-schema-migration`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41f0-design-doc (Phase 41f.0 — Bookkeeping Integration design doc)
 
 ### Strategy

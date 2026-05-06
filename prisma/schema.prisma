@@ -437,6 +437,12 @@ model LegalEntity {
   incomes            Income[]
   expenses           Expense[]
 
+  // Phase 41f: bookkeeping integration (USER_ENTITY scope only — see
+  // PHASE_41F_BOOKKEEPING_INTEGRATION.md). Cascades on entity delete.
+  accountingIntegrations    AccountingIntegration[]
+  accountingSnapshots       EntityAccountingSnapshot[]
+  trustDeedExtractedRules   TrustDeedExtractedRules[]
+
   @@index([userId])
   @@index([type])
   @@index([parentEntityId])
@@ -566,6 +572,11 @@ model User {
   // PERSONAL_NAME entity is created during onboarding and backfilled for
   // existing users by migration `20260504130000_add_legal_entity`).
   legalEntities LegalEntity[]
+
+  // Phase 41f: bookkeeping integrations the user has connected for any of
+  // their LegalEntities (USER_ENTITY scope). Cascades on user delete via
+  // the user → integration FK; the entity → integration cascade also runs.
+  accountingIntegrations AccountingIntegration[]
 
   // Phase 32C PR4a: Marketplace ratings — a user can rate a professional
   // listing they've engaged with (one rating per listing per user).
@@ -3406,6 +3417,28 @@ enum AccountingProvider {
   OTHER // Generic
 }
 
+// Phase 41f: scope discriminator for AccountingIntegration. ORG = the
+// Phase 32 portal use case (an adviser org connecting their own books).
+// USER_ENTITY = the Phase 41f use case (a consumer user connecting their
+// personal entity's books — Pty Ltd / Sole Trader / Trust trustee /
+// SMSF). XOR-enforced via a Postgres CHECK constraint in the matching
+// migration: exactly one of (organizationId) or (userId + legalEntityId)
+// is set per row.
+enum AccountingIntegrationScope {
+  ORG
+  USER_ENTITY
+}
+
+// Phase 41f: lifecycle for trust-deed extracted rules. The 4-step
+// confirm-before-apply flow per PHASE_41F_BOOKKEEPING_INTEGRATION.md
+// §7 ensures no tax engine consumes AI-extracted legal-instrument
+// interpretation until the user has explicitly confirmed each rule.
+enum TrustDeedRuleStatus {
+  EXTRACTED // AI extracted, awaiting user review
+  CONFIRMED // User reviewed + confirmed; tax engines may consume
+  REJECTED // User rejected the extraction; will not feed any tax engine
+}
+
 enum IntegrationSyncDirection {
   OUTBOUND // Monitrax → External (default)
   INBOUND // External → Monitrax (reference only)
@@ -3704,15 +3737,28 @@ model ClientAccessLog {
 // =============================================================================
 
 model AccountingIntegration {
-  id             String @id @default(uuid())
-  organizationId String
+  id String @id @default(uuid())
+
+  // Phase 41f scope discriminator. XOR invariant enforced by Postgres
+  // CHECK constraint in the migration: scope = ORG ⇒ organizationId set
+  // and userId/legalEntityId NULL; scope = USER_ENTITY ⇒ userId and
+  // legalEntityId set and organizationId NULL. The two original Phase 32
+  // unique indexes are dropped and replaced by per-scope partial unique
+  // indexes (one per (organizationId, provider) WHERE scope = 'ORG'; one
+  // per (legalEntityId, provider) WHERE scope = 'USER_ENTITY').
+  scope          AccountingIntegrationScope @default(ORG)
+  organizationId String? // set when scope = ORG (Phase 32 portal)
+  userId         String? // set when scope = USER_ENTITY (Phase 41f)
+  legalEntityId  String? // set when scope = USER_ENTITY (Phase 41f)
 
   // Provider Details
   provider             AccountingProvider @default(XERO)
   providerTenantId     String? // Xero: tenant ID, MYOB: company file
   providerOrganization String? // Name in external system
 
-  // OAuth Credentials (encrypted)
+  // OAuth Credentials (encrypted at rest via CMEK on Cloud SQL Text
+  // columns — see CLAUDE.md §13.6 + Phase 9 cutover record). Tokens
+  // never leave the server; refresh runs server-side per request.
   accessToken    String?   @db.Text
   refreshToken   String?   @db.Text
   tokenExpiresAt DateTime?
@@ -3723,7 +3769,9 @@ model AccountingIntegration {
   lastConnectedAt DateTime?
   connectionError String?
 
-  // Sync Configuration
+  // Sync Configuration. Phase 41f always uses syncDirection = INBOUND
+  // (Monitrax CONSUMES Xero; never writes back; Phase 41f §1.1 scope
+  // boundary).
   syncDirection     IntegrationSyncDirection @default(OUTBOUND)
   syncEnabled       Boolean                  @default(true)
   autoSyncEnabled   Boolean                  @default(false)
@@ -3745,14 +3793,144 @@ model AccountingIntegration {
   updatedAt DateTime @updatedAt
 
   // Relationships
+  user           User?                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalEntity    LegalEntity?               @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
   syncLogs       IntegrationSyncLog[]
   entityMappings IntegrationEntityMapping[]
 
-  @@unique([organizationId, provider])
+  // Note: the original @@unique([organizationId, provider]) is replaced
+  // by two PARTIAL unique indexes created in raw SQL in the matching
+  // migration (Prisma can't model `WHERE` clauses on @@unique). See
+  // prisma/migrations/<add_phase_41f_bookkeeping>/migration.sql.
   @@index([organizationId])
+  @@index([userId])
+  @@index([legalEntityId])
+  @@index([scope])
   @@index([provider])
   @@index([isConnected])
   @@map("accounting_integrations")
+}
+
+// =============================================================================
+// PHASE 41f: ENTITY ACCOUNTING SNAPSHOT
+// =============================================================================
+// Caches the latest BS + P&L + tax-engine inputs per
+// (legalEntityId, fiscalPeriod). Idempotent on overwrite — re-pulling
+// the same period overwrites the same row. HR-1 preserved: every
+// number stamps sourceProvider + sourceTenantId + pulledAt for full
+// audit trail. Downstream Phase 41e tax engines consume from this
+// typed snapshot row, never from raw Xero JSON.
+// rawProviderPayload kept for forensic re-derivation if our shape
+// changes — see PHASE_41F_BOOKKEEPING_INTEGRATION.md §6.1.
+model EntityAccountingSnapshot {
+  id            String      @id @default(uuid())
+  legalEntityId String
+  legalEntity   LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+
+  // Provenance
+  sourceProvider AccountingProvider
+  sourceTenantId String // Xero tenant ID, MYOB company file
+  pulledAt       DateTime           @default(now())
+  pulledByUserId String // Audit trail — who triggered the pull
+
+  // Period
+  fiscalPeriod    String // "FY24-25" or "2024-Q4" or "2025-01"
+  periodStartDate DateTime
+  periodEndDate   DateTime
+
+  // Balance Sheet (top-level only — no transaction detail at v1)
+  totalAssets        Decimal  @db.Decimal(18, 2)
+  totalLiabilities   Decimal  @db.Decimal(18, 2)
+  totalEquity        Decimal  @db.Decimal(18, 2)
+  cashAndEquivalents Decimal? @db.Decimal(18, 2)
+  tradeReceivables   Decimal? @db.Decimal(18, 2)
+  inventoryValue     Decimal? @db.Decimal(18, 2)
+  fixedAssetsNet     Decimal? @db.Decimal(18, 2)
+  tradePayables      Decimal? @db.Decimal(18, 2)
+  shortTermDebt      Decimal? @db.Decimal(18, 2)
+  longTermDebt       Decimal? @db.Decimal(18, 2)
+  retainedEarnings   Decimal? @db.Decimal(18, 2)
+
+  // P&L Summary
+  revenue            Decimal  @db.Decimal(18, 2)
+  costOfGoodsSold    Decimal? @db.Decimal(18, 2)
+  operatingExpenses  Decimal  @db.Decimal(18, 2)
+  netProfitBeforeTax Decimal  @db.Decimal(18, 2)
+  taxExpense         Decimal? @db.Decimal(18, 2)
+  netProfitAfterTax  Decimal  @db.Decimal(18, 2)
+  depreciation       Decimal? @db.Decimal(18, 2)
+  interest           Decimal? @db.Decimal(18, 2)
+
+  // Tax-engine inputs (computed at pull time; Phase 41e consumes these
+  // as canonical inputs — see PHASE_41F_BOOKKEEPING_INTEGRATION.md §3.4).
+  // distributableSurplus → Phase 41e.6 Div 7A classifier (s109Y)
+  // trustNetIncome       → Phase 41e.4 Div 6E streaming (s95)
+  // smsfMemberBalances   → SIS Act member-balance dispatch
+  distributableSurplus Decimal? @db.Decimal(18, 2)
+  trustNetIncome       Decimal? @db.Decimal(18, 2)
+  smsfMemberBalances   Json?
+
+  // Raw payload for forensic / debug / re-derivation if our shape changes
+  rawProviderPayload Json
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([legalEntityId, fiscalPeriod])
+  @@index([legalEntityId])
+  @@index([sourceProvider])
+  @@index([pulledAt])
+  @@map("entity_accounting_snapshots")
+}
+
+// =============================================================================
+// PHASE 41f: TRUST DEED EXTRACTED RULES
+// =============================================================================
+// Storage + understanding ONLY (per PHASE_41F_BOOKKEEPING_INTEGRATION.md
+// §1.1 scope boundary). Monitrax does NOT generate, draft, or modify
+// trust deeds. We read the user's existing deed PDF (Phase 26 vault),
+// extract structural rules via Vision OCR + Gemini, and persist them
+// here for the user to confirm. Phase 41e.4 (Div 6E streaming) and
+// Phase 41e.5 (s100A zone classifier) consume CONFIRMED rules only.
+// Status lifecycle: EXTRACTED → CONFIRMED | REJECTED.
+model TrustDeedExtractedRules {
+  id            String      @id @default(uuid())
+  legalEntityId String
+  legalEntity   LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+
+  // Provenance
+  uploadedDocumentId String // FK to existing Document model (Phase 26 vault)
+  extractedAt        DateTime @default(now())
+  extractorVersion   String // e.g. "gemini-2.0-flash@2026-05" — for re-extraction tracking
+  extractedByUserId  String
+
+  // Approval lifecycle (4-step flow per D-41F-3)
+  status          TrustDeedRuleStatus @default(EXTRACTED)
+  confirmedAt     DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  // Extracted rules — typed JSON. Validated against a Zod schema at
+  // write time (the writer enforces the shape; the column is JSON for
+  // flexibility as the trust-deed rule shape evolves). NEVER consumed
+  // by any tax engine until status = CONFIRMED.
+  beneficiaries     Json // Array of {name, type: PRIMARY|GENERAL|DEFAULT, percentageEntitlement?, conditions?}
+  distributionRules Json // Array of {type: DISCRETIONARY|PROPORTIONATE|FIXED, ...}
+  vestingDate       DateTime?
+  trusteePower      Json? // {appointor, removalRights, etc.}
+  loanProvisions    Json? // For Div 7A — sub-trust UPE clauses
+  uncomputedNotes   Json // Array of clauses Gemini flagged as "I'm unsure"
+
+  // Forensic: full Gemini response for re-derivation if our schema changes
+  rawExtractorPayload Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([legalEntityId])
+  @@index([status])
+  @@map("trust_deed_extracted_rules")
 }
 
 // =============================================================================
