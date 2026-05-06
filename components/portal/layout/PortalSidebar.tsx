@@ -7,7 +7,7 @@
 
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { OrganizationSelector } from './OrganizationSelector';
@@ -26,6 +26,13 @@ interface PortalSidebarProps {
   navigation: NavItem[];
   secondaryNavigation?: NavItem[];
   currentOrgId?: string;
+  /**
+   * Mobile drawer state. At `lg` breakpoint (≥1024px) the sidebar is always
+   * visible and these props are ignored. Below `lg` the sidebar slides in
+   * from the left when `mobileOpen` is true and slides out otherwise.
+   */
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 export function PortalSidebar({
@@ -34,6 +41,8 @@ export function PortalSidebar({
   navigation,
   secondaryNavigation,
   currentOrgId,
+  mobileOpen = false,
+  onMobileClose,
 }: PortalSidebarProps) {
   const pathname = usePathname();
 
@@ -44,8 +53,45 @@ export function PortalSidebar({
     return pathname.startsWith(href);
   };
 
+  // Auto-close the drawer when the user navigates to a new route on mobile.
+  // On desktop (lg+) the sidebar is persistent so this is a no-op visually.
+  useEffect(() => {
+    if (mobileOpen && onMobileClose) {
+      onMobileClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   return (
-    <aside className="w-64 bg-white/70 backdrop-blur-md text-slate-700 flex flex-col h-screen sticky top-0 border-r border-slate-200/70">
+    <aside
+      className={[
+        // Layout — fixed slide-in drawer below lg, persistent column at lg+
+        'fixed inset-y-0 left-0 z-40 w-64 lg:sticky lg:top-0 lg:z-auto',
+        'h-screen flex flex-col',
+        'bg-white/95 lg:bg-white/70 backdrop-blur-md text-slate-700',
+        'border-r border-slate-200/70',
+        'transform transition-transform duration-200 ease-out',
+        'lg:translate-x-0',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full',
+      ].join(' ')}
+      aria-label="Portal navigation"
+    >
+      {/* Mobile-only header row: brand + close button. Hidden at lg+ where
+          the persistent sidebar doesn't need its own close affordance. */}
+      <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-slate-200/70">
+        <span className="font-semibold text-sm text-slate-900">Monitrax Portal</span>
+        <button
+          type="button"
+          onClick={onMobileClose}
+          aria-label="Close navigation"
+          className="p-1.5 rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
       {/* Organization Selector */}
       <div className="p-2 border-b border-slate-200/70">
         <OrganizationSelector />

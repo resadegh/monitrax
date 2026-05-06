@@ -15,7 +15,7 @@
  * Design: modern, minimal, generous whitespace, soft borders.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut } from 'firebase/auth';
@@ -119,12 +119,33 @@ interface AdminSidebarProps {
   role: AdminRole;
   adminName: string;
   adminEmail: string;
+  /**
+   * Mobile drawer state. At `lg` breakpoint (≥1024px) the sidebar is always
+   * visible and these props are ignored. Below `lg` the sidebar slides in
+   * from the left when `mobileOpen` is true and slides out otherwise.
+   */
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function AdminSidebar({ role, adminName, adminEmail }: AdminSidebarProps) {
+export function AdminSidebar({
+  role,
+  adminName,
+  adminEmail,
+  mobileOpen = false,
+  onMobileClose,
+}: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const access = getFeatureAccess(role);
+
+  // Auto-close the drawer on route change.
+  useEffect(() => {
+    if (mobileOpen && onMobileClose) {
+      onMobileClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const handleLogout = async () => {
     try {
@@ -156,17 +177,38 @@ export function AdminSidebar({ role, adminName, adminEmail }: AdminSidebarProps)
   };
 
   return (
-    <aside className="w-[260px] min-h-screen bg-[#0A0F1C] text-gray-300 flex flex-col border-r border-white/[0.06]">
-      {/* Brand Header */}
+    <aside
+      className={cn(
+        // Layout — fixed slide-in drawer below lg, persistent column at lg+
+        'fixed inset-y-0 left-0 z-40 w-[260px] lg:sticky lg:top-0 lg:z-auto',
+        'min-h-screen flex flex-col',
+        'bg-[#0A0F1C] text-gray-300 border-r border-white/[0.06]',
+        'transform transition-transform duration-200 ease-out',
+        'lg:translate-x-0',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      )}
+      aria-label="Admin navigation"
+    >
+      {/* Brand Header — also houses the mobile close button at <lg */}
       <div className="px-5 pt-6 pb-5 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
             <span className="text-white font-bold text-sm">M</span>
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="font-semibold text-sm text-white tracking-tight">Monitrax</h1>
             <p className="text-[11px] text-gray-500 font-medium">Admin Portal</p>
           </div>
+          <button
+            type="button"
+            onClick={onMobileClose}
+            aria-label="Close navigation"
+            className="lg:hidden p-1.5 -mr-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/[0.06]"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
