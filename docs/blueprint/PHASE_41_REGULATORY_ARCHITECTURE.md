@@ -66,6 +66,9 @@ This decision survives a reasonable adversary test: even if a user attempts to g
 6. **"Uncomputed" is documented.** Every rule we deliberately skip (PSI deep cases, deceased estates, cross-border, family trust elections nuance) gets a row in `lib/calculations/tax/UNCOMPUTED.md`. Reviewers know what's out of scope rather than guessing.
 7. **Demo vs PROD scoping is honest.** Demo-complete (per `IMPLEMENTATION_PLAN.md` Phase 41e trimmed): Div 115 + trust distribution flow + SMSF contribution caps + TBC. PROD-ready: s100A, Div 7A, family trust elections, full Div 152, Div 296, state land tax, stamp duty, PSI, service entities. The architecture supports both from day one — what defers is *content*, not *shape*.
 8. **Versioning.** Caps + thresholds are time-versioned (FY-indexed). The engine reads the relevant FY's table for the user's reference period. No hard-coded `30000` constants — always `CONCESSIONAL_CAP_BY_FY['2025-2026'] === 30_000`.
+9. **HR-1 — Numbers come from the app, never the AI.** *(Reza brief 2026-05-05.)* The AI advisor (Phase 41h) may not estimate, round, project, or fabricate any monetary figure, percentage, ratio, or threshold. Numbers come from Phase 41e + Phase 20 calc engines via the tool registry. Enforced structurally at three layers: tool layer (closed `ToolKind` discriminant — no `RECOMMENDATION` kind), schema layer (Zod `NUMBER_REF` segments must reference `numericFields[].path`), validator layer (runtime resolution against `ToolSession`).
+10. **HR-2 — Claims come from Australian law, never AI memory.** *(Reza brief 2026-05-05.)* The AI advisor may not cite a section, ruling, or threshold from training-data recall. Citations come from `AuthorityCitation[]` lifted from Phase 41e calc engines. Same three-layer enforcement as HR-1.
+11. **HR-3 — User-visible calc errors are unacceptable.** *(Reza brief 2026-05-06.)* The Calculation Audit System (Phase 41i) is a silent admin-side safety net — never a user-facing surface. Errors flow: detect → admin alert → admin investigates → if real bug, fix code + backfill via existing data-update flow → user contacted via existing support tooling. No "we think there might be a calc error" toasts. No anxiety-inducing UI. Reviewers reject any PR that adds a user-facing surface for calc-correctness warnings.
 
 ---
 
@@ -567,10 +570,32 @@ Enforced structurally at three layers — **Tool layer** (registry; closed-set `
 |---|---|---|
 | **41h.0** | Tool registry foundation (`lib/ai/tax-advisor/`) — `ToolKind` closed set (`FACT_LOOKUP \| SCENARIO_RUN`, no `RECOMMENDATION`) + `NumericField` / `IdentifiedCitation` / `ToolResult` / `TaxAdvisorTool` / `ToolSession` types + 3 canonical tools wrapping 41e calc engines (`getContributionCapHeadroom`, `getLandTaxPosition`, `getEntityTaxPosition`) + session-lookup helpers + 23 structural-enforcement tests. | **SHIPPED 2026-05-05** |
 | **41h.1** | **AI Policy Gateway** — single entry point every Gemini call must go through. Reza brief 2026-05-06 framed it as making Gemini Monitrax-centric (general knowledge OK for paraphrase / education / structure; bound by Monitrax for numbers + citations). Layered architecture: `gateway.ts` (entry) + `policy/` (system prompt + Zod response schema + HR-1/HR-2/D-2 runtime validator) + `providers/` (AIProvider interface + MockProvider; Gemini in 41h.2) + `audit/` (CDR-safe AuditEntry + AuditSink). 5 status outcomes (`OK` / `BLOCKED_VALIDATION` / `BLOCKED_RECOMMENDATION` / `PROVIDER_ERROR` / `SCHEMA_INVALID`). Never throws — every failure produces a structured response. 33 tests (6 Zod schema / 6 HR-1 / 3 HR-2 / 3 D-2 / 2 UC + Tier 2 / 3 system prompt / 8 gateway end-to-end / 2 audit). | **SHIPPED 2026-05-06** |
-| **41h.2** | Gemini provider adapter — implements `AIProvider` interface; translates gateway request → Gemini SDK call → gateway response. No app code outside this file calls Gemini directly. | Queued |
+| **41h.2** | Gemini provider adapter — implements `AIProvider` interface; translates gateway request → Gemini SDK call → gateway response. Multi-turn function-calling loop (cap MAX_TURNS=8) + token-usage aggregation + 30s timeout guard. Plus `ProductionAuditSink` wiring `AuditEntry` → existing `AuditLog` Prisma pipeline (action `AI_ADVISOR_INVOCATION`, CDR-safe metadata, fire-and-forget). 8 tests with mocked SDK. | **SHIPPED 2026-05-06** |
 | **41h.3** | Practice surface UI — structured answer card with citations rendered next to numbers + AFSL boundary footer. | Queued |
 | **41h.4** | Ask-a-Pro router — detects recommendation-shaped questions ("should I…?") and routes to marketplace per Phase 32C. | Queued |
 | **41h.5** | Tool registry expansion — `runScenario` (SCENARIO_RUN kind) + additional fact lookups (CGT exposure, Div 7A risk, in-house asset ratio, contribution-cap deltas). | Queued |
+
+### 11.2 Phase 41i — Calculation Audit System (added 2026-05-06)
+
+Reza brief 2026-05-06: *"Create an AI agent to validate the calculations in the app... it should be able to figure it out... position inside the admin portal. I don't want end users to see there is a calc error."* Locked in as **HR-3** (§1 invariant 11): user-visible calc errors are unacceptable; the system is silent admin-side.
+
+**Scope: cross-app, all calc engines.** Not just `lib/tax-engine/` — also `lib/calculations/`, `lib/services/masterFinancialService.ts`, `lib/health/`, `lib/cgt/`, `lib/depreciation/`, property/asset metrics in `lib/utils/calculations.ts`, etc. The audit system uses a `calcEngineRegistry` pattern (parallel to the AI tool registry) so every engine in the app is registered, fixture-tested, and audit-checkable.
+
+**Three layers** (cf. industry pattern — Stripe reconciliation pipeline, Wise invariant checker, banking double-entry shadow ledger):
+
+| Layer | What | Why this layer |
+|---|---|---|
+| **L1 — Deterministic regression** (no AI) | Every registered calc engine has reference fixtures (ATO worked examples for tax; canonical scenarios for non-tax). CI fails on drift. | AI is bad at "is this number exactly right?" — but `expect(result).toBe(40090)` is bulletproof. |
+| **L2 — Anomaly detection agent** (AI, batch) | Cloud Scheduler daily job. AI surfaces outliers across users (5σ from peers). Admin-portal dashboard. | What AI is *actually good at* — pattern recognition across data. |
+| **L3 — On-demand consistency check** (AI, ad-hoc) | Admin clicks "Audit this user". Re-runs every registered calc engine; diffs stored vs fresh; AI narrates findings grounded in tool calls. | Catches data-corruption / stale-cache bugs. AI grounded — same HR-1/HR-2 discipline. |
+
+| Sub-PR | Scope |
+|---|---|
+| **41i.0** | Audit framework — types (`AuditFinding` / `Severity` / `Resolution`), `calcEngineRegistry` singleton, `CalcEngine<TInput, TOutput>` interface, admin-portal route stub at `/admin/calc-audit`, `CalcAuditFinding` Prisma model |
+| **41i.1** | L1 — register every calc engine in the app + sibling `*.fixtures.ts` files (ATO worked examples + canonical scenarios). CI step `npm run audit:fixtures`. Admin-portal report page. |
+| **41i.3** | L3 — admin "Audit this user" button → re-runs every registered engine → diffs against stored values → renders findings with severity. |
+| **41i.4** | Alerting + workflow — Slack/email when severity ≥ HIGH; finding lifecycle (OPEN / INVESTIGATING / FALSE_POSITIVE / FIX_REQUIRED / FIXED); backfill-affected-users runbook. |
+| **41i.5** | L2 — Cloud Scheduler anomaly detection agent (deferred until Cloud Scheduler infra is in place). |
 
 **Sequencing note for sessions running in parallel with 41e:** 41e is *additive* — it lives entirely under `lib/calculations/tax/` and doesn't touch the canonical Master Financial Service or any existing route. Phase 41b (wizard), 41c (entity tree), 41d (Sankey), 41f (Xero), 41g (adviser overlay extension) can all proceed in parallel sessions without merge conflict, and only need to integrate with 41e once the master orchestrator (41e.17) ships.
 
