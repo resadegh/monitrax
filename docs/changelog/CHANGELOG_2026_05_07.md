@@ -1,5 +1,83 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41h6-scenario-run-tools (Phase 41h.6 — SCENARIO_RUN tools expansion)
+
+### Strategy
+- Closes Up Next #39: SCENARIO_RUN tools expansion. Builds on the locked-in pattern from 41h.5 (`runContributionScenario`).
+- Three new SCENARIO_RUN tools wrapping the highest-value tax engines:
+  1. `runCgtScenario` — wraps `applyCapitalLossNetting` (Div 102-A / s100-50 / s115-100)
+  2. `runLandTaxScenario` — wraps `calculateCrossStateLandTax` (per-state Land Tax Acts)
+  3. `runDiv7aRefinanceScenario` — wraps `classifyDiv7ALoans` (Div 7A — s109B-s109ZE, s109N safe harbour)
+- Each adapter is a small file under `lib/ai/tax-advisor/tools/` returning baseline + scenario + delta numerical fields per the locked-in `scenario.{baseline,input,result,delta}.*` path convention.
+- All HR-1/HR-2/D-2 boundaries preserved at every layer:
+  - **HR-1**: every number computed by the underlying engine; the tool composes inputs and subtracts.
+  - **HR-2**: every citation lifted from the engine's `AuthorityCitation[]` with stable `cit-N` ids.
+  - **D-2**: `kind === 'SCENARIO_RUN'`; descriptions explicitly disclaim "Does NOT recommend whether to ...". Returning a scenario number is a fact, not a recommendation.
+
+### Type
+- **Type**: Feature (Phase 41h follow-up — closes Up Next #39)
+- **Scope**: AI advisor tool registry — 3 new SCENARIO_RUN tools, registry size 7 → 10
+- **Authority**: ITAA 1997 Div 102-A / s100-50 / s115-100 (CGT); per-state Land Tax Acts (NSW 1956, VIC 2005, QLD 2010, SA 1936, WA 2002, TAS 2000, ACT 2004, NT 1992); ITAA 1936 Div 7A s109B-s109ZE + s109N MRP safe harbour.
+
+### Files Created
+- `lib/ai/tax-advisor/tools/runCgtScenario.ts` — wraps `applyCapitalLossNetting`. Inputs: `entityType`, `currentEvents`, `hypotheticalEvents`, optional `carryForwardLosses` / `isComplying` / `isForeignResident`. Returns 9 numericFields: baseline (`assessableNetCapitalGain`, `netGainBeforeDiscount`); scenario inputs (`hypotheticalGains`, `hypotheticalLosses`, `hypotheticalEventCount`); scenario result (`assessableNetCapitalGain`, `netGainBeforeDiscount`); delta (`assessableNetCapitalGain`, `netGainBeforeDiscount`). Citations from the underlying engine.
+- `lib/ai/tax-advisor/tools/runLandTaxScenario.ts` — wraps `calculateCrossStateLandTax`. Inputs: `ownershipType`, `isForeignOwner`, `currentProperties`, `hypotheticalProperties`. Returns 10 numericFields covering baseline + scenario + delta on `grandTotalTax` + `grandTotalForeignSurcharge` + `statesAssessed`, plus echoed sum of hypothetical taxable land values.
+- `lib/ai/tax-advisor/tools/runDiv7aRefinanceScenario.ts` — wraps `classifyDiv7ALoans`. Inputs: `currentLoans`, `loanIdsToRefinance` (flips `hasComplianceAgreement: true` on listed loans, leaves others untouched), optional `overrideYearsRemaining` / `overrideBenchmarkRate`. Returns 8 numericFields covering baseline + scenario + delta on `totalDeemedDividend` + `compliantLoanCount`.
+- `tests/ai/tax-advisor/tools-41h6.test.ts` — 36 new tests: per-tool baseline + scenario + delta presence; zero-hypothetical → zero-delta idempotency invariant for all three; foreign-owner residential hypothetical increases foreign-surcharge delta; refinance only flips listed loanIds; HR-1/HR-2/D-2 contract per tool (`kind === 'SCENARIO_RUN'`, banned-word check on tool names, every citationId resolves, every tool exposes all four `scenario.*` path roots).
+
+### Files Modified
+- `lib/ai/tax-advisor/index.ts` — bootstrap registers all 3 new tools; `CANONICAL_TOOLS` now `FACT_LOOKUP × 6 + SCENARIO_RUN × 4 = 10`. Public re-exports added for the three new tool consts.
+- `tests/ai/tax-advisor/registry.test.ts` — registry size assertion 7 → 10; alphabetical name list extended with `runCgtScenario`, `runDiv7aRefinanceScenario`, `runLandTaxScenario`.
+- `tests/ai/tax-advisor/tools-41h5.test.ts` — registry-state assertions updated for new size 10 + 4 SCENARIO_RUNs (the existing 41h.5 tool-level assertions remain untouched).
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #39 marked SHIPPED with summary; `Last updated` header refreshed; new Recently Completed entry prepended for 2026-05-07 (Phase 41h.6).
+- `docs/architecture/03_DATA_MODEL.md` — new §10.41 "Phase 41h.6 — SCENARIO_RUN tools expansion" with the three tools, locked-in pattern, hard-rule preservation, registry state, test coverage.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` — §11.1 sub-PR table extended with new 41h.6 SHIPPED row; 41h.5 row updated to "CLOSES PHASE 41h CORE" so the doc remains internally consistent.
+
+### Architecture Decisions
+- **Pattern reuse over re-design.** The 41h.5 SCENARIO_RUN pattern (returns baseline + scenario + delta numerical fields under a stable four-root path scheme) is reused verbatim. No bespoke shape per tool — the AI advisor's runtime validator can rely on a single contract across all SCENARIO_RUN tools.
+- **Adapter-only — no engine changes.** Each tool is a thin wrapper that composes inputs (current + hypothetical) and calls the existing pure calc engine twice (baseline + scenario). Deltas are subtraction. Zero changes to `lib/tax-engine/`.
+- **Citations lifted from the engine, not duplicated.** Each tool maps the engine's `citations[]` to `IdentifiedCitation[]` with stable `cit-N` ids. No tool-side citation invention. HR-2 preserved structurally.
+- **D-2 preserved by description, not just by `kind`.** Every tool description starts with the kind (`SCENARIO_RUN: ...`) and explicitly disclaims "Does NOT recommend whether to ...". The locked-in test (`description either fact_lookup-disclaim or scenario_run-disclaim`) covers both shapes.
+- **Test for the contract, not the engine.** The 41h.6 test suite asserts the SHAPE of the SCENARIO_RUN tool output (baseline + scenario + delta paths exist; deltas are well-typed; zero-hypothetical produces zero-delta as an idempotency invariant). The underlying engine's correctness is owned by the engine's own test suite + the calc-audit fixtures (Phase 41i.2 — 36 engines × 45 fixtures all green).
+- **Refinance scenario uses opt-in loan list.** `loanIdsToRefinance` is the explicit set of loans to flip `hasComplianceAgreement: true`. Loans NOT in the list are untouched. This preserves the user's mental model ("what if I refinanced loan L1?" — not "what if I refinanced everything?").
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripeBillingService.ts` "stripe" module-not-found, unrelated to this PR).
+- [x] `npx vitest run tests/ai/tax-advisor` — 147 pass (was 111). All registry / 41h.0-5 / 41h.6 / runAdvisorQuery / Gemini / gateway / askAProRouting suites green.
+- [x] `npx vitest run tests/ai/tax-advisor/tools-41h6.test.ts` — 36 / 36 pass.
+- [x] `npx vitest run tests/ai/tax-advisor/tools-41h5.test.ts` — 34 / 34 pass after registry-state assertions updated.
+- [x] `npx vitest run tests/ai/tax-advisor/registry.test.ts` — 23 / 23 pass after size + alphabetical assertions updated.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (locked-in SCENARIO_RUN pattern reused for 3 more tools — registry size 7 → 10; pattern proven across the 4 highest-value tax surfaces)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md:Up Next #39` — marked SHIPPED with summary; `Last updated` header refreshed; new Recently Completed entry prepended.
+- `docs/architecture/03_DATA_MODEL.md:§10.41` — new section "Phase 41h.6 — SCENARIO_RUN tools expansion" with full registry state + tool details + hard-rule preservation table.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md:§11.1` — sub-PR table extended with 41h.6 SHIPPED row.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+N/A — no Prisma writes anywhere in this PR. All changes are pure-function adapter code under `lib/ai/tax-advisor/tools/` plus tests + docs.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A — no `prisma/schema.prisma` changes.
+
+### PR
+- Branch: `claude/phase-41h6-scenario-run-tools`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41i5-l2-anomaly-detection (Phase 41i.5 — L2 anomaly detection. CLOSES PHASE 41i.)
 
 ### Strategy

@@ -2772,3 +2772,79 @@ All sub-PRs shipped:
 - **OIDC auth for Cloud Scheduler** — v1 uses shared-secret bearer; OIDC verification is a future hardening pass.
 
 **Next phase per Reza's roadmap:** SCENARIO_RUN tools expansion (`runCgtScenario`, `runLandTaxScenario`, `runDiv7aRefinanceScenario`) → TRAIL-aligned IA (graduate AI advisor from `/dashboard/cfo/ask` to "My Guide" placement).
+
+---
+
+## **10.41 Phase 41h.6 — SCENARIO_RUN tools expansion (PR — shipped 2026-05-07).**
+
+Builds on the 41h.5 SCENARIO_RUN pattern. Three new SCENARIO_RUN tools cover the highest-value "what if" tax questions a user can ask the AI advisor without crossing into recommendation territory.
+
+### What ships
+
+```
+lib/ai/tax-advisor/tools/runCgtScenario.ts                  # NEW — wraps applyCapitalLossNetting
+lib/ai/tax-advisor/tools/runLandTaxScenario.ts              # NEW — wraps calculateCrossStateLandTax
+lib/ai/tax-advisor/tools/runDiv7aRefinanceScenario.ts       # NEW — wraps classifyDiv7ALoans
+lib/ai/tax-advisor/index.ts                                 # MODIFIED — bootstrap registers 3 new tools
+tests/ai/tax-advisor/registry.test.ts                       # MODIFIED — size 7 → 10 + alphabetical names
+tests/ai/tax-advisor/tools-41h5.test.ts                     # MODIFIED — registry-state assertions for 4 SCENARIO_RUNs
+tests/ai/tax-advisor/tools-41h6.test.ts                     # NEW — 36 per-tool + contract tests
+```
+
+### The three tools
+
+| Tool | Wraps | Question shape | Delta returned on |
+|---|---|---|---|
+| `runCgtScenario` | `applyCapitalLossNetting` | "What if I sold property X this FY?" | `assessableNetCapitalGain`, `netGainBeforeDiscount` |
+| `runLandTaxScenario` | `calculateCrossStateLandTax` | "What if I bought a property in QLD for $1.5M?" | `grandTotalTax`, `grandTotalForeignSurcharge`, `statesAssessed` |
+| `runDiv7aRefinanceScenario` | `classifyDiv7ALoans` | "What if I refinanced loan L1 to safe-harbour terms?" | `totalDeemedDividend`, `compliantLoanCount` |
+
+### Locked-in SCENARIO_RUN pattern
+
+Every SCENARIO_RUN tool exposes the same four numeric-field path roots so the AI can narrate baseline + scenario + delta consistently:
+
+```
+scenario.baseline.<metric>     # current state, no hypothetical applied
+scenario.input.<echo>          # hypothetical input echoed back (count, sum, etc.)
+scenario.result.<metric>       # state after hypothetical applied
+scenario.delta.<metric>        # scenario − baseline
+```
+
+### Hard rules preserved
+
+- **HR-1** — every number computed by the underlying calc engine. The tool composes inputs and subtracts; the AI just narrates.
+- **HR-2** — every citation lifted from the underlying engine's `AuthorityCitation[]` with stable `cit-N` ids; `numericFields[].citationIds` resolve into the same result's `citations[]`.
+- **D-2** — `kind === 'SCENARIO_RUN'` is structurally not `'RECOMMENDATION'` (the closed `ToolKind` discriminant from 41h.0); descriptions explicitly disclaim "Does NOT recommend whether to ...". A scenario number is a fact ("if loan L1 had a compliant agreement, deemed dividend exposure would drop from $X to $Y"), not a recommendation ("you should refinance loan L1" remains forbidden — no recommendation tool exists in the registry).
+
+### Registry state after 41h.6
+
+```
+Tools: 10 (was 7)
+  FACT_LOOKUP × 6:
+    getCgtExposure
+    getContributionCapHeadroom
+    getDiv7aRisk
+    getEntityTaxPosition
+    getInHouseAssetRatio
+    getLandTaxPosition
+  SCENARIO_RUN × 4:
+    runCgtScenario             # NEW (41h.6)
+    runContributionScenario    # 41h.5
+    runDiv7aRefinanceScenario  # NEW (41h.6)
+    runLandTaxScenario         # NEW (41h.6)
+```
+
+### Tests (36 new — 685 total)
+
+| Suite | Coverage |
+|---|---|
+| `runCgtScenario` (7) | baseline + scenario + delta presence; zero-hypothetical → zero-delta; hypothetical gain → delta > 0; hypothetical loss → delta ≤ 0; sums of hypothetical gains/losses echoed; cites Div 102-A/s100-50/s115-100; citationIds resolve |
+| `runLandTaxScenario` (6) | baseline + scenario + delta presence; zero-hypothetical → zero-delta; new-state hypothetical increases `statesAssessed`; sum of hypothetical land values echoed; foreign-owner residential hypothetical increases foreign-surcharge delta; citationIds resolve |
+| `runDiv7aRefinanceScenario` (5) | flipping NO_AGREEMENT loan reduces total deemed dividend; zero loanIds → zero delta; flipping increases compliantLoanCount; only flips listed loanIds; cites Div 7A authority |
+| HR-1/HR-2/D-2 contract per tool (18 — 3 tools × 6 contract checks) | `kind === 'SCENARIO_RUN'`; description disclaims recommendation; banned-word check on tool name; every numericField has stable path + numeric value + valid unit; every citation has full shape; all four `scenario.*` path roots present |
+
+**685 total tests** (649 → 685, +36). tsc clean.
+
+### Closes Up Next #39
+
+Up Next #39 (SCENARIO_RUN tools expansion) closes here. **Next per Reza's roadmap**: TRAIL-aligned IA (#40 — graduate AI advisor from `/dashboard/cfo/ask` to "My Guide" placement per CLAUDE.md §14) → Phase 41i.3b per-user audit (#41 — when first paying users / pre-Basiq submission).
