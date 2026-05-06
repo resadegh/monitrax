@@ -1,5 +1,66 @@
 # Changelog — 2026-05-07
 
+## Session: claude/docs-post-688-merge (Doc-sync — Phase 41 status reflection)
+
+### Strategy
+Flat doc-sync pass after PRs #687 (41h.6) + #688 (41h.7) landed on main. CLAUDE.md §16.7 captures the failure mode this prevents: documenting decisions only after the fact leaves the plan stale and the next session re-litigating completed work.
+
+### Type
+- **Type**: Docs (per-PR doc-sync; no code changes)
+- **Scope**: `IMPLEMENTATION_PLAN.md` Last-updated header + Up Next #29/39/40 markers + `MASTER_BLUEPRINT.md` Phase 41e/41h/41i status rows + `CHANGELOG_2026_05_07.md` PR-status markers.
+
+### Files Modified
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - `Last updated` header refreshed to reflect Phase 41h FULLY COMPLETE (8 sub-PRs 41h.0 → 41h.7 all merged) + Phase 41i FULLY COMPLETE (5 sub-PRs 41i.0+1 → 41i.5).
+  - Up Next #29 (Phase 41e) flipped from queued → ✅ SHIPPED 2026-05-05 (18 sub-PRs from 41e.−1 cleanup through 41e.17 MasterTaxPosition orchestrator); the work was the foundation Phase 41h's tools wrap.
+  - Up Next #39 (Phase 41h.6) marker `(this PR)` → `(PR #687 merged)`.
+  - Up Next #40 (Phase 41h.7) marker `(this PR)` → `(PR #688 merged)`.
+  - Recently Completed entries for 41h.6 + 41h.7 same flip.
+- `docs/blueprint/MASTER_BLUEPRINT.md`:
+  - Phase 41e row flipped from 📋 Planned (~28 days) → ✅ Complete (May 2026); module list expanded with sub-PR map (41e.1 → 41e.17).
+  - Phase 41h row flipped from 📋 Planned (~7 days) → ✅ Complete (May 2026); registry state captured (10 canonical tools — 6 FACT_LOOKUP + 4 SCENARIO_RUN); three structural enforcement layers documented; user-facing surface graduation noted (TRAIL Stage 5 — Live, per CLAUDE.md §14).
+  - New Phase 41i row inserted after 41h: ✅ Complete (May 2026) with HR-3 framing, 5 sub-PR map, three calc-audit layers (L1 deterministic regression / L2 temporal anomaly / L3 persistent-findings foundation), Slack + email alerting threshold, 41i.3b deferral note.
+- `docs/changelog/CHANGELOG_2026_05_07.md`:
+  - Phase 41h.7 session "pending push + open" → "PR #688 merged 2026-05-07".
+  - Phase 41h.6 session "pending push + open" → "PR #687 merged 2026-05-07".
+
+### Architecture Decisions
+- **Doc-sync passes are surgical, not editorial.** Every flip is a status update to a specific marker — no rewrites of historical content. Per CLAUDE.md §15.5 format discipline.
+- **Phase 41i row inserted in Master Blueprint as a peer to 41h** rather than as a sub-bullet under it. Reason: 41i is HR-3-aligned, scope-wise cross-app (not just tax), and has its own admin-portal surface — peer-level visibility makes the calc-audit safety net legible to future operators reading the blueprint.
+- **Phase 41e row consolidated into a single ✅ Complete entry** rather than enumerating each of the 18 sub-PRs. Reason: the Master Blueprint is the strategic/status doc per §15.6 — sub-PR detail belongs in the Phase doc + the per-day changelogs (where it already lives).
+
+### Build Status
+- N/A — docs-only.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Phase 41e + 41h + 41i statuses flipped from Planned → Complete on the master strategic blueprint; Last-updated headers + per-row markers refreshed across the live plan)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` (Last updated header + Up Next #29/#39/#40 + Recently Completed flip).
+- `docs/blueprint/MASTER_BLUEPRINT.md` (Phase 41e + 41h flipped to Complete; new Phase 41i row inserted).
+- `docs/changelog/CHANGELOG_2026_05_07.md` (this session entry + PR status flips on 41h.6/41h.7 sessions).
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+N/A — no Prisma writes anywhere in this PR.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A — no `prisma/schema.prisma` changes.
+
+### PR
+- Branch: `claude/docs-post-688-merge`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41h7-trail-aligned-ia (Phase 41h.7 — TRAIL-aligned IA)
 
 ### Strategy
@@ -56,7 +117,7 @@ N/A — no `prisma/schema.prisma` changes.
 
 ### PR
 - Branch: `claude/phase-41h7-trail-aligned-ia`
-- Status: pending push + open
+- **Status: PR #688 merged 2026-05-07.**
 
 ---
 
@@ -134,7 +195,7 @@ N/A — no `prisma/schema.prisma` changes.
 
 ### PR
 - Branch: `claude/phase-41h6-scenario-run-tools`
-- Status: pending push + open
+- **Status: PR #687 merged 2026-05-07.**
 
 ---
 
