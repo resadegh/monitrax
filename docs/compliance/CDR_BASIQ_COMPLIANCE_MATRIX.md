@@ -1,12 +1,19 @@
 # CDR / Basiq Compliance Matrix — Full Requirement Tracking
 
-**Version:** 1.3
+**Version:** 1.4
 **Created:** 2026-02-27
-**Updated:** 2026-04-10
+**Updated:** 2026-05-09 — Phase 32B/32C/33 doc-sync catch-up
 **Source:** Basiq CDR accreditation questionnaire (Artefacts tracking file)
 **Status:** Active — tracking all compliance requirements
 **Owner:** Resadegh (Director) + Claude Code (AI engineering)
-**Recent Changes:** Updated to align with full Basiq CDR Compliance spreadsheet (Steps 1-6, v2.0). Added Step 1 (Organisation), Step 2 (CDR Data Use), Step 5 (Policies & Procedures), Step 6 (Backend Implementation Evidence). Overall compliance score recalculated across all steps.
+**Recent Changes (2026-05-09):**
+- B2B2C surface (Phase 32B + 32C) shipped May 2026 — adds new audit-action enum values that auditors should be aware of (PRO_DASHBOARD_VIEW, MARKETPLACE_LISTING_*, PROFESSIONAL_REQUEST_*, CONVERSATION_*, BILLING_*).
+- ProfessionalConversation messages now have explicit `retentionUntil = createdAt + 7 years` per AFSL recordkeeping requirement (Corporations Act §912F). See `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md` §3 for the full retention table.
+- Lead-fee billing surface (Stripe-mirrored invoices) is **not CDR-data** — it's commercial/financial transaction data subject to standard 7-year financial recordkeeping, not Privacy Safeguard 12.
+- Adviser feedback inbox (Phase 33g) is **not CDR-data** — internal product feedback only.
+- Audit log dual-emit pattern preserved across all new state-changing actions: `createAuditLog()` fires fire-and-forget alongside the canonical engine call. Cloud Logging mirror remains the 365-day retention backstop.
+
+**Recent Changes (prior):** Updated to align with full Basiq CDR Compliance spreadsheet (Steps 1-6, v2.0). Added Step 1 (Organisation), Step 2 (CDR Data Use), Step 5 (Policies & Procedures), Step 6 (Backend Implementation Evidence). Overall compliance score recalculated across all steps.
 
 ---
 

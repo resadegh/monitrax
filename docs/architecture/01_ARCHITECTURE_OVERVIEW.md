@@ -467,3 +467,80 @@ For complete deployment documentation, see: `docs/blueprint/09_INFRASTRUCTURE_AN
 ---
 
 
+
+---
+
+# **§13 — Phase 32B/32C/33g: B2B2C Surface (May 2026)**
+
+*Added 2026-05-09 (doc-sync catch-up).* The B2B2C surface adds a
+parallel route tree at `/portal/*`, `/admin/*`, `/marketplace/*` that
+reuses the canonical engines without forking them. Architectural
+invariant: **`getMasterFinancialSnapshot()` is the canonical engine
+for both consumer and adviser views; the `viewerContext` parameter
+applies service-layer scope filtering, NOT a forked engine.**
+
+## **§13.1 New Engines / Services**
+
+Eight new canonical services in `lib/services/`:
+
+| Service | Responsibility |
+|---|---|
+| `legalEntityService.ts` | Entity layer (Phase 41a/b) — `getDefaultLegalEntityId`, `listEntitiesForUser`, `createEntity`, `updateEntity`, `deleteEntity`. Every owned-row table now carries `ownerEntityId`. |
+| `moneyFlowService.ts` | Per-entity money flow Sankey (Phase 41d) — `getMoneyFlow(userId)`. |
+| `marketplaceService.ts` | Professional marketplace listings (Phase 32C PR4a) — three caller scopes (Org / admin / public) on one canonical service. |
+| `askAProfessionalService.ts` | Picker candidate resolver (Phase 32C PR4b) — `getCandidatesForUser(userId, context?)` with leaky-funnel guardrail. |
+| `professionalRequestService.ts` | Request lifecycle (Phase 32C PR4c) — submit / accept / decline / withdraw with state-machine guards. |
+| `conversationService.ts` | Conversation thread + email-through-app (Phase 32C PR4d) — `createForAcceptedRequest`, `postMessage`, `assertParticipant` access gate. |
+| `stripeBillingService.ts` | Stripe test-mode billing (Phase 32C PR6a/b) — subscription + lead-fee invoicing + webhook reconciliation. |
+| `feedbackService.ts` | Adviser feedback inbox (Phase 33g) — separate from `ProfessionalConversation` (different participants / retention / status workflow). |
+
+Plus one new helper:
+- `lib/portal/adviserClientAccess.ts` — `verifyAdviserClientAccess` is the centralised consent + membership + role + assignment guard that all `/api/portal/clients/[id]/*` endpoints route through. **Reviewers reject any new portal client-data endpoint that doesn't use it.**
+
+## **§13.2 Architectural rules across the B2B2C surface**
+
+Documented in full in `docs/architecture/03_DATA_MODEL.md` §11.7 and `docs/architecture/07_API_STANDARDS.md` §15.1-15.7. Summary:
+
+1. **Leaky-funnel guardrail** — org-attached users never see public marketplace surfaces. Enforced at the service boundary.
+2. **`assertParticipant` is the single access-control gate** for conversations. Cross-org leakage structurally impossible.
+3. **Sender role frozen at write-time** — audit accuracy preserved if a member later leaves the org.
+4. **Tier rates frozen at submit-time** — in-flight `ProfessionalRequest` rows protected from listing-side rate edits.
+5. **PORTAL_OWNER-only commercial actions** — submit-listing / subscribe / cancel / resume.
+6. **Billing intent vs payment** — `acceptRequest` records `leadFeeChargedAt` synchronously; Stripe Invoice creation is best-effort post-transaction.
+7. **Webhook signature verification IS the auth** for `/api/stripe/webhooks` and `/api/conversations/inbound`. No `withPermission` gate. 4xx on signature mismatch (Stripe / SendGrid retry on 5xx, not 4xx).
+
+## **§13.3 New Top-Level Routes**
+
+| Route prefix | Audience | Purpose |
+|---|---|---|
+| `/portal/dashboard` | Org members | Practice dashboard (KPIs + alerts + client book table) |
+| `/portal/clients/[id]/view` | Org members | Drill-in canonical client view (Structure / Money Flow / Dashboard tabs) |
+| `/portal/marketplace/listing` | PORTAL_OWNER + ADMIN | Org-side marketplace listing editor |
+| `/portal/requests(/[id])` | Org members | Marketplace request inbox + drill-in |
+| `/portal/conversations(/[id])` | Org members | Conversation threads + email-through-app |
+| `/portal/billing` | PORTAL_OWNER | Subscription tier + invoice history |
+| `/portal/feedback` | Org members | Send feedback to Monitrax |
+| `/dashboard/entities` | Consumer | Entity tree + money flow Sankey |
+| `/dashboard/requests` | Consumer | Request status tracker |
+| `/dashboard/conversations(/[id])` | Consumer | Conversation threads (consumer perspective) |
+| `/marketplace(/[slug])` | Public + D2C | Public professional marketplace browse + detail |
+| `/admin/marketplace/listings(/[id])` | Monitrax admin | Marketplace approval queue + drill-in |
+| `/admin/feedback` | Monitrax admin | Adviser feedback inbox |
+| `/print/help/[...slug]` | All | Auditor-clean Save-as-PDF view of any help article |
+
+## **§13.4 New env vars**
+
+Documented in `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md`. Summary:
+
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_STUDIO_PRICE_ID`, `STRIPE_PRACTICE_PRICE_ID`, `BILLING_SUCCESS_URL`, `BILLING_CANCEL_URL` (Phase 32C PR6)
+- `SENDGRID_API_KEY`, `MONITRAX_INBOUND_FROM_ADDRESS`, `MONITRAX_INBOUND_DOMAIN` (Phase 32C PR4d)
+
+All Stripe + SendGrid integration paths fall back gracefully when their env var is unset (`isStripeConfigured()` returns false; `sendConversationEmail` console-logs instead of sending). Dev/demo environments work without secrets; the architectural pattern stays visible.
+
+## **§13.5 What this layer is NOT**
+
+- **Not a forked engine.** `getMasterFinancialSnapshot()` is still the canonical financial engine. Adviser drill-in passes a `viewerContext` parameter; service-layer scope filtering applies.
+- **Not a parallel auth system.** Portal routes use the same `withPermission` middleware as consumer routes; they layer on a portal-role mapping (`UserRole` → `PortalUserRole`) for portal-specific actions.
+- **Not a separate data store.** All B2B2C data lives in the same Prisma schema as consumer data; new tables share the same database, same `_prisma_migrations` table, same backup policy.
+
+The B2B2C surface is a **shape** built on top of the canonical engines, not a separate system.

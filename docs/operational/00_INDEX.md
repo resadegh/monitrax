@@ -8,6 +8,9 @@
 
 | Need | Document |
 |------|----------|
+| **Live operational SSOT (now / next / blocked)** | [docs/IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) |
+| **Lighthouse adviser pitch playbook** | [docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md](../pitch/LIGHTHOUSE_ADVISER_PITCH.md) |
+| **Run the demo seed** | `npm run seed:lighthouse` (idempotent; `--reset` for clean re-seed) |
 | System overview / "how does it work?" | [System Overview](architecture/01_SYSTEM_OVERVIEW.md) |
 | Which environment am I looking at? | [Environment Strategy](architecture/02_ENVIRONMENT_STRATEGY.md) |
 | What technologies are we running? | [Technology Stack](architecture/03_TECHNOLOGY_STACK.md) |
@@ -22,6 +25,10 @@
 | Security incident | [Incident Response Runbook](runbooks/01_INCIDENT_RESPONSE.md) |
 | Google Maps not loading / API not activated | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) |
 | Adviser feedback inbox triage / weekly synthesis | [Feedback Triage and Synthesis](feedback/01_TRIAGE_AND_SYNTHESIS.md) |
+| **B2B2C surface — what shipped?** | [Master Blueprint §4](../blueprint/MASTER_BLUEPRINT.md#4-phase-implementation-status) — every Phase 32B/32C/33/41 row marked SHIPPED |
+| **Stripe billing went sideways — where's the truth?** | Stripe Dashboard is canonical. Local mirror in `StripeSubscription` is read-mostly; `StripeWebhookEvent` is the dedupe + audit log. Run `prisma studio` and check `processedAt` + `processingError` columns |
+| **Conversation email isn't sending** | Check `SENDGRID_API_KEY` is set in env. When unset, outbound logs to console only — see `lib/email/conversationEmail.ts` |
+| **Inbound email reply not landing in conversation** | Check `MONITRAX_INBOUND_DOMAIN` matches DNS MX records pointed at SendGrid Inbound Parse. Webhook signature verification logs at `/api/conversations/inbound`. v1 hardening (DKIM/SPF strict) DEFERRED to PROD |
 
 ---
 

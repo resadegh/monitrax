@@ -1,10 +1,17 @@
 # Phase 33: Admin Portal - Monetization & License Management
 
+> ⚠️ **NAMING NOTE (added 2026-05-09):** This doc covers the **original Phase 33** scoped at 2026-01-19 — the Monitrax-side admin portal at `/admin/*` (admin users, license management, billing transactions, feature flags, audit logs, organisations management). Around 2026-05-04, the "Phase 33" label was reused for a parallel workstream — **the B2B2C help / training / FAQ / compliance system**. To disambiguate:
+>
+> - **Phase 33 (this doc, original)** — admin portal at `/admin/*` — ✅ SHIPPED 2026-01-19. Covers `AdminUser`, `OrganizationLicense`, `BillingTransaction`, `GlobalFeatureFlag`, etc.
+> - **Phase 33a/b/c/d/g (later, B2B2C system)** — Help Center + In-App Drawer + Save-as-PDF + Compliance Pack + Adviser Feedback Inbox — ✅ SHIPPED May 2026. See `docs/blueprint/MASTER_BLUEPRINT.md` §4 for individual sub-phase rows; `docs/IMPLEMENTATION_PLAN.md` Recently Completed entries 2026-05-04 to 2026-05-09 for full deliverables.
+>
+> The two share the "Phase 33" label only by historical accident. They are independent workstreams with different schemas, surfaces, and audiences. Future docs that want to reference the admin portal should write "Phase 33 (admin portal)" or "Phase M / Phase 33 admin portal"; docs that want to reference the help center should write "Phase 33a/b/c/d (Help Center)" or "Phase 33g (Adviser Feedback Inbox)".
+
 ## Implementation Status: ✅ COMPLETE
 
-**Implementation Date:** 2026-01-19
+**Implementation Date:** 2026-01-19 (extended with Adviser Feedback Inbox surface 2026-05-05 via Phase 33g)
 **Branch:** `claude/admin-monetization-licenses-Gf7rU`
-**Status:** Deployed and functional
+**Status:** Deployed and functional. Adviser Feedback Inbox added 2026-05-05 at `/admin/feedback`. Marketplace Listing approval queue added 2026-05-05 at `/admin/marketplace/listings(/[id])`.
 
 ### What Was Implemented
 

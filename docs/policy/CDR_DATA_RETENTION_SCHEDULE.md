@@ -48,6 +48,11 @@ Data calculated from CDR inputs is treated as CDR data:
 | User Basiq reference | While consent is ACTIVE | User consent via Basiq | Consent expiry or revocation |
 | CDR audit logs | 7 years minimum | CDR Privacy Safeguard 12 (record keeping) | Automatic after 7 years |
 | Anonymized CDR data (loan applications) | Duration of loan + 7 years | Financial services record keeping obligation | Automatic after retention period |
+| **Professional conversation messages** (Phase 32C PR4d, May 2026) | **7 years** from creation | Corporations Act §912F (AFSL 7yr recordkeeping); explicit user disclosure at consent time | `retentionUntil < now()` sweep — scheduler DEFERRED to PROD; soft-delete from user view does NOT remove the message |
+| **Professional listing verification notes** (Phase 32C PR4a) | While listing is APPROVED + 7 years | Audit trail for ASIC + TPB cross-check decisions | Listing deletion + 7yr |
+| **Stripe webhook events** (Phase 32C PR6) | 7 years | Financial transaction audit trail | Automatic after 7 years |
+| **Professional request lifecycle records** (Phase 32C PR4c) | 7 years | AFSL recordkeeping for accepted engagements | Automatic after 7 years post-final-status |
+| **Adviser feedback threads** (Phase 33g) | While adviser org is active + 2 years | Internal product feedback (not CDR data) | Org deletion + 2 years |
 
 ---
 

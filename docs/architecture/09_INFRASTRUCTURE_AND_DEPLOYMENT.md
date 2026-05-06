@@ -192,12 +192,17 @@ psql "your-render-database-url" -f script.sql
 
 ### 5.1 Required Environment Variables
 
-| Variable | Description | Where Set |
-|----------|-------------|-----------|
-| `DATABASE_URL` | PostgreSQL connection string | Render (auto-injected) |
-| `JWT_SECRET` | Authentication token secret | Render (auto-generated) |
-| `NODE_ENV` | Environment mode | Render: `production` |
-| `NEXT_PUBLIC_API_URL` | API base URL | Vercel |
+| Variable | Description | Where Set | Required? |
+|----------|-------------|-----------|-----------|
+| `DATABASE_URL` | PostgreSQL connection string | Vercel build scope | Always (build) |
+| `NODE_ENV` | Environment mode | Vercel | Always |
+| `NEXT_PUBLIC_API_URL` | API base URL | Vercel | Always |
+| `USE_CLOUD_SQL_CONNECTOR` + WIF vars (5) | Phase 9 WIF runtime DB auth — see §5.3 | Vercel runtime | PROD since 2026-05-01 |
+| `STRIPE_SECRET_KEY` + 5 related (Phase 32C PR6) | Stripe billing test-mode | Vercel | Optional — billing UI gracefully disables when unset |
+| `SENDGRID_API_KEY` + 2 related (Phase 32C PR4d) | Conversation email-through-app | Vercel | Optional — outbound mirror falls through to console-log when unset |
+| `GCS_*` (Phase 19) | Google Cloud Storage for documents | Vercel | Required for document upload |
+| `GOOGLE_MAPS_API_KEY` (Phase 20) | Property location lookup | Vercel | Required for Google Maps integration |
+| `GEMINI_API_KEY` (Phase 27) | All AI features (CFO advice, document analysis, AskAPro suggestions) | Vercel | Required for AI features |
 
 ### 5.2 Render Environment Variables
 
@@ -251,6 +256,35 @@ CLOUD_SQL_DB_NAME=monitrax
 # Fallback (kept until Phase 10 of WIF lands):
 DATABASE_URL=postgresql://...   # only used when USE_CLOUD_SQL_CONNECTOR=false
                                 # also used by `prisma migrate deploy` at build time
+
+# --- Phase 32C PR4d: SendGrid email-through-app (added 2026-05-07) ---
+# The conversation thread (in-app messages between consumer + adviser)
+# auto-mirrors outbound messages via email; replies route back via
+# SendGrid Inbound Parse webhook. When SENDGRID_API_KEY is unset,
+# outbound is a no-op + console-log + audit row (dev/demo works
+# without secrets; the architectural pattern is visible).
+# See `lib/email/conversationEmail.ts` and PR4d in
+# IMPLEMENTATION_PLAN.md for hardening (DKIM/SPF strict, signed-event
+# verification, sender-domain allowlist, Cloud DLP attachment scanning,
+# rate-limiting per conversation) — all DEFERRED to PROD.
+SENDGRID_API_KEY=<sendgrid-api-key>                  # optional; outbound mirror disabled when unset
+MONITRAX_INBOUND_FROM_ADDRESS=no-reply@monitrax.com.au  # outbound From header
+MONITRAX_INBOUND_DOMAIN=reply.monitrax.com.au        # base domain for reply-to slugs (monitrax+conv-<slug>@<domain>)
+
+# --- Phase 32C PR6: Stripe test-mode billing (added 2026-05-08) ---
+# Stripe is the source of truth for subscription state; we mirror via
+# signed webhooks. When STRIPE_SECRET_KEY is unset, /portal/billing
+# renders a "Configure billing in your env" notice instead of crashing
+# (dev/demo works without secrets). Test-mode keys at v1; live mode
+# cutover post-Basiq accreditation per IMPLEMENTATION_PLAN.md DEFERRED
+# bucket.
+# See `lib/services/stripeBillingService.ts`.
+STRIPE_SECRET_KEY=sk_test_<stripe-test-key>          # optional; billing UI shows NOT_CONFIGURED notice when unset
+STRIPE_WEBHOOK_SECRET=whsec_<stripe-webhook-secret>  # required when STRIPE_SECRET_KEY is set
+STRIPE_STUDIO_PRICE_ID=price_<studio-tier-price-id>  # AU$199/mo recurring
+STRIPE_PRACTICE_PRICE_ID=price_<practice-tier-price-id>  # AU$599/mo recurring
+BILLING_SUCCESS_URL=https://www.monitrax.com.au/portal/billing?success=true   # post-checkout redirect; defaults to NEXT_PUBLIC_APP_URL
+BILLING_CANCEL_URL=https://www.monitrax.com.au/portal/billing?cancelled=true  # cancel redirect; defaults to NEXT_PUBLIC_APP_URL
 ```
 
 > See `lib/db.ts` for the runtime selection logic and
