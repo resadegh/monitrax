@@ -55,6 +55,16 @@ export interface DebtMetrics {
  * whose `ownerEntityId` matches are aggregated. Default = no filter
  * for backward-compat. Per audit doc §6.3.
  */
+/**
+ * Aggregate loan repayments.
+ *
+ * **Contract** (verified by Phase 41i calc-audit fixture
+ * `core.loanAggregator`):
+ * - `loan.repaymentFrequency` MUST use the UPPERCASE
+ *   `RepaymentFrequency` enum (`'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY'`,
+ *    etc.). Lowercase strings fall through `toAnnual`'s default
+ *   branch and return raw amounts unchanged.
+ */
 export function aggregateLoanRepayments(
   loans: LoanInput[],
   targetFrequency: 'monthly' | 'annual' = 'monthly',
