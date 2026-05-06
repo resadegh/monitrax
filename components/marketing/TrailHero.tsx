@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 import { ChevronDown } from 'lucide-react';
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 const stagger = {
   hidden: {},

@@ -1,9 +1,9 @@
 'use client';
 
 import { motion, useInView, useReducedMotion } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 import { useRef, ReactNode } from 'react';
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 export function Reveal({
   children,

@@ -30,6 +30,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { appleEase, springSnap as springy } from '@/components/shell/motion';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
@@ -47,8 +48,6 @@ import { toMonthly } from '@/lib/utils/frequencies';
 // DESIGN TOKENS — sourced from TrailStageIndicator.tsx (Home TRAIL banner v3)
 // =============================================================================
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
-const springy = { type: 'spring' as const, stiffness: 320, damping: 28, mass: 0.8 };
 
 // =============================================================================
 // TYPES — minimal shapes pulled from the existing API responses

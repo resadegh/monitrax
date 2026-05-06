@@ -19,6 +19,7 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { useOrganization } from '@/lib/portal';
 import { PracticeGlassCard } from '@/components/portal/practice/PracticeGlassCard';
 import { HelpTooltip } from '@/components/help/HelpTooltip';
+import { PortalPageHero } from '@/components/shell';
 
 type SurfaceTag = 'BUG' | 'FEATURE' | 'UX' | 'PRAISE' | 'QUESTION' | 'COMPLIANCE';
 type Severity = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -129,19 +130,12 @@ export default function AdviserFeedbackPage() {
 
   return (
     <div className="min-h-screen px-5 sm:px-8 lg:px-12 py-8 lg:py-10">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-6">
-          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-700">
-            Feedback
-          </p>
-          <h1 className="mt-0.5 text-2xl sm:text-[28px] font-semibold tracking-tight text-slate-900">
-            Tell us what would make Monitrax better.
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 max-w-2xl">
-            Bugs, friction, wishlist, praise — all of it lands in one inbox. We aim for a first reply
-            within 48 hours, every time.
-          </p>
-        </header>
+      <div className="max-w-6xl mx-auto space-y-6">
+        <PortalPageHero
+          atmosphere="emerald"
+          title="Tell us what would make Monitrax better"
+          subtitle="Bugs, friction, wishlist, praise — all of it lands in one inbox. We aim for a first reply within 48 hours, every time."
+        />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
           {/* List column */}
