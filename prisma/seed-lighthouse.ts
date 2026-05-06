@@ -61,9 +61,7 @@
  * pitch step each fixture supports.
  */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/db';
 
 // =============================================================================
 // DETERMINISTIC IDs
@@ -1596,9 +1594,14 @@ async function seedOlivia() {
 // MAIN
 // =============================================================================
 
-async function main() {
-  const args = process.argv.slice(2);
-  const shouldReset = args.includes('--reset');
+/**
+ * Importable entry point — used by `app/api/admin/run-seed/route.ts` so the
+ * seed can be triggered via Vercel runtime auth (WIF) without needing a
+ * Cloud SQL Proxy on the operator's machine. Also called by the CLI
+ * bootstrap below when invoked via `npm run seed:lighthouse`.
+ */
+export async function runLighthouseSeed(options: { reset?: boolean } = {}): Promise<void> {
+  const { reset: shouldReset = false } = options;
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('LIGHTHOUSE PITCH FIXTURE SEED');
@@ -1632,11 +1635,18 @@ async function main() {
   console.log('  • Marketplace listing is APPROVED + live on /marketplace');
 }
 
-main()
-  .catch((err) => {
-    console.error('❌ Seed failed:', err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// CLI bootstrap — only runs when invoked directly via `npm run seed:lighthouse`,
+// NOT when imported by the admin route handler.
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  const shouldReset = args.includes('--reset');
+
+  runLighthouseSeed({ reset: shouldReset })
+    .catch((err) => {
+      console.error('❌ Seed failed:', err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
