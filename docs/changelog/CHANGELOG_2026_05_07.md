@@ -1,5 +1,66 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41i3-l3-persistent-findings (Phase 41i.3 — L3 audit foundation: persistent findings + lifecycle SHIPPED)
+
+### Strategy
+Persistence layer for the calc audit system. Every drift / error event from `runDifferential()` is now recorded to a DB-backed queue with full lifecycle workflow. Foundation for 41i.4 alerting and 41i.3b per-user audit.
+
+### Schema
+```prisma
+enum CalcAuditFindingSource { L1_DIFFERENTIAL  L3_ON_DEMAND  L2_ANOMALY }
+enum CalcAuditFindingSeverity { INFO  LOW  MEDIUM  HIGH  CRITICAL }
+enum CalcAuditFindingResolution { OPEN  INVESTIGATING  FALSE_POSITIVE  FIX_REQUIRED  FIXED }
+
+model CalcAuditFinding {
+  id, detectedAt, source, engineName, fixtureName?, userId?,
+  severity, resolution, summary, failedAssertions?, errorMessage?,
+  adminNotes?, resolvedAt?, resolvedBy?, createdAt, updatedAt
+  @@map("calc_audit_findings")
+}
+```
+
+CLAUDE.md §12.11 N/A — additive table. §12.12 satisfied — `prisma/migrations/20260507120000_add_calc_audit_finding/migration.sql` ships in same PR (hand-crafted; no DATABASE_URL in this env).
+
+### Lifecycle
+```
+OPEN → INVESTIGATING → FIX_REQUIRED → FIXED
+       └─ FALSE_POSITIVE
+       
+Terminal states (FIXED, FALSE_POSITIVE) → INVESTIGATING (re-open only path)
+```
+
+Locked in `ALLOWED_TRANSITIONS`. Self-transitions forbidden.
+
+### What ships
+- `lib/calc-audit/findingService.ts` (NEW): `recordDifferentialFindings()` (auto-persist FAIL/ERROR + dedupe by engine+fixture), `listFindings()`, `getFindingCountsByResolution()`, `updateFindingResolution()` (with validated transition + structured `FindingTransitionError`)
+- `app/api/admin/calc-audit/route.ts` (MODIFIED): auto-persists on every differential run; returns persistence counts + countsByResolution
+- `app/api/admin/calc-audit/findings/route.ts` (NEW): GET list with filters (resolution/source/engineName)
+- `app/api/admin/calc-audit/findings/[id]/route.ts` (NEW): PATCH lifecycle update (admin email as resolvedBy)
+- `app/admin/calc-audit/page.tsx` (MODIFIED): Findings queue section above engine catalogue + lifecycle counts tile + per-finding cards with context-aware transition buttons
+
+### Auto-persist + dedup
+- Every `GET /api/admin/calc-audit` runs the differential AND persists FAIL/ERROR results
+- Dedupe: existing OPEN/INVESTIGATING finding for the same `(engineName, fixtureName)` is **refreshed** (latest detectedAt + summary) instead of duplicated
+- Severity defaults: FAIL → MEDIUM; ERROR → HIGH
+
+### Tests (9 new — 606 total)
+- ALLOWED_TRANSITIONS lifecycle invariants (every state has correct next-states; terminal states re-open only via INVESTIGATING; self-transitions forbidden)
+- `FindingTransitionError` shape (NOT_FOUND / INVALID_TRANSITION codes)
+
+Codebase doesn't carry a Prisma mocking layer (`tests/sanity/` uses real DB). Pure-logic locked in tests; end-to-end persistence smoke-tested manually after deploy.
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.38
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.2 41i.3 SHIPPED row
+
+### Deferred
+- **41i.3b — Per-user "Audit this user"** — requires per-engine adapters that fetch user data from DB and reconstruct each engine's input. 36 engines × different input shapes = substantial workstream. Foundation now in place.
+
+### Next
+**41i.4** — Alerting + workflow (Slack/email when severity ≥ HIGH; the lifecycle workflow is in place to support it).
+
+---
+
 ## Session: claude/phase-41i2-engine-adapter-expansion (Phase 41i.2 — Calc audit engine adapter expansion SHIPPED)
 
 ### Strategy

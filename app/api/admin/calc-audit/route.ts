@@ -15,6 +15,10 @@ import { hasPermission } from '@/lib/admin/permissions';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
 import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
 import { runDifferential, calcEngineRegistry } from '@/lib/calc-audit';
+import {
+  recordDifferentialFindings,
+  getFindingCountsByResolution,
+} from '@/lib/calc-audit/findingService';
 
 export async function GET(request: NextRequest) {
   if (!isAdminPortalAccessible()) {
@@ -48,6 +52,24 @@ export async function GET(request: NextRequest) {
 
   const report = await runDifferential();
 
+  // Phase 41i.3 — persist any FAIL/ERROR results to the findings
+  // table for admin triage. Fire-and-forget per CLAUDE.md §12.10 —
+  // a DB write failure must not block the dashboard render.
+  let persistence: { created: number; refreshed: number } | null = null;
+  try {
+    persistence = await recordDifferentialFindings(report);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[calc-audit] failed to persist findings', err);
+  }
+
+  let countsByResolution = null;
+  try {
+    countsByResolution = await getFindingCountsByResolution();
+  } catch {
+    // Non-blocking — dashboard still renders without counts.
+  }
+
   // Engine catalogue for the admin portal — what's registered, by category.
   const catalogue = calcEngineRegistry.list().map((e) => ({
     name: e.name,
@@ -70,6 +92,8 @@ export async function GET(request: NextRequest) {
       catalogue,
       engineCount: calcEngineRegistry.size(),
       fixtureCount: calcEngineRegistry.totalFixtures(),
+      persistence,
+      countsByResolution,
     },
     meta: {
       timestamp: new Date().toISOString(),

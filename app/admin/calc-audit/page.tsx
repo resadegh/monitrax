@@ -63,14 +63,53 @@ interface AuditApiResponse {
     catalogue: EngineCatalogueItem[];
     engineCount: number;
     fixtureCount: number;
+    persistence?: { created: number; refreshed: number } | null;
+    countsByResolution?: Record<string, number> | null;
   };
+}
+
+type FindingResolution =
+  | 'OPEN'
+  | 'INVESTIGATING'
+  | 'FALSE_POSITIVE'
+  | 'FIX_REQUIRED'
+  | 'FIXED';
+
+interface Finding {
+  id: string;
+  detectedAt: string;
+  source: 'L1_DIFFERENTIAL' | 'L3_ON_DEMAND' | 'L2_ANOMALY';
+  engineName: string;
+  fixtureName: string | null;
+  severity: 'INFO' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  resolution: FindingResolution;
+  summary: string;
+  failedAssertions: string[] | null;
+  errorMessage: string | null;
+  adminNotes: string | null;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
 }
 
 export default function CalcAuditPage() {
   const [report, setReport] = useState<DifferentialReport | null>(null);
   const [catalogue, setCatalogue] = useState<EngineCatalogueItem[]>([]);
+  const [persistence, setPersistence] = useState<{ created: number; refreshed: number } | null>(null);
+  const [countsByResolution, setCountsByResolution] = useState<Record<string, number> | null>(null);
+  const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchFindings = useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin/calc-audit/findings');
+      if (!r.ok) return;
+      const j = (await r.json()) as { data: { findings: Finding[]; total: number } };
+      setFindings(j.data.findings ?? []);
+    } catch {
+      // non-blocking
+    }
+  }, []);
 
   const fetchAudit = useCallback(async () => {
     setLoading(true);
@@ -84,6 +123,9 @@ export default function CalcAuditPage() {
       const data = (await response.json()) as AuditApiResponse;
       setReport(data.data.report);
       setCatalogue(data.data.catalogue);
+      setPersistence(data.data.persistence ?? null);
+      setCountsByResolution(data.data.countsByResolution ?? null);
+      await fetchFindings();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setReport(null);
@@ -91,7 +133,27 @@ export default function CalcAuditPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchFindings]);
+
+  const transitionFinding = useCallback(
+    async (id: string, toResolution: FindingResolution, adminNotes?: string) => {
+      try {
+        const r = await fetch(`/api/admin/calc-audit/findings/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ toResolution, adminNotes }),
+        });
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          throw new Error(j.error?.message || `HTTP ${r.status}`);
+        }
+        await fetchFindings();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Lifecycle update failed');
+      }
+    },
+    [fetchFindings],
+  );
 
   useEffect(() => {
     void fetchAudit();
@@ -163,6 +225,113 @@ export default function CalcAuditPage() {
             </div>
           </AdminCard>
         ))}
+
+      <SectionHeader title="Findings queue" />
+
+      {countsByResolution && (
+        <AdminCard>
+          <AdminCardHeader title="Lifecycle counts" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', padding: '1rem' }}>
+            {(['OPEN', 'INVESTIGATING', 'FIX_REQUIRED', 'FIXED', 'FALSE_POSITIVE'] as const).map((s) => (
+              <SummaryStat
+                key={s}
+                label={s}
+                value={String(countsByResolution[s] ?? 0)}
+                tone={
+                  s === 'OPEN' || s === 'FIX_REQUIRED'
+                    ? 'danger'
+                    : s === 'FIXED'
+                    ? 'success'
+                    : 'neutral'
+                }
+              />
+            ))}
+          </div>
+        </AdminCard>
+      )}
+
+      {persistence && (persistence.created > 0 || persistence.refreshed > 0) && (
+        <AdminCard>
+          <div style={{ padding: '1rem', fontSize: '0.85rem' }}>
+            Last differential run persisted {persistence.created} new finding(s) and refreshed {persistence.refreshed} existing.
+          </div>
+        </AdminCard>
+      )}
+
+      {findings.length === 0 && (
+        <AdminCard>
+          <div style={{ padding: '1rem', fontSize: '0.85rem', opacity: 0.7 }}>
+            No open findings. The audit system is silent — that's the goal (HR-3).
+          </div>
+        </AdminCard>
+      )}
+
+      {findings.map((f) => (
+        <AdminCard key={f.id}>
+          <AdminCardHeader title={`${f.engineName} :: ${f.fixtureName ?? '—'}`} />
+          <div style={{ padding: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <AdminBadge variant={f.resolution === 'OPEN' || f.resolution === 'FIX_REQUIRED' ? 'error' : f.resolution === 'FIXED' ? 'success' : 'warning'}>
+                {f.resolution}
+              </AdminBadge>
+              <AdminBadge variant={f.severity === 'CRITICAL' || f.severity === 'HIGH' ? 'error' : 'neutral'}>
+                {f.severity}
+              </AdminBadge>
+              <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                Detected {new Date(f.detectedAt).toLocaleString()} · source: {f.source}
+              </span>
+            </div>
+            <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>{f.summary}</p>
+            {f.failedAssertions && f.failedAssertions.length > 0 && (
+              <ul style={{ paddingLeft: '1.25rem', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                {f.failedAssertions.map((a, i) => (
+                  <li key={i}>{a}</li>
+                ))}
+              </ul>
+            )}
+            {f.adminNotes && (
+              <p style={{ fontSize: '0.8rem', opacity: 0.75, marginBottom: '0.5rem' }}>
+                <strong>Admin notes:</strong> {f.adminNotes}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {f.resolution === 'OPEN' && (
+                <>
+                  <AdminButton onClick={() => void transitionFinding(f.id, 'INVESTIGATING')}>
+                    Investigate
+                  </AdminButton>
+                  <AdminButton onClick={() => void transitionFinding(f.id, 'FALSE_POSITIVE')}>
+                    Mark false positive
+                  </AdminButton>
+                  <AdminButton onClick={() => void transitionFinding(f.id, 'FIX_REQUIRED')}>
+                    Fix required
+                  </AdminButton>
+                </>
+              )}
+              {f.resolution === 'INVESTIGATING' && (
+                <>
+                  <AdminButton onClick={() => void transitionFinding(f.id, 'FIX_REQUIRED')}>
+                    Fix required
+                  </AdminButton>
+                  <AdminButton onClick={() => void transitionFinding(f.id, 'FALSE_POSITIVE')}>
+                    Mark false positive
+                  </AdminButton>
+                </>
+              )}
+              {f.resolution === 'FIX_REQUIRED' && (
+                <AdminButton onClick={() => void transitionFinding(f.id, 'FIXED')}>
+                  Mark fixed
+                </AdminButton>
+              )}
+              {(f.resolution === 'FIXED' || f.resolution === 'FALSE_POSITIVE') && (
+                <AdminButton onClick={() => void transitionFinding(f.id, 'INVESTIGATING')}>
+                  Re-open (regression)
+                </AdminButton>
+              )}
+            </div>
+          </div>
+        </AdminCard>
+      ))}
 
       <SectionHeader title="Engine catalogue" />
 
