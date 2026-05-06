@@ -2677,3 +2677,98 @@ New `tests/setup/server-only-stub.ts` aliased in `vitest.config.ts` so any modul
 - `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.2 41i.4 SHIPPED row
 
 **41i.5 — L2 Cloud Scheduler anomaly detection** is next (deferred until Cloud Scheduler infra is in place — not an immediate dependency since L1 + L3 + alerting are now live).
+
+## **10.40 Phase 41i.5 — L2 anomaly detection (PR — shipped 2026-05-07). CLOSES PHASE 41i.**
+
+**Closes Phase 41i.** L2 anomaly detection scanning the existing `CalcAuditFinding` history for **temporal patterns** that humans miss when looking at the point-in-time dashboard.
+
+### What ships
+
+```
+lib/calc-audit/anomalyDetection.ts                          # NEW — pattern scanner
+app/api/admin/calc-audit/anomaly-scan/route.ts              # NEW — Cloud Scheduler-compatible endpoint
+docs/operational/calc-audit/cloud-scheduler-setup.md        # NEW — gcloud + Vercel ops runbook
+```
+
+### Two patterns detected
+
+| Pattern | Fires when | Severity |
+|---|---|---|
+| `HIGH_FREQUENCY` | An engine produces > N findings in the last `lookbackDays` (defaults 5 in 7) | MEDIUM (or HIGH if > 2× threshold) |
+| `REGRESSION_AFTER_STABLE_PERIOD` | An engine had no findings for ≥ 30 days, then started producing them with a gap ≥ 14 days from any prior finding | HIGH |
+
+Both patterns persist as new `CalcAuditFinding` records with `source: 'L2_ANOMALY'` so they flow through the existing 41i.3 lifecycle + 41i.4 alerting (Slack / email when severity ≥ HIGH).
+
+### Why this works at zero scale
+
+The scan operates on **existing CalcAuditFinding history** which any environment has from the moment L1 fires for the first time. It does NOT require per-user calc output data — that's L3's domain. So 41i.5 ships useful from day 1, not gated on production user volume.
+
+### Endpoint auth
+
+`POST /api/admin/calc-audit/anomaly-scan` accepts two paths:
+
+1. **Admin session** (`audit:read` permission) — for manual triggers from the admin UI
+2. **Cloud Scheduler shared secret** (`CALC_AUDIT_SCHEDULER_SHARED_SECRET` env + `Authorization: Bearer <secret>` header) — for scheduled runs
+
+Constant-time-ish comparison on the secret. Scheduler path preferred over OIDC for v1 simplicity; future hardening can swap.
+
+### Body knobs (all server-side clamped 1-365)
+
+```json
+{
+  "lookbackDays": 7,
+  "highFrequencyThreshold": 5,
+  "stablePeriodDays": 30,
+  "regressionGapDays": 14
+}
+```
+
+### Dedup
+
+Same pattern as 41i.3's `recordDifferentialFindings` — an existing OPEN/INVESTIGATING `L2_ANOMALY` finding for `(engineName, kind)` is **refreshed** instead of duplicated. Re-running the scan daily doesn't spam the queue.
+
+### Cloud Scheduler runbook
+
+`docs/operational/calc-audit/cloud-scheduler-setup.md`:
+- Single `gcloud scheduler jobs create http` command (3 AM AEST daily by default)
+- Pause / resume / delete commands
+- Tuning the body params via `gcloud scheduler jobs update`
+- Verification steps (one-off run + Cloud Logging query + admin portal check)
+- Failure-handling cheatsheet
+- CLAUDE.md compliance notes (§13.3 CDR-safe metadata, §13.6 env vars, §16 doc-sync)
+
+### Tests (17 new — 649 total)
+
+Pure-logic helpers extracted from `scanForAnomalies()` so the patterns can be tested without a real DB:
+
+| Helper | Coverage |
+|---|---|
+| `detectHighFrequencyPatterns` (6) | empty input; flags engine over threshold; boundary case; HIGH severity escalation; multi-engine independence; evidence shape |
+| `detectRegressionPattern` (6) | fires on long quiet period; fires on first-ever findings; doesn't fire when prior is recent; doesn't fire when gap < threshold; evidence shape; doesn't fire when prior is inside lookback |
+| Default constants (5) | tuning constants exposed; sanity invariant (stable period > regression gap) |
+
+**649 total tests** (632 → 649, +17). tsc clean.
+
+### Phase 41i is COMPLETE
+
+All sub-PRs shipped:
+- **41i.0 + 41i.1** — Foundation + L1 fixture differential
+- **41i.2** — Engine adapter expansion (14 → 36 engines)
+- **41i.3** — L3 audit foundation: persistent findings + lifecycle
+- **41i.4** — Alerting + workflow + backfill runbook
+- **41i.5** — L2 anomaly detection (this PR)
+
+**Three calc-audit layers all live**:
+1. **L1** — Deterministic regression (every fixture passes against current implementation; CI-gated)
+2. **L2** — Temporal pattern detection (Cloud Scheduler daily; surfaces high-frequency + regression-after-stable)
+3. **L3 foundation** — Persistent findings + lifecycle workflow (per-user "Audit this user" deferred to 41i.3b — needs per-engine user-data adapters)
+
+**HR-3 alignment**: every finding flows into the admin portal queue. There is NO user-facing surface anywhere in the calc audit system. Reviewers reject any PR that adds one.
+
+### What's deferred (not blocking)
+
+- **41i.3b — Per-user "Audit this user"** — requires per-engine user-data adapters that fetch user data and reconstruct each engine's input. 36 engines × different input shapes = substantial workstream. Foundation in place.
+- **Prisma mock layer for unit tests** — would let `recordDifferentialFindings` / `scanForAnomalies` end-to-end tests run in CI without a real DB. Currently smoke-tested manually after deploy.
+- **OIDC auth for Cloud Scheduler** — v1 uses shared-secret bearer; OIDC verification is a future hardening pass.
+
+**Next phase per Reza's roadmap:** SCENARIO_RUN tools expansion (`runCgtScenario`, `runLandTaxScenario`, `runDiv7aRefinanceScenario`) → TRAIL-aligned IA (graduate AI advisor from `/dashboard/cfo/ask` to "My Guide" placement).
