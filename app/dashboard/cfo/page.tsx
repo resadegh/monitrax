@@ -685,6 +685,41 @@ export default function CFODashboardPage() {
         <AIAdviceSection token={token} userName={user?.name ?? null} />
       </div>
 
+      {/*
+       * Phase 41h.7 — Ask-the-Advisor CTA.
+       *
+       * Single, restrained affordance to graduate the user from passive AI
+       * advice into a specific follow-up question. Warm-ivory glass card,
+       * Brain icon to match My Guide sidebar, no gradient, no shadow —
+       * design lens: restraint over decoration. Behavioural psychology
+       * lens: reduces cognitive tax of "where do I ask my specific
+       * question?" by sitting visually adjacent to AI advice the user just
+       * read.
+       */}
+      <div className="mb-8">
+        <Card className="border-amber-100/60 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-amber-100/80 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <Brain className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">Have a specific question?</p>
+                <p className="text-sm text-muted-foreground">
+                  Ask the advisor about your tax position, contribution headroom, land tax, or a "what if" scenario. Answers cite the rule and the number from your data.
+                </p>
+              </div>
+            </div>
+            <Button asChild size="sm" className="self-start sm:self-auto">
+              <Link href="/dashboard/cfo/ask">
+                Ask the Advisor
+                <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Financial Health Score Hero Section */}
       <div className="mb-8">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-6 md:p-8">

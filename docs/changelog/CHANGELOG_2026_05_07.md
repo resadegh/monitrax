@@ -1,5 +1,65 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41h7-trail-aligned-ia (Phase 41h.7 — TRAIL-aligned IA)
+
+### Strategy
+- Closes Up Next #40. Graduates the AI advisor from orphan deep-link `/dashboard/cfo/ask` (integration scaffold from 41h.4) to natural-IA placement under "My Guide" (TRAIL Stage 5 — Live, per CLAUDE.md §14).
+- Two design options surveyed: (A) sidebar child + CTA card on parent page; (B) fold inline as a tab on `/dashboard/cfo`. **Chose A** — the CFO Actions page already has 5+ sections (AIAdviceSection / Health Hero / Insight Tiles / Risk Radar / Monthly Progress); adding inline ask form would overload it. Designer lens: restraint over density. Behavioural-psychology lens: a focused conversation surface is better for asking a specific question than fighting for attention on a busy parent page.
+- URL stable (`/dashboard/cfo/ask`) — no audit-log search updates needed.
+
+### Type
+- **Type**: Enhancement (Phase 41h follow-up — closes Up Next #40)
+- **Scope**: Information architecture + sidebar + parent-page CTA card. Routing + IA + visual hooks only.
+- **No code changes to**: `components/ai-advisor/*`, `lib/ai/tax-advisor/*`, `app/api/ai-advisor/ask/route.ts`. All primitives provider-agnostic from 41h.3 onwards.
+
+### Files Modified
+- `components/DashboardLayout.tsx` — `reachNavItems[].children` for "My Guide" extended with new `{ name: 'Ask the Advisor', href: '/dashboard/cfo/ask' }` entry; `matchRoutes` extended with `/dashboard/cfo/ask` so My Guide stays highlighted on the conversation surface; inline JSDoc records the 41h.7 graduation decision and the architect-lens rationale (URL stable, primitives untouched).
+- `app/dashboard/cfo/page.tsx` — new restrained Apple-glass CTA card directly below `<AIAdviceSection />`. Brain icon (matching My Guide sidebar lucide-icon), warm-amber palette (border-amber-100/60 / bg-amber-50/40 with dark-mode variants), single-line affordance "Have a specific question? — Ask the advisor about your tax position, contribution headroom, land tax, or a 'what if' scenario. Answers cite the rule and the number from your data." → `<Button asChild size="sm">` wrapping `<Link href="/dashboard/cfo/ask">Ask the Advisor →</Link>`. Inline JSDoc records the 41h.7 design rationale.
+- `app/dashboard/cfo/ask/page.tsx` — page-header rewarmed: title "Ask the AI advisor" → "Ask the Advisor"; description softened ("the advisor never invents either"). Top-of-file JSDoc updated to reflect graduated placement (no longer "future iteration may hoist").
+
+### Files Created
+- None — the change is config + a small CTA card composed of existing primitives.
+
+### Architecture Decisions
+- **Sidebar child + parent CTA over fold-inline-tab.** Two affordances, one canonical surface. The advisor stays a focused conversation page rather than competing with the AI advice / health / tiles / risk on the Actions tab.
+- **URL stability.** `/dashboard/cfo/ask` preserved — audit logs from 41h.4 onwards remain searchable; downstream `runAdvisorQuery` helper untouched.
+- **Provider-agnostic primitives untouched.** `components/ai-advisor/*` was built provider-agnostic in 41h.3; this change validates the design — graduating the advisor required zero component changes.
+- **No new design primitive.** The CTA card uses existing Card / CardContent / Button primitives + the lucide-Brain icon already used by the sidebar item + the existing amber palette already used elsewhere in the tile system. CLAUDE.md §16.4 inline-JSDoc requirements N/A (no new reusable primitive introduced).
+- **Tests skipped (deliberate).** DashboardLayout is a client component depending on `useAuth` / `useUISyncEngine` / `useOnboardingState` / context providers — adding mock layers for a routing-config change is more cost than benefit. Structural floor is `tsc --noEmit` clean (verified). The existing 12 AI-advisor component tests from 41h.3 cover the underlying ask/answer surface end-to-end. CLAUDE.md §0 architect lens — don't add tests for the sake of it.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripeBillingService.ts` "stripe" module-not-found, unrelated to this PR).
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — new restrained CTA card pattern on `/dashboard/cfo` (no new reusable primitive — composes existing Card / Button / Brain / amber palette; `06_UI_UX_FOUNDATION.md` not touched per §16.3 first row "single component, no system change").
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Option A "sidebar child + CTA card" chosen over Option B "fold inline as a tab"; rationale in PR + IMPLEMENTATION_PLAN.md + this changelog)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md:Up Next #40` — marked SHIPPED with summary; `Last updated` header refreshed; new Recently Completed entry prepended.
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md:§11.1` — sub-PR table extended with new 41h.7 SHIPPED row.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+- Inline JSDoc on `components/DashboardLayout.tsx` (sidebar item rationale) + `app/dashboard/cfo/page.tsx` (CTA card rationale) + `app/dashboard/cfo/ask/page.tsx` (graduated-placement note).
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+N/A — no Prisma writes anywhere in this PR.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A — no `prisma/schema.prisma` changes.
+
+### PR
+- Branch: `claude/phase-41h7-trail-aligned-ia`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41h6-scenario-run-tools (Phase 41h.6 — SCENARIO_RUN tools expansion)
 
 ### Strategy

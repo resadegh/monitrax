@@ -2,6 +2,9 @@
 
 /**
  * Phase 41h.4 — User-facing AI advisor surface.
+ * Phase 41h.7 — Graduated to "Ask the Advisor" sidebar child under
+ * My Guide (TRAIL Stage 5 "Live"); CTA card on /dashboard/cfo
+ * (Actions) routes here. URL stable; only IA changed.
  *
  * The graduated version of the admin demo from 41h.3. Uses the
  * same `components/ai-advisor/` primitives + the same gateway, but
@@ -17,10 +20,6 @@
  * **HR-3 alignment** — calc errors that escape the gateway's HR-1
  * rejection net are caught silently by the calc-audit system in 41i;
  * users never see "we think there might be an error" UI here.
- *
- * **TRAIL framing** — sits under the existing CFO surface (TRAIL
- * Stage 5 "Live"). Future iterations may hoist this to "My Guide"
- * once the user-facing IA settles.
  */
 
 import { useState } from 'react';
@@ -79,8 +78,8 @@ export default function AskAdvisorPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Ask the AI advisor"
-        description="Get plain-English answers about your tax position. Numbers come from your data; legal references come from Australian law. The AI never invents either — and recommendation-shaped questions route you to a registered professional."
+        title="Ask the Advisor"
+        description="Plain-English answers about your tax position. Numbers come from your data; legal references come from Australian law. The advisor never invents either — and recommendation-shaped questions route you to a registered professional."
       />
 
       <div className="space-y-6">
