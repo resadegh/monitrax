@@ -181,15 +181,66 @@ export function AdminLayoutClient({ children }: AdminLayoutClientProps) {
   }
 
   // Main layout with sidebar
+  return <AdminLayoutWithSidebar adminContext={adminContext}>{children}</AdminLayoutWithSidebar>;
+}
+
+/**
+ * Inner shell that owns the mobile-drawer state. Split out from the
+ * auth-gating logic above so the `useState` hook only mounts once we know
+ * the user is authenticated and the sidebar is going to render — avoids
+ * a stray hook running during the loading/redirect branches.
+ */
+function AdminLayoutWithSidebar({
+  adminContext,
+  children,
+}: {
+  adminContext: AdminContext;
+  children: React.ReactNode;
+}) {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#070B14] flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#070B14] lg:flex">
+      {/* Mobile top bar — hidden at lg+ where the persistent sidebar makes
+          the brand visible already. Houses the hamburger that opens the
+          drawer + the brand wordmark. */}
+      <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 h-14 px-4 bg-[#0A0F1C] border-b border-white/[0.06]">
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Open navigation"
+          className="p-2 -ml-2 rounded-md text-gray-300 hover:text-white hover:bg-white/[0.06]"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-xs">M</span>
+          </div>
+          <span className="font-semibold text-sm text-white">Admin Portal</span>
+        </div>
+      </header>
+
+      {/* Mobile backdrop */}
+      {mobileNavOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-slate-900/60 backdrop-blur-sm"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <AdminSidebar
         role={adminContext.role}
         adminName={adminContext.name}
         adminEmail={adminContext.email}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
       />
       <main className="flex-1 overflow-auto">
-        <div className="max-w-[1600px] mx-auto px-8 py-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
           {children}
         </div>
       </main>

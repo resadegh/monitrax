@@ -10,7 +10,7 @@
 
 'use client';
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { OrganizationProvider, useOrganization } from '@/lib/portal';
@@ -82,6 +82,7 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const { currentOrg, isLoading: orgLoading } = useOrganization();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Check if current page is public (no auth required)
   const isPublicPage = PUBLIC_PAGES.some(
@@ -145,12 +146,43 @@ function PortalLayoutInner({ children }: PortalLayoutClientProps) {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="lg:flex min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      {/* Mobile top bar — hidden at lg+ where the persistent sidebar makes
+          the brand visible already. Houses the hamburger that opens the
+          drawer + the brand wordmark for orientation. */}
+      <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 h-14 px-4 bg-white/90 backdrop-blur border-b border-slate-200/70">
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Open navigation"
+          className="p-2 -ml-2 rounded-md text-slate-700 hover:bg-slate-100"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+        <span className="font-semibold text-sm text-slate-900 truncate">
+          {currentOrg?.name || 'Monitrax Portal'}
+        </span>
+      </header>
+
+      {/* Mobile backdrop — fades in behind the drawer at <lg. Tapping it
+          closes the drawer. */}
+      {mobileNavOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar Navigation */}
       <PortalSidebar
         organizationName={currentOrg?.name || 'Select Organization'}
         navigation={mainNavigation}
         secondaryNavigation={secondaryNavigation}
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
       />
 
       {/* Main Content Area */}
