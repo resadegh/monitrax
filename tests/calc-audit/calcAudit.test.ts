@@ -241,7 +241,7 @@ describe('runOne — fixture detection', () => {
 });
 
 describe('Per-engine fixture coverage (HR-3 — every engine auditable)', () => {
-  it('TAX category includes capTracker, GST, NSW land tax, NSW stamp duty, loss rules', () => {
+  it('TAX category includes capTracker, GST, NSW land tax, NSW stamp duty, loss rules (41i.0+1)', () => {
     const taxNames = calcEngineRegistry
       .list()
       .filter((e) => e.category === 'TAX')
@@ -253,6 +253,32 @@ describe('Per-engine fixture coverage (HR-3 — every engine auditable)', () => 
     expect(taxNames).toContain('tax.trustLossRules');
     expect(taxNames).toContain('tax.companyLossRules');
     expect(taxNames).toContain('tax.crossStateLandTax');
+  });
+
+  it('TAX category includes Phase 41i.2 division/classifier adapters', () => {
+    const taxNames = calcEngineRegistry
+      .list()
+      .filter((e) => e.category === 'TAX')
+      .map((e) => e.name);
+    expect(taxNames).toContain('tax.cgtNetting');
+    expect(taxNames).toContain('tax.div7aClassifier');
+    expect(taxNames).toContain('tax.psiClassifier');
+    expect(taxNames).toContain('tax.fteIeeClassifier');
+    expect(taxNames).toContain('tax.div152');
+    expect(taxNames).toContain('tax.smsfTriumvirate');
+    expect(taxNames).toContain('tax.highIncomeSuperTax');
+    expect(taxNames).toContain('tax.masterTaxPosition');
+  });
+
+  it('TAX category covers all 8 states for land tax + stamp duty (41i.2)', () => {
+    const taxNames = calcEngineRegistry
+      .list()
+      .filter((e) => e.category === 'TAX')
+      .map((e) => e.name);
+    for (const state of ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'ACT', 'NT'] as const) {
+      expect(taxNames).toContain(`tax.landTax.${state}`);
+      expect(taxNames).toContain(`tax.stampDuty.${state}`);
+    }
   });
 
   it('CORE category includes net worth, income, expense, loan aggregators', () => {

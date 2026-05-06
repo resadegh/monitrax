@@ -1,5 +1,68 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41i2-engine-adapter-expansion (Phase 41i.2 — Calc audit engine adapter expansion SHIPPED)
+
+### Strategy
+Closes the "add more engines" item in the Phase 41i.2 sequence. Extends the calc audit registry from **14 → 36 engines** so every Phase 41e module the AI advisor relies on has assertion-based audit coverage. Drift in any of these now fails CI before users see wrong numbers (HR-3).
+
+### What ships
+```
+lib/calc-audit/engines/
+├── tax.ts              # (existing) 7 NSW + cross-state + loss + GST + capTracker engines
+├── tax-divisions.ts    # NEW — 8 division/classifier/orchestrator adapters
+├── tax-state.ts        # NEW — 14 state adapters (7 land tax + 7 stamp duty for VIC/QLD/SA/WA/TAS/ACT/NT)
+├── core.ts             # (existing) 4 core financial calc adapters
+└── property.ts         # (existing) 3 property metric adapters
+```
+
+### TAX divisions adapters (8 in `tax-divisions.ts`)
+- `tax.cgtNetting` — `applyCapitalLossNetting` (Div 102-A / s100-50 / s115-100)
+- `tax.div7aClassifier` — `classifyDiv7ALoans` (ITAA 1936 s109B-s109ZE)
+- `tax.psiClassifier` — `classifyPsi` (ITAA 1997 Part 2-42 + s86-15)
+- `tax.fteIeeClassifier` — `classifyFteIeeDistributions` (Sch 2F ITAA 1936)
+- `tax.div152` — `applyDiv152` (Div 152 small business CGT concessions)
+- `tax.smsfTriumvirate` — `classifySmsfTriumvirate` full (SIS Act s62/Pt 8/s67A; s295-550/-160)
+- `tax.highIncomeSuperTax` — `calculateHighIncomeSuperTax` (Div 293)
+- `tax.masterTaxPosition` — `buildMasterTaxPosition` (Phase 41e.17 orchestrator)
+
+### State adapters (14 in `tax-state.ts`)
+7 land tax + 7 stamp duty adapters covering VIC / QLD / SA / WA / TAS / ACT / NT — both regimes now span **all 8 states/territories** (NSW shipped in 41i.0+1).
+
+### Registry now 36 engines / 45 fixtures
+| Category | Count | Note |
+|---|---|---|
+| TAX | 29 | was 7 |
+| CORE | 4 | unchanged |
+| PROPERTY | 3 | unchanged |
+
+All 45 fixtures green against current engine implementations. tsc clean.
+
+### Tests (2 new — 597 total)
+- TAX category includes all Phase 41i.2 division/classifier adapters
+- TAX category covers all 8 states for both land tax + stamp duty
+
+The existing "every fixture passes against current implementation" test now enforces **45 PASSes** (was 19) — any future engine refactor changing canonical output forces a deliberate fixture update + reviewer sign-off.
+
+### Smoke-test discipline (lessons re-learned)
+While building the adapters, my first draft had wrong type assumptions for several engines:
+- `CapitalLossNettingInput.events[*]` — uses `id` + `monthsHeld` (not `eventId` + `discountEligible`)
+- `PsiTestResult` is a string union `'PASS' | 'FAIL'` (not an object with `.passed`)
+- `FteIeeBeneficiaryInput` uses `distributionAmount` + `relationship: FamilyGroupRelationship` (`'FAMILY_MEMBER'`, not `'SPOUSE'`)
+- `Div152Input` uses `gainAfterDiv115` + `maxNetAssetValue` + `aggregatedTurnover` (not `nominalGain` + flat `concessionsClaimed`)
+- `calculateHighIncomeSuperTax` takes `(input, TaxYearConfig)` returning structured object (not single args returning number)
+- `Div7AClassificationResult.highestSeverity` for NO_AGREEMENT loans is `'NO_AGREEMENT'` (not `'DEEMED_DIVIDEND'` — DEEMED_DIVIDEND is the operative outcome at the top of the rank, but NO_AGREEMENT is the per-loan classification)
+
+The audit system caught all of these as fixture failures before this PR shipped — exactly as designed.
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.37
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.2 41i.2 SHIPPED row
+
+### Next
+**41i.3** — L3 on-demand "Audit this user" admin action + persistent `CalcAuditFinding` Prisma model.
+
+---
+
 ## Session: claude/phase-41h5-tool-registry-expansion (Phase 41h.5 — Tool registry expansion + SCENARIO_RUN. CLOSES PHASE 41h.)
 
 ### Strategy
