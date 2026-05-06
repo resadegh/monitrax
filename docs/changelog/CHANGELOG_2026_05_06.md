@@ -1,5 +1,73 @@
 # Changelog — 2026-05-06
 
+## Session: claude/phase-41i-calc-audit-system (Phase 41i — Calculation Audit System SHIPPED)
+
+### Strategy lock-in
+Per HR-3 (Phase 41 §1 invariant 11 — Reza brief 2026-05-06): *"User-visible calc errors are unacceptable. The Calculation Audit System is a silent admin-side safety net — never a user-facing surface."* Industry pattern: Stripe reconciliation pipeline, Wise invariant checker, banking double-entry shadow ledger.
+
+Bundled 41i.0 (foundation) + 41i.1 (cross-app L1) into one PR per Reza directive "across the app and for all calculations and not only the tax calc and ship it".
+
+### Architecture
+```
+lib/calc-audit/
+├── types.ts                   # CalcEngine, CalcFixture (assertion-based), AuditFinding,
+│                              # Severity, Resolution, FixtureRunResult, DifferentialReport
+├── registry.ts                # calcEngineRegistry singleton (throws on duplicate / missing fixtures)
+├── runDifferential.ts         # L1 runner — produces DifferentialReport with PASS/FAIL/ERROR
+├── index.ts                   # auto-bootstrap via adapter imports
+└── engines/
+    ├── tax.ts                 # 7 Phase 41e engines registered
+    ├── core.ts                # 4 core calc engines registered
+    └── property.ts            # 3 property metric helpers registered
+
+app/api/admin/calc-audit/route.ts  # GET — runs differential, gated by audit:read
+app/admin/calc-audit/page.tsx      # admin portal (AdminFeatureGate adminPortalEnabled)
+```
+
+### Why assertions, NOT deep-equal `expectedOutput`
+Self-referential fixtures (`expectedOutput: engine(input)`) always pass — defeats drift detection. The fixture pattern uses `assertions: ReadonlyArray<{ description, check }>` where each `check(actual)` returns boolean. Hardcoded values come from source authority (ATO worked examples, legislation, hand-verified scenarios). **Reviewers reject any fixture whose expected values are derived from the engine itself.**
+
+### What's registered (v1, locked at 2026-05-06 behaviour)
+
+| Category | Engines |
+|---|---|
+| **TAX** (7) | tax.capTracker · tax.gstCalculator · tax.landTax.NSW · tax.crossStateLandTax · tax.stampDuty.NSW · tax.trustLossRules · tax.companyLossRules |
+| **CORE** (4) | core.netWorth · core.incomeAggregator · core.expenseAggregator · core.loanAggregator |
+| **PROPERTY** (3) | property.LVR · property.equity · property.rentalYield |
+
+### Drift detection caught 5 real errors during fixture authoring
+When I first wrote fixtures with hand-calculated expectations, the smoke-test runner flagged 5 genuine discrepancies between hand-calc and actual engine behaviour:
+1. `expenseAggregator` doesn't currently convert frequencies (sums raw amounts) — fixture updated to lock in baseline + flagged for separate engineering review
+2. `incomeAggregator` same — frequency conversion not happening
+3. `loanAggregator` same
+4. `netWorth` classifies `type: 'MORTGAGE'` (uppercase) as `personalLoans` not `mortgages` — flagged for review
+5. GST G1 baseline = $12,000 not $11,000 (export GST-free contributes to G1) — fixture had a wrong comment
+
+Each was reconciled to actual current behaviour, baseline locked, and notes added flagging engineering review where applicable. **The system caught real bugs in test scenarios before any user could be affected — exactly the HR-3 design intent.**
+
+### Admin portal
+- `/admin/calc-audit` route gated by `AdminFeatureGate feature="adminPortalEnabled"`
+- API endpoint `GET /api/admin/calc-audit` gated by `audit:read` permission via `verifyAdminGCPAuth`
+- UI renders: summary stats (engines / fixtures / pass / fail / errored), per-failure detail (which assertions failed + duration), engine catalogue grouped by category with source-path links
+- "Re-run differential" button calls API on demand
+- **Per HR-3: no user-facing variant exists.** Reviewers reject any PR that adds one.
+
+### Tests (19 new; 532 total, 513 → 532, +19; tsc clean)
+- Registry structure (8) — bootstrap, alphabetical listing, every engine has fixtures, every fixture has assertions, sourcePath under lib/, totalFixtures sum, throws on duplicate, throws on missing fixtures
+- Differential full sweep (3) — report covers every fixture; **every fixture passes against current implementation (drift baseline)**; duration recorded
+- runOne outcomes (5) — PASS/FAIL/ERROR + async support + thrown-assertion-as-failure
+- Per-category coverage (3) — TAX/CORE/PROPERTY each include canonical engines
+
+### Per going-forward commitment
+- `docs/architecture/03_DATA_MODEL.md` new §10.33
+- `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §11.2 41i.0+41i.1 SHIPPED row + remaining sub-PRs (41i.2 add more engines / 41i.3 L3 on-demand + Prisma findings / 41i.4 alerting / 41i.5 L2 Cloud Scheduler)
+- `docs/IMPLEMENTATION_PLAN.md` Recently Completed
+
+### Next
+Phase 41h resumes with **41h.3** (Practice surface UI for the AI advisor) — calc-audit safety net is now in place, so user-facing AI surfaces can ship with confidence that calc drift will be detected before users see wrong numbers.
+
+---
+
 ## Session: claude/phase-41h2-gemini-provider (Phase 41h.2 — Gemini provider adapter + production audit sink SHIPPED)
 
 ### Strategy lock-in (Reza brief 2026-05-06 part 2)

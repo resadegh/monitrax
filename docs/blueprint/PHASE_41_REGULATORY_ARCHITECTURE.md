@@ -591,9 +591,9 @@ Reza brief 2026-05-06: *"Create an AI agent to validate the calculations in the 
 
 | Sub-PR | Scope |
 |---|---|
-| **41i.0** | Audit framework — types (`AuditFinding` / `Severity` / `Resolution`), `calcEngineRegistry` singleton, `CalcEngine<TInput, TOutput>` interface, admin-portal route stub at `/admin/calc-audit`, `CalcAuditFinding` Prisma model |
-| **41i.1** | L1 — register every calc engine in the app + sibling `*.fixtures.ts` files (ATO worked examples + canonical scenarios). CI step `npm run audit:fixtures`. Admin-portal report page. |
-| **41i.3** | L3 — admin "Audit this user" button → re-runs every registered engine → diffs against stored values → renders findings with severity. |
+| **41i.0 + 41i.1** *(bundled, SHIPPED 2026-05-06)* | Audit framework + L1 cross-app fixture differential. Foundation (`lib/calc-audit/types.ts` + `registry.ts` + `runDifferential.ts` + `engines/tax\|core\|property.ts`). 14 engines registered / 18 fixtures (TAX 7 / CORE 4 / PROPERTY 3) with **assertion-based** fixtures (concrete invariants from source authority — no `engine(input)` self-reference allowed). Admin portal at `/admin/calc-audit` (gated by `AdminFeatureGate adminPortalEnabled`) + `GET /api/admin/calc-audit` (gated by `audit:read`). 19 tests (532 total, 513 → 532, +19). Smoke-test caught 5 genuine drift errors during fixture authoring — system works. |
+| **41i.2** | Add remaining engines as adapters — health / CGT / MasterTaxPosition / PSI / FTE / Div 7A classifiers. Each is a small follow-up adapter file. |
+| **41i.3** | L3 — admin "Audit this user" button → re-runs every registered engine for a specific user with their stored data → diffs vs stored → renders findings. Persistent `CalcAuditFinding` Prisma model lands here. |
 | **41i.4** | Alerting + workflow — Slack/email when severity ≥ HIGH; finding lifecycle (OPEN / INVESTIGATING / FALSE_POSITIVE / FIX_REQUIRED / FIXED); backfill-affected-users runbook. |
 | **41i.5** | L2 — Cloud Scheduler anomaly detection agent (deferred until Cloud Scheduler infra is in place). |
 

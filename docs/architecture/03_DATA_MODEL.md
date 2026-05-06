@@ -2105,3 +2105,96 @@ The dependency-injection pattern lets every test run deterministically without n
 | **HR-3** *(locked in this PR)* | Phase 41 §1 invariant 11 + Phase 41i (next) | User-visible calc errors |
 
 **Phase 41i — Calculation Audit System** is next. Cross-app silent admin-side safety net per HR-3. Layered: L1 deterministic fixture differential (CI-gated), L3 on-demand admin-portal "audit this user" route. L2 anomaly-detection agent deferred to 41i.5 (needs Cloud Scheduler infra).
+
+## **10.33 Phase 41i — Calculation Audit System (PR — shipped 2026-05-06)**
+
+Cross-app silent safety net per **HR-3** (Phase 41 §1 invariant 11). Industry pattern (Stripe reconciliation pipeline, Wise invariants, banking shadow ledger). The system runs every registered calc engine against reference fixtures with **hardcoded assertions** captured from source authority — drift = a code change has caused an engine to produce a different number for the same input.
+
+### Architecture
+
+```
+lib/calc-audit/
+├── types.ts                   # CalcEngine<TInput,TOutput>, CalcFixture, CalcAssertion,
+│                              # AuditFinding, Severity, Resolution, FixtureRunResult,
+│                              # DifferentialReport
+├── registry.ts                # calcEngineRegistry singleton
+├── runDifferential.ts         # L1: runs every fixture; produces DifferentialReport
+├── index.ts                   # bootstrap (auto-registers via engine adapter imports)
+└── engines/
+    ├── tax.ts                 # 7 Phase 41e engines registered
+    ├── core.ts                # 4 core calc engines registered
+    └── property.ts            # 3 property metric helpers registered
+
+app/api/admin/calc-audit/
+└── route.ts                   # GET — runs differential + returns report (audit:read)
+
+app/admin/calc-audit/
+└── page.tsx                   # Admin portal page — gated by AdminFeatureGate
+```
+
+### What's registered (v1)
+
+**14 calc engines / 18 fixtures across the app**, locked at current behaviour as of 2026-05-06:
+
+| Category | Engines |
+|---|---|
+| **TAX** (7) | `tax.capTracker` (s291-20 / s292-85) · `tax.gstCalculator` (GST Act s9-70/s38/s40/s23-15) · `tax.landTax.NSW` (Land Tax Act 1956 s27/s5A/Sch 1A) · `tax.crossStateLandTax` (NSW + VIC + QLD aggregator) · `tax.stampDuty.NSW` (Duties Act 1997 Sch 1 + Ch 2 Pt 4 Div 4 FPAD) · `tax.trustLossRules` (Sch 2F ITAA 1936 — IIT/50% Stake/Pattern of Distributions/Control/SBT) · `tax.companyLossRules` (Div 165 ITAA 1997 — COT + s165-210/s165-211 BCT) |
+| **CORE** (4) | `core.netWorth` · `core.incomeAggregator` · `core.expenseAggregator` · `core.loanAggregator` |
+| **PROPERTY** (3) | `property.LVR` · `property.equity` · `property.rentalYield` |
+
+### Assertion-based fixture pattern
+
+> **Why assertions, not deep-equal `expectedOutput`:** An expected-output snapshot tempts engineers to write `expectedOutput: engine(input)` — self-referential, never fails. Assertions force concrete hardcoded invariants captured from source authority. Reviewers reject any fixture whose assertions reference engine output rather than authority-published values.
+
+```ts
+{
+  name: 'NSW individual @ $1.5M residential',
+  input: { taxableLandValue: 1_500_000, ownershipType: 'INDIVIDUAL', isForeignOwner: false, isResidential: true },
+  assertions: [
+    {
+      description: 'General land tax = $6,900 ($100 + 1.6% × ($1.5M − $1.075M); per Land Tax Act 1956 s27)',
+      check: (r) => Math.abs(r.generalLandTax - 6_900) < 1,
+    },
+    {
+      description: 'No trust surcharge (individual ownership)',
+      check: (r) => r.trustSurcharge === 0,
+    },
+  ],
+  authoritySource: 'NSW Land Tax Act 1956 s27 (general scale CY2025).',
+}
+```
+
+### Admin portal
+
+- Route `/admin/calc-audit` — gated by `AdminFeatureGate feature="adminPortalEnabled"` + `audit:read` permission on the API endpoint.
+- Renders summary (engines / fixtures / pass / fail / errored), per-failure detail (which assertions failed), full engine catalogue grouped by category.
+- "Re-run differential" button calls `GET /api/admin/calc-audit` on demand.
+- **Per HR-3: no user-facing variant exists.** Reviewers reject any PR that adds one.
+
+### Drift-detection example (this PR's smoke test)
+
+When I first wrote fixtures with hand-calculated expected values, the audit caught **5 genuine discrepancies** between hand-calc and actual engine behaviour (e.g. `expenseAggregator` doesn't currently convert frequencies; `netWorth` classifies `type: 'MORTGAGE'` as personal loan; GST G1 is $12k not $11k for the test scenario). Fixtures were updated to lock in **current engine behaviour** as the baseline. Future engine changes that alter these outputs will fail the audit — **the system works**.
+
+### Tests (19 new)
+
+| Section | Coverage |
+|---|---|
+| Registry structure (8) | bootstrap; alphabetical listing; every engine has fixtures; every fixture has assertions; sourcePath under `lib/`; totalFixtures matches sum; throws on duplicate; throws on engine without fixtures |
+| Differential full sweep (3) | Report covers every fixture; **every fixture passes against current engine implementation (drift baseline)**; duration recorded |
+| `runOne` outcomes (5) | PASS when assertions hold; FAIL with assertion descriptions; ERROR with engine error message; async engines supported; thrown assertions caught and surfaced |
+| Per-category coverage (3) | TAX/CORE/PROPERTY each include their canonical engines |
+
+**Total tests:** 513 → 532 (+19). tsc clean.
+
+### Deferred to follow-up
+
+- **L2 anomaly detection agent** — Cloud Scheduler daily job; AI surfaces outliers (5σ from peers) across users. Deferred until Cloud Scheduler infra is in place.
+- **L3 on-demand "Audit this user"** — admin portal action that re-runs every engine for a specific user with their stored data. v1 ships the framework + L1; L3 added as a follow-up sub-PR (41i.3) along with the `CalcAuditFinding` Prisma model for persistent finding history.
+- **Health engine** + **CGT engine** + **MasterTaxPosition** + **PSI / FTE / Div 7A classifiers** — straightforward to add as additional adapters following the `engines/tax.ts` pattern. Each is a small follow-up.
+
+### Adding a new engine (going-forward pattern)
+
+1. Add adapter in `lib/calc-audit/engines/<category>.ts` calling `calcEngineRegistry.register(...)`.
+2. Each fixture must have ≥1 `assertion` with hardcoded values from source authority — never `engine(input)` self-reference.
+3. Import the adapter from `lib/calc-audit/index.ts`.
+4. Run tests — the existing differential sweep test enforces 0 failures.
