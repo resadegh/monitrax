@@ -16,7 +16,7 @@ import { useAuth } from '@/lib/context/AuthContext';
 export default function PortalSignInPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, login, isLoading: authLoading } = useAuth();
+  const { user, token, login, logout, isLoading: authLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,20 +27,22 @@ export default function PortalSignInPage() {
   const redirectTo = searchParams.get('redirect') || '/portal/dashboard';
   const inviteToken = searchParams.get('invite');
 
-  // If already logged in, check organization access
+  // If already logged in, check organization access. Wait until the Firebase
+  // ID token has been resolved by AuthContext — without it the fetch below
+  // sends `Authorization: Bearer null` and the API returns 401, which the
+  // catch-all renders as "Failed to verify organization access".
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && token) {
       checkOrganizationAccess();
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, token]);
 
   const checkOrganizationAccess = async () => {
     setCheckingAccess(true);
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch('/api/portal/organizations', {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token ?? ''}`,
         },
       });
 
@@ -71,8 +73,9 @@ export default function PortalSignInPage() {
 
     try {
       await login(email, password);
-      // After successful login, check organization access
-      await checkOrganizationAccess();
+      // The useEffect on [authLoading, user, token] will fire
+      // checkOrganizationAccess() once AuthContext has the ID token. Calling
+      // it synchronously here would race the token-state update.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid email or password');
       setIsLoading(false);
@@ -148,8 +151,11 @@ export default function PortalSignInPage() {
                 </p>
                 <button
                   onClick={() => {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
+                    // Sign out of Firebase before reloading. Without this the
+                    // useAuth() listener still reports a signed-in user and
+                    // the useEffect re-fires the access check, bouncing the
+                    // user straight back to this same screen.
+                    logout();
                     window.location.reload();
                   }}
                   className="w-full py-2 px-4 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
