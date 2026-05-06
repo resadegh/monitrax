@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 import { ArrowUpRight, Home as HomeIcon, KeyRound, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -13,7 +14,6 @@ import { formatCurrency } from '@/lib/utils/formatters';
  * allocation thread, springy entry. Honours prefers-reduced-motion.
  */
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 export interface PropertiesHeroSegment {
   type: 'HOME' | 'INVESTMENT' | 'RENTAL';

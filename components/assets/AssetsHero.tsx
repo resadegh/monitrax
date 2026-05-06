@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 import { Sparkles } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -17,7 +18,6 @@ import { formatCurrency } from '@/lib/utils/formatters';
  * Honours prefers-reduced-motion.
  */
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 export interface AssetsHeroSegment {
   id: string;

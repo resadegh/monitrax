@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 import {
   FileText,
   FileImage,
@@ -173,7 +174,6 @@ function formatDocumentType(type: string): string {
 
 // Phase 38 PR 3 — design tokens lifted from Home TRAIL banner v3 +
 // Phase 37/38 heroes. Zero new deps, zero new tokens.
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 export function DocumentFolderView({
   documents,

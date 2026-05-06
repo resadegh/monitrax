@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
+import { appleEase, springSnap as springy } from '@/components/shell/motion';
 import {
   ArrowUpRight,
   Edit2,
@@ -33,8 +34,6 @@ import { HelpTooltip } from '@/components/help/HelpTooltip';
  * warm amber only for genuine cautions (LVR > 80%).
  */
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
-const springy = { type: 'spring', stiffness: 320, damping: 28, mass: 0.8 } as const;
 
 export interface PropertyTileData {
   id: string;

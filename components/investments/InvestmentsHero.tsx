@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 import { TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -18,7 +19,6 @@ import { formatCurrency } from '@/lib/utils/formatters';
  * prefers-reduced-motion.
  */
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 export interface InvestmentsHeroSegment {
   /** A stable id for keying the segment in the bar (e.g. 'BROKERAGE', 'SHARE') */

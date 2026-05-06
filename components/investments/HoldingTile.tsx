@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
+import { appleEase, springSnap as springy } from '@/components/shell/motion';
 import {
   BarChart3,
   Bitcoin,
@@ -28,8 +29,6 @@ import { HoldingGlyph } from '@/components/wealth/wealthGlyphs';
  * that distinguishes it without breaking the Invest stage tone.
  */
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
-const springy = { type: 'spring', stiffness: 320, damping: 28, mass: 0.8 } as const;
 
 export type HoldingType = 'SHARE' | 'ETF' | 'MANAGED_FUND' | 'CRYPTO';
 

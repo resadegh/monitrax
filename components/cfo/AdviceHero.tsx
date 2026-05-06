@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 import { Compass, RefreshCw } from 'lucide-react';
 
 import type { AIAdviceDocument } from '@/lib/cfo';
@@ -33,7 +34,6 @@ import { Button } from '@/components/ui/button';
  * (glassmorphic 28px, framer-motion appleEase, full prefers-reduced-motion).
  */
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 const STAGE_ATMOSPHERE: Record<
   TrailStage,

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
+import { appleEase, springSnap as springy } from '@/components/shell/motion';
 import {
   ArrowUpRight,
   BarChart3,
@@ -30,8 +31,6 @@ import { AccountGlyph } from '@/components/wealth/wealthGlyphs';
  * sky/indigo Invest family.
  */
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
-const springy = { type: 'spring', stiffness: 320, damping: 28, mass: 0.8 } as const;
 
 export type InvestmentAccountType = 'BROKERAGE' | 'SUPERS' | 'FUND' | 'TRUST' | 'ETF_CRYPTO';
 

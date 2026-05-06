@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 import {
   ChevronDown,
   ChevronUp,
@@ -34,7 +35,6 @@ const CATEGORY_TO_ASK_A_PRO_CONTEXT: Partial<Record<AIAdviceRecommendation['cate
   savings: 'wealth',
 };
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 const PRIORITY_LABEL: Record<AIAdviceRecommendation['priority'], string> = {
   do_now: 'Do now',

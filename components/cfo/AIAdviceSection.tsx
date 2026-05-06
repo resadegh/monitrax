@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 
 import type {
   AIAdviceDocument,
@@ -14,7 +15,6 @@ import { AdviceChatThread, type ChatMessage } from './AdviceChatThread';
 import { Card, CardContent } from '@/components/ui/card';
 import { Brain, Sparkles } from 'lucide-react';
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 interface AIAdviceSectionProps {
   token: string | null;

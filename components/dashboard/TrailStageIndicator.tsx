@@ -9,6 +9,7 @@ import {
   useReducedMotion,
   type Variants,
 } from 'framer-motion';
+import { appleEase, springSnap as springy } from '@/components/shell/motion';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 
 /**
@@ -32,8 +33,6 @@ import { ArrowRight, CheckCircle2 } from 'lucide-react';
  *   - Inline "Open <Stage>" button always available as an explicit affordance
  */
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
-const springy = { type: 'spring', stiffness: 320, damping: 28, mass: 0.8 } as const;
 
 interface TrailData {
   emergencyFund?: { monthsCovered: number };

@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
+import { appleEase } from '@/components/shell/motion';
 import { Send, MessageSquare, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
-const appleEase: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 export interface ChatMessage {
   id: string;
