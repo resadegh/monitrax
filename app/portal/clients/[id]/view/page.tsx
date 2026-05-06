@@ -42,6 +42,7 @@ import { ClientCanonicalDashboard } from '@/components/portal/clients/ClientCano
 import { AdviserOverlay } from '@/components/portal/clients/AdviserOverlay';
 import { EntityTree } from '@/components/entities/EntityTree';
 import { MoneyFlowSankey } from '@/components/entities/MoneyFlowSankey';
+import { GlassHero, GlassHeroEyebrow } from '@/components/shell';
 
 interface SnapshotResponse {
   success: boolean;
@@ -193,24 +194,43 @@ export default function ClientDrillInPage({
   const appliedScopeFilter = data.snapshot.viewer?.appliedScopeFilter ?? false;
 
   return (
-    <div className="px-4 md:px-8 py-6 md:py-10 pb-24 md:pb-10 max-w-7xl mx-auto">
-      {/* Sticky page header — keeps the back link + client identity visible while scrolling */}
-      <header className="flex items-start justify-between mb-6 pb-4 border-b border-slate-200">
-        <div>
-          <Link
-            href="/portal/clients"
-            className="text-xs text-slate-500 hover:text-slate-900 inline-flex items-center gap-1"
-          >
-            ← Clients
-          </Link>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mt-1">
-            {data.client.user?.name ?? 'Unknown client'}
-          </h1>
-          <p className="text-sm text-slate-500">{data.client.user?.email}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs uppercase tracking-wider text-slate-500">{data.organization.name}</p>
-          <p className="text-xs text-slate-400 mt-1">
+    <div className="px-4 md:px-8 py-6 md:py-10 pb-24 md:pb-10 max-w-7xl mx-auto space-y-6">
+      {/* Back-to-list breadcrumb — sits above the hero. Keeps the
+          escape route discoverable without competing with the hero
+          headline for visual weight. */}
+      <Link
+        href="/portal/clients"
+        className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 rounded"
+      >
+        ← Clients
+      </Link>
+
+      {/* Page hero — Phase 32-design-A4 alignment with consumer Phase 39
+          glass vocabulary. Sky atmosphere reinforces "Stage I — Invest"
+          for the client view; headline is the client identity; right
+          slot carries the last-calculated timestamp. */}
+      <GlassHero atmosphere="sky">
+        <GlassHeroEyebrow
+          label="Client view"
+          badge={
+            <span className="inline-flex items-center rounded-full border border-sky-400/25 bg-sky-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+              {data.organization.name}
+            </span>
+          }
+        />
+
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-semibold tracking-[-0.02em] text-foreground">
+              {data.client.user?.name ?? 'Unknown client'}
+            </h1>
+            {data.client.user?.email && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {data.client.user.email}
+              </p>
+            )}
+          </div>
+          <p className="text-[11px] tabular-nums text-muted-foreground">
             Calculated {new Date(data.snapshot.calculatedAt).toLocaleString('en-AU', {
               hour: 'numeric',
               minute: '2-digit',
@@ -219,60 +239,48 @@ export default function ClientDrillInPage({
             })}
           </p>
         </div>
-      </header>
+      </GlassHero>
 
       {/* Phase 41g: tab toggle — Structure (entity tree, default), Money
           Flow (Sankey), Dashboard (the existing canonical view).
           Default is Structure because the entity tree is the *primary
           diagnostic* the adviser wants to see first; the canonical
           dashboard is one click away when they need detail. */}
+      {/* Tab toggle — A4 alignment: active state uses the consumer-app
+          sky-to-indigo gradient pill with sky-500/25 ring (matches the
+          PortalSidebar active state) instead of the old slate-900 fill.
+          Emerald focus rings for accessibility consistency. */}
       <div
         role="tablist"
         aria-label="Drill-in views"
-        className="inline-flex items-center gap-1 mb-5 rounded-full border border-slate-200/70 bg-white/70 p-1 text-sm shadow-sm ring-1 ring-slate-900/[0.04] backdrop-blur-sm dark:border-slate-700/50 dark:bg-slate-900/70"
+        className="inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white/70 p-1 text-sm shadow-sm ring-1 ring-slate-900/[0.04] backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/70"
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'structure'}
-          onClick={() => setTab('structure')}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition ${
-            tab === 'structure'
-              ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
-          }`}
-        >
-          <TreePine className="h-3.5 w-3.5" />
-          Structure
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'flow'}
-          onClick={() => setTab('flow')}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition ${
-            tab === 'flow'
-              ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
-          }`}
-        >
-          <TrendingUp className="h-3.5 w-3.5" />
-          Money Flow
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'dashboard'}
-          onClick={() => setTab('dashboard')}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition ${
-            tab === 'dashboard'
-              ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
-          }`}
-        >
-          <LayoutDashboard className="h-3.5 w-3.5" />
-          Dashboard
-        </button>
+        {(
+          [
+            { id: 'structure', label: 'Structure', Icon: TreePine },
+            { id: 'flow', label: 'Money Flow', Icon: TrendingUp },
+            { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+          ] as const
+        ).map(({ id, label, Icon }) => {
+          const active = tab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(id)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 ${
+                active
+                  ? 'bg-gradient-to-r from-sky-500/15 to-indigo-500/15 text-slate-900 ring-1 ring-sky-500/30 shadow-sm shadow-sky-500/10 dark:text-slate-100'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
+              }`}
+            >
+              <Icon className={`h-3.5 w-3.5 transition-colors ${active ? 'text-sky-600 dark:text-sky-400' : ''}`} />
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="md:flex md:gap-8 md:items-start">

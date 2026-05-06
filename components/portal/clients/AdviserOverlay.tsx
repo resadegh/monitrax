@@ -92,7 +92,7 @@ export function AdviserOverlay({
         <button
           type="button"
           onClick={() => setMobileExpanded((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-3 text-left"
+          className="w-full flex items-center justify-between px-5 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 rounded-t-3xl"
         >
           <div className="flex items-center gap-2">
             <span className="block w-10 h-1 rounded-full bg-slate-300" aria-hidden />
@@ -231,10 +231,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur-sm p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_18px_rgba(15,23,42,0.04)]">
       <header className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</h3>
-        {subtle && <span className="text-[10px] text-slate-400">{subtle}</span>}
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{title}</h3>
+        {subtle && <span className="text-[10px] tabular-nums text-slate-400">{subtle}</span>}
       </header>
       {children}
     </section>

@@ -57,10 +57,12 @@
 - **Phases (A3 — this PR, follows Reza directive 2026-05-06 "complete all deferred"):**
   - [x] Migrate 17 consumer wealth + dashboard + cfo + marketing files to consume `components/shell/motion` instead of local `appleEase` / `springy` definitions. Visual surface unchanged — pure dedupe. Files touched: `wealthGlyphs.tsx`, `AssetsHero.tsx`, `AssetTile.tsx`, `AdviceHero.tsx`, `AdviceChatThread.tsx`, `AIAdviceSection.tsx`, `AdviceRecommendationCard.tsx`, `PropertyTile.tsx`, `PropertiesHero.tsx`, `InvestmentsHero.tsx`, `HoldingTile.tsx`, `InvestmentAccountTile.tsx`, `AssetsHero.tsx`, `TrailStageIndicator.tsx`, `marketing/animations.tsx`, `marketing/TrailHero.tsx`, `documents/DocumentFolderView.tsx`, `app/dashboard/plan/page.tsx`. The bespoke hero/tile component contracts stay specialized — only the motion vocabulary deduplicated.
   - [x] `/portal/feedback` — added compact PortalPageHero (emerald) above the master-detail layout. Replaces the old custom header.
-- **Phases (still deferred):**
-  - [ ] Drill-in `/portal/clients/[id]` — separate workstream when client-detail surface is otherwise touched
-- **Risk:** large diff (17 motion-import migrations), but every change is mechanical (`const appleEase = ...` → `import { appleEase } from ...`). Type-check clean. Visual surface unchanged because all consumer hero/tile components keep their existing JSX/className structure — only the motion-constant source moved.
-- **Why this matters:** Reza requested "fix all items and give me one complete PR" + "no PROD users yet, complete." With no users to regress, the safer-but-slower per-page migration is unnecessary — the dedup ships in one go. SSOT now enforced for `appleEase` (CLAUDE.md §12.2): if anyone tries to redefine it locally in a future PR, reviewers reject per `06_UI_UX_FOUNDATION.md §15.10`.
+- **Phases (A4 — this PR, follows Reza directive 2026-05-06 "PR merged, continue"):**
+  - [x] `/portal/clients/[id]/view` — replaced plain `<header>` with `<GlassHero atmosphere="sky">` + back-to-list breadcrumb above. Last unaligned portal surface — pitch-critical because it's the Step 2/3 drill-in shown to prospects.
+  - [x] Tab toggle (Structure / Money Flow / Dashboard) repainted from `bg-slate-900` active fill to consumer-app sky-to-indigo gradient pill with `ring-sky-500/30` (matches `PortalSidebar` active state vocabulary). Emerald focus rings throughout.
+  - [x] `AdviserOverlay` — Section helper updated (border slate-200/70, glass surface `bg-white/80 backdrop-blur-sm`, soft layered shadow, eyebrow tracking `0.08em → 0.18em`, tabular-nums on counts). Mobile expand button gets emerald focus ring.
+- **Workstream complete:** Phase 32-design A1 → A4 has now aligned every visible Org Portal surface to the consumer Phase 39 vocabulary, gated 4 broken nav links, deduped `appleEase` to a single SSOT, and polished both Admin Portal and the drill-in adviser overlay.
+- **Why this matters:** Drill-in is the highest-leverage Org Portal surface during a pitch — when an adviser shows a prospect "here's how I see Sarah's full picture," the page they land on must read as premium fintech. With this PR, every Org Portal page now opens with the same glass-hero vocabulary. The visual contract holds end-to-end.
 
 ### 0. Phase 32B — B2B2C Practice surface (adviser / broker / accountant lighthouse)
 
