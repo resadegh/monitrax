@@ -200,6 +200,18 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
         updateData.isRecurring = body.isRecurring;
       }
 
+      // Phase 42 PR6.5h — Transfer marking with destination account.
+      // Supports the swipe-right "Mark as Transfer" flow where the
+      // user picks the destination account (cash / investment / SMSF).
+      // Per Reza directive 2026-05-08 — transfers must record the
+      // destination so the user can later trace where the money went.
+      if (body.isTransfer !== undefined) {
+        updateData.isTransfer = body.isTransfer;
+      }
+      if (body.transferToAccountId !== undefined) {
+        updateData.transferToAccountId = body.transferToAccountId || null;
+      }
+
       const transaction = await prisma.unifiedTransaction.update({
         where: { id },
         data: updateData,

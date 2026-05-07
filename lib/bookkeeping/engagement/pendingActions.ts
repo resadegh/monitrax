@@ -125,6 +125,10 @@ export async function buildPendingActions(
         loanId: null,
         isTransfer: { not: true },
         isInvestmentContribution: { not: true },
+        // Match Activity filter exactly — categorised rows
+        // disappear from both list AND count once user picks
+        // a category. Reza directive 2026-05-08.
+        OR: [{ categoryLevel1: null }, { categoryLevel1: '' }],
       },
     }),
     prisma.unifiedTransaction.count({

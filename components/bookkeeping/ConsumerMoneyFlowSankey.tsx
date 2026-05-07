@@ -204,7 +204,98 @@ export function ConsumerMoneyFlowSankey({ snapshot: precomputed }: ConsumerMoney
           Year to date
         </p>
       </header>
-      <MoneyFlowSankey flow={flow} />
+      {/* Phase 42 PR6.5h — mobile vs desktop fork.
+          Sankey diagrams need horizontal width to be readable; on
+          mobile the labels overlap and bands compress to invisible.
+          Per Reza directive 2026-05-08 — hide the Sankey on
+          mobile and show a clean vertical breakdown instead. The
+          Sankey returns above `sm:` where the canvas has room. */}
+      <div className="hidden sm:block">
+        <MoneyFlowSankey flow={flow} />
+      </div>
+      <div className="sm:hidden">
+        <MobileMoneyFlowSummary flow={flow} />
+      </div>
     </section>
+  );
+}
+
+/**
+ * Phase 42 PR6.5h — Mobile money-flow summary.
+ *
+ * Vertical alternative to the desktop Sankey. Renders income
+ * total at the top, then a colour-coded list of outflows
+ * (amount + horizontal proportional bar + share %). Reads cleanly
+ * at mobile widths where the Sankey's horizontal layout collapses.
+ *
+ * Per CLAUDE.md §12.3 — composes the same `flow` shape the Sankey
+ * consumes; no new data path. Pure presentation.
+ */
+function MobileMoneyFlowSummary({ flow }: { flow: MoneyFlowResult }) {
+  const { totalIncome, outflows } = flow;
+  // Sort outflows largest-first so the user sees their biggest
+  // category at the top (the financial-adviser lens — surface what
+  // matters most for tax-pack accuracy first).
+  const sortedOutflows = [...outflows].sort((a, b) => b.amount - a.amount);
+
+  const fmtAUD = (n: number) =>
+    Math.abs(n).toLocaleString('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+      maximumFractionDigits: 0,
+    });
+
+  // Mirror the desktop Sankey's outflow palette so the colour
+  // language stays consistent across breakpoints.
+  const colorByLabel: Record<string, string> = {
+    Tax: 'bg-rose-500',
+    'Essential expenses': 'bg-orange-500',
+    Discretionary: 'bg-amber-500',
+    'Loan repayments': 'bg-violet-500',
+    Surplus: 'bg-emerald-500',
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Income headline */}
+      <div className="rounded-2xl bg-slate-50 px-4 py-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          Total income
+        </p>
+        <p className="text-2xl font-semibold tabular-nums text-slate-900 mt-0.5">
+          {fmtAUD(totalIncome)}
+        </p>
+      </div>
+
+      {/* Outflows list — proportional bars */}
+      <ul className="space-y-2.5">
+        {sortedOutflows.map((o) => {
+          const pct = totalIncome > 0 ? (o.amount / totalIncome) * 100 : 0;
+          const bar = colorByLabel[o.label] ?? 'bg-slate-400';
+          return (
+            <li key={o.label}>
+              <div className="flex items-baseline justify-between gap-3 mb-1">
+                <span className="text-sm font-medium text-slate-900 truncate">
+                  {o.label}
+                </span>
+                <span className="text-sm font-semibold tabular-nums text-slate-900 shrink-0">
+                  {fmtAUD(o.amount)}
+                  <span className="ml-1.5 text-xs font-normal text-slate-500">
+                    {pct.toFixed(0)}%
+                  </span>
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${bar} transition-all`}
+                  style={{ width: `${Math.min(100, pct)}%` }}
+                  aria-hidden
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

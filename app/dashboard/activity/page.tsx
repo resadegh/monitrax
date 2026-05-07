@@ -57,6 +57,7 @@ import { CompletionCelebration } from '@/components/bookkeeping/CompletionCelebr
 import { CategoryPickerSheet } from '@/components/bookkeeping/CategoryPickerSheet';
 import { ConsumerMoneyFlowSankey } from '@/components/bookkeeping/ConsumerMoneyFlowSankey';
 import { ReviewQueueCards } from '@/components/bookkeeping/ReviewQueueCards';
+import { TransferDestinationSheet } from '@/components/bookkeeping/TransferDestinationSheet';
 import { useSwipeGesture, SWIPE_THRESHOLD_PX } from '@/hooks/useSwipeGesture';
 import { CashQuickAddButton } from '@/components/bookkeeping/CashQuickAddButton';
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -228,6 +229,8 @@ export default function ActivityPage() {
   // tap → dialog flow (the swipe is a per-pointer-event capture
   // that doesn't disturb the click).
   const [pickerTx, setPickerTx] = useState<Transaction | null>(null);
+  // Phase 42 PR6.5h — destination picker for swipe-right Transfer.
+  const [transferTx, setTransferTx] = useState<Transaction | null>(null);
   const [advancedView, setAdvancedView] = useState(false);
   // Phase 42 PR6.5c — Review-mode card-stack opt-in.
   const [reviewMode, setReviewMode] = useState(false);
@@ -260,31 +263,9 @@ export default function ActivityPage() {
     }
   }, [token]);
 
-  // Mark as transfer (right-swipe) — sets isRecurring=false, links
-  // nothing, sets categoryLevel1='Transfer'. Single PATCH call;
-  // SSOT-aware (registry seeds via the categoriser bridge).
-  const markAsTransfer = useCallback(async (tx: Transaction) => {
-    if (!token) return;
-    try {
-      await fetch(`/api/unified-transactions/${tx.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          categoryLevel1: 'Transfer',
-          categoryLevel2: 'Internal',
-        }),
-      });
-      fetchTransactions();
-      fetchSummary();
-    } catch {
-      // Quiet failure — UI re-fetches anyway
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  // Phase 42 PR6.5h — `markAsTransfer` removed. Right-swipe now opens
+  // <TransferDestinationSheet /> which handles the PATCH itself with
+  // a chosen destination account. See `setTransferTx(tx)` below.
 
   const toggleSelected = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -667,7 +648,7 @@ export default function ActivityPage() {
                           setShowLinkDialog(true);
                         }}
                         onSwipeLeft={() => setPickerTx(tx)}
-                        onSwipeRight={() => markAsTransfer(tx)}
+                        onSwipeRight={() => setTransferTx(tx)}
                         onLongPress={() => {
                           setLinkingTransaction(tx);
                           setShowLinkDialog(true);
@@ -753,6 +734,33 @@ export default function ActivityPage() {
         onClose={() => setPickerTx(null)}
         onSuccess={() => {
           setPickerTx(null);
+          fetchTransactions();
+          fetchSummary();
+        }}
+      />
+
+      {/* Phase 42 PR6.5h — Transfer destination picker. Opens on
+          right-swipe of any row. Lists user's bank + investment
+          accounts so the user can record where the money went. */}
+      <TransferDestinationSheet
+        open={transferTx !== null}
+        transactionId={transferTx?.id ?? null}
+        excludeAccountId={transferTx?.account.id ?? null}
+        context={
+          transferTx
+            ? {
+                merchant:
+                  transferTx.description ||
+                  transferTx.merchantStandardised ||
+                  transferTx.merchantRaw ||
+                  null,
+                amount: transferTx.amount,
+              }
+            : null
+        }
+        onClose={() => setTransferTx(null)}
+        onSuccess={() => {
+          setTransferTx(null);
           fetchTransactions();
           fetchSummary();
         }}

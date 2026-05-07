@@ -79,14 +79,22 @@ export const GET = withPermission('transaction.read', async (request, auth) => {
       if (excludeTransfers === 'true') where.isTransfer = { not: true };
       if (direction) where.direction = direction;
 
-      // Uncategorized filter: transactions available for categorization
-      // Must have no links (income/expense/loan), not be a transfer, not be investment contribution
+      // Uncategorized filter: transactions available for categorization.
+      // Per Reza directive 2026-05-08 — once a tx has a categoryLevel1
+      // set (whether by AI auto-categorisation or by the user via the
+      // swipe-to-categorise picker), it's no longer "uncategorised."
+      // Previously this filter only checked link-status, so categorising
+      // via the picker left the row visible — confusing UX. The filter
+      // now requires BOTH unlinked AND no categoryLevel1.
+      // SSOT note: lib/bookkeeping/engagement/pendingActions.ts MUST
+      // mirror this filter so badge count == visible row count.
       if (uncategorized === 'true') {
         where.incomeId = null;
         where.expenseId = null;
         where.loanId = null;
         where.isTransfer = { not: true }; // false or null
         where.isInvestmentContribution = { not: true }; // false or null
+        where.OR = [{ categoryLevel1: null }, { categoryLevel1: '' }];
       }
 
       if (startDate || endDate) {
