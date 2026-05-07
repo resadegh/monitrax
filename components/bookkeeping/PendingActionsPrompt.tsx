@@ -1,39 +1,40 @@
 /**
- * Phase 42 PR6.5b — Pending-actions strip (non-modal).
+ * Phase 42 PR6.5e — Persistent reconciliation nudge.
  *
- * Per Reza idea 2026-05-07 (the *what*): *"have the transaction
- * reconciliation and categorisation be popup when user login to be
- * completed"* — surface pending bundle at the right moment.
+ * Per Reza directive 2026-05-08: *"a message on login: you have
+ * few unreconsiled transactions, fix them now?"* — make the strip
+ * visible **every session**, not once per UTC day. Reconciliation
+ * is the most-recurring user task; the rule for recurring tasks
+ * is *"a small, persistent, scannable counter on every visit"*
+ * (YNAB / Mint / Pocketbook / Slack-badge / Mail-badge pattern).
  *
- * Per Reza decision 2026-05-07 on review (the *how*, after Claude
- * pushed back on the modal pattern): "go with the non-modal strip."
- * Modal-on-login was flagged for behavioural-friction risk —
- * defensive-dismiss reflex (years of cookie banners), inbox-zero
- * anxiety as the daily first impression, anti-flow framing where
- * the app asks the user for chores before showing them value.
- *
- * Option A landed instead: a compact, *non-blocking* strip anchored
- * at the top of `/dashboard` that surfaces the same up-to-3 actions
- * (CATEGORISE > ANOMALY > RECURRING > RECEIPT). The user can scan,
- * tap, collapse, or ignore — the page remains fully interactive.
+ * Per Reza decision PR6.5b lesson preserved: this stays a
+ * **non-modal in-flow strip**, NOT a modal. Modal-on-arrival is
+ * still in `↩️ Reversed Decisions`. The pivot here is purely
+ * about *cadence* — once-per-UTC-day gate → per-session collapse.
  *
  * Per CLAUDE.md §0:
- *   - Designer lens: Apple-glass tile; restraint over interruption;
+ *   - Designer lens: top-of-page placement (above TRAIL hero on
+ *     Home, like YNAB's "X unapproved" banner). Apple-glass tile;
  *     ≥44pt tap targets per Apple HIG; tabular-nums on counts.
- *   - Behaviour-psychologist lens: warm copy ("Today's quick wins"),
- *     present in flow rather than blocking it. Reduces cognitive tax
- *     by bundling, but never exacts an interruption cost. Collapse
- *     and opt-out always reachable so the strip never feels like a nag.
- *   - Architect lens: composes existing
- *     `/api/bookkeeping/engagement/pending-actions` route. Same SSOT
- *     aggregator + same once-per-day gate as the modal version. Per
- *     CLAUDE.md §12.3 — no parallel data path.
+ *   - Behaviour-psychologist: leans into the "fix it now" framing
+ *     the user requested — *"X transactions to reconcile — fix
+ *     now"*. Collapse + opt-out always reachable so it never
+ *     feels like a nag.
+ *   - Architect (CLAUDE.md §12.3): same SSOT aggregator + same
+ *     API; only the gate behaviour swaps.
  *
- * Once-per-day gate behaviour preserved: `?action=shown` is still
- * fired on first render so the strip auto-collapses tomorrow if the
- * user manually collapses today (intentional — daily users don't
- * need both the strip and the Daily Pulse card asking for the same
- * thing).
+ * Cadence (the load-bearing change in PR6.5e):
+ *   - **Per session** via `sessionStorage` — collapse persists
+ *     while the tab is open; clears on tab close → fresh prompt
+ *     on next visit. (Replaces the prior once-per-UTC-day server
+ *     gate.)
+ *   - `promptOptedOut` global off-switch is preserved — the user
+ *     can still permanently dismiss with "Don't show me this
+ *     again."
+ *   - The server gate (`?action=shown` write) is now *advisory*
+ *     telemetry — fired-and-forgotten so we still know how
+ *     often the strip surfaces, but it does not block re-render.
  */
 
 'use client';
@@ -65,10 +66,9 @@ const ICONS: Record<PendingActionKind, typeof Sparkles> = {
   RECEIPT: Receipt,
 };
 
-/**
- * Non-modal pending-actions strip. Drop-in mount on the dashboard
- * tree (e.g. above `<DailyPulseCard />`); manages its own lifecycle.
- */
+/** Per-session collapse key — clears when the tab closes. */
+const SESSION_COLLAPSE_KEY = 'monitrax.pendingActions.collapsedThisSession';
+
 export function PendingActionsPrompt() {
   const [visible, setVisible] = useState(false);
   const [data, setData] = useState<PendingActionsResult | null>(null);
@@ -88,14 +88,19 @@ export function PendingActionsPrompt() {
         if (cancelled || !json?.data) return;
         const payload = json.data;
         setData(payload);
+
+        // Per-session collapse — replaces the prior once-per-UTC-day gate.
+        const collapsedThisSession =
+          typeof window !== 'undefined' && sessionStorage.getItem(SESSION_COLLAPSE_KEY) === '1';
+
         if (
           !payload.optedOut &&
-          !payload.alreadyShownToday &&
+          !collapsedThisSession &&
           payload.actions.length > 0 &&
           payload.totalCount > 0
         ) {
           setVisible(true);
-          // Fire-and-forget — same once-per-day gate as the modal version.
+          // Advisory telemetry — fire-and-forget; does NOT gate re-render.
           fetch('/api/bookkeeping/engagement/pending-actions?action=shown', {
             method: 'POST',
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -114,6 +119,11 @@ export function PendingActionsPrompt() {
 
   function handleCollapse() {
     setVisible(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(SESSION_COLLAPSE_KEY, '1');
+    }
+    // Server-side dismiss is now advisory — keep the audit trail
+    // by writing it, but it does NOT gate re-display.
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     fetch('/api/bookkeeping/engagement/pending-actions?action=dismiss', {
       method: 'POST',
@@ -134,56 +144,73 @@ export function PendingActionsPrompt() {
 
   if (!visible || !data || data.actions.length === 0) return null;
 
+  // Lead with the categorise count (the load-bearing reconciliation
+  // signal); fold the rest into the chip row below.
+  const categoriseAction = data.actions.find((a) => a.kind === 'CATEGORISE');
+  const otherActions = data.actions.filter((a) => a.kind !== 'CATEGORISE');
+
   return (
     <section
-      aria-label="Today's pending actions"
-      className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-4 sm:px-5 py-4 mb-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2 motion-safe:duration-300"
+      aria-label="Pending reconciliation actions"
+      className="rounded-3xl border border-amber-200 bg-amber-50/70 px-4 sm:px-5 py-4 mb-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2 motion-safe:duration-300"
     >
       <header className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-            Today&rsquo;s quick wins
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+            Welcome back
           </p>
-          <p className="text-sm text-emerald-900/80 mt-0.5 leading-relaxed">
-            {headerCopy(data.actions.length, data.totalCount)} — five seconds each.
+          <p className="text-base sm:text-[17px] font-semibold text-amber-950 mt-0.5 leading-snug">
+            {leadCopy(categoriseAction, otherActions, data.totalCount)}
           </p>
+          {categoriseAction && (
+            <Link
+              href={categoriseAction.href}
+              className="inline-flex items-center gap-1.5 mt-2 px-3 py-2 rounded-full bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 active:bg-amber-800 transition-colors min-h-[40px]"
+            >
+              Fix now
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          )}
         </div>
         <button
           type="button"
           onClick={handleCollapse}
-          aria-label="Hide for today"
-          className="inline-flex items-center justify-center w-9 h-9 rounded-full text-emerald-700/60 hover:bg-emerald-100 active:bg-emerald-200 transition-colors shrink-0"
+          aria-label="Hide for this session"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-full text-amber-700/60 hover:bg-amber-100 active:bg-amber-200 transition-colors shrink-0"
         >
           <X className="w-4 h-4" />
         </button>
       </header>
 
-      <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        {data.actions.map((a) => {
-          const Icon = ICONS[a.kind];
-          return (
-            <li key={a.kind}>
-              <Link
-                href={a.href}
-                className="flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-white hover:bg-emerald-50 active:bg-emerald-100 border border-emerald-100 transition-colors min-h-[52px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 group"
-              >
-                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 shrink-0">
-                  <Icon className="w-4 h-4" />
-                </span>
-                <span className="flex-1 text-sm font-medium text-slate-900 tabular-nums truncate">
-                  {a.label}
-                </span>
-                <ArrowRight className="w-4 h-4 text-emerald-400 shrink-0 group-hover:text-emerald-600 transition-colors" />
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {/* Other action chips — anomalies / recurring / receipts */}
+      {otherActions.length > 0 && (
+        <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+          {otherActions.map((a) => {
+            const Icon = ICONS[a.kind];
+            return (
+              <li key={a.kind}>
+                <Link
+                  href={a.href}
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white hover:bg-amber-50 active:bg-amber-100 border border-amber-100 transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40 group"
+                >
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-700 shrink-0">
+                    <Icon className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="flex-1 text-sm text-slate-900 tabular-nums truncate">
+                    {a.label}
+                  </span>
+                  <ArrowRight className="w-3.5 h-3.5 text-amber-400 shrink-0 group-hover:text-amber-600 transition-colors" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <button
         type="button"
         onClick={handleOptOut}
-        className="text-xs text-emerald-700/50 hover:text-emerald-800 mt-3 py-1 min-h-[28px]"
+        className="text-xs text-amber-700/50 hover:text-amber-800 mt-3 py-1 min-h-[28px]"
       >
         Don&rsquo;t show me this again
       </button>
@@ -191,9 +218,24 @@ export function PendingActionsPrompt() {
   );
 }
 
-function headerCopy(actionCount: number, totalCount: number): string {
-  if (actionCount === 1) {
-    return `One thing to clean up`;
+function leadCopy(
+  categorise: PendingAction | undefined,
+  others: PendingAction[],
+  totalCount: number
+): string {
+  if (categorise) {
+    const n = categorise.count;
+    if (others.length === 0) {
+      return n === 1
+        ? 'You have 1 unreconciled transaction.'
+        : `You have ${n} unreconciled transactions.`;
+    }
+    return n === 1
+      ? `1 unreconciled transaction · ${totalCount - n} other to-do${totalCount - n === 1 ? '' : 's'}.`
+      : `${n} unreconciled transactions · ${totalCount - n} other to-do${totalCount - n === 1 ? '' : 's'}.`;
   }
-  return `${totalCount} small things to clean up`;
+  // No categorise but other things pending — softer copy.
+  return totalCount === 1
+    ? 'One thing waiting for you.'
+    : `${totalCount} small things waiting for you.`;
 }

@@ -490,18 +490,20 @@ export default function DashboardPage() {
         description="Your TRAIL to financial freedom"
       />
 
+      {/* Phase 42 PR6.5e — Persistent reconciliation nudge.
+          Anchored ABOVE the TRAIL hero (top of feed pattern;
+          YNAB / Mint / Pocketbook). Per-session collapse via
+          sessionStorage so it shows every fresh visit, not just
+          once per UTC day. Self-hides when nothing to do or when
+          the user has globally opted out. Per Reza directive
+          2026-05-08: reconciliation is the most-recurring user
+          task — surface it persistently, not on a 24h gate. */}
+      <PendingActionsPrompt />
+
       {/* TRAIL Stage Indicator */}
       <div className="mb-6">
         <TrailStageIndicator />
       </div>
-
-      {/* Phase 42 PR6.5b — Pending-actions strip (non-modal). Anchored
-          above the Daily Pulse so a returning user sees their bundled
-          quick-wins first; collapsible (X) and opt-out reachable. Per
-          Reza decision 2026-05-07: non-modal strip over modal-on-login
-          to avoid the defensive-dismiss reflex / inbox-zero anxiety
-          the modal pattern trains. Self-hides when nothing to do. */}
-      <PendingActionsPrompt />
 
       {/* Phase 42 PR6 — Daily Pulse engagement front door. Self-hides
           when the user has zero transactions in the current month. */}
