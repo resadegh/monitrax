@@ -211,17 +211,25 @@ BASIQ-onboarding behaviour: when BASIQ syncs a row that supersedes an existing Q
 **Out of PR4, queued:**
 - **PR4.5** (small) — wire the dry-run preview into the existing `<ImportWizard />` so the user sees "X duplicates / Y new" BEFORE the commit step + render a "merge / overwrite / skip" picker. The API + helpers are complete; future UI just renders the form.
 
-### PR5 — Vendor + Tax Pack (5 days)
+### PR5 — Vendor + Tax Pack ✅ SHIPPED 2026-05-07
 
-- New `Vendor` model promoted from `MerchantMapping` (D-42-5 scope)
-- Vendor card drawer (drill-in from any transaction merchant): annual totals, related properties, attached docs, cancel link if known
-- New `TaxCategoryMapping` registry (D-42-6) seeded with ~60 AU common items
-- Tax Pack export at `/dashboard/reports/tax-pack`:
-  - Per-property P&L workbook (XLSX, one sheet per property)
-  - All transactions CSV in **Xero bank-statement-import format** (date / amount / payee / particulars / reference) — accountant imports straight into Xero
-  - Receipt bundle ZIP (all `Document.documentType IN ('RECEIPT','INVOICE','UTILITY_BILL','RATE_NOTICE')` for the tax year)
-  - Summary PDF: ATO-label totals, depreciation schedule deltas, recurring obligations
-- BASIQ-onboarding behaviour: Tax Pack aggregates across BASIQ + QIF + RECEIPT + MANUAL sources transparently; a "data sources" footer on the summary PDF discloses which months were BASIQ-fed vs imported.
+The **load-bearing handoff to Xero** lands with this PR. Three out of five originally-scoped formats ship today; the remaining two (PDF summary, ZIP receipt bundle) defer to PR5.5 because they need new dependencies (`pdfkit`, `archiver`) that warrant separate review.
+
+- ✅ **`Vendor` model** promoted from `MerchantMapping` (D-42-5 scope). Hard FK to `CanonicalCategoryRegistry.defaultCategoryId`; per-user uniqueness on `(userId, normalisedName)`. NOT an AP master — no payment terms, no AP cycle, no invoice tracking. `MerchantMapping` continues to exist as the AI-learning surface; `Vendor` is the user-facing entity. New `lib/bookkeeping/vendor.ts` service: `lookupVendor`, `resolveOrCreateVendor` (race-tolerant; auto-seeds MCC from PR4 catalog), `getVendorAnnualTotals` (12-month trailing aggregator over `unified_transactions`), `CANCEL_URL_REGISTRY` (16 high-volume AU subscriptions seeded; `lookupCancelUrl` is the SSOT lookup).
+- ✅ **`TaxCategoryMapping` registry** (D-42-6) — bridge between Monitrax canonical categories and ATO labels (D-1, D-2, D-5, D-9, D-10, Rental Schedule line items 21B-W, Div 40 / Div 43, etc.). 50+ system seed entries in `lib/bookkeeping/taxCategoryMapping.ts:SYSTEM_TAX_MAPPING_SEEDS` covering common AU rental + employee + small-business deductions. Idempotent `seedSystemMappings(userId)` runs lazily on first Tax Pack export (avoids the FK-bootstrap problem). `getMappingsForCategory` prefers user overrides over system defaults.
+- ✅ **Tax Pack summary builder** (`lib/bookkeeping/taxPack/summary.ts`) — `buildTaxPackSummary(userId, window)` aggregates per-property P&L blocks, ATO-label totals, and data-source disclosure (BASIQ vs QIF vs MANUAL vs RECEIPT vs CASH). Reads canonical `unified_transactions` rows; composes the `TaxCategoryMapping` registry; never invents numbers. `buildAuFyWindow(input?)` resolves "FY2025-26" / "2025-26" / "2025" to a UTC-aligned window (1 July → 30 June). Hard-coded `TAX_PACK_DISCLAIMER` surfaces in every export.
+- ✅ **Xero bank-statement-import CSV** (`lib/bookkeeping/taxPack/csvExporter.ts`) — the LOAD-BEARING handoff. Header order matches Xero's Import Statement spec exactly: `Date,Amount,Payee,Description,Reference`. AU date format DD/MM/YYYY; signed amount in one column (OUT negative); RFC 4180 escaping for commas / quotes / newlines. `renderXeroCsv(transactions, options?)` is the entry point; `transactionToXeroRow` is the canonical mapping. Filename pattern `monitrax-xero-import-YYYY-MM-DD-fy<label>.csv` so the downloaded artefact is self-describing.
+- ✅ **Per-property XLSX workbook** (`lib/bookkeeping/taxPack/xlsxExporter.ts`) — uses the existing `xlsx` dep (Phase 16). Sheet ordering: Summary → ATO Labels → Property: \<name\> per property. Sheet names sanitised against Excel's banned character set + 31-char limit. Signed amounts preserved as plain numbers so the accountant can SUM in their own columns.
+- ✅ **API**: `GET /api/bookkeeping/vendors` (list); `GET /api/bookkeeping/vendors/[id]` (vendor card with annual totals + related properties + linked contract + cancel URL); `GET /api/bookkeeping/tax-pack/export?fy=&format=csv|xlsx|json` (the load-bearing handoff endpoint; returns binary streams for csv/xlsx with proper `Content-Disposition` + `X-Monitrax-FY` + `X-Monitrax-Tx-Count` headers).
+- ✅ **Tests** — 39 new across `tests/bookkeeping/{xeroCsvExporter,taxPackSummary,vendor}.test.ts`. Xero CSV format pinned (header order, DD/MM/YYYY, signed amount, RFC 4180 escaping, empty-set handling). FY-window math (FY2025-26 = 1 Jul 2025 → 30 Jun 2026; January edge cases). Sheet-name sanitisation. Cancel-URL registry hygiene (https-only, 16+ entries). **Cumulative: 160/160 green** (PR1 27 + PR2 13 + PR3 32 + PR4 48 + PR5 39 — note: 39 added across the new files).
+
+BASIQ-onboarding behaviour: Tax Pack aggregates BASIQ + QIF + CSV + OFX + RECEIPT + MANUAL + CASH sources transparently. Per-source counts surface in `summary.dataSources.sources`; per-month breakdowns expose `basiqMonths` vs `importedMonths` vs `manualOnlyMonths` so the accountant can assess provenance at a glance. The disclosure rolls into the JSON summary today; the future PDF (PR5.5) renders it as a footer block.
+
+**Migration:** `prisma/migrations/20260511200000_phase_42_pr5_vendor_tax_pack/migration.sql`. CREATE TABLE × 2, indexes, FKs. NO destructive ALTER, NO DROP, NO row UPDATE/DELETE. CLAUDE.md §12.11 N/A.
+
+**Out of PR5, queued:**
+- **PR5.5** (small + needs deps) — PDF summary (`pdfkit`) + receipt bundle ZIP (`archiver`). Both are net-new packages that warrant separate dep-review; the JSON + XLSX + CSV exports already cover the accountant's primary workflow. PR5.5 is the polish layer.
+- **PR5.6** (small) — Vendor card drawer UI on the Activity surface (drill-in from any transaction merchant); `<TaxPackExportButton />` on the Reports page. The API + service surface are complete; future UI just renders the form.
 
 ### PR6 — The Engagement Layer (6 days)
 

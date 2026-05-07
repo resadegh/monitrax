@@ -3112,3 +3112,79 @@ Rule-engine match always wins over the seed; the seed only fires when no rule ma
 ### Out of PR4, queued
 
 - **PR4.5** (small) — wire the `dryRun: true` preview into the existing `<ImportWizard />` so the user sees the dedup verdict + sanity banner BEFORE the commit step.
+
+---
+
+## **10.46 Phase 42 PR5 — Vendor + Tax Pack export (PR — shipped 2026-05-07)**
+
+Fifth sub-PR of the Phase 42 stream. The **load-bearing handoff to Xero**. Two new tables, three new exporters, one new API surface (vendors + tax-pack-export).
+
+### New tables
+
+| Table | Purpose | Key fields | Indexes |
+|---|---|---|---|
+| `vendors` | Consumer-side merchant card. Annual totals + contracts + cancel link + default category. NOT an AP master. | `(userId, normalisedName)` UNIQUE; `defaultCategoryId` FK→`canonical_category_registry` SetNull-on-delete; optional `mcc` / `abn` / `cancelUrl` / `contractDocumentId` | UNIQUE on `(userId, normalisedName)`; secondary on `(userId)` + `(userId, mcc)` |
+| `tax_category_mapping` | Bridge between Monitrax canonical categories and ATO labels (D-1, Rental Schedule 21G, Div 40 etc.). System seeds (`userId IS NULL`) preferred user overrides (`userId` set). | `canonicalCategoryId` FK→`canonical_category_registry` Cascade-on-delete; `(userId, canonicalCategoryId, atoLabel)` UNIQUE | UNIQUE composite + secondary on `(userId)` + `(atoLabel)` + `(canonicalCategoryId)` |
+
+### Service surface (`lib/bookkeeping/`)
+
+| Module | Exports | Used by |
+|---|---|---|
+| `vendor.ts` | `lookupVendor` / `resolveOrCreateVendor` (race-tolerant) / `getVendorAnnualTotals` (12-month aggregator over `unified_transactions`) / `CANCEL_URL_REGISTRY` (16 high-volume AU subs seeded) / `lookupCancelUrl` / `normaliseVendorName` | `app/api/bookkeeping/vendors/[id]/route.ts`; future PR5.6 vendor card UI |
+| `taxCategoryMapping.ts` | `SYSTEM_TAX_MAPPING_SEEDS` (50+ AU defaults) / `seedSystemMappings` (idempotent) / `getMappingsForCategory` (user-overrides-win) | `lib/bookkeeping/taxPack/summary.ts` |
+| `taxPack/summary.ts` | `buildAuFyWindow` / `buildTaxPackSummary` / `fetchTaxPackTransactions` / `TAX_PACK_DISCLAIMER` | tax-pack-export route |
+| `taxPack/csvExporter.ts` | `formatXeroDate` / `escapeCsv` / `formatXeroAmount` / `transactionToXeroRow` / `renderXeroRow` / `renderXeroCsv` / `XERO_CSV_HEADER` | tax-pack-export route |
+| `taxPack/xlsxExporter.ts` | `buildTaxPackXlsx` / `sanitiseSheetName` / `suggestedXlsxFilename` | tax-pack-export route |
+
+### Xero CSV format contract (D-42-load-bearing)
+
+Header order pinned:
+
+```
+Date,Amount,Payee,Description,Reference
+22/10/2026,-42.50,Coles,Groceries,REF123
+```
+
+- Date DD/MM/YYYY (AU)
+- Amount signed in one column (OUT negative)
+- RFC 4180 escaping (commas / quotes / newlines wrapped)
+- LF line endings
+- Trailing newline (RFC 4180)
+
+If the format drifts, Xero rejects the import. Tests pin every contract.
+
+### Tax Pack summary shape
+
+```ts
+TaxPackSummary {
+  userId: string;
+  generatedAt: Date;
+  window: TaxPackWindow;            // { label: 'FY2025-26', start, end }
+  totals: { incomeGross, expenseTotal, netCashflow, transactionCount };
+  atoLabels: AtoLabelTotals[];      // sorted by atoLabel
+  perProperty: PerPropertyPL[];     // sorted by propertyName
+  dataSources: { sources, basiqMonths, importedMonths, manualOnlyMonths };
+  disclaimer: string;               // hard-coded TAX_PACK_DISCLAIMER
+}
+```
+
+### API additions
+
+| Route | Verb | Purpose |
+|---|---|---|
+| `/api/bookkeeping/vendors` | GET | List user's vendors |
+| `/api/bookkeeping/vendors/[id]` | GET | Vendor card with annual totals + related properties + linked contract + cancel URL |
+| `/api/bookkeeping/tax-pack/export?fy=&format=csv\|xlsx\|json` | GET | The load-bearing handoff. Returns binary streams for csv/xlsx with `Content-Disposition` + `X-Monitrax-FY` + `X-Monitrax-Tx-Count` headers. |
+
+### Tests
+
+39 new across `tests/bookkeeping/{xeroCsvExporter,taxPackSummary,vendor}.test.ts`. Cumulative: 160/160 green (PR1 27 + PR2 13 + PR3 32 + PR4 48 + PR5 39).
+
+### Migration
+
+`prisma/migrations/20260511200000_phase_42_pr5_vendor_tax_pack/migration.sql` — CREATE TABLE × 2, indexes, FKs. NO destructive ALTER, NO DROP, NO row UPDATE/DELETE. CLAUDE.md §12.11 N/A.
+
+### Out of PR5, queued
+
+- **PR5.5** — PDF summary (`pdfkit`) + receipt ZIP bundle (`archiver`). Net-new deps; warrant separate review.
+- **PR5.6** — Vendor card drawer UI + Tax Pack export button on Reports.

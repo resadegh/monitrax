@@ -1707,3 +1707,69 @@ NONE. PR4 introduces no Prisma `update` / `upsert` / `delete` / `updateMany` / `
 ### PR
 - Branch: `claude/phase-42-pr4-qif-parity`
 - Status: pending push + open
+
+
+---
+
+## Session: phase-42-pr5-vendor-tax-pack
+
+### Changes Made
+- **Type**: Feature — fifth sub-PR of the Phase 42 stream; the load-bearing handoff to Xero
+- **Scope**: Vendor model + TaxCategoryMapping registry + Tax Pack export (CSV + XLSX + JSON)
+- **Description**: Closes the consumer ↔ accountant handoff loop. The accountant downloads `monitrax-xero-import-<fy>.csv` from `/api/bookkeeping/tax-pack/export?format=csv` and imports it directly into Xero's Bank Statement Import. Per-property P&L workbook ships as XLSX (one sheet per property + Summary + ATO Labels). Structured JSON for programmatic consumers. PDF + ZIP receipt-bundle deferred to PR5.5 (need new deps).
+
+### Files Modified / Added
+- `prisma/schema.prisma` — `Vendor` model (consumer-side card; NOT AP master) + `TaxCategoryMapping` model (system-seeded ATO label bridge); back-relations on `User` + `CanonicalCategoryRegistry`.
+- `prisma/migrations/20260511200000_phase_42_pr5_vendor_tax_pack/migration.sql` — additive only (CREATE TABLE × 2 + indexes + FKs; §12.11 N/A).
+- `lib/bookkeeping/vendor.ts` (NEW) — service helpers + 16-entry CANCEL_URL_REGISTRY for high-volume AU subscriptions.
+- `lib/bookkeeping/taxCategoryMapping.ts` (NEW) — 50+ system seed entries + idempotent `seedSystemMappings`.
+- `lib/bookkeeping/taxPack/summary.ts` (NEW) — canonical aggregator with FY-window resolution + per-property P&L blocks + ATO label totals + data-source disclosure.
+- `lib/bookkeeping/taxPack/csvExporter.ts` (NEW) — Xero bank-statement-import CSV format pinned (header order, DD/MM/YYYY, signed amount, RFC 4180 escaping).
+- `lib/bookkeeping/taxPack/xlsxExporter.ts` (NEW) — per-property P&L workbook using existing `xlsx` dep (Phase 16); sheet-name sanitisation against Excel's banned characters + 31-char limit.
+- `app/api/bookkeeping/vendors/route.ts` (NEW) — list endpoint.
+- `app/api/bookkeeping/vendors/[id]/route.ts` (NEW) — vendor card with annual totals + related properties + linked contract + cancel URL.
+- `app/api/bookkeeping/tax-pack/export/route.ts` (NEW) — load-bearing handoff endpoint. CSV / XLSX / JSON formats. `Content-Disposition` headers for download UX; `X-Monitrax-FY` + `X-Monitrax-Tx-Count` headers for programmatic consumers.
+- `tests/bookkeeping/xeroCsvExporter.test.ts` (NEW) — 22 tests on Xero CSV format contract.
+- `tests/bookkeeping/taxPackSummary.test.ts` (NEW) — 9 tests on FY-window math + sheet-name sanitisation.
+- `tests/bookkeeping/vendor.test.ts` (NEW) — 8 tests on name normalisation + cancel-URL registry hygiene.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR5 row in §4 flipped to ✅ SHIPPED.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #42 updated to "5 of 6 SHIPPED, PR6 (Engagement Layer) next"; new Recently Completed entry.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.46 documenting schema + service surface + Xero CSV contract.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+(Pure application-layer feature work + additive schema.)
+
+Docs updated:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR5 → ✅ SHIPPED
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #42 status; Recently Completed entry
+- `docs/architecture/03_DATA_MODEL.md` §10.46 — schema + service surface + Xero CSV contract
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE. PR5 introduces no Prisma `update` / `upsert` / `delete` / `updateMany` / `deleteMany` operations. All writes are CREATEs:
+- `seedSystemMappings` writes new `TaxCategoryMapping` rows; uses try/catch around `create` for race-tolerance (concurrent seeds collapse on the unique index)
+- `resolveOrCreateVendor` writes new `Vendor` rows; same pattern
+
+Both are idempotent on the unique index — re-running is safe. No existing rows touched.
+
+### Build Status
+- [x] `npx prisma generate` clean
+- [x] `npx tsc --noEmit` clean (only pre-existing `stripe` module noise)
+- [x] `npx vitest run tests/bookkeeping/` — 160/160 green (PR1 27 + PR2 13 + PR3 32 + PR4 48 + PR5 39)
+
+### PR
+- Branch: `claude/phase-42-pr5-vendor-tax-pack`
+- Status: pending push + open
