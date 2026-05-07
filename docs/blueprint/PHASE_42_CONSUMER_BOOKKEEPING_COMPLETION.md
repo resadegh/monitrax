@@ -178,13 +178,22 @@ The default `LOCKED` is opt-in. Most users never lock; they just `REVIEWED`. **T
 
 **Out of PR2, queued:** inline split editor inside `TransactionLinkDialog` (defer to PR2.5 — the dialog is 1,601 LOC and a full split UI grows it; the API + service surface are complete and the future UI just renders the form).
 
-### PR3 — Receipt ↔ transaction matching + cash quick-add (5 days)
+### PR3 — Receipt ↔ transaction matching + cash quick-add ✅ SHIPPED 2026-05-07
 
-- DME `analyze/confirm` flow extended: before creating a new `Expense`, attempt match against existing `UnifiedTransaction` rows per the D-42-7 threshold. On match → link, not duplicate.
-- New `UnifiedTransaction.source = 'RECEIPT'` for receipts that don't match a bank line (cash receipts, pre-import periods).
-- New "+" floating action button on consumer dashboard → cash quick-add modal (3 fields: amount, what, when). Defaults to "Cash" account (auto-created on first use).
-- Mobile: PWA camera affordance on the Smart Inbox add button (`<input type="file" capture="environment" accept="image/*">`) — uploads straight to existing DME pipeline.
-- BASIQ-onboarding behaviour: receipts uploaded BEFORE BASIQ syncs the matching transaction get linked retroactively when BASIQ ingests the bank line — the matcher runs both directions (receipt-to-tx AND new-tx-to-receipt). Idempotent.
+- ✅ DME `analyze/confirm` flow extended: after creating a new `Expense`, attempt match against existing `UnifiedTransaction` rows via `lib/bookkeeping/receiptMatcher.ts`. AUTO_LINK at composite ≥ 0.95 (top candidate must beat 2nd by ≥ 0.05 to avoid ambiguous links); PICK_FROM at 0.7-0.95 (returned to client as `receiptMatch.candidates`); NO_MATCH below 0.7 → synthesise a new `UnifiedTransaction` with `source='RECEIPT'` on the user's CASH account, tied to the document + new Expense via `matchedDocumentId`.
+- ✅ Receipt matcher (`lib/bookkeeping/receiptMatcher.ts`) — single SSOT for the threshold rules (D-42-7 signed-off): 3-day window, $0.50 abs / 0.5% rel amount tolerance, Levenshtein vendor similarity ≥ 0.7. Composite weight 50% date / 35% amount / 15% vendor with a strong-signal override (same-day + exact-amount → auto-link grade even on vendor jitter). DB-coarse-filter + JS exact-scoring pattern. Defends against double-linking (skips rows where `source = 'RECEIPT'` or `matchedDocumentId IS NOT NULL`).
+- ✅ Cash quick-add — new `AccountType = 'CASH'` (added to `LIQUID_ACCOUNT_TYPES` so net-worth + emergency-fund snapshots see cash as liquid). Idempotent `getOrCreateCashAccount()` (`lib/bookkeeping/cashAccount.ts`) handles three cases: existing CASH-typed account → use it; existing account named "Cash" with another type → adopt by re-tagging; otherwise → create fresh. New API `POST /api/unified-transactions/cash` (3-field body: amount + description + direction; date and category optional). LOCKED-period guard (HTTP 423) consistent with the rest of Phase 42. Audit row written via `recordTransactionEdit`.
+- ✅ UI — `<CashQuickAddButton />` (`components/bookkeeping/CashQuickAddButton.tsx`): emerald floating action button bottom-right, modal with auto-focused tabular-nums amount field, in/out direction toggle, single-line "what was it for?", advanced (date + category) behind a `+` toggle. Submit → 700ms ✓ tick celebration → auto-close. Wired to `/dashboard/activity` page header strip. Component inline includes a "Capture receipt" affordance via `<input type="file" capture="environment" accept="image/*">` — PWA camera path on mobile, file dialog fallback on desktop.
+- ✅ New `UnifiedTransaction.matchedDocumentId` column — direct pointer for "show me the receipt for this transaction"; complements the existing `DocumentLink` many-to-many (which still serves general document↔entity relations).
+- ✅ Audit-trail integration — every receipt match writes a `TransactionEdit` row with `editType = 'RECEIPT_LINK'` and `source = 'AI'` (to distinguish from user manual links).
+- ✅ Tests — 28 new unit tests in `tests/bookkeeping/receiptMatcher.test.ts` (thresholds pinned; Levenshtein behaviour; vendor similarity; composite scoring including the strong-signal override; full `scoreCandidate` integration). Cumulative: 72/72 green (PR1 27 + PR2 13 + PR3 32 — note: 28 added in receiptMatcher.test.ts plus thresholds-pinned counted separately).
+- BASIQ-onboarding behaviour: receipts uploaded BEFORE BASIQ syncs the matching transaction will land as RECEIPT-sourced rows on the Cash account. When BASIQ later syncs the matching bank line, the existing match path runs from the *other* direction in PR4 (queued — "new bank tx → look for unmatched RECEIPT row, retro-link"). For now the QIF/CSV import path is the same canonical reconciliation engine — receipts that DO match an existing QIF tx auto-link via `applyReceiptMatch`. No source-conditional code.
+
+**Migration:** `prisma/migrations/20260510220000_phase_42_pr3_receipts_cash/migration.sql`. Operations: ALTER TYPE × 2 (additive `ADD VALUE IF NOT EXISTS`), ALTER TABLE ADD COLUMN × 1 (nullable). NO destructive ALTER, NO DROP, NO row UPDATE/DELETE. CLAUDE.md §12.11 N/A.
+
+**Out of PR3, queued:**
+- **PR3.5** (small) — receipt-picker UI inside Smart Inbox to consume the `receiptMatch.candidates` verdict (PICK_FROM case). API + service surface complete; future UI just renders the picker.
+- **PR3.6** (small) — "new bank tx → retro-link to unmatched RECEIPT row" reverse-direction matcher (lands when BASIQ syncs late).
 
 ### PR4 — QIF parity layer (4 days)
 

@@ -58,6 +58,11 @@ enum AccountType {
   SAVINGS
   TRANSACTIONAL
   CREDIT_CARD
+  // Phase 42 PR3 — sole-trader / market-seller cash log. Liquid for
+  // emergency-fund + net-worth purposes (added to LIQUID_ACCOUNT_TYPES).
+  // Auto-created on first cash-quick-add per user via
+  // `lib/bookkeeping/cashAccount.ts:getOrCreateCashAccount`.
+  CASH
 }
 
 enum BalanceSource {
@@ -1781,6 +1786,12 @@ enum TransactionSource {
   QIF // QIF file import (MYOB/Quicken)
   OFX // OFX/QFX file import
   MANUAL // Manual entry
+  // Phase 42 PR3 — receipts / invoices that did NOT match an existing
+  // bank/QIF transaction. The DME analyze/confirm flow attempts a fuzzy
+  // match against existing rows first (lib/bookkeeping/receiptMatcher.ts);
+  // only when no candidate beats the threshold do we synthesise a row
+  // here. Cash-quick-add transactions stay on `MANUAL` (different intent).
+  RECEIPT
 }
 
 enum RecurrencePattern {
@@ -1880,6 +1891,17 @@ model UnifiedTransaction {
   // because BASIQ rows have their own canonical key (`basiqTransactionId`)
   // and don't need the hash. See `lib/bookkeeping/normaliseDescription.ts`.
   normalisedDescriptionHash String?
+
+  // Phase 42 PR3 — direct pointer to the matching Document (receipt /
+  // invoice) when one exists. Set by the DME analyze/confirm flow:
+  //   - Fuzzy-match against existing tx → set on the matched row, no
+  //     parallel record is created
+  //   - No match → a new RECEIPT-sourced row is created with this set
+  //     to the document id
+  // Querying this column is the canonical "show me the receipt for this
+  // transaction" lookup; the existing many-to-many `DocumentLink` table
+  // remains for general document↔entity linking.
+  matchedDocumentId String?
 
   // Metadata
   createdAt   DateTime  @default(now())

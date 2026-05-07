@@ -1423,3 +1423,77 @@ Other destructive Prisma operations:
 ### PR
 - Branch: `claude/phase-42-pr2-splits-bulk`
 - Status: pending push + open
+
+
+---
+
+## Session: phase-42-pr3-receipts-cash
+
+### Changes Made
+- **Type**: Feature — third sub-PR of the Phase 42 stream
+- **Scope**: Receipt → transaction matching extends DME analyze/confirm; new `TransactionSource.RECEIPT` enum value; new `AccountType.CASH` with idempotent auto-creation; cash quick-add API + FAB component; PWA camera-capture affordance.
+- **Description**: Implements `PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR3. Single SSOT for the threshold rules in `lib/bookkeeping/receiptMatcher.ts` (D-42-7 signed-off): 3-day window, $0.50 abs / 0.5% rel amount tolerance, Levenshtein vendor similarity, 50/35/15 composite weighting with strong-signal override. AUTO_LINK / PICK_FROM / NO_MATCH verdict drives the analyze/confirm flow. NO_MATCH synthesises a RECEIPT-sourced UnifiedTransaction on the user's Cash account so receipts ALWAYS land in the canonical ledger. Cash quick-add ships as the 3-second sole-trader path.
+
+### Files Modified / Added
+- `prisma/schema.prisma` — `TransactionSource.RECEIPT` + `AccountType.CASH` + `UnifiedTransaction.matchedDocumentId` (nullable). JSDoc throughout points at the spec doc + PR sequencing.
+- `prisma/migrations/20260510220000_phase_42_pr3_receipts_cash/migration.sql` — additive only. ALTER TYPE × 2 (`ADD VALUE IF NOT EXISTS`), ALTER TABLE ADD COLUMN × 1 (nullable). NO destructive ALTER, NO DROP, NO row UPDATE/DELETE.
+- `lib/types/prisma-enums.ts` — `AccountType` extended with `CASH`; `LIQUID_ACCOUNT_TYPES` includes `CASH` (cash is liquid for emergency-fund + net-worth purposes).
+- `lib/bookkeeping/receiptMatcher.ts` (NEW) — single SSOT for threshold rules. Pure helpers (`daysBetween`, `scoreDate`, `scoreAmount`, `levenshtein`, `vendorSimilarity`, `compositeScore`, `scoreCandidate`) + DB-touching `findReceiptMatches`. Defends against double-linking (skips RECEIPT-sourced rows + rows already with matchedDocumentId).
+- `lib/bookkeeping/cashAccount.ts` (NEW) — idempotent `getOrCreateCashAccount(userId)`. Three-case resolution: existing CASH-typed → use; existing "Cash"-named with another type → adopt by re-tagging (preserves balance + other user-set fields); otherwise → fresh CASH account with $0 opening balance + auto-resolved PERSONAL_NAME LegalEntity (Phase 41a).
+- `app/api/unified-transactions/cash/route.ts` (NEW) — POST endpoint. 3-field body (amount + description + direction); optional date + category. LOCKED-period guard returns HTTP 423. SSOT bridge through `resolveOrCreateCategory`. Updates Cash account's `currentBalance` to reflect the new transaction. Audit row via `recordTransactionEdit`.
+- `app/api/documents/analyze/confirm/route.ts` — extended CREATE_EXPENSE path with `applyReceiptMatch()` helper. AUTO_LINK updates the matched UnifiedTransaction's `expenseId` + `matchedDocumentId` and writes a `TransactionEdit` (editType=RECEIPT_LINK, source=AI). NO_MATCH synthesises a RECEIPT-sourced row on the user's Cash account. PICK_FROM returns candidates in `receiptMatch.candidates` for the future PR3.5 picker UI.
+- `components/bookkeeping/CashQuickAddButton.tsx` (NEW) — emerald FAB bottom-right with modal. Auto-focused tabular-nums amount; in/out direction toggle; single-line description; advanced (date + category) behind a `+` toggle. 700ms ✓ tick celebration → auto-close. Inline `<input type="file" capture="environment" accept="image/*">` for PWA camera path on mobile.
+- `app/dashboard/activity/page.tsx` — wired `<CashQuickAddButton />` so `onCreated` triggers `fetchTransactions` + `fetchSummary`.
+- `tests/bookkeeping/receiptMatcher.test.ts` (NEW) — 32 unit tests on thresholds-as-pinned, daysBetween (UTC-day-boundary semantics), Levenshtein, vendorSimilarity normalisation, compositeScore weighting + strong-signal override, scoreCandidate integration.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR3 row in §4 flipped to ✅ SHIPPED with the full deliverable list + queued items (PR3.5).
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #42 updated to "PR1+PR2+PR3 of 6 SHIPPED, PR4 next"; new Recently Completed entry.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.44 documenting the schema additions + service surface + threshold rules + tests + migration.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (audit-trail extended to RECEIPT_LINK mutations; AI-source attribution distinguishes auto-links from manual user links)
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR3 → ✅ SHIPPED
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #42 status; Recently Completed entry
+- `docs/architecture/03_DATA_MODEL.md` §10.44 — schema documentation
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows:
+
+1. `lib/bookkeeping/cashAccount.ts:getOrCreateCashAccount` — `prisma.account.update({ where: { id }, data: { type: 'CASH' } })` ON the adoption path (existing account named "Cash" with another type).
+   - **`where` clause matches:** the row found by `findFirst({ where: { userId, name: 'Cash' } })` in the same function — single row, ownership-checked.
+   - **Columns overwritten / rows deleted:** `type` only — flips e.g. `TRANSACTIONAL` → `CASH`. Balance, name, institution, balanceSource, basiq fields all preserved.
+   - **Guard:** the function only enters this path when no `type='CASH'` row exists AND a row literally named "Cash" exists. The intent is unambiguous adoption; a user who manually creates an account named "Cash" wants this to be the cash account.
+
+2. `app/api/documents/analyze/confirm/route.ts:applyReceiptMatch` — `prisma.unifiedTransaction.update({ where: { id }, data: { expenseId, matchedDocumentId } })` on the AUTO_LINK path.
+   - **`where` clause matches:** the matched-transaction id from `findReceiptMatches`. The matcher's coarse-filter already restricts to `userId` (one user's transactions only) and skips already-linked rows (`matchedDocumentId: null`).
+   - **Columns overwritten / rows deleted:** `expenseId` + `matchedDocumentId` only. The previous `expenseId` value is captured in the `TransactionEdit` `before` snapshot before the update.
+   - **Guard:** matcher pre-flight + audit-row before-snapshot; AUTO_LINK threshold (≥0.95 composite, beats 2nd by ≥0.05) is the user's signed-off threshold for "this is the same purchase."
+
+3. `app/api/unified-transactions/cash/route.ts` — `prisma.account.update({ where: { id }, data: { currentBalance: { increment }, balanceLastUpdatedAt } })` on the cash account.
+   - **`where` clause matches:** the cash account id returned by `getOrCreateCashAccount(auth.userId)` — single row, freshly verified to belong to the calling user.
+   - **Columns overwritten / rows deleted:** `currentBalance` (incremented by the signed transaction amount) + `balanceLastUpdatedAt`.
+   - **Guard:** cash account is auto-created or adopted in the same request; the user explicitly initiated the cash-add via the FAB. The increment-by-amount semantic is the documented contract for cash logs.
+
+User confirmation: NOT REQUIRED for any of the three. Each is user-initiated through a documented endpoint; ownership-checked; audit-trailed where data identity (rather than system-managed counters) is at stake.
+
+### Build Status
+- [x] `npx prisma generate` clean
+- [x] `npx tsc --noEmit` clean (only pre-existing `stripe` module noise)
+- [x] `npx vitest run tests/bookkeeping/` — 72/72 green (PR1 27 + PR2 13 + PR3 32)
+
+### PR
+- Branch: `claude/phase-42-pr3-receipts-cash`
+- Status: pending push + open

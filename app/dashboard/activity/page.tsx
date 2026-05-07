@@ -53,6 +53,7 @@ import { ImportWizard } from '@/components/bank/ImportWizard';
 import { TransactionLinkDialog } from '@/components/transactions/TransactionLinkDialog';
 import { MonthlyReviewPill } from '@/components/bookkeeping/MonthlyReviewPill';
 import { BulkActionToolbar } from '@/components/bookkeeping/BulkActionToolbar';
+import { CashQuickAddButton } from '@/components/bookkeeping/CashQuickAddButton';
 import { formatCurrency } from '@/lib/utils/formatters';
 
 // ---------------------------------------------------------------------------
@@ -583,6 +584,14 @@ export default function ActivityPage() {
           </>
         )}
       </div>
+
+      {/* Phase 42 PR3 — cash quick-add FAB (3-second sole-trader path) */}
+      <CashQuickAddButton
+        onCreated={() => {
+          fetchTransactions();
+          fetchSummary();
+        }}
+      />
 
       {/* Phase 42 PR2 — Bulk action toolbar (shows when ≥1 selected) */}
       <BulkActionToolbar

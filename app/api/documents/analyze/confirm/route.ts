@@ -16,6 +16,11 @@ import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { SuggestedActionType } from '@/lib/documents/intelligence';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import {
+  findReceiptMatches,
+  type ReceiptMatchVerdict,
+} from '@/lib/bookkeeping/receiptMatcher';
+import { recordTransactionEdit, pickLinkFields } from '@/lib/bookkeeping/transactionEditAudit';
 
 // Types defined locally to avoid dependency on Prisma client regeneration timing
 type ExpenseCategory =
@@ -79,10 +84,28 @@ export const POST = withPermission('report.export', async (request, auth) => {
 
     // Execute the action
     let entity: { type: string; id: string; data: Record<string, unknown> } | null = null;
+    // Phase 42 PR3 — receipt match verdict (only populated for
+    // CREATE_EXPENSE on a receipt). The flow is:
+    //   1. Create the Expense (existing behaviour preserved)
+    //   2. Attempt fuzzy match against existing UnifiedTransactions
+    //   3a. AUTO_LINK → link the matched tx to the new Expense + set
+    //       matchedDocumentId; no parallel RECEIPT row created
+    //   3b. PICK_FROM → return the candidates so the UI can prompt
+    //   3c. NO_MATCH → create a new RECEIPT-sourced UnifiedTransaction
+    //       tied to the document + the new Expense
+    let receiptMatch: ReceiptMatchVerdict | null = null;
 
     switch (action) {
       case 'CREATE_EXPENSE':
         entity = await createExpenseFromAnalysis(userId, analysis.document.id, data);
+        if (entity) {
+          receiptMatch = await applyReceiptMatch(
+            userId,
+            analysis.document.id,
+            entity.id,
+            data
+          );
+        }
         break;
 
       case 'CREATE_INCOME':
@@ -141,6 +164,10 @@ export const POST = withPermission('report.export', async (request, auth) => {
     return NextResponse.json({
       success: true,
       entity,
+      // Phase 42 PR3 — only present for CREATE_EXPENSE on a receipt;
+      // tells the client whether we auto-linked, want it to prompt,
+      // or created a fresh RECEIPT-sourced tx.
+      receiptMatch,
     });
   } catch (error) {
     console.error('[API] Confirm action error:', error);
@@ -153,6 +180,114 @@ export const POST = withPermission('report.export', async (request, auth) => {
     );
   }
 });
+
+// ============================================================================
+// Phase 42 PR3 — Receipt → transaction reconciliation
+// ============================================================================
+
+/**
+ * Apply the canonical receipt-match flow after a CREATE_EXPENSE confirm.
+ *
+ * Per Phase 42 spec §3 D-42-7 thresholds (lib/bookkeeping/receiptMatcher.ts):
+ *   - AUTO_LINK (composite ≥ 0.95) → link matched tx to the new Expense
+ *     + set tx.matchedDocumentId. NO new RECEIPT row created.
+ *   - PICK_FROM (0.7-0.95) → return verdict; UI prompts user. No DB
+ *     mutation here — the user-picker endpoint will be a follow-up
+ *     (PR3.5) that POSTs the chosen tx id and runs the same link logic.
+ *   - NO_MATCH (<0.7) → create a new UnifiedTransaction with
+ *     source='RECEIPT' tied to the document + the new Expense. The
+ *     existing receipt-style record stays as the canonical row for
+ *     "this is the bookkeeping reality of this purchase."
+ *
+ * Returns the verdict so the caller can include it in the response.
+ * Per CLAUDE.md §12.3 — the matcher is the single source of truth
+ * for the threshold rules; this function is wiring, not duplication.
+ */
+async function applyReceiptMatch(
+  userId: string,
+  documentId: string,
+  expenseId: string,
+  data: Record<string, unknown>
+): Promise<ReceiptMatchVerdict | null> {
+  const amountRaw = Number(data.amount);
+  const dateStr = typeof data.date === 'string' ? data.date : null;
+  const vendor = typeof data.vendor === 'string' ? data.vendor : undefined;
+  const accountId = typeof data.accountId === 'string' ? data.accountId : null;
+
+  if (!Number.isFinite(amountRaw) || amountRaw === 0 || !dateStr) {
+    // Not enough data to attempt a match — caller can still create the
+    // Expense; we just don't surface a receiptMatch verdict.
+    return null;
+  }
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const verdict = await findReceiptMatches(userId, {
+    amount: Math.abs(amountRaw),
+    date,
+    vendor,
+    accountId,
+  });
+
+  if (verdict.kind === 'AUTO_LINK') {
+    const matched = verdict.match.transaction;
+    const before = pickLinkFields(matched);
+    const updated = await prisma.unifiedTransaction.update({
+      where: { id: matched.id },
+      data: {
+        expenseId,
+        matchedDocumentId: documentId,
+      },
+    });
+    recordTransactionEdit({
+      transactionId: matched.id,
+      userId,
+      editType: 'RECEIPT_LINK',
+      before,
+      after: pickLinkFields(updated),
+      source: 'AI',
+    });
+    return verdict;
+  }
+
+  if (verdict.kind === 'NO_MATCH') {
+    // Synthesise a RECEIPT-sourced UnifiedTransaction so the receipt
+    // exists in the canonical ledger even when no bank match was found.
+    // The future Tax Pack export aggregates RECEIPT + bank rows into
+    // one timeline.
+    //
+    // We need an Account to attach it to — receipts don't have one.
+    // Use the user's Cash account (auto-created on first call). This
+    // is a deliberate choice: cash receipts (paper) and bank-paid
+    // receipts that didn't match a bank line both sit on Cash. The
+    // user can re-attribute via the [id] PATCH route later.
+    const { getOrCreateCashAccount } = await import('@/lib/bookkeeping/cashAccount');
+    const cashAccount = await getOrCreateCashAccount(userId);
+    const signedAmount = -Math.abs(amountRaw); // receipts are OUT spends
+    await prisma.unifiedTransaction.create({
+      data: {
+        userId,
+        accountId: cashAccount.id,
+        date,
+        amount: signedAmount,
+        currency: 'AUD',
+        direction: 'OUT',
+        description: vendor ?? 'Receipt',
+        merchantRaw: vendor ?? null,
+        merchantStandardised: vendor ?? null,
+        source: 'RECEIPT',
+        expenseId,
+        matchedDocumentId: documentId,
+        userCorrectedCategory: false,
+        processedAt: new Date(),
+      },
+    });
+    return verdict;
+  }
+
+  // PICK_FROM — leave it to the UI; do not mutate.
+  return verdict;
+}
 
 // ============================================================================
 // Entity Creation Functions
