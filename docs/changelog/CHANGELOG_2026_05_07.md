@@ -1579,3 +1579,63 @@ User confirmation: NOT REQUIRED for any of the three. Each is user-initiated thr
 ### PR
 - Branch: `claude/phase-42-pr3-receipts-cash`
 - Status: pending push + open
+
+
+---
+
+## Session: phase-42-pr4-qif-parity
+
+### Changes Made
+- **Type**: Feature — fourth sub-PR of the Phase 42 stream
+- **Scope**: QIF parity layer — MCC catalog + L-field seed + bank-statement sanity-check + re-import dry-run preview
+- **Description**: Closes the gap between QIF/CSV/OFX imports and BASIQ-grade categorisation accuracy. ~50 hard-coded AU merchants get MCC codes at import time; QIF `L` field becomes a +0.15 confidence seed; the source file's stated balances feed a sanity-check banner; a new `dryRun: true` flag returns the dedup verdict without committing. No schema changes — all deliverables are application-layer.
+
+### Files Modified / Added
+- `lib/bank/mccCatalog.ts` (NEW) — single SSOT for merchant → MCC. 47 entries across 14 category bands. Pure functions: `lookupMCC` (substring match, first-wins), `getMccEntry` (key-direct lookup), `normaliseMerchantForMcc`. Exposes `MCC_CATALOG_READONLY` for admin/inspector tooling.
+- `lib/bank/types.ts` — `NormalisedTransaction` gains `merchantCategoryCode?` + `bankSuppliedCategory?`. `RawTransaction` gains `bankSuppliedCategory?`.
+- `lib/bank/parsers/qif.ts` — QIF parser propagates `tx.category` (`L` field) onto `RawTransaction.bankSuppliedCategory`.
+- `lib/bank/normalisation.ts` — `normaliseTransaction` calls `lookupMCC(merchantStandardised)` and stamps `merchantCategoryCode` + propagates `bankSuppliedCategory`.
+- `lib/bank/categorisation.ts` — `categoriseTransaction` checks `bankSuppliedCategory` AFTER rules but BEFORE the uncategorised fallback. New `mapBankSuppliedCategory()` helper translates ~15 common bank-side category strings to Monitrax canonical labels at confidence 0.75. QIF `[Account]` brackets route to Transfer / Internal.
+- `lib/bookkeeping/importSanity.ts` (NEW) — `computeBalanceSanityCheck()` (opening + sum vs closing within $0.50 tolerance) + `computeDedupPreview()` (composes PR1's `computeDescriptionHash`; account-scoped; BASIQ rows excluded; sample-cap-at-5).
+- `app/api/unified-transactions/route.ts` — POST body accepts `openingBalance? + closingBalance? + dryRun? + source?`. `handleBatchImport` accumulates `importedSignedSum` across rows + calls `computeBalanceSanityCheck` at the end + surfaces `data.sanity` in the response. New `buildDryRunPreview()` helper runs the dedup-preview + sanity-check WITHOUT writing rows. MCC catalog applied at write time + propagated to `merchantCategoryCode` on the `prisma.unifiedTransaction.create` call. Source pluggable from request body.
+- `components/bookkeeping/ImportSanityBanner.tsx` (NEW) — amber dismissable banner consuming the `data.sanity` shape.
+- `tests/bookkeeping/mccCatalog.test.ts` (NEW) — 23 tests on catalog hygiene + 11 high-volume merchants pinned + Uber-vs-UberEats disambiguation.
+- `tests/bookkeeping/importSanity.test.ts` (NEW) — 17 tests on sanity-check boundary cases + dedup-preview account scoping + BASIQ exclusion + sample-cap-at-5.
+- `tests/bookkeeping/qifLFieldSeed.test.ts` (NEW) — 8 tests on seed routing + rule-engine-wins precedence + transfer-bracket handling.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR4 row in §4 flipped to ✅ SHIPPED with full deliverable list.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #42 updated to "PR1+PR2+PR3+PR4 of 6 SHIPPED, PR5 next"; new Recently Completed entry.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.45 documenting the type extensions + service surface + categorisation precedence + tests.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+(Pure application-layer feature work; no schema, no infra, no compliance posture changes.)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR4 → ✅ SHIPPED
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #42 status; Recently Completed entry
+- `docs/architecture/03_DATA_MODEL.md` §10.45 — type-extension + service-surface documentation
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE. PR4 introduces no Prisma `update` / `upsert` / `delete` / `updateMany` / `deleteMany` operations beyond what already existed in `handleBatchImport` (the `prisma.unifiedTransaction.create` call is bare insert). The MCC catalog is read-only; the L-field seed is a categoriser-pass-through; the sanity-check + dedup preview are pure data-in / data-out helpers.
+
+### Build Status
+- [x] `npx prisma generate` clean
+- [x] `npx tsc --noEmit` clean (only pre-existing `stripe` module noise)
+- [x] `npx vitest run tests/bookkeeping/` — 120/120 green (PR1 27 + PR2 13 + PR3 32 + PR4 48)
+
+### PR
+- Branch: `claude/phase-42-pr4-qif-parity`
+- Status: pending push + open

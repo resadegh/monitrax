@@ -3038,3 +3038,77 @@ Date score decays linearly inside the 3-day window; outside the window → 0. Am
 ### Out of PR3, queued
 
 - **PR3.5** (small) — receipt-picker UI inside Smart Inbox to consume the `receiptMatch.candidates` PICK_FROM verdict; reverse-direction matcher ("new bank tx → unmatched RECEIPT row → retro-link") for late-BASIQ-sync cases.
+
+---
+
+## **10.45 Phase 42 PR4 — QIF parity layer (PR — shipped 2026-05-07)**
+
+Fourth sub-PR of the Phase 42 stream. Goal: bring QIF / CSV / OFX imports up to ~85% of BASIQ-grade categorisation accuracy. **No schema changes** — all deliverables are application-layer.
+
+### TypeScript type extensions (no DB migration)
+
+`NormalisedTransaction` (`lib/bank/types.ts`) gains two optional fields:
+
+```ts
+merchantCategoryCode?: string | null;  // ISO 18245 from MCC catalog at normalisation time
+bankSuppliedCategory?: string | null;  // QIF `L` field — categoriser's +0.15 confidence seed
+```
+
+`RawTransaction` gains `bankSuppliedCategory?` propagated from QIF parser's `L`-field extraction.
+
+### MCC catalog (`lib/bank/mccCatalog.ts`)
+
+47 high-volume AU merchants → ISO 18245 codes. Substring-match-on-normalised-merchant; first-pattern-wins (catalog ordering matters — food-delivery before rideshare so "Uber Eats" doesn't get mis-categorised). Single SSOT for the "what MCC does this merchant have?" question per CLAUDE.md §12.2.
+
+| Category band | Merchants | MCC |
+|---|---|---|
+| Grocery | Coles, Woolworths, Aldi, IGA, Costco | 5411 |
+| Hardware | Bunnings, Mitre 10 | 5200 |
+| Pharmacy | Chemist Warehouse, Priceline, Terry White | 5912 |
+| Department stores | Kmart, Target, Big W, Myer, David Jones | 5311 |
+| Electricity | AGL, Origin, EnergyAustralia, Red Energy | 4900 |
+| Telecom | Telstra, Optus, Vodafone/TPG | 4814 |
+| Streaming | Netflix, Spotify, Disney+, Stan, Binge | 4899 |
+| Petrol | BP, Shell, 7-Eleven, Caltex/Ampol, United | 5541 |
+| Rideshare | Uber, DiDi, Ola | 4121 |
+| Public transport | Opal/TfNSW, myki/PTV | 4111 |
+| Food delivery | Uber Eats, Menulog, DoorDash | 5814 |
+| Fast food | McDonald's, KFC, Subway, Starbucks | 5814 |
+| Insurance | NRMA, RACV, AAMI, Allianz, Medibank, Bupa | 6300 |
+| Tax / govt | ATO | 9311 |
+
+### Service surface
+
+| Module | Exports | Used by |
+|---|---|---|
+| `lib/bank/mccCatalog.ts` | `lookupMCC`, `getMccEntry`, `normaliseMerchantForMcc`, `MCC_CATALOG_READONLY` | `lib/bank/normalisation.ts`; `app/api/unified-transactions/route.ts` |
+| `lib/bookkeeping/importSanity.ts` | `computeBalanceSanityCheck`, `computeDedupPreview`, `BALANCE_SANITY_EPSILON` | `app/api/unified-transactions/route.ts` (dry-run + commit paths) |
+
+### API additions
+
+| Route | Verb | Change |
+|---|---|---|
+| `/api/unified-transactions` | POST | Body extended: `openingBalance? + closingBalance? + dryRun? + source?`. New response field `data.sanity` (always — `ran: false` when no balances supplied). `dryRun: true` returns dedup preview WITHOUT writing rows. |
+
+### Categorisation precedence (Phase 18 + 42 layered)
+
+```
+1. User / system rules                  → confidence 0.9
+2. Bank-supplied category (QIF L-field) → confidence 0.75 (= 0.6 base + 0.15 boost)
+3. AI fallback                          → variable
+4. Uncategorised                        → 0
+```
+
+Rule-engine match always wins over the seed; the seed only fires when no rule matched.
+
+### UI additions
+
+- `components/bookkeeping/ImportSanityBanner.tsx` — amber, dismissable banner that renders `data.sanity.message` from a batch-import response.
+
+### Tests
+
+78 new unit tests across `tests/bookkeeping/{mccCatalog,importSanity,qifLFieldSeed}.test.ts`. Cumulative: 120/120 green (PR1 27 + PR2 13 + PR3 32 + PR4 48).
+
+### Out of PR4, queued
+
+- **PR4.5** (small) — wire the `dryRun: true` preview into the existing `<ImportWizard />` so the user sees the dedup verdict + sanity banner BEFORE the commit step.

@@ -199,7 +199,21 @@ function determineCategoryType(
 }
 
 /**
- * Categorise a single transaction
+ * Categorise a single transaction.
+ *
+ * Phase 42 PR4 — order of precedence:
+ *   1. User / system rules — confidence 0.9 (unchanged from Phase 18).
+ *   2. Bank-supplied category (QIF `L` field) — confidence 0.75 (=
+ *      0.6 base + 0.15 boost). Lower than rule-engine to keep
+ *      hand-tuned rules authoritative; high enough to skip review
+ *      for the 90% of NAB / CBA / ANZ / Westpac QIFs that already
+ *      categorise correctly at the bank.
+ *   3. Uncategorised fallback.
+ *
+ * Per CLAUDE.md §12.2 SSOT — the L-field mapping is a tiny
+ * dictionary inline below; if it grows we promote to a separate
+ * file. For now ~10 AU bank-side category strings → Monitrax
+ * canonical labels keep the surface tight.
  */
 function categoriseTransaction(
   transaction: NormalisedTransaction,
@@ -227,6 +241,22 @@ function categoriseTransaction(
     }
   }
 
+  // Phase 42 PR4 — bank-supplied category seed (QIF `L` field).
+  if (transaction.bankSuppliedCategory) {
+    const mapped = mapBankSuppliedCategory(transaction.bankSuppliedCategory);
+    if (mapped) {
+      return {
+        ...transaction,
+        categoryType: determineCategoryType(mapped.categoryLevel1, transaction.direction),
+        categoryLevel1: mapped.categoryLevel1,
+        categoryLevel2: mapped.categoryLevel2,
+        subcategory: undefined,
+        confidenceScore: 0.75, // 0.6 base + 0.15 boost per spec §4 PR4
+        matchedRuleId: undefined,
+      };
+    }
+  }
+
   // No rule matched - return as uncategorised
   return {
     ...transaction,
@@ -237,6 +267,61 @@ function categoriseTransaction(
     confidenceScore: 0,
     matchedRuleId: undefined,
   };
+}
+
+/**
+ * Phase 42 PR4 — Map a bank-supplied category string (QIF `L` field)
+ * to Monitrax canonical (level1, level2). Returns null when the
+ * string isn't recognised — the categoriser falls through to
+ * `Uncategorised` and the user can re-tag manually.
+ *
+ * Pattern: substring match on the lowercased input. Tight by design
+ * — we don't want to ingest arbitrary bank-side taxonomy as truth.
+ * Order matters: more-specific entries first.
+ */
+function mapBankSuppliedCategory(
+  bankCategory: string
+): { categoryLevel1: string; categoryLevel2?: string } | null {
+  const norm = bankCategory.toLowerCase().trim();
+  // Strip QIF transfer brackets ("[Account Name]" → ignore — those
+  // are inter-account transfers, not categories).
+  if (norm.startsWith('[') && norm.endsWith(']')) {
+    return { categoryLevel1: 'Transfer', categoryLevel2: 'Internal' };
+  }
+
+  // Income side
+  if (/(salary|wages|payroll)/.test(norm)) return { categoryLevel1: 'Income', categoryLevel2: 'Salary' };
+  if (/(rent income|rental)/.test(norm)) return { categoryLevel1: 'Income', categoryLevel2: 'Rent' };
+  if (/(dividend|interest)/.test(norm)) return { categoryLevel1: 'Income', categoryLevel2: 'Investment' };
+  if (/refund/.test(norm)) return { categoryLevel1: 'Income', categoryLevel2: 'Refund' };
+
+  // Property
+  if (/(rate|council)/.test(norm)) return { categoryLevel1: 'Property', categoryLevel2: 'Rates' };
+  if (/(strata|body corporate)/.test(norm)) return { categoryLevel1: 'Property', categoryLevel2: 'Strata' };
+  if (/insurance/.test(norm)) return { categoryLevel1: 'Insurance' };
+  if (/water/.test(norm)) return { categoryLevel1: 'Utilities', categoryLevel2: 'Water' };
+
+  // Utilities
+  if (/(electric|gas|power)/.test(norm)) return { categoryLevel1: 'Utilities', categoryLevel2: 'Energy' };
+  if (/(internet|phone|telco)/.test(norm)) return { categoryLevel1: 'Utilities', categoryLevel2: 'Telecom' };
+
+  // Food
+  if (/(grocer|supermarket)/.test(norm)) return { categoryLevel1: 'Food & Dining', categoryLevel2: 'Groceries' };
+  if (/(dining|restaurant|cafe|food)/.test(norm)) return { categoryLevel1: 'Food & Dining' };
+
+  // Transport
+  if (/(fuel|petrol|gas station)/.test(norm)) return { categoryLevel1: 'Transport', categoryLevel2: 'Fuel' };
+  if (/(transport|public transport|opal|myki|tfnsw)/.test(norm)) return { categoryLevel1: 'Transport', categoryLevel2: 'Public Transit' };
+  if (/(uber|taxi|rideshare)/.test(norm)) return { categoryLevel1: 'Transport', categoryLevel2: 'Rideshare' };
+
+  // Health
+  if (/(medical|health|pharmacy|chemist|doctor)/.test(norm)) return { categoryLevel1: 'Health' };
+
+  // Subscriptions / entertainment
+  if (/(streaming|subscription|netflix|spotify)/.test(norm)) return { categoryLevel1: 'Subscriptions' };
+  if (/entertainment/.test(norm)) return { categoryLevel1: 'Entertainment' };
+
+  return null;
 }
 
 /**

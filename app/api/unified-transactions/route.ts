@@ -21,6 +21,11 @@ import {
 } from '@/lib/tie';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { replaceSplits } from '@/lib/bookkeeping/splits';
+import {
+  computeBalanceSanityCheck,
+  computeDedupPreview,
+} from '@/lib/bookkeeping/importSanity';
+import { lookupMCC } from '@/lib/bank/mccCatalog';
 
 // =============================================================================
 // GET - List Unified Transactions
@@ -140,7 +145,17 @@ export const POST = withPermission('transaction.write', async (request, auth) =>
 
       // Check if batch import
       if (Array.isArray(body.transactions)) {
-        return handleBatchImport(body.transactions, userId, body.accountId);
+        return handleBatchImport(
+          body.transactions,
+          userId,
+          body.accountId,
+          {
+            openingBalance: typeof body.openingBalance === 'number' ? body.openingBalance : null,
+            closingBalance: typeof body.closingBalance === 'number' ? body.closingBalance : null,
+            dryRun: body.dryRun === true,
+            source: typeof body.source === 'string' ? body.source : 'CSV',
+          }
+        );
       }
 
       // Single transaction creation
@@ -273,6 +288,15 @@ export const POST = withPermission('transaction.write', async (request, auth) =>
 // BATCH IMPORT HANDLER
 // =============================================================================
 
+interface BatchImportOptions {
+  openingBalance: number | null;
+  closingBalance: number | null;
+  /** Phase 42 PR4 — when true, returns dedup-preview + sanity-check WITHOUT writing rows. */
+  dryRun: boolean;
+  /** Source of the import (CSV / QIF / OFX). Defaults to CSV for backwards-compat. */
+  source: string;
+}
+
 async function handleBatchImport(
   transactions: Array<{
     date: string;
@@ -287,9 +311,17 @@ async function handleBatchImport(
      * `lib/bookkeeping/splits.ts:assertSplitsBalance`).
      */
     splits?: Array<{ amount: number; category?: string; memo?: string }>;
+    /** Phase 42 PR4 — QIF `L` field, MCC seed via the catalog. */
+    bankSuppliedCategory?: string;
   }>,
   userId: string,
-  accountId: string
+  accountId: string,
+  options: BatchImportOptions = {
+    openingBalance: null,
+    closingBalance: null,
+    dryRun: false,
+    source: 'CSV',
+  }
 ): Promise<NextResponse> {
   if (!accountId) {
     return NextResponse.json(
@@ -310,12 +342,22 @@ async function handleBatchImport(
     );
   }
 
+  // Phase 42 PR4 — dry-run preview path. Returns the dedup-preview +
+  // balance sanity-check WITHOUT writing any rows. The Import Wizard
+  // calls this before the real commit so the user sees "12 of 50
+  // would be duplicates — merge / overwrite / skip?" up front.
+  if (options.dryRun) {
+    return buildDryRunPreview(transactions, userId, accountId, options);
+  }
+
   const batchId = `batch_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const results = {
     imported: 0,
     duplicates: 0,
     errors: 0,
     errorDetails: [] as { row: number; message: string }[],
+    /** Phase 42 PR4 — running signed sum used by the sanity-check banner. */
+    importedSignedSum: 0,
   };
 
   // Get existing hashes for deduplication
@@ -387,6 +429,13 @@ async function handleBatchImport(
 
       const categorisation = await categoriseTransaction(tempTx);
 
+      // Phase 42 PR4 — MCC seed at write time. BASIQ ships MCC
+      // natively; QIF / CSV / OFX rows get it from
+      // `lib/bank/mccCatalog.ts`. Per CLAUDE.md §12.2 SSOT — one
+      // place, one lookup. When BASIQ later supersedes the row
+      // (Phase 13.10), BASIQ-supplied MCC overrides automatically.
+      const mccEntry = lookupMCC(merchantCleaned);
+
       // Create transaction
       const created = await prisma.unifiedTransaction.create({
         data: {
@@ -398,11 +447,12 @@ async function handleBatchImport(
           direction,
           merchantRaw: tx.merchantRaw || tx.description,
           merchantStandardised: merchantCleaned,
+          merchantCategoryCode: mccEntry?.mcc ?? null,
           description: tx.description,
           categoryLevel1: categorisation.categoryLevel1,
           categoryLevel2: categorisation.categoryLevel2,
           confidenceScore: categorisation.confidence,
-          source: 'CSV',
+          source: options.source as any,
           importBatchId: batchId,
           processedAt: new Date(),
         },
@@ -450,6 +500,9 @@ async function handleBatchImport(
         }
       }
 
+      // Track signed sum for the Phase 42 PR4 sanity check.
+      results.importedSignedSum += direction === 'OUT' ? -Math.abs(amount) : Math.abs(amount);
+
       results.imported++;
     } catch (error) {
       results.errors++;
@@ -460,12 +513,110 @@ async function handleBatchImport(
     }
   }
 
+  // Phase 42 PR4 — sanity-check banner data. Pure helper; surfaces a
+  // "$X gap between imported transactions and closing balance" message
+  // when the source file's stated opening + closing don't reconcile.
+  const sanity = computeBalanceSanityCheck({
+    openingBalance: options.openingBalance,
+    closingBalance: options.closingBalance,
+    importedSum: results.importedSignedSum,
+  });
+
   return NextResponse.json({
     success: true,
     data: {
       batchId,
       ...results,
       total: transactions.length,
+      sanity,
+    },
+  });
+}
+
+/**
+ * Phase 42 PR4 — Dry-run preview of a batch import.
+ *
+ * Runs the cross-batch dedup check + balance sanity-check against the
+ * candidates WITHOUT writing any rows. Returns counts + a small
+ * sample of duplicate matches so the Import Wizard can render a
+ * merge / overwrite / skip picker before the user commits.
+ *
+ * Per CLAUDE.md §12.3 — composes existing helpers; no parallel
+ * dedup or sanity logic.
+ */
+async function buildDryRunPreview(
+  transactions: Array<{
+    date: string;
+    amount: number;
+    description: string;
+    direction?: 'IN' | 'OUT';
+    merchantRaw?: string;
+  }>,
+  userId: string,
+  accountId: string,
+  options: BatchImportOptions
+): Promise<NextResponse> {
+  const existing = await prisma.unifiedTransaction.findMany({
+    where: { userId, accountId },
+    select: {
+      id: true,
+      accountId: true,
+      date: true,
+      amount: true,
+      description: true,
+      merchantStandardised: true,
+      source: true,
+    },
+  });
+
+  // Build the candidate list (parsing dates + signing amounts).
+  const candidates: import('@/lib/bookkeeping/importSanity').DedupPreviewCandidate[] = [];
+  let candidateSignedSum = 0;
+  for (const tx of transactions) {
+    try {
+      const date = parseTransactionDate(tx.date);
+      const { amount, direction } = normaliseAmount(tx.amount, tx.direction);
+      const signed = direction === 'OUT' ? -Math.abs(amount) : Math.abs(amount);
+      candidateSignedSum += signed;
+      candidates.push({
+        date,
+        amount: signed,
+        description: tx.description,
+        merchantStandardised: cleanMerchantName(tx.merchantRaw || tx.description),
+        source: options.source,
+      });
+    } catch {
+      // Skip invalid rows for preview purposes
+    }
+  }
+
+  const dedup = computeDedupPreview(
+    candidates,
+    existing.map((row) => ({
+      id: row.id,
+      accountId: row.accountId,
+      date: row.date,
+      amount: row.amount,
+      description: row.description,
+      merchantStandardised: row.merchantStandardised,
+      source: row.source,
+    })),
+    accountId
+  );
+
+  const sanity = computeBalanceSanityCheck({
+    openingBalance: options.openingBalance,
+    closingBalance: options.closingBalance,
+    importedSum: candidateSignedSum,
+  });
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      dryRun: true,
+      total: transactions.length,
+      ...dedup,
+      sanity,
     },
   });
 }

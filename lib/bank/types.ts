@@ -43,6 +43,13 @@ export interface RawTransaction {
    * import time by `lib/bookkeeping/splits.ts:assertSplitsBalance`).
    */
   splits?: RawTransactionSplit[];
+  /**
+   * Phase 42 PR4 — bank-supplied category from the source file (QIF
+   * `L` field is the canonical example). Surfaced as a typed signal
+   * the categoriser can use as a +0.15 confidence boost. Never
+   * authoritative (rule + user-mapping match still wins).
+   */
+  bankSuppliedCategory?: string;
 }
 
 export interface ParsedFile {
@@ -86,6 +93,21 @@ export interface NormalisedTransaction {
   merchantStandardised?: string;
   balance?: number;
   reference?: string;
+  /**
+   * Phase 42 PR4 — MCC code resolved from `lib/bank/mccCatalog.ts` at
+   * normalisation time. Lets QIF / CSV / OFX rows reach BASIQ-grade
+   * categorisation accuracy by seeding the rules engine with the
+   * canonical merchant-category code.
+   */
+  merchantCategoryCode?: string | null;
+  /**
+   * Phase 42 PR4 — bank-supplied category from the source file. QIF
+   * `L` field is the canonical example (NAB / CBA / ANZ / Westpac all
+   * stamp this). When present, the categoriser uses it as a +0.15
+   * confidence boost — bank-side categorisation is a strong signal,
+   * but never stronger than a user correction or rule-engine match.
+   */
+  bankSuppliedCategory?: string | null;
 }
 
 export interface NormalisationResult {
