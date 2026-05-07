@@ -3529,3 +3529,79 @@ What did NOT change:
 - All tests still pass — gate semantics are presentation-agnostic.
 
 Rationale logged in `IMPLEMENTATION_PLAN.md` `↩️ Reversed Decisions` so future sessions don't re-attempt the modal pattern. **Reviewer rule:** do NOT re-introduce a modal-on-login pattern for routine engagement on `/dashboard` without explicit user sign-off, even if the data behind it is genuinely useful.
+
+---
+
+## **10.50 Phase 42 PR6.5c — Review Queue card-stack (PR — shipped 2026-05-07)**
+
+Opt-in full-screen review mode for clearing uncategorised transactions. Deferred from PR6.5 (PR #708) for focused review.
+
+**Schema:** None. PR6.5c is purely a UI + ordering layer.
+
+### Component
+
+`components/bookkeeping/ReviewQueueCards.tsx` — opt-in full-screen overlay reachable via a "Quick review →" pill on the Activity page header. Self-hides when nothing uncategorised remains.
+
+**Props:**
+```typescript
+{
+  open: boolean;
+  transactions: ReviewTransaction[];   // pre-fetched uncategorised tx
+  suggestions?: string[];               // 4 chip suggestions
+  onPatchSuccess?: (txId: string) => void;
+  onClose: () => void;
+}
+```
+
+### Pure ordering function (SSOT)
+
+`orderReviewQueue<T>(input: T[]): T[]` — exported for tests. Two-tier ordering:
+
+1. **ANOMALY-flagged transactions first** (highest tax-pack risk)
+2. **Chronological newest → oldest** within each bucket
+
+Test invariants in `tests/bookkeeping/reviewQueueOrdering.test.ts`:
+- Anomaly-flagged surfaces before non-anomaly
+- Newest-first tie-break within each bucket
+- Combined invariant (both rules together)
+- Non-mutation of input array
+- Empty array → empty array
+- Single-item → unchanged
+- Multiple anomaly flags identical to one flag (just "has anomaly")
+
+### Visual rules
+
+- **Mobile:** full-screen overlay (`fixed inset-0`).
+- Chip grid 2×2 with ≥56pt tap targets per Apple HIG.
+- Progress bar shows `(index+1) of N` + remaining count.
+- Footer: Back (one-step undo of advance) / Skip / Transfer — all ≥44pt.
+- `motion-safe:` motion utilities respect `prefers-reduced-motion`.
+- Esc dismisses (desktop accessibility).
+
+### Composition (CLAUDE.md §12.3)
+
+- Reuses **PR6.5's `useSwipeGesture` SSOT** — left = picker, right = mark Transfer.
+- Composes **existing `/api/unified-transactions/[id]` PATCH** for both categorise and Transfer paths. No parallel categorise endpoint.
+- The "always-rule" / merchant-mapping side-effect is preserved server-side via the existing PATCH.
+
+### State machine (in-memory only)
+
+| Action | Effect |
+|---|---|
+| Tap chip → categorise | PATCH `categoryLevel1`; on success advance + push history |
+| Swipe right / Transfer button | PATCH `categoryLevel1='Transfer', categoryLevel2='Internal'`; advance |
+| Skip | Advance without server call |
+| Back | Pop history; restore previous index |
+| Close (X / Esc) | Exit; parent fetches fresh transactions + summary |
+| `index >= total` | Empty/completed state — celebrate + exit |
+
+History is one-step (multi-step undo would require server-side rollback).
+
+### Lesson preserved (PR6.5b modal pivot)
+
+Per `IMPLEMENTATION_PLAN.md` `↩️ Reversed Decisions` 2026-05-07: full-screen overlays are correct **only when the user actively chose to enter** the surface. PR6.5c qualifies (user clicks "Quick review"); PR6.5b's modal-on-arrival did not (the page rendering itself triggered the overlay). Reviewer rule: do not auto-fire `<ReviewQueueCards />` on dashboard or activity page mount.
+
+### Tests
+
+- `tests/bookkeeping/reviewQueueOrdering.test.ts` — 7 ordering invariants
+- 215 cumulative bookkeeping tests green (190 prior + 16 PR6.5 + 10 PR6.5b - duplicates + 7 PR6.5c)
