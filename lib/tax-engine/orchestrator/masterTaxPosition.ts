@@ -79,8 +79,13 @@ import {
   type CompanyLossInput,
   type CompanyLossResult,
 } from '../divisions/companyLossRules';
+import {
+  validateTrustDistributionAgainstDeed,
+  type TrustDeedValidationResult,
+} from '../divisions/trustDeedValidation';
 import { renderBoundaryFootnote, type BoundaryFootnote } from '../boundaries';
 import type { AustralianState } from '../landTax/stateLandTax';
+import type { TrustDeedExtraction } from '@/lib/integrations/trust-deed/types';
 
 export interface StampDutyTransaction {
   /** Caller's stable id (typically the property's GRDCS id). */
@@ -121,6 +126,19 @@ export interface MasterTaxPositionInput {
    * `entityId`. Only applies to entities of type COMPANY.
    */
   companyLossByEntity?: Record<string, CompanyLossInput>;
+  /**
+   * Phase 41f.4-extension — CONFIRMED trust-deed rules per entity.
+   * Keyed by `entityId`. When provided alongside a trust entity's
+   * `trustDistribution`, the orchestrator runs
+   * `validateTrustDistributionAgainstDeed` and decorates citations +
+   * UNCOMPUTED with deed-based mismatches (excluded beneficiaries,
+   * fixed-share drift, sub-trust UPE presence).
+   *
+   * Read path: `lib/services/trustDeedRulesService.ts:getConfirmedRulesForEntity`.
+   * Caller is responsible for filtering by CONFIRMED status — this
+   * orchestrator trusts the input.
+   */
+  confirmedDeedRulesByEntity?: Record<string, TrustDeedExtraction>;
 }
 
 export interface CrossCuttingTaxResult {
@@ -137,6 +155,8 @@ export interface CrossCuttingTaxResult {
   /** Per-entity loss-rule overlays. */
   trustLossByEntity?: Record<string, TrustLossResult>;
   companyLossByEntity?: Record<string, CompanyLossResult>;
+  /** Phase 41f.4-extension — per-entity trust-deed validation overlays. */
+  trustDeedValidationByEntity?: Record<string, TrustDeedValidationResult>;
 }
 
 /**
@@ -224,6 +244,23 @@ export function buildMasterTaxPosition(
     modulesInvoked.push('companyLossRules');
   }
 
+  // 3.5 Trust-deed validation overlay (Phase 41f.4-extension).
+  if (input.confirmedDeedRulesByEntity) {
+    crossCutting.trustDeedValidationByEntity = {};
+    let ranAtLeastOnce = false;
+    for (const facts of input.entities) {
+      const deed = input.confirmedDeedRulesByEntity[facts.entityId];
+      if (!deed) continue;
+      const result = validateTrustDistributionAgainstDeed(facts, deed);
+      // Only persist non-empty results (skip non-trust entities).
+      if (result.citations.length > 0 || result.uncomputed.length > 0) {
+        crossCutting.trustDeedValidationByEntity[facts.entityId] = result;
+      }
+      ranAtLeastOnce = true;
+    }
+    if (ranAtLeastOnce) modulesInvoked.push('trustDeedValidation');
+  }
+
   // 4. Aggregate household totals from entities + citations + UNCOMPUTED.
   let assessableIncome = 0;
   let taxableIncome = 0;
@@ -301,6 +338,12 @@ export function buildMasterTaxPosition(
   }
   if (crossCutting.companyLossByEntity) {
     for (const r of Object.values(crossCutting.companyLossByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
+  if (crossCutting.trustDeedValidationByEntity) {
+    for (const r of Object.values(crossCutting.trustDeedValidationByEntity)) {
       ingestCitations(r.citations);
       ingestUncomputed(r.uncomputed);
     }

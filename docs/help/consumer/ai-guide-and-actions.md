@@ -82,6 +82,12 @@ Same My Guide section → **Health** tab.
 **Q: Why is the AI not making personal product recommendations?**
 By design — the AI gives **general information**; **Ask a Professional** routes you to a human for personal product advice. See compliance footer below.
 
+**Q: Can the advisor read my trust deed?**
+Yes — once you've [uploaded and confirmed a trust deed](/help/consumer/uploading-trust-deed), the advisor can answer questions like "list the beneficiaries on my Smith Family Trust" or "what loan provisions does my deed have?" It returns counts (primary / general / excluded beneficiaries; distribution rule types; sub-trust UPE presence) and narrates the structure with citations to Div 6 / s100A / Div 7A. It will not invent any rule that isn't in your CONFIRMED deed — if no deed is on file, it surfaces a `UC-TRUST-DEED-NOT-CONFIRMED` flag.
+
+**Q: What kinds of "what if" scenarios can the advisor run?**
+Four scenario tools today: (a) `runContributionScenario` — "what if I add $5k to super?"; (b) `runCgtScenario` — "what if I sold property X this FY?"; (c) `runLandTaxScenario` — "what if I bought a property in QLD for $X?"; (d) `runDiv7aRefinanceScenario` — "what if I refinanced this Div 7A loan to safe-harbour terms?". Each returns baseline + scenario + delta numbers — facts, not recommendations. The advisor also has 7 fact-lookup tools including `getTrustDeedRules`.
+
 ## Compliance footer
 
 The AI Guide provides **general information only**. It does not constitute personal financial product advice, credit advice, or tax agent services. Decisions about specific products, structures, or actions affecting your circumstances should be made with a licensed professional via the **Ask a Professional** affordance. See `docs/help/compliance/asic-rg244-rg36-boundary-statement.md`.

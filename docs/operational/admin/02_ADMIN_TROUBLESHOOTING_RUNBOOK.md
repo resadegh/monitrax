@@ -298,6 +298,49 @@ node -e "admin.auth().updateUser('<uid>', { disabled: true }).then(() => console
 
 ---
 
+## Calculation Audit — Per-User & Trust-Deed Issues
+
+Phase 41i + 41f.4-extension introduce admin-side audit surfaces and a user-facing trust-deed flow. Common support paths:
+
+### Issue: User reports a wrong number ("my net worth is off")
+
+**Resolution**:
+1. Open `/admin/calc-audit` → **Audit this user** card.
+2. Paste the user's UUID → click button. (~2-5s.)
+3. Read the per-engine outcomes:
+   - `OK` everywhere → number is mathematically consistent with the user's input data. The discrepancy is between user expectation and the input data, not engine drift.
+   - `FINDING (HIGH)` on `core.netWorth` / `core.incomeAggregator` / etc → physical invariant violation; route to engineering.
+   - `FINDING (CRITICAL)` on any adapter → identity violation (e.g. `netWorth != assets - liabilities`); page on-call.
+4. For full triage steps + UNCOMPUTED ID reference, see [Per-User Audit Runbook](../calc-audit/per-user-audit-runbook.md).
+
+### Issue: Trust-deed extraction failed or extracted poorly
+
+**Symptoms**: User says "my deed didn't extract" or "it shows the wrong beneficiaries".
+
+**Resolution**:
+1. Verify the user's entity is `DISCRETIONARY_TRUST` or `UNIT_TRUST` (the flow doesn't show for other types).
+2. Ask the user to check the confidence chips on each rule:
+   - **≥0.7 (emerald)** = high confidence; safe to confirm.
+   - **<0.7 (amber)** = low confidence; review manually before confirming. Each amber rule shows the verbatim deed text underneath.
+3. If extraction returned almost no text:
+   - Cause: scanned (image-only) PDF — the text extraction surfaces `UC-TRUST-DEED-SCANNED-PDF` when extracted text < 100 chars.
+   - Resolution: ask user to OCR the PDF (e.g. macOS Preview "Export as PDF" with text recognition) and re-upload.
+4. If Gemini errored entirely (extraction never completes):
+   - Check `GEMINI_API_KEY` env var on Vercel (returns 503 `GEMINI_NOT_CONFIGURED` if missing).
+   - Check Vercel function logs for `/api/entities/[id]/trust-deed`.
+   - Deed PDFs > 25 MB are rejected with `413 PAYLOAD_TOO_LARGE`.
+5. To roll back: have user click **Reject** on the trust-deed page → re-upload.
+
+### Issue: User sees `UC-DEED-…` flag on Tax page
+
+**Resolution**: These are validation alerts — the user's annual trustee resolution doesn't match the CONFIRMED deed. They are NOT engine bugs. Walk the user through the alert via [the Tax page help article](../../help/consumer/your-tax-position.md). The CRITICAL one (`UC-DEED-BENEFICIARY-EXCLUDED`) means the resolution is invalid against the deed and may trigger s100A consequences — recommend they engage their tax agent.
+
+### Issue: Audit harness errored
+
+**Resolution**: API returned `500 AUDIT_HARNESS_ERROR`. See [Per-User Audit Runbook → "When the audit itself fails"](../calc-audit/per-user-audit-runbook.md#when-the-audit-itself-fails) for the symptom→cause matrix.
+
+---
+
 ## Contact List
 
 | Issue Type | Contact |
@@ -308,8 +351,10 @@ node -e "admin.auth().updateUser('<uid>', { disabled: true }).then(() => console
 | Security incidents | Director + follow INCIDENT_RESPONSE_PLAN.md |
 | GCP infrastructure | GCP Console Support |
 | Basiq integration | support@basiq.io |
+| Calc audit findings (CRITICAL severity) | Director + on-call engineer |
+| Trust-deed extraction failures | Director + see runbook above |
 
 ---
 
-*Last Updated: 2026-04-12*
+*Last Updated: 2026-05-07 — added Calc Audit + Trust-Deed sections per PR #707 (41-finishers)*
 *Review Schedule: Quarterly or after any major incident*
