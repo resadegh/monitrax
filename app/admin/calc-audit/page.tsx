@@ -126,6 +126,30 @@ export default function CalcAuditPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Phase 41i.3b — Per-user audit state ("Audit this user")
+  const [userAuditInput, setUserAuditInput] = useState('');
+  const [userAuditRunning, setUserAuditRunning] = useState(false);
+  const [userAuditReport, setUserAuditReport] = useState<{
+    report: {
+      userId: string;
+      outcomes: Array<{
+        engineName: string;
+        outcome: 'OK' | 'FINDING' | 'SKIPPED';
+        severity?: string;
+        summary?: string;
+        skipReason?: string;
+      }>;
+      totals: {
+        enginesScanned: number;
+        findingsCreated: number;
+        skipped: number;
+        errors: number;
+      };
+    };
+    userEmail: string;
+  } | null>(null);
+  const [userAuditError, setUserAuditError] = useState<string | null>(null);
+
   // Phase 41i.6c — Full Scan state + L4 filter chip
   const [sourceFilter, setSourceFilter] = useState<
     'ALL' | 'L1_DIFFERENTIAL' | 'L2_ANOMALY' | 'L3_ON_DEMAND' | 'L4_SURFACE_AUDIT'
@@ -200,6 +224,42 @@ export default function CalcAuditPage() {
   useEffect(() => {
     void fetchAudit();
   }, [fetchAudit]);
+
+  // Phase 41i.3b — Per-user audit handler. Calls
+  // POST /api/admin/calc-audit/audit-user/[userId] and renders the
+  // returned report. Refreshes findings list after completion.
+  const runUserAudit = useCallback(async () => {
+    const userId = userAuditInput.trim();
+    if (!userId || userAuditRunning) return;
+    setUserAuditRunning(true);
+    setUserAuditReport(null);
+    setUserAuditError(null);
+    try {
+      const res = await fetch(`/api/admin/calc-audit/audit-user/${encodeURIComponent(userId)}`, {
+        method: 'POST',
+      });
+      const json = (await res.json()) as
+        | {
+            success: true;
+            data: {
+              report: NonNullable<typeof userAuditReport>['report'];
+              userEmail: string;
+            };
+          }
+        | { error: { code: string; message: string } };
+      if (!res.ok || !('success' in json)) {
+        const message = 'error' in json ? json.error.message : `HTTP ${res.status}`;
+        setUserAuditError(message);
+        return;
+      }
+      setUserAuditReport(json.data);
+      await fetchFindings();
+    } catch (err) {
+      setUserAuditError(err instanceof Error ? err.message : 'Audit failed');
+    } finally {
+      setUserAuditRunning(false);
+    }
+  }, [userAuditInput, userAuditRunning, fetchFindings]);
 
   // Phase 41i.6c — Full Scan handler. Streams NDJSON progress events
   // and renders live counter. Cancel affordance is v2 per D-41i.6-4.
@@ -347,6 +407,71 @@ export default function CalcAuditPage() {
         ))}
 
       <SectionHeader title="Findings queue" />
+
+      <AdminCard>
+        <AdminCardHeader title="Audit this user (Phase 41i.3b — L3 on-demand)" />
+        <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--admin-color-text-muted, #64748b)', margin: 0 }}>
+            Re-runs every registered calc engine for this user with their stored data. Sanity invariants (NaN check, balance-sheet identity, gross ≥ net, etc.) fire findings if violated. Findings flow into the queue below as <code>L3_ON_DEMAND</code>.
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={userAuditInput}
+              onChange={(e) => setUserAuditInput(e.target.value)}
+              placeholder="userId"
+              disabled={userAuditRunning}
+              style={{
+                flex: '1 1 280px',
+                padding: '0.4rem 0.6rem',
+                border: '1px solid var(--admin-color-border, #e5e7eb)',
+                borderRadius: '0.375rem',
+                fontFamily: 'monospace',
+                fontSize: '0.875rem',
+              }}
+            />
+            <AdminButton onClick={() => void runUserAudit()} disabled={userAuditRunning || userAuditInput.trim().length === 0}>
+              {userAuditRunning ? 'Auditing…' : 'Audit this user'}
+            </AdminButton>
+          </div>
+          {userAuditError && (
+            <div style={{ color: 'var(--admin-color-danger, #dc2626)', fontSize: '0.875rem' }}>
+              {userAuditError}
+            </div>
+          )}
+          {userAuditReport && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
+              <div style={{ fontWeight: 600 }}>
+                Report for {userAuditReport.userEmail || userAuditReport.report.userId.slice(0, 8) + '…'}
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <span>Engines: {userAuditReport.report.totals.enginesScanned}</span>
+                <span>Findings: {userAuditReport.report.totals.findingsCreated}</span>
+                <span>Errors: {userAuditReport.report.totals.errors}</span>
+                <span>Skipped: {userAuditReport.report.totals.skipped}</span>
+              </div>
+              <ul style={{ paddingLeft: '1rem', margin: 0 }}>
+                {userAuditReport.report.outcomes.map((o, idx) => (
+                  <li key={idx} style={{ fontSize: '0.8125rem' }}>
+                    <code>{o.engineName}</code> —{' '}
+                    {o.outcome === 'OK' ? (
+                      <span style={{ color: 'var(--admin-color-success, #16a34a)' }}>OK</span>
+                    ) : o.outcome === 'SKIPPED' ? (
+                      <span style={{ color: 'var(--admin-color-text-muted, #64748b)' }}>
+                        skipped ({o.skipReason})
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--admin-color-danger, #dc2626)' }}>
+                        FINDING [{o.severity}] {o.summary}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </AdminCard>
 
       {(scanProgress || scanCompleted || scanError) && (
         <AdminCard>
