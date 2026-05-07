@@ -1,5 +1,67 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41i3b-per-user-audit (Phase 41i.3b — Per-user "Audit this user" harness)
+
+### Strategy
+Reza directive 2026-05-07: *"703 merged, continue with phase 41 remaining tasks."* Two outstanding Phase 41 follow-ups: (a) Phase 41i.3b per-user audit (the L3 deepening deferred from Phase 41i.3 — admin clicks "Audit this user" → re-runs every adapted engine for that specific user → renders findings); (b) reconcile 41f.5 vs Phase 42 (open question Q-41F-1). This PR ships 41i.3b as the substantive workstream and resolves Q-41F-1 in the same doc-sync.
+
+41i.3b is the natural complement to 41i.6's surface audit. 41i.6 catches surface-rendering drift (rendered tile ≠ canonical engine output). 41i.3b catches per-user calc-engine drift (engine output for a specific user violates a sanity invariant). Together, L1 differential + L2 anomaly + L3 per-user (this PR) + L4 surface = HR-3 invariant 11 fully realised.
+
+### Type
+- **Type**: Feature (Phase 41i sub-PR — deepens L3)
+- **Scope**: New `lib/calc-audit/userAudit/` module + new admin POST route + admin UI extension + 14 new tests. Zero new dependencies. Zero schema changes (reuses existing `CalcAuditFinding` model + `L3_ON_DEMAND` source).
+
+### Files Created
+- `lib/calc-audit/userAudit/types.ts` — `UserAuditAdapter<TInput, TOutput>` interface (`engineName` + `fetchInput(userId)` + optional `validateOutput(out)`); `ValidationResult` discriminated union (ok | reason+severity); `UserAuditOutcome` per-engine (OK | FINDING | SKIPPED + skipReason + findingId + severity + summary); `UserAuditReport` aggregate (outcomes + totals.enginesScanned/findingsCreated/skipped/errors).
+- `lib/calc-audit/userAudit/registry.ts` — singleton with duplicate-engineName rejection + sorted `list()` + `__testOnlyClear`. Mirrors `surfaceRegistry` + `calcEngineRegistry` patterns.
+- `lib/calc-audit/userAudit/harness.ts` — `runUserAudit(userId)` iterates registered adapters → looks up matching `CalcEngine` in 41i registry → calls adapter.fetchInput → null = SKIPPED `NO_DATA` → engine.execute → optional validateOutput → records `CalcAuditFinding` source `L3_ON_DEMAND` on any failure with HIGH default. Idempotent `recordUserAuditFinding` (findFirst against OPEN/INVESTIGATING scoped to `(source, engineName, userId)` → update existing | create new with resolution OPEN). Mirrors 41i.3 `recordDifferentialFindings` + 41i.6c `recordSurfaceFinding` patterns exactly.
+- `lib/calc-audit/userAudit/adapters/coreAdapters.ts` — 4 v1 adapters covering the load-bearing engines:
+  - `core.netWorth`: fetches properties + accounts + investments + loans + super + assets via Prisma; validates assets/liabilities finite + non-negative + `netWorth = assets - liabilities` within 1c tolerance (CRITICAL severity on identity violation).
+  - `core.incomeAggregator`: fetches incomes; validates grossTotal/netTotal finite + non-negative + `netTotal ≤ grossTotal + 1c` (PAYG cannot be negative).
+  - `core.expenseAggregator`: fetches expenses; validates total finite + non-negative + `total = essential + discretionary` within 1c tolerance.
+  - `core.loanAggregator`: fetches loans; validates totalPrincipal/totalRepayments finite + non-negative + weightedInterestRate finite (catches divide-by-zero on totalPrincipal=0).
+- `lib/calc-audit/userAudit/index.ts` — `bootstrapUserAuditRegistry` (idempotent, hot-reload safe). Auto-bootstraps on import.
+- `app/api/admin/calc-audit/audit-user/[userId]/route.ts` — `POST` admin GCP session via `verifyAdminGCPAuth` + `audit:read` permission. 404 on unknown userId. Bootstraps both registries on import. Calls `runUserAudit` and returns `{ report, userEmail }`. 500 on harness exception with truncated message.
+- `tests/calc-audit/userAudit.test.ts` — 14 unit tests with mocked Prisma + mocked calcEngineRegistry + mocked userAuditAdapterRegistry. Coverage: 7 outcome paths (fetchInput-throws / engine-not-registered / fetchInput-null / execute-throws / validateOutput-rejects / OK / multi-adapter ordering); 4 dedup-pattern (existing OPEN updated / no existing creates new / scope-correct findFirst / new finding has resolution OPEN); 3 totals/aggregation.
+
+### Files Modified
+- `app/admin/calc-audit/page.tsx` — new userAuditInput state + runUserAudit callback that POSTs to `/audit-user/{userId}` and stores the report. New "Audit this user" card above Full Scan progress card: text input + button + per-engine outcome rendering (OK / SKIPPED with reason / FINDING with severity badge + summary).
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header + §6 Phase 41i.6 status snapshot post-merge + Up Next #41 ticked + Phase 41f §5 status flipped to CORE CLOSED + 41f.5 line replaced with "superseded by Phase 42" + Open Question Q-41F-1 added with resolution + Recently Completed entry.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Architecture Decisions
+- **`fetchInput → null` = SKIPPED, not failure.** Most calc engines don't apply to every user (a user with no SMSF doesn't fail SMSF audits — they're skipped). Adapters return `null` to express "engine doesn't apply to this user." Failures = throws, or engine throws, or validateOutput rejects.
+- **`validateOutput` encodes physical invariants, not equality assertions.** v1 doesn't compare engine output against stored snapshot fields (that's the L4 surface-audit job). v1 catches "this output is physically impossible for any user" — netWorth identity, gross ≥ net, total = essential + discretionary, no NaN/Infinity, no negative totals. Future iterations may add cross-validators (re-derive expected output from raw data and diff).
+- **Dedup pattern matches 41i.3 + 41i.6c exactly.** `findFirst → update | create` scoped to `(source: L3_ON_DEMAND, engineName, userId, resolution: {in: [OPEN, INVESTIGATING]})`. Re-runs for a user with persistent issues refresh the existing finding instead of spamming the queue. Terminal states excluded from findFirst (won't resurrect closed findings; creates new).
+- **4 adapters at v1, framework supports many.** The original brief was 36 engines × adapters = several days of mechanical wrap work. v1 ships the 4 most load-bearing engines. New engines added to `CORE_USER_AUDIT_ADAPTERS` register automatically. HR-3 reviewer rule extended: every new calc engine MUST add a matching adapter or document why per-user audit doesn't apply.
+- **Q-41F-1 closed in same PR.** The doc-sync work for this PR includes resolving the 41f.5/Phase 42 question. 41f.5 (Monitrax Express, 5-day lite tier) was superseded by Phase 42 (full consumer-bookkeeping module, ~6 weeks already in flight via PR #695/696/698). Shipping both would have created a CLAUDE.md §12.2 SSOT violation.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripe` issue, unrelated to this PR)
+- [x] `npx vitest run tests/calc-audit/userAudit.test.ts` — 14 / 14 pass
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (admin-only audit surface — HR-3 invariant 11)
+- [x] operational procedure (new admin runbook surface — "Audit this user" button)
+- [x] strategic decision (Q-41F-1 resolved — 41f.5 superseded by Phase 42)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md:Last updated` — Phase 41i.3b shipping note + Q-41F-1 resolution
+- `docs/IMPLEMENTATION_PLAN.md:#41 Up Next` — ticked SHIPPED with note about additive future adapters
+- `docs/IMPLEMENTATION_PLAN.md:Phase 41f §5 status` — flipped to CORE CLOSED; 41f.5 superseded
+- `docs/IMPLEMENTATION_PLAN.md:Open Questions` — Q-41F-1 added with resolution
+- `docs/IMPLEMENTATION_PLAN.md:Recently Completed 2026-05-07` — new top entry
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this session entry
+
+---
+
 ## Session: claude/phase-41i6c-runtime-harness (Phase 41i.6c — Runtime audit harness + Full Scan; CLOSES PHASE 41i.6)
 
 ### Strategy
