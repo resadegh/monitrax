@@ -25,6 +25,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface CategoryPickerSheetProps {
   /** Open / closed state — controlled by parent. */
@@ -58,6 +59,7 @@ export function CategoryPickerSheet({
   onSuccess,
   onClose,
 }: CategoryPickerSheetProps) {
+  const { token } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [custom, setCustom] = useState('');
@@ -84,16 +86,15 @@ export function CategoryPickerSheet({
   const chips = (suggestions && suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS).slice(0, 6);
 
   async function categorise(level1: string) {
-    if (!transactionId || busy) return;
+    if (!transactionId || busy || !token) return;
     setBusy(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const res = await fetch(`/api/unified-transactions/${transactionId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({ categoryLevel1: level1 }),

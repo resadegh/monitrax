@@ -26,6 +26,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check } from 'lucide-react';
 import { StreakBadge } from './StreakBadge';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface DailyPulse {
   monthLabel: string;
@@ -48,16 +49,17 @@ interface PulseResponse {
 }
 
 export function DailyPulseCard() {
+  const { token } = useAuth();
   const [pulse, setPulse] = useState<DailyPulse | null>(null);
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
+    if (!token) return;
     let cancelled = false;
     async function load() {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const res = await fetch('/api/bookkeeping/engagement/pulse', {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
         const json = (await res.json()) as PulseResponse;
@@ -77,7 +79,7 @@ export function DailyPulseCard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [token]);
 
   if (hidden || !pulse) return null;
 

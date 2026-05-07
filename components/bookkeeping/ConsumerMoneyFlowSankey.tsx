@@ -27,6 +27,7 @@
 
 import { useEffect, useState } from 'react';
 import { MoneyFlowSankey } from '@/components/entities/MoneyFlowSankey';
+import { useAuth } from '@/lib/context/AuthContext';
 import type {
   MoneyFlowResult,
   MoneyFlowEdge,
@@ -149,6 +150,7 @@ interface ConsumerMoneyFlowSankeyProps {
 }
 
 export function ConsumerMoneyFlowSankey({ snapshot: precomputed }: ConsumerMoneyFlowSankeyProps) {
+  const { token } = useAuth();
   const [snapshot, setSnapshot] = useState<MinimalSnapshot | null>(precomputed ?? null);
   const [error, setError] = useState<string | null>(null);
 
@@ -157,12 +159,12 @@ export function ConsumerMoneyFlowSankey({ snapshot: precomputed }: ConsumerMoney
       setSnapshot(precomputed);
       return;
     }
+    if (!token) return;
     let cancelled = false;
     async function load() {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const res = await fetch('/api/master-snapshot', {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
         const json = await res.json();
@@ -182,7 +184,7 @@ export function ConsumerMoneyFlowSankey({ snapshot: precomputed }: ConsumerMoney
     return () => {
       cancelled = true;
     };
-  }, [precomputed]);
+  }, [precomputed, token]);
 
   if (error || !snapshot) return null;
 
