@@ -1,0 +1,175 @@
+{
+  "comment": "Phase 41i.6b — pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny — adding entries here suppresses bugs the lint is designed to catch).",
+  "generatedAt": "2026-05-07T01:25:15.279Z",
+  "count": 28,
+  "entries": [
+    {
+      "file": "app/dashboard/cfo/page.tsx",
+      "line": 886,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "extraRepaymentImpact.timeReduced / 12"
+    },
+    {
+      "file": "app/dashboard/income/page.tsx",
+      "line": 1904,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "selectedIncome.amount + selectedIncome.frankingCredits"
+    },
+    {
+      "file": "app/dashboard/investments/accounts/page.tsx",
+      "line": 242,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "amount * 52"
+    },
+    {
+      "file": "app/dashboard/investments/accounts/page.tsx",
+      "line": 243,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "amount * 26"
+    },
+    {
+      "file": "app/dashboard/investments/accounts/page.tsx",
+      "line": 244,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "amount * 12"
+    },
+    {
+      "file": "app/dashboard/investments/accounts/page.tsx",
+      "line": 246,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "amount * 12"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 688,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "cashflow.totalIncome / 12"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 1318,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "cashflow.totalIncome / 12"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 1326,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "cashflow.totalIncome / 12"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 1367,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "cashflow.totalExpenses / 12"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 1375,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "cashflow.totalExpenses / 12"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 1389,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "expense.annualAmount / 12"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 1588,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "snapshot.totalAssets - snapshot.totalLiabilities"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 1592,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "snapshot.totalAssets - snapshot.totalLiabilities"
+    },
+    {
+      "file": "app/dashboard/tax/page.tsx",
+      "line": 755,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "taxConfig.concessionalCap - taxPosition.super.concessional"
+    },
+    {
+      "file": "app/dashboard/tax/page.tsx",
+      "line": 768,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "taxConfig.nonConcessionalCap - taxPosition.super.nonConcessional"
+    },
+    {
+      "file": "app/dashboard/tax/page.tsx",
+      "line": 811,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "taxPosition.tax.marginalRate - taxConfig.superContributionsTaxRate"
+    },
+    {
+      "file": "app/dashboard/tax/page.tsx",
+      "line": 814,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "taxConfig.concessionalCap - taxPosition.super.concessional"
+    },
+    {
+      "file": "components/ExpenseWizard.tsx",
+      "line": 218,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "amount * 52"
+    },
+    {
+      "file": "components/ExpenseWizard.tsx",
+      "line": 219,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "amount * 26"
+    },
+    {
+      "file": "components/ExpenseWizard.tsx",
+      "line": 221,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "amount * 4"
+    },
+    {
+      "file": "components/ExpenseWizard.tsx",
+      "line": 222,
+      "pattern": "FREQUENCY_CONVERSION",
+      "match": "amount / 12"
+    },
+    {
+      "file": "components/dashboard/DebtQualityWidget.tsx",
+      "line": 442,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "goodDebt.total + neutralDebt.total"
+    },
+    {
+      "file": "components/dashboard/InsightWidgets.tsx",
+      "line": 560,
+      "pattern": "HARDCODED_FINANCIAL_CONSTANT",
+      "match": "0.15"
+    },
+    {
+      "file": "components/dashboard/InsightWidgets.tsx",
+      "line": 570,
+      "pattern": "HARDCODED_FINANCIAL_CONSTANT",
+      "match": "0.15"
+    },
+    {
+      "file": "components/dashboard/InsightWidgets.tsx",
+      "line": 580,
+      "pattern": "HARDCODED_FINANCIAL_CONSTANT",
+      "match": "0.15"
+    },
+    {
+      "file": "components/onboarding/wizard/steps/AssetsStep.tsx",
+      "line": 195,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "asset.purchasePrice - asset.currentValue"
+    },
+    {
+      "file": "components/onboarding/wizard/steps/ReviewStep.tsx",
+      "line": 201,
+      "pattern": "INLINE_ARITHMETIC",
+      "match": "summary.annualExpenses + summary.annualLoanRepayments"
+    }
+  ]
+}
