@@ -992,12 +992,27 @@ function TransactionRow({
     onDoubleTap,
   });
 
-  // Visual offset during drag — small parallax so the user sees the
-  // gesture register. Capped at 80px past the threshold to avoid
-  // throwing the row off-screen on long drags.
-  const dragOffset = Math.max(-80, Math.min(80, swipe.state.dragX));
-  const showLeftHint = swipe.state.direction === 'left' && Math.abs(swipe.state.dragX) > SWIPE_THRESHOLD_PX / 2;
-  const showRightHint = swipe.state.direction === 'right' && Math.abs(swipe.state.dragX) > SWIPE_THRESHOLD_PX / 2;
+  // Phase 42 PR6.5g — Gmail/Yahoo Mail-style swipe motion.
+  // Drag range up to 280px so the action reveal feels substantive
+  // (was 80px — too small to feel like anything happened). Past
+  // 280px we apply rubber-band resistance so the row can't be flung
+  // off-screen unexpectedly.
+  const rawDx = swipe.state.dragX;
+  const ABS_REVEAL = 280;
+  const PRIMED = 120; // "ready to commit" visual threshold
+  let dragOffset: number;
+  if (rawDx >= 0) {
+    dragOffset = rawDx > ABS_REVEAL ? ABS_REVEAL + (rawDx - ABS_REVEAL) * 0.15 : rawDx;
+  } else {
+    dragOffset = rawDx < -ABS_REVEAL ? -ABS_REVEAL + (rawDx + ABS_REVEAL) * 0.15 : rawDx;
+  }
+  // Reveal progress 0..1, used to drive opacity/scale of the action label.
+  const revealProgress = Math.min(1, Math.abs(rawDx) / PRIMED);
+  // True once the user has crossed the commit threshold — drives the
+  // "primed" visual: brighter background + larger icon.
+  const isPrimed = Math.abs(rawDx) >= PRIMED;
+  const showLeftHint = swipe.state.direction === 'left' && Math.abs(rawDx) > SWIPE_THRESHOLD_PX / 4;
+  const showRightHint = swipe.state.direction === 'right' && Math.abs(rawDx) > SWIPE_THRESHOLD_PX / 4;
 
   // Phase 42 PR2 — Selection checkbox is rendered as a sibling element
   // (not inside the row's main click target) with stopPropagation, so
@@ -1009,24 +1024,60 @@ function TransactionRow({
         selected ? 'bg-emerald-50/40' : 'hover:bg-muted/40'
       }`}
     >
-      {/* Phase 42 PR6.5 — swipe action hints. Slide in behind the row
-          as the user drags; emerald (right = transfer) / sky (left =
-          categorise). Hidden when not dragging. */}
+      {/* Phase 42 PR6.5g — Gmail / Yahoo Mail-style action reveal.
+          The action layer fills the entire row UNDER the content. Only
+          the side matching the current swipe direction is rendered;
+          opacity + label scale animate based on revealProgress (0..1).
+          When primed (past commit threshold) the bg saturates + icon
+          enlarges — visual cue the gesture is committed on release.
+          Per CLAUDE.md §0 designer lens: the row content is the
+          subject; the action layer is the chrome that earns its place
+          only when the user is actively gesturing. */}
       {showLeftHint && (
-        <span
+        // Swiping LEFT (dragX negative) → row moves left → reveal RIGHT side
+        // → action: "Categorise" (emerald)
+        <div
           aria-hidden
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-sky-700 pointer-events-none"
+          className={`absolute inset-y-0 right-0 flex items-center justify-end pr-5 sm:pr-7 pointer-events-none transition-colors duration-150 ${
+            isPrimed ? 'bg-emerald-500' : 'bg-emerald-400/85'
+          }`}
+          style={{ width: `${Math.abs(dragOffset)}px`, minWidth: 56 }}
         >
-          Categorise →
-        </span>
+          <div
+            className="flex items-center gap-2 text-white"
+            style={{
+              opacity: revealProgress,
+              transform: `scale(${0.85 + revealProgress * 0.15})`,
+              transition: 'transform 80ms ease-out',
+            }}
+          >
+            <span className="text-sm font-semibold tracking-tight">Categorise</span>
+            <Sparkles className={`shrink-0 ${isPrimed ? 'w-5 h-5' : 'w-4 h-4'} transition-all duration-150`} />
+          </div>
+        </div>
       )}
       {showRightHint && (
-        <span
+        // Swiping RIGHT (dragX positive) → row moves right → reveal LEFT side
+        // → action: "Transfer" (sky/blue)
+        <div
           aria-hidden
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-emerald-700 pointer-events-none"
+          className={`absolute inset-y-0 left-0 flex items-center justify-start pl-5 sm:pl-7 pointer-events-none transition-colors duration-150 ${
+            isPrimed ? 'bg-sky-500' : 'bg-sky-400/85'
+          }`}
+          style={{ width: `${Math.abs(dragOffset)}px`, minWidth: 56 }}
         >
-          ← Transfer
-        </span>
+          <div
+            className="flex items-center gap-2 text-white"
+            style={{
+              opacity: revealProgress,
+              transform: `scale(${0.85 + revealProgress * 0.15})`,
+              transition: 'transform 80ms ease-out',
+            }}
+          >
+            <ArrowLeftRight className={`shrink-0 ${isPrimed ? 'w-5 h-5' : 'w-4 h-4'} transition-all duration-150`} />
+            <span className="text-sm font-semibold tracking-tight">Transfer</span>
+          </div>
+        </div>
       )}
 
       <label
@@ -1048,7 +1099,12 @@ function TransactionRow({
         {...swipe.bind}
         style={{
           transform: `translateX(${dragOffset}px)`,
-          transition: swipe.state.isDragging ? 'none' : 'transform 220ms ease-out',
+          // Phase 42 PR6.5g — Apple-style spring-back on release.
+          // Custom cubic-bezier mimics a light-mass spring: slight
+          // overshoot then settle. Feels more "alive" than ease-out.
+          transition: swipe.state.isDragging
+            ? 'none'
+            : 'transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)',
           touchAction: 'pan-y', // allow vertical scroll; we own horizontal
         }}
         className="flex-1 text-left flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 hover-lift bg-card"

@@ -2533,3 +2533,52 @@ Surfaces changed:
 ### PR
 - Branch: `claude/fix-swipe-handlers-auth-and-trail-tooltip`
 - Status: pending push
+
+---
+
+## Session: swipe-motion-gmail-style
+
+### Changes Made
+
+- **Type**: UX polish — swipe motion redesign
+- **Scope**: `<TransactionRow>` swipe reveal in `app/dashboard/activity/page.tsx`
+- **Description**: Reza-reported 2026-05-08: swipes work but feel janky and don't show enough. Reference: Gmail / Yahoo Mail iOS swipe pattern — colored action backgrounds revealed under the row, intensifying as user drags, with snappy spring-back.
+
+### Before vs After
+
+| Aspect | Before (PR6.5) | After (this PR) |
+|---|---|---|
+| Drag range | Capped at ±80px | ±280px with rubber-band resistance past 280 |
+| Action reveal | Tiny text label "Categorise →" / "← Transfer" | Full colored action layer underneath the row, label + icon visible |
+| Color | None — just translate | Emerald (left swipe = Categorise) / Sky (right swipe = Transfer) |
+| Commit-threshold cue | None | At ≥120px the action layer brightens + icon enlarges → visual "ready to commit" |
+| Spring-back | `transition: 220ms ease-out` | `cubic-bezier(0.34, 1.56, 0.64, 1)` 320ms — slight overshoot, settle (Apple-style) |
+| Action layer scale | N/A | Width follows drag distance — feels physical |
+
+### Implementation notes
+
+- Two action layers (left + right) absolutely positioned UNDER the row content. Only the side matching the current swipe direction renders (opacity + width animate via JS based on `dragX`).
+- `revealProgress = min(1, |dragX| / 120)` drives opacity + icon scale. `isPrimed = |dragX| ≥ 120` switches the bg from `*-400/85` to `*-500` (saturated).
+- Rubber-band physics past the 280px reveal cap (drag continues but at 15% rate — feels like elastic resistance).
+- Spring-back transition uses an over-shoot cubic-bezier so the row settles with a subtle bounce instead of dead-stop ease-out.
+- All values are CSS / inline style — no new lib, no new component, no new hook. Pure layering on top of the existing `useSwipeGesture` SSOT.
+
+### Commit thresholds (unchanged on the gesture engine side)
+
+- `SWIPE_THRESHOLD_PX = 40` still controls when `onSwipeLeft` / `onSwipeRight` fires on pointerup.
+- The new `PRIMED = 120` is a VISUAL threshold only — it affects what the user sees during drag but does NOT change when the action commits.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — `<TransactionRow>` swipe reveal layer + drag offset rewrite + spring-back transition.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] visual design system / component pattern (swipe-action reveal pattern locked: colored bg layer + intensifying primed state + cubic-bezier overshoot spring-back)
+
+### Build Status
+- [x] tsc clean
+
+### PR
+- Branch: `claude/swipe-motion-gmail-style`
+- Status: pending push
