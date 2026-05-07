@@ -565,6 +565,9 @@ model User {
   canonicalCategoryRegistry CanonicalCategoryRegistry[]
   bookkeepingPeriods        BookkeepingPeriod[]
   transactionEdits          TransactionEdit[]
+  // Phase 42 PR5
+  vendors                   Vendor[]
+  taxCategoryMappings       TaxCategoryMapping[]
 
   // Phase L: CDR Compliance Models
   cdrConsents    CDRConsent[]
@@ -2042,6 +2045,10 @@ model CanonicalCategoryRegistry {
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Phase 42 PR2 — back-relation to splits that reference this category.
   splits           TransactionSplit[]
+  // Phase 42 PR5 — back-relations to Vendor.defaultCategoryId +
+  // TaxCategoryMapping.canonicalCategoryId.
+  vendorDefaults   Vendor[]
+  taxMappings      TaxCategoryMapping[]
 
   @@unique([userId, level1, level2, subcategory])
   @@index([userId])
@@ -2141,6 +2148,94 @@ model TransactionSplit {
   @@index([propertyId])
   @@index([expenseId])
   @@map("transaction_splits")
+}
+
+// =============================================================================
+// PHASE 42 PR5: VENDOR + TAX CATEGORY MAPPING
+//
+// Two additive models. NEITHER replaces existing canonical surfaces:
+//
+// `Vendor` — consumer-side merchant card (annual totals, contracts,
+// cancel link). Promoted from `MerchantMapping` per spec §3 D-42-5.
+// MerchantMapping STAYS — it's the AI-learning surface (categorisation
+// confidence, correction count); Vendor is the user-facing entity.
+// Hard rule: NOT an AP master (no payment terms, no AP cycle, no
+// invoice tracking). If it would appear in a Xero AP report, it's
+// not a Vendor field.
+//
+// `TaxCategoryMapping` — bridge between Monitrax canonical categories
+// (`CanonicalCategoryRegistry`) and ATO labels (D-1, D-5, Rental
+// Schedule line items, Div 40 / Div 43 etc.). Used by the Phase 42
+// Tax Pack export to group transactions under ATO labels — the
+// accountant gets a CSV with ATO labels as columns; Monitrax's job
+// stops there (the accountant decides deductibility per
+// `PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §1 hard rule).
+// =============================================================================
+
+model Vendor {
+  id                     String   @id @default(uuid())
+  userId                 String
+  name                   String
+  // Lowercased, alphanumeric-collapsed — same shape as
+  // `lib/bookkeeping/normaliseDescription.ts`. Unique per user so
+  // `lookupVendor()` is O(1) on the merchant string.
+  normalisedName         String
+  // ISO 18245 code from `lib/bank/mccCatalog.ts` if known. Optional —
+  // many user-created vendors won't have one.
+  mcc                    String?
+  abn                    String?
+  // Default category for new transactions matching this vendor. FK
+  // to `canonical_category_registry` (the Phase 42 PR1 SSOT).
+  defaultCategoryId      String?
+  defaultIsTaxDeductible Boolean  @default(false)
+  // Suggested frequency for recurring detection — same shape as
+  // `RecurrencePattern` enum used elsewhere; kept as a plain string
+  // here so the Vendor can hold "IRREGULAR" or future values without
+  // a schema bump.
+  suggestedFrequency     String?
+  websiteUrl             String?
+  // Deep-link to the merchant's account/cancellation page. PR6's
+  // engagement layer surfaces this as a one-tap "Manage subscription"
+  // affordance on the recurring-payment cards.
+  cancelUrl              String?
+  // Optional FK to a Document — the user's contract / PDS / lease.
+  // SetNull on document delete (the Vendor outlives the doc).
+  contractDocumentId     String?
+  notes                  String?  @db.Text
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  user                   User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultCategory        CanonicalCategoryRegistry? @relation(fields: [defaultCategoryId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, normalisedName])
+  @@index([userId])
+  @@index([userId, mcc])
+  @@map("vendors")
+}
+
+model TaxCategoryMapping {
+  id                  String   @id @default(uuid())
+  // NULL = system-seeded (the ~60 default AU mappings). User overrides
+  // create a row with their userId set.
+  userId              String?
+  // FK to the SSOT category registry. The mapping is an enrichment
+  // ON TOP OF the registry — it doesn't replace it.
+  canonicalCategoryId String
+  atoLabel            String   // e.g. "D-1", "Rental Repairs", "Div 40 Depreciation"
+  schedule            String?  // e.g. "Individual Tax Return", "Rental Schedule"
+  lineItem            String?  // ATO line number where applicable
+  notes               String?
+  createdAt           DateTime @default(now())
+
+  category            CanonicalCategoryRegistry @relation(fields: [canonicalCategoryId], references: [id], onDelete: Cascade)
+  user                User?                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, canonicalCategoryId, atoLabel])
+  @@index([userId])
+  @@index([atoLabel])
+  @@index([canonicalCategoryId])
+  @@map("tax_category_mapping")
 }
 
 // =============================================================================
