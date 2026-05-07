@@ -237,9 +237,8 @@ export default function ActivityPage() {
   // via the standard PATCH path (which lazy-seeds the registry per
   // PR2's SSOT bridge).
   const applyAlwaysRule = useCallback(async (tx: Transaction) => {
-    if (!tx.categoryLevel1) return;
+    if (!tx.categoryLevel1 || !token) return;
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       // Re-PATCH the same category — the existing endpoint upserts a
       // `MerchantMapping` row on every category write (Phase 13
       // learning surface). User-confidence override = 1.0 means this
@@ -248,7 +247,7 @@ export default function ActivityPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -259,19 +258,19 @@ export default function ActivityPage() {
     } catch {
       // Quiet failure — rule-write is best-effort
     }
-  }, []);
+  }, [token]);
 
   // Mark as transfer (right-swipe) — sets isRecurring=false, links
   // nothing, sets categoryLevel1='Transfer'. Single PATCH call;
   // SSOT-aware (registry seeds via the categoriser bridge).
   const markAsTransfer = useCallback(async (tx: Transaction) => {
+    if (!token) return;
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       await fetch(`/api/unified-transactions/${tx.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -285,7 +284,7 @@ export default function ActivityPage() {
       // Quiet failure — UI re-fetches anyway
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token]);
 
   const toggleSelected = useCallback((id: string) => {
     setSelectedIds((prev) => {

@@ -2492,3 +2492,44 @@ None.
 ### PR
 - Branch: `claude/fix-swipe-gesture-guard`
 - Status: pending push
+
+---
+
+## Session: fix-swipe-handlers-auth-and-trail-tooltip
+
+### Changes Made
+
+Two unrelated small fixes per Reza-reported bugs 2026-05-08, both bundled.
+
+#### Fix 1 — Swipe-right / double-tap log user out
+
+After PR #716 fixed the swipe gesture guard, swipes started firing on mobile — but right-swipe (mark Transfer) and double-tap (always-rule) **logged the user out**. Root cause: the systemic localStorage→AuthContext fix (PR #713) missed two inline handlers in `app/dashboard/activity/page.tsx`:
+
+- `applyAlwaysRule` (double-tap) — was reading `localStorage.getItem('token')`
+- `markAsTransfer` (right-swipe) — same
+
+These page-component-inline handlers weren't in `components/bookkeeping/`, so the systemic fix didn't catch them. With null token → no Authorization header → API returned 401 → app's auth-watcher logged the user out as a side effect.
+
+**Fix:** both handlers now use `useAuth().token` (already destructured at the top of `ActivityPage`); guard on `!token` to prevent fetch with stale closure; added `token` to `useCallback` deps so handlers re-create when token changes.
+
+#### Fix 2 — "YOU" pill overlapping the T letter on TRAIL banner
+
+`components/dashboard/TrailStageIndicator.tsx:485-496` rendered a small "You" pill positioned `-top-3` above the user's current stage tile. Visually it overlapped the stage letter glyph. The same indicator already shows a "You are here" chip next to the stage name in the spotlight panel below the tiles, so the pill was a duplicate affordance.
+
+**Fix:** removed the pill. Comment preserved explaining the rationale and pointing at the canonical "You are here" chip.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — `applyAlwaysRule` + `markAsTransfer` handlers use `useAuth().token`.
+- `components/dashboard/TrailStageIndicator.tsx` — "You" pill removed.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] visual design system / component pattern (TRAIL indicator — duplicate "You" pill removed; canonical chip preserved)
+
+### Build Status
+- [x] tsc clean
+
+### PR
+- Branch: `claude/fix-swipe-handlers-auth-and-trail-tooltip`
+- Status: pending push
