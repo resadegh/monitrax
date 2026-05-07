@@ -53,6 +53,7 @@ import { ImportWizard } from '@/components/bank/ImportWizard';
 import { TransactionLinkDialog } from '@/components/transactions/TransactionLinkDialog';
 import { MonthlyReviewPill } from '@/components/bookkeeping/MonthlyReviewPill';
 import { BulkActionToolbar } from '@/components/bookkeeping/BulkActionToolbar';
+import { CompletionCelebration } from '@/components/bookkeeping/CompletionCelebration';
 import { CashQuickAddButton } from '@/components/bookkeeping/CashQuickAddButton';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -210,6 +211,13 @@ export default function ActivityPage() {
   // user has ticked across pages (preserved when navigating). Cleared
   // after a successful bulk-categorise call.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+
+  // Phase 42 PR6 — bumped to fire the completion celebration. The
+  // celebration component itself gates against once-per-day max via
+  // a server-side check. Bump = a key change that re-runs the
+  // child's useEffect.
+  const [celebrationTrigger, setCelebrationTrigger] = useState(0);
+
   const toggleSelected = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -597,16 +605,22 @@ export default function ActivityPage() {
       <BulkActionToolbar
         selectedIds={selectedIds}
         onClear={() => setSelectedIds(new Set())}
-        onCategorised={(count) => {
+        onCategorised={async (count) => {
           setSelectedIds(new Set());
-          fetchTransactions();
+          await fetchTransactions();
           fetchSummary();
-          // Phase 6 will add a celebratory toast here ("✓ 12 categorised");
-          // PR2 leaves it silent — the count refresh + bookkeeping pill
-          // already give the user feedback.
+          // Phase 42 PR6 — fire the completion celebration. The
+          // CompletionCelebration component does the once-per-day-max
+          // gate server-side; we just bump the trigger and it
+          // decides whether to confetti, toast, or both.
+          setCelebrationTrigger((t) => t + 1);
           console.info(`[bulk-categorise] ${count} updated`);
         }}
       />
+
+      {/* Phase 42 PR6 — Completion celebration (toast + confetti).
+          Self-gated to once-per-day max via the server. Self-dismissing. */}
+      <CompletionCelebration trigger={celebrationTrigger} />
 
       {/* IMPORT WIZARD MODAL */}
       {showImportWizard && (

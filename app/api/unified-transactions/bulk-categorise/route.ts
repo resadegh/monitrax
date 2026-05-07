@@ -33,6 +33,7 @@ import {
   recordTransactionEdit,
   pickCategoryFields,
 } from '@/lib/bookkeeping/transactionEditAudit';
+import { touchStreak } from '@/lib/bookkeeping/engagement/streak';
 
 interface BulkCategoriseBody {
   transactionIds?: unknown;
@@ -220,6 +221,11 @@ export const POST = withPermission('transaction.write', async (request: NextRequ
       source: 'USER',
     });
   }
+
+  // Phase 42 PR6 — touch the engagement streak. Bulk action = one
+  // streak touch per call (not per-row); idempotent on the same day.
+  // Fire-and-forget per CLAUDE.md §12.10.
+  touchStreak(auth.userId).catch(() => {});
 
   return NextResponse.json({
     success: true,

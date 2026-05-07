@@ -20,6 +20,7 @@ import {
   type TransactionEditType,
 } from '@/lib/bookkeeping/transactionEditAudit';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
+import { touchStreak } from '@/lib/bookkeeping/engagement/streak';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -267,6 +268,14 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
           after: { isRecurring: transaction.isRecurring },
           source: 'USER',
         });
+      }
+
+      // Phase 42 PR6 — touch the engagement streak. Fire-and-forget per
+      // CLAUDE.md §12.10; a streak failure NEVER breaks the calling
+      // mutation. Idempotent on the same calendar day so spam-clicking
+      // doesn't double-count.
+      if (editTypes.includes('CATEGORY') || editTypes.includes('LINK_ENTITY')) {
+        touchStreak(userId).catch(() => {});
       }
 
       return NextResponse.json({ success: true, data: transaction });
