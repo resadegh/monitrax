@@ -44,3 +44,19 @@ export type {
   CreateCategoryData,
   UpdateCategoryData,
 } from './useCategories';
+
+// Phase 42 PR6.5 — mobile swipe gesture primitive
+export {
+  useSwipeGesture,
+  prefersReducedMotion,
+  SWIPE_THRESHOLD_PX,
+  TAP_MAX_DRIFT_PX,
+  LONG_PRESS_MS,
+  DOUBLE_TAP_WINDOW_MS,
+  HAPTIC_PULSE_MS,
+} from './useSwipeGesture';
+
+export type {
+  SwipeHandlers,
+  SwipeState,
+} from './useSwipeGesture';

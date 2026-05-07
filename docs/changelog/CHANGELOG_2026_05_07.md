@@ -1969,3 +1969,66 @@ All updates are gated by ownership (the helpers take `userId` and write to the `
 ### PR
 - Branch: `claude/phase-42-pr6-engagement-layer`
 - Status: pending push + open
+
+---
+
+## Session: phase-42-pr6-5-mobile-engagement
+
+### Changes Made
+
+- **Type**: Feature (mobile-first engagement layer — load-bearing per Reza directive 2026-05-07)
+- **Scope**: Phase 42 PR6.5 — mobile swipe gestures + bottom-sheet picker + Advanced toggle + consumer Sankey
+- **Description**: PARTIAL_SHIPPED. Three of five planned deliverables landed; two split out to PR6.5b (pending-actions popup) / PR6.5c (Review Queue card-stack) / PR6.5d (Gemini anomaly narrative) for focused review.
+
+### Architectural Decisions (CLAUDE.md §0 four-lens)
+
+- **Architect lens (§12.3 SSOT):** ONE swipe primitive for the entire app — `hooks/useSwipeGesture.ts`. Pointer Events spec (W3C), no library dep, no parallel implementations. Constants pinned and tested. The Sankey reuses Phase 41g's `<MoneyFlowSankey />` via a synthetic single-entity projection — no parallel chart engine, no parallel aggregator. The picker composes the existing `/api/unified-transactions/[id]` PATCH — no parallel categorise path.
+- **Designer lens:** Apple-glass conventions throughout. Bottom-sheet 28px-radius corners, 220ms slide-up, drag handle, ≥52pt chip tap targets per Apple HIG. Default-hide chrome via Advanced toggle — restraint over richness; calmer first-run for non-power users.
+- **Behaviour-psychologist lens:** every gesture is a single satisfying micro-action; haptic pulse + visual snap-back during swipe gives proprioceptive confirmation. `prefers-reduced-motion` collapses the drag transform but preserves the gestures themselves — accessibility-first.
+- **Financial-adviser lens:** the Sankey at the top of `/dashboard/activity` is the *aha moment* — "so THIS is where my money goes." Source-agnostic — works identically for BASIQ, QIF, RECEIPT, MANUAL. Reads canonical `MasterFinancialSnapshot`; no inlined math.
+
+### Files Modified
+
+- `hooks/useSwipeGesture.ts` (NEW) — SSOT swipe primitive. Pointer Events; thresholds + haptics; returns `{ bind, state }`. Constants exported: `SWIPE_THRESHOLD_PX=40` / `TAP_MAX_DRIFT_PX=6` / `LONG_PRESS_MS=300` / `DOUBLE_TAP_WINDOW_MS=300` / `HAPTIC_PULSE_MS=10`. Plus `prefersReducedMotion()` helper.
+- `hooks/index.ts` — re-exports useSwipeGesture + constants + types.
+- `components/bookkeeping/CategoryPickerSheet.tsx` (NEW) — mobile bottom-sheet with 4 suggested chips + free-form custom input; ≥52pt chips per Apple HIG; ≥44pt close button; Esc-to-close; composes existing `/api/unified-transactions/[id]` PATCH.
+- `components/bookkeeping/ConsumerMoneyFlowSankey.tsx` (NEW) — wraps Phase 41g `<MoneyFlowSankey />` via synthetic single-entity projection. Pure `projectSnapshotToMoneyFlow(snapshot)` exported for tests; rules: totalIncome echoes snapshot, surplus floor at 0, conservation invariant (totalOutflow = totalIncome), zero-amount sources filtered, single entity id='consumer' name='You'.
+- `app/dashboard/activity/page.tsx` — wired Sankey above summary tiles; mounted `<CategoryPickerSheet />`; new state `pickerTx`, `advancedView`; new handlers `applyAlwaysRule()` (double-tap → re-PATCH same category to upsert MerchantMapping server-side) + `markAsTransfer()` (right-swipe → PATCH `categoryLevel1='Transfer', categoryLevel2='Internal'`); `<TransactionRow>` extended with swipe handlers + drag-offset transform + direction hints during swipe + Advanced-gated confidence/anomaly chrome; Advanced toggle pill in page header.
+- `tests/bookkeeping/swipeGesture.test.ts` (NEW) — 6 tests on constants + invariants (threshold > drift × 4 boundary check).
+- `tests/bookkeeping/consumerSankeyProjection.test.ts` (NEW) — 10 tests on projection rules.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR6.5 row in §4 flipped to ✅ PARTIAL_SHIPPED with three deliverables landed + three deferred (PR6.5b/c/d).
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #43 flipped to ~~43~~ ✅ PARTIAL_SHIPPED; three new rows #49-#51 queued (PR6.5b pending-actions popup, PR6.5c Review Queue card-stack, PR6.5d Gemini anomaly narrative); header rewritten.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.48 documenting swipe primitive + picker sheet contract + Sankey projection rules + Advanced toggle.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (3 new primitives — useSwipeGesture, CategoryPickerSheet, ConsumerMoneyFlowSankey; SSOT swipe pattern locked for future surfaces)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Reza idea 2026-05-07 "pending-actions popup at first login" captured as PR6.5b queued in IMPLEMENTATION_PLAN row 49)
+
+Docs updated:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR6.5 → ✅ PARTIAL_SHIPPED + PR6.5b/c/d deferral block
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #43 → PARTIAL_SHIPPED; new rows #49 (PR6.5b) / #50 (PR6.5c) / #51 (PR6.5d)
+- `docs/architecture/03_DATA_MODEL.md` §10.48 — swipe primitive + picker + Sankey projection
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE. All mutations from PR6.5 paths flow through the existing `/api/unified-transactions/[id]` PATCH (PR1-PR2-PR3 surface) which is itself guarded by ownership (`userId` scoped) and was checklist-cleared at original ship time. The double-tap "always-rule" calls the same PATCH — the MerchantMapping upsert is performed server-side as a side-effect of categorise, with the server-side guard already in place.
+
+### Build Status
+- [x] `npx prisma generate` clean
+- [x] `npx tsc --noEmit` clean (only pre-existing `stripe` module noise filtered)
+- [x] `npx vitest run tests/bookkeeping/` — 198/198 green (PR1 27 + PR2 13 + PR3 32 + PR4 48 + PR5 39 + PR6 22 + PR6.5 16)
+- [x] `npm run lint:financial-surfaces` — 28 grandfathered, 0 new
+
+### PR
+- Branch: `claude/phase-42-pr6-5-mobile-engagement`
+- Status: pending push + open
