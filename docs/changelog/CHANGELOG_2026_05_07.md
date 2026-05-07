@@ -2126,3 +2126,62 @@ Each mutates only the column listed; no user-entered data at risk; the row is cr
 - [x] `npx tsc --noEmit` clean
 - [x] `npx vitest run tests/bookkeeping/pendingActions.test.ts` — 10/10 green (gate semantics are presentation-agnostic)
 - [x] `npm run lint:financial-surfaces` — 28 grandfathered, 0 new (baseline regenerated for shifted line numbers from strip mount-point change)
+
+---
+
+## Session: phase-42-pr6-5c-review-queue-cards
+
+### Changes Made
+
+- **Type**: Feature (deferred from PR6.5 for focused review)
+- **Scope**: Phase 42 PR6.5c — Review Queue card-stack opt-in mobile-first review mode
+- **Description**: SHIPPED. Opt-in full-screen overlay reachable from Activity page header. One transaction per card; anomaly-first queue order; Back / Skip / Transfer always reachable.
+
+### Architectural Decisions (CLAUDE.md §0 four-lens)
+
+- **Architect (§12.3 SSOT):** reuses PR6.5's `useSwipeGesture` primitive (one swipe engine for the entire app); composes existing `/api/unified-transactions/[id]` PATCH for both categorise + Transfer paths. Pure `orderReviewQueue()` is exhaustively testable. No parallel categorise endpoint, no parallel "rule" path.
+- **Designer:** full-screen on mobile / centred ≥sm; ≥56pt chip targets per Apple HIG; tabular-nums on counts; progress bar gives momentum cue; Back / Skip / Transfer footer always reachable; `motion-safe:` utilities respect `prefers-reduced-motion`.
+- **Behaviour-psychologist:** *one decision at a time* (Bandura self-efficacy). Each swipe is a small win; the progress bar visualises the win-stream. Empty / completed state celebrates rather than going silent.
+- **Financial-adviser:** anomaly-flagged transactions FIRST in the queue order — drives tax-pack correctness BEFORE polish. Newest-first within each bucket so the user encounters their own recent context.
+- **PR6.5b modal-pivot lesson preserved:** full-screen overlay is RIGHT here because the user actively chose to enter review mode. NEVER auto-fire on dashboard/activity mount.
+
+### Files Modified
+
+- `components/bookkeeping/ReviewQueueCards.tsx` (NEW) — opt-in full-screen card-stack overlay; reuses `useSwipeGesture`; composes existing PATCH endpoint; anomaly-first queue ordering exported as pure function for tests.
+- `app/dashboard/activity/page.tsx` — wired `<ReviewQueueCards />` overlay; new "Quick review →" pill in header (self-hides when nothing uncategorised); `reviewMode` state.
+- `tests/bookkeeping/reviewQueueOrdering.test.ts` (NEW) — 7 ordering invariants (anomaly-first, date-tiebreaker, non-mutation, edge cases).
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR6.5c row → ✅ SHIPPED.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #50 → ~~SHIPPED~~; header rewritten.
+- `docs/architecture/03_DATA_MODEL.md` §10.50 — component + ordering function + visual rules + state machine.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (1 new primitive — `<ReviewQueueCards />`; reuses existing `useSwipeGesture` and `<CategoryPickerSheet />`)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` PR6.5c row → ✅ SHIPPED
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #50 → ~~SHIPPED~~
+- `docs/architecture/03_DATA_MODEL.md` §10.50 — full component + ordering documentation
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE. The card-stack composes the existing `/api/unified-transactions/[id]` PATCH endpoint that already passed §12.11 review at PR1 ship time. No new mutation path; no new endpoints.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean (only pre-existing stripe noise)
+- [x] `npx vitest run tests/bookkeeping/reviewQueueOrdering.test.ts` — 7/7 green
+- [x] `npm run lint:financial-surfaces` — 28 grandfathered, 0 new
+
+### PR
+- Branch: `claude/phase-42-pr6-5c-review-queue-cards`
+- Status: pending push + open

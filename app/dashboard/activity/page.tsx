@@ -56,6 +56,7 @@ import { BulkActionToolbar } from '@/components/bookkeeping/BulkActionToolbar';
 import { CompletionCelebration } from '@/components/bookkeeping/CompletionCelebration';
 import { CategoryPickerSheet } from '@/components/bookkeeping/CategoryPickerSheet';
 import { ConsumerMoneyFlowSankey } from '@/components/bookkeeping/ConsumerMoneyFlowSankey';
+import { ReviewQueueCards } from '@/components/bookkeeping/ReviewQueueCards';
 import { useSwipeGesture, SWIPE_THRESHOLD_PX } from '@/hooks/useSwipeGesture';
 import { CashQuickAddButton } from '@/components/bookkeeping/CashQuickAddButton';
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -228,6 +229,8 @@ export default function ActivityPage() {
   // that doesn't disturb the click).
   const [pickerTx, setPickerTx] = useState<Transaction | null>(null);
   const [advancedView, setAdvancedView] = useState(false);
+  // Phase 42 PR6.5c — Review-mode card-stack opt-in.
+  const [reviewMode, setReviewMode] = useState(false);
 
   // Apply "always categorise X as Y" on a double-tap when the row
   // already has a category set. Writes a USER-source MerchantMapping
@@ -426,6 +429,18 @@ export default function ActivityPage() {
                 full Daily Pulse + streak surface that ships in PR6). */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <MonthlyReviewPill />
+              {/* Phase 42 PR6.5c — Quick review pill. Enters the
+                  full-screen card-stack review mode. Self-hides when
+                  there's nothing to review. */}
+              {transactions.some((t) => !t.categoryLevel1) && (
+                <button
+                  type="button"
+                  onClick={() => setReviewMode(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
+                >
+                  Quick review →
+                </button>
+              )}
               {/* Phase 42 PR6.5 — Advanced view toggle. Default-hide
                   confidence + anomaly chrome (calmer first-run); power
                   users opt in via this pill. State persists per session. */}
@@ -739,6 +754,24 @@ export default function ActivityPage() {
         onClose={() => setPickerTx(null)}
         onSuccess={() => {
           setPickerTx(null);
+          fetchTransactions();
+          fetchSummary();
+        }}
+      />
+
+      {/* Phase 42 PR6.5c — Review Queue card-stack. Full-screen
+          opt-in review mode. Receives the already-loaded
+          uncategorised tx list; each successful PATCH advances + we
+          refresh the parent on close. */}
+      <ReviewQueueCards
+        open={reviewMode}
+        transactions={transactions.filter((t) => !t.categoryLevel1 && !t.isTransfer)}
+        onPatchSuccess={() => {
+          // Bump celebration trigger when the queue clears completely.
+          setCelebrationTrigger((t) => t + 1);
+        }}
+        onClose={() => {
+          setReviewMode(false);
           fetchTransactions();
           fetchSummary();
         }}
