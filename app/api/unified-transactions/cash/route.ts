@@ -33,6 +33,7 @@ import { getOrCreateCashAccount } from '@/lib/bookkeeping/cashAccount';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { recordTransactionEdit, pickCategoryFields } from '@/lib/bookkeeping/transactionEditAudit';
 import { isPeriodEditable } from '@/lib/bookkeeping/period';
+import { touchStreak } from '@/lib/bookkeeping/engagement/streak';
 
 interface CashAddBody {
   amount?: unknown;
@@ -179,6 +180,11 @@ export const POST = withPermission('transaction.write', async (request: NextRequ
       balanceLastUpdatedAt: new Date(),
     },
   });
+
+  // Phase 42 PR6 — touch the engagement streak. A cash quick-add IS
+  // categorisation activity (the user is actively engaging with the
+  // ledger). Fire-and-forget per CLAUDE.md §12.10.
+  touchStreak(auth.userId).catch(() => {});
 
   return NextResponse.json({
     success: true,

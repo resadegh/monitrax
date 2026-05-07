@@ -1,6 +1,6 @@
 {
   "comment": "Phase 41i.6b — pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny — adding entries here suppresses bugs the lint is designed to catch).",
-  "generatedAt": "2026-05-07T01:25:15.279Z",
+  "generatedAt": "2026-05-07T02:39:32.648Z",
   "count": 28,
   "entries": [
     {
@@ -41,49 +41,49 @@
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 688,
+      "line": 695,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1318,
+      "line": 1325,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1326,
+      "line": 1333,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1367,
+      "line": 1374,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalExpenses / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1375,
+      "line": 1382,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalExpenses / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1389,
+      "line": 1396,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "expense.annualAmount / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1588,
+      "line": 1595,
       "pattern": "INLINE_ARITHMETIC",
       "match": "snapshot.totalAssets - snapshot.totalLiabilities"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1592,
+      "line": 1599,
       "pattern": "INLINE_ARITHMETIC",
       "match": "snapshot.totalAssets - snapshot.totalLiabilities"
     },

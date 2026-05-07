@@ -1835,3 +1835,71 @@ Both are idempotent on the unique index — re-running is safe. No existing rows
 ### PR
 - Branch: `claude/phase-42-pr5-vendor-tax-pack`
 - Status: pending push + open
+
+
+---
+
+## Session: phase-42-pr6-engagement-layer
+
+### Changes Made
+- **Type**: Feature — sixth and final main sub-PR of the Phase 42 stream
+- **Scope**: Engagement layer foundation — Daily Pulse + streak (with shield mechanic) + completion celebration + cancel-hint primitive
+- **Description**: Closes the main Phase 42 build. Per Reza directive 2026-05-08, the categorisation experience must shift from chore to daily ritual — this PR ships the foundation (state machine + Home front door + completion celebration + cancel hints). Heavier mobile-first interactions (swipe gestures + Review Queue card-stack + Gemini-narrated anomalies + Advanced toggle + consumer Sankey) split into PR6.5, which is now LOAD-BEARING per Reza directive 2026-05-07 ("users most probably perform all of transactions activities through mobile").
+
+### Files Modified / Added
+- `prisma/schema.prisma` — `EngagementState` model (one row per user; tracks streak + shield + celebration state); back-relation on `User`.
+- `prisma/migrations/20260511210000_phase_42_pr6_engagement/migration.sql` — additive (CREATE TABLE × 1 + index + FK; §12.11 N/A).
+- `lib/bookkeeping/engagement/streak.ts` (NEW) — pure `computeNextStreakState()` + `touchStreak()` + `tryFireCelebration()` + helpers (`calendarDaysBetween`, `isShieldAvailable`, `formatStreak`). Single SSOT for the streak rule per CLAUDE.md §12.3.
+- `lib/bookkeeping/engagement/dailyPulse.ts` (NEW) — `buildDailyPulse()` orchestrator + simple anomaly-flag → English narrator. Composes existing helpers; no parallel calc engine.
+- `app/api/bookkeeping/engagement/pulse/route.ts` (NEW) — Daily Pulse data endpoint.
+- `app/api/bookkeeping/engagement/streak/route.ts` (NEW) — read state + `?action=touch` + `?action=celebrate`.
+- `app/api/unified-transactions/[id]/route.ts` — wired `touchStreak()` fire-and-forget after CATEGORY/LINK_ENTITY edits.
+- `app/api/unified-transactions/bulk-categorise/route.ts` — wired `touchStreak()` (one touch per batch).
+- `app/api/unified-transactions/cash/route.ts` — wired `touchStreak()` (cash adds count as activity).
+- `components/bookkeeping/StreakBadge.tsx` (NEW) — small inline pill, hidden <3 days, caps at "365+".
+- `components/bookkeeping/DailyPulseCard.tsx` (NEW) — engagement front door on Home. Mobile-first stack with ≥44pt CTA tap target per Apple HIG.
+- `components/bookkeeping/CompletionCelebration.tsx` (NEW) — toast + once-per-day 60-particle confetti (hand-rolled, no new deps); full `prefers-reduced-motion` support; ≥44pt dismiss button on mobile.
+- `components/bookkeeping/CancelSubscriptionLink.tsx` (NEW) — consumes PR5 `CANCEL_URL_REGISTRY`; pill + inline variants; direct deep-link to merchant per spec §6.7 (no Monitrax middleware, no click-tracking).
+- `app/dashboard/page.tsx` — wired `<DailyPulseCard />` into Home (above the existing widgets).
+- `app/dashboard/activity/page.tsx` — wired `<CompletionCelebration />` into the bulk-categorise success path; bumps `celebrationTrigger` after a successful batch.
+- `tests/bookkeeping/streak.test.ts` (NEW) — 22 tests on state-machine transitions + shield semantics + format helpers.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR6 row in §4 flipped to ✅ FOUNDATION SHIPPED with the full deliverable list + queued PR6.5 deferral.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #42 marked ✅ FOUNDATION COMPLETE; six new follow-up rows #43-#48 (PR6.5 mobile-first elevated to load-bearing); new Recently Completed entry.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.47 documenting schema + service surface + state-machine transitions + UI components.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (4 new bookkeeping primitives — DailyPulseCard, StreakBadge, CompletionCelebration, CancelSubscriptionLink)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Reza directive 2026-05-07 mobile-first promotion documented; PR6.5 elevated to load-bearing in IMPLEMENTATION_PLAN)
+
+Docs updated:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR6 → ✅ FOUNDATION SHIPPED
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #42 → FOUNDATION COMPLETE; new follow-up rows #43-#48; Recently Completed entry
+- `docs/architecture/03_DATA_MODEL.md` §10.47 — schema + service surface + state-machine documentation
+- `docs/changelog/CHANGELOG_2026_05_07.md` — full session detail
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE. All Prisma writes in PR6 are CREATEs or system-managed-timestamp updates:
+- `getOrCreateEngagementState` — uses CREATE with race-tolerance (catch concurrent insert; re-read winner)
+- `touchStreak` — `prisma.engagementState.update` writes streak + lastActiveDate + lastShieldUsedAt + totalCategorisations counter; per-user state managed exclusively by the streak module; no user-entered data at risk
+- `tryFireCelebration` — `prisma.engagementState.update` sets `lastCelebrationAt`; system timestamp; user-action-initiated
+
+All updates are gated by ownership (the helpers take `userId` and write to the `userId @unique` row).
+
+### Build Status
+- [x] `npx prisma generate` clean
+- [x] `npx tsc --noEmit` clean (only pre-existing `stripe` module noise)
+- [x] `npx vitest run tests/bookkeeping/` — 182/182 green (PR1 27 + PR2 13 + PR3 32 + PR4 48 + PR5 39 + PR6 22)
+
+### PR
+- Branch: `claude/phase-42-pr6-engagement-layer`
+- Status: pending push + open
