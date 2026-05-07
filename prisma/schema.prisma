@@ -1889,6 +1889,12 @@ model UnifiedTransaction {
   // Relationships
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   account Account @relation("UnifiedTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  // Phase 42 PR2 — Splits. The parent transaction's `categoryLevel*`
+  // fields remain populated for backwards-compat (= the dominant split's
+  // category, computed deterministically); per-line categories live on
+  // `TransactionSplit` rows. Sum-of-splits MUST equal `amount` ± $0.01
+  // — enforced by `lib/bookkeeping/splits.ts` at every mutation path.
+  splits  TransactionSplit[]
 
   @@index([userId])
   @@index([accountId])
@@ -2012,6 +2018,8 @@ model CanonicalCategoryRegistry {
   updatedAt        DateTime     @updatedAt
 
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Phase 42 PR2 — back-relation to splits that reference this category.
+  splits           TransactionSplit[]
 
   @@unique([userId, level1, level2, subcategory])
   @@index([userId])
@@ -2058,6 +2066,59 @@ model TransactionEdit {
   @@index([transactionId])
   @@index([userId, editedAt])
   @@map("transaction_edits")
+}
+
+// =============================================================================
+// PHASE 42 PR2: TRANSACTION SPLIT
+//
+// One row per per-line split of a UnifiedTransaction.amount. The sum of
+// all splits for a transaction MUST equal `transaction.amount` ± $0.01
+// (validation lives in `lib/bookkeeping/splits.ts:assertSplitsBalance`).
+//
+// Backwards-compat rule: when splits exist, the parent transaction's
+// `categoryLevel*` fields hold the **dominant** split's category
+// (largest absolute amount; ties broken by createdAt). All canonical
+// engines (`getMasterFinancialSnapshot`, expense/income aggregators,
+// `lib/utils/reconciliation`) keep reading the parent's category — they
+// don't need to know about splits at v1. Splits are an additive layer
+// for users who want per-line precision (Bunnings: $200 deductible
+// tools + $40 personal items, recorded honestly).
+//
+// QIF parser already extracts `S`/`$` split fields per
+// `lib/bank/parsers/qif.ts` — PR2 wires them into rows here at import time.
+//
+// `categoryId` is a hard FK to `CanonicalCategoryRegistry` — the SSOT
+// for category labels (CLAUDE.md §12.2). Per-line tax-deductibility
+// inherits from the registry's `taxCategoryId` bridge (PR5) by default
+// but can be overridden per-split.
+// =============================================================================
+
+model TransactionSplit {
+  id              String   @id @default(uuid())
+  transactionId   String
+  // Hard FK to the SSOT registry. Resolves through
+  // `lib/bookkeeping/categoryRegistry.ts:resolveOrCreateCategory()`.
+  categoryId      String
+  amount          Float    // Same currency + sign convention as parent
+  // Per-line entity attribution. Lets a single Bunnings purchase split
+  // its receipts across "investment property" + "personal" without
+  // duplicating the bank charge.
+  propertyId      String?
+  loanId          String?
+  expenseId       String?
+  isTaxDeductible Boolean  @default(false)
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  transaction     UnifiedTransaction        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  category        CanonicalCategoryRegistry @relation(fields: [categoryId], references: [id])
+
+  @@index([transactionId])
+  @@index([categoryId])
+  @@index([propertyId])
+  @@index([expenseId])
+  @@map("transaction_splits")
 }
 
 // =============================================================================

@@ -19,6 +19,8 @@ import {
   generateDeduplicationHash,
   CATEGORY_HIERARCHY,
 } from '@/lib/tie';
+import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
+import { replaceSplits } from '@/lib/bookkeeping/splits';
 
 // =============================================================================
 // GET - List Unified Transactions
@@ -278,6 +280,13 @@ async function handleBatchImport(
     description: string;
     direction?: 'IN' | 'OUT';
     merchantRaw?: string;
+    /**
+     * Phase 42 PR2 — per-line splits propagated from the parser
+     * (QIF supports `S`/`$` fields). If present, sum(splits[].amount)
+     * MUST equal `amount` (validated at write time by
+     * `lib/bookkeeping/splits.ts:assertSplitsBalance`).
+     */
+    splits?: Array<{ amount: number; category?: string; memo?: string }>;
   }>,
   userId: string,
   accountId: string
@@ -379,7 +388,7 @@ async function handleBatchImport(
       const categorisation = await categoriseTransaction(tempTx);
 
       // Create transaction
-      await prisma.unifiedTransaction.create({
+      const created = await prisma.unifiedTransaction.create({
         data: {
           userId,
           accountId,
@@ -398,6 +407,48 @@ async function handleBatchImport(
           processedAt: new Date(),
         },
       });
+
+      // Phase 42 PR2 — propagate parser-extracted splits (QIF `S`/`$`).
+      // SSOT path: every split's category resolves through
+      // `resolveOrCreateCategory` (no parallel category writes); sum
+      // validation runs in `replaceSplits` (no inline calc duplication).
+      // If validation fails the import logs an error for the row and
+      // continues — the parent transaction stays without splits, and
+      // the user can fix it manually from the UI later.
+      if (tx.splits && tx.splits.length > 0) {
+        try {
+          const resolvedSplits = await Promise.all(
+            tx.splits.map(async (s) => {
+              const rawCategory = s.category?.trim() || categorisation.categoryLevel1 || 'Uncategorised';
+              const registryRow = await resolveOrCreateCategory({
+                userId,
+                level1: rawCategory,
+                level2: null,
+                subcategory: null,
+              });
+              return {
+                amount: s.amount,
+                categoryId: registryRow.id,
+                note: s.memo ?? null,
+              };
+            })
+          );
+          await replaceSplits({
+            transactionId: created.id,
+            userId,
+            splits: resolvedSplits,
+            source: 'IMPORT',
+          });
+        } catch (splitErr) {
+          results.errors++;
+          results.errorDetails.push({
+            row: i + 1,
+            message: `Split validation failed: ${
+              splitErr instanceof Error ? splitErr.message : String(splitErr)
+            }`,
+          });
+        }
+      }
 
       results.imported++;
     } catch (error) {

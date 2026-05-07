@@ -157,14 +157,26 @@ The default `LOCKED` is opt-in. Most users never lock; they just `REVIEWED`. **T
 
 **Out of PR1, queued:** category resolver wiring (PR1's resolver helper exists but is not yet called from the categoriser — that's PR2's category-bridge); promotion of the dedup index to UNIQUE (PR1.1 after prod audit).
 
-### PR2 — Splits + bulk re-categorise (5 days)
+### PR2 — Splits + bulk re-categorise ✅ SHIPPED 2026-05-07
 
-- New `TransactionSplit` model with `amount sum = transaction.amount` validation
-- Wire QIF parser splits → `TransactionSplit` rows on import
-- `TransactionLinkDialog` gets "Split this" mode (single-row → 2-N row editor)
-- Activity table: shift-click multi-select + toolbar "Categorise N selected"
-- API: `/api/unified-transactions/splits` POST
-- BASIQ-onboarding behaviour: BASIQ doesn't ship splits; user adds them post-sync. Same code path. The split sum-validation runs identically.
+- ✅ New `TransactionSplit` model with hard FK to `CanonicalCategoryRegistry` (SSOT). Sum-of-splits validation lives in **one place** (`lib/bookkeeping/splits.ts:assertSplitsBalance`) per CLAUDE.md §12.3 — every mutation path goes through `replaceSplits()`.
+- ✅ Service helper `lib/bookkeeping/splits.ts` — `replaceSplits()` (atomic delete-then-create inside a Prisma transaction; propagates dominant split's category up to the parent for backwards-compat with `getMasterFinancialSnapshot` + expense/income aggregators); `clearSplits()`; `listSplits()`; `resolveOrCreateCategoryForSplit()`. Pickle-prevention: `assertSplitsBalance` enforces `sum(splits) === parentAmount ± SPLIT_SUM_EPSILON ($0.01)`. Cross-user FK abuse blocked: every `categoryId` is verified against the calling user's registry rows before write.
+- ✅ QIF parser → splits wiring. `lib/bank/types.ts:RawTransaction.splits` field added; QIF parser propagates `S`/`$` fields onto it (the parser already extracted them — PR2 just wires them downstream); `app/api/unified-transactions/route.ts:handleBatchImport` resolves each split's category string via `resolveOrCreateCategory` and persists via `replaceSplits` with `source='IMPORT'`.
+- ✅ Categoriser SSOT bridge (PR1 carryover). `app/api/unified-transactions/[id]/route.ts` PATCH now lazy-seeds `CanonicalCategoryRegistry` on every category write — closes the SSOT loop. The legacy string columns continue to populate for backwards-compat.
+- ✅ API:
+  - `GET    /api/unified-transactions/[id]/splits` — list
+  - `PUT    /api/unified-transactions/[id]/splits` — replace all
+  - `DELETE /api/unified-transactions/[id]/splits` — clear
+  - `POST   /api/unified-transactions/bulk-categorise` — atomic bulk re-categorise (max 200 per call); rejects the WHOLE batch if any row sits in a LOCKED period; rolls up per-merchant `MerchantMapping` learning rows in the same Prisma transaction
+- ✅ UI:
+  - `<BulkActionToolbar />` — sticky-bottom toolbar that surfaces when ≥1 row is selected; suggested-categories chip strip + free-form custom input; calls bulk-categorise endpoint
+  - `<TransactionRow />` (Activity) — added a leading checkbox tap-target. Selection state lives on the page; preserved across paginations until the user clears or completes a categorisation
+- ✅ Tests — 13 new unit tests across `tests/bookkeeping/{splits,qifSplits}.test.ts` (totals: PR1 27 + PR2 13 = 40). Sum validation, tolerance boundary at $0.01, empty-array rejection, mixed-sign tolerance, real-QIF-fragment parser parity.
+- BASIQ-onboarding behaviour: BASIQ doesn't ship splits — the user adds them post-sync via the API (the inline UI in `TransactionLinkDialog` is queued for PR2.5). The sum-validation runs identically regardless of source. QIF MCC-level splits land via the import path; BASIQ-fed rows reach the same `replaceSplits()` helper from the future UI.
+
+**Migration:** `prisma/migrations/20260510210000_phase_42_pr2_splits/migration.sql`. Operations: CREATE TABLE × 1, CREATE INDEX × 4, FOREIGN KEY × 2. NO destructive ALTER, NO DROP, NO row UPDATE/DELETE. CLAUDE.md §12.11 N/A.
+
+**Out of PR2, queued:** inline split editor inside `TransactionLinkDialog` (defer to PR2.5 — the dialog is 1,601 LOC and a full split UI grows it; the API + service surface are complete and the future UI just renders the form).
 
 ### PR3 — Receipt ↔ transaction matching + cash quick-add (5 days)
 

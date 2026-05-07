@@ -52,6 +52,7 @@ import {
 import { ImportWizard } from '@/components/bank/ImportWizard';
 import { TransactionLinkDialog } from '@/components/transactions/TransactionLinkDialog';
 import { MonthlyReviewPill } from '@/components/bookkeeping/MonthlyReviewPill';
+import { BulkActionToolbar } from '@/components/bookkeeping/BulkActionToolbar';
 import { formatCurrency } from '@/lib/utils/formatters';
 
 // ---------------------------------------------------------------------------
@@ -203,6 +204,19 @@ export default function ActivityPage() {
   // Link dialog
   const [linkingTransaction, setLinkingTransaction] = useState<Transaction | null>(null);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
+
+  // Phase 42 PR2 — bulk multi-select. Set-of-ids; tracks every row the
+  // user has ticked across pages (preserved when navigating). Cleared
+  // after a successful bulk-categorise call.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   // ----- Data fetching -----------------------------------------------------
 
@@ -533,6 +547,8 @@ export default function ActivityPage() {
                       <TransactionRow
                         key={tx.id}
                         tx={tx}
+                        selected={selectedIds.has(tx.id)}
+                        onToggleSelected={() => toggleSelected(tx.id)}
                         onClick={() => {
                           setLinkingTransaction(tx);
                           setShowLinkDialog(true);
@@ -567,6 +583,21 @@ export default function ActivityPage() {
           </>
         )}
       </div>
+
+      {/* Phase 42 PR2 — Bulk action toolbar (shows when ≥1 selected) */}
+      <BulkActionToolbar
+        selectedIds={selectedIds}
+        onClear={() => setSelectedIds(new Set())}
+        onCategorised={(count) => {
+          setSelectedIds(new Set());
+          fetchTransactions();
+          fetchSummary();
+          // Phase 6 will add a celebratory toast here ("✓ 12 categorised");
+          // PR2 leaves it silent — the count refresh + bookkeeping pill
+          // already give the user feedback.
+          console.info(`[bulk-categorise] ${count} updated`);
+        }}
+      />
 
       {/* IMPORT WIZARD MODAL */}
       {showImportWizard && (
@@ -732,7 +763,17 @@ function FilterField({ label, children }: { label: string; children: React.React
 // Transaction row — clicking opens TransactionLinkDialog
 // ---------------------------------------------------------------------------
 
-function TransactionRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
+function TransactionRow({
+  tx,
+  onClick,
+  selected,
+  onToggleSelected,
+}: {
+  tx: Transaction;
+  onClick: () => void;
+  selected: boolean;
+  onToggleSelected: () => void;
+}) {
   const isIn = tx.direction === 'IN';
   const isLinked = !!(tx.incomeId || tx.expenseId);
   const isTransfer = tx.isTransfer;
@@ -747,11 +788,33 @@ function TransactionRow({ tx, onClick }: { tx: Transaction; onClick: () => void 
   const confidenceTone =
     tx.confidenceScore !== null && tx.confidenceScore < 0.7 ? 'text-rose-600' : 'text-amber-600';
 
+  // Phase 42 PR2 — Selection checkbox is rendered as a sibling element
+  // (not inside the row's main click target) with stopPropagation, so
+  // tapping the checkbox doesn't open the link dialog. Visible at all
+  // times; emerald accent when ticked. Mobile-friendly tap target.
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 border-b border-border last:border-0 hover-lift hover:bg-muted/40 group"
+    <div
+      className={`w-full flex items-center border-b border-border last:border-0 group transition-colors ${
+        selected ? 'bg-emerald-50/40' : 'hover:bg-muted/40'
+      }`}
     >
+      <label
+        className="flex items-center justify-center w-10 sm:w-11 self-stretch shrink-0 cursor-pointer hover:bg-muted/60 transition-colors"
+        onClick={(e) => e.stopPropagation()}
+        title={selected ? 'Unselect' : 'Select for bulk action'}
+      >
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelected}
+          className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/40 cursor-pointer"
+          aria-label={`Select ${label}`}
+        />
+      </label>
+      <button
+        onClick={onClick}
+        className="flex-1 text-left flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 hover-lift"
+      >
       {/* Direction icon */}
       <div
         className={`flex items-center justify-center w-9 h-9 rounded-xl shrink-0 ${
@@ -796,7 +859,8 @@ function TransactionRow({ tx, onClick }: { tx: Transaction; onClick: () => void 
         </div>
       </div>
       <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-foreground/70 transition-colors shrink-0" />
-    </button>
+      </button>
+    </div>
   );
 }
 

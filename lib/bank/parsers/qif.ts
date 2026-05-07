@@ -386,6 +386,27 @@ export function parseQIF(content: string): ParsedFile {
     if (tx.category) rawData.category = tx.category;
     if (tx.cleared) rawData.cleared = tx.cleared;
 
+    // Phase 42 PR2 — propagate QIF `S`/`$` splits onto RawTransaction.splits.
+    // The import path (lib/bank/ingestion or its caller) resolves each
+    // split's `category` string to a CanonicalCategoryRegistry row before
+    // creating TransactionSplit rows. Sum-validation (sum === amount) runs
+    // in `lib/bookkeeping/splits.ts:assertSplitsBalance`.
+    //
+    // QIF split amounts are SIGNED in the source format (debits negative,
+    // credits positive); we keep them signed here so the parent
+    // transaction.amount sign-convention match works the same way as the
+    // top-level `T` line.
+    const rawSplits =
+      tx.splits && tx.splits.length > 0
+        ? tx.splits
+            .filter((s) => s.amount !== undefined)
+            .map((s) => ({
+              amount: s.amount as number,
+              category: s.category,
+              memo: s.memo,
+            }))
+        : undefined;
+
     return {
       rowNumber: index + 1,
       rawData,
@@ -394,6 +415,7 @@ export function parseQIF(content: string): ParsedFile {
       amount: absAmount,
       direction,
       reference: tx.reference,
+      splits: rawSplits,
     };
   });
 
