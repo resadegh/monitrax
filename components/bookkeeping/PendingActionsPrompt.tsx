@@ -42,6 +42,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Bell, Receipt, Repeat, Sparkles, X } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 type PendingActionKind = 'CATEGORISE' | 'ANOMALY' | 'RECURRING' | 'RECEIPT';
 
@@ -70,16 +71,24 @@ const ICONS: Record<PendingActionKind, typeof Sparkles> = {
 const SESSION_COLLAPSE_KEY = 'monitrax.pendingActions.collapsedThisSession';
 
 export function PendingActionsPrompt() {
+  const { token } = useAuth();
   const [visible, setVisible] = useState(false);
   const [data, setData] = useState<PendingActionsResult | null>(null);
 
   useEffect(() => {
+    // Wait for the auth context to resolve a Firebase ID token —
+    // bookkeeping routes require Bearer auth and return 401
+    // without it. (See the 2026-05-08 fix that moved both this
+    // strip and `usePendingReconciliationCount()` off
+    // `localStorage.getItem('token')` and onto `useAuth().token`.)
+    if (!token) {
+      return;
+    }
     let cancelled = false;
     async function load() {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const res = await fetch('/api/bookkeeping/engagement/pending-actions', {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
         if (cancelled) return;
@@ -103,7 +112,7 @@ export function PendingActionsPrompt() {
           // Advisory telemetry — fire-and-forget; does NOT gate re-render.
           fetch('/api/bookkeeping/engagement/pending-actions?action=shown', {
             method: 'POST',
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            headers: { Authorization: `Bearer ${token}` },
             credentials: 'include',
           }).catch(() => {});
         }
@@ -115,7 +124,7 @@ export function PendingActionsPrompt() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [token]);
 
   function handleCollapse() {
     setVisible(false);
@@ -124,20 +133,20 @@ export function PendingActionsPrompt() {
     }
     // Server-side dismiss is now advisory — keep the audit trail
     // by writing it, but it does NOT gate re-display.
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return;
     fetch('/api/bookkeeping/engagement/pending-actions?action=dismiss', {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: { Authorization: `Bearer ${token}` },
       credentials: 'include',
     }).catch(() => {});
   }
 
   function handleOptOut() {
     setVisible(false);
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return;
     fetch('/api/bookkeeping/engagement/pending-actions?action=opt-out', {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: { Authorization: `Bearer ${token}` },
       credentials: 'include',
     }).catch(() => {});
   }

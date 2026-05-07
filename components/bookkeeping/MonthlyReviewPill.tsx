@@ -22,6 +22,7 @@
 
 import { useEffect, useState } from 'react';
 import { Check, Lock } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface MonthlyReviewPillProps {
   /** "YYYY-MM" — defaults to the current month if omitted */
@@ -55,18 +56,19 @@ function monthLabel(monthKey: string): string {
 }
 
 export function MonthlyReviewPill({ month, onChange }: MonthlyReviewPillProps) {
+  const { token } = useAuth();
   const monthKey = month ?? currentMonthKey();
   const [status, setStatus] = useState<PeriodStatus | null>(null);
   const [counts, setCounts] = useState<{ reviewed: number; total: number } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (!token) return;
     let cancelled = false;
     async function load() {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const res = await fetch(`/api/bookkeeping/periods/${monthKey}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
         const json = (await res.json()) as PeriodResponse;
@@ -84,20 +86,19 @@ export function MonthlyReviewPill({ month, onChange }: MonthlyReviewPillProps) {
     return () => {
       cancelled = true;
     };
-  }, [monthKey]);
+  }, [monthKey, token]);
 
   if (status === null) return null;
 
   async function transition(action: 'mark_reviewed' | 'unlock') {
-    if (busy) return;
+    if (busy || !token) return;
     setBusy(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const res = await fetch(`/api/bookkeeping/periods/${monthKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({ action }),

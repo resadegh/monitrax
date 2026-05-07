@@ -31,6 +31,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/context/AuthContext';
 import { Check, X } from 'lucide-react';
 
 interface CompletionCelebrationProps {
@@ -40,6 +41,7 @@ interface CompletionCelebrationProps {
 }
 
 export function CompletionCelebration({ trigger, monthLabel }: CompletionCelebrationProps) {
+  const { token } = useAuth();
   const [active, setActive] = useState(false);
   const [confettiActive, setConfettiActive] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -57,13 +59,13 @@ export function CompletionCelebration({ trigger, monthLabel }: CompletionCelebra
   // Fire on trigger bump.
   useEffect(() => {
     if (trigger === 0) return;
+    if (!token) return;
     let cancelled = false;
     async function run() {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const res = await fetch('/api/bookkeeping/engagement/streak?action=celebrate', {
           method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
         const json = (await res.json()) as { success: boolean; data?: { fired: boolean } };
@@ -90,7 +92,7 @@ export function CompletionCelebration({ trigger, monthLabel }: CompletionCelebra
     return () => {
       cancelled = true;
     };
-  }, [trigger, reducedMotion]);
+  }, [trigger, reducedMotion, token]);
 
   if (!active) return null;
 

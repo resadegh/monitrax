@@ -22,6 +22,7 @@
 
 import { useState } from 'react';
 import { Check, X, Loader2 } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface BulkActionToolbarProps {
   selectedIds: Set<string>;
@@ -54,6 +55,7 @@ export function BulkActionToolbar({
   onCategorised,
   suggestedCategories = DEFAULT_SUGGESTIONS,
 }: BulkActionToolbarProps) {
+  const { token } = useAuth();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,16 +65,15 @@ export function BulkActionToolbar({
   const ids = Array.from(selectedIds);
 
   async function categorise(level1: string) {
-    if (!level1 || busy) return;
+    if (!level1 || busy || !token) return;
     setBusy(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const res = await fetch('/api/unified-transactions/bulk-categorise', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({

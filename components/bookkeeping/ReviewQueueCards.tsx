@@ -36,6 +36,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Check, ChevronLeft, SkipForward, X } from 'lucide-react';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface ReviewTransaction {
   id: string;
@@ -88,6 +89,7 @@ export function ReviewQueueCards({
   onPatchSuccess,
   onClose,
 }: ReviewQueueCardsProps) {
+  const { token } = useAuth();
   // The queue is sorted once on open; subsequent PATCHes don't
   // re-sort (would shift the user's mental model of "next card").
   const queue = useMemo(() => orderReviewQueue(transactions), [transactions]);
@@ -137,16 +139,15 @@ export function ReviewQueueCards({
   }
 
   async function categorise(level1: string) {
-    if (!current || busy) return;
+    if (!current || busy || !token) return;
     setBusy(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const res = await fetch(`/api/unified-transactions/${current.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({ categoryLevel1: level1 }),
@@ -166,16 +167,15 @@ export function ReviewQueueCards({
   }
 
   async function markTransfer() {
-    if (!current || busy) return;
+    if (!current || busy || !token) return;
     setBusy(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const res = await fetch(`/api/unified-transactions/${current.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({ categoryLevel1: 'Transfer', categoryLevel2: 'Internal' }),

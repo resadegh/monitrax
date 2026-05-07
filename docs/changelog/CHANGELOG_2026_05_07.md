@@ -2246,3 +2246,71 @@ NONE. No new mutation paths. The existing `markPromptShown` / `dismissPromptForT
 ### PR
 - Branch: `claude/phase-42-pr6-5e-persistent-reconciliation-nudge`
 - Status: pending push + open
+
+---
+
+## Session: fix-pending-actions-auth (systemic bookkeeping engagement layer auth)
+
+### Changes Made
+
+- **Type**: Bug fix (systemic — affects 8 components + 1 hook across the engagement layer)
+- **Scope**: All bookkeeping engagement-layer client components were reading `localStorage.getItem('token')` for the Bearer auth header — a value that's only set when the user signs in via Google OAuth or org-portal flows. For the standard email/password Firebase auth path (which is most users), `localStorage.token` is always `null`, so every API call from these components was sent without an Authorization header and returned 401 silently.
+- **User-visible symptom**: PR6.5e's sidebar count badge never rendered (Reza-reported). Same root cause silently broke the Daily Pulse card, Pending Actions strip, Review Queue card-stack, Cash Quick-Add, Bulk Action toolbar, Category Picker sheet, Completion Celebration, Consumer Money Flow Sankey, and Monthly Review pill for every email/password-authed user.
+
+### Root cause
+
+`getAuthContext()` in `lib/auth/context.ts` accepts ONLY Bearer tokens via the `Authorization` header (no cookie auth). The Firebase ID token lives in `<AuthContext>` (`useAuth().token`) — NOT in `localStorage`. The pattern was inherited from older OAuth callback code (which DOES write to localStorage) and propagated across the bookkeeping engagement layer without the corresponding token-write side-effect.
+
+### Fix applied (consistent pattern across all surfaces)
+
+Every component now consumes `useAuth()` from `@/lib/context/AuthContext` and reads `token` from there. Pattern:
+
+```typescript
+const { token } = useAuth();
+useEffect(() => {
+  if (!token) return;             // wait for context to resolve
+  // ... fetch with `Authorization: Bearer ${token}` ...
+}, [token, ...other deps]);
+```
+
+### Files Modified
+
+- `hooks/usePendingReconciliationCount.ts` — new file from PR6.5e; switched to `useAuth()`.
+- `components/bookkeeping/PendingActionsPrompt.tsx` — strip + dismiss + opt-out + advisory-shown POSTs all routed through `useAuth().token`.
+- `components/bookkeeping/DailyPulseCard.tsx` — pulse fetch.
+- `components/bookkeeping/ConsumerMoneyFlowSankey.tsx` — `/api/master-snapshot` fetch.
+- `components/bookkeeping/BulkActionToolbar.tsx` — bulk-categorise POST.
+- `components/bookkeeping/CashQuickAddButton.tsx` — cash quick-add POST.
+- `components/bookkeeping/ReviewQueueCards.tsx` — categorise + Transfer PATCHes (2 occurrences).
+- `components/bookkeeping/CompletionCelebration.tsx` — celebrate POST.
+- `components/bookkeeping/CategoryPickerSheet.tsx` — categorise PATCH.
+- `components/bookkeeping/MonthlyReviewPill.tsx` — period read + transition POST.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth (component-level fetch pattern only — no auth model change; `getAuthContext` and Firebase Auth flows are unchanged)
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (new failure-mode lesson — see below)
+- [ ] strategic decision
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Reviewer rule (lesson preserved)
+
+**Never read `localStorage.getItem('token')` directly inside a client component for Bearer auth.** The token lives in `<AuthContext>` and is only mirrored to localStorage by the OAuth callback / org-portal register / org-portal invite flows — three minority paths. The standard email/password Firebase flow does NOT write to localStorage. **Always use `useAuth()` from `@/lib/context/AuthContext`** for the canonical token. A future cleanup PR should also remove the localStorage writes from the three OAuth/portal pages, since they're inconsistent with the AuthContext pattern and serve no functional purpose anymore.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean (only pre-existing stripe noise)
+- [x] `npx vitest run tests/bookkeeping/{pendingActions,pendingReconciliationCount,reviewQueueOrdering}.test.ts` — 22/22 green (gate semantics + ordering invariants are presentation-agnostic; no test changes needed)
+- [x] `npm run lint:financial-surfaces` — 28 grandfathered, 0 new
+
+### PR
+- Branch: `claude/fix-pending-actions-auth`
+- Status: pending push + open

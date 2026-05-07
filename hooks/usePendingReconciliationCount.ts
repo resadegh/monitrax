@@ -9,15 +9,20 @@
  * Per CLAUDE.md §12.3 — composes the existing route. No parallel
  * data path.
  *
- * Per Reza directive 2026-05-08: reconciliation is the
- * most-recurring user task; the count needs to follow the user
- * across pages so they see it regardless of whether they're on
- * Home, Activity, Budget, etc.
+ * **Auth note (2026-05-08 fix):** the Firebase ID token lives in
+ * the `<AuthContext>` provider via `useAuth().token`, NOT in
+ * `localStorage`. Reading `localStorage.getItem('token')`
+ * returned null for users authed via Firebase, sending requests
+ * with no Bearer header → server returned 401 silently and the
+ * badge never rendered. The hook now consumes the auth context
+ * directly, matching the pattern used by `<DashboardLayout>` for
+ * its own data fetches.
  */
 
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface PendingActionsResult {
   actions: Array<{ kind: string; count: number }>;
@@ -44,16 +49,21 @@ export function formatReconciliationCount(n: number): string {
 }
 
 export function usePendingReconciliationCount(): PendingReconciliationCount {
+  const { token } = useAuth();
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Wait until the auth context has resolved a token — fetching
+    // before that returns 401 from the bookkeeping route.
+    if (!token) {
+      return;
+    }
     let cancelled = false;
     async function load() {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const res = await fetch('/api/bookkeeping/engagement/pending-actions', {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers: { Authorization: `Bearer ${token}` },
           credentials: 'include',
         });
         if (cancelled) return;
@@ -77,7 +87,7 @@ export function usePendingReconciliationCount(): PendingReconciliationCount {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [token]);
 
   return { count, loading };
 }

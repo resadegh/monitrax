@@ -21,6 +21,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Plus, X, Camera, Loader2, Check } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface CashQuickAddButtonProps {
   /** Called after a successful create so the parent can refresh. */
@@ -35,6 +36,7 @@ interface CashQuickAddButtonProps {
 }
 
 export function CashQuickAddButton({ onCreated, onCaptureReceipt }: CashQuickAddButtonProps) {
+  const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,15 +90,18 @@ export function CashQuickAddButton({ onCreated, onCaptureReceipt }: CashQuickAdd
       setError('What was it for?');
       return;
     }
+    if (!token) {
+      setError('Not authenticated');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const res = await fetch('/api/unified-transactions/cash', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         credentials: 'include',
         body: JSON.stringify({
