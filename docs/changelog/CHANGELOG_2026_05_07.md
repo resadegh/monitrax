@@ -1,5 +1,73 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41i6c-runtime-harness (Phase 41i.6c — Runtime audit harness + Full Scan; CLOSES PHASE 41i.6)
+
+### Strategy
+Third + final sub-PR of Phase 41i.6 (the trustworthiness commitment). **CLOSES PHASE 41i.6.** HR-3 invariant 11 fully realised — calc-engine drift (L1/L2/L3) + surface-rendering drift (L4) both caught structurally.
+
+Per spec doc `PHASE_41I_6_SURFACE_AUDIT.md` §8 + §10 — the harness re-derives from canonical source (does NOT scrape DOM); the static-analysis pass (41i.6b shipped in PR #701) catches the COMPLEMENTARY bug class of components bypassing the canonical source entirely.
+
+### Type
+- **Type**: Feature (Phase 41i.6 sub-PR — CLOSES PHASE 41i.6)
+- **Scope**: New harness lib + Full Scan API route + admin UI updates + 12 new tests. Zero new dependencies.
+
+### Files Created
+- `lib/calc-audit/surfaceAudit.ts` — `runSurfaceAuditForUser` iterates registered descriptors. Records HIGH-severity finding when canonical source throws or extractor throws; MEDIUM when canonical returns null without `skipWhenNull` allowance; SKIPS when null/zero matches `renderConditions`. `runSurfaceAuditFullScan` async-generator yields `FullScanProgress` events (`PROGRESS` per user / `DONE` with totals / `ERROR`). Idempotent dedup via `recordSurfaceFinding` (refresh existing OPEN; create new).
+- `app/api/admin/calc-audit/full-scan/route.ts` — `POST` with dual auth (admin session via `verifyAdminGCPAuth` + `audit:read` permission OR Cloud Scheduler shared secret via `CALC_AUDIT_SCHEDULER_SHARED_SECRET` constant-time compare; same pattern as 41i.5 anomaly-scan). Streams `application/x-ndjson` with `X-Accel-Buffering: no` for live progress. Body: `{ userLimit?, descriptorIds? }` (clamped + filtered).
+- `tests/calc-audit/surfaces/surfaceAudit.test.ts` — 12 tests with mocked Prisma. Coverage: canonical throw → HIGH; extractor throw → HIGH; null with skip → SKIPPED; null without skip → MEDIUM; zero with skip → SKIPPED; zero without skip → OK; happy path → OK; multi-descriptor iteration in order; dedup pattern (UPDATE existing OPEN, CREATE new, scoped findFirst query).
+
+### Files Modified
+- `app/admin/calc-audit/page.tsx` — extended `Finding` type with `L4_SURFACE_AUDIT` source + `userId` field. New scan state. New `runFullScan` callback that POSTs to `/full-scan` and reads NDJSON via `ReadableStream.getReader()` + `TextDecoder`, parses each line, accumulates aggregate counters, updates UI per event. AdminHeader action prop now contains both `[Re-run differential]` + `[Full scan (L4)]` buttons. New scan-progress card. New source-filter chip row above the findings list (chip click sets `sourceFilter`; findings list filtered by selection).
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header + §6 status flipped to CLOSED pending merge + 41i.6c ticked.
+
+### Architecture Decisions
+- **Async-generator full-scan over batch endpoint** — yields one `PROGRESS` event per user; the API streams as NDJSON. Lets the admin UI render live progress without waiting for the entire scan. Cancel affordance is v2 per D-41i.6-4.
+- **Dedup pattern matches 41i.3 (`recordDifferentialFindings`)** — `findFirst → update | create` scoped to `(source, engineName, userId, resolution)`. Re-runs for a user with persistent issues refresh the existing finding instead of spamming the queue. Terminal states excluded from findFirst (won't resurrect closed findings; creates new instead).
+- **Dual auth mirrors 41i.5** — admin session OR Cloud Scheduler shared secret with constant-time compare. Cloud-Scheduler scheduled scans deferred to PROD per D-41i.6-4; manual `[Full scan]` button is the v1 path.
+- **Cross-validators are a typed extension point** — v1 doesn't ship any. Each descriptor today only validates that its canonical source returns a sane value. Future PRs add `descriptor.crossValidate(userId, sourceResult)` to independently re-derive + diff against canonical → fires HIGH-severity drift findings.
+- **NDJSON over Server-Sent Events** — simpler client integration via Fetch API + `ReadableStream.getReader()` vs `EventSource` setup; lets the response be replayed for debugging.
+- **`X-Accel-Buffering: no`** — disables Vercel/proxy buffering so the client sees per-line progress immediately.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripe` issue, unrelated)
+- [x] `npx prisma generate` — clean
+- [x] `npx vitest run tests/calc-audit/surfaces` — 65 / 65 pass (30 registry + 23 lint + 12 new harness)
+- [x] `npx vitest run tests/calc-audit tests/integrations` — 215 / 215 pass (no regression)
+- [x] `npm run lint:financial-surfaces` — passes (no new violations; 28 grandfathered)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new scan-progress card pattern + source-filter chip pattern; compose existing AdminCard primitives)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (HR-3 invariant 11 fully realised — calc-engine + surface-rendering drift both caught structurally)
+- [ ] operational procedure
+- [x] strategic decision (CLOSES PHASE 41i.6 — trustworthiness commitment operationally complete; future PRs add cross-validators per descriptor)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header + §6 Active Workstream sub-PR ticks + status flipped to CLOSED.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+The harness contains `prisma.calcAuditFinding.update`. Filled in advance:
+
+**`recordSurfaceFinding` UPDATE:**
+1. WHERE clause matches: `{ id: existing.id }` after pre-fetch via `findFirst({ where: { source: 'L4_SURFACE_AUDIT', engineName: surfaceId, userId, resolution: { in: ['OPEN', 'INVESTIGATING'] } } })`.
+2. Columns overwritten: `severity`, `summary`, `failedAssertions`, `errorMessage`, `detectedAt` — all owned by the surface-audit code path.
+3. Guard: rows updated were created by this same code path on a prior run. Terminal states excluded from the findFirst — closed findings cannot be resurrected; new findings are created instead.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A — no `prisma/schema.prisma` changes (`L4_SURFACE_AUDIT` enum value landed in PR #699 / 41i.6a).
+
+### PR
+- Branch: `claude/phase-41i6c-runtime-harness`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41i6b-static-analysis (Phase 41i.6b — CI static-analysis pass for inline financial math)
 
 ### Strategy

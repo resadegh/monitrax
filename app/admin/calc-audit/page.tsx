@@ -78,7 +78,7 @@ type FindingResolution =
 interface Finding {
   id: string;
   detectedAt: string;
-  source: 'L1_DIFFERENTIAL' | 'L3_ON_DEMAND' | 'L2_ANOMALY';
+  source: 'L1_DIFFERENTIAL' | 'L3_ON_DEMAND' | 'L2_ANOMALY' | 'L4_SURFACE_AUDIT';
   engineName: string;
   fixtureName: string | null;
   severity: 'INFO' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -89,6 +89,32 @@ interface Finding {
   adminNotes: string | null;
   resolvedAt: string | null;
   resolvedBy: string | null;
+  userId: string | null;
+}
+
+// Phase 41i.6c — Full Scan progress event shape (mirrors
+// `lib/calc-audit/surfaceAudit.ts:FullScanProgress`).
+interface FullScanProgressEvent {
+  type: 'PROGRESS' | 'DONE' | 'ERROR';
+  userIndex?: number;
+  userTotal?: number;
+  userId?: string;
+  outcomes?: Array<{
+    surfaceId: string;
+    outcome: 'OK' | 'FINDING' | 'SKIPPED';
+    severity?: string;
+    summary?: string;
+    canonicalValue?: number | null;
+  }>;
+  totals?: {
+    usersScanned: number;
+    surfacesScanned: number;
+    findingsCreated: number;
+    findingsRefreshed: number;
+    skipped: number;
+    errors: number;
+  };
+  message?: string;
 }
 
 export default function CalcAuditPage() {
@@ -99,6 +125,22 @@ export default function CalcAuditPage() {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Phase 41i.6c — Full Scan state + L4 filter chip
+  const [sourceFilter, setSourceFilter] = useState<
+    'ALL' | 'L1_DIFFERENTIAL' | 'L2_ANOMALY' | 'L3_ON_DEMAND' | 'L4_SURFACE_AUDIT'
+  >('ALL');
+  const [scanRunning, setScanRunning] = useState(false);
+  const [scanProgress, setScanProgress] = useState<{
+    userIndex: number;
+    userTotal: number;
+    findingsCreated: number;
+    errors: number;
+    skipped: number;
+    lastUserId?: string;
+  } | null>(null);
+  const [scanCompleted, setScanCompleted] = useState<FullScanProgressEvent['totals'] | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const fetchFindings = useCallback(async () => {
     try {
@@ -159,15 +201,93 @@ export default function CalcAuditPage() {
     void fetchAudit();
   }, [fetchAudit]);
 
+  // Phase 41i.6c — Full Scan handler. Streams NDJSON progress events
+  // and renders live counter. Cancel affordance is v2 per D-41i.6-4.
+  const runFullScan = useCallback(async () => {
+    if (scanRunning) return;
+    setScanRunning(true);
+    setScanProgress(null);
+    setScanCompleted(null);
+    setScanError(null);
+    try {
+      const res = await fetch('/api/admin/calc-audit/full-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok || !res.body) {
+        setScanError(`Full scan failed: HTTP ${res.status}`);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let aggregateCreated = 0;
+      let aggregateErrors = 0;
+      let aggregateSkipped = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const event = JSON.parse(line) as FullScanProgressEvent;
+            if (event.type === 'PROGRESS' && event.outcomes) {
+              for (const o of event.outcomes) {
+                if (o.outcome === 'FINDING') {
+                  if (o.severity === 'HIGH' || o.severity === 'CRITICAL') aggregateErrors += 1;
+                  else aggregateCreated += 1;
+                } else if (o.outcome === 'SKIPPED') {
+                  aggregateSkipped += 1;
+                }
+              }
+              setScanProgress({
+                userIndex: event.userIndex ?? 0,
+                userTotal: event.userTotal ?? 0,
+                findingsCreated: aggregateCreated,
+                errors: aggregateErrors,
+                skipped: aggregateSkipped,
+                lastUserId: event.userId,
+              });
+            } else if (event.type === 'DONE') {
+              setScanCompleted(event.totals ?? null);
+            } else if (event.type === 'ERROR') {
+              setScanError(event.message ?? 'Unknown error during scan');
+            }
+          } catch {
+            // Skip malformed line — keep streaming.
+          }
+        }
+      }
+
+      // Refresh findings after scan completes so new L4 entries appear.
+      await fetchFindings();
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Full scan failed');
+    } finally {
+      setScanRunning(false);
+    }
+  }, [scanRunning, fetchFindings]);
+
   return (
     <AdminFeatureGate feature="adminPortalEnabled">
       <AdminHeader
         title="Calculation Audit"
         description="Silent admin-side safety net. Re-runs every registered calc engine against reference fixtures. Drift = a code change has caused an engine to produce a different number for the same input. Per HR-3 (CLAUDE.md / Phase 41 §1) this is an admin-only surface — never user-facing."
         action={
-          <AdminButton onClick={() => void fetchAudit()} disabled={loading}>
-            {loading ? 'Running…' : 'Re-run differential'}
-          </AdminButton>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <AdminButton onClick={() => void fetchAudit()} disabled={loading}>
+              {loading ? 'Running…' : 'Re-run differential'}
+            </AdminButton>
+            <AdminButton onClick={() => void runFullScan()} disabled={scanRunning}>
+              {scanRunning ? 'Scanning…' : 'Full scan (L4)'}
+            </AdminButton>
+          </div>
         }
       />
 
@@ -228,6 +348,83 @@ export default function CalcAuditPage() {
 
       <SectionHeader title="Findings queue" />
 
+      {(scanProgress || scanCompleted || scanError) && (
+        <AdminCard>
+          <AdminCardHeader title="Full scan (Phase 41i.6c — L4 surface audit)" />
+          <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {scanError && (
+              <div style={{ color: 'var(--admin-color-danger, #dc2626)' }}>
+                {scanError}
+              </div>
+            )}
+            {scanProgress && !scanCompleted && (
+              <>
+                <div style={{ fontSize: '0.875rem' }}>
+                  Scanning user {scanProgress.userIndex} / {scanProgress.userTotal}
+                  {scanProgress.lastUserId && (
+                    <span style={{ color: 'var(--admin-color-text-muted, #64748b)', marginLeft: '0.5rem' }}>
+                      ({scanProgress.lastUserId.slice(0, 8)}…)
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem' }}>
+                  <span>Created: {scanProgress.findingsCreated}</span>
+                  <span>Errors: {scanProgress.errors}</span>
+                  <span>Skipped: {scanProgress.skipped}</span>
+                </div>
+              </>
+            )}
+            {scanCompleted && (
+              <>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                  Scan complete
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                  <span>Users: {scanCompleted.usersScanned}</span>
+                  <span>Surfaces: {scanCompleted.surfacesScanned}</span>
+                  <span>Findings: {scanCompleted.findingsCreated}</span>
+                  <span>Errors: {scanCompleted.errors}</span>
+                  <span>Skipped: {scanCompleted.skipped}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </AdminCard>
+      )}
+
+      {/* Phase 41i.6c — Source filter chips. Click to filter the
+          findings list by source. Defaults to ALL. */}
+      {findings.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', padding: '0 1rem 0.5rem' }}>
+          {(['ALL', 'L1_DIFFERENTIAL', 'L2_ANOMALY', 'L3_ON_DEMAND', 'L4_SURFACE_AUDIT'] as const).map((s) => {
+            const count =
+              s === 'ALL' ? findings.length : findings.filter((f) => f.source === s).length;
+            const active = sourceFilter === s;
+            return (
+              <button
+                key={s}
+                onClick={() => setSourceFilter(s)}
+                style={{
+                  padding: '0.25rem 0.75rem',
+                  borderRadius: '9999px',
+                  border: active
+                    ? '1px solid var(--admin-color-primary, #2563eb)'
+                    : '1px solid var(--admin-color-border, #e5e7eb)',
+                  backgroundColor: active
+                    ? 'var(--admin-color-primary, #2563eb)'
+                    : 'transparent',
+                  color: active ? '#fff' : 'inherit',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                }}
+              >
+                {s} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {countsByResolution && (
         <AdminCard>
           <AdminCardHeader title="Lifecycle counts" />
@@ -266,7 +463,9 @@ export default function CalcAuditPage() {
         </AdminCard>
       )}
 
-      {findings.map((f) => (
+      {findings
+        .filter((f) => sourceFilter === 'ALL' || f.source === sourceFilter)
+        .map((f) => (
         <AdminCard key={f.id}>
           <AdminCardHeader title={`${f.engineName} :: ${f.fixtureName ?? '—'}`} />
           <div style={{ padding: '1rem' }}>
