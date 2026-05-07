@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { ImportWizard } from '@/components/bank/ImportWizard';
 import { TransactionLinkDialog } from '@/components/transactions/TransactionLinkDialog';
+import { MonthlyReviewPill } from '@/components/bookkeeping/MonthlyReviewPill';
 import { formatCurrency } from '@/lib/utils/formatters';
 
 // ---------------------------------------------------------------------------
@@ -332,6 +333,11 @@ export default function ActivityPage() {
             <p className="text-sm text-muted-foreground mt-1.5">
               Search, filter, and categorise your transactions.
             </p>
+            {/* Phase 42 PR1 — Monthly Review pill (foundational hook for the
+                full Daily Pulse + streak surface that ships in PR6). */}
+            <div className="mt-3">
+              <MonthlyReviewPill />
+            </div>
           </div>
           <Button
             onClick={() => setShowImportWizard(true)}

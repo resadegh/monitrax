@@ -143,15 +143,19 @@ The default `LOCKED` is opt-in. Most users never lock; they just `REVIEWED`. **T
 
 ## 4. Sub-PR sequence (6 sub-PRs, ~6 weeks single-engineer)
 
-### PR1 — Foundation: SSOT + dedup + audit (5 days)
+### PR1 — Foundation: SSOT + dedup + audit ✅ SHIPPED 2026-05-07
 
-- New `CanonicalCategoryRegistry` model + backfill from existing strings
-- Partial unique index on `UnifiedTransaction(accountId, date, amount, normalisedDescriptionHash) WHERE source IN ('QIF','CSV','OFX')`
-- New `TransactionEdit` audit table — every category/split/link mutation records a row
-- New `BookkeepingPeriod` model with three-status state machine
-- API: `/api/bookkeeping/periods/[month]` GET + POST (mark reviewed / lock)
-- UI: minimal — a "Mark October reviewed" affordance on Activity header
-- BASIQ-onboarding behaviour: registry resolves both BASIQ-fed and QIF-fed categories identically; the dedup constraint is partial-on-source so BASIQ continues to use its own `basiqTransactionId` key
+- ✅ New `CanonicalCategoryRegistry` model + helpers (`lib/bookkeeping/categoryRegistry.ts`) — `resolveOrCreateCategory()` lazily seeds the registry on every categorisation; `backfillRegistryForUser()` available for one-time seed jobs
+- ✅ Cross-batch dedup foundation — new `UnifiedTransaction.normalisedDescriptionHash` column + partial index `ut_dedup_qif_csv_ofx` on `(accountId, date, amount, normalisedDescriptionHash) WHERE source IN ('QIF','CSV','OFX')`. Index is **non-unique at v1** per CLAUDE.md §12.11 caution — promotion to UNIQUE deferred to PR1.1 after a one-time prod audit confirms zero existing duplicates. The dedup *check* lives at the API layer (PR2 wires into the import paths). Canonical hash function: `lib/bookkeeping/normaliseDescription.ts` (mirrored in the migration backfill SQL)
+- ✅ New `TransactionEdit` audit table — wired into the existing `PATCH /api/unified-transactions/[id]` for CATEGORY / TAGS / LINK_ENTITY / RECURRING mutations; fire-and-forget per §12.10; no row written when before/after is deeply equal
+- ✅ New `BookkeepingPeriod` model + 3-status state machine (OPEN / REVIEWED / LOCKED) in `lib/bookkeeping/period.ts`. API: `GET /api/bookkeeping/periods/[month]` + `POST` with `{ action: 'mark_reviewed' | 'lock' | 'unlock' }`. LOCKED returns HTTP 423 from the transaction PATCH route — the only API-level edit block. New permissions `bookkeeping.read` / `bookkeeping.write`
+- ✅ UI: `<MonthlyReviewPill />` (`components/bookkeeping/MonthlyReviewPill.tsx`) on Activity header. Three visual states map to the three statuses; one-tap to mark reviewed; second-tap on LOCKED unlocks. Foundational hook for the PR6 Daily Pulse / streak / completion celebration
+- ✅ Tests — 27 unit tests across `tests/bookkeeping/{normaliseDescription,period,transactionEditAudit}.test.ts`; covers determinism, jitter collapse, distinct-vendor preservation, period-key normalisation, audit-helper field-pick discipline
+- BASIQ-onboarding behaviour: registry resolves both BASIQ-fed and QIF-fed categories identically; the dedup index is partial-on-source so BASIQ continues to use its own `basiqTransactionId` key. Unit tests verify `BASIQ` / `MANUAL` / `BANK` are NOT in `DEDUP_SOURCES`.
+
+**Migration:** `prisma/migrations/20260510200000_phase_42_pr1_foundation/migration.sql`. Operations: CREATE TYPE × 1, CREATE TABLE × 3, ALTER TABLE ADD COLUMN × 1 (nullable), UPDATE backfill (writes to a column that did not exist before this migration — disclosed in PR body per §12.11), CREATE INDEX × 7. NO destructive ALTER, NO DROP. CLAUDE.md §12.11 N/A for the schema-level ops; the backfill UPDATE is disclosed in the PR body.
+
+**Out of PR1, queued:** category resolver wiring (PR1's resolver helper exists but is not yet called from the categoriser — that's PR2's category-bridge); promotion of the dedup index to UNIQUE (PR1.1 after prod audit).
 
 ### PR2 — Splits + bulk re-categorise (5 days)
 

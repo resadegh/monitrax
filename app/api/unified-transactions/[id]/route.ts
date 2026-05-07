@@ -12,6 +12,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { isPeriodEditable } from '@/lib/bookkeeping/period';
+import {
+  recordTransactionEdit,
+  pickCategoryFields,
+  pickLinkFields,
+  type TransactionEditType,
+} from '@/lib/bookkeeping/transactionEditAudit';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -79,6 +86,26 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
         return NextResponse.json(
           { success: false, error: 'Unauthorized' },
           { status: 403 }
+        );
+      }
+
+      // Phase 42 PR1 — refuse mutations on LOCKED bookkeeping periods.
+      // Per `PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §3 D-42-3:
+      // LOCKED is opt-in and rare (Tax Pack handed to accountant). Edits
+      // are blocked at the API layer until the user explicitly unlocks.
+      // Pre-existing audit trail (TransactionEdit) preserves history.
+      const periodEditable = await isPeriodEditable(userId, existing.date);
+      if (!periodEditable) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: 'PERIOD_LOCKED',
+              message:
+                'This transaction is in a locked month. Unlock the period before editing.',
+            },
+          },
+          { status: 423 } // 423 Locked
         );
       }
 
@@ -160,6 +187,70 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
         data: updateData,
         include: { account: true },
       });
+
+      // Phase 42 PR1 — record per-mutation audit row(s). Fire-and-forget
+      // per CLAUDE.md §12.10. The deepEqual short-circuit inside
+      // recordTransactionEdit means no row is written when an edit
+      // didn't actually change a value.
+      const editTypes: TransactionEditType[] = [];
+      if (
+        body.categoryLevel1 !== undefined ||
+        body.categoryLevel2 !== undefined ||
+        body.subcategory !== undefined
+      ) {
+        editTypes.push('CATEGORY');
+      }
+      if (
+        body.propertyId !== undefined ||
+        body.loanId !== undefined ||
+        body.incomeId !== undefined ||
+        body.expenseId !== undefined
+      ) {
+        editTypes.push('LINK_ENTITY');
+      }
+      if (body.tags !== undefined) editTypes.push('TAGS');
+      if (body.isRecurring !== undefined) editTypes.push('RECURRING');
+
+      if (editTypes.includes('CATEGORY')) {
+        recordTransactionEdit({
+          transactionId: id,
+          userId,
+          editType: 'CATEGORY',
+          before: pickCategoryFields(existing),
+          after: pickCategoryFields(transaction),
+          source: 'USER',
+        });
+      }
+      if (editTypes.includes('LINK_ENTITY')) {
+        recordTransactionEdit({
+          transactionId: id,
+          userId,
+          editType: 'LINK_ENTITY',
+          before: pickLinkFields(existing),
+          after: pickLinkFields(transaction),
+          source: 'USER',
+        });
+      }
+      if (editTypes.includes('TAGS')) {
+        recordTransactionEdit({
+          transactionId: id,
+          userId,
+          editType: 'TAGS',
+          before: { tags: existing.tags },
+          after: { tags: transaction.tags },
+          source: 'USER',
+        });
+      }
+      if (editTypes.includes('RECURRING')) {
+        recordTransactionEdit({
+          transactionId: id,
+          userId,
+          editType: 'RECURRING',
+          before: { isRecurring: existing.isRecurring },
+          after: { isRecurring: transaction.isRecurring },
+          source: 'USER',
+        });
+      }
 
       return NextResponse.json({ success: true, data: transaction });
     } catch (error) {
