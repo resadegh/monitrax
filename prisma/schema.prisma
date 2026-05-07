@@ -5528,6 +5528,7 @@ enum CalcAuditFindingSource {
   L1_DIFFERENTIAL  // Caught by runDifferential() against fixtures (CI / on-demand)
   L3_ON_DEMAND     // Caught by per-user audit run ("Audit this user" admin action)
   L2_ANOMALY       // Caught by Cloud Scheduler anomaly detection (Phase 41i.5)
+  L4_SURFACE_AUDIT // Caught by surface-rendering audit — rendered tile diverges from canonical engine output (Phase 41i.6)
 }
 
 enum CalcAuditFindingSeverity {

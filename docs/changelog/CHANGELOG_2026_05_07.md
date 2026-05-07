@@ -1,5 +1,75 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41i6a-surface-audit-registry (Phase 41i.6a — Surface descriptor registry + 10 descriptors + L4_SURFACE_AUDIT enum migration)
+
+### Strategy
+First sub-PR of Phase 41i.6 (the **trustworthiness commitment** per Reza brief 2026-05-07). Builds the structural foundation: registry + typed shapes + first 10 high-impact descriptors + the `L4_SURFACE_AUDIT` enum value.
+
+Per spec doc `PHASE_41I_6_SURFACE_AUDIT.md` §2 + §6 + §9: this PR is **registry + schema only**. CI static-analysis pass lands in 41i.6b; runtime audit harness + `[Full scan]` button lands in 41i.6c.
+
+### Type
+- **Type**: Feature (Phase 41i.6 sub-PR — registry foundation)
+- **Scope**: New `lib/calc-audit/surfaces/` module + 1 schema enum migration + 30 new tests. Zero new dependencies.
+
+### Files Created
+- `lib/calc-audit/surfaces/types.ts` — `SurfaceDescriptor` + `SurfaceValueKind` (AUD / PERCENT / RATIO / SCORE / COUNT / MONTHS / DATE) + `DEFAULT_TOLERANCE_BY_KIND` + `exceedsTolerance()` helper.
+- `lib/calc-audit/surfaces/registry.ts` — `surfaceRegistry` singleton + exported `assertDescriptor()` (every invariant: charset / route prefix / canonicalSource shape / .ts-or-/api/ guard / function guards).
+- `lib/calc-audit/surfaces/descriptors/masterSnapshotDescriptors.ts` — 6 descriptors backed by direct master-snapshot field paths (net-worth / health-score / emergency-fund / investment-total / property-equity / tax-estimated-refund).
+- `lib/calc-audit/surfaces/descriptors/cashflowDescriptors.ts` — 4 descriptors backed by `quickMetrics.*` paths on master (cashflow / income / expense / debt-total). Today these tiles consume from `/api/cfo` / `/api/calculate/cashflow` / `/api/ai/debt-analysis` per the recon — pointing the descriptors at master means 41i.6c will fire L4 findings whenever the rendered value diverges.
+- `lib/calc-audit/surfaces/index.ts` — auto-bootstrap on import (idempotent for hot-reload).
+- `prisma/migrations/20260511100000_add_l4_surface_audit_source/migration.sql` — `ALTER TYPE "CalcAuditFindingSource" ADD VALUE 'L4_SURFACE_AUDIT'`. Pure additive.
+- `tests/calc-audit/surfaces/registry.test.ts` — 30 tests: bootstrap (size = 10, alphabetical, byCanonicalService groups all under master, byRoute across 7 routes, duplicate rejection) + assertDescriptor invariants + descriptor invariants for v1 top-10 + exceedsTolerance (AUD zero-cents + SCORE 0.5pt + MONTHS zero + descriptor-level override + zero-canonical no-divide + negative-cashflow boundary).
+
+### Files Modified
+- `prisma/schema.prisma` — `CalcAuditFindingSource` enum extended with `L4_SURFACE_AUDIT`.
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header + §6 Active Workstream sub-PR ticks.
+
+### Architecture Decisions
+- **All 10 v1 descriptors point at master snapshot per CLAUDE.md §6.1 SSOT**, not at each tile's actual current canonical source. Today, 4 of the 10 tiles consume from non-master endpoints (architectural drift). Pointing the descriptors at master means the 41i.6c runtime harness will fire L4 findings on first run for any drift; future PRs migrate these tiles to consume from master, and the audit catches any rendered-value drift during the migration.
+- **Registry mirrors `calcEngineRegistry` + `taxAdvisorToolRegistry` patterns** from 41i.0 + 41h.0 — singleton + bootstrap + duplicate-rejection + `__testOnlyClear`.
+- **`SurfaceValueKind` + `DEFAULT_TOLERANCE_BY_KIND`** drives per-kind diff tolerance — descriptor-level `tolerance` overrides for special cases.
+- **`exceedsTolerance` permissive when both bounds set**: passing EITHER absolute OR relative bounds counts as "not exceeding."
+- **`invokeCanonicalSource` returns the raw source result; `extractRenderedValue` projects to a number** — two-phase split lets the harness memoise per-userId calls.
+- **Two descriptor files (master + cashflow) instead of 10 micro-files** — composition + readability.
+- **No 41i.6c runtime invoker plumbing in this PR** — descriptors carry `invokeCanonicalSource` functions but the harness that calls them lands in 41i.6c.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripe` issue, unrelated)
+- [x] `npx prisma generate` — clean
+- [x] `npx vitest run tests/calc-audit/surfaces` — 30 / 30 pass
+- [x] `npx vitest run tests/calc-audit tests/integrations tests/tax-engine/divisions/div7aLoanClassifierSurplusCap.test.ts` — 191 / 191 pass (no regression)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (HR-3 invariant 11 was already extended in PR #694; this PR ships the structural enforcement scaffold)
+- [ ] operational procedure
+- [x] strategic decision (all 10 v1 descriptors point at master snapshot per CLAUDE.md §6.1 SSOT)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md`
+- `docs/changelog/CHANGELOG_2026_05_07.md` (this entry)
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+N/A — no Prisma writes. Migration is `ALTER TYPE ADD VALUE` only.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+- [x] `prisma/schema.prisma` modified
+- [x] Matching migration at `prisma/migrations/20260511100000_add_l4_surface_audit_source/migration.sql`
+- [x] Pure additive (`ALTER TYPE ADD VALUE`)
+- [x] `npx prisma generate` clean
+
+### PR
+- Branch: `claude/phase-41i6a-surface-audit-registry`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41f4-trust-deed-parser (Phase 41f.4 — Trust-deed parser; CLOSES PHASE 41f CORE)
 
 ### Strategy
