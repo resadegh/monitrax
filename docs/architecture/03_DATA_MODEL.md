@@ -2903,3 +2903,61 @@ ut_dedup_qif_csv_ofx
 ### Migration
 
 `prisma/migrations/20260510200000_phase_42_pr1_foundation/migration.sql` — CREATE TYPE × 1, CREATE TABLE × 3, ALTER TABLE ADD COLUMN × 1 (nullable), UPDATE backfill, CREATE INDEX × 7. CLAUDE.md §12.11 disclosed in the PR body for the backfill UPDATE.
+
+---
+
+## **10.43 Phase 42 PR2 — Transaction Splits + Bulk Re-categorise (PR — shipped 2026-05-07)**
+
+Second sub-PR of the Phase 42 stream. Adds the per-line split layer on top of the unified ledger; wires the QIF parser's existing `S`/`$` extraction through to the import path; closes the PR1 SSOT loop by routing every category write on the `[id]` PATCH path through `resolveOrCreateCategory`; ships an atomic bulk-categorise endpoint + Activity-page toolbar.
+
+### New table
+
+| Table | Purpose | Key fields | Indexes |
+|---|---|---|---|
+| `transaction_splits` | Per-line breakdown of a `unified_transactions` row. Sum-of-splits MUST equal `transaction.amount` ± $0.01 (validated at the service layer — `lib/bookkeeping/splits.ts:assertSplitsBalance`). The parent transaction's `categoryLevel*` fields stay populated (= the dominant split's category) for backwards-compat with `getMasterFinancialSnapshot`, the expense/income aggregators, and `lib/utils/reconciliation` — no canonical engine has to traverse splits at v1. | `categoryId` hard FK to `canonical_category_registry`; `transactionId` FK with cascade-delete; `propertyId` / `loanId` / `expenseId` for per-line entity attribution; `isTaxDeductible` per split | secondary on `(transactionId)` + `(categoryId)` + `(propertyId)` + `(expenseId)` |
+
+### Service surface (`lib/bookkeeping/splits.ts`)
+
+| Export | Purpose |
+|---|---|
+| `assertSplitsBalance(parentAmount, splits)` | The single hard rule of the split layer. `SPLIT_SUM_EPSILON = 0.01`. Used by every mutation path. |
+| `replaceSplits({ transactionId, userId, splits, source })` | Canonical mutation entry point — atomic delete-then-create inside a Prisma transaction. Defends against cross-user FK abuse (every `categoryId` verified to belong to the calling user). Propagates the dominant split's category up to the parent. Writes a `TransactionEdit` row with `editType=SPLIT`. |
+| `clearSplits(transactionId, userId)` | Idempotent removal of all splits. |
+| `listSplits(transactionId, userId)` | Convenience listing. |
+| `resolveOrCreateCategoryForSplit({ userId, level1, level2?, subcategory? })` | Bridge to `CanonicalCategoryRegistry` (returns the registry id). Every API + importer goes through here. |
+| `SplitValidationError` (class) | Discriminated by `code`: `EMPTY_SPLITS` / `NEGATIVE_AMOUNT` / `SUM_MISMATCH` / `CATEGORY_NOT_FOUND` / `TX_NOT_FOUND` / `NOT_OWNER` / `PERIOD_LOCKED`. |
+
+### API additions
+
+| Route | Verb | Purpose |
+|---|---|---|
+| `/api/unified-transactions/[id]/splits` | GET | List splits for a transaction |
+| `/api/unified-transactions/[id]/splits` | PUT | Replace all splits (sum-validated). Either `categoryId` (resolved registry id) OR `categoryLevel1` (string, lazy-seeded) per split. LOCKED-period guard returns HTTP 423. |
+| `/api/unified-transactions/[id]/splits` | DELETE | Clear all splits. |
+| `/api/unified-transactions/bulk-categorise` | POST | Atomic bulk re-categorise (max 200 per call). Updates `unified_transactions` + rolls up per-merchant `MerchantMapping` learning + writes a `TransactionEdit` row per row, all in one Prisma transaction. Rejects the WHOLE batch if any row sits in a LOCKED period. |
+
+### Existing surface changes
+
+- `app/api/unified-transactions/[id]/route.ts` PATCH — closes the PR1 carryover by lazy-seeding `CanonicalCategoryRegistry` on every category write. Per CLAUDE.md §12.2 the registry is now the SSOT for category labels; the legacy string columns continue to populate for backwards-compat.
+- `app/api/unified-transactions/route.ts` `handleBatchImport` — accepts an optional `splits` array per transaction; resolves each split's category through the registry; persists via `replaceSplits` with `source='IMPORT'`. Validation failure on splits surfaces as a row-level error in the import response — the parent transaction still imports, the user can add splits later.
+- `lib/bank/types.ts` — `RawTransaction.splits?: RawTransactionSplit[]`.
+- `lib/bank/parsers/qif.ts` — propagates `QIFTransaction.splits` onto `RawTransaction.splits`.
+
+### UI additions
+
+- `<BulkActionToolbar />` — sticky-bottom toolbar surfacing when ≥1 transactions selected; suggested-category chips + free-form custom input.
+- Activity `<TransactionRow />` gets a leading checkbox (rendered as a sibling element with `stopPropagation`).
+- Selection state lives at the page level; preserved across paginations.
+
+### Tests
+
+13 new unit tests across `tests/bookkeeping/{splits,qifSplits}.test.ts` — sum-validation at $0.01 boundary, empty-array rejection, mixed-sign tolerance, real-QIF-fragment parser parity. Cumulative: 40/40 green (PR1 27 + PR2 13).
+
+### Migration
+
+`prisma/migrations/20260510210000_phase_42_pr2_splits/migration.sql` — CREATE TABLE × 1, CREATE INDEX × 4, FK × 2. CLAUDE.md §12.11 N/A (no row UPDATE/DELETE; no destructive ALTER).
+
+### Out of PR2, queued
+
+- **PR2.5** (small) — inline split editor inside `TransactionLinkDialog` (the dialog is 1,601 LOC; deferred to keep PR2 ship-able)
+- **PR3** — receipt → transaction matching + cash quick-add + PWA camera capture

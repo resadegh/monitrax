@@ -19,6 +19,7 @@ import {
   pickLinkFields,
   type TransactionEditType,
 } from '@/lib/bookkeeping/transactionEditAudit';
+import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -117,6 +118,22 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
         updateData.categoryLevel1 = body.categoryLevel1;
         updateData.userCorrectedCategory = true;
         updateData.confidenceScore = 1.0;
+
+        // Phase 42 PR2 — SSOT bridge (carryover from PR1). Every
+        // category written via the PATCH path lazily seeds the
+        // CanonicalCategoryRegistry. Race-tolerant; no-op if the
+        // (level1, level2, subcategory) triple already exists for
+        // this user. Per CLAUDE.md §12.2 the registry is the single
+        // canonical source for category labels — the legacy string
+        // columns on the transaction continue to populate for
+        // backwards-compat with `getMasterFinancialSnapshot` and the
+        // expense / income aggregators.
+        await resolveOrCreateCategory({
+          userId,
+          level1: body.categoryLevel1,
+          level2: body.categoryLevel2 ?? null,
+          subcategory: body.subcategory ?? null,
+        });
 
         // Create merchant mapping for learning
         if (existing.merchantStandardised) {

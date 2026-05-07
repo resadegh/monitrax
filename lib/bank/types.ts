@@ -12,6 +12,22 @@ export type ImportStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | '
 export type DuplicatePolicy = 'REJECT' | 'MARK_DUPLICATE' | 'MERGE' | 'SKIP';
 export type TransactionDirection = 'IN' | 'OUT';
 
+/**
+ * Phase 42 PR2 — Per-line split as carried by an import parser.
+ * QIF supports `S` (category) + `$` (amount) split fields; CSV/OFX
+ * generally don't but the schema is here for future parsers.
+ *
+ * `category` is the FREE-FORM string from the source file (the QIF
+ * `L`/`S` field). The Phase 42 import path resolves it to a
+ * `CanonicalCategoryRegistry` row via `resolveOrCreateCategory()` —
+ * the import never bypasses the SSOT registry.
+ */
+export interface RawTransactionSplit {
+  amount: number;
+  category?: string;
+  memo?: string;
+}
+
 export interface RawTransaction {
   rowNumber: number;
   rawData: Record<string, string>;
@@ -21,6 +37,12 @@ export interface RawTransaction {
   direction?: TransactionDirection;
   balance?: number;
   reference?: string;
+  /**
+   * Phase 42 PR2 — splits extracted from the source file (QIF only at v1).
+   * If present, sum(splits[].amount) MUST equal `amount` (validated at
+   * import time by `lib/bookkeeping/splits.ts:assertSplitsBalance`).
+   */
+  splits?: RawTransactionSplit[];
 }
 
 export interface ParsedFile {

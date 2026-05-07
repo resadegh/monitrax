@@ -1281,3 +1281,75 @@ Other destructive Prisma operations: NONE in this PR. The `unified-transactions/
 ### PR
 - Branch: `claude/phase-42-pr1-foundation`
 - Status: pending push + open
+
+
+---
+
+## Session: phase-42-pr2-splits-bulk
+
+### Changes Made
+- **Type**: Feature — second sub-PR of the Phase 42 stream
+- **Scope**: Per-line transaction splits + bulk re-categorise + QIF S/$ wire-up + categoriser SSOT bridge (PR1 carryover)
+- **Description**: Implements the per-line split layer described in `PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR2 + closes the PR1 SSOT loop. One new table, one new API surface (3 routes for splits + 1 bulk endpoint), one new UI component (BulkActionToolbar), one Activity-page row enhancement (checkbox + selection state). Honours the user's explicit constraints: no duplicate calculations (single SSOT for sum-validation in `lib/bookkeeping/splits.ts`); single source of truth for all data (every split's `categoryId` is a hard FK to the PR1 `CanonicalCategoryRegistry`); no fork of canonical engines (`getMasterFinancialSnapshot` etc. continue to read the parent transaction's `categoryLevel*` — splits are an additive layer, the dominant split's category is propagated up).
+
+### Files Modified / Added
+- `prisma/schema.prisma` — `TransactionSplit` model + back-relation on `UnifiedTransaction` + back-relation on `CanonicalCategoryRegistry`.
+- `prisma/migrations/20260510210000_phase_42_pr2_splits/migration.sql` — additive migration. CREATE TABLE × 1, CREATE INDEX × 4, FK × 2. NO destructive ALTER, NO DROP, NO row UPDATE/DELETE.
+- `lib/bookkeeping/splits.ts` (NEW) — canonical service for all split mutations. Single SSOT for the sum-validation rule (`assertSplitsBalance`). Race-tolerant `replaceSplits` (atomic delete-then-create inside a Prisma transaction); `clearSplits`; `listSplits`; `resolveOrCreateCategoryForSplit`; `SplitValidationError` discriminated by `code`. Cross-user FK abuse defence: every `categoryId` verified to belong to the calling user before write. Dominant-split category propagation keeps every existing canonical engine working unchanged.
+- `lib/bank/types.ts` — `RawTransactionSplit` interface + `RawTransaction.splits?` field.
+- `lib/bank/parsers/qif.ts` — propagates `QIFTransaction.splits` (already extracted by the parser) onto `RawTransaction.splits` so the import path can persist them.
+- `app/api/unified-transactions/route.ts` — `handleBatchImport` body type accepts `splits?` per transaction; persists via `replaceSplits` with `source='IMPORT'`; per-row split validation failures surface as row-level errors but don't block the parent import.
+- `app/api/unified-transactions/[id]/route.ts` — PATCH path now lazy-seeds `CanonicalCategoryRegistry` on every category write (PR1 SSOT-bridge carryover; closes the loop).
+- `app/api/unified-transactions/[id]/splits/route.ts` (NEW) — GET / PUT / DELETE handlers. PUT replaces all splits with sum-validation; DELETE clears. LOCKED-period guard returns HTTP 423.
+- `app/api/unified-transactions/bulk-categorise/route.ts` (NEW) — atomic bulk re-categorise. Max 200 per call. Rolls up per-merchant `MerchantMapping` learning + writes per-row `TransactionEdit` audit rows + LOCKED-period guard rejects the WHOLE batch.
+- `components/bookkeeping/BulkActionToolbar.tsx` (NEW) — sticky-bottom toolbar with suggested-category chip strip + free-form custom-category input. Mobile-first; `prefers-reduced-motion`-friendly.
+- `app/dashboard/activity/page.tsx` — `selectedIds` state + `toggleSelected` + `<BulkActionToolbar />` mount. `<TransactionRow />` gets a leading checkbox (rendered as a sibling element with `stopPropagation` so tapping the checkbox doesn't open the link dialog).
+- `tests/bookkeeping/splits.test.ts` (NEW) — 10 tests on sum-validation: exact match, $0.01 tolerance, beyond-tolerance rejection, empty-array rejection, mixed-sign tolerance, single + many split cases, zero-amount parent, error-message content.
+- `tests/bookkeeping/qifSplits.test.ts` (NEW) — 3 tests on real-QIF-fragment parsing: splits propagated, splits absent when not present in source, split sum equals parent amount.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR2 row in §4 flipped from spec to ✅ SHIPPED.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #42 updated with PR1+PR2 SHIPPED + PR3 next; Recently Completed entry added.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.43 documenting the schema additions + service surface + tests + migration.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (audit-trail extends to SPLIT mutations; per-row TransactionEdit on bulk path)
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR2 — flipped to ✅ SHIPPED
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #42 status; Recently Completed entry
+- `docs/architecture/03_DATA_MODEL.md` §10.43 — schema documentation
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows:
+- `lib/bookkeeping/splits.ts:replaceSplits` — `prisma.unifiedTransaction.update` propagates the dominant split's category up to the parent (`categoryLevel*` fields).
+
+For that operation:
+1. **`where` clause matches:** the parent transaction already verified by `findUnique({ where: { id } })` + `userId` ownership check at the top of `replaceSplits`. One row.
+2. **Columns overwritten / rows deleted:** `categoryLevel1`, `categoryLevel2`, `subcategory`, `userCorrectedCategory`, `confidenceScore` on the parent. The dominant-split-propagation rule is the contract — replacing splits IS an explicit user action that intends to update the parent's category to reflect the new dominant split.
+3. **Guard ensuring this only mutates rows I created:** ownership-checked at the top of `replaceSplits`; the FK from `transaction_splits.transactionId` to `unified_transactions.id` is the structural guard that the call refers to a real, owned transaction.
+
+User confirmation: NOT REQUIRED — this is the documented split-propagation contract per `PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §3 D-42-2; ownership-checked; user-initiated.
+
+Other destructive Prisma operations:
+- `prisma.transactionSplit.deleteMany({ where: { transactionId } })` inside `replaceSplits` — the canonical "replace" semantics. Bounded to a single transaction id; ownership-checked above. The `before` snapshot is captured for `TransactionEdit` audit before the delete.
+- `prisma.unifiedTransaction.updateMany` inside the bulk-categorise endpoint — `where: { id: { in: ids }, userId: auth.userId }`. Ownership double-checked: every id pre-verified to belong to `auth.userId` before the update; the `where` clause re-asserts ownership defensively.
+
+### Build Status
+- [x] `npx prisma generate` clean
+- [x] `npx tsc --noEmit` clean (only pre-existing `stripe` module noise; not from this PR)
+- [x] `npx vitest run tests/bookkeeping/` — 40/40 green (27 from PR1 + 13 from PR2)
+
+### PR
+- Branch: `claude/phase-42-pr2-splits-bulk`
+- Status: pending push + open
