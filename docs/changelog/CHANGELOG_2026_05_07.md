@@ -2374,3 +2374,60 @@ Docs updated:
 ### PR
 - Branch: `claude/fix-ai-chat-and-badge-aggregator`
 - Status: pending push + open
+
+---
+
+## Session: fix-pending-actions-aggregator-semantics
+
+### Changes Made
+
+- **Type**: Bug fix (aggregator definition wrong; Reza-reported "badge always 0")
+- **Scope**: `lib/bookkeeping/engagement/pendingActions.ts` — CATEGORISE count query
+- **Description**: Network capture from prod showed `/api/bookkeeping/engagement/pending-actions` returns `{actions: [], totalCount: 0}` despite user having many uncategorised transactions visible on Activity. Root cause: my aggregator filter was wrong.
+
+### Root cause
+
+PR #714 changed the aggregator to filter on `categoryLevel1 IS NULL OR ''` AND `isTransfer = false`. Both wrong:
+
+1. **Wrong "uncategorised" definition.** The Activity page's `?uncategorized=true` filter doesn't use `categoryLevel1` at all (see `app/api/unified-transactions/route.ts:84`). It uses **link-status semantics**: no expense/income/loan link, not transfer, not investment contribution. A BASIQ-auto-categorised tx with `categoryLevel1='Food & Dining'` but no linked Expense IS in the user's "uncategorised first" filter — but my query missed it because `categoryLevel1` was non-null.
+2. **Strict-false vs nullable.** Activity uses `isTransfer: { not: true }` which matches `false` OR `null`. My filter used strict `isTransfer: false` which only matches `false`, missing legacy rows with null.
+
+### Fix
+
+Aligned the CATEGORISE count query EXACTLY with Activity's `?uncategorized=true` filter:
+
+```ts
+prisma.unifiedTransaction.count({
+  where: {
+    userId,
+    date: { gte: trailingSince },
+    incomeId: null,
+    expenseId: null,
+    loanId: null,
+    isTransfer: { not: true },
+    isInvestmentContribution: { not: true },
+  },
+})
+```
+
+The Activity filter is now the SSOT for "what does the user think is uncategorised." If it changes, the badge count must change to match.
+
+### Reviewer rule (preserved as inline JSDoc)
+
+The CATEGORISE count query MUST stay in lockstep with `app/api/unified-transactions/route.ts:84`'s `uncategorized=true` filter. If they diverge, the badge count will mismatch what the user sees on Activity, and trust erodes.
+
+### Files Modified
+- `lib/bookkeeping/engagement/pendingActions.ts` — aggregator filter rewritten + extensive inline JSDoc explaining the SSOT relationship.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed: none in §16.2 (data layer fix only).
+
+### Build Status
+- [x] tsc clean
+- [x] vitest 12/12 green (existing tests pin gate semantics, not aggregator filter)
+- [x] lint:financial-surfaces clean
+
+### PR
+- Branch: `claude/fix-pending-actions-aggregator-semantics`
+- Status: pending push
