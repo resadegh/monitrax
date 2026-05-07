@@ -1,70 +1,97 @@
 /**
- * AI CHAT FLOATING BUTTON
- * Phase 11 - AI Strategy Engine UI V2
+ * AI CHAT TRIGGER (header-bar icon)
  *
- * Floating button that opens an AI chat panel on any page
+ * Per Reza directive 2026-05-07: the prior bottom-right FAB
+ * collided with the mobile browser's bottom toolbar (the +/tab
+ * button) — a guaranteed overlap on iOS Safari + Chrome since
+ * both anchor at the bottom-right of the viewport. Apple HIG
+ * additionally discourages persistent FABs for system-utility
+ * actions on iOS — utility affordances belong in the header bar
+ * (Maps / Stocks / Settings pattern), not floating over the
+ * canvas.
+ *
+ * Per CLAUDE.md §0 designer lens: the AI chat trigger now sits
+ * adjacent to the `<HelpDrawerButton />` in the top-right of the
+ * dashboard chrome. Two utility icons in a row — same h-9 / w-9
+ * size, same warm-ivory glass treatment, same ring + shadow.
+ * Reads as a unified "ask for help" cluster rather than two
+ * competing attention vacuums.
+ *
+ * Per CLAUDE.md §12.3: panel composition unchanged — same
+ * `<AiAdvisorPanel />`, same conversation lifecycle. Only the
+ * trigger position + visual treatment moved.
+ *
+ * Phase 11 historical note: this used to be a bottom-right FAB;
+ * see `IMPLEMENTATION_PLAN.md` ↩️ Reversed Decisions 2026-05-07
+ * for the full lesson. Reviewer rule: do NOT re-introduce a
+ * persistent bottom-right FAB on the dashboard chrome.
  */
 
 'use client';
 
-import { useState } from 'react';
-import { Bot, X, MessageCircle, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bot, Sparkles, X } from 'lucide-react';
 import AiAdvisorPanel from '@/components/strategy/AiAdvisorPanel';
 
 export default function AiChatButton() {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Close on Escape (desktop accessibility).
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen]);
+
   return (
     <>
-      {/* Floating Button */}
+      {/* Header-bar trigger — sits to the LEFT of the help button.
+          Same h-9 / w-9 size, same glass treatment, same hover
+          motion. Reads as a unified utility cluster. */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        aria-label={isOpen ? 'Close AI Advisor' : 'Open AI Advisor'}
+        title="AI Advisor"
         className={`
-          fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50
-          w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg
-          flex items-center justify-center
-          transition-all duration-300 ease-in-out
-          ${isOpen
-            ? 'bg-gray-600 hover:bg-gray-700 rotate-0'
-            : 'bg-primary hover:bg-primary/90'
-          }
-          hover:scale-110 active:scale-95
-          group
+          fixed top-3 right-14 sm:top-4 sm:right-16 lg:top-5 lg:right-[4.5rem]
+          z-40
+          inline-flex items-center justify-center
+          h-9 w-9 rounded-full
+          bg-white/85 backdrop-blur-sm
+          ring-1 ring-slate-900/[0.08]
+          text-emerald-700
+          shadow-[0_1px_0_0_rgba(255,255,255,0.6)_inset]
+          transition-[transform,box-shadow,background-color] duration-200 ease-out
+          hover:bg-white hover:text-emerald-800 hover:shadow-[0_4px_14px_-6px_rgba(11,18,32,0.18)] hover:-translate-y-0.5
+          motion-reduce:hover:translate-y-0
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
         `}
-        aria-label={isOpen ? 'Close AI Chat' : 'Open AI Chat'}
       >
         {isOpen ? (
-          <X className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+          <X className="h-[18px] w-[18px]" strokeWidth={2} />
         ) : (
-          <>
-            <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-            {/* Pulse animation when closed */}
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-success rounded-full animate-pulse" />
-          </>
+          <Bot className="h-[18px] w-[18px]" strokeWidth={2} />
         )}
       </button>
 
-      {/* Tooltip when hovering (only when closed) */}
-      {!isOpen && (
-        <div className="fixed bottom-6 right-24 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-            Ask AI Advisor
-          </div>
-        </div>
-      )}
-
-      {/* Chat Panel */}
+      {/* Chat Panel — anchored from top-right (slides down-from-trigger),
+          NOT bottom-right (would re-create the chrome-overlap risk). */}
       <div
         className={`
-          fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-50
-          w-[calc(100vw-2rem)] sm:w-[380px] sm:max-w-[calc(100vw-3rem)]
+          fixed top-14 right-3 sm:top-16 sm:right-4 lg:top-[4.25rem] lg:right-6
+          z-50
+          w-[calc(100vw-1.5rem)] sm:w-[380px] sm:max-w-[calc(100vw-3rem)]
           bg-white dark:bg-gray-900
           rounded-2xl shadow-2xl
           border border-gray-200 dark:border-gray-700
           transition-all duration-300 ease-in-out
           ${isOpen
             ? 'opacity-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 translate-y-4 pointer-events-none'
+            : 'opacity-0 -translate-y-2 pointer-events-none'
           }
         `}
       >
@@ -116,7 +143,7 @@ export default function AiChatButton() {
         </div>
       </div>
 
-      {/* Backdrop for mobile */}
+      {/* Backdrop for mobile — tap-to-close */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/20 z-40 lg:hidden"

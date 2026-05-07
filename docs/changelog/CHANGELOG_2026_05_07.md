@@ -2185,3 +2185,44 @@ NONE. The card-stack composes the existing `/api/unified-transactions/[id]` PATC
 ### PR
 - Branch: `claude/phase-42-pr6-5c-review-queue-cards`
 - Status: pending push + open
+
+---
+
+## Session: fix-ai-chat-fab-overlap
+
+### Changes Made
+- **Type**: Hot-fix (Reza-reported mobile UX bug)
+- **Scope**: `components/AiChatButton.tsx` — relocated from bottom-right FAB to header-bar icon next to `<HelpDrawerButton />`
+- **Description**: The bottom-right FAB collided with the mobile browser's fixed bottom toolbar (the +/tab button), making it unusable on iOS Safari + Chrome — the very surface where most transaction work happens. Per Reza suggestion: *"move the AI assistant badge next to the help icon."* Landed.
+
+### Architectural Decisions (CLAUDE.md §0)
+- **Designer:** Apple HIG discourages persistent FABs for system-utility actions on iOS — utility affordances belong in the header bar (Maps / Stocks / Settings pattern). The chat button is an "ask for help" affordance, not a primary screen action. It belongs adjacent to the existing help button, not floating over the canvas.
+- **Architect:** trigger position + visual treatment moved; panel composition (`<AiAdvisorPanel />`, conversation lifecycle) unchanged. SSOT preserved per CLAUDE.md §12.3.
+- **Behaviour-psychologist:** two competing FABs (chat + cash quick-add + browser +) read as a visual nag. One less FAB = calmer canvas. Header cluster signals "utility, not interruption."
+
+### Files Modified
+- `components/AiChatButton.tsx` — full rewrite. Trigger anchor changed from `fixed bottom-4 right-4 sm:bottom-6 sm:right-6` (w-14 h-14 circle) to `fixed top-3 right-14 sm:top-4 sm:right-16 lg:top-5 lg:right-[4.5rem]` (h-9 w-9 — matches `<HelpDrawerButton />` exactly). Panel anchor changed from `bottom-20 right-4` (slide-up) to `top-14 right-3` (slide-down-from-trigger). Esc-to-close added.
+- `docs/IMPLEMENTATION_PLAN.md` — new entry in `↩️ Reversed Decisions` documenting the FAB-overlap bug + reviewer rule against re-introducing persistent bottom-right FABs for utility/help affordances on the dashboard chrome.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (header-bar utility cluster pattern locked: AI chat + Help)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (header-cluster pattern for utility affordances; bottom-right FAB reviewer rule)
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` `↩️ Reversed Decisions` — bottom-right FAB pattern reverted with reviewer rule
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Build Status
+- [x] `npx tsc --noEmit` clean
+
+### PR
+- Branch: `claude/fix-ai-chat-fab-overlap`
+- Status: pending push + open
