@@ -1,5 +1,77 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41f4-trust-deed-parser (Phase 41f.4 — Trust-deed parser; CLOSES PHASE 41f CORE)
+
+### Strategy
+Implements `PHASE_41F_BOOKKEEPING_INTEGRATION.md` §7 (4-step confirm-before-apply trust-deed flow) on top of the schema landed in PR #691. **Closes Phase 41f core.** No additional sign-off needed — D-41F-3 was approved 2026-05-07 in the original 41F sign-off block.
+
+Architectural choice: use `unpdf` (already installed; serverless-friendly) for PDF text extraction instead of Vision OCR + image conversion. Vision OCR works on images; trust deeds are typically typeset PDFs where text extraction is faster + cheaper + more deterministic. Scanned-PDF fallback documented as `UC-TRUST-DEED-SCANNED-PDF` (deferred to v2).
+
+### Type
+- **Type**: Feature (Phase 41f sub-PR — closes 41f core)
+- **Scope**: New `lib/integrations/trust-deed/` module + new `lib/services/trustDeedRulesService.ts` consumer-side reader + 3 API routes + 1 consumer page + 36 new tests. Zero new dependencies — uses existing `unpdf` + existing Phase 41h `generateGeminiJSONCompletion`.
+
+### Files Created
+- `lib/integrations/trust-deed/types.ts` — Zod schemas for `Beneficiary` / `DistributionRule` / `TrusteePower` / `LoanProvision` / `UncomputedNote` / `TrustDeedExtraction` (top-level). Per-rule `confidence` field (0..1) on every typed rule. `CONFIDENCE_THRESHOLD = 0.7` exposed as a constant. `highConfidenceOnly()` helper that filters out below-threshold rules — used by Phase 41e consumers via the read-only service.
+- `lib/integrations/trust-deed/pdfTextExtractor.ts` — wraps `unpdf` (already installed; no new deps). Returns `{ text, pageCount, pages[] }`. Throws `TrustDeedExtractionError` with typed `code` (`PDF_PARSE_ERROR` / `SCANNED_PDF_DETECTED` / `EMPTY_PDF`) on failure. SCANNED_PDF heuristic: if extracted text < 100 chars, surface friendly error + UC for v2.
+- `lib/integrations/trust-deed/geminiExtractor.ts` — strict structured-output Gemini call. System prompt explicitly states: never invent rules; never recommend; never cite tax law; every rule carries confidence (0..1) — use 0.7+ when unambiguous, below 0.7 when interpretation needed; flag uncertain clauses to `uncomputedNotes` with verbatim source text. Truncates deeds > 250k chars + appends global UC note. Throws `GeminiExtractionError` (`GEMINI_NOT_CONFIGURED` / `EXTRACTION_FAILED` / `SCHEMA_INVALID`).
+- `lib/integrations/trust-deed/extractionService.ts` — orchestrator. `createExtraction()` loads document → PDF → Gemini → persists new `TrustDeedExtractedRules` row with `status = EXTRACTED`. `updateExtractedRules()` user edits during review (only EXTRACTED rows editable). `confirmExtraction()` / `rejectExtraction()` lifecycle transitions guarded by `ALLOWED_TRANSITIONS` — EXTRACTED → CONFIRMED \| REJECTED; both terminal. `getLatestExtractionForEntity()` reader. `isAllowedTransition()` exported for tests + future callers.
+- `lib/integrations/trust-deed/index.ts` — public surface re-exports.
+- `lib/services/trustDeedRulesService.ts` — **read-only consumer service for Phase 41e callers**. `getConfirmedRulesForEntity(legalEntityId)` returns latest CONFIRMED with `highConfidenceOnly()` already applied + defensive Zod re-validation on read (returns null if persisted JSON drifts from schema — fail closed, never hand a malformed shape to a tax engine).
+- `app/api/entities/[id]/trust-deed/route.ts` — `GET` returns status + entity + latest rules + Document metadata. `POST` accepts multipart PDF upload (25 MB cap), restricted to `DISCRETIONARY_TRUST` / `UNIT_TRUST` entities, persists PDF to existing Document model (Phase 26 vault, MONITRAX storage), runs `createExtraction()`, returns persisted rules + documentId. 503 with `GEMINI_NOT_CONFIGURED` when env unset; 400 NOT_A_TRUST_ENTITY for non-trust types; 422 SCANNED_PDF_DETECTED for image-based PDFs.
+- `app/api/entities/[id]/trust-deed/[rulesId]/route.ts` — `PATCH` user edits during review (only EXTRACTED). `POST` lifecycle transition with body `{ action: 'CONFIRM' | 'REJECT', rejectionReason? }`. Defence-in-depth ownership check: `findFirst({ where: { id: rulesId, legalEntityId: id } })`.
+- `app/dashboard/entities/[id]/trust-deed/page.tsx` — 4-step UI. Upload card with read-only / encrypted-at-rest / never-modifies-PDF reassurance. Extracted-rule cards: beneficiaries / distribution rules / trustee power / loan provisions / vesting date — all with **per-rule confidence chips** (≥0.7 emerald, <0.7 amber "review carefully"). UNCOMPUTED notes card with verbatim source text + plain-English rationale. Confirm / Reject / Re-upload action bar (with confirm() guards). `<ScopeBoundaryCard />` reinforces §1.1 boundary (DOES vs DOES NOT).
+- `tests/integrations/trust-deed/types.test.ts` — 26 tests: BeneficiarySchema bound checks (empty name / 200-char limit / unknown type / percentageEntitlement 0..1 / confidence 0..1 / null acceptance) + DistributionRuleSchema (discretionary / proportionate / streamed / unknown type / unknown incomeType) + TrustDeedExtractionSchema (complete / empty arrays / 50-item sanity bound / missing overallConfidence) + `highConfidenceOnly()` (filters beneficiaries / distribution rules / loan provisions; keeps uncomputedNotes always; boundary case at exactly 0.7 — threshold is inclusive; null loanProvisions input).
+- `tests/integrations/trust-deed/lifecycle.test.ts` — 10 tests: exhaustive 3×3 transition matrix proves only EXTRACTED → CONFIRMED and EXTRACTED → REJECTED are allowed. CONFIRMED + REJECTED are terminal — no transitions out (no un-confirm, no un-reject, no self-transitions). Re-uploading the deed creates a NEW row.
+
+### Architecture Decisions
+- **`unpdf` over Vision OCR for v1**. Vision OCR is image-based + requires PDF→image conversion. Most trust deeds are typeset → text extraction is faster + cheaper + more deterministic. `unpdf` is already installed (Phase 26 vault dep). Scanned-PDF case surfaces `UC-TRUST-DEED-SCANNED-PDF` for v2 (Vision OCR fallback).
+- **Per-rule confidence + `highConfidenceOnly()` filter**. Every rule Gemini extracts carries 0..1 confidence. The consumer-side service filters out rules below 0.7 BEFORE handing to any tax engine. This means: even after a user CONFIRMs the extraction, the tax engine still only consumes high-confidence rules (defence-in-depth — if the user confirms a low-confidence rule by mistake, the consumer-side filter catches it).
+- **Lifecycle is locked + terminal**. EXTRACTED is the only state with outgoing transitions. CONFIRMED and REJECTED are terminal — re-uploading the deed creates a NEW row; existing rows are never re-activated. Audit trail is preserved.
+- **Typed contract is locked; consumer wiring is deferred**. The Zod-validated `TrustDeedExtraction` shape + `getConfirmedRulesForEntity()` reader are shipped in this PR. Wiring into MasterTaxPosition (Phase 41e.17) + AI advisor tools (Phase 41h `getEntityTaxPosition` / `runDiv7aRefinanceScenario` / etc.) is a follow-up — that wiring touches every existing caller of those engines + would require its own design + tests. The contract is locked first; consumers integrate when ready.
+- **Defensive re-validation on read**. `getConfirmedRulesForEntity()` Zod-revalidates the persisted JSON before handing back to a consumer. Should never fail in practice (the extraction service Zod-validates at write time), but if the schema ever drifts, we fail closed — return null + log warning rather than hand a malformed shape to a tax engine.
+- **Restricted to trust-shaped entities**. The POST upload route returns 400 `NOT_A_TRUST_ENTITY` for `PERSONAL_NAME` / `COMPANY` / `SMSF` / `SOLE_TRADER` / `PARTNERSHIP`. Trust-deed parsing only makes sense for `DISCRETIONARY_TRUST` / `UNIT_TRUST`.
+- **Inline storage at v1**. PDFs persist to `Document.fileContent` (MONITRAX storage). External-storage providers (GCS / S3) are deferred — the extraction service surfaces a clear error if encountered. Most users at this stage will be on inline storage; bulk-storage support is a Phase 26 follow-up.
+- **No new dependencies**. Uses existing `unpdf` + existing `generateGeminiJSONCompletion` from `lib/ai/gemini.ts` (which Phase 41h uses). Keeps the dependency footprint flat per CLAUDE.md §12.7+§12.8.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripe` issue, unrelated)
+- [x] `npx vitest run tests/integrations/trust-deed` — 36 / 36 pass
+- [x] `npx vitest run tests/tax-engine/divisions/div7aLoanClassifierSurplusCap.test.ts tests/integrations` — 88 / 88 pass (Phase 41f Xero suite + Phase 41f.3 Div 7A surplus cap suite still green; no regression from the new module)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new trust-deed page composes existing Card / Button / Badge primitives + reuses the connect-bookkeeping page's `ScopeBoundaryCard` pattern + new per-rule confidence-chip pattern; no new reusable design primitive — `06_UI_UX_FOUNDATION.md` not touched per §16.3 first row)
+- [x] application config (uses existing `GEMINI_API_KEY` env var — no new config; documented `GEMINI_NOT_CONFIGURED` 503 response)
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (Zod-validated structured extraction; per-rule confidence; defensive Zod re-validation on read; storage + understanding only per §1.1 — never modifies the user's PDF; audit logs sanitised via existing `sanitizeMetadata`)
+- [ ] operational procedure
+- [x] strategic decision (`unpdf` over Vision OCR for v1; consumer wiring deferred until typed contract is locked)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header + Active Workstream §5 sub-PR ticks (41f.4 ✅) + status flipped to CORE COMPLETE pending merge + Blocking line updated to flag the 41f.5 vs Phase 42 reconciliation question.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+The new routes contain `prisma.trustDeedExtractedRules.update` (PATCH edits, lifecycle transitions). Filled in advance:
+
+**`update` calls in `extractionService.ts` (`updateExtractedRules`, `transitionStatus`):**
+1. WHERE clause matches: `{ id: rulesId }` after pre-fetch via `findUnique({ where: { id: rulesId } })`. Only the row uniquely owned by the calling user (defence-in-depth ownership check at the route layer via `findFirst({ where: { id: rulesId, legalEntityId } })` before the service is invoked).
+2. Columns overwritten: lifecycle state (`status`, `confirmedAt`, `rejectedAt`, `rejectionReason`) for `transitionStatus`; JSON shape columns (`beneficiaries`, `distributionRules`, `vestingDate`, `trusteePower`, `loanProvisions`, `uncomputedNotes`) for `updateExtractedRules`. All fields owned by this code path.
+3. Guard: rows being updated were created by this service via `createExtraction()`. The `ALLOWED_TRANSITIONS` map blocks any transition out of CONFIRMED or REJECTED; the `NOT_EDITABLE` guard blocks PATCH on CONFIRMED / REJECTED rows.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A — no `prisma/schema.prisma` changes. The `TrustDeedExtractedRules` model + `TrustDeedRuleStatus` enum landed in PR #691 (Phase 41f.1).
+
+### PR
+- Branch: `claude/phase-41f4-trust-deed-parser`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41i6-and-41f5-design (Phase 41i.6 + 41f.5 design docs + 41F spec doc data-conflict strategy)
 
 ### Strategy
