@@ -2961,3 +2961,80 @@ Second sub-PR of the Phase 42 stream. Adds the per-line split layer on top of th
 
 - **PR2.5** (small) — inline split editor inside `TransactionLinkDialog` (the dialog is 1,601 LOC; deferred to keep PR2 ship-able)
 - **PR3** — receipt → transaction matching + cash quick-add + PWA camera capture
+
+---
+
+## **10.44 Phase 42 PR3 — Receipt matching + cash quick-add (PR — shipped 2026-05-07)**
+
+Third sub-PR of the Phase 42 stream. Adds the receipt-to-transaction reconciliation layer and the sole-trader cash-log path. All schema changes are additive (no row UPDATE/DELETE; §12.11 N/A).
+
+### New enum values
+
+```
+TransactionSource = BANK | BASIQ | CSV | QIF | OFX | MANUAL | RECEIPT
+                                                            ^^^^^^^ NEW
+
+AccountType = OFFSET | SAVINGS | TRANSACTIONAL | CREDIT_CARD | CASH
+                                                             ^^^^ NEW
+```
+
+`LIQUID_ACCOUNT_TYPES` (`lib/types/prisma-enums.ts`) extends to include `CASH` so net-worth + emergency-fund snapshots treat cash as liquid.
+
+### New column
+
+```
+unified_transactions.matchedDocumentId  TEXT (nullable)
+```
+
+Direct pointer for "show me the receipt for this transaction." Set by the DME `analyze/confirm` flow on AUTO_LINK or NO_MATCH paths. Complements the existing many-to-many `DocumentLink` table (which still serves general document↔entity relations).
+
+### Service surface (`lib/bookkeeping/`)
+
+| Module | Exports | Used by |
+|---|---|---|
+| `receiptMatcher.ts` | `findReceiptMatches(userId, receipt)` returning `AUTO_LINK \| PICK_FROM \| NO_MATCH`; pure helpers `daysBetween`, `scoreDate`, `scoreAmount`, `levenshtein`, `vendorSimilarity`, `compositeScore`, `scoreCandidate`; thresholds `RECEIPT_DATE_WINDOW_DAYS=3`, `RECEIPT_AMOUNT_TOLERANCE_ABS=0.50`, `RECEIPT_AMOUNT_TOLERANCE_RELATIVE=0.005`, `RECEIPT_AUTO_LINK_THRESHOLD=0.95`, `RECEIPT_PICKER_THRESHOLD=0.7` | `app/api/documents/analyze/confirm/route.ts:applyReceiptMatch` |
+| `cashAccount.ts` | `getOrCreateCashAccount(userId)` — idempotent (existing CASH → use; existing "Cash"-named → adopt; otherwise create) | `app/api/unified-transactions/cash/route.ts`; `app/api/documents/analyze/confirm/route.ts` (NO_MATCH receipt creates RECEIPT row on Cash) |
+
+### Threshold rules (D-42-7 signed-off)
+
+Composite confidence is a **deterministic** weighted blend:
+
+```
+composite = 0.50 × dateScore + 0.35 × amountScore + 0.15 × vendorScore
+
+Strong-signal override:
+  if dateScore ≥ 0.85 AND amountScore ≥ 0.99 → composite = max(base, 0.95)
+
+Verdict:
+  composite ≥ 0.95 AND beats 2nd-place by ≥ 0.05 → AUTO_LINK
+  composite ≥ 0.7                                → PICK_FROM (top 5)
+  composite < 0.7                                → NO_MATCH
+```
+
+Date score decays linearly inside the 3-day window; outside the window → 0. Amount score uses the larger of $0.50 absolute or 0.5% relative tolerance. Vendor similarity is Levenshtein-ratio on the normalised lowercase, alphanumeric-collapsed names (matches the merchant-normalisation rule from PR1's `normaliseDescription.ts`).
+
+### API additions
+
+| Route | Verb | Purpose |
+|---|---|---|
+| `/api/unified-transactions/cash` | POST | 3-field cash quick-add (amount + description + direction; optional date + category). LOCKED-period guard returns HTTP 423. Updates `Account.currentBalance` on the Cash account. |
+
+### Existing surface changes
+
+- `app/api/documents/analyze/confirm/route.ts` CREATE_EXPENSE — now calls `applyReceiptMatch()` after the Expense is created. AUTO_LINK updates the matched `unified_transactions` row's `expenseId` + `matchedDocumentId` and writes a `TransactionEdit` with `editType=RECEIPT_LINK / source=AI`. NO_MATCH synthesises a new RECEIPT-sourced row on the user's Cash account, also tied to the new Expense. PICK_FROM returns candidates in the response for the UI to render a picker (PR3.5 deferred).
+
+### UI additions
+
+- `components/bookkeeping/CashQuickAddButton.tsx` — emerald FAB with modal. Auto-focused tabular-nums amount, in/out toggle, advanced (date + category) behind a toggle. PWA camera path via inline `<input capture>`. 700ms ✓ tick celebration on success.
+
+### Tests
+
+32 new unit tests in `tests/bookkeeping/receiptMatcher.test.ts` (thresholds pinned; daysBetween; Levenshtein; vendorSimilarity normalisation; compositeScore weighting + strong-signal override; scoreCandidate integration). Cumulative: 72/72 green (PR1 27 + PR2 13 + PR3 32).
+
+### Migration
+
+`prisma/migrations/20260510220000_phase_42_pr3_receipts_cash/migration.sql` — ALTER TYPE × 2 (additive), ALTER TABLE ADD COLUMN × 1 (nullable). NO destructive ALTER, NO DROP, NO row UPDATE/DELETE. CLAUDE.md §12.11 N/A.
+
+### Out of PR3, queued
+
+- **PR3.5** (small) — receipt-picker UI inside Smart Inbox to consume the `receiptMatch.candidates` PICK_FROM verdict; reverse-direction matcher ("new bank tx → unmatched RECEIPT row → retro-link") for late-BASIQ-sync cases.
