@@ -101,15 +101,30 @@ export async function buildPendingActions(
     pendingReceiptCount,
   ] = await Promise.all([
     getOrCreateEngagementState(userId),
-    // Count what the user can SEE as Uncategorised on Activity —
-    // `categoryLevel1` empty/null, excluding internal transfers
-    // (those don't need a category from the user's perspective).
+    // Count what the user can SEE as Uncategorised on Activity.
+    // CRITICAL — this MUST match the Activity page's "uncategorized=true"
+    // filter EXACTLY (see app/api/unified-transactions/route.ts:84):
+    //   - no expense/income/loan link
+    //   - not a transfer (matches false OR null — legacy rows)
+    //   - not an investment contribution (same nullable-handling)
+    //
+    // The 2026-05-08 Reza-reported "badge always 0" bug came from
+    // filtering on `categoryLevel1 IS NULL OR ''` instead of the
+    // link-status semantics. BASIQ-auto-categorised tx have a
+    // non-null `categoryLevel1` (e.g. "Food & Dining") AND no
+    // linked Expense — they appear in the user's "uncategorised
+    // first" filter but were missed by the categoryLevel1-only
+    // check. The Activity filter is the SSOT for "what does the
+    // user think is uncategorised."
     prisma.unifiedTransaction.count({
       where: {
         userId,
         date: { gte: trailingSince },
-        isTransfer: false,
-        OR: [{ categoryLevel1: null }, { categoryLevel1: '' }],
+        incomeId: null,
+        expenseId: null,
+        loanId: null,
+        isTransfer: { not: true },
+        isInvestmentContribution: { not: true },
       },
     }),
     prisma.unifiedTransaction.count({
