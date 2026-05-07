@@ -1137,3 +1137,75 @@ N/A — additive migration only (CREATE TYPE / CREATE TABLE / ALTER TYPE ADD VAL
 ### PR
 - Branch: `claude/phase-32c-pr4d-conversations`
 - Status: pending push + open
+
+
+---
+
+## Session: phase-42-pr1-foundation
+
+### Changes Made
+- **Type**: Feature — first sub-PR of the Phase 42 stream (XERO-complementary consumer bookkeeping)
+- **Scope**: Schema foundation + service helpers + period API + per-mutation audit + minimal UI hook
+- **Description**: Implements the foundational layer described in `PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR1. Three new tables, one new enum, one new column on `unified_transactions`. All schema changes additive. Spec context: Reza directives 2026-05-08 (1) Monitrax does not replace Xero — produces personal tax-pack handoff TO Xero; (2) categorisation must engage emotionally, not feel like a chore. PR1 is the foundation; the engagement layer ships in PR6 with the Daily Pulse / streak / completion celebration.
+
+### Files Modified / Added
+- `prisma/schema.prisma` — added `BookkeepingPeriodStatus` enum + `CanonicalCategoryRegistry` / `BookkeepingPeriod` / `TransactionEdit` models; added `UnifiedTransaction.normalisedDescriptionHash` + secondary index `ut_dedup_qif_csv_ofx`. Three new back-relations on `User`. JSDoc comments throughout point at the spec doc + PR2-6 forward links.
+- `prisma/migrations/20260510200000_phase_42_pr1_foundation/migration.sql` — additive migration. Operations: CREATE TYPE × 1, CREATE TABLE × 3, ALTER TABLE ADD COLUMN × 1 (nullable), UPDATE backfill, CREATE INDEX × 7. NO destructive ALTER, NO DROP. Backfill SQL mirrors the JS canonical hash function in `lib/bookkeeping/normaliseDescription.ts`.
+- `lib/bookkeeping/normaliseDescription.ts` (NEW) — canonical description normaliser + md5 hash. Deterministic; mirrors the migration backfill SQL exactly.
+- `lib/bookkeeping/categoryRegistry.ts` (NEW) — `resolveOrCreateCategory()` (race-tolerant lazy seed) + `backfillRegistryForUser()` (one-time bulk seed from existing strings on `unified_transactions` + `merchant_mappings`).
+- `lib/bookkeeping/period.ts` (NEW) — 3-status state machine. `getOrCreatePeriod()` always refreshes `totalTransactionCount` + `reviewedTransactionCount` from canonical ledger state. `markPeriodReviewed()` / `lockPeriod()` / `unlockPeriod()` are idempotent. `isPeriodEditable()` is the LOCKED guard used by the PATCH route.
+- `lib/bookkeeping/transactionEditAudit.ts` (NEW) — fire-and-forget audit helper. `pickCategoryFields()` + `pickLinkFields()` keep audit JSON snapshots tight. `deepEqual` short-circuit avoids no-op rows.
+- `lib/auth/permissions.ts` — added `bookkeeping.read` (all roles) + `bookkeeping.write` (OWNER/ADMIN/CONTRIBUTOR).
+- `app/api/bookkeeping/periods/[month]/route.ts` (NEW) — thin route handler. GET + POST with action enum. Strict YYYY-MM regex on the path param.
+- `app/api/unified-transactions/[id]/route.ts` — wired `isPeriodEditable()` LOCKED guard (HTTP 423) + `recordTransactionEdit()` audit calls for CATEGORY / TAGS / LINK_ENTITY / RECURRING mutations.
+- `components/bookkeeping/MonthlyReviewPill.tsx` (NEW) — minimal UI affordance on Activity header. Three visual states map to BookkeepingPeriodStatus. One-tap to mark reviewed; one-tap on LOCKED to unlock. Foundational hook for the PR6 Daily Pulse / streak surface.
+- `app/dashboard/activity/page.tsx` — wired `<MonthlyReviewPill />` into the page hero header.
+- `tests/bookkeeping/normaliseDescription.test.ts` (NEW) — 15 unit tests on hash determinism + jitter collapse + distinct-vendor preservation + DEDUP_SOURCES type-guard.
+- `tests/bookkeeping/period.test.ts` (NEW) — 8 unit tests on period-key normalisation + month boundaries + round-trip formatting.
+- `tests/bookkeeping/transactionEditAudit.test.ts` (NEW) — 4 unit tests on field-pick discipline + null/undefined coercion.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR1 row in §4 flipped from spec to ✅ SHIPPED with the full deliverable list + migration reference + queued items (PR1.1 unique-promotion).
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #42 updated with "PR1 of 6 SHIPPED, PR2 next session"; Recently Completed has a full 2026-05-07 entry.
+- `docs/architecture/03_DATA_MODEL.md` — new §10.42 documenting the schema additions + service surface + tests + migration.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern (the pill is a one-off; no new design primitive)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (per-mutation audit trail = AFSL/TPB compliance + pairs with Phase 32B PR3 read-side audit)
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` §4 PR1 — flipped to ✅ SHIPPED
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #42 updated; Recently Completed entry
+- `docs/architecture/03_DATA_MODEL.md` §10.42 — schema documentation
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows:
+- `prisma/migrations/20260510200000_phase_42_pr1_foundation/migration.sql` — `UPDATE "unified_transactions" SET "normalisedDescriptionHash" = md5(...) WHERE "source" IN ('QIF', 'CSV', 'OFX') AND "normalisedDescriptionHash" IS NULL`
+
+For that operation:
+1. **`where` clause matches:** `unified_transactions` rows with `source IN ('QIF','CSV','OFX')` AND `normalisedDescriptionHash IS NULL`. The IS NULL clause makes the migration idempotent — re-running computes hashes only for rows still missing one.
+2. **Columns overwritten / rows deleted:** `normalisedDescriptionHash` only — a column that did not exist before this migration. NO existing user data is overwritten. The column was added (nullable) in the previous statement of the same migration; the UPDATE backfills the only column it can possibly touch.
+3. **Guard ensuring this only mutates rows I created:** the column is brand-new in this migration. Every value in it after the migration is computed by THIS migration's `md5(...)` expression — there is no pre-existing data to clobber.
+
+User confirmation: NOT REQUIRED — the UPDATE writes to a column that was created in the same migration; no user-entered data is at risk; the `IS NULL` guard makes it idempotent.
+
+Other destructive Prisma operations: NONE in this PR. The `unified-transactions/[id]` PATCH route already does an `update`; this PR adds an `isPeriodEditable()` guard *before* it (HTTP 423 on LOCKED periods) — strictly tightening the guard, never loosening.
+
+### Build Status
+- [x] `npx prisma generate` clean
+- [x] `npx tsc --noEmit` clean (only pre-existing `stripe` module noise; not from this PR)
+- [x] `npx vitest run tests/bookkeeping/` — 27/27 green
+- [x] Manual schema review of the migration file
+
+### PR
+- Branch: `claude/phase-42-pr1-foundation`
+- Status: pending push + open

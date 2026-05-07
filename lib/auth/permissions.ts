@@ -77,6 +77,12 @@ export const PERMISSIONS = {
   'report.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
   'report.export': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
 
+  // Phase 42 PR1 — Bookkeeping period read/write (per-user state).
+  // VIEWER can read for transparency; only roles that can edit
+  // transactions can mark a period reviewed/locked.
+  'bookkeeping.read': ['OWNER', 'ADMIN', 'CONTRIBUTOR', 'VIEWER'],
+  'bookkeeping.write': ['OWNER', 'ADMIN', 'CONTRIBUTOR'],
+
   // Settings & User Management
   'settings.read': ['OWNER', 'ADMIN'],
   'settings.write': ['OWNER'],

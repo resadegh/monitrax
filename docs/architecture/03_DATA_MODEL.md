@@ -2848,3 +2848,58 @@ Tools: 10 (was 7)
 ### Closes Up Next #39
 
 Up Next #39 (SCENARIO_RUN tools expansion) closes here. **Next per Reza's roadmap**: TRAIL-aligned IA (#40 — graduate AI advisor from `/dashboard/cfo/ask` to "My Guide" placement per CLAUDE.md §14) → Phase 41i.3b per-user audit (#41 — when first paying users / pre-Basiq submission).
+
+---
+
+## **10.42 Phase 42 PR1 — Consumer Bookkeeping Foundation (PR — shipped 2026-05-07)**
+
+First sub-PR of the Phase 42 stream (XERO-complementary consumer bookkeeping). Three new tables, one new enum, one new column on `unified_transactions`. All schema additions are additive — no DROP, no destructive ALTER, no new constraints on existing data beyond a deterministic backfill into a column that didn't exist before this migration.
+
+### New enum
+
+```
+BookkeepingPeriodStatus = OPEN | REVIEWED | LOCKED
+```
+
+### New tables
+
+| Table | Purpose | Key fields | Indexes |
+|---|---|---|---|
+| `canonical_category_registry` | SSOT for category labels across `unified_transactions` strings + `Expense.customCategoryId` + `MerchantMapping`. Lazy-seeded on every `resolveOrCreateCategory()` call; no migration required when the categoriser writes a new triple. | `(userId, level1, level2, subcategory)` UNIQUE; `type: CategoryType (EXPENSE/INCOME)` (Transfers map to EXPENSE — level1 string preserves identity); `customCategoryId` bridge to legacy `Category` model; `taxCategoryId` reserved for PR5 | UNIQUE on `(userId, level1, level2, subcategory)`; secondary on `(userId)` + `(userId, type)` |
+| `bookkeeping_periods` | Per-month review state. **Psychological milestone, NOT statutory close** — Xero owns formal close. Three statuses. LOCKED is opt-in, rare (Tax Pack handed to accountant); when set, the `unified-transactions/[id]` PATCH route returns HTTP 423. | `(userId, periodMonth)` UNIQUE; `status` enum; `reviewedAt` / `lockedAt` timestamps; `reviewedTransactionCount` / `totalTransactionCount` counters refreshed on every `getOrCreatePeriod()` | UNIQUE on `(userId, periodMonth)`; secondary on `(userId, status)` |
+| `transaction_edits` | Per-mutation audit trail. Every CATEGORY / TAGS / LINK_ENTITY / RECURRING mutation through the `[id]` PATCH path writes a row. Fire-and-forget per CLAUDE.md §12.10. Pairs with the Phase 32B PR3 read-side audit (`PRO_DASHBOARD_VIEW`). | `transactionId` + `userId` + `editType` + `before` JSON + `after` JSON + `source` (USER/AI/RULE/IMPORT/SYSTEM); deepEqual short-circuits — no row written when an edit didn't change anything | secondary on `(transactionId)` + `(userId, editedAt)` |
+
+### New column
+
+```
+unified_transactions.normalisedDescriptionHash  TEXT (nullable)
+```
+
+Deterministic hash of the normalised description (md5 of lowercased, alphanumeric-collapsed, whitespace-collapsed, 64-char-truncated source). Computed by both `lib/bookkeeping/normaliseDescription.ts` (at write-time) and the migration backfill SQL (at deploy-time) — kept in sync. BASIQ-fed rows skip the hash (they have `basiqTransactionId` UNIQUE); MANUAL-fed rows skip it (user-explicit).
+
+### New partial index
+
+```
+ut_dedup_qif_csv_ofx
+  ON unified_transactions (accountId, date, amount, normalisedDescriptionHash)
+  WHERE source IN ('QIF', 'CSV', 'OFX')
+```
+
+**Non-unique at v1** per CLAUDE.md §12.11 caution — promotion to UNIQUE deferred to PR1.1 after a one-time prod audit confirms zero existing duplicates in the QIF/CSV/OFX subset.
+
+### Service surface (`lib/bookkeeping/`)
+
+| Module | Exports | Used by |
+|---|---|---|
+| `normaliseDescription.ts` | `normaliseDescription()`, `computeDescriptionHash()`, `DEDUP_SOURCES`, `isDedupSource()` | (PR2 wires into import paths) |
+| `categoryRegistry.ts` | `resolveOrCreateCategory()`, `backfillRegistryForUser()` | (PR2 wires into the categoriser) |
+| `period.ts` | `getOrCreatePeriod()`, `markPeriodReviewed()`, `lockPeriod()`, `unlockPeriod()`, `isPeriodEditable()`, `listPeriods()`, `toPeriodMonthKey()`, `formatPeriodMonth()` | `app/api/bookkeeping/periods/[month]/route.ts`; `app/api/unified-transactions/[id]/route.ts` (LOCKED guard) |
+| `transactionEditAudit.ts` | `recordTransactionEdit()`, `pickCategoryFields()`, `pickLinkFields()` | `app/api/unified-transactions/[id]/route.ts` (PATCH path) |
+
+### Tests
+
+27 unit tests across `tests/bookkeeping/{normaliseDescription,period,transactionEditAudit}.test.ts` — covers determinism, jitter collapse, distinct-vendor preservation, period-key normalisation, audit-helper field-pick discipline. All green.
+
+### Migration
+
+`prisma/migrations/20260510200000_phase_42_pr1_foundation/migration.sql` — CREATE TYPE × 1, CREATE TABLE × 3, ALTER TABLE ADD COLUMN × 1 (nullable), UPDATE backfill, CREATE INDEX × 7. CLAUDE.md §12.11 disclosed in the PR body for the backfill UPDATE.

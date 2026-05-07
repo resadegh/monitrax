@@ -556,6 +556,11 @@ model User {
   importBatches             ImportBatch[]              @relation("ImportBatches")
   transactionReviewQueue    TransactionReviewQueue[]   @relation("TransactionReviewQueue")
 
+  // Phase 42 PR1: Consumer bookkeeping foundation
+  canonicalCategoryRegistry CanonicalCategoryRegistry[]
+  bookkeepingPeriods        BookkeepingPeriod[]
+  transactionEdits          TransactionEdit[]
+
   // Phase L: CDR Compliance Models
   cdrConsents    CDRConsent[]
   cdrComplaints  CDRComplaint[]
@@ -1869,6 +1874,13 @@ model UnifiedTransaction {
   expenseId           String?
   investmentAccountId String?
 
+  // Phase 42 PR1 — Cross-batch dedup foundation. Deterministic hash of the
+  // normalised description, computed at write-time. Used to spot duplicates
+  // when a user re-imports an overlapping QIF / CSV / OFX file. Nullable
+  // because BASIQ rows have their own canonical key (`basiqTransactionId`)
+  // and don't need the hash. See `lib/bookkeeping/normaliseDescription.ts`.
+  normalisedDescriptionHash String?
+
   // Metadata
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1887,6 +1899,14 @@ model UnifiedTransaction {
   @@index([recurrenceGroupId])
   @@index([source])
   @@index([processedAt])
+  // Phase 42 PR1 — partial dedup index. Non-unique at v1 (existing prod
+  // rows may already contain duplicates from pre-PR1 imports). The dedup
+  // *check* lives at the API layer in `lib/bookkeeping/normaliseDescription.ts`.
+  // Phase 42 PR1.1 will promote this to UNIQUE once a one-time audit + dedup
+  // pass has been run against prod (CLAUDE.md §12.11 — destructive operations
+  // need explicit user confirmation; we don't ship a unique constraint that
+  // could fail the migration on production data without the audit pass).
+  @@index([accountId, date, amount, normalisedDescriptionHash], name: "ut_dedup_qif_csv_ofx")
   @@map("unified_transactions")
 }
 
@@ -1933,6 +1953,111 @@ model MerchantMapping {
   @@index([userId])
   @@index([confidence])
   @@map("merchant_mappings")
+}
+
+// =============================================================================
+// PHASE 42 PR1: CONSUMER BOOKKEEPING FOUNDATION
+//
+// Three additive models supporting Phase 42 — Consumer Bookkeeping
+// Completion (XERO-Complementary). Spec lives at
+// docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md.
+//
+// CanonicalCategoryRegistry — single SSOT for category labels across
+// UnifiedTransaction strings + Expense.customCategoryId + MerchantMapping.
+// BASIQ-fed and QIF-fed categorisations both resolve through this surface
+// (CLAUDE.md §12.2 SSOT). PR2+ will add the level1/2/sub → registry-id
+// resolver helpers; PR1 ships the table + a backfill that seeds entries
+// from the existing distinct (categoryLevel1, categoryLevel2, subcategory)
+// triples on UnifiedTransaction.
+//
+// BookkeepingPeriod — psychological milestone, NOT a statutory close
+// (Xero remains the accountant tool). Three-status state machine
+// OPEN → REVIEWED → LOCKED; LOCKED is opt-in (rare, when handing the
+// tax pack to the accountant). Edits are blocked at the API layer ONLY
+// when status=LOCKED. See also TaxPack export (PR5).
+//
+// TransactionEdit — per-mutation audit trail. Every category / split /
+// link / flag mutation through the UnifiedTransaction PATCH path writes
+// a row here. Used for AFSL/TPB compliance trail when a professional
+// reviews a client (Phase 32B PR3 already audits the *read*; this
+// audits the *write*).
+// =============================================================================
+
+enum BookkeepingPeriodStatus {
+  OPEN     // Current / past month; no review yet
+  REVIEWED // User confirmed all transactions categorised; edits still allowed
+  LOCKED   // User explicitly locked (rare); edits blocked at API
+}
+
+model CanonicalCategoryRegistry {
+  id               String       @id @default(uuid())
+  userId           String
+  level1           String       // Top-level: "Food & Dining"
+  level2           String?      // Sub-category: "Groceries"
+  subcategory      String?      // Detailed: "Supermarket"
+  // EXPENSE | INCOME — Transfers map to EXPENSE here; the level1 string
+  // ("Transfer") preserves the identity. PR2+ may extend the enum if
+  // downstream calc engines need to distinguish three-way.
+  type             CategoryType
+  isSystem         Boolean      @default(false)
+  // Optional bridge to a user-renamed Category (Phase 13 model). When set,
+  // the user's preferred display name lives there; the level1/2/sub triple
+  // is the canonical machine identity. PR2+ will keep them in sync.
+  customCategoryId String?
+  isActive         Boolean      @default(true)
+  // Reserved for PR5 — bridge to TaxCategoryMapping. Kept nullable in PR1
+  // so the column exists and PR5's migration is purely additive.
+  taxCategoryId    String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, level1, level2, subcategory])
+  @@index([userId])
+  @@index([userId, type])
+  @@map("canonical_category_registry")
+}
+
+model BookkeepingPeriod {
+  id                       String                  @id @default(uuid())
+  userId                   String
+  // First day of the month, normalised to UTC midnight. Uniqueness is
+  // enforced on (userId, periodMonth).
+  periodMonth              DateTime
+  status                   BookkeepingPeriodStatus @default(OPEN)
+  reviewedAt               DateTime?
+  reviewedTransactionCount Int                     @default(0)
+  totalTransactionCount    Int                     @default(0)
+  lockedAt                 DateTime?
+  notes                    String?                 @db.Text
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+
+  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodMonth])
+  @@index([userId, status])
+  @@map("bookkeeping_periods")
+}
+
+model TransactionEdit {
+  id            String   @id @default(uuid())
+  transactionId String
+  userId        String
+  editType      String   // CATEGORY / TAGS / LINK_ENTITY / FLAG / RECURRING / DELETE
+  // Snapshot of the changed fields BEFORE and AFTER. JSON keeps the schema
+  // flexible as we add new editable fields in PR2-6 (splits, vendor, etc.).
+  before        Json
+  after         Json
+  source        String   // USER / AI / RULE / IMPORT / SYSTEM
+  editedAt      DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@index([userId, editedAt])
+  @@map("transaction_edits")
 }
 
 // =============================================================================
