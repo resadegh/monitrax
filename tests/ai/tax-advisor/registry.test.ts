@@ -35,8 +35,8 @@ beforeEach(() => {
 });
 
 describe('Tool registry — bootstrap + listing', () => {
-  it('registers exactly 10 canonical tools at bootstrap (3 from 41h.0 + 4 from 41h.5 + 3 from 41h.6)', () => {
-    expect(taxAdvisorToolRegistry.size()).toBe(10);
+  it('registers exactly 11 canonical tools at bootstrap (3 from 41h.0 + 4 from 41h.5 + 3 from 41h.6 + 1 from 41f.4-extension)', () => {
+    expect(taxAdvisorToolRegistry.size()).toBe(11);
   });
 
   it('lists tools alphabetically', () => {
@@ -48,6 +48,7 @@ describe('Tool registry — bootstrap + listing', () => {
       'getEntityTaxPosition',
       'getInHouseAssetRatio',
       'getLandTaxPosition',
+      'getTrustDeedRules',
       'runCgtScenario',
       'runContributionScenario',
       'runDiv7aRefinanceScenario',

@@ -1,5 +1,71 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41-finishers (Phase 41 finishers — trust-deed wiring + 41i.3b adapter back-fill)
+
+### Strategy
+Reza directive 2026-05-07 (post-PR #705): *"I want you to ship and complete it, don't wait for onboarding users or BASIQ. I want a ready product."*
+
+Two follow-ups deferred during 41f.4 + 41i.3b were the only Phase 41 outstanding items: (a) trust-deed CONFIRMED rules wiring into MasterTaxPosition + AI advisor (without this, the 41f.4 trust-deed parser is decorative — extracted rules don't flow to consumers); (b) 41i.3b adapter back-fill beyond the load-bearing core 4. This PR ships both end-to-end.
+
+The wiring is **minimal but complete**: the validation overlay catches the highest-value mismatches (excluded beneficiaries, FIXED/PROPORTIONATE drift, sub-trust UPE presence) without re-architecting the orchestrator — engines stay pure; the overlay only emits citations + UNCOMPUTED. The advisor tool returns counts as `numericFields` per HR-1; structured deed shape rides in `raw` for AI narration. The adapter back-fill chooses 4 high-value adapters (3 property + 1 tax-orchestrator) over 32 mechanical ones — the masterTaxPosition adapter exercises every Phase 41e module as a side effect of orchestrator dispatch.
+
+### Type
+- **Type**: Feature (Phase 41 follow-up)
+- **Scope**: 1 new tax-engine module + 1 new advisor tool + 4 new audit adapters + 4 new test files. Zero new dependencies. Zero schema changes.
+
+### Files Created
+- `lib/tax-engine/divisions/trustDeedValidation.ts` — pure overlay; 6 UNCOMPUTED branches; case+whitespace-insensitive beneficiary name matching; SHARE_TOLERANCE = 0.01.
+- `lib/ai/tax-advisor/tools/getTrustDeedRules.ts` — FACT_LOOKUP tool wrapping `getConfirmedExtractionForEntity`; HR-1 numericFields = beneficiary counts by type + rule + provision counts; HR-2 cites Div 6 + s100A + Div 7A; D-2 disclaim recommendation; UC-TRUST-DEED-NOT-CONFIRMED when no deed.
+- `lib/calc-audit/userAudit/adapters/propertyAdapters.ts` — 3 adapters (`property.LVR` / `property.equity` / `property.rentalYield`); pick the most-leveraged / highest-yield property; validateOutput physical invariants; uses canonical `toAnnual()` per CLAUDE.md §6.2.
+- `lib/calc-audit/userAudit/adapters/taxAdapters.ts` — 1 adapter (`tax.masterTaxPosition`); fetches LegalEntity + incomes; runs orchestrator end-to-end; validates totals identity (`taxableIncome ≤ assessableIncome + 1c` CRITICAL on inversion; `estimatedRefund = paygWithheld − netTax` CRITICAL on drift); allows negative netTax (refund > liability).
+- `tests/tax-engine/divisions/trustDeedValidation.test.ts` (11 tests).
+- `tests/tax-engine/orchestrator/masterTaxPositionTrustDeed.test.ts` (6 tests).
+- `tests/ai/tax-advisor/getTrustDeedRules.test.ts` (9 tests).
+- `tests/calc-audit/userAuditExpansion.test.ts` (24 tests).
+
+### Files Modified
+- `lib/tax-engine/orchestrator/masterTaxPosition.ts` — new `confirmedDeedRulesByEntity?` input + new step 3.5 in pipeline + new `trustDeedValidationByEntity` field on `CrossCuttingTaxResult` + citation/UNCOMPUTED ingestion.
+- `lib/ai/tax-advisor/index.ts` — register `getTrustDeedRulesTool` (size 10 → 11); export from public surface.
+- `lib/calc-audit/userAudit/index.ts` — bootstrap PROPERTY + TAX adapter sets; export named adapters.
+- `tests/ai/tax-advisor/registry.test.ts` — registry size assertion 10 → 11; alphabetical name list updated.
+- `tests/ai/tax-advisor/tools-41h5.test.ts` — registry size assertion 10 → 11; FACT_LOOKUP count 6 → 7.
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header + Phase 41f workstream sub-PR list (41f.4-extension ticked) + Up Next #41 (back-fill noted) + Recently Completed entry.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Architecture Decisions
+- **Overlay, not engine mutation.** Per CLAUDE.md §6.4 engines are pure. The trust-deed validator emits citations + UNCOMPUTED only; never modifies tax numbers. v2 may extend this to actually re-derive distributions when the deed has FIXED rules, but v1 keeps the existing engine semantics intact.
+- **`getTrustDeedRules` returns counts, not rules.** Per HR-1, numbers must come from `numericFields`. Beneficiary types / rule descriptions / loan provision details are categorical — they ride in `raw` for AI narration but the AI cannot quote them as authoritative facts. The countable fields are the audit-relevant numerics ("3 beneficiaries, 1 excluded, 1 distribution rule").
+- **Composite tax adapter over individual ones.** `tax.masterTaxPosition` exercises every Phase 41e module (CGT / Div 6/6E / Div 7A / Div 152 / SMSF triumvirate / state taxes / GST / loss rules / **trust-deed validation**) via the orchestrator's dispatch. Adding 32 individual adapters would duplicate fact-derivation logic. The masterTaxPosition pass catches calc drift at the orchestration level — where it matters most for users.
+- **Property adapters: pick worst-case, audit it.** Auditing N properties per user via N engine calls would inflate audit time. Picking the most-leveraged property (or highest-yield) gives a representative sample that surfaces input-corruption edge cases (LVR > 500%, yield > 100%, NaN). v2 may iterate every property if performance allows.
+- **Case+whitespace-insensitive name matching.** Trust deed names ("Alice Smith") get matched against runtime distribution names ("ALICE smith") because real-world deed extraction has spelling/case variation. Normalised via `lowercase + collapse-whitespace + trim`.
+- **CRITICAL severity for identity violations.** `estimatedRefund != paygWithheld − netTax` and `taxableIncome > assessableIncome` are physical impossibilities. CRITICAL severity ensures these surface immediately in the admin queue.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripe` issue, unrelated)
+- [x] `npx vitest run tests/tax-engine tests/calc-audit tests/ai/tax-advisor` — 859 / 859 pass (was 809 + 50 new)
+- [x] `npm run lint:financial-surfaces` — clean (no new violations; 28 grandfathered)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (HR-3 invariant 11 — adapter coverage expansion; admin-only audit surface)
+- [x] operational procedure (trust-deed flow now actionable end-to-end; advisor tool exposes deed structure for AI narration)
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md:Last updated` — Phase 41 finishers shipping note
+- `docs/IMPLEMENTATION_PLAN.md:Phase 41f §5 sub-PR list` — 41f.4-extension ticked
+- `docs/IMPLEMENTATION_PLAN.md:#41 Up Next` — back-fill ticked + future bound
+- `docs/IMPLEMENTATION_PLAN.md:Recently Completed 2026-05-07` — new top entry
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this session entry
+
+---
+
 ## Session: claude/phase-41i3b-per-user-audit (Phase 41i.3b — Per-user "Audit this user" harness)
 
 ### Strategy
