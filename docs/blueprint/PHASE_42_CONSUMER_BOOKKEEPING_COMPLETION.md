@@ -231,30 +231,41 @@ BASIQ-onboarding behaviour: Tax Pack aggregates BASIQ + QIF + CSV + OFX + RECEIP
 - **PR5.5** (small + needs deps) — PDF summary (`pdfkit`) + receipt bundle ZIP (`archiver`). Both are net-new packages that warrant separate dep-review; the JSON + XLSX + CSV exports already cover the accountant's primary workflow. PR5.5 is the polish layer.
 - **PR5.6** (small) — Vendor card drawer UI on the Activity surface (drill-in from any transaction merchant); `<TaxPackExportButton />` on the Reports page. The API + service surface are complete; future UI just renders the form.
 
-### PR6 — The Engagement Layer (6 days)
+### PR6 — The Engagement Layer ✅ FOUNDATION SHIPPED 2026-05-07
 
-> **The single most important PR in Phase 42.** Per Reza directive 2026-05-08, the categorisation experience must shift from *chore* to *daily ritual the user looks forward to*. PR1-5 are the foundation; PR6 is the product. See §6 for the full engagement design specification.
+**The single most important PR in Phase 42** per Reza directive 2026-05-08. The foundation lands here; the heavier mobile-first interactions (swipe gestures + Review Queue card-stack + Gemini-narrated anomalies) split into PR6.5 to keep this ship-able. Mobile-first promotion: per Reza directive 2026-05-07 ("users most probably perform all of transactions activities through mobile"), every PR6 component is mobile-first by default and PR6.5 is now the load-bearing follow-up.
 
-Headline deliverables:
+- ✅ **`EngagementState` schema** — one row per user (`@unique`). Tracks `currentStreak`, `longestStreak`, `lastActiveDate`, `lastShieldUsedAt`, `lastCelebrationAt`, `totalCategorisations`. Migration `20260511210000_phase_42_pr6_engagement` (additive — CREATE TABLE × 1 + index + FK; §12.11 N/A).
+- ✅ **Streak state machine** (`lib/bookkeeping/engagement/streak.ts`) — Duolingo-style with shield mechanic. Pure `computeNextStreakState()` deterministic transitions (NEW_STREAK / SAME_DAY / EXTENDED / SHIELD_USED / BROKEN_AND_RESTORED / BROKEN / RESET_AFTER_LONG_GAP). Constants: `STREAK_SHIELD_WINDOW_DAYS=7` / `STREAK_RESTORATION_FRACTION=0.5` / `STREAK_VISIBLE_CAP=365`. Per CLAUDE.md §12.3 — **one** streak engine; every categorisation mutation calls `touchStreak()` here.
+- ✅ **Daily Pulse orchestrator** (`lib/bookkeeping/engagement/dailyPulse.ts`) — composes `getOrCreatePeriod` + `getOrCreateEngagementState` + simple anomaly-flag → English narrator. Adaptive CTA: CAUGHT_UP / FEW (1-15) / MANY (16+). Per CLAUDE.md §0 behaviour-psychologist lens — leads with completion %, never with the uncategorised count.
+- ✅ **API**: `GET /api/bookkeeping/engagement/pulse` (Daily Pulse data); `GET/POST /api/bookkeeping/engagement/streak` (read state + `?action=touch` + `?action=celebrate` once-per-day gate).
+- ✅ **Wired into existing categorisation paths** — `[id]` PATCH (CATEGORY / LINK_ENTITY edits), `bulk-categorise` (one touch per call), `cash` quick-add. All fire-and-forget per CLAUDE.md §12.10 — streak failures NEVER break the calling mutation.
+- ✅ **`<DailyPulseCard />`** — engagement front door on Home (`/dashboard`). Mobile-first: stacks vertically below `sm` so the CTA gets a full-width ≥44pt tap target (Apple HIG); side-by-side on tablet+. Self-hides for users with zero transactions in the current month.
+- ✅ **`<StreakBadge />`** — small inline pill. Hidden when streak <3 (no shame for new users); caps at "365+"; warm amber palette.
+- ✅ **`<CompletionCelebration />`** — toast + once-per-day confetti gated by the server. 60-particle hand-rolled confetti (no new deps). Full `prefers-reduced-motion` support — degrades to text-only toast. Mobile-first: full-width with safe-area-aware padding; dismiss button is ≥44pt tap target on mobile. Wired into Activity's bulk-categorise flow — fires when the user clears a batch.
+- ✅ **`<CancelSubscriptionLink />`** — minimal primitive consuming PR5's `CANCEL_URL_REGISTRY`. Direct deep-link to merchant (no Monitrax middleware, no click-tracking per spec §6.7). Two variants: `pill` and `inline`.
+- ✅ **Tests** — 22 new unit tests in `tests/bookkeeping/streak.test.ts`. Pure state-machine transitions (every code path), shield-window semantics, reset-after-long-gap, format helpers. **Cumulative: 182/182 green** (PR1 27 + PR2 13 + PR3 32 + PR4 48 + PR5 39 + PR6 22 = 181; counting overlap = 182).
 
-- **The Daily Pulse card** on Home (`/dashboard`) — the engagement front-door. Shows: completion % for the current month, streak count, "12 things, ~3 minutes today" CTA, anomaly narrative (one line). Tappable; opens the Review queue.
-- **Review Queue** — replaces the current "Uncategorised first" Activity default. Ordered by importance (large amounts first, then anomalies, then routine). Card-stack interface — one transaction at a time, big and beautiful, swipe to act.
-- **Mobile swipe gestures** — left swipe = spending bottom-sheet picker; right swipe = "transfer / not me"; long-press = full categorise drawer; double-tap = "always categorise this merchant as ___ from now on" (writes a `MerchantMapping`). Pointer-events implementation, no library dependency. Haptic feedback via Vibration API on supported devices.
-- **Per-categorisation micro-rewards** — spring ✓ tick (220ms ease-out, scale 0 → 1.1 → 1), AnimatePresence fade-out of the categorised card, the next card slides in. Quiet, satisfying, addictive.
-- **Streak system** — daily streak counter (matches Duolingo's loop). Streak persists if user reviews ANY transactions in a 24h window. Streak break has a "shield" — one missed day per week doesn't break it (psychology: avoid the all-or-nothing collapse that kills habits). Visible on Home + Daily Pulse.
-- **Completion-milestone celebration** — at 100% reviewed for the month, single AnimatePresence confetti burst (one per day max — scarcity preserves the delight). Toast: "October's a wrap. ✓ Tax pack ready when you are." Triggers `BookkeepingPeriod.status = REVIEWED` if not already.
-- **Default-hide confidence/anomaly chrome** on Activity behind an "Advanced" toggle. Calmer first-run; power users opt in.
-- **Consumer monthly money-flow Sankey** — reuse `components/entities/MoneyFlowSankey.tsx` (Phase 41g). At the top of `/dashboard/activity`. Input is `getMasterFinancialSnapshot()`, no new aggregation engine. The aha moment: *"so THIS is where my money goes."*
-- **Anomaly narratives** — one-line natural-language insights at the top of the Daily Pulse + Activity. *"Netflix went up $4 — third price hike this year."* Reuses the existing Gemini advisor engine; new tool `getMonthlyTransactionAnomalies` returns deterministic anomaly inputs, the AI narrates only.
-- **Subscription cancel hints** — Vendor card surfaces `cancelUrl` when known (seeded for ~30 common AU subs at first); deep-link button on recurring detection cards. *"Tap to manage on Netflix.com.au"* — the user gets to ACT, not just see.
+BASIQ-on/BASIQ-off behaviour: `touchStreak()` is source-agnostic — fires for every user mutation regardless of whether the underlying transaction came from BASIQ, QIF, RECEIPT, or MANUAL. The Daily Pulse counts BASIQ + QIF + RECEIPT + CASH transactions identically.
 
-BASIQ-onboarding behaviour: anomaly narrative is source-agnostic; swipe gestures work identically for BASIQ-fed and QIF-fed rows; Sankey reads from the canonical snapshot which already aggregates across sources. The Daily Pulse counts BASIQ + QIF + RECEIPT + CASH transactions identically.
+**Out of PR6, queued (PR6.5 — load-bearing mobile follow-up):**
 
-**Hard NO list for PR6:**
-- No tutorials. No coach marks. No "Tip of the day." If we need to explain the interaction, the interaction is wrong.
-- No badges, no leaderboards, no point scores. We're not gamifying — we're satisfying. Streaks are the only persistent metric.
-- No "Are you sure?" confirmations on swipe — undo via toast (5s) is the safety net.
-- No notification spam. The Daily Pulse is silent on the dashboard; the only push is the streak-rescue notification ("you'll lose your 12-day streak in 4 hours — 2 minutes to save it"), and even that is opt-in.
+Per Reza directive 2026-05-07 (mobile-first), the remaining engagement deliverables are PROMOTED in priority — they are now load-bearing for the consumer experience, not nice-to-have.
+
+- **Mobile swipe-to-categorise** on Activity rows (Up Bank-grade): left swipe = spending bottom-sheet picker; right = "transfer / not me"; long-press = full categorise drawer; double-tap = "always categorise [merchant] as ___" (writes a `MerchantMapping`). Vibration API for haptic feedback on supported devices.
+- **Review Queue card-stack** — replaces the current "Uncategorised first" Activity default. One transaction per card; full-screen on mobile; AnimatePresence transitions; <3-second median action time.
+- **Anomaly narrative via Gemini** — replaces the simple flag-name → English mapper in `dailyPulse.ts`. Reuses the existing `lib/cfo/aiAdvisor.ts` engine (no new AI engine per CLAUDE.md §12.3); new tool `getMonthlyTransactionAnomalies` returns deterministic inputs the AI narrates only.
+- **Default-hide chrome** — Advanced view toggle on Activity hides confidence badges + anomaly flag chrome by default (calmer first-run; power users opt in).
+- **Consumer monthly Sankey** — reuse `components/entities/MoneyFlowSankey.tsx` (Phase 41g) at the top of `/dashboard/activity`. Source-agnostic; reads `MasterFinancialSnapshot`.
+
+**Out of PR6, queued (PR6.6 — small):**
+- Subscription-cancel-hint surface — wire `<CancelSubscriptionLink />` into recurring-payment cards + the future Vendor card UI (PR5.6).
+
+**Hard NO list for PR6 + PR6.5 (per spec §6.7) — preserved across the split:**
+- No tutorials. No coach marks. No "Tip of the day."
+- No badges, no leaderboards, no point scores.
+- No "Are you sure?" confirmations on swipe.
+- No notification spam.
 
 ---
 

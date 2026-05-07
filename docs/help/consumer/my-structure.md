@@ -75,8 +75,12 @@ The tree auto-refreshes on save. If you see stale data, refresh the page.
 **Q: What does the Money Flow Sankey show me?**
 Where money comes from → which entity holds the income → where it goes (tax, essentials, discretionary, loans, surplus). The version on this page is entity-aware; the version on `/cashflow` is the simpler aggregate.
 
+**Q: My trust has a deed PDF — can Monitrax read it?**
+Yes. Click any Discretionary or Unit Trust tile → **Upload trust deed**. See [Uploading a trust deed](/help/consumer/uploading-trust-deed) for the 4-step extract-and-confirm flow. Once you confirm, the deed's beneficiaries / distribution rules / loan provisions flow into the tax engine + AI advisor.
+
 ## What's next
 
 - See [Adding properties](/help/consumer/adding-properties) for assigning a property to an entity.
 - See [Investments page](/help/consumer/investment-accounts-and-holdings) for assigning a holding to an entity.
-- See [Your tax position](/help/consumer/your-tax-position) for the per-entity tax view (limited at v1; full Phase 41e ships per-entity Div 6/6E correctness).
+- See [Uploading a trust deed](/help/consumer/uploading-trust-deed) for the deed flow on Discretionary / Unit Trusts.
+- See [Your tax position](/help/consumer/your-tax-position) for the per-entity tax view + deed validation alerts.

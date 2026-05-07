@@ -568,6 +568,8 @@ model User {
   // Phase 42 PR5
   vendors                   Vendor[]
   taxCategoryMappings       TaxCategoryMapping[]
+  // Phase 42 PR6 — engagement layer state (one row per user).
+  engagementState           EngagementState?
 
   // Phase L: CDR Compliance Models
   cdrConsents    CDRConsent[]
@@ -2076,6 +2078,60 @@ model BookkeepingPeriod {
   @@unique([userId, periodMonth])
   @@index([userId, status])
   @@map("bookkeeping_periods")
+}
+
+// =============================================================================
+// PHASE 42 PR6: ENGAGEMENT STATE
+//
+// Per-user state for the engagement layer (Daily Pulse, streak,
+// completion celebration). Per Reza directive 2026-05-08:
+//
+//   "The user has to be engaged emotionally and mentally to perform
+//    the categorisation tasks — not a chore."
+//
+// This row is the canonical home for the streak counter (Duolingo-
+// style with shield mechanic — one missed day per 7-day window
+// doesn't break the streak; psychology-of-habits mitigation against
+// all-or-nothing collapse). Also tracks the last completion-celebration
+// timestamp so the once-per-day-max confetti rule has a concrete anchor.
+//
+// One row per user — `userId @unique`. The row is auto-created on
+// first `getOrCreateEngagementState()` call by
+// `lib/bookkeeping/engagement/streak.ts`.
+// =============================================================================
+
+model EngagementState {
+  id                  String    @id @default(uuid())
+  userId              String    @unique
+  // Current streak (consecutive days with ≥1 categorisation activity).
+  // Activity counts in a rolling 24h window, not strict calendar day —
+  // matches the engagement spec §6.4 "earn a day" rule.
+  currentStreak       Int       @default(0)
+  // All-time best streak. Never decreases (used for celebration copy
+  // like "new personal best!").
+  longestStreak       Int       @default(0)
+  // UTC midnight of the day the user last touched the streak. Used to
+  // compute whether today's activity extends, breaks, or burns a shield.
+  lastActiveDate      DateTime?
+  // Most recent date the shield was used (within the rolling 7-day
+  // window). One shield per 7-day window; resets when the cycle rolls
+  // forward. Null = no shield used yet OR the last shield is older
+  // than 7 days.
+  lastShieldUsedAt    DateTime?
+  // Most recent completion-celebration timestamp. Used to enforce the
+  // "confetti once per day max" rule per spec §6.5 — scarcity
+  // preserves the delight.
+  lastCelebrationAt   DateTime?
+  // Rolling counters useful for personal-best copy. Updated when the
+  // current streak ends and a new one begins.
+  totalCategorisations Int      @default(0)
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("engagement_state")
 }
 
 model TransactionEdit {

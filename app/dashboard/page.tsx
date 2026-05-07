@@ -60,6 +60,7 @@ import {
 } from '@/components/dashboard/Phase2Enhancements';
 import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '@/components/dashboard/NetWorthTrend';
 import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
+import { DailyPulseCard } from '@/components/bookkeeping/DailyPulseCard';
 
 interface DashboardInsights {
   healthScore: {
@@ -491,6 +492,12 @@ export default function DashboardPage() {
       {/* TRAIL Stage Indicator */}
       <div className="mb-6">
         <TrailStageIndicator />
+      </div>
+
+      {/* Phase 42 PR6 — Daily Pulse engagement front door. Self-hides
+          when the user has zero transactions in the current month. */}
+      <div className="mb-6">
+        <DailyPulseCard />
       </div>
 
       {isLoading ? (

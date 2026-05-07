@@ -3188,3 +3188,92 @@ TaxPackSummary {
 
 - **PR5.5** — PDF summary (`pdfkit`) + receipt ZIP bundle (`archiver`). Net-new deps; warrant separate review.
 - **PR5.6** — Vendor card drawer UI + Tax Pack export button on Reports.
+
+---
+
+## **10.47 Phase 42 PR6 — Engagement Layer foundation (PR — shipped 2026-05-07)**
+
+Sixth and final main sub-PR of the Phase 42 stream. The engagement layer foundation lands here; heavier mobile-first interactions (swipe + Review Queue + Gemini narrative) split into PR6.5.
+
+### New table
+
+| Table | Purpose | Key fields |
+|---|---|---|
+| `engagement_state` | One row per user (`@unique`). Tracks the streak counter + Duolingo-style shield mechanic + once-per-day celebration gate. Auto-created on first `getOrCreateEngagementState()` call. | `currentStreak` / `longestStreak` / `lastActiveDate` / `lastShieldUsedAt` / `lastCelebrationAt` / `totalCategorisations` |
+
+### Streak state machine (`lib/bookkeeping/engagement/streak.ts`)
+
+Pure deterministic transitions:
+
+```
+NEW_STREAK             — first activity ever
+SAME_DAY               — already touched today; no-op
+EXTENDED               — exact next day; +1
+SHIELD_USED            — gap=2 days, no shield burned in 7d window; +1, shield set
+BROKEN_AND_RESTORED    — gap=2 with shield burned, OR gap=3-30; restored to floor(prev * 0.5)
+BROKEN                 — gap=2 with shield burned and prev was 1; reset to 1
+RESET_AFTER_LONG_GAP   — gap > 30 days; reset to 1, longestStreak preserved
+```
+
+Constants pinned by tests:
+- `STREAK_SHIELD_WINDOW_DAYS = 7`
+- `STREAK_RESTORATION_FRACTION = 0.5`
+- `STREAK_VISIBLE_CAP = 365`
+
+### Daily Pulse orchestrator (`lib/bookkeeping/engagement/dailyPulse.ts`)
+
+Composes `getOrCreatePeriod` + `getOrCreateEngagementState` + simple anomaly narrator. Returns `DailyPulse` shape:
+
+```ts
+DailyPulse {
+  monthLabel: string;             // "October"
+  monthKey: string;               // "2026-10"
+  totalCount: number;
+  reviewedCount: number;
+  toReviewCount: number;
+  completionPct: number;          // 0..100
+  streakLabel: string;            // "" when <3, else "12" or "365+"
+  streakCount: number;
+  showStreakBadge: boolean;       // streakCount >= 3
+  cta: { kind: 'CAUGHT_UP' | 'FEW' | 'MANY'; label; href };
+  anomalyNarrative: string | null;
+  celebrationFiredToday: boolean;
+}
+```
+
+### API additions
+
+| Route | Verb | Purpose |
+|---|---|---|
+| `/api/bookkeeping/engagement/pulse` | GET | Daily Pulse data (Home card) |
+| `/api/bookkeeping/engagement/streak` | GET | Read EngagementState |
+| `/api/bookkeeping/engagement/streak?action=touch` | POST | Idempotent streak touch |
+| `/api/bookkeeping/engagement/streak?action=celebrate` | POST | Once-per-day celebration gate (returns `{fired: boolean}`) |
+
+### Wiring
+
+`touchStreak()` fires fire-and-forget per CLAUDE.md §12.10 from:
+- `app/api/unified-transactions/[id]/route.ts` PATCH (CATEGORY + LINK_ENTITY edits)
+- `app/api/unified-transactions/bulk-categorise/route.ts` (one touch per batch)
+- `app/api/unified-transactions/cash/route.ts` (cash quick-add)
+
+### UI components (mobile-first)
+
+| Component | Purpose |
+|---|---|
+| `<DailyPulseCard />` | Engagement front door on Home. Mobile-first stack with ≥44pt CTA tap target |
+| `<StreakBadge />` | Small inline pill — hidden <3 days, caps at "365+", warm amber |
+| `<CompletionCelebration />` | Toast + once-per-day 60-particle confetti (hand-rolled, no new deps); full `prefers-reduced-motion` support; ≥44pt dismiss button on mobile |
+| `<CancelSubscriptionLink />` | Consumes PR5 `CANCEL_URL_REGISTRY`; pill + inline variants; direct deep-link to merchant per spec §6.7 |
+
+### Tests
+
+22 new in `tests/bookkeeping/streak.test.ts`. Every state-machine code path; shield-window semantics; reset-after-long-gap; format helpers. Cumulative: 182/182 green (PR1 27 + PR2 13 + PR3 32 + PR4 48 + PR5 39 + PR6 22).
+
+### Migration
+
+`prisma/migrations/20260511210000_phase_42_pr6_engagement/migration.sql` — CREATE TABLE × 1 + index + FK. NO destructive ALTER, NO DROP, NO row UPDATE/DELETE. CLAUDE.md §12.11 N/A.
+
+### Out of PR6, queued (PR6.5 — load-bearing per Reza directive 2026-05-07)
+
+Mobile-first follow-up — swipe-to-categorise + Review Queue card-stack + Gemini anomaly narrative + Advanced toggle + consumer Sankey. See `IMPLEMENTATION_PLAN.md` Up Next #43.

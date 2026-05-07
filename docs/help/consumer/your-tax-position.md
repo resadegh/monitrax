@@ -66,6 +66,15 @@ Not yet — Phase 41e ships full CGT event tracking. v1 covers income tax only.
 **Q: Where do property deductions show up?**
 The **Income breakdown** section shows each investment property's net rental income (rent − expenses − interest − depreciation). Negative gearing reduces taxable income; positive gearing adds.
 
+**Q: I see a UC-DEED-… alert on my trust — what does it mean?**
+If you've [uploaded and confirmed a trust deed](/help/consumer/uploading-trust-deed), the tax engine validates your annual trustee resolution against the deed. Common alerts:
+
+- **`UC-DEED-BENEFICIARY-NOT-IN-DEED`** — you distributed to someone the deed doesn't list. Either the deed is out of date, or the resolution is wrong.
+- **`UC-DEED-BENEFICIARY-EXCLUDED`** (CRITICAL) — you distributed to someone the deed marks `EXCLUDED`. The resolution is invalid against the deed; may trigger s100A consequences. Speak to your accountant.
+- **`UC-DEED-FIXED-DISTRIBUTION-MISMATCH`** — your trust has a `FIXED` or `PROPORTIONATE` rule and the runtime split drifts >1c from the deed share.
+- **`UC-DEED-PRESENT-NO-RESOLUTION`** — trust has a deed but no FY trustee resolution — Div 6 needs the resolution to flow income.
+- **`UC-DEED-SUB-TRUST-UPE-PRESENT`** — informational; deed has sub-trust UPE provisions, so Div 7A applies the sub-trust path if any beneficiary has an unpaid present entitlement.
+
 **Q: How do I file my tax return from here?**
 You don't — Monitrax doesn't lodge returns. Use `myTax` or your accountant. The Tax page is reference material to bring to that conversation.
 
