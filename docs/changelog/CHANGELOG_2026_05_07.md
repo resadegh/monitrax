@@ -1,5 +1,87 @@
 # Changelog — 2026-05-07
 
+## Session: claude/phase-41i6b-static-analysis (Phase 41i.6b — CI static-analysis pass for inline financial math)
+
+### Strategy
+Second sub-PR of Phase 41i.6 (the trustworthiness commitment). Builds the **PR-time bug catcher** — a CI lint that rejects three patterns of inline financial math that violate CLAUDE.md §6.1 + §6.2 SSOT (canonical-source consumption + canonical-utility helpers). Per spec doc `PHASE_41I_6_SURFACE_AUDIT.md` §7.
+
+The lint walks `app/dashboard/`, `app/portal/`, `components/` looking for:
+1. Inline frequency conversion (`income.amount * 12`) → must use `lib/utils/frequencies.ts:toMonthly()`/`toAnnual()`
+2. Inline arithmetic between financial fields (`total.income - total.expenses`) → must consume canonical service result
+3. Hardcoded financial constants (GST 0.10, SMSF tax 0.15, super cap 30000, etc.) → must come from `taxYearConfig.ts`
+
+### Key architectural choice — baseline mechanism
+The first dry-run found 28 pre-existing violations across `ExpenseWizard.tsx`, `DebtQualityWidget.tsx`, `InsightWidgets.tsx`, `AssetsStep.tsx`, `ReviewStep.tsx`. Wiring to `vercel-build` immediately would break every build until those are resolved. **Resolution**: implemented a baseline file (`.audit/financial-math-baseline.json`) — pre-existing violations are grandfathered; only NEW violations not in baseline fail the build. Stale baseline entries (when a violation is later resolved) surface as warnings to nudge cleanup.
+
+This pattern lets us:
+- Ship the gate from day 1 (no half-built lint)
+- Not break existing builds
+- Build a clear TODO list (the baseline file IS the cleanup queue)
+- Catch new violations at PR-review time immediately
+
+### Type
+- **Type**: Feature (Phase 41i.6 sub-PR — CI quality gate)
+- **Scope**: New lint script + npm script + vercel-build wiring + baseline + 23 new tests. Zero new dependencies.
+
+### Files Created
+- `scripts/lint-financial-surfaces.ts` — `runLint()` walks scan dirs + applies 3 detectors (`FREQUENCY_PATTERNS` regex array + `INLINE_ARITHMETIC_REGEX` + `HARDCODED_CONSTANT_REGEX`). `scanFile()` exported for testability — called per-file with synthetic content in tests. `loadBaseline()` reads `.audit/financial-math-baseline.json`. `matchesBaseline()` compares (file, line, pattern, match) tuple. `regenerateBaseline()` writes the JSON when invoked with `BASELINE_REGENERATE=1`. `main()` CLI runner: prints scan summary + writes annotated-exceptions sidecar + reports stale baseline + exits 0 / 1 based on new-violation count.
+- `.audit/financial-math-baseline.json` — 28 grandfathered pre-existing violations (auto-generated; entries tracked over time as they're resolved).
+- `tests/calc-audit/surfaces/lintFinancialSurfaces.test.ts` — 23 detector tests across 6 describe blocks. Pattern 1 frequency (5 positive cases × 5 frequency variants). Pattern 2 inline arithmetic (3 positive cases). Pattern 3 hardcoded constants (2 positive cases). Negative cases (5 — non-financial multiplication, non-financial subtraction, hardcoded literal NOT next to financial field, UI sizing, canonical helper invocation). Annotation honouring (5 — `//`, `/* */`, case-insensitive marker, multi-word reason, non-matching comment doesn't mark). Source-line context capture (3 — full source line, multi-line file line numbering, 1-indexed column).
+
+### Files Modified
+- `package.json`:
+  - New `lint:financial-surfaces` npm script (uses `npx ts-node` with explicit `--compiler-options` to bypass the project tsconfig's ESM module setting).
+  - `vercel-build` script extended: `npm run lint:financial-surfaces && prisma migrate deploy && prisma generate && next build`. The lint runs FIRST so a violating PR fails fast (before the more expensive Prisma + Next build steps).
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header rewritten + §6 Active Workstream sub-PR ticks (41i.6a + 41i.6b ✅; 41i.6c NEXT).
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Architecture Decisions
+- **Standalone Node script over ESLint plugin** — the existing eslint config is general-purpose TS/React linting; financial-math detection is a domain-specific concern that's better as a focused tool. Lower complexity + clearer ownership.
+- **Baseline mechanism (grandfathering) over breaking the build immediately**. Pre-existing 28 violations would have broken every build for days/weeks. The baseline pattern is the standard "introduce-lint-to-existing-codebase" approach (used by Stripe, Airbnb, etc.). Reviewers MUST scrutinise any PR that grows the baseline (regenerating is gated behind `BASELINE_REGENERATE=1` env var + a clear log message).
+- **Stale-baseline warnings** — when a violation is resolved (e.g. a component migrated to canonical source), the baseline entry no longer matches. The lint surfaces this as a warning so the entry can be removed from the JSON, shrinking the baseline over time.
+- **Run lint FIRST in `vercel-build`** — fails fast. Saves ~30s of Prisma + Next build cost on a violating PR.
+- **Detection regex tuned for false-positive avoidance**:
+  - Pattern 1 only fires on identifiers containing `income/expense/amount/revenue/salary/wage/cost/cashflow/earnings/payment` — avoids flagging `page * 12` (pagination) or `index * 52` (iteration).
+  - Pattern 2 requires BOTH operands to look financial — avoids `node.left - node.right` (DOM math) or `position.x + position.y` (coordinates).
+  - Pattern 3 requires the hardcoded constant to appear on a line that ALSO contains a financial-field hint — avoids flagging `const opacity = 0.15` (UI styling).
+- **Annotation reasons recorded in sidecar** — `.audit/financial-math-exceptions.json` gives reviewers a list of "currently-exempted" cases over time. If the count grows unbounded, that's a signal the lint is too aggressive (or the codebase has accumulated tech debt).
+- **No 41i.6c runtime harness in this PR** — runtime audit lands separately. 41i.6b is purely the static-analysis layer.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (only pre-existing `stripe` issue, unrelated)
+- [x] `npm run lint:financial-surfaces` — passes (28 grandfathered, 0 new)
+- [x] `BASELINE_REGENERATE=1 npm run lint:financial-surfaces` — successfully writes baseline
+- [x] `npx vitest run tests/calc-audit/surfaces` — 53 / 53 pass (30 prior registry + 23 new lint detector)
+- [x] Spot-check `npx vitest run tests/calc-audit tests/integrations tests/tax-engine/divisions/div7aLoanClassifierSurplusCap.test.ts` — 244 / 244 pass (no regression)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [x] application config (new `lint:financial-surfaces` npm script + extended `vercel-build` script)
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [x] deployment / build (`vercel-build` now runs the lint as a pre-build gate; failing lint aborts the deploy before Prisma + Next steps run)
+- [x] security / CDR posture (HR-3 invariant 11 — the trustworthiness commitment — gains its first PR-time enforcement layer; reviewers reject any PR that introduces inline financial math without an annotation OR that grows the baseline without explicit justification)
+- [ ] operational procedure
+- [x] strategic decision (baseline mechanism — pre-existing violations grandfathered; new violations fail the build; stale baseline entries warn; baseline regeneration gated behind explicit env var + reviewer scrutiny)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Last-updated header + §6 Active Workstream sub-PR ticks.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Destructive Write Checklist (CLAUDE.md §12.11)
+N/A — no Prisma writes anywhere in this PR.
+
+### Schema Migration Checklist (CLAUDE.md §12.12)
+N/A — no `prisma/schema.prisma` changes.
+
+### PR
+- Branch: `claude/phase-41i6b-static-analysis`
+- Status: pending push + open
+
+---
+
 ## Session: claude/phase-41i6a-surface-audit-registry (Phase 41i.6a — Surface descriptor registry + 10 descriptors + L4_SURFACE_AUDIT enum migration)
 
 ### Strategy

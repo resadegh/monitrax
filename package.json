@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "vercel-build": "prisma migrate deploy && prisma generate && next build",
+    "vercel-build": "npm run lint:financial-surfaces && prisma migrate deploy && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "lint:financial-surfaces": "npx ts-node --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' scripts/lint-financial-surfaces.ts",
     "postinstall": "prisma generate",
     "test": "vitest run",
     "test:watch": "vitest",
