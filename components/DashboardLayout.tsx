@@ -32,6 +32,10 @@ import { HelpDrawerButton } from '@/components/help/HelpDrawerButton';
 import { UniversalSearch, useUniversalSearch } from '@/components/UniversalSearch';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import {
+  usePendingReconciliationCount,
+  formatReconciliationCount,
+} from '@/hooks/usePendingReconciliationCount';
+import {
   OnboardingWelcomeModal,
   GuidedTour,
   WizardContainer,
@@ -244,6 +248,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Phase 14.5 - Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Phase 42 PR6.5e — Pending reconciliation count for the
+  // sidebar badge on "My Accounts". Slack/Mail-style counter that
+  // persists across pages so the user sees the recurring task
+  // signal regardless of current route.
+  const { count: pendingReconciliationCount } = usePendingReconciliationCount();
+  const pendingReconciliationLabel = formatReconciliationCount(pendingReconciliationCount);
 
   // Universal search
   const { open: searchOpen, setOpen: setSearchOpen } = useUniversalSearch();
@@ -678,6 +689,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Icon className="h-4 w-4" />
                   </div>
                   <span className="flex-1">{item.name}</span>
+                  {/* Phase 42 PR6.5e — Pending-reconciliation count badge.
+                      Only renders on "My Accounts" (the surface where
+                      uncategorised tx live) when count > 0. Slack/Mail
+                      pattern: small amber pill, capped at "99+". */}
+                  {item.name === 'My Accounts' && pendingReconciliationLabel && (
+                    <span
+                      aria-label={`${pendingReconciliationCount} unreconciled transaction${pendingReconciliationCount === 1 ? '' : 's'}`}
+                      className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-semibold tabular-nums bg-amber-500 text-white shadow-sm"
+                    >
+                      {pendingReconciliationLabel}
+                    </span>
+                  )}
                   {item.trailStage && (
                     <span className={`
                       flex h-7 w-7 items-center justify-center

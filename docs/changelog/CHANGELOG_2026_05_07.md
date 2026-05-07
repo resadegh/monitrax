@@ -2185,3 +2185,64 @@ NONE. The card-stack composes the existing `/api/unified-transactions/[id]` PATC
 ### PR
 - Branch: `claude/phase-42-pr6-5c-review-queue-cards`
 - Status: pending push + open
+
+---
+
+## Session: phase-42-pr6-5e-persistent-reconciliation-nudge
+
+### Changes Made
+
+- **Type**: Cadence + placement fix on PR6.5b's strip (no schema change)
+- **Scope**: Strip placement above TRAIL hero + per-session gate + sidebar count badge
+- **Description**: SHIPPED. Per Reza directive 2026-05-08 ("a message on login: you have few unreconsiled transactions, fix them now?") + Claude research on leading-app patterns. Three coordinated changes; no data-layer changes.
+
+### Architectural Decisions (CLAUDE.md §0 four-lens)
+
+- **Architect (§12.3 SSOT):** zero new data paths. `<PendingActionsPrompt />` and the new `usePendingReconciliationCount()` hook both compose the existing `/api/bookkeeping/engagement/pending-actions` route from PR6.5b. No new aggregator, no new endpoint, no schema change.
+- **Designer:** YNAB / Mint top-banner pattern — strip is now the first body element on Home, immediately under `<PageHeader />`. Sidebar count badge follows Slack / Apple Mail amber-pill convention with "99+" cap.
+- **Behaviour-psychologist:** persistent prominence > active interruption. The badge gives passive awareness on every page (zero interruption tax); the strip gives active "fix it now" prompting on Home (collapse always reachable). Together they replace the "nothing visible until tomorrow" gap that the once-per-UTC-day gate created.
+- **Financial-adviser:** prioritises CATEGORISE action in the strip's lead copy + the sidebar badge — drives tax-pack accuracy as the primary signal.
+
+### Files Modified
+
+- `components/bookkeeping/PendingActionsPrompt.tsx` — full rewrite. Per-session collapse via `sessionStorage` (was once-per-UTC-day server gate). New "Fix now" amber CTA pill + lead copy "You have X unreconciled transactions". Other actions (anomaly / recurring / receipt) demoted to chip row below the lead.
+- `app/dashboard/page.tsx` — moved `<PendingActionsPrompt />` from below `<TrailStageIndicator />` to above it. Now first body element under `<PageHeader />`.
+- `hooks/usePendingReconciliationCount.ts` (NEW) — `usePendingReconciliationCount()` hook + `formatReconciliationCount()` formatter ("99+" cap convention).
+- `components/DashboardLayout.tsx` — wired `usePendingReconciliationCount()` + rendered amber count badge inline on the "My Accounts" sidebar nav item (between item.name and item.trailStage).
+- `tests/bookkeeping/pendingReconciliationCount.test.ts` (NEW) — 5 tests pinning the "99+" cap + boundary at 99/100 + zero-hides-the-badge.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR6.5e row added under PR6.5b in §4.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #52 → ~~SHIPPED~~ with full doc-row; header rewritten.
+- `docs/architecture/03_DATA_MODEL.md` §10.51 — what changed + reviewer rules.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (sidebar count-badge pattern locked: Slack-style amber, "99+" cap)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Reza directive 2026-05-08 — recurring tasks get persistent prominence, not 24h-gated nudges)
+
+Docs updated:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR6.5e row added
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #52 → ~~SHIPPED~~
+- `docs/architecture/03_DATA_MODEL.md` §10.51 — full pattern + reviewer rules
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE. No new mutation paths. The existing `markPromptShown` / `dismissPromptForToday` writes were checklist-cleared in PR6.5b. The strip still calls them as advisory telemetry, but they no longer gate render visibility (sessionStorage does).
+
+### Build Status
+- [x] `npx tsc --noEmit` clean
+- [x] `npx vitest run tests/bookkeeping/pendingReconciliationCount.test.ts` — 5/5 green
+- [x] `npx vitest run tests/bookkeeping/pendingActions.test.ts` — 10/10 green (existing PR6.5b tests still pass; gate semantics on the server are unchanged, just bypassed by the client)
+- [x] `npm run lint:financial-surfaces` — 28 grandfathered, 0 new (baseline regenerated for shifted line numbers from strip mount-point relocation on app/dashboard/page.tsx)
+
+### PR
+- Branch: `claude/phase-42-pr6-5e-persistent-reconciliation-nudge`
+- Status: pending push + open

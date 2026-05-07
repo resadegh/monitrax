@@ -3605,3 +3605,51 @@ Per `IMPLEMENTATION_PLAN.md` `↩️ Reversed Decisions` 2026-05-07: full-screen
 
 - `tests/bookkeeping/reviewQueueOrdering.test.ts` — 7 ordering invariants
 - 215 cumulative bookkeeping tests green (190 prior + 16 PR6.5 + 10 PR6.5b - duplicates + 7 PR6.5c)
+
+---
+
+## **10.51 Phase 42 PR6.5e — Persistent reconciliation nudge (PR — shipped 2026-05-08)**
+
+Per Reza directive 2026-05-08: *"a message on login: you have few unreconsiled transactions, fix them now?"* — and research-backed pattern adoption from YNAB / Mint / Pocketbook / Slack / Apple Mail (universally: persistent count + top-of-feed strip, NOT modals).
+
+PR6.5e is purely a cadence + placement fix on top of PR6.5b's strip. **No schema change. No API change. No new aggregator.**
+
+### What changed (and why)
+
+| Change | Before | After | Why |
+|---|---|---|---|
+| **Strip placement on `/dashboard`** | Below `<TrailStageIndicator />` (TRAIL hero) — buried below the fold | ABOVE `<TrailStageIndicator />` — first thing on the feed | YNAB / Mint top-banner pattern. Reconciliation is the most-recurring task; surface it first, not below the brand hero |
+| **Strip cadence** | Once-per-UTC-day server gate via `lastPromptShownAt` | Per-session via `sessionStorage` (`monitrax.pendingActions.collapsedThisSession`) | Reconciliation resurfaces every fresh login session; the server write is now *advisory telemetry only* — does NOT gate re-render |
+| **Strip copy** | "X small things to clean up — five seconds each" | "You have X unreconciled transactions" + amber "Fix now →" CTA pill | Leans into Reza-requested framing. Direct, action-oriented |
+| **Sidebar count badge** | None | Slack/Mail-style amber pill on "My Accounts" entry showing categorise count, capped at "99+" | Visible on EVERY page (Home, Activity, Budget, Wealth, Guide). Recurring-task signal follows the user regardless of route |
+
+### New artifact — `hooks/usePendingReconciliationCount.ts`
+
+```typescript
+usePendingReconciliationCount(): { count: number; loading: boolean }
+formatReconciliationCount(n: number): string  // "" | "1".."99" | "99+"
+```
+
+Composes the same `/api/bookkeeping/engagement/pending-actions` route per CLAUDE.md §12.3 — no parallel data path. Reads the `CATEGORISE` action's `count` field and surfaces it as a persistent badge.
+
+### Mounted in
+
+- `<PendingActionsPrompt />` — `app/dashboard/page.tsx`, anchored above `<TrailStageIndicator />`.
+- Sidebar count badge — `components/DashboardLayout.tsx`, rendered inline within the "My Accounts" nav item.
+
+### Preserved primitives
+
+- `prompt_opted_out` (global off-switch) — user can still permanently dismiss with "Don't show me this again" inside the strip.
+- `lastPromptShownAt` / `lastPromptDismissedAt` schema columns — kept as advisory telemetry. The strip writes them on render and on dismiss, but the writes do NOT control render visibility (sessionStorage does).
+- `shouldShowPromptToday()` pure gate — unchanged on the server, still callable from server-side flows that need the strict daily semantics.
+
+### Tests
+
+- `tests/bookkeeping/pendingReconciliationCount.test.ts` — 5 tests pinning the "99+" cap convention + zero-hides-the-badge + boundary at 99/100.
+- 220 cumulative bookkeeping green.
+
+### Reviewer rules
+
+- Sidebar count badge is **only on "My Accounts"**. Do NOT add count badges to other sidebar entries — the multi-badge sidebar pattern is a known nag-amplifier (Slack-style attention overload).
+- The strip's per-session gate uses `sessionStorage`, NOT `localStorage` — clearing on tab close is the load-bearing semantic. If a future PR switches to `localStorage`, it re-introduces the once-per-Forever gate that Reza explicitly rejected.
+- `promptOptedOut` remains the *only* permanent off-switch. Do not introduce additional opt-out primitives.
