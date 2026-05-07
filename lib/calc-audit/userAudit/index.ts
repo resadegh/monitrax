@@ -17,10 +17,18 @@ import { userAuditAdapterRegistry } from './registry';
 import {
   CORE_USER_AUDIT_ADAPTERS,
 } from './adapters/coreAdapters';
+import {
+  PROPERTY_USER_AUDIT_ADAPTERS,
+} from './adapters/propertyAdapters';
+import {
+  TAX_USER_AUDIT_ADAPTERS,
+} from './adapters/taxAdapters';
 import type { UserAuditAdapter } from './types';
 
 const CANONICAL_ADAPTERS: ReadonlyArray<UserAuditAdapter<unknown, unknown>> = [
   ...(CORE_USER_AUDIT_ADAPTERS as ReadonlyArray<UserAuditAdapter<unknown, unknown>>),
+  ...(PROPERTY_USER_AUDIT_ADAPTERS as ReadonlyArray<UserAuditAdapter<unknown, unknown>>),
+  ...(TAX_USER_AUDIT_ADAPTERS as ReadonlyArray<UserAuditAdapter<unknown, unknown>>),
 ];
 
 /**
@@ -46,6 +54,16 @@ export {
   loanAggregatorAdapter,
   CORE_USER_AUDIT_ADAPTERS,
 } from './adapters/coreAdapters';
+export {
+  propertyLVRAdapter,
+  propertyEquityAdapter,
+  propertyRentalYieldAdapter,
+  PROPERTY_USER_AUDIT_ADAPTERS,
+} from './adapters/propertyAdapters';
+export {
+  masterTaxPositionAdapter,
+  TAX_USER_AUDIT_ADAPTERS,
+} from './adapters/taxAdapters';
 export {
   runUserAudit,
   recordUserAuditFinding,

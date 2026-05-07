@@ -28,6 +28,7 @@ import { runContributionScenarioTool } from './tools/runContributionScenario';
 import { runCgtScenarioTool } from './tools/runCgtScenario';
 import { runLandTaxScenarioTool } from './tools/runLandTaxScenario';
 import { runDiv7aRefinanceScenarioTool } from './tools/runDiv7aRefinanceScenario';
+import { getTrustDeedRulesTool } from './tools/getTrustDeedRules';
 
 import type { TaxAdvisorTool } from './types';
 
@@ -38,6 +39,9 @@ import type { TaxAdvisorTool } from './types';
  * Phase 41h.0 shipped 3 (FACT_LOOKUP × 3).
  * Phase 41h.5 expands to 7 (FACT_LOOKUP × 6 + SCENARIO_RUN × 1).
  * Phase 41h.6 expands to 10 (FACT_LOOKUP × 6 + SCENARIO_RUN × 4).
+ * Phase 41f.4-extension expands to 11 (FACT_LOOKUP × 7 + SCENARIO_RUN × 4)
+ *   — adds `getTrustDeedRules` so the advisor can narrate trust-deed
+ *   structure for trust entities with a CONFIRMED deed on file.
  */
 const CANONICAL_TOOLS: ReadonlyArray<TaxAdvisorTool<any>> = [
   getContributionCapHeadroomTool,
@@ -52,6 +56,8 @@ const CANONICAL_TOOLS: ReadonlyArray<TaxAdvisorTool<any>> = [
   runCgtScenarioTool,
   runLandTaxScenarioTool,
   runDiv7aRefinanceScenarioTool,
+  // 41f.4-extension addition:
+  getTrustDeedRulesTool,
 ];
 
 /**
@@ -84,6 +90,7 @@ export {
   runCgtScenarioTool,
   runLandTaxScenarioTool,
   runDiv7aRefinanceScenarioTool,
+  getTrustDeedRulesTool,
 };
 export * from './types';
 

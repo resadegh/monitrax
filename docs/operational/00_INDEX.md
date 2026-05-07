@@ -25,6 +25,9 @@
 | Security incident | [Incident Response Runbook](runbooks/01_INCIDENT_RESPONSE.md) |
 | Google Maps not loading / API not activated | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) |
 | Adviser feedback inbox triage / weekly synthesis | [Feedback Triage and Synthesis](feedback/01_TRIAGE_AND_SYNTHESIS.md) |
+| **User reports a wrong number → audit one user** | [Per-User Audit Runbook](calc-audit/per-user-audit-runbook.md) (Audit-this-user button on `/admin/calc-audit` + UC-DEED-* triage) |
+| **Trust-deed extraction failed / extracted poorly** | [Admin Troubleshooting Runbook → Trust-Deed Issues](admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md#issue-trust-deed-extraction-failed-or-extracted-poorly) |
+| **Calc audit finding triaged → backfill needed** | [Calc Audit Backfill Runbook](calc-audit/backfill-runbook.md) |
 | **B2B2C surface — what shipped?** | [Master Blueprint §4](../blueprint/MASTER_BLUEPRINT.md#4-phase-implementation-status) — every Phase 32B/32C/33/41 row marked SHIPPED |
 | **Stripe billing went sideways — where's the truth?** | Stripe Dashboard is canonical. Local mirror in `StripeSubscription` is read-mostly; `StripeWebhookEvent` is the dedupe + audit log. Run `prisma studio` and check `processedAt` + `processingError` columns |
 | **Conversation email isn't sending** | Check `SENDGRID_API_KEY` is set in env. When unset, outbound logs to console only — see `lib/email/conversationEmail.ts` |
