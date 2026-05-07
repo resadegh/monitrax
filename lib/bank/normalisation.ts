@@ -11,6 +11,7 @@ import {
   NormalisationError,
   TransactionDirection,
 } from './types';
+import { lookupMCC } from './mccCatalog';
 
 // =============================================================================
 // MERCHANT NORMALISATION
@@ -238,6 +239,13 @@ function normaliseTransaction(
   const direction: TransactionDirection = raw.direction ?? (raw.amount >= 0 ? 'IN' : 'OUT');
   const amount = Math.abs(raw.amount);
 
+  // Phase 42 PR4 — MCC catalog seed. BASIQ ships MCC natively; QIF /
+  // CSV / OFX don't. The catalog is the self-hosted substitute — ~50
+  // high-volume AU merchants. Per CLAUDE.md §12.2 SSOT, this is the
+  // ONE place imports learn an MCC. When BASIQ later supersedes the
+  // row (Phase 13.10), BASIQ-supplied MCC overrides automatically.
+  const mccEntry = lookupMCC(merchant.standardised);
+
   const transaction: NormalisedTransaction = {
     id: randomUUID(),
     date: raw.date,
@@ -252,6 +260,8 @@ function normaliseTransaction(
     merchantStandardised: merchant.standardised,
     balance: raw.balance,
     reference: raw.reference,
+    merchantCategoryCode: mccEntry?.mcc ?? null,
+    bankSuppliedCategory: raw.bankSuppliedCategory ?? null,
   };
 
   return { transaction };

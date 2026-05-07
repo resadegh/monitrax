@@ -385,6 +385,9 @@ export function parseQIF(content: string): ParsedFile {
     if (tx.reference) rawData.reference = tx.reference;
     if (tx.category) rawData.category = tx.category;
     if (tx.cleared) rawData.cleared = tx.cleared;
+    // Phase 42 PR4 — surface QIF `L` field as a typed
+    // bankSuppliedCategory for the categoriser to consume.
+    const bankSuppliedCategory = tx.category ? tx.category.trim() : undefined;
 
     // Phase 42 PR2 — propagate QIF `S`/`$` splits onto RawTransaction.splits.
     // The import path (lib/bank/ingestion or its caller) resolves each
@@ -416,6 +419,7 @@ export function parseQIF(content: string): ParsedFile {
       direction,
       reference: tx.reference,
       splits: rawSplits,
+      bankSuppliedCategory,
     };
   });
 
