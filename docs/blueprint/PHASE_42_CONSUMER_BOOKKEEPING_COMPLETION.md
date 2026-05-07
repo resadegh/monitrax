@@ -248,15 +248,25 @@ BASIQ-onboarding behaviour: Tax Pack aggregates BASIQ + QIF + CSV + OFX + RECEIP
 
 BASIQ-on/BASIQ-off behaviour: `touchStreak()` is source-agnostic — fires for every user mutation regardless of whether the underlying transaction came from BASIQ, QIF, RECEIPT, or MANUAL. The Daily Pulse counts BASIQ + QIF + RECEIPT + CASH transactions identically.
 
-**Out of PR6, queued (PR6.5 — load-bearing mobile follow-up):**
+### PR6.5 — Mobile-first Engagement Layer ✅ PARTIAL_SHIPPED 2026-05-07
 
-Per Reza directive 2026-05-07 (mobile-first), the remaining engagement deliverables are PROMOTED in priority — they are now load-bearing for the consumer experience, not nice-to-have.
+**Load-bearing mobile follow-up to PR6.** Per Reza directive 2026-05-07 (mobile-first — *"users most probably perform all of transactions activities through mobile"*), the remaining engagement deliverables were PROMOTED to load-bearing.
 
-- **Mobile swipe-to-categorise** on Activity rows (Up Bank-grade): left swipe = spending bottom-sheet picker; right = "transfer / not me"; long-press = full categorise drawer; double-tap = "always categorise [merchant] as ___" (writes a `MerchantMapping`). Vibration API for haptic feedback on supported devices.
-- **Review Queue card-stack** — replaces the current "Uncategorised first" Activity default. One transaction per card; full-screen on mobile; AnimatePresence transitions; <3-second median action time.
-- **Anomaly narrative via Gemini** — replaces the simple flag-name → English mapper in `dailyPulse.ts`. Reuses the existing `lib/cfo/aiAdvisor.ts` engine (no new AI engine per CLAUDE.md §12.3); new tool `getMonthlyTransactionAnomalies` returns deterministic inputs the AI narrates only.
-- **Default-hide chrome** — Advanced view toggle on Activity hides confidence badges + anomaly flag chrome by default (calmer first-run; power users opt in).
-- **Consumer monthly Sankey** — reuse `components/entities/MoneyFlowSankey.tsx` (Phase 41g) at the top of `/dashboard/activity`. Source-agnostic; reads `MasterFinancialSnapshot`.
+**Landed in PR6.5:**
+
+- ✅ **Mobile swipe-to-categorise** on Activity rows. New SSOT hook `hooks/useSwipeGesture.ts` (Pointer Events spec, no library dep). Per CLAUDE.md §12.3 — **one** swipe primitive for the entire app. Constants pinned: `SWIPE_THRESHOLD_PX=40` / `TAP_MAX_DRIFT_PX=6` / `LONG_PRESS_MS=300` / `DOUBLE_TAP_WINDOW_MS=300` / `HAPTIC_PULSE_MS=10`. Gestures: left swipe = spending bottom-sheet picker; right swipe = mark as Transfer (PATCH `categoryLevel1='Transfer', categoryLevel2='Internal'`); long-press = full categorise drawer; double-tap = "always categorise [merchant] as ___" (re-PATCHes same category to upsert a `MerchantMapping` server-side). Vibration API for haptic feedback (graceful no-op fallback). `prefers-reduced-motion` respected — drag transform is disabled, taps still work.
+- ✅ **`<CategoryPickerSheet />`** — mobile-first bottom-sheet (28px-radius, 220ms slide-up, ≥52pt chip tap targets per Apple HIG). 4 suggested chips + free-form custom input. Composes existing `/api/unified-transactions/[id]` PATCH — no parallel categorise path.
+- ✅ **Default-hide chrome** — Advanced view toggle pill in Activity header. Confidence badges + anomaly flag chrome are now hidden by default (calmer first-run); power users opt in. Per CLAUDE.md §0 designer lens — restraint over richness.
+- ✅ **`<ConsumerMoneyFlowSankey />`** — reuses Phase 41g `<MoneyFlowSankey />` by projecting `MasterFinancialSnapshot` into a synthetic single-entity ("You") `MoneyFlowResult`. Pure projection in `projectSnapshotToMoneyFlow()`, exported for tests. Source-agnostic — works with BASIQ, QIF, RECEIPT, MANUAL data identically. Mounted at the top of `/dashboard/activity` ("Where your money goes — Year to date") as the *aha moment*. Per CLAUDE.md §12.3 — no parallel chart engine, no parallel aggregator.
+- ✅ **Tests** — 16 new unit tests in `tests/bookkeeping/swipeGesture.test.ts` (6 — constants + invariants) and `tests/bookkeeping/consumerSankeyProjection.test.ts` (10 — projection rules: totalIncome echo / outflow conservation / surplus floor / single synthetic entity / zero-amount filter / edge counts / isEmpty semantics). **Cumulative: 198/198 green.**
+
+BASIQ-on/BASIQ-off behaviour: every gesture path PATCHes the same `/api/unified-transactions/[id]` endpoint that PR1-PR6 already use; the Sankey reads canonical `MasterFinancialSnapshot`. No source-specific code paths.
+
+**Deferred from PR6.5 (queued):**
+
+- **PR6.5b — Pending-actions popup-on-login** (per Reza idea 2026-05-07: *"have the transaction reconciliation and categorisation be popup when user login to be completed"*). First-login-of-day overlay bundles uncategorised tx + receipts pending confirm + recurring detections + anomalies. Three actions max, snooze + opt-out per CLAUDE.md §0 behaviour-psychologist lens. Pending-actions framing — NOT categorise-only.
+- **PR6.5c — Review Queue card-stack** — replaces the current "Uncategorised first" Activity default for the dedicated review surface. One transaction per card; full-screen on mobile; AnimatePresence transitions; <3-second median action time. Substantial UX rebuild — split out for review focus.
+- **PR6.5d — Gemini anomaly narrative** — replaces the simple flag-name → English mapper in `dailyPulse.ts`. Reuses the existing `lib/cfo/aiAdvisor.ts` engine (no new AI engine per CLAUDE.md §12.3); new tool `getMonthlyTransactionAnomalies` returns deterministic inputs the AI narrates only.
 
 **Out of PR6, queued (PR6.6 — small):**
 - Subscription-cancel-hint surface — wire `<CancelSubscriptionLink />` into recurring-payment cards + the future Vendor card UI (PR5.6).

@@ -3277,3 +3277,135 @@ DailyPulse {
 ### Out of PR6, queued (PR6.5 — load-bearing per Reza directive 2026-05-07)
 
 Mobile-first follow-up — swipe-to-categorise + Review Queue card-stack + Gemini anomaly narrative + Advanced toggle + consumer Sankey. See `IMPLEMENTATION_PLAN.md` Up Next #43.
+
+---
+
+## **10.48 Phase 42 PR6.5 — Mobile-first engagement layer (PR — partial-shipped 2026-05-07)**
+
+**Reza directive 2026-05-07:** *"users most probably perform all of transactions activities through mobile."* PR6.5 is the load-bearing follow-up to PR6 — every interaction is mobile-first by default; desktop is the lift-up case.
+
+**Schema:** None. PR6.5 is purely a UI + hook layer over the schema PR1-PR6 already shipped.
+
+### Swipe gesture primitive — SSOT
+
+`hooks/useSwipeGesture.ts` is the **canonical swipe primitive** for the entire app. Per CLAUDE.md §12.3 — one engine, no parallel implementations. Future surfaces that need swipe gestures MUST import from here, not redefine.
+
+**Implementation:** Pointer Events spec (W3C). No library dep. Captures pointerId on down → tracks dx/dy on move → on up: classifies as `tap` / `swipe-left` / `swipe-right` / `long-press` / `double-tap` based on the pinned thresholds.
+
+**Constants (exported, tested in `tests/bookkeeping/swipeGesture.test.ts`):**
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `SWIPE_THRESHOLD_PX` | 40 | Min dx before a horizontal drag commits to a swipe (matches spec §6.3) |
+| `TAP_MAX_DRIFT_PX` | 6 | Max drift allowed for a touch to still count as a tap |
+| `LONG_PRESS_MS` | 300 | Min hold-time before pointerdown fires `onLongPress` |
+| `DOUBLE_TAP_WINDOW_MS` | 300 | Max time between two taps to count as a double-tap |
+| `HAPTIC_PULSE_MS` | 10 | Vibration API pulse length on swipe commit (haptic feedback, not noise) |
+
+**Invariant** (test-pinned): `SWIPE_THRESHOLD_PX > TAP_MAX_DRIFT_PX × 4` — if these collapse, accidental swipes spike.
+
+**Contract:**
+
+```typescript
+const { bind, state } = useSwipeGesture({
+  onSwipeLeft, onSwipeRight, onLongPress, onDoubleTap, onTap,
+});
+// bind = { onPointerDown, onPointerMove, onPointerUp, onPointerCancel } — spread on the row
+// state = { dragX: number, isDragging: boolean, direction: 'left'|'right'|null }
+```
+
+**Accessibility:**
+- `prefers-reduced-motion`: drag transform suppressed via `prefersReducedMotion()` helper; gestures still fire.
+- Click-fires-after-pointerup browser semantics preserved — `onClick` on the row still works for keyboard / non-touch users.
+- Vibration API: graceful no-op when unavailable (older iOS / desktop).
+
+### CategoryPickerSheet contract
+
+`components/bookkeeping/CategoryPickerSheet.tsx` — mobile-first bottom-sheet that opens on swipe-left.
+
+**Composition (per CLAUDE.md §12.3):** PATCHes the existing `/api/unified-transactions/[id]` route — does NOT introduce a new categorise endpoint.
+
+**Props:**
+```typescript
+{
+  open: boolean;
+  transactionId: string | null;
+  context: { merchant?: string | null; amount?: number } | null;
+  suggestions?: string[];          // Caller passes merchant-mapping-aware list when available
+  onSuccess: (categoryLevel1: string) => void;
+  onClose: () => void;
+}
+```
+
+**Visual rules:**
+- 28px-radius rounded-t-3xl corners; 220ms slide-up; drag handle.
+- ≥52pt chip tap targets (Apple HIG); ≥44pt close button.
+- 4 suggestions max (per Phase 42 spec §6.3); 6 if caller supplies more.
+- Free-form `<input>` for "other category" with 12px input padding; submit on form-submit.
+- Esc-to-close (desktop accessibility).
+
+### Consumer Sankey projection
+
+`components/bookkeeping/ConsumerMoneyFlowSankey.tsx` — reuses Phase 41g `<MoneyFlowSankey />` (the entity-level Sankey on `/dashboard/entities`) by projecting `MasterFinancialSnapshot` into a synthetic single-entity `MoneyFlowResult`. Per CLAUDE.md §12.3 — no parallel chart engine, no parallel aggregator.
+
+**Pure function (exported for tests):**
+
+```typescript
+projectSnapshotToMoneyFlow(snapshot: MinimalSnapshot): MoneyFlowResult
+```
+
+**Projection rules (test-pinned in `tests/bookkeeping/consumerSankeyProjection.test.ts`):**
+
+| Rule | Test invariant |
+|---|---|
+| `totalIncome` | Echoes `snapshot.income.annual.all.netTotal` exactly |
+| `totalOutflow` | `tax + essential + discretionary + loans + surplus` — and equals `totalIncome` by conservation |
+| `surplus` | `Math.max(0, totalIncome - (essential + discretionary + loans + tax))` — non-negative even when expenses exceed income |
+| `entities` | Exactly one entity: `{ id: 'consumer', name: 'You', type: 'PERSONAL_NAME', role: 'PERSONAL' }` |
+| `incomeSources` | Zero-amount sources filtered (e.g. `Rental` always 0 at consumer level — rolls into Investment passive bucket) |
+| `edges` | `incomeSources.length` edges from `src:{label}` → `ent:consumer`; `outflows.length` edges from `ent:consumer` → `out:{label}` |
+| `isEmpty` | `true` when totalIncome ≤ 0 OR (essential + discretionary + loans) ≤ 0 |
+
+**Synthetic entity ID:** `'ent:consumer'`. The single-entity collapse keeps the consumer view clean (income → outflow flow without the per-entity layer that the entity-level Sankey shows).
+
+**Period:** monthly view scaled from the canonical *annual* snapshot. Spec §6 calls for "monthly money-flow Sankey"; we annualise → display the values, label the visual as "Year to date." Future PR can switch to a strict trailing-12mo window once the recurring-detection signal is more mature.
+
+### Activity surface Advanced toggle
+
+New piece of local UI state on `app/dashboard/activity/page.tsx`:
+
+```typescript
+const [advancedView, setAdvancedView] = useState(false);
+```
+
+Default (`false`): confidence badges + anomaly flag chrome are HIDDEN — calmer first-run, restraint over richness per CLAUDE.md §0 designer lens.
+
+When `true`: power-user view restored — confidence pills + anomaly flag chips visible per row.
+
+Toggle pill in the Activity page header (next to MonthlyReviewPill); state is component-local for now. If the feature gets adopted, future PR can promote it to user preference (UserSetting) so the choice persists across sessions.
+
+### Activity row gesture wiring
+
+`<TransactionRow>` now accepts:
+
+```typescript
+{
+  advancedView: boolean;            // Hides confidence + anomaly chrome when false
+  onSwipeLeft: (tx) => void;        // Opens CategoryPickerSheet
+  onSwipeRight: (tx) => void;       // Marks as Transfer (PATCH categoryLevel1='Transfer')
+  onLongPress: (tx) => void;        // Opens existing TransactionLinkDialog (drawer)
+  onDoubleTap: (tx) => void;        // applyAlwaysRule — re-PATCH same category to upsert MerchantMapping
+}
+```
+
+The `onDoubleTap` handler re-PATCHes the SAME category the row already has — server-side categorise path also writes a MerchantMapping row, so this is the cleanest "always categorise X as Y" affordance without introducing a new API endpoint. Per CLAUDE.md §12.3 — no parallel "rule" path.
+
+### Migration
+
+NONE. PR6.5 is purely a UI + hook layer. CLAUDE.md §12.11 + §12.12 N/A.
+
+### Out of PR6.5, queued (rows 49-51 in IMPLEMENTATION_PLAN)
+
+- **PR6.5b — Pending-actions popup-on-login** (per Reza idea 2026-05-07): first-login-of-day overlay bundling uncategorised tx + receipts pending confirm + recurring detections + anomalies. Three actions max with snooze + opt-out. Pending-actions framing — NOT categorise-only.
+- **PR6.5c — Review Queue card-stack** — replaces "Uncategorised first" Activity default for the dedicated review surface. Substantial UX rebuild — split out for review focus.
+- **PR6.5d — Gemini anomaly narrative** — replaces simple flag-name → English mapper in `dailyPulse.ts`. Reuses existing `lib/cfo/aiAdvisor.ts` (no new AI engine per CLAUDE.md §12.3).

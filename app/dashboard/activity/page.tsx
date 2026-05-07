@@ -54,6 +54,9 @@ import { TransactionLinkDialog } from '@/components/transactions/TransactionLink
 import { MonthlyReviewPill } from '@/components/bookkeeping/MonthlyReviewPill';
 import { BulkActionToolbar } from '@/components/bookkeeping/BulkActionToolbar';
 import { CompletionCelebration } from '@/components/bookkeeping/CompletionCelebration';
+import { CategoryPickerSheet } from '@/components/bookkeeping/CategoryPickerSheet';
+import { ConsumerMoneyFlowSankey } from '@/components/bookkeeping/ConsumerMoneyFlowSankey';
+import { useSwipeGesture, SWIPE_THRESHOLD_PX } from '@/hooks/useSwipeGesture';
 import { CashQuickAddButton } from '@/components/bookkeeping/CashQuickAddButton';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -218,6 +221,69 @@ export default function ActivityPage() {
   // child's useEffect.
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
 
+  // Phase 42 PR6.5 — swipe-to-categorise. Sheet state lives at the
+  // page level so a single sheet renders for whichever row was
+  // swiped. Mobile-first; desktop users still get the existing
+  // tap → dialog flow (the swipe is a per-pointer-event capture
+  // that doesn't disturb the click).
+  const [pickerTx, setPickerTx] = useState<Transaction | null>(null);
+  const [advancedView, setAdvancedView] = useState(false);
+
+  // Apply "always categorise X as Y" on a double-tap when the row
+  // already has a category set. Writes a USER-source MerchantMapping
+  // via the standard PATCH path (which lazy-seeds the registry per
+  // PR2's SSOT bridge).
+  const applyAlwaysRule = useCallback(async (tx: Transaction) => {
+    if (!tx.categoryLevel1) return;
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      // Re-PATCH the same category — the existing endpoint upserts a
+      // `MerchantMapping` row on every category write (Phase 13
+      // learning surface). User-confidence override = 1.0 means this
+      // becomes the always-rule for the merchant.
+      await fetch(`/api/unified-transactions/${tx.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          categoryLevel1: tx.categoryLevel1,
+          categoryLevel2: tx.categoryLevel2,
+        }),
+      });
+    } catch {
+      // Quiet failure — rule-write is best-effort
+    }
+  }, []);
+
+  // Mark as transfer (right-swipe) — sets isRecurring=false, links
+  // nothing, sets categoryLevel1='Transfer'. Single PATCH call;
+  // SSOT-aware (registry seeds via the categoriser bridge).
+  const markAsTransfer = useCallback(async (tx: Transaction) => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      await fetch(`/api/unified-transactions/${tx.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          categoryLevel1: 'Transfer',
+          categoryLevel2: 'Internal',
+        }),
+      });
+      fetchTransactions();
+      fetchSummary();
+    } catch {
+      // Quiet failure — UI re-fetches anyway
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const toggleSelected = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -358,8 +424,23 @@ export default function ActivityPage() {
             </p>
             {/* Phase 42 PR1 — Monthly Review pill (foundational hook for the
                 full Daily Pulse + streak surface that ships in PR6). */}
-            <div className="mt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <MonthlyReviewPill />
+              {/* Phase 42 PR6.5 — Advanced view toggle. Default-hide
+                  confidence + anomaly chrome (calmer first-run); power
+                  users opt in via this pill. State persists per session. */}
+              <button
+                type="button"
+                onClick={() => setAdvancedView((v) => !v)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
+                  advancedView
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+                aria-pressed={advancedView}
+              >
+                Advanced view
+              </button>
             </div>
           </div>
           <Button
@@ -371,6 +452,14 @@ export default function ActivityPage() {
             Import
           </Button>
         </header>
+
+        {/* Phase 42 PR6.5 — Consumer money-flow Sankey. The "where your
+            money goes" aha moment. Reuses Phase 41g <MoneyFlowSankey /> by
+            projecting MasterFinancialSnapshot through a synthetic single-
+            entity flow. Self-hides when there's not enough data. */}
+        <div className="mb-6">
+          <ConsumerMoneyFlowSankey />
+        </div>
 
         {/* SUMMARY TILES — clickable to filter */}
         {summary && (
@@ -558,10 +647,18 @@ export default function ActivityPage() {
                         tx={tx}
                         selected={selectedIds.has(tx.id)}
                         onToggleSelected={() => toggleSelected(tx.id)}
+                        advancedView={advancedView}
                         onClick={() => {
                           setLinkingTransaction(tx);
                           setShowLinkDialog(true);
                         }}
+                        onSwipeLeft={() => setPickerTx(tx)}
+                        onSwipeRight={() => markAsTransfer(tx)}
+                        onLongPress={() => {
+                          setLinkingTransaction(tx);
+                          setShowLinkDialog(true);
+                        }}
+                        onDoubleTap={() => applyAlwaysRule(tx)}
                       />
                     ))}
                   </div>
@@ -621,6 +718,31 @@ export default function ActivityPage() {
       {/* Phase 42 PR6 — Completion celebration (toast + confetti).
           Self-gated to once-per-day max via the server. Self-dismissing. */}
       <CompletionCelebration trigger={celebrationTrigger} />
+
+      {/* Phase 42 PR6.5 — Category picker bottom-sheet (opens on
+          left-swipe of any row). Mobile-first; backdrop dismisses. */}
+      <CategoryPickerSheet
+        open={pickerTx !== null}
+        transactionId={pickerTx?.id ?? null}
+        context={
+          pickerTx
+            ? {
+                merchant:
+                  pickerTx.description ||
+                  pickerTx.merchantStandardised ||
+                  pickerTx.merchantRaw ||
+                  null,
+                amount: pickerTx.amount,
+              }
+            : null
+        }
+        onClose={() => setPickerTx(null)}
+        onSuccess={() => {
+          setPickerTx(null);
+          fetchTransactions();
+          fetchSummary();
+        }}
+      />
 
       {/* IMPORT WIZARD MODAL */}
       {showImportWizard && (
@@ -791,11 +913,21 @@ function TransactionRow({
   onClick,
   selected,
   onToggleSelected,
+  advancedView = false,
+  onSwipeLeft,
+  onSwipeRight,
+  onLongPress,
+  onDoubleTap,
 }: {
   tx: Transaction;
   onClick: () => void;
   selected: boolean;
   onToggleSelected: () => void;
+  advancedView?: boolean;
+  onSwipeLeft?: () => void;
+  onSwipeRight?: () => void;
+  onLongPress?: () => void;
+  onDoubleTap?: () => void;
 }) {
   const isIn = tx.direction === 'IN';
   const isLinked = !!(tx.incomeId || tx.expenseId);
@@ -803,13 +935,37 @@ function TransactionRow({
   const hasAnomaly = tx.anomalyFlags.length > 0;
   const label = tx.description || tx.merchantStandardised || tx.merchantRaw || 'Transaction';
 
-  // Confidence: only show when AI is uncertain (< 0.9). Reduces visual noise on
-  // the 90% the engine got right; draws the eye to the 10% that need review.
-  const showConfidence = tx.confidenceScore !== null && tx.confidenceScore < 0.9;
+  // Confidence: only show when AI is uncertain (< 0.9) AND the user
+  // has opted in to Advanced view. Default-hidden per Phase 42 PR6.5
+  // spec §6 — calmer first-run; power users opt in.
+  const showConfidence =
+    advancedView && tx.confidenceScore !== null && tx.confidenceScore < 0.9;
   const confidenceLabel =
     tx.confidenceScore !== null && tx.confidenceScore < 0.7 ? 'Low confidence' : 'Medium confidence';
   const confidenceTone =
     tx.confidenceScore !== null && tx.confidenceScore < 0.7 ? 'text-rose-600' : 'text-amber-600';
+  // Anomaly badge: also gated behind Advanced view per the same rule.
+  const showAnomalyBadge = advancedView && hasAnomaly;
+
+  // Phase 42 PR6.5 — swipe-to-categorise. Pointer-events-based; no
+  // library dep. The hook captures pointer events on the inner button
+  // (which already fires onClick for plain taps via the browser's
+  // native click-fires-after-pointerup behaviour). When a swipe past
+  // SWIPE_THRESHOLD_PX fires, the corresponding handler runs and the
+  // row springs back to centre.
+  const swipe = useSwipeGesture({
+    onSwipeLeft,
+    onSwipeRight,
+    onLongPress,
+    onDoubleTap,
+  });
+
+  // Visual offset during drag — small parallax so the user sees the
+  // gesture register. Capped at 80px past the threshold to avoid
+  // throwing the row off-screen on long drags.
+  const dragOffset = Math.max(-80, Math.min(80, swipe.state.dragX));
+  const showLeftHint = swipe.state.direction === 'left' && Math.abs(swipe.state.dragX) > SWIPE_THRESHOLD_PX / 2;
+  const showRightHint = swipe.state.direction === 'right' && Math.abs(swipe.state.dragX) > SWIPE_THRESHOLD_PX / 2;
 
   // Phase 42 PR2 — Selection checkbox is rendered as a sibling element
   // (not inside the row's main click target) with stopPropagation, so
@@ -817,10 +973,30 @@ function TransactionRow({
   // times; emerald accent when ticked. Mobile-friendly tap target.
   return (
     <div
-      className={`w-full flex items-center border-b border-border last:border-0 group transition-colors ${
+      className={`relative w-full flex items-center border-b border-border last:border-0 group transition-colors overflow-hidden ${
         selected ? 'bg-emerald-50/40' : 'hover:bg-muted/40'
       }`}
     >
+      {/* Phase 42 PR6.5 — swipe action hints. Slide in behind the row
+          as the user drags; emerald (right = transfer) / sky (left =
+          categorise). Hidden when not dragging. */}
+      {showLeftHint && (
+        <span
+          aria-hidden
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-sky-700 pointer-events-none"
+        >
+          Categorise →
+        </span>
+      )}
+      {showRightHint && (
+        <span
+          aria-hidden
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-emerald-700 pointer-events-none"
+        >
+          ← Transfer
+        </span>
+      )}
+
       <label
         className="flex items-center justify-center w-10 sm:w-11 self-stretch shrink-0 cursor-pointer hover:bg-muted/60 transition-colors"
         onClick={(e) => e.stopPropagation()}
@@ -835,8 +1011,15 @@ function TransactionRow({
         />
       </label>
       <button
+        type="button"
         onClick={onClick}
-        className="flex-1 text-left flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 hover-lift"
+        {...swipe.bind}
+        style={{
+          transform: `translateX(${dragOffset}px)`,
+          transition: swipe.state.isDragging ? 'none' : 'transform 220ms ease-out',
+          touchAction: 'pan-y', // allow vertical scroll; we own horizontal
+        }}
+        className="flex-1 text-left flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 hover-lift bg-card"
       >
       {/* Direction icon */}
       <div
@@ -853,7 +1036,7 @@ function TransactionRow({
           <span className="font-medium text-sm truncate">{label}</span>
           {isLinked && <Link2 className="w-3 h-3 text-sky-600 shrink-0" aria-label="Linked" />}
           {tx.isRecurring && !isLinked && <Repeat className="w-3 h-3 text-sky-600 shrink-0" aria-label="Recurring" />}
-          {hasAnomaly && <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" aria-label={tx.anomalyFlags.join(', ')} />}
+          {showAnomalyBadge && <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" aria-label={tx.anomalyFlags.join(', ')} />}
         </div>
         <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
           <span>{tx.account.name}</span>
