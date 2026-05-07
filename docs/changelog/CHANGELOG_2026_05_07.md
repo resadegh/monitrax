@@ -2314,3 +2314,63 @@ Docs updated:
 ### PR
 - Branch: `claude/fix-pending-actions-auth`
 - Status: pending push + open
+
+---
+
+## Session: fix-ai-chat-and-badge-aggregator
+
+### Changes Made
+
+- **Type**: UI relocation + aggregator semantic fix (per Reza directive 2026-05-08)
+- **Scope**: (1) Re-apply the AI chat header-bar relocation that was prepared in PR #711 but never merged. (2) Fix the badge / strip CATEGORISE count to match the user's visual definition of "Uncategorised" + relax the time scope.
+- **Description**: Two unrelated but small fixes bundled per Reza request.
+
+### Fix 1 — AI chat trigger (re-apply PR #711)
+
+PR #711 (header-bar relocation of `<AiChatButton />`) was prepared but never merged — confirmed via `git log` showing #708, #709, #710, #712, #713 merged but #711 missing. The bottom-right FAB still collides with the mobile browser bottom toolbar. Re-applied identical relocation in this PR. Reviewer rule preserved in `↩️ Reversed Decisions`.
+
+### Fix 2 — CATEGORISE count semantics (Reza-flagged badge mismatch)
+
+**Problem:** The badge showed nothing for a user with 112 transactions and visible Uncategorised chips on Activity. Two layered causes:
+
+1. **Definition mismatch.** Activity's "Uncategorised" filter uses `categoryLevel1 IS NULL OR ''`. The aggregator was using `period.totalTransactionCount - period.reviewedTransactionCount` — i.e. `userCorrectedCategory = false`. These are different: a BASIQ-auto-categorised tx has `categoryLevel1='Food & Dining'` AND `userCorrectedCategory=false` → counts as "uncategorised" to the aggregator but NOT to the user's eyes. Badge inflated relative to visible state, OR (in this user's case) hid because reviewedCount was 0 in the empty current month.
+2. **Scope mismatch.** Aggregator counted current calendar month only. User had no May 2026 tx (latest activity was Apr 29) → current-month uncategorisedCount = 0 → badge hidden, despite many April transactions still uncategorised.
+
+**Fix:**
+- Switch CATEGORISE count to `categoryLevel1 IS NULL OR ''` AND `isTransfer = false` — matches what the user can see as Uncategorised on Activity. Internal transfers excluded because they don't need a category from the user's perspective.
+- Switch time scope from current-calendar-month to **trailing 60 days** (`CATEGORISE_TRAILING_DAYS = 60`) — YNAB-style active backlog window. Captures recent uncategorised tx without surfacing year-old backlog.
+
+Anomaly / recurring / receipt counts unchanged — those don't have the same semantic mismatch.
+
+Daily Pulse card's `toReviewCount` and `MonthlyReviewPill` semantics deliberately unchanged — those answer a different question ("tax-pack completion this month") and the `userCorrectedCategory` flag is the right signal for that. Documented as intentional in the inline JSDoc.
+
+### Files Modified
+
+- `components/AiChatButton.tsx` — full rewrite to header-bar icon (re-applies PR #711).
+- `lib/bookkeeping/engagement/pendingActions.ts` — replaced period-based CATEGORISE count with direct `unifiedTransaction.count` query using `categoryLevel1 IS NULL OR ''` definition + trailing-60-day scope. Removed unused `getOrCreatePeriod` import. New exported constant `CATEGORISE_TRAILING_DAYS = 60`.
+- `tests/bookkeeping/pendingActions.test.ts` — 2 new tests pinning the 60-day window constant.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (AI chat header-bar cluster pattern re-applied)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (badge semantic mismatch — debugging lesson)
+- [ ] strategic decision
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Build Status
+- [x] `npx tsc --noEmit` clean (only pre-existing stripe noise)
+- [x] `npx vitest run tests/bookkeeping/pendingActions.test.ts` — 12/12 green
+- [x] `npm run lint:financial-surfaces` — 28 grandfathered, 0 new
+
+### PR
+- Branch: `claude/fix-ai-chat-and-badge-aggregator`
+- Status: pending push + open

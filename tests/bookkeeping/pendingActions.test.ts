@@ -14,6 +14,7 @@ import { describe, it, expect } from 'vitest';
 import {
   shouldShowPromptToday,
   PENDING_ACTIONS_CAP,
+  CATEGORISE_TRAILING_DAYS,
 } from '../../lib/bookkeeping/engagement/pendingActions';
 
 const day = (y: number, m: number, d: number, hour = 12) =>
@@ -141,5 +142,20 @@ describe('shouldShowPromptToday', () => {
 describe('PENDING_ACTIONS_CAP', () => {
   it('is 3 (Hick\'s Law / spec §6.6)', () => {
     expect(PENDING_ACTIONS_CAP).toBe(3);
+  });
+});
+
+describe('CATEGORISE_TRAILING_DAYS', () => {
+  it('is 60 days (YNAB-style trailing window)', () => {
+    // If this changes, the badge / strip count window changes —
+    // user-visible scope; reviewer rule per IMPLEMENTATION_PLAN
+    // Reversed Decisions 2026-05-08 (current-month scope reverted
+    // because it under-counted users with prior-month uncategorised
+    // backlog).
+    expect(CATEGORISE_TRAILING_DAYS).toBe(60);
+  });
+
+  it('is positive (defensive — negative would scope to the future)', () => {
+    expect(CATEGORISE_TRAILING_DAYS).toBeGreaterThan(0);
   });
 });

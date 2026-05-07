@@ -26,7 +26,7 @@
  */
 
 import prisma from '@/lib/db';
-import { getOrCreatePeriod, toPeriodMonthKey } from '../period';
+import { toPeriodMonthKey } from '../period';
 import { getOrCreateEngagementState } from './streak';
 
 /**
@@ -67,44 +67,73 @@ export interface PendingActionsResult {
 export const PENDING_ACTIONS_CAP = 3;
 
 /**
+ * How far back to count uncategorised transactions for the
+ * CATEGORISE action. YNAB-style trailing window — captures the
+ * active categorisation backlog without surfacing year-old debt.
+ *
+ * Per Reza directive 2026-05-08: the badge / strip count must
+ * reflect *what the user can see as Uncategorised on Activity*,
+ * which is `categoryLevel1 IS NULL OR ''` — not the
+ * `userCorrectedCategory = false` flag the BookkeepingPeriod uses
+ * for tax-pack-completion-percent semantics. The two surfaces
+ * answer different questions; the badge must answer the user's
+ * (visible) question.
+ */
+export const CATEGORISE_TRAILING_DAYS = 60;
+
+/**
  * Build the pending-actions payload for the current calendar day.
- * Cheap-ish: 1 period read + 3 count queries, all bounded by
- * `userId` index scans.
+ * Cheap-ish: 1 period read (engagement state) + 4 count queries,
+ * all bounded by `userId` index scans.
  */
 export async function buildPendingActions(
   userId: string,
   now: Date = new Date()
 ): Promise<PendingActionsResult> {
   const monthKey = toPeriodMonthKey(now);
+  const trailingSince = new Date(now.getTime() - CATEGORISE_TRAILING_DAYS * 24 * 60 * 60 * 1000);
 
-  const [period, engagement, anomalyCount, unmatchedRecurringCount, pendingReceiptCount] =
-    await Promise.all([
-      getOrCreatePeriod(userId, monthKey),
-      getOrCreateEngagementState(userId),
-      prisma.unifiedTransaction.count({
-        where: {
-          userId,
-          date: { gte: monthKey },
-          anomalyFlags: { isEmpty: false },
-        },
-      }),
-      prisma.recurringPayment.count({
-        where: {
-          userId,
-          isActive: true,
-          matchStatus: 'UNMATCHED',
-        },
-      }),
-      prisma.unifiedTransaction.count({
-        where: {
-          userId,
-          source: 'RECEIPT',
-          OR: [{ categoryLevel1: null }, { categoryLevel1: '' }],
-        },
-      }),
-    ]);
-
-  const uncategorisedCount = Math.max(0, period.totalTransactionCount - period.reviewedTransactionCount);
+  const [
+    engagement,
+    uncategorisedCount,
+    anomalyCount,
+    unmatchedRecurringCount,
+    pendingReceiptCount,
+  ] = await Promise.all([
+    getOrCreateEngagementState(userId),
+    // Count what the user can SEE as Uncategorised on Activity —
+    // `categoryLevel1` empty/null, excluding internal transfers
+    // (those don't need a category from the user's perspective).
+    prisma.unifiedTransaction.count({
+      where: {
+        userId,
+        date: { gte: trailingSince },
+        isTransfer: false,
+        OR: [{ categoryLevel1: null }, { categoryLevel1: '' }],
+      },
+    }),
+    prisma.unifiedTransaction.count({
+      where: {
+        userId,
+        date: { gte: monthKey },
+        anomalyFlags: { isEmpty: false },
+      },
+    }),
+    prisma.recurringPayment.count({
+      where: {
+        userId,
+        isActive: true,
+        matchStatus: 'UNMATCHED',
+      },
+    }),
+    prisma.unifiedTransaction.count({
+      where: {
+        userId,
+        source: 'RECEIPT',
+        OR: [{ categoryLevel1: null }, { categoryLevel1: '' }],
+      },
+    }),
+  ]);
 
   const candidates: PendingAction[] = [];
 
