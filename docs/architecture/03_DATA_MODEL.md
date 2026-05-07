@@ -3409,3 +3409,102 @@ NONE. PR6.5 is purely a UI + hook layer. CLAUDE.md §12.11 + §12.12 N/A.
 - **PR6.5b — Pending-actions popup-on-login** (per Reza idea 2026-05-07): first-login-of-day overlay bundling uncategorised tx + receipts pending confirm + recurring detections + anomalies. Three actions max with snooze + opt-out. Pending-actions framing — NOT categorise-only.
 - **PR6.5c — Review Queue card-stack** — replaces "Uncategorised first" Activity default for the dedicated review surface. Substantial UX rebuild — split out for review focus.
 - **PR6.5d — Gemini anomaly narrative** — replaces simple flag-name → English mapper in `dailyPulse.ts`. Reuses existing `lib/cfo/aiAdvisor.ts` (no new AI engine per CLAUDE.md §12.3).
+
+---
+
+## **10.49 Phase 42 PR6.5b — Pending-actions popup-on-login (PR — shipped 2026-05-07)**
+
+Per Reza idea 2026-05-07: *"have the transaction reconciliation and categorisation be popup when user login to be completed"* / *"something like a pending actions popup at first login?"*
+
+### Schema additions
+
+3 additive columns on `engagement_state`. Migration `20260512100000_phase_42_pr6_5b_pending_actions_gate`. CLAUDE.md §12.11 N/A — pure ALTER ADD COLUMN, no row UPDATE/DELETE, no DROP, no NOT NULL without default.
+
+```prisma
+model EngagementState {
+  // ... existing fields (PR6) ...
+
+  // Phase 42 PR6.5b — Pending-actions popup gate.
+  lastPromptShownAt     DateTime?
+  lastPromptDismissedAt DateTime?
+  promptOptedOut        Boolean   @default(false)
+}
+```
+
+| Column | Purpose |
+|---|---|
+| `lastPromptShownAt` | Set when the popup is rendered; gates the once-per-day rule |
+| `lastPromptDismissedAt` | Set when the user picks "Not today" — same UTC-day gate as Shown |
+| `promptOptedOut` | Global off-switch ("Don't show me this again"); user can re-enable in Settings later |
+
+### Aggregator + gate (SSOT)
+
+`lib/bookkeeping/engagement/pendingActions.ts` — composes existing canonical sources per CLAUDE.md §12.3. No parallel calc engine; no new aggregator with new math.
+
+```typescript
+buildPendingActions(userId, now): Promise<PendingActionsResult>
+shouldShowPromptToday(state, totalActionCount, now): boolean   // pure
+markPromptShown(userId, now)
+dismissPromptForToday(userId, now)
+optOutOfPrompt(userId)
+```
+
+### Action priority
+
+| Kind | Source | Priority |
+|---|---|---|
+| `CATEGORISE` | `period.totalTransactionCount - period.reviewedTransactionCount` | Highest — drives tax-pack accuracy + Daily Pulse |
+| `ANOMALY` | `unifiedTransaction` count where `anomalyFlags` non-empty in current month | High — surfaces things the user should look at |
+| `RECURRING` | `recurringPayment` count where `isActive AND matchStatus = UNMATCHED` | Medium — confirm or skip detected subscriptions |
+| `RECEIPT` | `unifiedTransaction` count where `source = RECEIPT AND categoryLevel1 IS NULL` | Low — polish; receipts pending confirm |
+
+**Hard cap:** `PENDING_ACTIONS_CAP = 3` (Hick's Law / spec §6.6). Three actions max — exhaustively tested.
+
+### Gate semantics
+
+`shouldShowPromptToday()` returns `true` iff:
+1. `promptOptedOut === false`
+2. `totalActionCount > 0`
+3. `lastPromptShownAt` is null OR before today's UTC midnight
+4. `lastPromptDismissedAt` is null OR before today's UTC midnight
+
+Test coverage in `tests/bookkeeping/pendingActions.test.ts`:
+- shows on fresh state with actions
+- hides on zero actions (clean inbox)
+- hides on opt-out (precedence over everything)
+- hides for the rest of today after Shown
+- shows next day after Shown
+- hides for the rest of today after Snooze
+- shows next day after Snooze
+- treats midnight UTC boundary as a fresh day
+- cap = 3 invariant pinned
+
+### API
+
+`GET  /api/bookkeeping/engagement/pending-actions` → `{ actions, totalCount, alreadyShownToday, optedOut }`
+`POST /api/bookkeeping/engagement/pending-actions?action=shown`   → marks `lastPromptShownAt = now`
+`POST /api/bookkeeping/engagement/pending-actions?action=dismiss` → marks `lastPromptDismissedAt = now`
+`POST /api/bookkeeping/engagement/pending-actions?action=opt-out` → sets `promptOptedOut = true`
+
+All gated by `bookkeeping.read` / `bookkeeping.write` (mirrors PR6 streak + pulse routes).
+
+### Component
+
+`<PendingActionsPrompt />` — drop-in mount on the dashboard root (`app/dashboard/page.tsx`). Self-managed lifecycle: fetches on mount, decides whether to render, fire-and-forgets the `?action=shown` POST as it opens.
+
+**Visual rules:**
+- Mobile: full-width bottom-sheet, drag handle, 28px-radius rounded-t-3xl, 220ms slide-up.
+- ≥sm: centred dialog, max-w-md, rounded-3xl, fade + slide-from-bottom-2.
+- ≥44pt tap targets per Apple HIG; ≥56pt action chips.
+- `motion-safe:` motion utilities — `prefers-reduced-motion` collapses to no-op (gestures + state changes preserved).
+- Esc to dismiss (desktop accessibility).
+- Tabular-nums on counts.
+
+**Copy rules** (CLAUDE.md §0 behaviour-psychologist lens):
+- Header: "Welcome back" / "X things waiting for you" / "Five seconds each — pick one or come back later."
+- Action labels singularise correctly (1 transaction vs N transactions).
+- Footer always reachable: "Not today" + "Don't show me this again."
+
+### Migration
+
+`prisma/migrations/20260512100000_phase_42_pr6_5b_pending_actions_gate/migration.sql` — pure ALTER ADD COLUMN × 3. CLAUDE.md §12.11 + §12.12 followed.

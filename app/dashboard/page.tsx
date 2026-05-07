@@ -61,6 +61,7 @@ import {
 import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '@/components/dashboard/NetWorthTrend';
 import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
 import { DailyPulseCard } from '@/components/bookkeeping/DailyPulseCard';
+import { PendingActionsPrompt } from '@/components/bookkeeping/PendingActionsPrompt';
 
 interface DashboardInsights {
   healthScore: {
@@ -499,6 +500,12 @@ export default function DashboardPage() {
       <div className="mb-6">
         <DailyPulseCard />
       </div>
+
+      {/* Phase 42 PR6.5b — Pending-actions popup. Fires once per
+          calendar day on first dashboard render when there are
+          actionable items; user can snooze ("Not today") or opt out
+          globally. Self-hides when nothing to do. */}
+      <PendingActionsPrompt />
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">

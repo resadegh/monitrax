@@ -2126,6 +2126,14 @@ model EngagementState {
   // current streak ends and a new one begins.
   totalCategorisations Int      @default(0)
 
+  // Phase 42 PR6.5b — Pending-actions popup gate. Shown once per calendar
+  // day on the first dashboard render. Dismiss = "not today" (still shows
+  // tomorrow). Opt-out = global off-switch (user can re-enable in settings
+  // later). Per Reza idea 2026-05-07.
+  lastPromptShownAt     DateTime?
+  lastPromptDismissedAt DateTime?
+  promptOptedOut        Boolean   @default(false)
+
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
