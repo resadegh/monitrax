@@ -2632,3 +2632,67 @@ Surfaces changed:
 ### PR
 - Branch: `claude/fix-categorise-disappear-and-sankey-mobile`
 - Status: pending push
+
+---
+
+## Session: transfer-auto-pair
+
+### Changes Made
+
+- **Type**: Feature (architectural — closes a real data-integrity gap)
+- **Scope**: New `lib/bookkeeping/transferPairing.ts` SSOT + 1-line hook in PATCH route
+- **Description**: Per Reza directive 2026-05-08: when a tx is marked Transfer with a destination account, server-side auto-finds and tags the matching arrival on the destination so analytics don't double-count.
+
+### Architecture (CLAUDE.md §12.3 SSOT + single calc engine)
+
+- `lib/bookkeeping/transferPairing.ts` is the **only** place that pairs transfer transactions. PATCH route composes it; no parallel logic anywhere.
+- Aggregators (`lib/calculations/*`) are unchanged — they read `Expense` / `Income` / `Loan` rows, NOT `UnifiedTransaction`. Pairing is a data-normalisation concern, not a calc one.
+- Activity summary tiles (`lib/tie/analytics.ts`) already filter `!tx.isTransfer` — once both sides are tagged, both drop out automatically. No change needed there.
+
+### Matching criteria (strict — keeps false-pair rate near zero)
+
+1. Same `userId`
+2. `accountId === source.transferToAccountId` (on destination account)
+3. **Opposite** direction (OUT → IN, IN → OUT)
+4. Absolute amount within $0.01 tolerance (compared in **cents** to dodge JS float precision)
+5. Date within ±3 days of source date
+6. Not already `isTransfer=true` (don't re-pair, idempotent)
+7. Not already linked to Expense/Income/Loan (not categorised as something else)
+
+If exactly **one** candidate matches all 7 → tag symmetrically. If zero or multiple → leave the destination alone (no false pairs per Reza directive).
+
+### How it fires
+
+Single hook in `app/api/unified-transactions/[id]/route.ts` PATCH handler:
+
+```ts
+if (body.isTransfer === true && typeof body.transferToAccountId === 'string') {
+  pairTransferIfPossible(id, body.transferToAccountId).catch(...);
+}
+```
+
+Fire-and-forget per CLAUDE.md §12.10 — pairing is best-effort. If it fails the source-side mark is still authoritative.
+
+### Constants exported (test-pinned)
+
+- `TRANSFER_PAIR_WINDOW_DAYS = 3`
+- `TRANSFER_PAIR_AMOUNT_TOLERANCE = 0.01`
+
+### Files Modified
+- `lib/bookkeeping/transferPairing.ts` (NEW) — pure `filterPairCandidates()` + side-effect `pairTransferIfPossible()`.
+- `app/api/unified-transactions/[id]/route.ts` — 4-line hook into PATCH.
+- `tests/bookkeeping/transferPairing.test.ts` (NEW) — 18 tests pinning all 7 criteria + edge cases (sign-agnostic match, FP-precision via cents, multi-match returns >1, self-match rejected, etc.).
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Reviewer rule (preserved as JSDoc)
+
+This is the only place transfer transactions get paired. Reviewers MUST reject any PR that introduces parallel pairing logic elsewhere. If criteria need to change, change them HERE.
+
+### Build Status
+- [x] tsc clean
+- [x] vitest 18/18 green (transferPairing) — full bookkeeping suite still passes
+- [x] lint:financial-surfaces — 28 grandfathered, 0 new
+
+### PR
+- Branch: `claude/transfer-auto-pair`
+- Status: pending push

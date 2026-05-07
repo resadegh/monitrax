@@ -21,6 +21,7 @@ import {
 } from '@/lib/bookkeeping/transactionEditAudit';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { touchStreak } from '@/lib/bookkeeping/engagement/streak';
+import { pairTransferIfPossible } from '@/lib/bookkeeping/transferPairing';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -217,6 +218,19 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
         data: updateData,
         include: { account: true },
       });
+
+      // Phase 42 PR6.5i — Transfer auto-pairing. When the user marks
+      // a tx as Transfer with a destination account, find and tag
+      // the matching arrival on the destination side so analytics
+      // don't double-count. Fire-and-forget per CLAUDE.md §12.10 —
+      // pairing is a best-effort optimisation; if it fails the
+      // source-side mark is still authoritative. Pure SSOT in
+      // `lib/bookkeeping/transferPairing.ts`.
+      if (body.isTransfer === true && typeof body.transferToAccountId === 'string') {
+        pairTransferIfPossible(id, body.transferToAccountId).catch((err) => {
+          console.warn('[transfer-pair] pairing failed', { sourceId: id, err });
+        });
+      }
 
       // Phase 42 PR1 — record per-mutation audit row(s). Fire-and-forget
       // per CLAUDE.md §12.10. The deepEqual short-circuit inside
