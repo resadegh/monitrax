@@ -2582,3 +2582,53 @@ Surfaces changed:
 ### PR
 - Branch: `claude/swipe-motion-gmail-style`
 - Status: pending push
+
+---
+
+## Session: fix-categorise-disappear-and-sankey-mobile + transfer-destination
+
+Three Reza-reported issues 2026-05-08, bundled.
+
+### Fix 1 — Categorised transactions stayed in the uncategorised list
+
+The Activity `?uncategorized=true` filter only checked link-status (no `expenseId/incomeId/loanId`). Categorising via swipe → picker → chip set `categoryLevel1` but didn't link any Expense entity → row stayed in the filter. Confusing UX.
+
+**Fix:** `app/api/unified-transactions/route.ts:84` filter now also requires `categoryLevel1` to be null/empty. The badge aggregator (`lib/bookkeeping/engagement/pendingActions.ts`) mirrors the same condition. Both surfaces stay in lockstep — categorise → row disappears + count decrements.
+
+### Fix 2 — Sankey unreadable on mobile
+
+Phase 41g `<MoneyFlowSankey />` was built desktop-first; on narrow viewports labels overlap and bands compress to invisible.
+
+**Fix:** in `<ConsumerMoneyFlowSankey />` the Sankey is now wrapped with `hidden sm:block`. On mobile (`sm:hidden`) a new `<MobileMoneyFlowSummary />` renders instead — vertical layout: total income headline + colour-coded outflow list with proportional horizontal bars, sorted largest-first. Reads cleanly at 360px wide.
+
+### Fix 3 (NEW Reza request) — Swipe-right asks for destination
+
+Right-swipe previously did one-shot `categoryLevel1='Transfer', categoryLevel2='Internal'`. Reza directive: *"when I swipe right to transfer it should ask where to — that can be an account, an investment account, SMSF or any other transferable accounts available in the portfolio."*
+
+**Fix:** new `<TransferDestinationSheet />` bottom-sheet opens on right-swipe. Composes `/api/accounts` + `/api/investments/accounts` (per CLAUDE.md §12.3 — no parallel data path). Lists destinations grouped by Cash & bank / Investment & super. On selection PATCHes the tx with `isTransfer=true`, `transferToAccountId={chosen}`, and `categoryLevel1='Transfer'`. Manual fallback at the bottom for users whose destination isn't in the system yet.
+
+`/api/unified-transactions/[id]` PATCH now accepts `isTransfer` and `transferToAccountId` body fields (additive — both gated on `body.X !== undefined`).
+
+Dead code cleanup per CLAUDE.md §12.1: `markAsTransfer` inline handler in `app/dashboard/activity/page.tsx` removed (no longer called — replaced by the sheet flow).
+
+### Files Modified
+- `app/api/unified-transactions/route.ts` — uncategorized filter requires categoryLevel1 empty.
+- `lib/bookkeeping/engagement/pendingActions.ts` — aggregator mirrors the new filter.
+- `components/bookkeeping/ConsumerMoneyFlowSankey.tsx` — mobile fork + new `MobileMoneyFlowSummary` component.
+- `components/bookkeeping/TransferDestinationSheet.tsx` (NEW) — destination picker bottom-sheet.
+- `app/dashboard/activity/page.tsx` — wire the new sheet, remove dead `markAsTransfer`.
+- `app/api/unified-transactions/[id]/route.ts` — PATCH supports `isTransfer` + `transferToAccountId`.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] visual design system / component pattern (mobile money-flow summary pattern; transfer destination sheet pattern)
+- [x] strategic decision (swipe-right semantics changed — now opens destination picker)
+
+### Build Status
+- [x] tsc clean
+- [x] vitest pendingActions 12/12 green
+
+### PR
+- Branch: `claude/fix-categorise-disappear-and-sankey-mobile`
+- Status: pending push
