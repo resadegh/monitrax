@@ -1,0 +1,23 @@
+-- Phase 41i.6a — Surface-level audit source enum value
+--
+-- Extends the CalcAuditFindingSource enum with L4_SURFACE_AUDIT so the
+-- surface-audit harness (lands in 41i.6c) can persist findings into
+-- the existing CalcAuditFinding queue with a distinct source label.
+--
+-- Per spec doc PHASE_41I_6_SURFACE_AUDIT.md §9 — pure enum extension;
+-- no row mutations.
+--
+-- =============================================================================
+-- CLAUDE.md §12.11 destructive-write checklist:
+--
+-- 1. WHERE clause matches: N/A — pure ALTER TYPE ADD VALUE. No row
+--    UPDATE / DELETE / UPSERT.
+-- 2. Columns overwritten / rows deleted: NONE.
+-- 3. Guard ensuring this only mutates rows I created: N/A — schema only.
+--
+-- ALTER TYPE ADD VALUE is non-destructive (additive). Existing rows
+-- with source = L1_DIFFERENTIAL / L2_ANOMALY / L3_ON_DEMAND continue
+-- to behave exactly as today. New rows can use the new value.
+-- =============================================================================
+
+ALTER TYPE "CalcAuditFindingSource" ADD VALUE 'L4_SURFACE_AUDIT';
