@@ -1,27 +1,39 @@
 /**
- * Phase 42 PR6.5b — Pending-actions popup.
+ * Phase 42 PR6.5b — Pending-actions strip (non-modal).
  *
- * Per Reza idea 2026-05-07: *"have the transaction reconciliation and
- * categorisation be popup when user login to be completed"* /
- * *"something like a pending actions popup at first login?"*
+ * Per Reza idea 2026-05-07 (the *what*): *"have the transaction
+ * reconciliation and categorisation be popup when user login to be
+ * completed"* — surface pending bundle at the right moment.
  *
- * Mounted once at the dashboard root. On mount, fetches the
- * pending-actions payload; if `shouldShowPromptToday()` agrees, opens
- * a centred dialog (≥sm) / full-height bottom-sheet (mobile) with up
- * to 3 actions, a "Not today" snooze, and a "Don't show me this again"
- * opt-out.
+ * Per Reza decision 2026-05-07 on review (the *how*, after Claude
+ * pushed back on the modal pattern): "go with the non-modal strip."
+ * Modal-on-login was flagged for behavioural-friction risk —
+ * defensive-dismiss reflex (years of cookie banners), inbox-zero
+ * anxiety as the daily first impression, anti-flow framing where
+ * the app asks the user for chores before showing them value.
  *
- * Per CLAUDE.md §0 behaviour-psychologist lens — three actions max
- * (Hick's Law); pending-actions framing, NOT categorise-only; warm
- * copy; snooze + opt-out always reachable so we never feel like a nag.
+ * Option A landed instead: a compact, *non-blocking* strip anchored
+ * at the top of `/dashboard` that surfaces the same up-to-3 actions
+ * (CATEGORISE > ANOMALY > RECURRING > RECEIPT). The user can scan,
+ * tap, collapse, or ignore — the page remains fully interactive.
  *
- * Per CLAUDE.md §0 designer lens — Apple-glass tile, 28px-radius,
- * 220ms slide-up; ≥44pt tap targets per Apple HIG; tabular-nums on
- * all counts; `prefers-reduced-motion` collapses motion to fade.
+ * Per CLAUDE.md §0:
+ *   - Designer lens: Apple-glass tile; restraint over interruption;
+ *     ≥44pt tap targets per Apple HIG; tabular-nums on counts.
+ *   - Behaviour-psychologist lens: warm copy ("Today's quick wins"),
+ *     present in flow rather than blocking it. Reduces cognitive tax
+ *     by bundling, but never exacts an interruption cost. Collapse
+ *     and opt-out always reachable so the strip never feels like a nag.
+ *   - Architect lens: composes existing
+ *     `/api/bookkeeping/engagement/pending-actions` route. Same SSOT
+ *     aggregator + same once-per-day gate as the modal version. Per
+ *     CLAUDE.md §12.3 — no parallel data path.
  *
- * Per CLAUDE.md §12.3 — composes existing
- * `/api/bookkeeping/engagement/pending-actions` route. No parallel
- * aggregator path. The popup itself is a thin presenter.
+ * Once-per-day gate behaviour preserved: `?action=shown` is still
+ * fired on first render so the strip auto-collapses tomorrow if the
+ * user manually collapses today (intentional — daily users don't
+ * need both the strip and the Daily Pulse card asking for the same
+ * thing).
  */
 
 'use client';
@@ -54,11 +66,11 @@ const ICONS: Record<PendingActionKind, typeof Sparkles> = {
 };
 
 /**
- * Drop-in mount. Place once on the dashboard tree (e.g. inside
- * `DashboardLayout`); it manages its own lifecycle.
+ * Non-modal pending-actions strip. Drop-in mount on the dashboard
+ * tree (e.g. above `<DailyPulseCard />`); manages its own lifecycle.
  */
 export function PendingActionsPrompt() {
-  const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
   const [data, setData] = useState<PendingActionsResult | null>(null);
 
   useEffect(() => {
@@ -82,8 +94,8 @@ export function PendingActionsPrompt() {
           payload.actions.length > 0 &&
           payload.totalCount > 0
         ) {
-          setOpen(true);
-          // Fire-and-forget — mark shown so we don't repeat in the same day.
+          setVisible(true);
+          // Fire-and-forget — same once-per-day gate as the modal version.
           fetch('/api/bookkeeping/engagement/pending-actions?action=shown', {
             method: 'POST',
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -100,19 +112,8 @@ export function PendingActionsPrompt() {
     };
   }, []);
 
-  // Esc to dismiss (desktop accessibility).
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleSnooze();
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  function handleSnooze() {
-    setOpen(false);
+  function handleCollapse() {
+    setVisible(false);
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     fetch('/api/bookkeeping/engagement/pending-actions?action=dismiss', {
       method: 'POST',
@@ -122,7 +123,7 @@ export function PendingActionsPrompt() {
   }
 
   function handleOptOut() {
-    setOpen(false);
+    setVisible(false);
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     fetch('/api/bookkeeping/engagement/pending-actions?action=opt-out', {
       method: 'POST',
@@ -131,107 +132,68 @@ export function PendingActionsPrompt() {
     }).catch(() => {});
   }
 
-  if (!open || !data || data.actions.length === 0) return null;
+  if (!visible || !data || data.actions.length === 0) return null;
 
   return (
-    <>
-      {/* Backdrop */}
+    <section
+      aria-label="Today's pending actions"
+      className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-4 sm:px-5 py-4 mb-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2 motion-safe:duration-300"
+    >
+      <header className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+            Today&rsquo;s quick wins
+          </p>
+          <p className="text-sm text-emerald-900/80 mt-0.5 leading-relaxed">
+            {headerCopy(data.actions.length, data.totalCount)} — five seconds each.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleCollapse}
+          aria-label="Hide for today"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-full text-emerald-700/60 hover:bg-emerald-100 active:bg-emerald-200 transition-colors shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </header>
+
+      <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {data.actions.map((a) => {
+          const Icon = ICONS[a.kind];
+          return (
+            <li key={a.kind}>
+              <Link
+                href={a.href}
+                className="flex items-center gap-2.5 px-3.5 py-3 rounded-2xl bg-white hover:bg-emerald-50 active:bg-emerald-100 border border-emerald-100 transition-colors min-h-[52px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 group"
+              >
+                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 shrink-0">
+                  <Icon className="w-4 h-4" />
+                </span>
+                <span className="flex-1 text-sm font-medium text-slate-900 tabular-nums truncate">
+                  {a.label}
+                </span>
+                <ArrowRight className="w-4 h-4 text-emerald-400 shrink-0 group-hover:text-emerald-600 transition-colors" />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
       <button
         type="button"
-        aria-label="Close prompt"
-        onClick={handleSnooze}
-        className="fixed inset-0 z-40 bg-slate-900/40 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
-      />
-
-      {/* Sheet — bottom-sheet on mobile, centred dialog on ≥sm */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Pending actions for today"
-        className="fixed inset-x-0 bottom-0 z-50 sm:inset-0 sm:flex sm:items-center sm:justify-center sm:p-4 pointer-events-none"
+        onClick={handleOptOut}
+        className="text-xs text-emerald-700/50 hover:text-emerald-800 mt-3 py-1 min-h-[28px]"
       >
-        <div
-          className="pointer-events-auto w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 px-5 sm:px-6 pt-3 pb-6 sm:pb-7 max-h-[85vh] overflow-y-auto motion-safe:animate-in motion-safe:slide-in-from-bottom motion-safe:sm:slide-in-from-bottom-2 motion-safe:duration-300"
-        >
-          {/* Drag handle (mobile) */}
-          <div className="flex justify-center pt-1 pb-2 sm:hidden">
-            <span className="block w-10 h-1 rounded-full bg-slate-300" aria-hidden />
-          </div>
-
-          {/* Header */}
-          <header className="flex items-start justify-between gap-3 mb-4 mt-1 sm:mt-0">
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600">
-                Welcome back
-              </p>
-              <p className="text-lg sm:text-xl font-semibold text-slate-900 mt-1">
-                {headerCopy(data.actions.length, data.totalCount)}
-              </p>
-              <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
-                Five seconds each — pick one or come back later.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleSnooze}
-              aria-label="Close"
-              className="inline-flex items-center justify-center w-11 h-11 rounded-full text-slate-500 hover:bg-slate-100 active:bg-slate-200 transition-colors shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </header>
-
-          {/* Action chips */}
-          <ul className="space-y-2.5 mb-5">
-            {data.actions.map((a) => {
-              const Icon = ICONS[a.kind];
-              return (
-                <li key={a.kind}>
-                  <Link
-                    href={a.href}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-slate-50 hover:bg-slate-100 active:bg-slate-200 transition-colors min-h-[56px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-                  >
-                    <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 shrink-0">
-                      <Icon className="w-4 h-4" />
-                    </span>
-                    <span className="flex-1 text-sm font-medium text-slate-900 tabular-nums">
-                      {a.label}
-                    </span>
-                    <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-
-          {/* Footer — snooze + opt-out */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={handleSnooze}
-              className="text-sm text-slate-600 hover:text-slate-900 font-medium py-2.5 sm:py-1 text-left min-h-[44px] sm:min-h-0"
-            >
-              Not today
-            </button>
-            <button
-              type="button"
-              onClick={handleOptOut}
-              className="text-xs text-slate-400 hover:text-slate-600 py-2.5 sm:py-1 text-left sm:text-right min-h-[44px] sm:min-h-0"
-            >
-              Don&rsquo;t show me this again
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
+        Don&rsquo;t show me this again
+      </button>
+    </section>
   );
 }
 
 function headerCopy(actionCount: number, totalCount: number): string {
   if (actionCount === 1) {
-    return `One thing waiting for you`;
+    return `One thing to clean up`;
   }
-  // tabular-nums in className keeps the number alignment crisp.
-  return `${totalCount} things waiting for you`;
+  return `${totalCount} small things to clean up`;
 }

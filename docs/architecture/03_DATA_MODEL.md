@@ -3508,3 +3508,24 @@ All gated by `bookkeeping.read` / `bookkeeping.write` (mirrors PR6 streak + puls
 ### Migration
 
 `prisma/migrations/20260512100000_phase_42_pr6_5b_pending_actions_gate/migration.sql` — pure ALTER ADD COLUMN × 3. CLAUDE.md §12.11 + §12.12 followed.
+
+### §10.49 addendum — Modal → strip pivot (2026-05-07)
+
+PR6.5b's initial implementation was a **modal-on-login** overlay (bottom-sheet on mobile, centred dialog on desktop). On review, Claude flagged behavioural-friction risk and proposed Option A — a **non-modal collapsible strip**. Reza decision: *"go with your recommendations."* Same PR landed the strip variant.
+
+What changed in the swap:
+- Component renders an in-flow `<section>` with `rounded-3xl border bg-emerald-50/60` styling, anchored above `<DailyPulseCard />`. NOT a backdrop + dialog.
+- Layout: 3-column grid on `≥sm`, single column on mobile. Action chips are still ≥52pt tall.
+- Header copy: "Today's quick wins" + "X small things to clean up — five seconds each" (warmer than "X things waiting for you" — frames as opportunity not debt).
+- Collapse (X) maps to the SAME `?action=dismiss` API call (UTC-day snooze).
+- Opt-out link sits at the bottom of the strip; same `?action=opt-out` API call.
+
+What did NOT change:
+- Schema (`lastPromptShownAt` / `lastPromptDismissedAt` / `promptOptedOut`).
+- Aggregator + pure gate (`shouldShowPromptToday()`).
+- API routes.
+- Action priority order (CATEGORISE > ANOMALY > RECURRING > RECEIPT).
+- Cap = 3 (Hick's Law).
+- All tests still pass — gate semantics are presentation-agnostic.
+
+Rationale logged in `IMPLEMENTATION_PLAN.md` `↩️ Reversed Decisions` so future sessions don't re-attempt the modal pattern. **Reviewer rule:** do NOT re-introduce a modal-on-login pattern for routine engagement on `/dashboard` without explicit user sign-off, even if the data behind it is genuinely useful.

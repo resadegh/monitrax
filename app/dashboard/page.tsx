@@ -495,17 +495,19 @@ export default function DashboardPage() {
         <TrailStageIndicator />
       </div>
 
+      {/* Phase 42 PR6.5b — Pending-actions strip (non-modal). Anchored
+          above the Daily Pulse so a returning user sees their bundled
+          quick-wins first; collapsible (X) and opt-out reachable. Per
+          Reza decision 2026-05-07: non-modal strip over modal-on-login
+          to avoid the defensive-dismiss reflex / inbox-zero anxiety
+          the modal pattern trains. Self-hides when nothing to do. */}
+      <PendingActionsPrompt />
+
       {/* Phase 42 PR6 — Daily Pulse engagement front door. Self-hides
           when the user has zero transactions in the current month. */}
       <div className="mb-6">
         <DailyPulseCard />
       </div>
-
-      {/* Phase 42 PR6.5b — Pending-actions popup. Fires once per
-          calendar day on first dashboard render when there are
-          actionable items; user can snooze ("Not today") or opt out
-          globally. Self-hides when nothing to do. */}
-      <PendingActionsPrompt />
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">

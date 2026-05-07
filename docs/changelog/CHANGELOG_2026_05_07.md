@@ -2103,3 +2103,26 @@ Each mutates only the column listed; no user-entered data at risk; the row is cr
 ### PR
 - Branch: `claude/phase-42-pr6-5b-pending-actions-popup`
 - Status: pending push + open
+
+---
+
+## Session: phase-42-pr6-5b — modal → strip pivot on review
+
+### Changes Made
+
+- **Type**: Design pivot mid-PR (per Reza decision on review)
+- **Scope**: PR6.5b component layer — modal-on-login → non-modal collapsible strip (Option A)
+- **Description**: Reza asked for honest feedback on the popup-on-login idea. Claude pushed back on the modal pattern through the four-lens check (defensive-dismiss reflex, inbox-zero anxiety, anti-flow first-impression, modal-on-login is SaaS re-engagement not premium-product). Reza directive: *"go with your recommendations"* → same PR pivoted to Option A. Same SSOT aggregator + API + once-per-day gate; presentation-layer swap only.
+
+### Files Modified
+- `components/bookkeeping/PendingActionsPrompt.tsx` — full rewrite from modal/bottom-sheet to in-flow `<section>` strip with 3-column grid (mobile single-column). Header copy softened from "X things waiting for you" to "X small things to clean up — five seconds each."
+- `app/dashboard/page.tsx` — moved `<PendingActionsPrompt />` from below `<DailyPulseCard />` (modal needed no anchor) to above it (strip wants prime real estate).
+- `docs/IMPLEMENTATION_PLAN.md` — header rewritten; row 49 description updated; new entry in `↩️ Reversed Decisions` documenting why modal was reverted + reviewer rule against re-attempt.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR6.5b row updated to reflect strip pivot.
+- `docs/architecture/03_DATA_MODEL.md` — addendum to §10.49 documenting what changed vs what didn't in the swap.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Build status
+- [x] `npx tsc --noEmit` clean
+- [x] `npx vitest run tests/bookkeeping/pendingActions.test.ts` — 10/10 green (gate semantics are presentation-agnostic)
+- [x] `npm run lint:financial-surfaces` — 28 grandfathered, 0 new (baseline regenerated for shifted line numbers from strip mount-point change)
