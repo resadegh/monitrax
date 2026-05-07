@@ -2032,3 +2032,97 @@ NONE. All mutations from PR6.5 paths flow through the existing `/api/unified-tra
 ### PR
 - Branch: `claude/phase-42-pr6-5-mobile-engagement`
 - Status: pending push + open
+
+---
+
+## Session: phase-42-pr6-5b-pending-actions-popup
+
+### Changes Made
+
+- **Type**: Feature (per Reza idea 2026-05-07)
+- **Scope**: Phase 42 PR6.5b — pending-actions popup-on-login (first-login-of-day overlay)
+- **Description**: SHIPPED. Once-per-calendar-day overlay on dashboard render that bundles up to 3 actions ordered CATEGORISE > ANOMALY > RECURRING > RECEIPT. Snooze + opt-out always reachable.
+
+### Architectural Decisions (CLAUDE.md §0 four-lens)
+
+- **Architect (§12.3 SSOT):** new aggregator composes existing `getOrCreatePeriod()` + 3 cheap count queries on canonical Prisma models (`unifiedTransaction`, `recurringPayment`). Pure `shouldShowPromptToday()` gate is exhaustively testable. No parallel "uncategorised" calc — same period source the Daily Pulse already uses.
+- **Designer:** Apple-glass conventions throughout. Bottom-sheet on mobile / centred dialog on ≥sm; 28px-radius; ≥44pt tap targets per Apple HIG; ≥56pt action chips. `motion-safe:` utilities respect `prefers-reduced-motion`.
+- **Behaviour-psychologist:** Three actions max (Hick's Law / spec §6.6). Pending-actions framing — NOT categorise-only — per Reza directive. Warm copy ("Welcome back" / "X things waiting for you" / "Five seconds each — pick one or come back later"). Snooze + opt-out always reachable so we never feel like a nag.
+- **Financial-adviser:** prioritises CATEGORISE first because that's what drives tax-pack accuracy and the Daily Pulse % — the action with highest financial-correctness payoff.
+
+### Files Modified
+
+- `prisma/schema.prisma` — added `lastPromptShownAt: DateTime?` + `lastPromptDismissedAt: DateTime?` + `promptOptedOut: Boolean @default(false)` on `EngagementState`.
+- `prisma/migrations/20260512100000_phase_42_pr6_5b_pending_actions_gate/migration.sql` (NEW) — pure ALTER ADD COLUMN × 3. CLAUDE.md §12.11 + §12.12 followed.
+- `lib/bookkeeping/engagement/pendingActions.ts` (NEW) — SSOT aggregator: `buildPendingActions()` + pure `shouldShowPromptToday()` gate + `markPromptShown()` / `dismissPromptForToday()` / `optOutOfPrompt()` mutators. `PENDING_ACTIONS_CAP=3` exported.
+- `app/api/bookkeeping/engagement/pending-actions/route.ts` (NEW) — GET (read) + POST `?action=shown|dismiss|opt-out`. Mirrors the PR6 pulse + streak route style.
+- `components/bookkeeping/PendingActionsPrompt.tsx` (NEW) — drop-in mount; self-fetches; bottom-sheet mobile / centred dialog ≥sm; Esc-close; ≥44pt tap targets.
+- `app/dashboard/page.tsx` — mounted `<PendingActionsPrompt />` directly under the Daily Pulse card.
+- `tests/bookkeeping/pendingActions.test.ts` (NEW) — 10 tests on the once-per-day gate (UTC-day boundary, opt-out precedence, snooze semantics, cap = 3 invariant).
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — flipped PR6.5b row from queued to ✅ SHIPPED with full deliverable list.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #49 → ~~SHIPPED~~ with full doc-row; header rewritten.
+- `docs/architecture/03_DATA_MODEL.md` §10.49 — schema + aggregator + gate + API + component.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (1 new primitive — `<PendingActionsPrompt />`)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Reza idea 2026-05-07 "pending-actions popup at first login" landed; framing locked as pending-actions, NOT categorise-only)
+
+Docs updated:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` PR6.5b row → ✅ SHIPPED
+- `docs/IMPLEMENTATION_PLAN.md` Up Next #49 → ~~SHIPPED~~
+- `docs/architecture/03_DATA_MODEL.md` §10.49 — schema + aggregator + gate + API + component
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry
+
+### Schema migration (CLAUDE.md §12.12)
+
+`prisma/migrations/20260512100000_phase_42_pr6_5b_pending_actions_gate/migration.sql` shipped in same PR as the schema change. Pure ALTER ADD COLUMN × 3 — additive, nullable / default-false, no DROP, no destructive ALTER.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE. Three new Prisma writes — all `prisma.engagementState.update` against the `userId @unique` row that the user owns:
+- `markPromptShown` — sets `lastPromptShownAt` (system timestamp; user-initiated render)
+- `dismissPromptForToday` — sets `lastPromptDismissedAt` (system timestamp; user-initiated snooze)
+- `optOutOfPrompt` — sets `promptOptedOut = true` (user-initiated opt-out)
+
+Each mutates only the column listed; no user-entered data at risk; the row is created and owned exclusively by the engagement module (`getOrCreateEngagementState`). `where: { userId }` is the unique constraint — cannot match anything other than the calling user's row.
+
+### Build Status
+- [x] `npx prisma generate` clean
+- [x] `npx tsc --noEmit` clean (only pre-existing stripe noise)
+- [x] `npx vitest run tests/bookkeeping/pendingActions.test.ts` — 10/10 green
+
+### PR
+- Branch: `claude/phase-42-pr6-5b-pending-actions-popup`
+- Status: pending push + open
+
+---
+
+## Session: phase-42-pr6-5b — modal → strip pivot on review
+
+### Changes Made
+
+- **Type**: Design pivot mid-PR (per Reza decision on review)
+- **Scope**: PR6.5b component layer — modal-on-login → non-modal collapsible strip (Option A)
+- **Description**: Reza asked for honest feedback on the popup-on-login idea. Claude pushed back on the modal pattern through the four-lens check (defensive-dismiss reflex, inbox-zero anxiety, anti-flow first-impression, modal-on-login is SaaS re-engagement not premium-product). Reza directive: *"go with your recommendations"* → same PR pivoted to Option A. Same SSOT aggregator + API + once-per-day gate; presentation-layer swap only.
+
+### Files Modified
+- `components/bookkeeping/PendingActionsPrompt.tsx` — full rewrite from modal/bottom-sheet to in-flow `<section>` strip with 3-column grid (mobile single-column). Header copy softened from "X things waiting for you" to "X small things to clean up — five seconds each."
+- `app/dashboard/page.tsx` — moved `<PendingActionsPrompt />` from below `<DailyPulseCard />` (modal needed no anchor) to above it (strip wants prime real estate).
+- `docs/IMPLEMENTATION_PLAN.md` — header rewritten; row 49 description updated; new entry in `↩️ Reversed Decisions` documenting why modal was reverted + reviewer rule against re-attempt.
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR6.5b row updated to reflect strip pivot.
+- `docs/architecture/03_DATA_MODEL.md` — addendum to §10.49 documenting what changed vs what didn't in the swap.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Build status
+- [x] `npx tsc --noEmit` clean
+- [x] `npx vitest run tests/bookkeeping/pendingActions.test.ts` — 10/10 green (gate semantics are presentation-agnostic)
+- [x] `npm run lint:financial-surfaces` — 28 grandfathered, 0 new (baseline regenerated for shifted line numbers from strip mount-point change)
