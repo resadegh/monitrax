@@ -2431,3 +2431,64 @@ Surfaces changed: none in §16.2 (data layer fix only).
 ### PR
 - Branch: `claude/fix-pending-actions-aggregator-semantics`
 - Status: pending push
+
+---
+
+## Session: fix-swipe-gesture-guard
+
+### Changes Made
+
+- **Type**: Critical bug fix (swipe gestures never fired since PR6.5 shipped)
+- **Scope**: `hooks/useSwipeGesture.ts` — pointerdown guard logic
+- **Description**: Reza-reported: swipe gestures don't work on mobile or desktop. Investigation revealed the SSOT swipe hook had a guard that aborted on ALL clicks inside the bound element when it's a `<button>`. Since `<TransactionRow>` wraps each row in a `<button>` (so onClick works), every pointerdown on a row was bailing out before `setPointerCapture` ran. **Swipe gestures have been broken since PR6.5 shipped 2026-05-07.**
+
+### Root cause
+
+Line 142-147 of `hooks/useSwipeGesture.ts`:
+
+```ts
+const target = e.target as HTMLElement;
+if (target.closest('input, textarea, select, button, a, [role="button"], [contenteditable]')) {
+  return;  // bails — never captures pointer
+}
+```
+
+Intent: "don't intercept if user is clicking a NESTED form control inside the row."
+Reality: when the bound element itself is a `<button>` (which it is in `<TransactionRow>` to keep keyboard accessibility + native onClick), `target.closest('button')` matches the bound element. Guard fires unconditionally → no pointer capture → no swipe events.
+
+### Fix
+
+Compare `target.closest(...)` against `e.currentTarget`. Skip only when the closest interactive element is a NESTED one (different from the bound element), not when it IS the bound element:
+
+```ts
+const interactive = target.closest('input, textarea, select, button, a, [role="button"], [contenteditable]');
+if (interactive && interactive !== e.currentTarget) {
+  return;
+}
+```
+
+`currentTarget` = the element the handler is bound to (the row's outer button).
+`target` = the actual element clicked (could be the row button itself, or an inner element like a checkbox).
+
+If the closest interactive element IS `currentTarget` → user clicked the row directly → swipe should capture.
+If they DIFFER → user clicked a nested checkbox / inner button → let it handle its own events.
+
+### Reviewer rule (preserved as inline JSDoc)
+
+The pointerdown guard MUST distinguish between "bound element is a control" (allowed) and "nested control inside bound element" (skip). A blanket bail-out on any closest match breaks every swipe binding to a `<button>`-wrapped row — the most common pattern.
+
+### Files Modified
+- `hooks/useSwipeGesture.ts` — guard fix + extensive inline JSDoc explaining the bug class.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Doc-sync (CLAUDE.md §16)
+None.
+
+### Build Status
+- [x] tsc clean
+- [x] vitest 18/18 green (existing swipe constants tests still pass)
+- [x] lint:financial-surfaces clean
+
+### PR
+- Branch: `claude/fix-swipe-gesture-guard`
+- Status: pending push

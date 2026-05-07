@@ -138,11 +138,21 @@ export function useSwipeGesture(handlers: SwipeHandlers): {
       // Only react to primary button on mouse; all touch/pen.
       if (e.pointerType === 'mouse' && e.button !== 0) return;
 
-      // Don't capture inside form controls — they need their own events.
+      // Don't capture inside NESTED form controls (e.g. a checkbox
+      // or inner button rendered within the bound element) — those
+      // need their own events. But DO capture when the target is
+      // the bound element itself, even if the bound element is a
+      // <button>. (The 2026-05-08 Reza-reported "swipes never fire"
+      // bug came from this guard returning true unconditionally
+      // when the bound element was a <button> — `target.closest('button')`
+      // matched the bound element itself, so no swipe was ever
+      // captured.) `currentTarget` = the element the handler is
+      // bound to; `target` = the actual element clicked.
       const target = e.target as HTMLElement;
-      if (
-        target.closest('input, textarea, select, button, a, [role="button"], [contenteditable]')
-      ) {
+      const interactive = target.closest(
+        'input, textarea, select, button, a, [role="button"], [contenteditable]'
+      );
+      if (interactive && interactive !== e.currentTarget) {
         return;
       }
 
