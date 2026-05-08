@@ -1,5 +1,102 @@
 # Changelog — 2026-05-08
 
+## Session: claude/review-monitrax-settings-LL4bQ (Settings overhaul — trust-breaking fixes + missing controls)
+
+### Changes Made
+- **Type:** Fix + Feature — settings audit follow-through. Closes 12 trust-breaking gaps surfaced by the 2026-05-08 review across consumer / admin / portal settings.
+- **Scope:** Consumer `/dashboard/settings/*`, Org Portal `/portal/settings`, two new account-lifecycle endpoints, schema migration adding 9 columns + 5 enum values.
+
+### Trust-breaking fixes (top of list — these were lying to users today)
+- **Delete Account** wired end-to-end. Was a `<Button>` with no `onClick`. Now soft-deletes with a 30-day grace period (Privacy Act APP 11.2 + CDR §3.2), audit-logged, cancellable from the same surface.
+- **`/api/settings/status`** stopped lying. Was hardcoding `emailEnabled: true` / `pushEnabled: false` / `completeness: 60`. Now reads `UserPreference` notification flags + computes profile completeness from filled fields.
+- **Appearance** stopped silently dropping toggles. The previous PUT only persisted currency / dateFormat / country; theme / showCents / compactMode / financialYearStart were dropped. All four now persist via new `UserPreference` columns; `next-themes` syncs to the persisted choice on load.
+- **API Keys page** replaced with honest "Coming with Phase 32B" placeholder. Was a pure mock generating UUIDs client-side and pretending they were real keys.
+- **Billing page** replaced with honest "Free during early access" placeholder. Was hardcoded "Pro $19.99/mo active" with fake invoices.
+- **Storage page** dead `<Switch defaultChecked />` toggles replaced with an honest "what we do today" list. The toggles had no `onCheckedChange` and saved nothing.
+- **Categorisation** API surface (Phase 29) finally has a UI. New `/dashboard/settings/categorization` consumes `/api/settings/categorization` — auto-accept threshold, review threshold, learning + reasoning toggles, learning stats card.
+- **Bank connections** moved into Settings as a dedicated `/dashboard/settings/connections` page. Reuses existing `/api/basiq/connections` + DELETE endpoint — no new server logic. Disconnecting a bank is a Settings operation now, not buried on `/dashboard/accounts`.
+- **Data export (right to portability)** new `GET /api/account/export` returns a JSON document of every row the user owns. New "Download my data" card on the Privacy & CDR page.
+- **Trusted contact** new section + `PUT/GET /api/account/trusted-contact`. Optional second-line contact, never auto-shared. Phase 32B advisor handover will read it only with explicit consent.
+- **`/portal/settings`** finally exists. Mounts the previously-orphaned `OrganizationSettings` component (333 lines, zero importers) on a real route. Wired to `GET / PATCH /api/portal/organizations/[orgId]`. Sidebar link ungated — every member can see, server enforces `canUpdateOrganization` for writes.
+
+### Settings IA + warm-language pass (CLAUDE.md §14)
+- Header renamed `Settings → My Settings`.
+- Sidebar regrouped from one flat list into five mental-model groups: **Me / My money data / Privacy & safety / My notifications / My plan**.
+- Behavioural-psychology lens (Mani et al. 2013): grouping reduces the cognitive cost of finding the right control. Visual surface unchanged — Phase 39 GlassHero pass queued separately.
+
+### Files Created
+- `prisma/migrations/20260513100000_settings_overhaul/migration.sql` — additive: 5 new `AuditAction` values + 4 new `user_preferences` columns + 7 new `users` columns + 1 partial index on `users.deletionScheduledFor`.
+- `app/api/account/delete-request/route.ts` — GET / POST / DELETE soft-delete lifecycle.
+- `app/api/account/export/route.ts` — GET JSON data export.
+- `app/api/account/trusted-contact/route.ts` — GET / PUT trusted-contact CRUD.
+- `app/dashboard/settings/categorization/page.tsx` — Phase 29 UI consumer.
+- `app/dashboard/settings/connections/page.tsx` — Basiq connections management.
+- `app/dashboard/settings/trusted-contact/page.tsx` — Trusted contact form.
+- `app/portal/settings/page.tsx` — Mounts `OrganizationSettings`.
+
+### Files Modified
+- `prisma/schema.prisma` — `AuditAction` enum +5 values, `User` +7 columns, `UserPreference` +4 columns.
+- `app/api/settings/status/route.ts` — read real notification + profile state from `UserPreference` + `User`.
+- `app/api/settings/appearance/route.ts` — persist theme / showCents / compactMode / financialYearStart / taxYear.
+- `app/dashboard/settings/appearance/page.tsx` — expose Country + Tax year, persist all toggles, sync `next-themes` to the server-side choice.
+- `app/dashboard/settings/security/page.tsx` — wired Delete Account flow, deletion-state banner, cancellation.
+- `app/dashboard/settings/privacy/page.tsx` — added Download my data card calling `/api/account/export`.
+- `app/dashboard/settings/api-keys/page.tsx` — full rewrite as honest placeholder.
+- `app/dashboard/settings/billing/page.tsx` — full rewrite as honest placeholder.
+- `app/dashboard/settings/storage/page.tsx` — replaced dead toggles with documentation card; removed unused Switch / Label / Separator imports.
+- `app/dashboard/settings/layout.tsx` — rename to "My Settings", regroup nav into 5 groups, add new sub-pages.
+- `components/portal/layout/PortalSidebar.tsx` — ungate Settings link (page now exists).
+
+### Architecture decisions
+- **30-day soft-delete over hard-delete.** Privacy Act APP 11.2 doesn't mandate immediate deletion; the 30-day grace gives users a reversible action without compromising the right. Hard-deletion + CDR purge happens out-of-band on the scheduled date via Cloud Scheduler (queued separately). The route only flips the timer + audit-trails.
+- **`/api/account/export` runs synchronously.** Acceptable at current per-user data shape. If a user accumulates years of transactions the document grows past ~50MB, queue this to Cloud Tasks + Cloud Storage signed URL — documented inline in the route file.
+- **Trusted contact never auto-shared.** Schema-level field; explicit consent always required to surface it to a Phase 32B advisor. No automated email / nudge on save.
+- **Settings IA changed without visual surface change.** Grouping the nav is a behavioural-psychology fix, not a designer fix. The Phase 39 GlassHero repaint of Settings is a separate workstream and shouldn't be bundled.
+
+### CLAUDE.md §12.11 destructive write checklist
+Operations in this PR that touch existing rows:
+- `app/api/account/delete-request/route.ts:POST` — `prisma.user.update` setting deletionRequestedAt + deletionScheduledFor.
+- `app/api/account/delete-request/route.ts:DELETE` — `prisma.user.update` clearing deletionRequestedAt + deletionScheduledFor.
+- `app/api/account/trusted-contact/route.ts:PUT` — `prisma.user.update` writing trusted-contact columns.
+- `app/api/settings/appearance/route.ts:PUT` — `prisma.userPreference.upsert` writing appearance columns.
+
+For each operation:
+1. **`where` clause matches:** every operation uses `{ id: auth.userId }` or `{ userId: auth.userId }` — only the requesting user's own row.
+2. **Columns overwritten / rows deleted:** Only fields the user explicitly sent on PUT (gated on `xxx !== undefined`); deletion timer fields on POST/DELETE; trusted-contact fields on PUT (clobbering the user's own previous trusted-contact entry, which is the desired behaviour).
+3. **Guard ensuring this only mutates rows I created:** `auth.userId` comes from the verified bearer token, never from the request body. The user can only ever flag their OWN row.
+
+User confirmation: NOT REQUIRED — the user is the data subject mutating their own row. Reza authorised the workstream verbally on 2026-05-08 ("Yes fix them all and give me a PR url to merge").
+
+### CLAUDE.md §12.12 schema-change deploy
+- `prisma/schema.prisma` modified.
+- Matching migration `prisma/migrations/20260513100000_settings_overhaul/migration.sql` committed in the same PR.
+- Migration is purely additive: `ALTER TYPE ADD VALUE` x5 + `ADD COLUMN` x11 + `CREATE INDEX` x1. No DROP / ALTER COLUMN / TRUNCATE.
+- Defaults on new NOT NULL columns match the previous hardcoded GET return values so existing rows behave identically (`theme='system'`, `showCents=true`, `compactMode=false`, `financialYearStart='07-01'`).
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — settings IA regrouped + nav warm-language rename
+- [ ] application config
+- [ ] GCP infrastructure
+- [x] identity / auth — account-deletion lifecycle + trusted-contact entity-link
+- [ ] deployment / build
+- [x] security / CDR posture — right-to-erasure soft-delete, right-to-portability JSON export, audit-action enum extended
+- [ ] operational procedure
+- [x] strategic decision — Settings IA contract documented as 5-group mental model
+
+Docs updated in this PR:
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — appended Settings IA contract (5-group structure, warm-language rule applied).
+- `docs/architecture/03_DATA_MODEL.md` — appended User + UserPreference column additions.
+- `docs/blueprint/PHASE_19_DOCUMENT_MANAGEMENT.md` — appended note that Settings overhaul shipped trust-breaking fixes; original Phase 19.1 settings catalogue now reflects current reality.
+- `docs/IMPLEMENTATION_PLAN.md` — new active-workstream entry + closes 5 dead-code rows + closes Categorization-orphan + portal-settings-orphan opens.
+- `docs/changelog/CHANGELOG_2026_05_08.md` — this entry (prepended).
+
+### Build Status
+- TypeScript compilation: pending verification before push.
+- Vercel preview will run `prisma migrate deploy` against `monitrax-db-dev`; successful preview = green migration.
+
+---
+
 ## Session: claude/phase-32c-pr6a-stripe-subscriptions (Phase 32C PR6a — Stripe test-mode subscription wiring SHIPPED)
 
 ### Changes Made

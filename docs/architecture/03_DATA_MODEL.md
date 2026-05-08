@@ -3653,3 +3653,72 @@ Composes the same `/api/bookkeeping/engagement/pending-actions` route per CLAUDE
 - Sidebar count badge is **only on "My Accounts"**. Do NOT add count badges to other sidebar entries — the multi-badge sidebar pattern is a known nag-amplifier (Slack-style attention overload).
 - The strip's per-session gate uses `sessionStorage`, NOT `localStorage` — clearing on tab close is the load-bearing semantic. If a future PR switches to `localStorage`, it re-introduces the once-per-Forever gate that Reza explicitly rejected.
 - `promptOptedOut` remains the *only* permanent off-switch. Do not introduce additional opt-out primitives.
+
+---
+
+# **N. Settings overhaul (2026-05-08)**
+
+Migration `20260513100000_settings_overhaul` — additive only.
+
+## **N.1 `UserPreference` appearance columns**
+
+The Appearance UI exposed these toggles since Phase 19.1 but the API
+silently dropped them on PUT. Defaults match the previous hardcoded GET
+return values so existing rows behave identically.
+
+```
+UserPreference {
+  ...
+  theme              String  @default("system")  // 'light' | 'dark' | 'system'
+  showCents          Boolean @default(true)
+  compactMode        Boolean @default(false)
+  financialYearStart String  @default("07-01")    // ISO MM-DD
+  ...
+}
+```
+
+`next-themes` continues to own runtime theme application via cookie;
+`UserPreference.theme` is the **cross-device** source of truth.
+
+## **N.2 `User` trusted-contact + deletion-lifecycle columns**
+
+Trusted contact (estate / handover): optional second-line contact the
+user nominates so a future Phase 32B advisor can be looped in if the
+user needs help. Surfaced through Settings; never auto-shared.
+
+Deletion lifecycle: 30-day soft-delete grace period implementing
+Privacy Act APP 11.2 + CDR §3.2 right-to-erasure. The route only flips
+the timer; hard-delete + CDR purge runs out-of-band on the scheduled
+date via Cloud Scheduler (queued separately).
+
+```
+User {
+  ...
+  trustedContactName         String?
+  trustedContactEmail        String?
+  trustedContactPhone        String?
+  trustedContactRelationship String?
+  trustedContactUpdatedAt    DateTime?
+
+  deletionRequestedAt   DateTime?  // null = no pending deletion
+  deletionScheduledFor  DateTime?  // null = no pending deletion
+  ...
+}
+```
+
+Partial index `users_deletionScheduledFor_idx` (WHERE
+`deletionScheduledFor IS NOT NULL`) keeps the future Cloud Scheduler
+scan tiny.
+
+## **N.3 `AuditAction` enum extensions**
+
+Five additive values for the new account-lifecycle audit trail:
+
+- `USER_DELETION_REQUESTED` — fired on POST `/api/account/delete-request`.
+- `USER_DELETION_CANCELLED` — fired on DELETE `/api/account/delete-request`.
+- `USER_DELETED` — fired by the future Cloud Scheduler purge job.
+- `DATA_EXPORT_REQUESTED` — fired on GET `/api/account/export`.
+- `TRUSTED_CONTACT_UPDATED` — fired on PUT `/api/account/trusted-contact`.
+
+CDR-safe metadata only via `sanitizeCdrMetadata()` patterns — no
+balances / transactions / payee names in the metadata blobs.

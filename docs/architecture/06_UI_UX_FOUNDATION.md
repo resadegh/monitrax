@@ -779,3 +779,51 @@ Every interactive component in the B2B2C surface meets:
 
 If a new surface introduces a custom interactive control, it MUST
 re-implement these guarantees; reviewers reject PRs that don't.
+
+---
+
+# **16. My Settings IA contract (Settings overhaul 2026-05-08)**
+
+The consumer Settings surface (`/dashboard/settings/*`) is organised as
+**five mental-model groups**, not a flat list. The grouping reduces
+the cognitive cost of finding the right control (Mani et al. 2013 —
+financial stress reduces cognitive function by 13 IQ points; Settings
+is the surface where users go when something already feels wrong).
+
+| Group | Sub-pages | Mental model |
+|---|---|---|
+| **Me** | Profile · Appearance · Trusted contact | "Things about me" |
+| **My money data** | Bank connections · Cloud storage · AI categorisation · Shares | "Where my data lives + who sees it" |
+| **Privacy & safety** | Security · Two-factor auth · Privacy & CDR | "How my account is locked down" |
+| **My notifications** | Notifications | "What I get pinged about" |
+| **My plan** | Billing · API access | "What I'm paying for" |
+
+The TRAIL warm-language rule (CLAUDE.md §14) applies: header reads
+**"My Settings"** (not "Settings"), copy uses warm framing throughout.
+Bank connections live in Settings, not on `/dashboard/accounts` — the
+mental model is "stop sharing my bank with Monitrax", which is a
+Settings operation.
+
+**Right-to-erasure** is a 30-day soft-delete grace period (Privacy Act
+APP 11.2 + CDR §3.2). The Delete-account surface always surfaces the
+pending state with a Cancel button, not just the destructive request
+button. Reviewers reject PRs that re-introduce a one-click hard-delete.
+
+**Right-to-portability** is a JSON export from the Privacy & CDR page,
+calling `GET /api/account/export`. The surface NEVER claims data is
+permanently deleted by clicking Export — it's a read, not a write.
+
+**Account-lifecycle reviewer rules:**
+
+1. The Delete-account surface MUST always render with both states:
+   pending-deletion banner with Cancel, OR neutral state with the
+   destructive request button. A bare "Delete" button is a CLAUDE.md
+   §16.3 violation (security / CDR posture changed without UI making
+   the soft-delete contract visible).
+2. New Settings sub-pages MUST land in one of the five groups above.
+   If the proposed page doesn't fit, the IA conversation comes first
+   — don't add a sixth group without §16.3 doc-sync.
+3. The mock-UI rule: NEVER ship a Settings sub-page that pretends to
+   work but doesn't. Mock UI in production damages trust faster than
+   missing UI. If the feature isn't ready, ship an honest
+   "Coming with Phase X" placeholder, not a fake.

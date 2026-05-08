@@ -85,6 +85,15 @@ export default function SecuritySettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Account-deletion state (right-to-erasure, 30-day grace period)
+  const [deletionLoading, setDeletionLoading] = useState(false);
+  const [deletionState, setDeletionState] = useState<{
+    pendingDeletion: boolean;
+    deletionScheduledFor: string | null;
+    gracePeriodDays: number;
+  } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
   // MFA State
   const [mfaMethods, setMfaMethods] = useState<MFAMethod[]>([]);
   const [mfaEnabled, setMfaEnabled] = useState(false);
@@ -321,17 +330,107 @@ export default function SecuritySettingsPage() {
     }
   };
 
+  // Load deletion state (separate so the destructive Card always
+  // renders the current pending-deletion banner, even if other API
+  // calls fail).
+  const loadDeletionState = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch('/api/account/delete-request', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDeletionState({
+          pendingDeletion: !!data.pendingDeletion,
+          deletionScheduledFor: data.deletionScheduledFor || null,
+          gracePeriodDays: data.gracePeriodDays || 30,
+        });
+      }
+    } catch (err) {
+      console.error('Error loading deletion state:', err);
+    }
+  };
+
+  // Request account deletion (sets the 30-day timer)
+  const handleRequestDeletion = async () => {
+    if (!token) return;
+    setDeletionLoading(true);
+    try {
+      const response = await fetch('/api/account/delete-request', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Failed to request deletion');
+      }
+      const data = await response.json();
+      setDeletionState({
+        pendingDeletion: true,
+        deletionScheduledFor: data.deletionScheduledFor || null,
+        gracePeriodDays: data.gracePeriodDays || 30,
+      });
+      setSuccessMessage(
+        'Your account is scheduled for deletion. You can cancel any time before then.'
+      );
+      setTimeout(() => setSuccessMessage(null), 8000);
+      setDeleteDialogOpen(false);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to request deletion'
+      );
+    } finally {
+      setDeletionLoading(false);
+    }
+  };
+
+  // Cancel pending deletion
+  const handleCancelDeletion = async () => {
+    if (!token) return;
+    setDeletionLoading(true);
+    try {
+      const response = await fetch('/api/account/delete-request', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Failed to cancel deletion');
+      }
+      setDeletionState({
+        pendingDeletion: false,
+        deletionScheduledFor: null,
+        gracePeriodDays: 30,
+      });
+      setSuccessMessage('Account deletion cancelled.');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to cancel deletion'
+      );
+    } finally {
+      setDeletionLoading(false);
+    }
+  };
+
   // Initial data load
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([loadMFAMethods(), loadSessions(), loadOAuthAccounts()]);
+      await Promise.all([
+        loadMFAMethods(),
+        loadSessions(),
+        loadOAuthAccounts(),
+        loadDeletionState(),
+      ]);
       setLoading(false);
     };
 
     if (token) {
       loadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   if (loading) {
@@ -663,38 +762,112 @@ export default function SecuritySettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Danger Zone */}
+        {/* Danger Zone — Account deletion (right to erasure, 30-day grace) */}
         <Card className="border-red-200 dark:border-red-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <AlertTriangle className="h-5 w-5" />
-              Danger Zone
+              Delete account
             </CardTitle>
             <CardDescription>
-              Irreversible and destructive actions.
+              Your right to erasure under the Privacy Act 1988 (APP 11.2) and the
+              Consumer Data Right. We give you 30 days to change your mind —
+              you can cancel any time before the scheduled date.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">Delete Account</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete your account and
-                    remove all your data from our servers.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction className="bg-red-600 hover:bg-red-700">
-                    Delete Account
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+          <CardContent className="space-y-4">
+            {deletionState?.pendingDeletion ? (
+              <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <p className="font-semibold text-amber-800 dark:text-amber-300">
+                      Your account is scheduled for deletion
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                      Scheduled for{' '}
+                      <strong>
+                        {deletionState.deletionScheduledFor
+                          ? new Date(
+                              deletionState.deletionScheduledFor
+                            ).toLocaleDateString('en-AU', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            })
+                          : 'soon'}
+                      </strong>
+                      . On that date your CDR data will be purged and your
+                      profile will be anonymised. You can still cancel.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelDeletion}
+                      disabled={deletionLoading}
+                    >
+                      {deletionLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : null}
+                      Cancel deletion
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-sm text-muted-foreground flex-1">
+                  Before deleting, consider downloading your data from{' '}
+                  <a
+                    href="/dashboard/settings/privacy"
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    Privacy &amp; CDR
+                  </a>
+                  . Once the 30-day grace ends your data is irrecoverable.
+                </p>
+                <AlertDialog
+                  open={deleteDialogOpen}
+                  onOpenChange={setDeleteDialogOpen}
+                >
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">Delete account</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Schedule your account for deletion?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        We'll keep your account active for{' '}
+                        <strong>30 days</strong> in case you change your mind.
+                        After that, your CDR data is permanently purged and
+                        your profile is anonymised. You can cancel any time
+                        before then from this page.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deletionLoading}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-red-600 hover:bg-red-700"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleRequestDeletion();
+                        }}
+                        disabled={deletionLoading}
+                      >
+                        {deletionLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : null}
+                        Schedule deletion
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

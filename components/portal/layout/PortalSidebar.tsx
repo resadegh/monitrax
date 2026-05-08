@@ -11,7 +11,6 @@ import { ReactNode, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { OrganizationSelector } from './OrganizationSelector';
-import { isPortalFeatureEnabled } from '@/lib/portal/featureFlags';
 
 interface NavItem {
   label: string;
@@ -143,22 +142,21 @@ export function PortalSidebar({
           <HelpIcon />
           <span>Help Center</span>
         </Link>
-        {/* Settings is gated on `organizationManagement` because the
-            settings page hasn't been built yet. Defaults to false in
-            featureFlags.ts so the link disappears until the page lands. */}
-        {isPortalFeatureEnabled('organizationManagement') && (
-          <Link
-            href="/portal/settings"
-            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 ${
-              isActive('/portal/settings')
-                ? 'bg-gradient-to-r from-sky-500/10 to-indigo-500/10 text-slate-900 ring-1 ring-sky-500/25'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <SettingsIcon />
-            <span>Settings</span>
-          </Link>
-        )}
+        {/* Settings page (Settings overhaul 2026-05-08): mounts the
+            previously-orphaned `OrganizationSettings` form. Always
+            visible — every Org member can see the page; the PATCH
+            endpoint enforces canUpdateOrganization at the server. */}
+        <Link
+          href="/portal/settings"
+          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 ${
+            isActive('/portal/settings')
+              ? 'bg-gradient-to-r from-sky-500/10 to-indigo-500/10 text-slate-900 ring-1 ring-sky-500/25'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <SettingsIcon />
+          <span>Settings</span>
+        </Link>
         <Link
           href="/"
           className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
