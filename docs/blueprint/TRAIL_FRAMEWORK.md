@@ -302,14 +302,25 @@ On phones (`<md`, <768px) the sidebar collapses into a 6-tab bottom
 navigation that *is* the TRAIL framework — Home + all five TRAIL
 stages, in order:
 
-| Tab | TRAIL stage | Lands on |
-|---|---|---|
-| Home | — (journey overview) | `/dashboard` |
-| Track | T | `/dashboard/balances` |
-| Reduce | R | `/cashflow` |
-| Anchor | A | `/dashboard/safety-net` |
-| Invest | I | `/dashboard/properties` |
-| Guide | L | `/dashboard/cfo` |
+| Tab | TRAIL stage | Hue (colour psychology) | Lands on |
+|---|---|---|---|
+| Home | — (journey overview) | brand primary | `/dashboard` |
+| Track | T | **sky blue** — trust, calm, clarity | `/dashboard/balances` |
+| Reduce | R | **amber** — action, energy | `/cashflow` |
+| Anchor | A | **indigo** — depth, stability | `/dashboard/safety-net` |
+| Invest | I | **emerald** — growth, prosperity | `/dashboard/properties` |
+| Guide | L | **violet** — aspiration, freedom | `/dashboard/cfo` |
+
+Each stage colour is chosen to *reinforce the emotional state of the
+stage* and is applied consistently across every surface (mobile tab
+icon, sub-tab segmented control bar background, desktop sidebar icon
+container, TRAIL stage badge). The user is constantly reminded which
+TRAIL stage they're in by the colour around them, not just by the
+page title.
+
+Full implementation contract: `docs/architecture/06_UI_UX_FOUNDATION.md`
+§12.4. Source of truth: `lib/navigation/trailNav.tsx` →
+`TRAIL_STAGE_TONES`.
 
 The full TRAIL journey is visible end-to-end on every page on phones,
 not just on desktop. Reza directive 2026-05-08: *"have all TRAIL steps

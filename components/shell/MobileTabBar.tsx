@@ -87,9 +87,14 @@ function MobileTabButton({
   const Icon = tab.icon;
   const tone = tab.trailStage ? TRAIL_STAGE_TONES[tab.trailStage] : null;
 
-  // Active text colour: stage-tone for TRAIL tabs, brand-primary for Home.
+  // Stage-colour vocabulary (Phase 14.6 v5 — colour psychology).
+  // Each TRAIL tab carries its dedicated hue at all times: inactive
+  // icons render in a muted variant of the stage colour so the user
+  // always sees the stage identity; active state pops via full
+  // saturation + bolder weight + top accent stripe.
+  // Home (no stage) uses brand-primary.
   const activeTextClass = tone?.activeText ?? 'text-primary';
-  // Top accent stripe colour (the visible "you're here" indicator).
+  const inactiveIconClass = tone?.inactiveIcon ?? 'text-muted-foreground/70';
   const accentClass = tone?.accent ?? 'bg-primary';
 
   return (
@@ -119,16 +124,23 @@ function MobileTabButton({
           'transition-colors duration-200',
           'motion-safe:active:scale-95 motion-safe:transition-transform',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-1',
+          // Active = full-saturation stage tone applied to both icon
+          // (current colour) and label.
+          // Inactive TRAIL tabs = muted stage tone (icon + label).
+          // Inactive Home (no stage) = muted-foreground.
           isActive
             ? activeTextClass
-            : 'text-muted-foreground/80 hover:text-foreground'
+            : tone
+              ? inactiveIconClass
+              : 'text-muted-foreground/80 hover:text-foreground'
         )}
       >
         <Icon
           className={cn(
             'h-[22px] w-[22px] shrink-0',
             'transition-transform duration-200',
-            // Crisper bump on active — reads as "selected" at small sizes.
+            // Crisper stroke + slight bump on active — reads as
+            // "selected" at small sizes.
             isActive
               ? 'motion-safe:scale-110 stroke-[2.25px]'
               : 'stroke-[1.75px]'

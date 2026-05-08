@@ -382,18 +382,31 @@ Persistent left sidebar (256px wide), full content area uses
 all 9 TRAIL items + Settings, with sub-tabs accordion-expanded under
 the active parent — same code path that has shipped since Phase 14.5.
 
-### **12.4 The 5 Mobile Tabs Are TRAIL**
+### **12.4 The 6 Mobile Tabs Are TRAIL — Colour Psychology Applied**
 
-The bottom bar IS the TRAIL framework. Each tab maps to a stage:
+The bottom bar IS the TRAIL framework. Each tab maps to a stage AND
+carries a dedicated hue chosen by colour psychology to *reinforce the
+emotional state of the stage*. The colour identity is consistent
+across every surface (mobile bar icon + sub-tab segmented control bar
+hue + desktop sidebar icon), so the user is constantly reminded of
+which TRAIL stage they're in.
 
-| Tab | Route | TRAIL stage | Tone (`TRAIL_STAGE_TONES`) |
-|---|---|---|---|
-| **Home** | `/dashboard` | — (journey overview) | brand primary fallback |
-| **Track** | `/dashboard/balances` | T | slate |
-| **Reduce** | `/cashflow` | R | amber |
-| **Anchor** | `/dashboard/safety-net` | A | indigo |
-| **Invest** | `/dashboard/properties` | I | emerald |
-| **Guide** | `/dashboard/cfo` | L | violet |
+| Tab | Route | Stage | Hue | Why (colour psychology) |
+|---|---|---|---|---|
+| **Home** | `/dashboard` | — | brand primary | Journey overview (no stage) |
+| **Track** | `/dashboard/balances` | T | **Sky blue** | Trust, calm, clarity, no-judgment awareness — the user is *seeing* their full picture. Universal "I trust this" colour in fintech (Stripe, Mercury). Sky specifically: open, visible, nothing hidden. |
+| **Reduce** | `/cashflow` | R | **Amber** | Action, energy, decisive movement. The user is *fixing leaks* — amber says "do this now" without the alarm of red. |
+| **Anchor** | `/dashboard/safety-net` | A | **Indigo** | Depth, stability, anchored security. The user is *building safety* — deep blue evokes anchored waters, foundational depth. |
+| **Invest** | `/dashboard/properties` | I | **Emerald** | Growth, prosperity, abundance. The user is *building wealth* — universal "money + nature + growing" colour. |
+| **Guide** | `/dashboard/cfo` | L | **Violet** | Aspiration, freedom, transcendence. The user is *living on their terms* — violet evokes royalty, accomplishment, freedom. |
+
+**Where the stage colour appears (consistent across all surfaces):**
+
+1. **Active tab icon + label** — full-saturation `text-{tone}-600` on light theme, `text-{tone}-400` on dark theme.
+2. **Inactive tab icon + label** — muted `text-{tone}-500/55` so the stage identity is visible at all times, not just on active.
+3. **Top accent stripe** on the active tab — solid `bg-{tone}-500`.
+4. **Sub-tab segmented control bar background** — subtle stage hue (`bg-{tone}-50/70`) so the chrome reads as belonging to the stage. Reza directive: *"even a hue background colour should be the same as each trail stage."*
+5. **Desktop sidebar icon container** — when item is active, container fills with stage colour (`bg-{tone}-500 text-white`); when inactive, container shows muted stage hue. The TRAIL stage badge ([T]/[R]/[A]/[I]/[L]) follows the same pattern.
 
 **The bar size is 6 (Home + 5 TRAIL stages).** Apple HIG suggests ≤5
 tabs on native iOS tab bars; Monitrax is a web app where the TRAIL

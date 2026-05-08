@@ -252,3 +252,59 @@ Docs updated in this PR:
 - Branch: `claude/phase-14-6-anchor-zKSTw` (branched from `claude/phase-14-6-segmented-zKSTw` so #725's work comes along).
 - Status: pending push.
 - Supersedes: #724 (closed) + #725 (close on merge of this).
+
+---
+
+## Session: claude/phase-14-6-stage-colors-zKSTw (Phase 14.6 v5 — colour psychology applied to TRAIL stages)
+
+### Changes Made
+- **Type:** Design-system refinement on top of #723 v1 / #724 v2 / #725 v3 / #735 v4.
+- **Scope:** Apply colour psychology to each TRAIL stage so the stage colour carries through icons (active and inactive), the sub-tab segmented control bar background, and the desktop sidebar icon containers. Track changes from slate (emotionally neutral) to sky blue (trust + clarity + awareness — psychology-aligned with the stage's purpose).
+- **Why:** Reza directive 2026-05-08 — *"trail steps need to have their own dedicated colour, that also need to reflect on the icons as well. The colour psychology should be used to select the colours and they should be used to remind the user of the stage. Even a hue background colour should be the same as each trail stage."*
+
+### Stage Colour Palette (Colour Psychology Rationale)
+- **T — Track: Sky blue** — trust, calm, clarity, no-judgment awareness. Universal "I trust this" colour in fintech (Stripe, Mercury, Wealthfront). Sky specifically: open, visible, nothing hidden. (Was slate — emotionally neutral, didn't carry the awareness semantic.)
+- **R — Reduce: Amber** — action, energy, decisive movement. (Unchanged.)
+- **A — Anchor: Indigo** — depth, stability, anchored security. (Unchanged.)
+- **I — Invest: Emerald** — growth, prosperity, abundance. (Unchanged.)
+- **L — Live: Violet** — aspiration, freedom, transcendence. (Unchanged.)
+
+### Files Modified
+- `lib/navigation/trailNav.tsx` — `TRAIL_STAGE_TONES` shape extended from `{ activeText, accent }` to `{ activeText, inactiveIcon, accent, bgTint }`. Track switched from slate to sky. Each tone now exposes a muted-icon variant for inactive state and a subtle `bg-{tone}-50/70` tint for stage-specific chrome. Comprehensive JSDoc with the colour psychology table.
+- `components/shell/MobileTabBar.tsx` — both icon AND label of TRAIL tabs now use the stage tone at ALL times. Inactive uses `inactiveIcon` (muted hue at 55% opacity); active uses `activeText` (full saturation). Home (no stage) keeps brand-primary fallback.
+- `components/shell/SectionTabsRow.tsx` — segmented-control bar background switched from neutral `bg-background/85` to stage-tone `bgTint` (sky-50 on Track, amber-50 on Reduce, etc.). The chrome itself reads as belonging to the stage.
+- `components/DashboardLayout.tsx` — desktop sidebar icon container fills with the stage tone when active (`bg-{tone}-500 text-white`); when inactive it shows the muted stage hue (`bg-muted/40 text-{tone}-500/55`). The TRAIL stage badge ([T]/[R]/[A]/[I]/[L]) follows the same pattern. Stage-less items (Home, Household, Vault, Reports) keep brand-primary treatment.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §12.4 — table extended with Hue + colour psychology Why columns; "where the stage colour appears" section added covering all 5 surface points (active icon, inactive icon, accent stripe, sub-tab bar background, sidebar icon container).
+- `docs/blueprint/TRAIL_FRAMEWORK.md` §5 — mobile table extended with Hue column; new paragraph documenting the colour-psychology principle and its consistent application across surfaces.
+
+### Architecture Decisions
+- **Stage colour shows on inactive icons too**, not just active. Reza directive: "reflect on the icons as well." Inactive carries the stage hue at 55% opacity so the user always sees the stage identity; active pops via full saturation + bolder weight + top accent stripe.
+- **Sub-tab bar background takes the active section's stage tint**, not a neutral chrome. Reza directive: "even a hue background colour should be the same as each trail stage." Subtle (50-70% opacity over backdrop-blur) so it reads as belonging to the stage without overpowering — Apple-restraint.
+- **Bottom mobile bar background stays neutral.** It contains all 6 stages' icons; tinting the whole bar would force one stage colour to dominate. Each tab carries its own colour via icon + label; the bar chrome stays neutral.
+- **Desktop sidebar icon containers fill with stage colour** when active. Stronger treatment than mobile because the sidebar item is larger and the user's eye expects a more pronounced active state at desktop scale.
+
+### Build Status
+- [x] `npx tsc --noEmit -p .` clean
+- [x] Pending: `npm run build` (next step)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (TRAIL stage colour palette + cross-surface application)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Track stage colour: slate → sky for psychology alignment; cross-surface colour identity rule)
+
+Docs updated in this PR:
+- `docs/architecture/06_UI_UX_FOUNDATION.md:§12.4` — stage colour palette + psychology table + cross-surface application list.
+- `docs/blueprint/TRAIL_FRAMEWORK.md:§5` — mobile table extended with Hue column + cross-surface principle.
+- `docs/changelog/CHANGELOG_2026_05_08.md` — this entry.
+
+### PR
+- Branch: `claude/phase-14-6-stage-colors-zKSTw` (branched from `claude/phase-14-6-anchor-zKSTw` so #735's 6-tab work comes along).
+- Status: pending push.
+- Supersedes: #724, #725, #735 (close on merge of this).
