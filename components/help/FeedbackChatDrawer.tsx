@@ -113,6 +113,12 @@ function relTime(iso: string): string {
 interface FeedbackChatDrawerProps {
   open: boolean;
   onClose: () => void;
+  /**
+   * Phase 33g.5: thread IDs the user hasn't seen since their last
+   * drawer-open. Used to render a small red dot on each row in the
+   * Your-threads list. Source: `useUnreadFeedback()`.
+   */
+  unreadThreadIds?: Set<string>;
 }
 
 const TAG_OPTIONS: Array<{ value: SurfaceTag; label: string }> = [
@@ -130,7 +136,7 @@ function mapAuthorRole(role: ThreadSummary['messages'][number]['authorRole']): C
   return 'user'; // ADVISER + CONSUMER both render as the user's own message
 }
 
-export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
+export function FeedbackChatDrawer({ open, onClose, unreadThreadIds }: FeedbackChatDrawerProps) {
   const pathname = usePathname();
   const { token } = useAuth();
   const [view, setView] = useState<DrawerView>('list');
@@ -572,23 +578,35 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
                     const last = t.messages[t.messages.length - 1];
                     const lastIsAi = last?.authorRole === 'CLAUDE_AI';
                     const lastIsAdmin = last?.authorRole === 'MONITRAX_ADMIN';
+                    const isUnread = unreadThreadIds?.has(t.id) ?? false;
                     return (
                       <li key={t.id}>
                         <button
                           type="button"
                           onClick={() => openThread(t)}
-                          className="
-                            w-full text-left rounded-2xl bg-white/85 ring-1 ring-slate-900/[0.06] px-4 py-3
+                          className={`
+                            w-full text-left rounded-2xl px-4 py-3
+                            ring-1
                             transition-[transform,box-shadow] duration-200 ease-out
                             hover:-translate-y-0.5 hover:shadow-[0_4px_14px_-6px_rgba(11,18,32,0.18)]
                             motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-none
                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
-                          "
+                            ${isUnread ? 'bg-rose-50/40 ring-rose-200/60' : 'bg-white/85 ring-slate-900/[0.06]'}
+                          `}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-[13px] font-semibold text-slate-900 leading-snug line-clamp-2">
-                              {t.subject}
-                            </p>
+                            <div className="flex items-start gap-2 min-w-0">
+                              {/* Phase 33g.5: unread dot — appears when admin/AI replied since last drawer-open */}
+                              {isUnread && (
+                                <span
+                                  aria-hidden="true"
+                                  className="mt-1.5 shrink-0 h-2 w-2 rounded-full bg-rose-500"
+                                />
+                              )}
+                              <p className="text-[13px] font-semibold text-slate-900 leading-snug line-clamp-2">
+                                {t.subject}
+                              </p>
+                            </div>
                             <span className={`shrink-0 inline-flex items-center rounded-full ring-1 ring-inset px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] ${STATUS_TONE[t.status]}`}>
                               {STATUS_LABEL[t.status]}
                             </span>
