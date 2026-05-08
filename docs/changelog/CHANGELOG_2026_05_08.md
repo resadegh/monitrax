@@ -68,3 +68,64 @@ N/A — additive migration only (CREATE TYPE / CREATE TABLE / ALTER TYPE ADD VAL
 ### PR
 - Branch: `claude/phase-32c-pr6a-stripe-subscriptions`
 - Status: pending push + open
+
+---
+
+## Session: claude/improve-mobile-navigation-zKSTw (Phase 14.6 — TRAIL-as-IA mobile + iPad navigation)
+
+### Changes Made
+- **Type:** Feature + design-system standard (responsive IA refactor; new canonical mobile/iPad standard).
+- **Scope:** Replaces hamburger-drawer primary navigation on phones with a 5-tab bottom bar mapped to TRAIL stages, adds a horizontal sub-tab pill row, dedicates iPad portrait to the persistent desktop sidebar (breakpoint `lg:` → `md:`), and codifies the three-tier viewport standard in canonical docs so future sessions reference one source.
+- **Why:** User pain point — *"if I want to navigate to Activity, I click My Accounts, land on Accounts page, then need to navigate again and click Activity to land there"* (4 taps from a hidden drawer). Behavioural-psychology + UX-designer lens: financial stress already taxes 13 IQ points (Mani et al. 2013); hidden hamburger nav makes the TRAIL journey invisible at the exact moment users need orientation. Apple/Robinhood/Cash App/Up Bank all use persistent bottom tab bars; hamburger is desktop-secondary nav, not mobile-primary nav.
+
+### Files Created
+- `lib/navigation/trailNav.tsx` — SSOT for sidebar nav, mobile tab bar items, more-sheet items, TRAIL stage tone tokens, and active-matching helpers (`findActiveNavItem`, `findActiveMobileTab`, `isNavItemActive`).
+- `components/shell/MobileTabBar.tsx` — 5-tab bottom navigation (Home · Track · Reduce · Invest · Guide). Apple-glass surface (warm-ivory, backdrop-blur, 1px ring, soft inner highlight), TRAIL-stage tone on active tab, ≥56px tap targets, iOS safe-area-inset, `motion-safe:` honoured.
+- `components/shell/SectionTabsRow.tsx` — horizontal scrollable URL-routed pill row for sub-tabs on phones. Renders only when active section has children. Replaces the sidebar-accordion pattern on mobile so sub-tabs are one tap (not two).
+- `components/shell/MoreSheet.tsx` — bottom sheet for overflow nav (Safety Net, Household, Vault, Reports, Settings, Sign out). Reuses §15.3 chrome (Esc to close, body-scroll lock, `motion-safe:` slide-in).
+
+### Files Modified
+- `components/DashboardLayout.tsx` — imports nav from new SSOT, deletes inline `reachNavItems` + `settingsNavItem` + `NavChild`/`NavItem` interfaces; sidebar visibility flipped from `lg:` (1024px) to `md:` (768px); hamburger drawer + `sidebarOpen` state deleted; mobile header avatar button now opens `<MoreSheet />`; `<MobileTabBar />` mounted as fixed bottom on phones; `<SectionTabsRow />` mounted at top of `<main>`; main content gets `pb-24 md:pb-8` to clear the tab bar.
+- `components/shell/index.ts` — re-exports `MobileTabBar`, `SectionTabsRow`, `MoreSheet`.
+- `components/bookkeeping/CashQuickAddButton.tsx` — FAB raised to `bottom-24` on phones (`md:bottom-8` desktop unchanged) so it clears the tab bar; modal sheet bottom inset matched.
+- `components/bookkeeping/BulkActionToolbar.tsx` — sticky bar raised to `bottom-[64px]` on phones so users can navigate away from bulk-edit mode without dismissing the toolbar first.
+- `docs/architecture/02_DESIGN_PRINCIPLES.md` — §4.4 Responsiveness rewritten as the three-tier standard (phone <md / tablet md-lg / desktop ≥lg) pointing to `06_UI_UX_FOUNDATION.md` §12 as canonical.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — §12 fully rewritten as the canonical mobile + iPad navigation standard (anatomy diagram, 5-tab TRAIL mapping, hard rules, breakpoint matrix, acceptance criteria for "mobile-ready"). Reviewers must reject any new mobile surface that re-rolls the bottom-tab-bar/sub-tab-pill/bottom-sheet pattern instead of importing canonical primitives.
+- `docs/blueprint/TRAIL_FRAMEWORK.md` — added "TRAIL on Mobile — The Bottom Bar IS the Journey" subsection under §5 ("the framework is the navigation").
+- `docs/IMPLEMENTATION_PLAN.md` — new 🟡 Active Workstream "Phase 14.6"; new ↩️ Reversed Decision row preventing future re-introduction of hamburger primary nav on phones.
+
+### Architecture Decisions
+- **Anchor folds into MoreSheet on phones, not into a 6th tab.** Apple HIG caps bottom tabs at 5; TRAIL framework's own §5 already de-prioritises Anchor as a primary destination ("tracked through Financial Health score + Guide recommendations, not a dedicated sidebar section"). The fold makes the framework's hierarchy visible in the IA. iPad + desktop continue to see Safety Net as a top-level rail item — the framework adapts to the surface, not the other way around.
+- **`md:` (768px) is the desktop-sidebar gate, not `lg:` (1024px).** iPad portrait (810px) is large enough for a persistent 256px rail with 554px content area. Tablet is now a first-class tier. If dense tables surface cramping issues, mitigation is a collapsed-rail variant (`md`–`lg`), not reverting to phone drawer.
+- **Sub-tabs URL-routed, not state-only.** `<SectionTabsRow />` renders `<Link>` per pill so sub-tabs are deep-linkable. Many existing section pages still use Radix `<Tabs>` (state-based) — touch-as-you-go migration to URL routes is queued under the same workstream.
+- **Same theme on every tier.** Phone, iPad, desktop all consume the same brand tokens (warm-ivory, brand primary, emerald accents), the same glass tile vocabulary (`MetricTile`, `GlassHero`), and the same motion constants (`appleEase` from `components/shell/motion.ts`). Only the nav chrome rearranges. No mobile-only palette, no tablet-only typography stack.
+- **No new APIs, no schema change, no CDR surface change.** Pure IA + presentation. Security & Compliance lens (architect-mode skill #7) cleared the change.
+- **Hamburger pattern captured in ↩️ Reversed Decisions** so future sessions structurally cannot re-introduce it without explicit user sign-off.
+
+### Build Status
+- [x] `npx tsc --noEmit -p .` clean (only the pre-existing tsconfig `baseUrl` deprecation notice).
+- [ ] `npm run build` — pending (next step).
+- [ ] `npm run lint` — pending (next step).
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new shell primitives in `components/shell/`)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (responsiveness standard updated; reviewer enforcement added)
+- [x] strategic decision (mobile IA: TRAIL-as-tab-bar; hamburger retired on phones)
+
+Docs updated in this PR:
+- `docs/architecture/06_UI_UX_FOUNDATION.md:§12` — new canonical mobile + iPad navigation standard (full rewrite).
+- `docs/architecture/02_DESIGN_PRINCIPLES.md:§4.4` — three-tier responsiveness contract.
+- `docs/blueprint/TRAIL_FRAMEWORK.md:§5` — added "TRAIL on Mobile" subsection.
+- `docs/IMPLEMENTATION_PLAN.md` — new 🟡 Phase 14.6 entry; new ↩️ Reversed Decision row.
+- `docs/changelog/CHANGELOG_2026_05_08.md` — this entry.
+
+### PR
+- Branch: `claude/improve-mobile-navigation-zKSTw`
+- Status: pending push.

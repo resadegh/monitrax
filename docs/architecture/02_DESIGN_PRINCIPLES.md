@@ -172,13 +172,38 @@ Examples:
 - hover states  
 - severity badges pulsing on critical insights  
 
-### **4.4 Responsiveness**
-Rules:
+### **4.4 Responsiveness — Three-Tier Standard**
 
-- 3 breakpoints minimum  
-- Every table must degrade gracefully  
-- Sidebar collapses to top-bar  
-- Dialogs become full-screen on mobile  
+> **Canonical implementation:** `docs/architecture/06_UI_UX_FOUNDATION.md` §12.
+> **Single source of truth for nav structure:** `lib/navigation/trailNav.tsx`.
+> **Reusable mobile primitives:** `components/shell/MobileTabBar.tsx`,
+> `components/shell/SectionTabsRow.tsx`, `components/shell/MoreSheet.tsx`.
+
+Monitrax targets **three** viewport tiers, not two. The same brand tokens
+(warm-ivory, brand primary, emerald accents, glass tile, `appleEase`
+motion) and the same TRAIL nav SSOT power all three — only the
+*presentation* of the nav changes per tier. The theme never forks.
+
+| Tier | Range | Primary nav | Sub-tab nav | Example device |
+|---|---|---|---|---|
+| **Phone** | `<md` (<768px) | Bottom tab bar (`<MobileTabBar />`) — 5 tabs mapped to TRAIL stages (Home · Track · Reduce · Invest · Guide) | Horizontal pill row (`<SectionTabsRow />`) at top of section pages | iPhone, Pixel |
+| **Tablet** | `md`–`lg` (768–1023px) | Persistent left sidebar — same component as desktop | Sidebar-accordion (parent expands when active) | iPad portrait |
+| **Desktop** | `≥lg` (≥1024px) | Persistent left sidebar | Sidebar-accordion | Laptop, monitor |
+
+#### Hard rules
+
+1. **One nav SSOT.** `lib/navigation/trailNav.tsx` is the *only* place top-level nav items, sub-tabs, match-routes, TRAIL stages, and stage tone tokens are defined. The mobile bottom bar derives 5 tabs from this file; the sidebar reads the full list. Never duplicate the structure inside a component.
+2. **Theme parity.** A phone user, an iPad user, and a desktop user are looking at the SAME brand tokens, the SAME glass tile vocabulary, and the SAME `appleEase` motion. Only the nav chrome rearranges. No mobile-only colour palette, no tablet-only typography stack.
+3. **One-tap reach for sub-tabs on phones.** A phone user must NEVER need two taps to reach a sub-tab. Tap a bottom tab → land on the section's default sub-tab → see the sub-tab pill row → swap sub-tabs in one tap. The legacy hamburger-then-tap-then-tap-again pattern is permanently retired (CLAUDE.md `↩️ Reversed Decisions`).
+4. **iPad gets the desktop sidebar, not the phone tab bar.** The breakpoint that gates the sidebar is `md:` (768px), not `lg:` (1024px). iPad portrait (810px) is large enough for the persistent rail; the phone tab bar is only for true phones.
+5. **Tap targets ≥44pt (Apple HIG).** Bottom tab bar buttons are ≥56px tall. Sub-tab pills are ≥40px tall. Any new mobile interactive surface must meet the same floor.
+6. **Dialogs become full-screen sheets on phones** — bottom-sheet pattern from `06_UI_UX_FOUNDATION.md` §15.3. Same body-scroll lock, same Esc-to-close, same `prefers-reduced-motion` respect.
+7. **Tables degrade gracefully** — virtualised + filterable on desktop, card-stacked on mobile (existing rule, retained).
+8. **Reviewers must reject** any new mobile surface that re-rolls the bottom-tab-bar or sub-tab-pill pattern instead of importing `<MobileTabBar />` / `<SectionTabsRow />` from `components/shell/`.
+
+#### Why this is non-negotiable
+
+The phone is where most users will check Monitrax (financial-stress UX research, Mani et al. 2013 — the moment of cognitive load is on the bus, not at the desk). Visible nav, one-tap reach, and persistent TRAIL framing are the difference between a user who comes back tomorrow and a user who doesn't. CLAUDE.md §0 (advisory mindset) elevates the behavioural-psychologist lens here: the IA *is* the intervention.
 
 ---
 

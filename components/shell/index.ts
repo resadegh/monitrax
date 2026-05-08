@@ -31,3 +31,10 @@ export {
   AnalyticsGlyph,
   HealthGlyph,
 } from './practiceGlyphs';
+
+// Phase 14.6 (2026-05-08) — Mobile-first navigation primitives.
+// See docs/architecture/06_UI_UX_FOUNDATION.md §12 for the canonical
+// mobile + iPad navigation standard.
+export { MobileTabBar } from './MobileTabBar';
+export { SectionTabsRow } from './SectionTabsRow';
+export { MoreSheet } from './MoreSheet';
