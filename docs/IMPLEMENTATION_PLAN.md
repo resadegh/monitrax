@@ -56,7 +56,30 @@
 
 > Sorted by priority. Top of list = work in flight right now.
 
-### 0a. Settings overhaul — trust-breaking fixes + missing controls
+### 0. Production Readiness — gate to first paying user
+
+- **Status:** 🟡 In flight — Reza directive 2026-05-09: *"Leave gate 1 and continue with the rest, let's get it a prod ready system."* Compliance bedrock chunk in this PR; subsequent chunks queued below.
+- **Started:** 2026-05-09
+- **Owner:** Reza (GCP-console + external dependencies) + Claude (engineering)
+- **Why this matters:** Platform is **demo-ready** (lighthouse pitch runs end-to-end) but **not production-ready** (cannot accept paying users with real CDR data flow). Gate-1 external lead times (pen test ~6 wk + cyber insurance ~3 wk + Stripe live-mode review ~2 wk) are Reza-managed; the engineering work below runs in parallel and converges with the external dependencies.
+- **External dependencies (Reza-side, NOT in this workstream's scope):**
+  - Pen test commission (~6 wk lead time, ~AU$15-25k) — Basiq accreditation hard requirement
+  - Cyber insurance binding (~3 wk lead time) — Basiq accreditation hard requirement
+  - Stripe live-mode review (~2 wk) — required for real revenue
+- **Engineering chunks (queued, will ship one PR at a time):**
+  - [x] **Compliance bedrock (this PR)** — Conversation 7-yr archive sweeper (`lib/services/conversationRetentionService.ts` + `POST /api/conversations/retention-sweep` with `CRON_SECRET` auth, mirrors `/api/cdr/lifecycle` pattern). New `CONVERSATION_MESSAGES_PURGED` `AuditAction` enum + matching additive migration. Operational runbook `05_RETENTION_SCHEDULERS.md` documenting the GCP Cloud Scheduler config for both retention crons (CDR consent-expiry at 02:00 UTC + conversation sweep at 03:00 UTC). Reza Tier-1 GCP-console TODOs (CMEK / Cloud Armor / SCC) documented in §6 of the same runbook so they don't fall through the cracks.
+  - [ ] **Real alert engine v1** — replace `LIGHTHOUSE_ALERTS` fixture with real triggers from snapshot deltas (TRAIL_ADVANCED, HEALTH_DROP, CASHFLOW_NEGATIVE, EMERGENCY_FUND_LOW, LVR_REFINANCE_WINDOW). Daily Cloud Scheduler job per-org. ~5 days. **Closes Phase 32B PR3 item #9.**
+  - [ ] **Email-in hardening** — DKIM/SPF strict mode, SendGrid signed events, sender-domain allowlist, rate limiting per conversation. ~3 days. Without this, anyone who knows the `replyToSlug` URL pattern can inject into adviser-client conversations.
+  - [ ] **Stripe live-mode flip** — when Reza's risk review approves: env-var flip + price ID swap + webhook signing-secret swap + dunning + invoice PDFs (use Stripe-hosted Customer Portal — don't roll our own). Bundled with `OrganizationPlan` enum rename `STARTER/PROFESSIONAL/BUSINESS → STUDIO/PRACTICE/ENTERPRISE` (Tech-Debt #14). ~3 days code work after Stripe approves.
+  - [ ] **WIF Phase 11** — drop legacy `buildStandardPrisma()` branch + remove `DATABASE_URL` from runtime env scope. Trigger ≥ 2026-05-31 (24h soak window). 1 day code change.
+  - [ ] **WIF Phase 12** — drop `0.0.0.0/0` authorized network → Vercel Static IP. Trigger-based. 15-min config per `CDR_WIF_AUTHENTICATION_EVIDENCE.md §8`.
+  - [ ] **Profession-aware scope presets** — `LENDING_PRESET` (LOANS+PROPERTIES+TRANSACTIONS) / `TAX_PRESET` (TAX+TRANSACTIONS+DOCUMENTS) / `ADVISORY_PRESET` (FULL minus DOCUMENTS) in `ConsentRequest.tsx`. ~1 day. **Closes Phase 32B PR3 item #10.**
+  - [ ] **Phase 36 Phase 2b/2d** — port Connect Bank sync UI to `/dashboard/balances` + redirect `/dashboard/accounts` + `/dashboard/loans` → `/dashboard/balances`. ~1 day. Closes Tech-Debt #9 + 2 dead routes.
+  - [ ] **Backup/restore drill + IRP tabletop + observability SLOs** — operational readiness. ~3-4 days total. Verify automated backups can actually restore; tabletop the incident response plan; wire Cloud Monitoring alerts on error rate / latency / availability per route group.
+- **Risk:** Each chunk is bounded (1-5 days). Heavy-touch areas (Stripe, alert engine) ship to staging-equivalent (Vercel preview against `monitrax-db-dev`) before any prod deploy. CDR sweepers are guard-railed by where-clauses that can only delete already-expired data — §12.11 destructive-write checklist N/A by structural argument.
+- **Wall-clock estimate:** ~3 weeks of engineering, mostly in parallel with the 6-week external lead time.
+
+
 
 - **Status:** 🟡 SHIPPING in this PR (`claude/review-monitrax-settings-LL4bQ`)
 - **Started:** 2026-05-08
