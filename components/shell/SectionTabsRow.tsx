@@ -45,14 +45,29 @@ export function SectionTabsRow({ className }: SectionTabsRowProps) {
       className={cn(
         // Phones only — desktop sidebar already shows accordion sub-tabs.
         'md:hidden',
+        // Sticky below the mobile header (h-14 = 56px). Stays visible
+        // as the user scrolls the page, so primary section navigation
+        // is always one tap away. z-20 sits below the header (z-40)
+        // and the bottom tab bar (z-30) but above page content.
+        'sticky top-14 z-20',
+        // Apple-glass band — frosted background so content scrolls
+        // beneath without bleeding through. Soft hairline divider at
+        // the bottom for separation, keyed to the warm-ivory theme.
+        'bg-background/85 backdrop-blur-xl',
+        'border-b border-border/40',
+        // Negative margin pulls the band edge-to-edge under the page
+        // padding (`p-3 sm:p-4` on <main>); the inner scroll container
+        // re-applies horizontal padding so pills don't touch the edge.
         '-mx-3 sm:-mx-4 mb-3',
+        // Slim vertical padding so the band reads as compact, not bulky.
+        'py-2',
         className
       )}
     >
       <div
         className={cn(
           // Horizontal scroll on overflow with no scrollbar chrome.
-          'flex gap-2 overflow-x-auto px-3 sm:px-4 pb-1',
+          'flex gap-2 overflow-x-auto px-3 sm:px-4',
           'scrollbar-none',
           '[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'
         )}

@@ -291,16 +291,39 @@ export const mobileTabBarItems: MobileTabBarItem[] = [
 ];
 
 /**
- * Resolve which mobile tab is active for a given pathname. Falls back to
- * the Home tab when nothing else matches (e.g. /dashboard/safety-net,
- * /dashboard/documents, /dashboard/reports — these surfaces are reachable
- * via the More sheet rather than a primary tab).
+ * Resolve which mobile tab is active for a given pathname. Returns
+ * `undefined` when the user is on a route reachable only via the More
+ * sheet (e.g. `/dashboard/safety-net`, `/dashboard/documents`,
+ * `/dashboard/reports`, `/dashboard/settings`) — in that case no tab
+ * should be highlighted.
+ *
+ * Matching rule:
+ *   - `/dashboard` matches only the exact pathname `/dashboard` (it
+ *     does NOT prefix-match every dashboard sub-route — that bug made
+ *     Home steal the highlight on Track/Reduce/Invest/Guide pages).
+ *   - All other matchRoutes use exact + prefix match (`pathname === r`
+ *     OR `pathname.startsWith(r + '/')`).
+ *   - Among multiple matches, the longest matched route wins (Track's
+ *     `/dashboard/balances` beats Home's `/dashboard` if both match).
  */
-export function findActiveMobileTab(pathname: string): MobileTabBarItem {
-  const exact = mobileTabBarItems.find((tab) =>
-    tab.matchRoutes.some((r) => pathname === r || pathname.startsWith(r + '/'))
-  );
-  return exact ?? mobileTabBarItems[0];
+export function findActiveMobileTab(
+  pathname: string
+): MobileTabBarItem | undefined {
+  let bestMatch: { tab: MobileTabBarItem; matchLength: number } | undefined;
+
+  for (const tab of mobileTabBarItems) {
+    for (const r of tab.matchRoutes) {
+      const matches =
+        r === '/dashboard'
+          ? pathname === '/dashboard'
+          : pathname === r || pathname.startsWith(r + '/');
+      if (matches && (!bestMatch || r.length > bestMatch.matchLength)) {
+        bestMatch = { tab, matchLength: r.length };
+      }
+    }
+  }
+
+  return bestMatch?.tab;
 }
 
 /**
@@ -317,36 +340,41 @@ export const mobileMoreItems: NavItem[] = [
   settingsNavItem,
 ];
 
-/** TRAIL stage tone tokens — used by both the sidebar badge and the
- *  mobile bottom bar active-pill colour. Mirrors the TrailStageChip
- *  vocabulary documented in `06_UI_UX_FOUNDATION.md` §15. */
+/** TRAIL stage tone tokens — used by the mobile bottom bar active-tab
+ *  styling (text colour + top accent stripe) and the sidebar TRAIL
+ *  badge. Mirrors the TrailStageChip vocabulary documented in
+ *  `06_UI_UX_FOUNDATION.md` §15.
+ *
+ *  Phase 14.6 v2 (2026-05-08): the original tone shape exposed a
+ *  `bg-{tone}-50` pill background that read as "barely tinted" against
+ *  the warm-ivory app background — the user couldn't tell which tab
+ *  was active. Replaced with a stronger, vivid `text-{tone}-600/-400`
+ *  + `accent-{tone}-500/-400` stripe. The active state now reads
+ *  *unambiguously* as "this is where you are" without resorting to a
+ *  loud pill fill.
+ */
 export const TRAIL_STAGE_TONES: Record<
   'T' | 'R' | 'A' | 'I' | 'L',
-  { activeBg: string; activeText: string; activeRing: string }
+  { activeText: string; accent: string }
 > = {
   T: {
-    activeBg: 'bg-slate-100 dark:bg-slate-800/60',
     activeText: 'text-slate-900 dark:text-slate-100',
-    activeRing: 'ring-slate-300/50 dark:ring-slate-600/50',
+    accent: 'bg-slate-700 dark:bg-slate-300',
   },
   R: {
-    activeBg: 'bg-amber-50 dark:bg-amber-900/30',
-    activeText: 'text-amber-900 dark:text-amber-100',
-    activeRing: 'ring-amber-300/60 dark:ring-amber-700/40',
+    activeText: 'text-amber-600 dark:text-amber-400',
+    accent: 'bg-amber-500 dark:bg-amber-400',
   },
   A: {
-    activeBg: 'bg-indigo-50 dark:bg-indigo-900/30',
-    activeText: 'text-indigo-900 dark:text-indigo-100',
-    activeRing: 'ring-indigo-300/60 dark:ring-indigo-700/40',
+    activeText: 'text-indigo-600 dark:text-indigo-400',
+    accent: 'bg-indigo-500 dark:bg-indigo-400',
   },
   I: {
-    activeBg: 'bg-emerald-50 dark:bg-emerald-900/30',
-    activeText: 'text-emerald-900 dark:text-emerald-100',
-    activeRing: 'ring-emerald-300/60 dark:ring-emerald-700/40',
+    activeText: 'text-emerald-600 dark:text-emerald-400',
+    accent: 'bg-emerald-500 dark:bg-emerald-400',
   },
   L: {
-    activeBg: 'bg-violet-50 dark:bg-violet-900/30',
-    activeText: 'text-violet-900 dark:text-violet-100',
-    activeRing: 'ring-violet-300/60 dark:ring-violet-700/40',
+    activeText: 'text-violet-600 dark:text-violet-400',
+    accent: 'bg-violet-500 dark:bg-violet-400',
   },
 };

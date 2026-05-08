@@ -129,3 +129,35 @@ Docs updated in this PR:
 ### PR
 - Branch: `claude/improve-mobile-navigation-zKSTw`
 - Status: pending push.
+
+---
+
+## Session: claude/improve-mobile-navigation-zKSTw (Phase 14.6 v2 — post-merge polish)
+
+### Changes Made
+- **Type:** Fix + Enhancement (UX touchups on top of Phase 14.6 v1).
+- **Scope:** Two fixes from user testing of PR #723 + one design tightening.
+
+### Fixes
+1. **Active-tab not highlighted on TRAIL pages.** `findActiveMobileTab` was iterating tabs in order and using a plain prefix match — Home's matchRoute `/dashboard` was prefix-matching every dashboard sub-route (e.g. `/dashboard/balances`), so the Home tab was winning the highlight on Track/Reduce/Invest/Guide pages. Fixed by special-casing `/dashboard` as exact-only AND changing the algorithm to longest-prefix-match (so a more-specific matchRoute always beats a shorter one). Off-tab routes (Safety Net, Vault, Reports, Settings) now return `undefined` → no tab is highlighted, which is the correct semantic ("you're in More territory, no primary tab applies").
+2. **Sub-tab pill row scrolled with page content.** Made `<SectionTabsRow />` sticky at `top-14` (just below the fixed mobile header) with a frosted Apple-glass background (`bg-background/85 backdrop-blur-xl`) and a hairline divider. Sub-tabs now stay accessible while the user scrolls long pages — a one-tap switch is always available.
+
+### Design Tightening
+3. **Active tab now reads unambiguously as active.** The original `bg-{tone}-50` pill background was too subtle against the warm-ivory app theme — slate-100/amber-50/etc. blended into the background. Replaced with: (a) vivid stage-tone text colour (`text-{tone}-600 dark:text-{tone}-400`); (b) bolder font on active label; (c) crisper icon stroke on active (`stroke-[2.25px]` vs `stroke-[1.75px]`); (d) a 3px-tall, 28px-wide stage-tone accent stripe at the top edge of the active tab — Apple-Wallet/Apple-Music style indicator. Inactive tabs stay `text-muted-foreground/80`. Theme tokens unchanged; the change is purely how active state composes the existing tones.
+
+### Files Modified
+- `lib/navigation/trailNav.tsx` — `findActiveMobileTab` rewritten with longest-prefix-match + `/dashboard` exact-only special case; returns `MobileTabBarItem | undefined`. `TRAIL_STAGE_TONES` shape changed: dropped `activeBg` + `activeRing`; added `accent` for the stripe colour. `activeText` strengthened to vivid `text-{tone}-600 / dark:text-{tone}-400`.
+- `components/shell/MobileTabBar.tsx` — handles `undefined` activeTab; renders the stage-tone top accent stripe on the active tab; uses bolder icon stroke + bolder label on active; drops the bg pill.
+- `components/shell/SectionTabsRow.tsx` — sticky `top-14` on mobile with frosted backdrop-blur background + hairline bottom divider.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean
+- [x] `npm run build` clean
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (active-state treatment refined)
+- [ ] application config / GCP / identity / deployment / security / strategic decision
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_08.md` — this entry. (No design-doc rewrite needed — the active-state treatment substitutes one tone-token shape for another within the same canonical primitives; the §12 standard, breakpoint contract, and SSOT files remain accurate.)
