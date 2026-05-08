@@ -5457,6 +5457,11 @@ model FeedbackThread {
   // When true, this thread (and its messages) are included in the Markdown
   // export Reza pipes into a Claude Code session for theme synthesis.
   taggedForAi    Boolean            @default(false)
+  // Phase 33g.2 polish: per-thread Reza-controlled disable of the
+  // Anthropic AI triage. When true, `respondToFeedbackThread()` bails
+  // even if `ANTHROPIC_API_KEY` is set globally — used for sensitive
+  // threads (CDR/AFSL nuance) where Reza wants direct human handling.
+  aiDisabled     Boolean            @default(false)
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   // Set by /admin/feedback whenever an admin views or replies. Used by the

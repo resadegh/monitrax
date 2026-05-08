@@ -78,6 +78,12 @@ export interface UpdateAdminFieldsInput {
   status?: FeedbackStatus;
   internalNotes?: string | null;
   taggedForAi?: boolean;
+  /**
+   * Phase 33g.2 polish: per-thread Anthropic AI disable. When set to
+   * true, `respondToFeedbackThread()` bails on this thread even when
+   * the global `ANTHROPIC_API_KEY` is configured.
+   */
+  aiDisabled?: boolean;
 }
 
 /**
@@ -247,6 +253,7 @@ export async function updateAdminFields(
       status: true,
       internalNotes: true,
       taggedForAi: true,
+      aiDisabled: true,
     },
   });
   if (!existing) throw new Error('thread not found');
@@ -260,6 +267,9 @@ export async function updateAdminFields(
   }
   if (input.taggedForAi !== undefined) {
     data.taggedForAi = input.taggedForAi;
+  }
+  if (input.aiDisabled !== undefined) {
+    data.aiDisabled = input.aiDisabled;
   }
 
   const updated = await prisma.feedbackThread.update({
@@ -509,6 +519,7 @@ export async function respondToFeedbackThread(threadId: string): Promise<void> {
       severity: true,
       surfaceRoute: true,
       status: true,
+      aiDisabled: true,
       messages: {
         orderBy: { createdAt: 'asc' },
         select: { authorRole: true, body: true },
@@ -516,6 +527,10 @@ export async function respondToFeedbackThread(threadId: string): Promise<void> {
     },
   });
   if (!thread) return;
+
+  // Phase 33g.2 polish guard: per-thread Reza-controlled AI disable.
+  // When true, no AI reply fires on this thread regardless of global key.
+  if (thread.aiDisabled) return;
 
   // Guard: don't AI-reply if Reza has taken over.
   if (thread.status === 'PLANNED' || thread.status === 'SHIPPED' ||

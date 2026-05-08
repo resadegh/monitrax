@@ -65,10 +65,11 @@ export async function PATCH(request: NextRequest, ctx: RouteContext) {
     );
   }
 
-  const { status, internalNotes, taggedForAi } = (body ?? {}) as {
+  const { status, internalNotes, taggedForAi, aiDisabled } = (body ?? {}) as {
     status?: string;
     internalNotes?: string | null;
     taggedForAi?: boolean;
+    aiDisabled?: boolean;
   };
 
   if (status !== undefined && !VALID_STATUSES.includes(status as FeedbackStatus)) {
@@ -85,6 +86,7 @@ export async function PATCH(request: NextRequest, ctx: RouteContext) {
       ...(status !== undefined ? { status: status as FeedbackStatus } : {}),
       ...(internalNotes !== undefined ? { internalNotes } : {}),
       ...(taggedForAi !== undefined ? { taggedForAi } : {}),
+      ...(aiDisabled !== undefined ? { aiDisabled } : {}),
     });
     return NextResponse.json({ success: true, data: { thread: updated } });
   } catch (e) {
