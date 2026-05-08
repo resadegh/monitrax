@@ -87,6 +87,17 @@ const STATUS_TONE: Record<Status, string> = {
   DUPLICATE: 'bg-slate-100 text-slate-600 ring-slate-300/70',
 };
 
+/** Phase 33g.4: closed states that disable the composer + show a banner. */
+const CLOSED_STATUSES: Status[] = ['SHIPPED', 'WONT_FIX', 'DUPLICATE'];
+const isThreadClosed = (s: Status | null): boolean =>
+  s !== null && CLOSED_STATUSES.includes(s);
+
+const CLOSED_MESSAGE: Record<'SHIPPED' | 'WONT_FIX' | 'DUPLICATE', string> = {
+  SHIPPED: 'This is shipped — your feedback led to a change that\'s now live. Thanks for raising it. Start a new thread anytime.',
+  WONT_FIX: 'Reza closed this without a fix. Reasoning is in the conversation above. Start a new thread if your situation changes.',
+  DUPLICATE: 'Closed as a duplicate. Reza\'s reply above points to the canonical thread. Start a new thread for unrelated feedback.',
+};
+
 function relTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   const mins = Math.round(ms / 60000);
@@ -127,6 +138,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
   const [threadsLoaded, setThreadsLoaded] = useState(false);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [threadStatus, setThreadStatus] = useState<Status | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [subject, setSubject] = useState('');
@@ -141,6 +153,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
     onClose();
     setView('list');
     setThreadId(null);
+    setThreadStatus(null);
     setMessages([]);
     setDraft('');
     setSubject('');
@@ -218,9 +231,56 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
     }
   }, [messages.length]);
 
+  // Phase 33g.4: light polling while drawer is in `thread` view so the
+  // consumer sees Reza's reply or a status change without closing +
+  // reopening the drawer. Polls every 8s; clears on view change or close.
+  // Skips while a submit is in-flight (the existing pollForAiReply path
+  // is already polling; we avoid stepping on it).
+  useEffect(() => {
+    if (!open || view !== 'thread' || !threadId || !token) return;
+    const tick = async () => {
+      if (submitting) return;
+      try {
+        const res = await fetch(`/api/portal/feedback/${threadId}`, { headers, cache: 'no-store' });
+        if (!res.ok) return;
+        const j = (await res.json()) as {
+          data: {
+            thread: {
+              status: Status;
+              messages: Array<{ id: string; authorRole: string; body: string; createdAt: string }>;
+            };
+          };
+        };
+        const incoming = j.data.thread.messages;
+        // Update status if it changed (admin marked SHIPPED / WONT_FIX / etc.)
+        setThreadStatus((prev) => (prev !== j.data.thread.status ? j.data.thread.status : prev));
+        // Merge any messages whose IDs we don't already have. Skip pure-local
+        // optimistic IDs (`local-*`) — those are placeholders waiting for
+        // the server-issued ID; they get replaced on the user's next refresh.
+        setMessages((prev) => {
+          const known = new Set(prev.filter((m) => !m.id.startsWith('local-')).map((m) => m.id));
+          const additions = incoming
+            .filter((m) => !known.has(m.id) && !prev.some((p) => p.id === m.id))
+            .map((m) => ({
+              id: m.id,
+              role: mapAuthorRole(m.authorRole as ThreadSummary['messages'][number]['authorRole']),
+              body: m.body,
+              createdAt: m.createdAt,
+            }));
+          return additions.length ? [...prev, ...additions] : prev;
+        });
+      } catch {
+        // ignore polling errors
+      }
+    };
+    const interval = setInterval(tick, 8000);
+    return () => clearInterval(interval);
+  }, [open, view, threadId, submitting, headers, token]);
+
   // Open a specific thread from the list.
   const openThread = (t: ThreadSummary) => {
     setThreadId(t.id);
+    setThreadStatus(t.status);
     setSubject(t.subject);
     setSurfaceTag(t.surfaceTag);
     setMessages(t.messages.map((m) => ({
@@ -237,6 +297,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
   // Back to the list view from inside a thread or from new-thread.
   const backToList = () => {
     setThreadId(null);
+    setThreadStatus(null);
     setMessages([]);
     setDraft('');
     setSubject('');
@@ -250,6 +311,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
 
   const startNewThread = () => {
     setThreadId(null);
+    setThreadStatus(null);
     setMessages([]);
     setDraft('');
     setSubject('');
@@ -288,6 +350,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
         const j = (await res.json()) as { data: { threadId: string } };
         const newThreadId = j.data.threadId;
         setThreadId(newThreadId);
+        setThreadStatus('OPEN');
         setMessages([
           {
             id: `local-${Date.now()}`,
@@ -455,6 +518,13 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
                     ? subject || 'Your feedback'
                     : "What's on your mind?"}
               </h2>
+              {/* Phase 33g.4: status chip in thread-view header so the
+                  consumer sees Reza's triage state at a glance. */}
+              {view === 'thread' && threadStatus && (
+                <span className={`mt-1 inline-flex items-center rounded-full ring-1 ring-inset px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] ${STATUS_TONE[threadStatus]}`}>
+                  {STATUS_LABEL[threadStatus]}
+                </span>
+              )}
               {view === 'new' && (
                 <p className="mt-0.5 text-[11px] text-slate-500">
                   {aiEnabled === null
@@ -660,6 +730,13 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
             </div>
           )}
 
+          {/* Phase 33g.4: closed-state banner. Composer below is also disabled. */}
+          {view === 'thread' && threadStatus && isThreadClosed(threadStatus) && (
+            <div className="rounded-2xl bg-slate-100 ring-1 ring-slate-300/70 px-4 py-3 text-sm text-slate-700">
+              {CLOSED_MESSAGE[threadStatus as 'SHIPPED' | 'WONT_FIX' | 'DUPLICATE']}
+            </div>
+          )}
+
           {view === 'thread' && done && !aiEnabled && (
             <div className="rounded-2xl bg-emerald-50/60 ring-1 ring-emerald-200/60 px-4 py-3 text-sm text-emerald-800">
               Thanks — your feedback is in. Reza aims to reply within 48 hours.
@@ -674,7 +751,10 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
           )}
         </div>
 
-        {/* Composer — hidden on the list view (no draft to submit there) */}
+        {/* Composer — hidden on the list view (no draft to submit there).
+             Phase 33g.4: also disabled when the thread is closed
+             (SHIPPED/WONT_FIX/DUPLICATE) — banner above tells the user
+             why; the consumer's path forward is "+ New thread". */}
         {view !== 'list' && (
         <form onSubmit={handleSubmit} className="border-t border-slate-200/70 bg-white/60 px-4 sm:px-5 py-3">
           <div className="flex items-end gap-2">
@@ -682,11 +762,19 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={2}
-              placeholder={threadId ? 'Add another message…' : 'Type your feedback here…'}
+              disabled={view === 'thread' && isThreadClosed(threadStatus)}
+              placeholder={
+                view === 'thread' && isThreadClosed(threadStatus)
+                  ? 'This thread is closed. Start a new one to continue.'
+                  : threadId
+                    ? 'Add another message…'
+                    : 'Type your feedback here…'
+              }
               className="
                 flex-1 resize-none rounded-xl bg-white ring-1 ring-slate-900/[0.08]
                 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+                disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed
               "
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -696,7 +784,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
             />
             <button
               type="submit"
-              disabled={submitting || !draft.trim()}
+              disabled={submitting || !draft.trim() || (view === 'thread' && isThreadClosed(threadStatus))}
               aria-label="Send"
               className="
                 inline-flex items-center justify-center
