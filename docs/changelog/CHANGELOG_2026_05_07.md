@@ -2696,3 +2696,39 @@ This is the only place transfer transactions get paired. Reviewers MUST reject a
 ### PR
 - Branch: `claude/transfer-auto-pair`
 - Status: pending push
+
+---
+
+## Session: hotfix-activity-page-crash
+
+### Changes Made
+
+- **Type**: Hotfix (Reza-reported prod crash 2026-05-08 after PR #720 deployed)
+- **Scope**: ErrorState defensive render + uncategorized API filter OR-clause conflict
+- **Description**: Activity page crashed with React error #31 ("object as React child"). Two real bugs uncovered.
+
+### Bug 1 — ErrorState rendered an error object directly
+
+`fetchTransactions` did `setError(json.error || 'Failed to load')`. The canonical API error shape is `{success:false, error:{code, message, timestamp}}` — `json.error` is an object, not a string. State stored object → ErrorState rendered `{error}` → React error #31 → error boundary kicked in → "Something went wrong" page.
+
+**Fix:** in `fetchTransactions`, normalise `json.error` to a string by extracting `.message` or `.code`. ALSO defensive coercion in `ErrorState` itself (defence in depth — even if a future caller passes an object, the component handles it gracefully now).
+
+### Bug 2 — `where.OR` overwrite in `/api/unified-transactions` GET
+
+PR #719 added `where.OR = [{categoryLevel1: null}, {categoryLevel1: ''}]` for the `uncategorized=true` filter. But the `search=foo` filter ALSO assigns `where.OR` later in the same handler — the second assignment silently overwrites the first. So when both query params were active simultaneously (e.g. searching while showing uncategorised first), the `categoryLevel1` filter disappeared.
+
+This may not have been the root crash trigger but is a real correctness bug — fixed in the same PR.
+
+**Fix:** wrap the `uncategorized` OR clause inside `where.AND` array so multiple OR predicates can coexist.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — `fetchTransactions` extracts string from error, `ErrorState` defensively coerces unknown → string.
+- `app/api/unified-transactions/route.ts` — `uncategorized` OR clause moved into `where.AND`.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Build Status
+- [x] tsc clean
+
+### PR
+- Branch: `claude/hotfix-activity-page-crash`
+- Status: pending push (URGENT — prod crash)

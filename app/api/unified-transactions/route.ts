@@ -94,7 +94,15 @@ export const GET = withPermission('transaction.read', async (request, auth) => {
         where.loanId = null;
         where.isTransfer = { not: true }; // false or null
         where.isInvestmentContribution = { not: true }; // false or null
-        where.OR = [{ categoryLevel1: null }, { categoryLevel1: '' }];
+        // 2026-05-08 hotfix — earlier this assigned to `where.OR`
+        // directly, which collided with the `search` OR clause
+        // below when both query params were present (the second
+        // assignment silently won, dropping the categoryLevel1
+        // filter). Wrap in AND so multiple OR clauses can coexist.
+        where.AND = [
+          ...((where.AND as Array<Record<string, unknown>> | undefined) ?? []),
+          { OR: [{ categoryLevel1: null }, { categoryLevel1: '' }] },
+        ];
       }
 
       if (startDate || endDate) {
