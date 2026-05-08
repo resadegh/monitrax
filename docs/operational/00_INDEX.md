@@ -24,6 +24,7 @@
 | CDR compliance questions | [CDR Compliance](security/03_CDR_COMPLIANCE.md) |
 | Security incident | [Incident Response Runbook](runbooks/01_INCIDENT_RESPONSE.md) |
 | Google Maps not loading / API not activated | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) |
+| Retention crons (CDR + conversation 7yr) — setup + troubleshooting | [Retention Schedulers](runbooks/05_RETENTION_SCHEDULERS.md) |
 | Adviser feedback inbox triage / weekly synthesis | [Feedback Triage and Synthesis](feedback/01_TRIAGE_AND_SYNTHESIS.md) |
 | **User reports a wrong number → audit one user** | [Per-User Audit Runbook](calc-audit/per-user-audit-runbook.md) (Audit-this-user button on `/admin/calc-audit` + UC-DEED-* triage) |
 | **Trust-deed extraction failed / extracted poorly** | [Admin Troubleshooting Runbook → Trust-Deed Issues](admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md#issue-trust-deed-extraction-failed-or-extracted-poorly) |
@@ -88,6 +89,7 @@ Step-by-step procedures for incident response and common support scenarios.
 | 02 | [Common Operations](runbooks/02_COMMON_OPERATIONS.md) | Day-to-day operational tasks |
 | 03 | [Health Checks](runbooks/03_HEALTH_CHECKS.md) | System health verification procedures |
 | 04 | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) | Enabling Maps APIs, verifying key scoping (frontend referrer + backend API restrictions), env vars, troubleshooting, cost monitoring, quarterly review checklist |
+| 05 | [Retention Schedulers](runbooks/05_RETENTION_SCHEDULERS.md) | GCP Cloud Scheduler config for the CDR consent-expiry cron (`monitrax-cdr-lifecycle`, daily 02:00 UTC) and the conversation 7-yr archive sweep (`monitrax-conversation-retention-sweep`, daily 03:00 UTC). Includes Reza's Tier-1 GCP-console TODOs (CMEK, Cloud Armor, SCC) for Basiq accreditation. |
 
 ### Feedback (Phase 33g)
 

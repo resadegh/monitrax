@@ -285,6 +285,11 @@ enum AuditAction {
   CONVERSATION_EMAIL_OUTBOUND
   CONVERSATION_EMAIL_INBOUND
   CONVERSATION_SOFT_DELETED_FROM_USER
+  // Hard-delete sweep — fired ONCE per batch by the retention scheduler
+  // (Cloud Scheduler → POST /api/conversations/retention-sweep).
+  // Aggregate metadata only (count + retention window); never per-message
+  // detail because the message content is being purged at the same instant.
+  CONVERSATION_MESSAGES_PURGED
 
   // Phase 32C PR6 — Stripe billing lifecycle. Webhook handlers fire these
   // when subscription state changes. Test-mode events at v1; live mode
