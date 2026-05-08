@@ -37,7 +37,7 @@ interface ThreadSummary {
   organizationId: string | null;
   messages: Array<{
     id: string;
-    authorRole: 'ADVISER' | 'MONITRAX_ADMIN';
+    authorRole: 'ADVISER' | 'CONSUMER' | 'MONITRAX_ADMIN' | 'CLAUDE_AI';
     body: string;
     createdAt: string;
   }>;

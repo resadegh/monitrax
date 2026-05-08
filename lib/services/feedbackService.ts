@@ -100,7 +100,10 @@ export interface AdviserVisibleThread {
 
 export interface AdviserVisibleMessage {
   id: string;
-  authorRole: 'ADVISER' | 'MONITRAX_ADMIN';
+  // Phase 33g.2: widened to include all four FeedbackAuthorRole values.
+  // CONSUMER appears on D2C consumer threads; CLAUDE_AI appears on AI
+  // triage replies. UI distinguishes them with distinct styling.
+  authorRole: 'ADVISER' | 'CONSUMER' | 'MONITRAX_ADMIN' | 'CLAUDE_AI';
   body: string;
   createdAt: Date;
 }
