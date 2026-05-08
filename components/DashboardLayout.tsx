@@ -41,6 +41,7 @@ import {
   trailNavItems,
   settingsNavItem,
   isNavItemActive,
+  TRAIL_STAGE_TONES,
 } from '@/lib/navigation/trailNav';
 import { MobileTabBar } from '@/components/shell/MobileTabBar';
 import { SectionTabsRow } from '@/components/shell/SectionTabsRow';
@@ -448,6 +449,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {trailNavItems.map((item) => {
             const isActive = isNavItemActive(item, pathname);
             const Icon = item.icon;
+            // Phase 14.6 v5 — stage-colour identity carries into the
+            // sidebar so phone + desktop share the same colour vocabulary.
+            // TRAIL items show their stage hue at all times (icon + badge);
+            // active state intensifies via bgTint on the row + full
+            // saturation. Stage-less items (Home, Household, Vault,
+            // Reports) keep the neutral brand-primary treatment.
+            const tone = item.trailStage
+              ? TRAIL_STAGE_TONES[item.trailStage]
+              : null;
 
             return (
               <div key={item.href}>
@@ -455,12 +465,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link
                   href={item.href}
                   data-tour={item.tourId}
+                  data-trail-stage={item.trailStage ?? undefined}
                   className={`
                     group flex items-center gap-3 rounded-xl px-3 py-2.5
                     text-[13px] font-medium tracking-wide
                     transition-all duration-200 ease-out
                     ${isActive
-                      ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                      ? tone
+                        ? `${tone.bgTint} ${tone.activeText}`
+                        : 'bg-primary/10 text-primary dark:bg-primary/20'
                       : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                     }
                   `}
@@ -469,8 +482,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     flex h-8 w-8 items-center justify-center rounded-lg
                     transition-colors duration-200
                     ${isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
+                      ? tone
+                        ? `${tone.accent} text-white shadow-sm`
+                        : 'bg-primary text-primary-foreground shadow-sm'
+                      : tone
+                        ? `bg-muted/40 ${tone.inactiveIcon} group-hover:bg-muted`
+                        : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
                     }
                   `}>
                     <Icon className="h-4 w-4" />
@@ -488,14 +505,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       {pendingReconciliationLabel}
                     </span>
                   )}
-                  {item.trailStage && (
+                  {item.trailStage && tone && (
                     <span className={`
                       flex h-7 w-7 items-center justify-center
                       rounded-lg text-xs font-bold
                       transition-colors duration-200
                       ${isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted text-muted-foreground/70'
+                        ? `${tone.accent} text-white shadow-sm`
+                        : `${tone.bgTint} ${tone.inactiveIcon}`
                       }
                     `}>
                       {item.trailStage}

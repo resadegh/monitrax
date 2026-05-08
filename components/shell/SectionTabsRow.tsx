@@ -67,21 +67,30 @@ export function SectionTabsRow({ className }: SectionTabsRowProps) {
     ? TRAIL_STAGE_TONES[activeSection.trailStage]
     : null;
   const activeTextClass = tone?.activeText ?? 'text-primary';
+  // Phase 14.6 v5 — stage-hue tint on the bar background. Reza
+  // directive: "even a hue background colour should be the same as
+  // each trail stage." Subtle (50-70% opacity over backdrop-blur) so
+  // the chrome reads as belonging to the stage without overpowering.
+  const bgTintClass = tone?.bgTint ?? 'bg-background/85';
 
   return (
     <>
       {/* Fixed segmented-control bar — phones only. Anchored at
           top-14 (right below the brand header) so it visually reads as
           a continuation of the header zone. The Apple-glass background
-          mirrors the Phase 39 surface vocabulary (warm-ivory, 85% bg
-          + backdrop-blur, hairline divider). */}
+          carries the active section's stage hue so the user has a
+          constant colour reminder of which TRAIL stage they're in. */}
       <div
         role="navigation"
         aria-label={`${activeSection.name} sections`}
+        data-trail-stage={activeSection.trailStage ?? undefined}
         className={cn(
           'md:hidden fixed top-14 inset-x-0 z-30 h-14',
           'flex items-center px-3 sm:px-4',
-          'bg-background/85 backdrop-blur-xl',
+          // Stage-hue tint layered over backdrop-blur — gives the bar
+          // a clear stage-colour identity while remaining glassy.
+          bgTintClass,
+          'backdrop-blur-xl',
           'border-b border-border/40',
           'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200',
           className

@@ -355,41 +355,81 @@ export const mobileMoreItems: NavItem[] = [
   settingsNavItem,
 ];
 
-/** TRAIL stage tone tokens — used by the mobile bottom bar active-tab
- *  styling (text colour + top accent stripe) and the sidebar TRAIL
- *  badge. Mirrors the TrailStageChip vocabulary documented in
- *  `06_UI_UX_FOUNDATION.md` §15.
+/**
+ * TRAIL stage tone tokens — colour psychology applied to navigation.
  *
- *  Phase 14.6 v2 (2026-05-08): the original tone shape exposed a
- *  `bg-{tone}-50` pill background that read as "barely tinted" against
- *  the warm-ivory app background — the user couldn't tell which tab
- *  was active. Replaced with a stronger, vivid `text-{tone}-600/-400`
- *  + `accent-{tone}-500/-400` stripe. The active state now reads
- *  *unambiguously* as "this is where you are" without resorting to a
- *  loud pill fill.
+ * The five TRAIL stages each carry a colour that REINFORCES the
+ * emotional state of that stage. Reza directive 2026-05-08:
+ * *"trail steps need to have their own dedicated colour, that also
+ * need to reflect on the icons as well. The colour psychology should
+ * be used to select the colours and they should be used to remind
+ * the user of the stage."*
+ *
+ * Colour psychology rationale:
+ *
+ * | Stage | Hue | Why |
+ * |---|---|---|
+ * | **T — Track** | Sky blue | Trust, calm, clarity, no-judgment awareness. The user is *seeing* their full picture for the first time — blue is the universal "I trust this" colour in fintech (Stripe, Mercury, Wealthfront). Sky specifically: open, visible, nothing hidden. |
+ * | **R — Reduce** | Amber | Action, energy, decisive movement. The user is *fixing leaks* — amber says "do this now" without the alarm of red. |
+ * | **A — Anchor** | Indigo | Depth, stability, anchored security. The user is *building safety* — deep blue evokes anchored waters, foundational depth. |
+ * | **I — Invest** | Emerald | Growth, prosperity, abundance. The user is *building wealth* — green is the universal "money + nature + growing" colour. |
+ * | **L — Live** | Violet | Aspiration, freedom, transcendence. The user is *living on their terms* — violet evokes royalty, accomplishment, freedom. |
+ *
+ * Each tone exposes:
+ *   - `activeText` — full-saturation text/icon colour for active state.
+ *     `text-{tone}-600` on light, `text-{tone}-400` on dark. WCAG AA on
+ *     warm-ivory and slate-950 backgrounds.
+ *   - `inactiveIcon` — muted variant of the same hue for inactive icons.
+ *     Preserves stage colour identity even when the user isn't on that
+ *     stage's page (this is what Reza meant by "reflect on the icons").
+ *     Lower opacity so active state still pops.
+ *   - `accent` — solid stage colour for the top accent stripe on the
+ *     active mobile tab and section dividers.
+ *   - `bgTint` — very subtle stage hue for the chrome of stage-specific
+ *     surfaces (e.g. the sub-tab segmented control bar tints toward
+ *     the section's stage colour). Apple-restraint: tint, not fill.
+ *
+ * Phase 14.6 v5 (2026-05-08): Track changed slate → sky for the
+ * trust/clarity/awareness semantic match. Slate was emotionally
+ * neutral — sky is emotionally aligned with the stage's purpose.
  */
 export const TRAIL_STAGE_TONES: Record<
   'T' | 'R' | 'A' | 'I' | 'L',
-  { activeText: string; accent: string }
+  {
+    activeText: string;
+    inactiveIcon: string;
+    accent: string;
+    bgTint: string;
+  }
 > = {
   T: {
-    activeText: 'text-slate-900 dark:text-slate-100',
-    accent: 'bg-slate-700 dark:bg-slate-300',
+    activeText: 'text-sky-600 dark:text-sky-400',
+    inactiveIcon: 'text-sky-500/55 dark:text-sky-400/55',
+    accent: 'bg-sky-500 dark:bg-sky-400',
+    bgTint: 'bg-sky-50/70 dark:bg-sky-950/30',
   },
   R: {
     activeText: 'text-amber-600 dark:text-amber-400',
+    inactiveIcon: 'text-amber-500/55 dark:text-amber-400/55',
     accent: 'bg-amber-500 dark:bg-amber-400',
+    bgTint: 'bg-amber-50/70 dark:bg-amber-950/30',
   },
   A: {
     activeText: 'text-indigo-600 dark:text-indigo-400',
+    inactiveIcon: 'text-indigo-500/55 dark:text-indigo-400/55',
     accent: 'bg-indigo-500 dark:bg-indigo-400',
+    bgTint: 'bg-indigo-50/70 dark:bg-indigo-950/30',
   },
   I: {
     activeText: 'text-emerald-600 dark:text-emerald-400',
+    inactiveIcon: 'text-emerald-500/55 dark:text-emerald-400/55',
     accent: 'bg-emerald-500 dark:bg-emerald-400',
+    bgTint: 'bg-emerald-50/70 dark:bg-emerald-950/30',
   },
   L: {
     activeText: 'text-violet-600 dark:text-violet-400',
+    inactiveIcon: 'text-violet-500/55 dark:text-violet-400/55',
     accent: 'bg-violet-500 dark:bg-violet-400',
+    bgTint: 'bg-violet-50/70 dark:bg-violet-950/30',
   },
 };
