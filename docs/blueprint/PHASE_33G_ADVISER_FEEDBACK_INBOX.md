@@ -1,6 +1,7 @@
 # Phase 33g — Adviser Feedback Inbox (async)
 
-> **Status:** ✅ **SHIPPED 2026-05-05.** Live end-to-end. See "Decisions made" section below for how the §9 open questions were resolved.
+> **Status:** ✅ **SHIPPED 2026-05-05** — async/threaded inbox.
+> ✅ **Phase 33g.2 SHIPPED 2026-05-10** — live AI chat (Anthropic Haiku 4.5) on the consumer floating-button drawer, gated on `ANTHROPIC_API_KEY` env. UI is identical with or without AI; only the success message + AI typing indicator differ. Reza directive: "ship the surface even before caps are set; UI is the same either way." See `docs/IMPLEMENTATION_PLAN.md` Up Next #39 for the full ship summary.
 >
 > **Companion docs:**
 > - **Adviser-facing help:** [`docs/help/org-professional/sending-feedback.md`](../help/org-professional/sending-feedback.md) — what advisers see + how to send good feedback + status meanings + privacy posture.

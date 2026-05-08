@@ -275,6 +275,13 @@ enum AuditAction {
   FEEDBACK_THREAD_STATUS_CHANGED
   FEEDBACK_INTERNAL_NOTE_UPDATED
 
+  // Phase 33g.2 — Live AI feedback chat. Fired every time the Anthropic-
+  // backed AI agent posts a message into a feedback thread. Distinct from
+  // FEEDBACK_THREAD_REPLIED so cost analytics + per-AI-thread spend
+  // tracking don't double-count human replies. Metadata carries
+  // `{ model, tokensIn, tokensOut }` for cost attribution.
+  FEEDBACK_AI_REPLIED
+
   // Phase 32C PR4d — In-app conversations + email-through-app between
   // a consumer and a professional. Auto-created when a ProfessionalRequest
   // is ACCEPTED; persisted with 7-yr retention for the professional's
@@ -5427,6 +5434,12 @@ enum FeedbackStatus {
 enum FeedbackAuthorRole {
   ADVISER
   MONITRAX_ADMIN
+  // Phase 33g.2 — Anthropic-backed AI agent that triages feedback threads
+  // before they escalate to MONITRAX_ADMIN. AI replies appear with distinct
+  // styling in the inbox. AI is gated by ANTHROPIC_API_KEY env presence —
+  // when absent, threads stay form-only and skip AI replies entirely.
+  CONSUMER
+  CLAUDE_AI
 }
 
 model FeedbackThread {

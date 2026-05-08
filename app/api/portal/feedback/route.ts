@@ -12,6 +12,7 @@ import { withPermission } from '@/lib/auth/guards';
 import {
   createThread,
   listAdviserThreads,
+  respondToFeedbackThread,
 } from '@/lib/services/feedbackService';
 import type {
   FeedbackSurfaceTag,
@@ -48,7 +49,7 @@ export const POST = withPermission('feedback.write', async (request, auth) => {
     );
   }
 
-  const { subject, surfaceTag, severity, surfaceRoute, organizationId, body: messageBody } =
+  const { subject, surfaceTag, severity, surfaceRoute, organizationId, body: messageBody, authorRole } =
     (body ?? {}) as {
       subject?: string;
       surfaceTag?: string;
@@ -56,7 +57,14 @@ export const POST = withPermission('feedback.write', async (request, auth) => {
       surfaceRoute?: string | null;
       organizationId?: string | null;
       body?: string;
+      authorRole?: 'ADVISER' | 'CONSUMER';
     };
+
+  // Phase 33g.2 — `authorRole` defaults to ADVISER for backward compat with
+  // existing portal callers. The consumer floating-button drawer passes
+  // CONSUMER explicitly. Any other value is rejected.
+  const effectiveAuthorRole: 'ADVISER' | 'CONSUMER' =
+    authorRole === 'CONSUMER' ? 'CONSUMER' : 'ADVISER';
 
   if (typeof subject !== 'string' || subject.trim().length === 0) {
     return NextResponse.json(
@@ -97,7 +105,12 @@ export const POST = withPermission('feedback.write', async (request, auth) => {
     severity: (severity as FeedbackSeverity | undefined) ?? 'MEDIUM',
     surfaceRoute: surfaceRoute ?? null,
     body: messageBody,
+    authorRole: effectiveAuthorRole,
   });
+
+  // Phase 33g.2 — trigger AI triage on first message (fire-and-forget).
+  // No-op when ANTHROPIC_API_KEY absent.
+  void respondToFeedbackThread(thread.id);
 
   return NextResponse.json({ success: true, data: { threadId: thread.id } }, { status: 201 });
 });
