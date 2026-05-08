@@ -39,19 +39,13 @@ export {
 // LEGACY EXPORTS (For backward compatibility)
 // =============================================================================
 
-// Context Builders (unchanged)
-export {
-  buildPropertyContext,
-  buildLoanContext,
-  buildInvestmentContext,
-  buildEntityPrompt,
-  logAIRequest,
-  createRequestLog,
-  type EntityContext,
-  type AIRequestLog,
-} from './contextBuilder';
+// Phase 11 contextBuilder + openai re-exports REMOVED 2026-05-09 alongside
+// the OpenAI dep cleanup — those exports had zero callers across the
+// codebase. See `docs/operational/cost-control/00_VENDOR_INVENTORY.md`
+// "Removed 2026-05-09" + Tech Debt #17.
 
-// Strategy Enhancement (unchanged - uses internal AI calls)
+// Strategy Enhancement (Gemini-backed, alive — used by /api/ai/scenario,
+// /api/ai/goal, /api/ai/advisor, /api/ai/ask)
 export {
   enhanceRecommendation,
   enhanceRecommendationsBatch,
