@@ -2,6 +2,8 @@
 
 Complete reference of all technologies, services, and dependencies used by Monitrax.
 
+> **Cost-side companion:** for the **paid-services inventory** (every external vendor, pricing model, estimated monthly spend, actuals), see [`docs/operational/cost-control/00_VENDOR_INVENTORY.md`](../cost-control/00_VENDOR_INVENTORY.md). For per-vendor budget-alert + spend-cap setup, see [`docs/operational/cost-control/01_BUDGET_ALERTS_SETUP.md`](../cost-control/01_BUDGET_ALERTS_SETUP.md). Reviewers reject PRs that add a new external vendor without a row in those docs (CLAUDE.md §16.2 covered surface).
+
 ---
 
 ## Core Platform

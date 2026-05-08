@@ -665,102 +665,13 @@ export function categoriseByMerchantMapping(
 }
 
 // =============================================================================
-// AI CATEGORISATION (STUB - OpenAI Integration Point)
+// AI CATEGORISATION (REMOVED 2026-05-09)
 // =============================================================================
-
-/**
- * AI-based categorisation using OpenAI
- * Currently stubbed - returns null
- *
- * To enable:
- * 1. Set OPENAI_API_KEY environment variable
- * 2. Implement the actual API call
- */
-export interface AICategorizationConfig {
-  enabled: boolean;
-  apiKey?: string;
-  model?: string;
-  maxTokens?: number;
-}
-
-const DEFAULT_AI_CONFIG: AICategorizationConfig = {
-  enabled: false,
-  model: 'gpt-4o-mini',
-  maxTokens: 100,
-};
-
-/**
- * Categorise using AI/LLM
- * @returns null when AI is disabled or fails
- */
-export async function categoriseByAI(
-  tx: UnifiedTransaction,
-  config: AICategorizationConfig = DEFAULT_AI_CONFIG
-): Promise<CategorisationResult | null> {
-  // Check if AI is enabled
-  if (!config.enabled) {
-    return null;
-  }
-
-  const apiKey = config.apiKey || process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    console.warn('AI categorisation enabled but OPENAI_API_KEY not set');
-    return null;
-  }
-
-  // Build prompt
-  const prompt = buildCategorizationPrompt(tx);
-
-  try {
-    // TODO: Implement actual OpenAI API call when ready
-    // const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${apiKey}`,
-    //   },
-    //   body: JSON.stringify({
-    //     model: config.model,
-    //     messages: [{ role: 'user', content: prompt }],
-    //     max_tokens: config.maxTokens,
-    //     temperature: 0.3,
-    //   }),
-    // });
-    //
-    // const data = await response.json();
-    // const result = parseAIResponse(data.choices[0].message.content);
-    // return result;
-
-    // STUB: Return null until implemented
-    return null;
-  } catch (error) {
-    console.error('AI categorisation failed:', error);
-    return null;
-  }
-}
-
-/**
- * Build the prompt for AI categorisation
- */
-function buildCategorizationPrompt(tx: UnifiedTransaction): string {
-  const categories = Object.keys(CATEGORY_HIERARCHY).join(', ');
-
-  return `Categorise this Australian bank transaction:
-
-Description: ${tx.description}
-Merchant: ${tx.merchantStandardised || tx.merchantRaw || 'Unknown'}
-Amount: $${tx.amount.toFixed(2)} ${tx.direction === 'OUT' ? '(debit)' : '(credit)'}
-Date: ${tx.date.toISOString().split('T')[0]}
-
-Available categories: ${categories}
-
-Respond in JSON format:
-{
-  "categoryLevel1": "Category Name",
-  "categoryLevel2": "Subcategory Name or null",
-  "confidence": 0.0-1.0
-}`;
-}
+// Phase 11 scaffolded an OpenAI-backed categorisation stub here. It was never
+// wired up — `categoriseByAI` always returned null. Removed alongside the
+// `openai` SDK dep in the cost-control cleanup PR. Future AI categorisation
+// goes through the existing Gemini infrastructure (`lib/ai/gemini.ts` +
+// `lib/bank/aiCategorisation.ts`); see `docs/operational/cost-control/00_VENDOR_INVENTORY.md`.
 
 // =============================================================================
 // HYBRID CATEGORISATION ENGINE
@@ -779,7 +690,6 @@ export async function categoriseTransaction(
   tx: UnifiedTransaction,
   options: {
     merchantMappings?: MerchantMapping[];
-    aiConfig?: AICategorizationConfig;
   } = {}
 ): Promise<CategorisationResult> {
   // 1. Try merchant mappings first (includes user corrections)
@@ -796,13 +706,9 @@ export async function categoriseTransaction(
     return rulesResult;
   }
 
-  // 3. Try AI categorisation (if enabled)
-  if (options.aiConfig?.enabled) {
-    const aiResult = await categoriseByAI(tx, options.aiConfig);
-    if (aiResult) {
-      return aiResult;
-    }
-  }
+  // 3. AI categorisation removed 2026-05-09 (Tech Debt #17). If/when an AI
+  //    fallback path is wanted, route it through the existing Gemini
+  //    infrastructure (`lib/ai/gemini.ts` + `lib/bank/aiCategorisation.ts`).
 
   // 4. Fallback
   return {
@@ -821,7 +727,6 @@ export async function categoriseTransactionBatch(
   transactions: UnifiedTransaction[],
   options: {
     merchantMappings?: MerchantMapping[];
-    aiConfig?: AICategorizationConfig;
   } = {}
 ): Promise<Map<string, CategorisationResult>> {
   const results = new Map<string, CategorisationResult>();
@@ -872,5 +777,4 @@ export function createMerchantMappingFromCorrection(
 export {
   CATEGORISATION_RULES,
   SORTED_RULES,
-  DEFAULT_AI_CONFIG,
 };
