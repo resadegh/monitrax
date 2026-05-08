@@ -26,6 +26,8 @@
 | Google Maps not loading / API not activated | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) |
 | Retention crons (CDR + conversation 7yr) — setup + troubleshooting | [Retention Schedulers](runbooks/05_RETENTION_SCHEDULERS.md) |
 | Adviser feedback inbox triage / weekly synthesis | [Feedback Triage and Synthesis](feedback/01_TRIAGE_AND_SYNTHESIS.md) |
+| What does Monitrax pay for? Vendor inventory + spend control | [Cost Control — Vendor Inventory](cost-control/00_VENDOR_INVENTORY.md) |
+| How to set up budget alerts per vendor | [Cost Control — Budget Alerts Setup](cost-control/01_BUDGET_ALERTS_SETUP.md) |
 | **User reports a wrong number → audit one user** | [Per-User Audit Runbook](calc-audit/per-user-audit-runbook.md) (Audit-this-user button on `/admin/calc-audit` + UC-DEED-* triage) |
 | **Trust-deed extraction failed / extracted poorly** | [Admin Troubleshooting Runbook → Trust-Deed Issues](admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md#issue-trust-deed-extraction-failed-or-extracted-poorly) |
 | **Calc audit finding triaged → backfill needed** | [Calc Audit Backfill Runbook](calc-audit/backfill-runbook.md) |
@@ -99,6 +101,16 @@ Operational practice for the adviser feedback inbox.
 |---|----------|-------------|
 | 00 | [Feedback Index](feedback/00_INDEX.md) | Section index + quick links + when-things-go-wrong table |
 | 01 | [Triage and Synthesis](feedback/01_TRIAGE_AND_SYNTHESIS.md) | Daily 10-min triage, weekly Claude Code synthesis ritual, CDR-leak handling, audit-log queries, common questions, forward-path triggers |
+
+### Cost Control
+
+Vendor inventory + spend caps. SSOT for "what does Monitrax pay for?"
+
+| # | Document | Description |
+|---|----------|-------------|
+| 00 | [Cost Control Index](cost-control/00_INDEX.md) | Section index + quick links + decision log |
+| 00 | [Vendor Inventory (SSOT)](cost-control/00_VENDOR_INVENTORY.md) | Every external paid service, classified Tier 1–4. Pricing model + estimated range + monthly actuals. |
+| 01 | [Budget Alerts + Spend Caps Setup](cost-control/01_BUDGET_ALERTS_SETUP.md) | Per-vendor setup runbook for budget alerts + hard ceilings. Anthropic SDK addition gated on §4. |
 
 ---
 
