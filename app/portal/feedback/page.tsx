@@ -439,21 +439,25 @@ function ThreadDetail({
       </header>
 
       <div className="space-y-4 mb-5">
-        {thread.messages.map((m) => (
-          <div
-            key={m.id}
-            className={`rounded-2xl px-4 py-3 ring-1 ${
-              m.authorRole === 'ADVISER'
-                ? 'bg-white ring-slate-900/[0.06]'
-                : 'bg-emerald-50/60 ring-emerald-200/60'
-            }`}
-          >
-            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500 mb-1">
-              {m.authorRole === 'ADVISER' ? 'You' : 'Monitrax'} · {relTime(m.createdAt)}
-            </p>
-            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{m.body}</p>
-          </div>
-        ))}
+        {thread.messages.map((m) => {
+          const isUser = m.authorRole === 'ADVISER' || m.authorRole === 'CONSUMER';
+          const isAi = m.authorRole === 'CLAUDE_AI';
+          const roleLabel = isUser ? 'You' : isAi ? 'Monitrax AI' : 'Monitrax';
+          const bubbleClass = isAi
+            ? 'bg-violet-50/70 ring-violet-200/60'
+            : isUser
+              ? 'bg-white ring-slate-900/[0.06]'
+              : 'bg-emerald-50/60 ring-emerald-200/60';
+          return (
+            <div key={m.id} className={`rounded-2xl px-4 py-3 ring-1 ${bubbleClass}`}>
+              <p className={`text-[10px] font-medium uppercase tracking-[0.08em] mb-1 inline-flex items-center gap-1 ${isAi ? 'text-violet-700' : 'text-slate-500'}`}>
+                {isAi && <span aria-hidden="true">✨</span>}
+                {roleLabel} · {relTime(m.createdAt)}
+              </p>
+              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{m.body}</p>
+            </div>
+          );
+        })}
       </div>
 
       <form onSubmit={handleReply} className="space-y-3 border-t border-slate-200/70 pt-5">

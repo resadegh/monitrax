@@ -40,6 +40,7 @@ interface ThreadListItem {
 interface ThreadDetail extends Omit<ThreadListItem, '_count'> {
   internalNotes: string | null;
   taggedForAi: boolean;
+  aiDisabled: boolean;
   lastReviewedAt: string | null;
   messages: Array<{
     id: string;
@@ -352,26 +353,44 @@ function ThreadDetailView({
             />
             Tag for AI synthesis
           </label>
+          {/* Phase 33g.2 polish: per-thread AI-disable. Bails the
+              respondToFeedbackThread() guard even when ANTHROPIC_API_KEY is
+              set globally — use for sensitive threads (CDR/AFSL nuance)
+              you want to handle directly without AI triage. */}
+          <label className="text-xs font-medium text-gray-700 ml-4 inline-flex items-center gap-2" title="When checked, the AI triage agent stops replying on this thread. New consumer/adviser replies still land normally; you respond directly.">
+            <input
+              type="checkbox"
+              checked={thread.aiDisabled}
+              onChange={(e) => void patch({ aiDisabled: e.target.checked })}
+            />
+            Disable AI on this thread
+          </label>
         </div>
 
         {/* Conversation */}
         <div className="px-6 py-5 space-y-3">
-          {thread.messages.map((m) => (
-            <div
-              key={m.id}
-              className={`rounded-lg border px-4 py-3 ${
-                m.authorRole === 'MONITRAX_ADMIN'
-                  ? 'bg-emerald-50 border-emerald-200'
-                  : 'bg-white border-gray-200'
-              }`}
-            >
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">
-                {m.authorRole === 'MONITRAX_ADMIN' ? 'Monitrax' : 'Adviser'} ·{' '}
-                {m.author.name} · {relTime(m.createdAt)}
-              </p>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{m.body}</p>
-            </div>
-          ))}
+          {thread.messages.map((m) => {
+            const isAdmin = m.authorRole === 'MONITRAX_ADMIN';
+            const isAi = m.authorRole === 'CLAUDE_AI';
+            const roleLabel = isAdmin ? 'Monitrax (you)'
+              : isAi ? 'Monitrax AI'
+              : m.authorRole === 'CONSUMER' ? 'Consumer'
+              : 'Adviser';
+            const bubble = isAi
+              ? 'bg-violet-50 border-violet-200'
+              : isAdmin
+                ? 'bg-emerald-50 border-emerald-200'
+                : 'bg-white border-gray-200';
+            return (
+              <div key={m.id} className={`rounded-lg border px-4 py-3 ${bubble}`}>
+                <p className={`text-[10px] uppercase tracking-wider mb-1 inline-flex items-center gap-1 ${isAi ? 'text-violet-700 font-medium' : 'text-gray-500'}`}>
+                  {isAi && <span aria-hidden="true">✨</span>}
+                  {roleLabel} · {m.author.name} · {relTime(m.createdAt)}
+                </p>
+                <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{m.body}</p>
+              </div>
+            );
+          })}
         </div>
 
         {/* Reply */}
