@@ -318,7 +318,7 @@ Three tiers, not two. Tablet is its own first-class tier — iPad portrait
 
 | Tier | Tailwind | Pixel range | Primary nav | Sub-tab nav |
 |---|---|---|---|---|
-| **Phone** | `<md` | `<768px` | `<MobileTabBar />` (5-tab bottom bar) | `<SectionTabsRow />` (iOS-style segmented control fixed below the brand header) |
+| **Phone** | `<md` | `<768px` | `<MobileTabBar />` (6-tab bottom bar — Home + 5 TRAIL stages) | `<SectionTabsRow />` (iOS-style segmented control fixed below the brand header) |
 | **Tablet** | `md`–`lg` | `768`–`1023px` | Persistent left sidebar (same component as desktop) | Sidebar-accordion (parent expands when active) |
 | **Desktop** | `≥lg` | `≥1024px` | Persistent left sidebar | Sidebar-accordion |
 
@@ -341,8 +341,8 @@ at narrower content width.
 │                                  │
 │        pb-24 to clear tab bar     │
 ├──────────────────────────────────┤
-│  🏠   👛   🎯   🏘   🧭            │  ← <MobileTabBar /> (5 tabs, fixed bottom)
-│ Home Track Reduce Invest Guide   │
+│  🏠  👛  🎯  🛡  🏘  🧭          │  ← <MobileTabBar /> (6 tabs, fixed bottom)
+│ Home Track Reduce Anchor Invest Guide │
 └──────────────────────────────────┘
 ```
 
@@ -365,7 +365,8 @@ sits below the fixed bar.
 
 **Bottom tab bar (`md:hidden`, `fixed bottom-0`, `z-30`).** Apple-glass
 surface — warm-ivory backdrop-blur, 1px ring, soft inner highlight,
-iOS safe-area-inset padding. Five tabs in a CSS grid (`grid-cols-5`).
+iOS safe-area-inset padding. Six tabs in a CSS grid (`grid-cols-6`) —
+Home + the five TRAIL stages.
 Active tab uses stage-tone text + a 3px-tall top accent stripe (Apple
 Wallet / Apple Music indicator pattern). Tap targets ≥56px.
 
@@ -390,19 +391,23 @@ The bottom bar IS the TRAIL framework. Each tab maps to a stage:
 | **Home** | `/dashboard` | — (journey overview) | brand primary fallback |
 | **Track** | `/dashboard/balances` | T | slate |
 | **Reduce** | `/cashflow` | R | amber |
+| **Anchor** | `/dashboard/safety-net` | A | indigo |
 | **Invest** | `/dashboard/properties` | I | emerald |
 | **Guide** | `/dashboard/cfo` | L | violet |
 
-**Anchor (My Safety Net) folds into MoreSheet** per
-`TRAIL_FRAMEWORK.md` §5 — Anchor "is tracked through Financial Health
-score + Guide recommendations, not a dedicated sidebar section." On
-phones the limit of 5 tabs (Apple HIG ceiling) makes this fold
-structural, not a compromise.
+**The bar size is 6 (Home + 5 TRAIL stages).** Apple HIG suggests ≤5
+tabs on native iOS tab bars; Monitrax is a web app where the TRAIL
+journey *is* the IA — keeping all five stages visible end-to-end is
+more important than the native ceiling. At 320px viewport width
+(smallest iPhone), 6 equal-width tabs give each tab ~53px which
+comfortably fits a 22px icon + 6-character label at 10px tracking.
 
-If a future change requires a 6th destination at the bottom bar, do NOT
-add a 6th tab — the iOS HIG cap is hard. Move something into MoreSheet,
-or argue (with the framework lens) that the new surface should replace
-an existing tab.
+**The bar is locked at 6.** Adding a 7th tab is forbidden — the
+TRAIL framework has exactly five stages plus Home, and any future
+destination must either replace an existing tab (with explicit
+framework-level justification) or live in MoreSheet. Reviewers MUST
+reject any PR that grows the bar past 6 without a corresponding
+TRAIL_FRAMEWORK.md update signed off by Reza.
 
 ### **12.5 Hard Rules**
 

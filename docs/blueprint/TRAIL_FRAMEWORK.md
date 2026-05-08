@@ -298,28 +298,39 @@ REPORTS        → "Here's the proof."
 > for the canonical implementation contract; see
 > `lib/navigation/trailNav.tsx:mobileTabBarItems` for the SSOT.
 
-On phones (`<md`, <768px) the sidebar collapses into a 5-tab bottom
-navigation that *is* the TRAIL framework — Home + the four primary
-TRAIL stages, in order:
+On phones (`<md`, <768px) the sidebar collapses into a 6-tab bottom
+navigation that *is* the TRAIL framework — Home + all five TRAIL
+stages, in order:
 
 | Tab | TRAIL stage | Lands on |
 |---|---|---|
 | Home | — (journey overview) | `/dashboard` |
 | Track | T | `/dashboard/balances` |
 | Reduce | R | `/cashflow` |
+| Anchor | A | `/dashboard/safety-net` |
 | Invest | I | `/dashboard/properties` |
 | Guide | L | `/dashboard/cfo` |
 
-**Anchor folds into MoreSheet** (avatar button → bottom sheet) per
-this framework's own §5 directive: Anchor is tracked through Financial
-Health score + Guide recommendations, not as a primary destination.
-On phones where the bottom bar is capped at 5 (Apple HIG), this fold is
-structural, not a compromise — it makes Anchor's secondary-destination
-status visible in the IA itself.
+The full TRAIL journey is visible end-to-end on every page on phones,
+not just on desktop. Reza directive 2026-05-08: *"have all TRAIL steps
+on the main page"* — hiding Anchor in MoreSheet broke the visual
+symmetry of the journey at exactly the moment users need orientation.
+Apple HIG suggests ≤5 native iOS tabs, but Monitrax is a web app where
+the TRAIL framework is the IA, and the journey integrity wins over the
+native ceiling.
+
+The framework's earlier observation in §5 (*Anchor "is tracked through
+Financial Health score + Guide recommendations"*) describes how Anchor
+is **computed**, not whether it deserves a destination. The Safety Net
+page already exists at `/dashboard/safety-net` and surfaces the
+Anchor-stage data (Emergency Fund, Bills On Time, Safety Score). It
+deserves its own tab on every surface — desktop sidebar already had
+it; mobile now matches.
 
 iPad and desktop continue to see all 9 sidebar items + Settings,
 including My Safety Net as a top-level rail entry. The TRAIL framework
-is not changed — its rendering adapts to the surface.
+is not changed — its rendering adapts to the surface, and on every
+surface the full T-R-A-I-L is reachable in one tap.
 
 ---
 
