@@ -25,6 +25,7 @@
     "generate:report": "npx ts-node tests/validation/generate-report.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.1",
     "@google-cloud/cloud-sql-connector": "^1.10.0",
     "@google-cloud/error-reporting": "^3.0.5",
     "@google-cloud/logging": "^11.2.1",

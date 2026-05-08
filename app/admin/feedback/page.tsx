@@ -43,7 +43,7 @@ interface ThreadDetail extends Omit<ThreadListItem, '_count'> {
   lastReviewedAt: string | null;
   messages: Array<{
     id: string;
-    authorRole: 'ADVISER' | 'MONITRAX_ADMIN';
+    authorRole: 'ADVISER' | 'CONSUMER' | 'MONITRAX_ADMIN' | 'CLAUDE_AI';
     body: string;
     createdAt: string;
     author: { id: string; name: string; email: string };

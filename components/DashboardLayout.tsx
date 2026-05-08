@@ -18,6 +18,7 @@ import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
 import { FinancialHealthMiniWidget } from '@/components/health/FinancialHealthMiniWidget';
 import AiChatButton from '@/components/AiChatButton';
 import { HelpDrawerButton } from '@/components/help/HelpDrawerButton';
+import { FeedbackButton } from '@/components/help/FeedbackButton';
 import { UniversalSearch, useUniversalSearch } from '@/components/UniversalSearch';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import {
@@ -692,6 +693,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {!showWelcomeModal && !showWizard && (
         <HelpDrawerButton audiences={['consumer', 'compliance']} />
       )}
+
+      {/* Phase 33g.2 — Send-feedback floating button. Sits to the LEFT of
+           the help drawer button. Opens the chat-style feedback drawer.
+           AI-vs-form behaviour decided server-side via the
+           ANTHROPIC_API_KEY env var presence — UI shape is identical
+           either way; only the success message + AI typing indicator
+           differ. Hidden alongside other floating chrome during onboarding. */}
+      {!showWelcomeModal && !showWizard && <FeedbackButton />}
 
       {/* Universal Search */}
       <UniversalSearch open={searchOpen} onOpenChange={setSearchOpen} />

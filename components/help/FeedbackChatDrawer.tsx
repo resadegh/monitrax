@@ -1,0 +1,483 @@
+/**
+ * FeedbackChatDrawer — chat-style feedback UI for consumers (Phase 33g.2).
+ *
+ * Two behaviour modes, decided server-side via /api/portal/feedback/ai-status:
+ *
+ * 1. **AI on** (`ANTHROPIC_API_KEY` present in Vercel env):
+ *    - User types first message + tag/severity → thread is created → AI
+ *      replies in real-time, asks clarifying questions for 2–5 turns,
+ *      then summarises and tells the user it's been passed to Reza.
+ *    - User can keep typing after the AI summary; messages still land in
+ *      the thread for Reza to read in /admin/feedback.
+ *
+ * 2. **AI off** (key absent):
+ *    - Same UI shape — user types, taps send.
+ *    - No AI reply appears; instead a friendly success message confirms
+ *      "thanks, Reza will reply by email when ready." Same thread shape;
+ *      same /admin/feedback inbox row.
+ *
+ * Same drawer mechanics as Phase 33b HelpDrawer:
+ *   - Right-edge slide-in on ≥md, bottom-sheet on <md.
+ *   - Esc / X / backdrop / route change all dismiss.
+ *   - Body-scroll lock for iOS Safari.
+ *   - prefers-reduced-motion-aware.
+ *
+ * Design language: PracticeGlassCard / HelpDrawer warm-ivory glass.
+ */
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { usePathname } from 'next/navigation';
+import { X, Send, Sparkles } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
+
+type SurfaceTag = 'BUG' | 'FEATURE' | 'UX' | 'PRAISE' | 'QUESTION' | 'COMPLIANCE';
+type Severity = 'LOW' | 'MEDIUM' | 'HIGH';
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'monitrax' | 'ai';
+  body: string;
+  createdAt: string;
+}
+
+interface FeedbackChatDrawerProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+const TAG_OPTIONS: Array<{ value: SurfaceTag; label: string }> = [
+  { value: 'BUG', label: 'Bug — something broken' },
+  { value: 'FEATURE', label: 'Feature — wishlist' },
+  { value: 'UX', label: 'UX — friction or unclear' },
+  { value: 'QUESTION', label: 'Question' },
+  { value: 'PRAISE', label: "Praise — what's working" },
+  { value: 'COMPLIANCE', label: 'Compliance / privacy concern' },
+];
+
+export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
+  const pathname = usePathname();
+  const { token } = useAuth();
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [draft, setDraft] = useState('');
+  const [subject, setSubject] = useState('');
+  const [surfaceTag, setSurfaceTag] = useState<SurfaceTag>('FEATURE');
+  const [severity, setSeverity] = useState<Severity>('MEDIUM');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const closeAndReset = useCallback(() => {
+    onClose();
+    setThreadId(null);
+    setMessages([]);
+    setDraft('');
+    setSubject('');
+    setSurfaceTag('FEATURE');
+    setSeverity('MEDIUM');
+    setError(null);
+    setDone(false);
+  }, [onClose]);
+
+  const headers = useMemo<Record<string, string>>(() => {
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) h['Authorization'] = `Bearer ${token}`;
+    return h;
+  }, [token]);
+
+  // Esc to close
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeAndReset();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, closeAndReset]);
+
+  // Body-scroll lock on open
+  useEffect(() => {
+    if (!open) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [open]);
+
+  // Fetch AI-enabled status on first open
+  useEffect(() => {
+    if (!open || aiEnabled !== null || !token) return;
+    fetch('/api/portal/feedback/ai-status', { headers, cache: 'no-store' })
+      .then(async (res) => (res.ok ? (await res.json()) : { data: { aiEnabled: false } }))
+      .then((j) => setAiEnabled(Boolean(j?.data?.aiEnabled)))
+      .catch(() => setAiEnabled(false));
+  }, [open, aiEnabled, headers, token]);
+
+  // Auto-scroll to bottom on new message
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages.length]);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!draft.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      if (!threadId) {
+        // First message — create the thread.
+        const subjectToUse = subject.trim() || draft.trim().slice(0, 80);
+        const res = await fetch('/api/portal/feedback', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            subject: subjectToUse,
+            body: draft.trim(),
+            surfaceTag,
+            severity,
+            surfaceRoute: pathname,
+            authorRole: 'CONSUMER',
+          }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j?.error?.message ?? `Failed (${res.status})`);
+        }
+        const j = (await res.json()) as { data: { threadId: string } };
+        const newThreadId = j.data.threadId;
+        setThreadId(newThreadId);
+        setMessages([
+          {
+            id: `local-${Date.now()}`,
+            role: 'user',
+            body: draft.trim(),
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        setDraft('');
+        // Poll for AI reply if enabled.
+        if (aiEnabled) {
+          void pollForAiReply(newThreadId);
+        } else {
+          setDone(true);
+        }
+      } else {
+        // Subsequent reply on existing thread.
+        const res = await fetch(`/api/portal/feedback/${threadId}/reply`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ body: draft.trim() }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j?.error?.message ?? `Failed (${res.status})`);
+        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `local-${Date.now()}`,
+            role: 'user',
+            body: draft.trim(),
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        setDraft('');
+        if (aiEnabled) {
+          void pollForAiReply(threadId);
+        } else {
+          setDone(true);
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Poll the thread up to 6× over ~12s for an AI reply that didn't exist
+  // a moment ago. Background AI response is fire-and-forget on the server,
+  // so we wait briefly for it to land. If nothing arrives, we silently
+  // give up — the user sees their message; Reza picks up via /admin/feedback.
+  const pollForAiReply = async (id: string) => {
+    let knownIds = new Set<string>(messages.map((m) => m.id));
+    for (let attempt = 0; attempt < 6; attempt++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        const res = await fetch(`/api/portal/feedback/${id}`, { headers, cache: 'no-store' });
+        if (!res.ok) continue;
+        const j = (await res.json()) as { data: { thread: { messages: Array<{ id: string; authorRole: string; body: string; createdAt: string }> } } };
+        const incoming = j.data.thread.messages
+          .filter((m) => !knownIds.has(m.id))
+          .map((m) => ({
+            id: m.id,
+            role: (m.authorRole === 'CLAUDE_AI'
+              ? 'ai'
+              : m.authorRole === 'MONITRAX_ADMIN'
+                ? 'monitrax'
+                : 'user') as ChatMessage['role'],
+            body: m.body,
+            createdAt: m.createdAt,
+          }));
+        if (incoming.length > 0) {
+          setMessages((prev) => [...prev, ...incoming]);
+          incoming.forEach((m) => knownIds.add(m.id));
+          // Stop polling once we get an AI reply.
+          const gotAi = incoming.some((m) => m.role === 'ai');
+          if (gotAi) return;
+        }
+      } catch {
+        // ignore polling errors
+      }
+    }
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        aria-hidden="true"
+        onClick={closeAndReset}
+        className={`
+          fixed inset-0 z-[60]
+          bg-slate-900/30 backdrop-blur-[2px]
+          transition-opacity duration-200 ease-out motion-reduce:transition-none
+          ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+        `}
+      />
+
+      {/* Drawer */}
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Send feedback"
+        className={`
+          fixed z-[70]
+          bg-[#fbf8f1] ring-1 ring-slate-900/[0.06]
+          shadow-[0_-12px_40px_-12px_rgba(11,18,32,0.25)] md:shadow-[-12px_0_40px_-12px_rgba(11,18,32,0.25)]
+
+          left-0 right-0 bottom-0 top-auto
+          h-[85vh] rounded-t-[28px]
+
+          md:left-auto md:right-0 md:top-0 md:bottom-0
+          md:h-full md:w-[480px] md:max-w-[92vw] md:rounded-none md:rounded-l-[22px]
+
+          flex flex-col
+
+          transition-transform duration-200 ease-out motion-reduce:transition-none
+          ${open
+            ? 'translate-y-0 md:translate-x-0'
+            : 'translate-y-full md:translate-y-0 md:translate-x-full'
+          }
+        `}
+      >
+        {/* Mobile drag-handle visual */}
+        <div className="md:hidden pt-3 pb-1 flex justify-center">
+          <span className="block h-1 w-10 rounded-full bg-slate-300/80" aria-hidden="true" />
+        </div>
+
+        {/* Header */}
+        <header className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-4 pb-3 border-b border-slate-200/70">
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-700">
+              Send feedback
+            </p>
+            <h2 className="mt-0.5 text-[17px] font-semibold tracking-tight text-slate-900 truncate">
+              {threadId ? subject || 'Your feedback' : "What's on your mind?"}
+            </h2>
+            {!threadId && (
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                {aiEnabled === null
+                  ? '…'
+                  : aiEnabled
+                    ? 'AI will reply with clarifying questions before passing it to Reza.'
+                    : "We'll reply within 48 hours, every time."}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={closeAndReset}
+            aria-label="Close feedback drawer"
+            className="
+              shrink-0 inline-flex items-center justify-center
+              h-8 w-8 rounded-full
+              text-slate-500 hover:text-slate-900 hover:bg-slate-100
+              transition-colors
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+            "
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+
+        {/* Body */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-3">
+          {!threadId && (
+            <>
+              {/* Pre-thread metadata pickers — collapse once thread is started */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500 mb-1.5">
+                    Subject (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    maxLength={140}
+                    placeholder="A short title — we'll use the first line of your message if blank"
+                    className="
+                      w-full rounded-xl bg-white ring-1 ring-slate-900/[0.08]
+                      px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400
+                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+                    "
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500 mb-1.5">
+                      Tag
+                    </label>
+                    <select
+                      value={surfaceTag}
+                      onChange={(e) => setSurfaceTag(e.target.value as SurfaceTag)}
+                      className="
+                        w-full rounded-xl bg-white ring-1 ring-slate-900/[0.08]
+                        px-3 py-2 text-sm text-slate-800
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+                      "
+                    >
+                      {TAG_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500 mb-1.5">
+                      Severity
+                    </label>
+                    <select
+                      value={severity}
+                      onChange={(e) => setSeverity(e.target.value as Severity)}
+                      className="
+                        w-full rounded-xl bg-white ring-1 ring-slate-900/[0.08]
+                        px-3 py-2 text-sm text-slate-800
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+                      "
+                    >
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 px-1 pt-1">
+                If you reference a specific person or balance, please use a non-identifying
+                tag like "Client A" — feedback contents are subject to retention rules.
+              </p>
+            </>
+          )}
+
+          {/* Conversation */}
+          {messages.map((m) => (
+            <div key={m.id}>
+              {m.role === 'user' && (
+                <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-slate-900 text-white px-4 py-2.5 shadow-[0_4px_14px_-6px_rgba(11,18,32,0.18)]">
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.body}</p>
+                </div>
+              )}
+              {m.role === 'ai' && (
+                <div className="mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-emerald-50/80 ring-1 ring-emerald-200/60 px-4 py-2.5">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-emerald-700 mb-1 inline-flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" /> Monitrax AI
+                  </p>
+                  <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{m.body}</p>
+                </div>
+              )}
+              {m.role === 'monitrax' && (
+                <div className="mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-white ring-1 ring-slate-900/[0.06] px-4 py-2.5">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500 mb-1">
+                    Monitrax
+                  </p>
+                  <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{m.body}</p>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {threadId && submitting && aiEnabled && (
+            <div className="mr-auto max-w-[60%] rounded-2xl rounded-bl-sm bg-emerald-50/60 ring-1 ring-emerald-200/40 px-4 py-2.5">
+              <p className="text-xs text-emerald-700 inline-flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 animate-pulse" /> Monitrax AI is typing…
+              </p>
+            </div>
+          )}
+
+          {done && !aiEnabled && (
+            <div className="rounded-2xl bg-emerald-50/60 ring-1 ring-emerald-200/60 px-4 py-3 text-sm text-emerald-800">
+              Thanks — your feedback is in. Reza aims to reply within 48 hours.
+              You can close this drawer or keep adding detail below.
+            </div>
+          )}
+
+          {error && (
+            <div className="rounded-xl bg-rose-50 ring-1 ring-rose-200/70 px-3 py-2 text-xs text-rose-800">
+              {error}
+            </div>
+          )}
+        </div>
+
+        {/* Composer */}
+        <form onSubmit={handleSubmit} className="border-t border-slate-200/70 bg-white/60 px-4 sm:px-5 py-3">
+          <div className="flex items-end gap-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={2}
+              placeholder={threadId ? 'Add another message…' : 'Type your feedback here…'}
+              className="
+                flex-1 resize-none rounded-xl bg-white ring-1 ring-slate-900/[0.08]
+                px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+              "
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  void handleSubmit(e as unknown as FormEvent);
+                }
+              }}
+            />
+            <button
+              type="submit"
+              disabled={submitting || !draft.trim()}
+              aria-label="Send"
+              className="
+                inline-flex items-center justify-center
+                h-9 w-9 rounded-full
+                bg-slate-900 text-white
+                hover:bg-slate-800
+                disabled:opacity-50 disabled:cursor-not-allowed
+                transition-colors
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+              "
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-2 text-[10px] text-slate-400">
+            ⌘/Ctrl + Enter to send
+          </p>
+        </form>
+      </aside>
+    </>
+  );
+}

@@ -8,7 +8,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
-import { appendReply } from '@/lib/services/feedbackService';
+import { appendReply, respondToFeedbackThread } from '@/lib/services/feedbackService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -48,6 +48,10 @@ export const POST = withPermission<RouteContext>(
         authorRole: 'ADVISER',
         body: messageBody,
       });
+      // Phase 33g.2: trigger AI triage response asynchronously. No-op when
+      // ANTHROPIC_API_KEY is absent; failures are caught + logged inside
+      // respondToFeedbackThread() so they never break the user-facing path.
+      void respondToFeedbackThread(id);
       return NextResponse.json({ success: true, data: { messageId: message.id } }, { status: 201 });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'unknown';
