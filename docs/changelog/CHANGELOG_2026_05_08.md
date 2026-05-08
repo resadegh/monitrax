@@ -161,3 +161,48 @@ Surfaces changed in this PR:
 
 Docs updated:
 - `docs/changelog/CHANGELOG_2026_05_08.md` — this entry. (No design-doc rewrite needed — the active-state treatment substitutes one tone-token shape for another within the same canonical primitives; the §12 standard, breakpoint contract, and SSOT files remain accurate.)
+
+---
+
+## Session: claude/phase-14-6-segmented-zKSTw (Phase 14.6 v3 — segmented control sub-tabs)
+
+### Changes Made
+- **Type:** UX refinement on top of Phase 14.6 v1 (#723) + v2 polish (#724).
+- **Scope:** Replace the scrolling-pill sub-tab pattern with a fixed iOS-style segmented control anchored below the brand header. Reads as a "header control," not as scrolled page content.
+- **Why:** Reza testing on phone — even with `sticky top-14`, the pills read as scrolled content rather than as a header. iOS Settings / Apple Music / iOS Stocks all use a segmented control for in-page navigation. Three-to-four children fit cleanly at 100% width with equal-width segments — no horizontal scroll, no truncation, no thinking.
+
+### Files Modified
+- `components/shell/SectionTabsRow.tsx` — full rewrite. Now renders a fragment of (1) a fixed `top-14 z-30 h-14` Apple-glass band containing an iOS segmented-control track (`grid auto-cols-fr grid-flow-col`, `rounded-xl bg-muted/50 ring-1`), and (2) an in-flow `h-14 md:hidden` spacer so subsequent content doesn't render under the fixed bar. Active segment uses an elevated white-ish chip (`bg-background shadow-sm ring-1`) with TRAIL stage-tone text via `TRAIL_STAGE_TONES`.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §12 — anatomy diagram updated to show the segmented control band; §12.2 phone layout description rewritten; §12.5 hard rules refined (sub-tab tap target ≥36px; new rule "sub-tab navigation is a fixed segmented control, not scrolling pills"); §12.7 + §12.8 updated to reference segments rather than pills; reviewer-rejection clause refined.
+
+### Architecture Decisions
+- **Fixed positioning, not sticky.** `position: sticky` requires no transform/filter ancestors and a tall-enough scroll container — fragile on iOS Safari with the URL-bar reflow. Fixed positioning at `top-14` just *cannot* scroll away.
+- **Single cohesive control, not three pills.** Apple's segmented control is the canonical iOS pattern for in-page navigation. Three-to-four equal-width segments fit 100% page width without scroll. If a future section ever needs >4 sub-tabs, the right move is reducing the section, not reaching for a scroll affordance.
+- **Stage-tone text on active segment, not stage-tone fill.** The active segment is an elevated white-ish chip (Apple-style); colour identity comes from the text colour (`text-{tone}-600 dark:text-{tone}-400`). Filling the chip with stage colour would feel heavy at this size.
+- **In-flow spacer pairs with fixed bar.** Standard pattern — fixed elements are out of flow, so a sibling spacer reserves the same vertical space inside `<main>`. Avoids hard-coding `pt-[7rem]` on `<main>` (which would add dead space on Home where the bar isn't rendered).
+
+### Build Status
+- [x] `npx tsc --noEmit -p .` clean
+- [x] `npm run lint:financial-surfaces` clean (28 grandfathered, no new)
+- [x] `npm run build` clean
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (sub-tab pattern: pills → segmented control)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/architecture/06_UI_UX_FOUNDATION.md:§12` — anatomy diagram + sub-tab description + hard rules updated for segmented control.
+- `docs/changelog/CHANGELOG_2026_05_08.md` — this entry.
+
+### PR
+- Branch: `claude/phase-14-6-segmented-zKSTw` (branched from `claude/phase-14-6-polish-zKSTw` so #724's matcher + active-state fixes carry along).
+- Status: pending push.
+- Supersedes: PR #724 (when this merges, #724 can be closed).
