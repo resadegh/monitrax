@@ -690,7 +690,6 @@ export async function categoriseTransaction(
   tx: UnifiedTransaction,
   options: {
     merchantMappings?: MerchantMapping[];
-    aiConfig?: AICategorizationConfig;
   } = {}
 ): Promise<CategorisationResult> {
   // 1. Try merchant mappings first (includes user corrections)
@@ -707,13 +706,9 @@ export async function categoriseTransaction(
     return rulesResult;
   }
 
-  // 3. Try AI categorisation (if enabled)
-  if (options.aiConfig?.enabled) {
-    const aiResult = await categoriseByAI(tx, options.aiConfig);
-    if (aiResult) {
-      return aiResult;
-    }
-  }
+  // 3. AI categorisation removed 2026-05-09 (Tech Debt #17). If/when an AI
+  //    fallback path is wanted, route it through the existing Gemini
+  //    infrastructure (`lib/ai/gemini.ts` + `lib/bank/aiCategorisation.ts`).
 
   // 4. Fallback
   return {
@@ -732,7 +727,6 @@ export async function categoriseTransactionBatch(
   transactions: UnifiedTransaction[],
   options: {
     merchantMappings?: MerchantMapping[];
-    aiConfig?: AICategorizationConfig;
   } = {}
 ): Promise<Map<string, CategorisationResult>> {
   const results = new Map<string, CategorisationResult>();
@@ -783,5 +777,4 @@ export function createMerchantMappingFromCorrection(
 export {
   CATEGORISATION_RULES,
   SORTED_RULES,
-  DEFAULT_AI_CONFIG,
 };
