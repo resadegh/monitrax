@@ -96,8 +96,11 @@ export function BulkActionToolbar({
     }
   }
 
+  // Phase 14.6 — `bottom-[64px]` on phones lifts the toolbar above the
+  // fixed MobileTabBar (~64px tall) so users can still navigate away
+  // from bulk-edit mode without first dismissing the toolbar.
   return (
-    <div className="fixed inset-x-0 bottom-0 sm:bottom-6 z-40 px-4 pointer-events-none">
+    <div className="fixed inset-x-0 bottom-[64px] sm:bottom-6 z-40 px-4 pointer-events-none">
       <div className="max-w-3xl mx-auto pointer-events-auto">
         <div className="rounded-t-2xl sm:rounded-2xl border border-border bg-background/95 backdrop-blur-sm shadow-2xl overflow-hidden">
           {/* Header strip */}

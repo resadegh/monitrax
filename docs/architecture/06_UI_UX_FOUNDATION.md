@@ -291,23 +291,176 @@ No flashy motion. Fintech ≠ carnival.
 
 ---
 
-# **12. Mobile & Responsive Rules**
+# **12. Mobile & iPad Navigation Standard (Phase 14.6)**
 
-### **12.1 Mobile Requirements**
-- Sidebar becomes drawer  
-- Breadcrumb collapses  
-- Tables → cards  
-- Dialogs → full-screen sheets  
+> **Canonical standard.** This section is the contract for how Monitrax
+> looks and behaves on phones and tablets. Every future mobile/tablet
+> change refers back here. The theme (brand tokens, glass tile language,
+> `appleEase` motion) is the same on every tier — only the nav chrome
+> rearranges.
 
-### **12.2 Breakpoints**
+> **SSOT files:**
+> - **Nav structure:** `lib/navigation/trailNav.tsx` (`trailNavItems`,
+>   `mobileTabBarItems`, `mobileMoreItems`, `TRAIL_STAGE_TONES`,
+>   `findActiveNavItem`, `findActiveMobileTab`, `isNavItemActive`).
+> - **Mobile primitives:** `components/shell/MobileTabBar.tsx`,
+>   `components/shell/SectionTabsRow.tsx`,
+>   `components/shell/MoreSheet.tsx`.
+> - **Layout shell:** `components/DashboardLayout.tsx` (composes the
+>   sidebar, mobile header, MobileTabBar, SectionTabsRow, MoreSheet).
+> - **Motion vocabulary:** `components/shell/motion.ts` (`appleEase`,
+>   `springSnap`, `useReducedMotionSafe`).
+
+### **12.1 Three-Tier Viewport Model**
+
+Three tiers, not two. Tablet is its own first-class tier — iPad portrait
+(810px) gets the desktop sidebar, not the phone bottom bar.
+
+| Tier | Tailwind | Pixel range | Primary nav | Sub-tab nav |
+|---|---|---|---|---|
+| **Phone** | `<md` | `<768px` | `<MobileTabBar />` (5-tab bottom bar) | `<SectionTabsRow />` (horizontal pill row at top of `<main>`) |
+| **Tablet** | `md`–`lg` | `768`–`1023px` | Persistent left sidebar (same component as desktop) | Sidebar-accordion (parent expands when active) |
+| **Desktop** | `≥lg` | `≥1024px` | Persistent left sidebar | Sidebar-accordion |
+
+The Tailwind `md:` breakpoint (768px) is the gate. `<md` = phone tab bar
+mode; `md+` = persistent sidebar. There is no separate tablet stylesheet,
+no separate tablet component tree — iPad simply sees the desktop layout
+at narrower content width.
+
+### **12.2 Phone Layout Anatomy**
+
 ```
-xs: < 480px  
-sm: 480–640px  
-md: 640–1024px  
-lg: 1024–1440px  
-xl: 1440–1920px  
-2xl: > 1920px  
+┌──────────────────────────────────┐
+│  [avatar]   Monitrax    [⌕] [☼]   │  ← Mobile header (h-14, brand-primary)
+├──────────────────────────────────┤
+│  [Balances]  Activity  Structure  │  ← <SectionTabsRow /> (horizontal pills)
+│                                  │
+│        Page content (main)        │
+│                                  │
+│        pb-24 to clear tab bar     │
+├──────────────────────────────────┤
+│  🏠   👛   🎯   🏘   🧭            │  ← <MobileTabBar /> (5 tabs)
+│ Home Track Reduce Invest Guide   │
+└──────────────────────────────────┘
 ```
+
+**Header (`md:hidden`).** Brand-primary background (deep navy), height
+56px (`h-14`), three-zone layout: avatar (left → opens MoreSheet) ·
+brand wordmark (centre, link to `/dashboard`) · search + theme (right).
+The hamburger pattern is permanently retired.
+
+**Bottom tab bar (`md:hidden`, fixed).** Apple-glass surface — warm-ivory
+backdrop-blur, 1px ring, soft inner highlight, iOS safe-area-inset
+padding. Five tabs in a CSS grid (`grid-cols-5`). Active tab tinted with
+the TRAIL stage tone (`TRAIL_STAGE_TONES`). Tap targets ≥56px.
+
+**Sub-tab pill row (`md:hidden`, in-flow).** Renders at the top of
+`<main>` only when the active TRAIL section has children. Horizontal
+overflow scrolls (no scrollbar chrome). Each pill is a `<Link>` (URL-
+routed; deep-linkable). Active pill uses brand primary fill.
+
+**More sheet (`md:hidden`, dialog).** Triggered by avatar button.
+Bottom-sheet chrome from §15.3 (rounded-top-28px, slide-in-from-bottom,
+body-scroll lock, Esc to close). Holds: My Safety Net, My Household,
+My Vault, Reports, Settings, Sign out.
+
+### **12.3 Tablet + Desktop Layout (≥md)**
+
+Persistent left sidebar (256px wide), full content area uses
+`md:pl-64`. Mobile header is hidden (`md:hidden`). The sidebar renders
+all 9 TRAIL items + Settings, with sub-tabs accordion-expanded under
+the active parent — same code path that has shipped since Phase 14.5.
+
+### **12.4 The 5 Mobile Tabs Are TRAIL**
+
+The bottom bar IS the TRAIL framework. Each tab maps to a stage:
+
+| Tab | Route | TRAIL stage | Tone (`TRAIL_STAGE_TONES`) |
+|---|---|---|---|
+| **Home** | `/dashboard` | — (journey overview) | brand primary fallback |
+| **Track** | `/dashboard/balances` | T | slate |
+| **Reduce** | `/cashflow` | R | amber |
+| **Invest** | `/dashboard/properties` | I | emerald |
+| **Guide** | `/dashboard/cfo` | L | violet |
+
+**Anchor (My Safety Net) folds into MoreSheet** per
+`TRAIL_FRAMEWORK.md` §5 — Anchor "is tracked through Financial Health
+score + Guide recommendations, not a dedicated sidebar section." On
+phones the limit of 5 tabs (Apple HIG ceiling) makes this fold
+structural, not a compromise.
+
+If a future change requires a 6th destination at the bottom bar, do NOT
+add a 6th tab — the iOS HIG cap is hard. Move something into MoreSheet,
+or argue (with the framework lens) that the new surface should replace
+an existing tab.
+
+### **12.5 Hard Rules**
+
+1. **One nav SSOT.** `lib/navigation/trailNav.tsx` defines every
+   nav-related constant (top-level items, sub-tabs, match-routes,
+   stage tones, mobile-tab mapping, more-sheet items). Never inline a
+   nav definition inside a component.
+2. **Theme parity.** Phones, tablets, and desktop see the same brand
+   tokens, glass tile language, typography stack, and motion vocabulary.
+   The only thing that changes per tier is nav chrome.
+3. **One-tap reach.** A phone user reaches any sub-tab in ≤2 taps from
+   any starting page (1 tap for the bottom bar tab, 1 tap for the
+   sub-tab pill). The two-step hamburger-drawer pattern is banned.
+4. **`md:` is the desktop-sidebar gate.** Not `lg:`. iPad portrait
+   (810px) gets the rail.
+5. **Tap targets.** Bottom tab buttons ≥56px. Sub-tab pills ≥40px.
+   FABs and modals ≥44px (Apple HIG).
+6. **Dialogs become bottom sheets** on phones — §15.3 chrome reused, no
+   parallel implementations.
+7. **Bottom-fixed components must clear the tab bar.** FABs use
+   `bottom-24` on phones (`md:bottom-8` on desktop). Sticky toolbars use
+   `bottom-[64px]` on phones. iOS safe-area-inset is applied via
+   `pb-[env(safe-area-inset-bottom)]` on the tab bar wrapper itself.
+8. **`prefers-reduced-motion` is honoured everywhere.** Mobile-tab
+   active scale, sub-tab pill press scale, sheet slide-in — all gated
+   by `motion-safe:` utilities.
+9. **Reviewers MUST reject** any mobile surface that re-rolls the
+   bottom-tab-bar, sub-tab-pill, or bottom-sheet pattern instead of
+   importing the canonical primitives from `components/shell/`. Same
+   enforcement spirit as §15.10 cross-surface alignment.
+
+### **12.6 Tailwind Breakpoints (project-wide, unchanged)**
+
+```
+xs:  <480px       (rare — only for very dense phone tables)
+sm:  480–640px
+md:  640–1024px   ← phone/tablet boundary lives at the lower edge (768px)
+lg:  1024–1440px
+xl:  1440–1920px
+2xl: >1920px
+```
+
+The `md:` breakpoint at 768px is the structurally important one — it
+is the boundary between "phone bottom bar" and "tablet+ sidebar." Do
+not introduce nav-altering breakpoints inside `sm:` or `lg:`.
+
+### **12.7 Surfaces Not Yet Migrated**
+
+Not every section page has Phase 14.6 sub-tab routes yet. Some still
+use Radix `<Tabs>` (state-based, not URL-based). Migration is
+incremental — when touching a section page, prefer URL-routed sub-tabs
+so `<SectionTabsRow />` highlights the active pill correctly. Tracking
+list lives in `IMPLEMENTATION_PLAN.md` 🟡 Active Workstream "Phase 14.6".
+
+### **12.8 Acceptance Criteria for "Mobile-Ready"**
+
+A surface is mobile-ready when:
+
+- It renders without horizontal scroll on any phone width ≥320px.
+- All interactive controls meet the ≥44pt tap-target floor.
+- Any modal renders as a bottom sheet (not a centred 480px dialog) on
+  `<sm:`.
+- Any sub-tab navigation reads from `<SectionTabsRow />` or composes
+  the same pill pattern (URL-routed, scrollable, deep-linkable).
+- The page does not introduce a parallel implementation of any pattern
+  documented in this §12 or §15.
+
+---
 
 ---
 

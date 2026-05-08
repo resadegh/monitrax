@@ -144,7 +144,10 @@ export function CashQuickAddButton({ onCreated, onCaptureReceipt }: CashQuickAdd
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Quick add cash transaction"
-          className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-30 w-14 h-14 rounded-full bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center motion-reduce:transition-none motion-reduce:hover:scale-100"
+          // Phase 14.6 — bottom inset bumped on phones (`bottom-24`) to
+          // clear the fixed `<MobileTabBar />` (~64px + safe-area). z-35
+          // sits above the tab bar (z-30) so the FAB stays tappable.
+          className="fixed bottom-24 right-6 sm:bottom-8 sm:right-8 z-[35] md:z-30 w-14 h-14 rounded-full bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center motion-reduce:transition-none motion-reduce:hover:scale-100"
         >
           <Plus className="w-6 h-6" />
         </button>
@@ -162,7 +165,9 @@ export function CashQuickAddButton({ onCreated, onCaptureReceipt }: CashQuickAdd
             role="dialog"
             aria-modal="true"
             aria-labelledby="cash-add-title"
-            className="fixed inset-x-4 sm:inset-x-auto sm:right-8 bottom-6 sm:bottom-8 z-50 sm:w-96 max-w-md mx-auto rounded-3xl bg-background border border-border shadow-2xl overflow-hidden anim-rise"
+            // Phase 14.6 — bottom inset bumped on phones to clear the
+            // fixed <MobileTabBar />.
+            className="fixed inset-x-4 sm:inset-x-auto sm:right-8 bottom-24 sm:bottom-8 z-50 sm:w-96 max-w-md mx-auto rounded-3xl bg-background border border-border shadow-2xl overflow-hidden anim-rise"
           >
             {success ? (
               <div className="px-6 py-10 text-center">

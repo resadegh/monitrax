@@ -5,21 +5,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  LayoutDashboard,
-  Home,
   Wallet,
   LogOut,
   User,
-  Menu,
-  X,
-  FileText,
-  Brain,
-  Shield,
-  Settings,
   Search,
-  Users,
-  Target,
-  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -43,211 +32,37 @@ import {
   OnboardingResumeBanner,
   WizardData,
 } from '@/components/onboarding';
-
-interface NavChild {
-  name: string;
-  href: string;
-}
-
-interface NavItem {
-  name: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  tourId?: string;
-  trailStage?: 'T' | 'R' | 'A' | 'I' | 'L';
-  matchRoutes?: string[];
-  // Sub-items shown when this section is active
-  children?: NavChild[];
-}
+// Phase 14.6 (2026-05-08) — TRAIL nav SSOT + mobile-first navigation primitives.
+// See lib/navigation/trailNav.tsx, components/shell/MobileTabBar.tsx,
+// components/shell/SectionTabsRow.tsx, components/shell/MoreSheet.tsx, and
+// docs/architecture/06_UI_UX_FOUNDATION.md §12.
+import {
+  trailNavItems,
+  settingsNavItem,
+  isNavItemActive,
+} from '@/lib/navigation/trailNav';
+import { MobileTabBar } from '@/components/shell/MobileTabBar';
+import { SectionTabsRow } from '@/components/shell/SectionTabsRow';
+import { MoreSheet } from '@/components/shell/MoreSheet';
 
 // =============================================================================
-// TRAIL SIDEBAR — 8 flat items, no accordion groups
-// Framework: docs/blueprint/TRAIL_FRAMEWORK.md
-//
-// Home → My Household → My Accounts [R] → My Budget [A] →
-// My Wealth [C] → My CFO [H] → Reports → Settings
+// TRAIL SIDEBAR — items defined in lib/navigation/trailNav.tsx (SSOT).
+// Phase 14.6 (2026-05-08) — Same canonical list powers BOTH the desktop
+// sidebar below AND the 5-tab MobileTabBar on phones. Never duplicate the
+// nav structure here. See CLAUDE.md §12.2 (SSOT) + §6.2 (canonical
+// utility locations).
 // =============================================================================
-
-const reachNavItems: NavItem[] = [
-  {
-    name: 'Home',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-    tourId: 'nav-dashboard',
-  },
-  {
-    name: 'My Household',
-    href: '/dashboard/household-profile',
-    icon: Users,
-    tourId: 'nav-household',
-  },
-  {
-    name: 'My Accounts',
-    href: '/dashboard/balances',
-    icon: Wallet,
-    tourId: 'nav-accounts',
-    trailStage: 'T',
-    // Phase 36: consolidated from 6 sub-pages to 2 (Balances, Activity).
-    // Phase 41b: My Structure (entity layer) added as a third child —
-    // entities are foundational to "what you own" (TRACK stage per
-    // CLAUDE.md §14.2), so the entity-management surface sits inside
-    // My Accounts rather than at the top level.
-    // matchRoutes retains the legacy paths so the nav item stays highlighted
-    // if a user lands on a direct/deep-linked old URL.
-    matchRoutes: [
-      '/dashboard/balances',
-      '/dashboard/activity',
-      '/dashboard/entities',
-      '/dashboard/accounts',
-      '/dashboard/loans',
-      '/transactions',
-      '/recurring',
-    ],
-    children: [
-      { name: 'Balances', href: '/dashboard/balances' },
-      { name: 'Activity', href: '/dashboard/activity' },
-      { name: 'My Structure', href: '/dashboard/entities' },
-    ],
-  },
-  {
-    name: 'My Budget',
-    // Phase 37 PR 1: default landing flipped from `/dashboard/budget-analysis`
-    // → `/cashflow`. The first thing a user should see in REDUCE is the
-    // answer to "am I OK this month?", not a "Generate Budget Analysis"
-    // configuration CTA. Cashflow is the strongest existing surface
-    // (`app/(dashboard)/cashflow/page.tsx`) and is the new default.
-    href: '/cashflow',
-    icon: Target,
-    tourId: 'nav-budget',
-    trailStage: 'R',
-    // Phase 37 final state: 3 tabs — Cashflow (the answer) · My Plan (the
-    // intent — Money In / Money Out / Your Budget) · Debt Freedom (the
-    // action). Tax relocated to My Guide. Income/Spending/Budget legacy
-    // routes still resolve (deep-link compatibility) and the My Budget
-    // tab highlights when the user lands on any of them.
-    matchRoutes: [
-      '/cashflow',
-      '/dashboard/plan',
-      '/dashboard/budget-analysis',
-      '/dashboard/income',
-      '/dashboard/expenses',
-      '/dashboard/debt-planner',
-    ],
-    children: [
-      { name: 'Cashflow', href: '/cashflow' },
-      { name: 'My Plan', href: '/dashboard/plan' },
-      { name: 'Debt Freedom', href: '/dashboard/debt-planner' },
-    ],
-  },
-  {
-    name: 'My Safety Net',
-    href: '/dashboard/safety-net',
-    icon: Shield,
-    tourId: 'nav-safety-net',
-    trailStage: 'A',
-    matchRoutes: [
-      '/dashboard/safety-net',
-    ],
-  },
-  {
-    name: 'My Wealth',
-    href: '/dashboard/properties',
-    icon: Home,
-    tourId: 'nav-wealth',
-    trailStage: 'I',
-    matchRoutes: [
-      '/dashboard/properties',
-      '/dashboard/investments',
-      '/dashboard/assets',
-    ],
-    children: [
-      { name: 'Properties', href: '/dashboard/properties' },
-      { name: 'Investments', href: '/dashboard/investments/accounts' },
-      { name: 'Assets', href: '/dashboard/assets' },
-    ],
-  },
-  {
-    name: 'My Guide',
-    href: '/dashboard/cfo',
-    icon: Brain,
-    tourId: 'nav-guide',
-    trailStage: 'L',
-    // Phase 37 PR 1: Tax added as a 3rd sibling tab. Strategic alignment —
-    // tax-optimisation is a LIVE-stage activity (optimise once you're stable
-    // and growing). Day-to-day tax value still surfaces via Cashflow tip
-    // cards in PR 2; the full /dashboard/tax page lives here for the
-    // year-end deep dive. A future My Guide review session will fold any
-    // non-duplicated /dashboard/tax data into the Actions surface (the
-    // Actions page already shows a Tax Position card) and retire the
-    // standalone Tax route — see IMPLEMENTATION_PLAN.md Up Next #8.
-    //
-    // Phase 41h.7: "Ask the Advisor" added as a 4th sibling. Graduates the
-    // AI advisor from `/dashboard/cfo/ask` (orphan deep-link from 41h.4)
-    // to natural-IA placement under My Guide (TRAIL Stage 5 — Live).
-    // The conversation surface stays focused on its own page rather than
-    // folding into the already-rich CFO Actions tab.
-    matchRoutes: [
-      '/dashboard/cfo',
-      '/dashboard/cfo/ask',
-      '/health',
-      '/dashboard/tax',
-    ],
-    children: [
-      { name: 'Actions', href: '/dashboard/cfo' },
-      { name: 'Health', href: '/health' },
-      { name: 'Tax', href: '/dashboard/tax' },
-      { name: 'Ask the Advisor', href: '/dashboard/cfo/ask' },
-    ],
-  },
-  {
-    // Phase 38 PR 1: My Vault elevated to top-level item — was previously
-    // a sub-tab of "Reports". Documents are inputs (evidentiary trail),
-    // Reports are outputs (exports). Different mental modes; different
-    // mental homes. Position: between My Guide and Reports — sits at the
-    // natural transition between TRAIL journey and the
-    // evidence/outputs cluster (Apple Health uses the same pattern with
-    // "Browse" before "Sharing").
-    //
-    // Canonical route stays at /dashboard/documents (deep-link
-    // preservation, same precedent as Phase 36/37). /dashboard/vault is
-    // a friendly alias that redirects.
-    name: 'My Vault',
-    href: '/dashboard/documents',
-    icon: Archive,
-    tourId: 'nav-vault',
-    matchRoutes: [
-      '/dashboard/documents',
-      '/dashboard/vault',
-    ],
-  },
-  {
-    // Phase 38 PR 1: Reports unbundled from Documents — own top-level
-    // item now. Reports = exports for accountants / banks / you.
-    name: 'Reports',
-    href: '/dashboard/reports',
-    icon: FileText,
-    tourId: 'nav-reports',
-    matchRoutes: [
-      '/dashboard/reports',
-    ],
-  },
-];
-
-// Settings navigation item (shown separately at bottom)
-const settingsNavItem: NavItem = {
-  name: 'Settings',
-  href: '/dashboard/settings',
-  icon: Settings,
-  tourId: 'nav-settings',
-};
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, token, logout, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  // Phase 14.5 - Mobile sidebar state
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Phase 14.6 (2026-05-08) — Mobile More-sheet state. The legacy
+  // `sidebarOpen` (hamburger drawer) is gone; phones use the bottom
+  // tab bar (`<MobileTabBar />`) for primary nav and this sheet for
+  // overflow (Safety Net, Household, Vault, Reports, Settings, Sign out).
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
 
   // Phase 42 PR6.5e — Pending reconciliation count for the
   // sidebar badge on "My Accounts". Slack/Mail-style counter that
@@ -527,21 +342,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [user, isLoading, token, router]);
 
-  // Close sidebar on route change (mobile)
+  // Close More sheet on route change (phones).
   useEffect(() => {
-    setSidebarOpen(false);
+    setMoreSheetOpen(false);
   }, [pathname]);
-
-  // Close sidebar on escape key
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setSidebarOpen(false);
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
 
   if (isLoading || (token && !user)) {
     // Show loading spinner while:
@@ -572,14 +376,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      {/* Phase 14.5 - Mobile Header (visible on mobile only) */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-brand-primary flex items-center justify-between px-4 shadow-lg">
+      {/* Phase 14.6 — Mobile header (phones only). Avatar opens MoreSheet
+          for overflow nav (Safety Net, Household, Vault, Reports, Settings,
+          Sign out). Primary nav lives in <MobileTabBar /> at the bottom. */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-brand-primary flex items-center justify-between px-4 shadow-lg">
         <button
-          onClick={() => setSidebarOpen(true)}
-          className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-          aria-label="Open menu"
+          onClick={() => setMoreSheetOpen(true)}
+          className="p-1 rounded-full hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          aria-label="Open more menu"
+          aria-haspopup="dialog"
+          aria-expanded={moreSheetOpen}
         >
-          <Menu className="h-6 w-6 text-white" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white shadow-sm">
+            <User className="h-4 w-4" />
+          </span>
         </button>
         <Link href="/dashboard" className="flex items-center space-x-2">
           <div className="h-8 w-8 rounded-lg bg-brand-secondary flex items-center justify-center">
@@ -590,7 +400,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSearchOpen(true)}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
             aria-label="Search"
           >
             <Search className="h-5 w-5 text-white" />
@@ -599,25 +409,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      {/* Phase 14.5 - Mobile Sidebar Backdrop */}
-      {sidebarOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Sidebar - Responsive */}
+      {/* Phase 14.6 — Sidebar (tablets + desktop, ≥md). Phones use the
+          bottom tab bar instead. The previous hamburger-drawer state
+          (`sidebarOpen`) is gone; visibility is now purely a media query. */}
       <aside
         data-tour="sidebar"
-        className={`
-          fixed inset-y-0 left-0 z-50 w-64 border-r border-border
-          bg-card shadow-lg flex flex-col
-          transform transition-transform duration-300 ease-in-out
-          lg:translate-x-0 lg:transform-none
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+        className="hidden md:flex fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card shadow-lg flex-col"
       >
         {/* Logo/Brand */}
         <div className="flex h-16 items-center justify-between border-b border-border px-4 bg-brand-primary flex-shrink-0">
@@ -630,16 +427,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-xs text-emerald-200">Financial Planning</p>
             </div>
           </Link>
-          {/* Close button (mobile only) */}
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
-            aria-label="Close menu"
-          >
-            <X className="h-5 w-5 text-white" />
-          </button>
-          {/* Search and Theme toggle (desktop only) */}
-          <div className="hidden lg:flex items-center gap-1">
+          {/* Search and Theme toggle */}
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setSearchOpen(true)}
               className="p-2 rounded-lg hover:bg-white/10 transition-colors"
@@ -652,14 +441,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        {/* Navigation — REACH Framework (docs/blueprint/TRAIL_FRAMEWORK.md) */}
+        {/* Navigation — TRAIL framework (docs/blueprint/TRAIL_FRAMEWORK.md).
+            Items sourced from lib/navigation/trailNav.tsx (SSOT). */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {reachNavItems.map((item) => {
-            const isActive = item.href === '/dashboard'
-              ? pathname === '/dashboard' || pathname === '/dashboard/setup'
-              : item.matchRoutes
-                ? item.matchRoutes.some(r => pathname === r || pathname.startsWith(r + '/'))
-                : pathname === item.href || pathname.startsWith(item.href);
+          {trailNavItems.map((item) => {
+            const isActive = isNavItemActive(item, pathname);
             const Icon = item.icon;
 
             return (
@@ -752,34 +538,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </nav>
 
-        {/* Bottom Section — Settings + User */}
-        <div className="border-t border-border px-3 py-3 flex-shrink-0 space-y-1.5">
-          {/* Settings */}
-          <Link
-            href={settingsNavItem.href}
-            data-tour={settingsNavItem.tourId}
-            className={`
-              group flex items-center gap-3 rounded-xl px-3 py-2.5
-              text-[13px] font-medium tracking-wide
-              transition-all duration-200 ease-out
-              ${pathname.startsWith(settingsNavItem.href)
-                ? 'bg-primary/10 text-primary dark:bg-primary/20'
-                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              }
-            `}
-          >
-            <div className={`
-              flex h-8 w-8 items-center justify-center rounded-lg
-              transition-colors duration-200
-              ${pathname.startsWith(settingsNavItem.href)
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
-              }
-            `}>
-              <Settings className="h-4 w-4" />
-            </div>
-            <span className="flex-1">Settings</span>
-          </Link>
+        {/* Bottom Section — Settings + User. Icon sourced from
+            settingsNavItem.icon (lib/navigation/trailNav.tsx) so the
+            sidebar and the More sheet on mobile both use the same glyph. */}
+        {(() => {
+          const SettingsIcon = settingsNavItem.icon;
+          return (
+            <div className="border-t border-border px-3 py-3 flex-shrink-0 space-y-1.5">
+              {/* Settings */}
+              <Link
+                href={settingsNavItem.href}
+                data-tour={settingsNavItem.tourId}
+                className={`
+                  group flex items-center gap-3 rounded-xl px-3 py-2.5
+                  text-[13px] font-medium tracking-wide
+                  transition-all duration-200 ease-out
+                  ${pathname.startsWith(settingsNavItem.href)
+                    ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  }
+                `}
+              >
+                <div className={`
+                  flex h-8 w-8 items-center justify-center rounded-lg
+                  transition-colors duration-200
+                  ${pathname.startsWith(settingsNavItem.href)
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
+                  }
+                `}>
+                  <SettingsIcon className="h-4 w-4" />
+                </div>
+                <span className="flex-1">Settings</span>
+              </Link>
 
           {/* User Info + Sign Out */}
           <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-2.5">
@@ -801,26 +592,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Button>
           </div>
         </div>
+          );
+        })()}
       </aside>
 
-      {/* Main Content - Responsive */}
-      <div className="lg:pl-64">
-        {/* Add top padding on mobile for the header.
-            `onboarding-active-shell` applies a subtle sky-blue ambient
-            tint while the user has an unfinished wizard draft, giving
-            the dashboard a "still in setup mode" cue that fades back to
-            normal once onboarding completes. Same gating boolean as the
-            persistent resume banner — single source of truth (see
-            useOnboardingState.shouldShowResumeBanner). The CSS lives in
-            styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL". */}
+      {/* Main Content — Phase 14.6 (2026-05-08).
+          Sidebar offset and content padding now flip at `md:` (768px),
+          not `lg:` (1024px) — iPad portrait gets the desktop sidebar
+          rail instead of the phone layout. Bottom padding (`pb-24 md:pb-8`)
+          reserves space for the fixed `<MobileTabBar />` on phones.
+
+          `onboarding-active-shell` applies a subtle sky-blue ambient
+          tint while the user has an unfinished wizard draft, giving
+          the dashboard a "still in setup mode" cue that fades back to
+          normal once onboarding completes. Same gating boolean as the
+          persistent resume banner — single source of truth (see
+          useOnboardingState.shouldShowResumeBanner). The CSS lives in
+          styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL". */}
+      <div className="md:pl-64">
         <main
-          className={`min-h-screen p-3 pt-16 sm:p-4 sm:pt-20 lg:p-8 lg:pt-8 ${
+          className={`min-h-screen p-3 pt-16 pb-24 sm:p-4 sm:pt-20 sm:pb-24 md:p-8 md:pt-8 md:pb-8 ${
             !showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed
               ? 'onboarding-active-shell'
               : ''
           }`}
         >
           <div className="mx-auto max-w-7xl">
+            {/* Phase 14.6 — Sub-tab pill row (phones only). Renders the
+                active TRAIL section's sub-tabs (e.g. Balances · Activity ·
+                My Structure on My Accounts) so users reach a sub-tab in
+                ONE tap from the bottom bar, not two. No-op on desktop and
+                on sections without children. */}
+            <SectionTabsRow />
             {/* Phase 12 PR 2: Resume banner for users with an unfinished
                 wizard draft. Persists across ALL dashboard pages while
                 onboarding is in progress (was previously gated to
@@ -861,6 +664,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </main>
       </div>
+
+      {/* Phase 14.6 — Mobile bottom tab bar (phones only). Persistent
+          5-tab nav mapped to TRAIL stages: Home · Track · Reduce ·
+          Invest · Guide. Anchor folds into More sheet per
+          TRAIL_FRAMEWORK.md §5. */}
+      <MobileTabBar />
+
+      {/* Phase 14.6 — More sheet (phones only). Triggered by avatar
+          button on the mobile header. Holds Safety Net, Household,
+          Vault, Reports, Settings, Sign out. */}
+      <MoreSheet
+        open={moreSheetOpen}
+        onClose={() => setMoreSheetOpen(false)}
+        user={{ name: user?.name, email: user?.email }}
+        onSignOut={logout}
+      />
 
       {/* AI Chat Floating Button — hidden when onboarding modals are open
            so it doesn't overlap the wizard's Back/Next buttons. */}

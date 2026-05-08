@@ -292,6 +292,35 @@ MY Guide         → "Here's your path to freedom."                 [LIVE]
 REPORTS        → "Here's the proof."
 ```
 
+### TRAIL on Mobile — The Bottom Bar IS the Journey (Phase 14.6)
+
+> Added 2026-05-08. See `docs/architecture/06_UI_UX_FOUNDATION.md` §12
+> for the canonical implementation contract; see
+> `lib/navigation/trailNav.tsx:mobileTabBarItems` for the SSOT.
+
+On phones (`<md`, <768px) the sidebar collapses into a 5-tab bottom
+navigation that *is* the TRAIL framework — Home + the four primary
+TRAIL stages, in order:
+
+| Tab | TRAIL stage | Lands on |
+|---|---|---|
+| Home | — (journey overview) | `/dashboard` |
+| Track | T | `/dashboard/balances` |
+| Reduce | R | `/cashflow` |
+| Invest | I | `/dashboard/properties` |
+| Guide | L | `/dashboard/cfo` |
+
+**Anchor folds into MoreSheet** (avatar button → bottom sheet) per
+this framework's own §5 directive: Anchor is tracked through Financial
+Health score + Guide recommendations, not as a primary destination.
+On phones where the bottom bar is capped at 5 (Apple HIG), this fold is
+structural, not a compromise — it makes Anchor's secondary-destination
+status visible in the IA itself.
+
+iPad and desktop continue to see all 9 sidebar items + Settings,
+including My Safety Net as a top-level rail entry. The TRAIL framework
+is not changed — its rendering adapts to the surface.
+
 ---
 
 ## 6. Barefoot Investor Guide Integration
