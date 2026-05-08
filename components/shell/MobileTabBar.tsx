@@ -64,7 +64,7 @@ export function MobileTabBar({ className }: MobileTabBarProps) {
         aria-hidden
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
       />
-      <ul className="grid grid-cols-5 px-1 pt-1.5 pb-1.5">
+      <ul className="grid grid-cols-6 px-1 pt-1.5 pb-1.5">
         {mobileTabBarItems.map((tab) => (
           <MobileTabButton
             key={tab.key}

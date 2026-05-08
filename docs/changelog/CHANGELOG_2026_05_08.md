@@ -206,3 +206,49 @@ Docs updated in this PR:
 - Branch: `claude/phase-14-6-segmented-zKSTw` (branched from `claude/phase-14-6-polish-zKSTw` so #724's matcher + active-state fixes carry along).
 - Status: pending push.
 - Supersedes: PR #724 (when this merges, #724 can be closed).
+
+---
+
+## Session: claude/phase-14-6-anchor-zKSTw (Phase 14.6 v4 — full TRAIL on the bottom bar)
+
+### Changes Made
+- **Type:** UX refinement on top of #723 v1 / #724 v2 / #725 v3.
+- **Scope:** Promote My Safety Net (Anchor stage) from MoreSheet to a primary tab on the mobile bottom bar. The bar now renders Home + all five TRAIL stages: Home · Track · Reduce · Anchor · Invest · Guide.
+- **Why:** Reza directive 2026-05-08 — *"My Safety Net is sitting under the hamburger bar and not like the other pages. Can we add that one to the rest as well so have all TRAIL steps on the main page?"* The earlier 5-tab cap (Apple HIG) hid one of the five TRAIL stages from the bottom bar, breaking the visual symmetry of the journey at the exact moment users need orientation. The desktop sidebar already had Safety Net as a top-level rail entry; mobile now matches.
+
+### Files Modified
+- `lib/navigation/trailNav.tsx` — added `anchor` entry to `mobileTabBarItems` between `reduce` and `invest` (preserves TRAIL stage order T → R → A → I → L). `MobileTabBarItem.key` union extended with `'anchor'`. Removed Safety Net from `mobileMoreItems` since it's no longer a More-sheet destination.
+- `components/shell/MobileTabBar.tsx` — `grid-cols-5` → `grid-cols-6`.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §12 — anatomy diagram updated to show six tabs; §12.4 stage table includes Anchor row; §12.5 hard rules — replaced the "≤5 (Apple HIG cap is hard)" rule with "the bar size is locked at 6 (Home + 5 TRAIL stages); growing past 6 is forbidden without a TRAIL framework update."
+- `docs/blueprint/TRAIL_FRAMEWORK.md` §5 — "TRAIL on Mobile" subsection rewritten: 6 tabs, full T-R-A-I-L visible end-to-end, explicit override of the prior "Anchor folds into MoreSheet" framing.
+
+### Architecture Decisions
+- **Web app, not native iOS app.** Apple HIG suggests ≤5 tabs on native iOS tab bars. Monitrax is a web app rendered in Safari — the constraint doesn't bind. The TRAIL framework's integrity (all five stages visible end-to-end) wins over the native ceiling.
+- **6 is now the locked bar size.** The TRAIL framework has exactly five stages plus Home; any 7th destination must replace an existing tab (with framework-level justification) or live in MoreSheet. Reviewers must reject any PR that grows the bar past 6 without a `TRAIL_FRAMEWORK.md` update signed off by Reza.
+- **TRAIL §5's "Anchor is tracked through Health" framing is preserved.** That sentence describes how Anchor is *computed*, not whether it deserves a destination. The Safety Net page surfaces the Anchor-stage data (Emergency Fund, Bills On Time, Safety Score) and has always existed at `/dashboard/safety-net`. The mobile bar now matches the desktop sidebar's posture toward it.
+
+### Build Status
+- [x] `npx tsc --noEmit -p .` clean
+- [x] `npm run build` clean
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (mobile bottom bar grew 5 → 6)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (TRAIL_FRAMEWORK §5 mobile interpretation: Anchor is now a primary tab)
+
+Docs updated in this PR:
+- `docs/architecture/06_UI_UX_FOUNDATION.md:§12` — anatomy + stage table + hard rules updated for 6-tab bar.
+- `docs/blueprint/TRAIL_FRAMEWORK.md:§5` — "TRAIL on Mobile" subsection rewritten.
+- `docs/changelog/CHANGELOG_2026_05_08.md` — this entry.
+
+### PR
+- Branch: `claude/phase-14-6-anchor-zKSTw` (branched from `claude/phase-14-6-segmented-zKSTw` so #725's work comes along).
+- Status: pending push.
+- Supersedes: #724 (closed) + #725 (close on merge of this).

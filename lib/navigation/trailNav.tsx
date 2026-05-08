@@ -211,7 +211,7 @@ export function isNavItemActive(item: NavItem, pathname: string): boolean {
 
 export interface MobileTabBarItem {
   /** Stable key for tracking analytics + active-tab matching. */
-  key: 'home' | 'track' | 'reduce' | 'invest' | 'guide';
+  key: 'home' | 'track' | 'reduce' | 'anchor' | 'invest' | 'guide';
   /** Short label rendered under the icon. ≤7 chars to avoid truncation. */
   label: string;
   href: string;
@@ -262,6 +262,18 @@ export const mobileTabBarItems: MobileTabBarItem[] = [
       '/dashboard/expenses',
       '/dashboard/debt-planner',
     ],
+  },
+  {
+    // Phase 14.6 v4 (2026-05-08): Anchor (My Safety Net) promoted from
+    // MoreSheet to a primary tab. Reza directive: TRAIL is the IA, all
+    // five stages should be visible end-to-end. Sits between Reduce
+    // and Invest to preserve TRAIL stage order (T → R → A → I → L).
+    key: 'anchor',
+    label: 'Anchor',
+    href: '/dashboard/safety-net',
+    icon: Shield,
+    trailStage: 'A',
+    matchRoutes: ['/dashboard/safety-net'],
   },
   {
     key: 'invest',
@@ -328,12 +340,15 @@ export function findActiveMobileTab(
 
 /**
  * Items shown in the More sheet (avatar button on the mobile header) —
- * surfaces that don't fit the 5-tab bar but still need a one-tap reach.
+ * surfaces that don't fit the 6-tab bar but still need a one-tap reach.
+ *
+ * Phase 14.6 v4 (2026-05-08): My Safety Net REMOVED — promoted to a
+ * primary tab (Anchor) so the full TRAIL journey is visible on the
+ * bottom bar.
  *
  * Keep order stable: most-used → least-used.
  */
 export const mobileMoreItems: NavItem[] = [
-  trailNavItems.find((i) => i.name === 'My Safety Net')!,
   trailNavItems.find((i) => i.name === 'My Household')!,
   trailNavItems.find((i) => i.name === 'My Vault')!,
   trailNavItems.find((i) => i.name === 'Reports')!,
