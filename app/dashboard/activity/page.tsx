@@ -315,7 +315,16 @@ export default function ActivityPage() {
         transactionsRef.current = json.data;
         setTotalPages(json.pagination.totalPages);
       } else {
-        setError(json.error || 'Failed to load transactions');
+        // Normalise the error to a string. The canonical API error
+        // shape is `{success:false, error:{code, message, timestamp}}`
+        // so naïve `setError(json.error)` historically crashed the
+        // page with React error #31 (object as React child). Always
+        // produce a string here so ErrorState never gets an object.
+        const errMsg =
+          typeof json.error === 'string'
+            ? json.error
+            : json.error?.message || json.error?.code || 'Failed to load transactions';
+        setError(errMsg);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error');
@@ -1194,14 +1203,26 @@ function LoadingList() {
   );
 }
 
-function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
+function ErrorState({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  // Defence in depth — `error` is *typed* as string but a stray
+  // object slips through often enough (API error shape, network
+  // exception with .toJSON, etc.) to crash the page with React
+  // error #31. Coerce to a string here even if the prop is wrong.
+  const message =
+    typeof error === 'string'
+      ? error
+      : error && typeof error === 'object'
+        ? ((error as { message?: string }).message ??
+          (error as { code?: string }).code ??
+          'Something went wrong')
+        : 'Something went wrong';
   return (
     <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-10 text-center anim-rise">
       <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 mb-3">
         <AlertTriangle className="w-6 h-6" />
       </div>
       <h3 className="text-lg font-semibold tracking-tight text-rose-900">Something went wrong</h3>
-      <p className="text-sm text-rose-700 mt-1">{error}</p>
+      <p className="text-sm text-rose-700 mt-1">{message}</p>
       <Button onClick={onRetry} variant="outline" className="mt-4">
         <RefreshCw className="w-4 h-4 mr-1.5" /> Retry
       </Button>
