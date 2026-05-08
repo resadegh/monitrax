@@ -341,16 +341,40 @@ info: 'hsl(var(--color-info))'
 Org Portal aligns visually with the consumer app via the shared
 `components/shell/` layer (see `06_UI_UX_FOUNDATION.md` §15.10).
 
-**Responsive shell breakpoint contract (project standard):**
+**Responsive shell breakpoint contract.** Two contracts coexist —
+consumer app and the portals — because their primary-nav patterns
+differ. Both use the same `components/shell/` motion + tokens; only
+the chrome that wraps them differs.
+
+### Consumer app (`app/dashboard/*`) — three-tier (Phase 14.6, 2026-05-08)
+
+Canonical: `06_UI_UX_FOUNDATION.md` §12. SSOT: `lib/navigation/trailNav.tsx`.
+
+| Viewport | Tailwind | Behaviour |
+|---|---|---|
+| Phone | `< 768px` | Bottom tab bar (`<MobileTabBar />`, 5 tabs mapped to TRAIL stages) + horizontal sub-tab pill row (`<SectionTabsRow />`) + avatar → MoreSheet for overflow nav. No hamburger. |
+| Tablet | `768–1023px` | Persistent left sidebar (256px) — same component as desktop. iPad portrait gets the desktop rail, NOT the phone tab bar. |
+| Desktop | `≥ 1024px` | Persistent left sidebar with sub-tab accordion. |
+
+Reusable mobile primitives live in `components/shell/MobileTabBar.tsx`,
+`components/shell/SectionTabsRow.tsx`, `components/shell/MoreSheet.tsx`.
+Reviewers MUST reject any new consumer mobile surface that re-rolls
+the bottom-tab-bar / sub-tab-pill / bottom-sheet pattern instead of
+importing these primitives.
+
+### Org Portal + Admin Portal — two-tier
 
 | Viewport | Behaviour |
 |---|---|
 | `< 1024px` (phone, iPad portrait) | Sidebar collapses to slide-in drawer; mobile top bar with hamburger + brand pill. |
 | `≥ 1024px` (`lg+`, iPad landscape, desktop) | Sidebar persistent alongside content. |
 
-Same breakpoint applies to Admin Portal. Same drawer pattern. Source:
-`components/portal/layout/PortalSidebar.tsx` and
-`components/admin/layout/AdminSidebar.tsx`.
+Source: `components/portal/layout/PortalSidebar.tsx` and
+`components/admin/layout/AdminSidebar.tsx`. The portals retain the
+two-tier hamburger-drawer pattern because adviser/operator workflows
+are desktop-first; phone use is exception, not norm. If portal
+mobile usage grows, the consumer three-tier model is the canonical
+target — promote, don't re-invent.
 
 **Glyph families:**
 - Consumer wealth: `components/wealth/wealthGlyphs.tsx`
