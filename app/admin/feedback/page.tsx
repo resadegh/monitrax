@@ -124,6 +124,28 @@ export default function AdminFeedbackPage() {
     void fetchList();
   }, [fetchList]);
 
+  // Phase 33g.5: light polling on the admin inbox list so new threads
+  // and new replies surface without manual refresh. 12s cadence — same
+  // ballpark as Slack's mobile sync. Pauses when the tab is hidden so
+  // we don't burn function invocations on inactive tabs.
+  useEffect(() => {
+    if (!token) return;
+    const tick = () => {
+      if (document.visibilityState === 'hidden') return;
+      void fetchList();
+      if (selectedId) void fetchDetail(selectedId);
+    };
+    const interval = setInterval(tick, 12_000);
+    const onVisibility = () => {
+      if (document.visibilityState !== 'hidden') tick();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [token, fetchList, fetchDetail, selectedId]);
+
   useEffect(() => {
     if (selectedId) void fetchDetail(selectedId);
     else setDetail(null);
