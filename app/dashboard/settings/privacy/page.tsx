@@ -33,6 +33,7 @@ import {
   Database,
   Calendar,
   ExternalLink,
+  Download,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -146,6 +147,39 @@ export default function PrivacySettingsPage() {
       setSuccessMessage(result.data?.message || 'All consents revoked and CDR data deleted.');
       setShowRevokeAllConfirm(false);
       await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const exportData = async () => {
+    setActionLoading('export-data');
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const response = await fetch('/api/account/export', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(
+          result.error?.message || result.error || 'Failed to export data'
+        );
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `monitrax-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setSuccessMessage(
+        'Your data export was downloaded as a JSON file. Keep it somewhere safe.'
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -447,6 +481,38 @@ export default function PrivacySettingsPage() {
                       </Button>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Right to Portability — JSON Export */}
+              <div className="p-4 rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-900/10">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Download My Data
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Get a JSON copy of everything Monitrax holds about you —
+                      profile, accounts, loans, properties, transactions, consents
+                      and documents metadata. Your right to portability under
+                      the Privacy Act 1988 (APP 12) and the CDR.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={exportData}
+                    disabled={actionLoading === 'export-data'}
+                  >
+                    {actionLoading === 'export-data' ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download JSON
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
 

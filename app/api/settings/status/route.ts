@@ -4,7 +4,13 @@ import { prisma } from '@/lib/db';
 
 /**
  * GET /api/settings/status
- * Get settings overview status for authenticated user
+ *
+ * Settings overview shown on /dashboard/settings (the General tab).
+ *
+ * Reads canonical state from user_preferences + users. Prior to the
+ * 2026-05-08 settings overhaul this endpoint hardcoded notifications
+ * and profile completeness, so the General tab lied to the user about
+ * the state of every other tab.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -17,30 +23,46 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user with related data
     const user = await prisma.user.findUnique({
       where: { id: auth.userId },
       select: {
+        name: true,
+        email: true,
+        mobile: true,
+        phone: true,
+        location: true,
+        timezone: true,
+        bio: true,
         mfaEnabled: true,
+        deletionRequestedAt: true,
+        deletionScheduledFor: true,
+        trustedContactName: true,
         mfaMethods: {
           where: { isEnabled: true },
           select: { type: true },
         },
         storageProviderConfig: {
-          select: {
-            provider: true,
-            isActive: true,
-          },
+          select: { provider: true, isActive: true },
         },
         userPreference: {
           select: {
             preferredCurrency: true,
             preferredDateFormat: true,
+            country: true,
+            theme: true,
+            emailWeeklyDigest: true,
+            emailMonthlyReport: true,
+            emailAlerts: true,
+            emailProductUpdates: true,
+            pushCashflowAlerts: true,
+            pushSpendingAlerts: true,
+            pushGoalUpdates: true,
+            pushBillReminders: true,
           },
         },
         documents: {
           select: { id: true },
-          take: 1000, // Just to count
+          take: 1000,
         },
       },
     });
@@ -52,19 +74,50 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get document storage stats
+    // ---- Storage ----
     const documentCount = user.documents?.length || 0;
-
-    // Calculate storage usage (simplified - in real app, sum file sizes)
-    const storageUsed = documentCount * 0.5; // Estimate 0.5MB per document
-    const storageLimit = 5120; // 5GB in MB
+    const storageUsed = documentCount * 0.5; // Estimate 0.5MB / document
+    const storageLimit = 5120; // 5GB
     const storageUsedPercent = Math.round((storageUsed / storageLimit) * 100);
-
-    // Determine active storage provider
     const activeProvider = user.storageProviderConfig?.provider || 'MONITRAX';
 
-    // Build status response
-    const status = {
+    // ---- Notifications ---- (now reads from user_preferences)
+    const prefs = user.userPreference;
+    const emailEnabled = !!(
+      prefs?.emailWeeklyDigest ||
+      prefs?.emailMonthlyReport ||
+      prefs?.emailAlerts ||
+      prefs?.emailProductUpdates
+    );
+    const pushEnabled = !!(
+      prefs?.pushCashflowAlerts ||
+      prefs?.pushSpendingAlerts ||
+      prefs?.pushGoalUpdates ||
+      prefs?.pushBillReminders
+    );
+
+    // ---- Profile completeness ---- (real, not hardcoded 60)
+    const profileFields = {
+      name: !!user.name,
+      email: !!user.email,
+      mobile: !!user.mobile,
+      phone: !!user.phone,
+      location: !!user.location,
+      bio: !!user.bio,
+      timezone: !!user.timezone,
+      trustedContact: !!user.trustedContactName,
+    };
+    const totalFields = Object.keys(profileFields).length;
+    const filledFields = Object.values(profileFields).filter(Boolean).length;
+    const completeness = Math.round((filledFields / totalFields) * 100);
+    const missingFields = Object.entries(profileFields)
+      .filter(([, filled]) => !filled)
+      .map(([k]) => k);
+
+    // ---- Account lifecycle ----
+    const pendingDeletion = !!user.deletionRequestedAt;
+
+    return NextResponse.json({
       security: {
         mfaEnabled: user.mfaEnabled,
         mfaMethods: user.mfaMethods?.map((m: { type: string }) => m.type) || [],
@@ -86,24 +139,38 @@ export async function GET(request: NextRequest) {
             : `${Math.round(storageUsed)}MB of ${storageLimit / 1024}GB used`,
       },
       notifications: {
-        emailEnabled: true, // Default - would come from preferences
-        pushEnabled: false, // Default - would come from preferences
-        status: 'ok',
-        message: 'Email notifications enabled',
+        emailEnabled,
+        pushEnabled,
+        status: emailEnabled || pushEnabled ? 'ok' : 'off',
+        message:
+          emailEnabled && pushEnabled
+            ? 'Email + push notifications enabled'
+            : emailEnabled
+              ? 'Email notifications enabled'
+              : pushEnabled
+                ? 'Push notifications enabled'
+                : 'No notifications enabled',
       },
       profile: {
-        completeness: 60, // Calculate based on filled fields
-        status: 'incomplete',
-        message: 'Complete your profile for better experience',
-        missingFields: ['avatar', 'bio'],
+        completeness,
+        status: completeness >= 80 ? 'complete' : 'incomplete',
+        message:
+          completeness >= 80
+            ? 'Your profile looks great'
+            : 'Complete your profile for a better experience',
+        missingFields,
       },
       preferences: {
-        currency: user.userPreference?.preferredCurrency || 'AUD',
-        dateFormat: user.userPreference?.preferredDateFormat || 'DD/MM/YYYY',
+        currency: prefs?.preferredCurrency || 'AUD',
+        dateFormat: prefs?.preferredDateFormat || 'DD/MM/YYYY',
+        country: prefs?.country || 'AU',
+        theme: prefs?.theme || 'system',
       },
-    };
-
-    return NextResponse.json(status);
+      account: {
+        pendingDeletion,
+        deletionScheduledFor: user.deletionScheduledFor,
+      },
+    });
   } catch (error) {
     console.error('Settings status error:', error);
     return NextResponse.json(

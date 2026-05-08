@@ -6,7 +6,9 @@
 >
 > See CLAUDE.md §1 (Session Startup Protocol) and §15 (Implementation Plan Protocol) for the rules that govern this document.
 
-**Last updated:** 2026-05-08 — Reza + Claude (**Phase 42 PR6.5e Persistent reconciliation nudge SHIPPED (this PR).** Per Reza directive 2026-05-08: *"a message on login: you have few unreconsiled transactions, fix them now?"* + Claude research showing universal pattern across YNAB / Mint / Pocketbook / Slack / Apple Mail = persistent count + top-of-feed strip, NOT modals. Three coordinated changes to PR6.5b's strip without touching its data layer: (1) strip moved ABOVE the TRAIL hero on Home (was below it, where users never scrolled to it); (2) cadence relaxed from once-per-UTC-day → per-session via `sessionStorage` so reconciliation surfaces every fresh login session; server `lastPromptShownAt` write is now advisory telemetry only; `promptOptedOut` global off-switch preserved; (3) new `hooks/usePendingReconciliationCount.ts` + Slack/Mail-style amber count badge on "My Accounts" sidebar entry, visible across every page (capped at "99+"). Strip copy leaned into "Fix now" framing — header reads *"You have X unreconciled transactions"* + amber CTA pill *"Fix now →"*. 5 new formatter tests; 220 cumulative bookkeeping green. tsc + lint:financial-surfaces clean.
+**Last updated:** 2026-05-08 (later) — Reza + Claude (**Settings overhaul SHIPPING in this PR.** A four-lens audit of consumer / admin / portal Settings surfaced 12 trust-breaking gaps — UI lying to users (Delete Account button with no onClick, `/api/settings/status` hardcoding values, mock API Keys + Billing pages, dead Storage folder switches, Appearance silently dropping toggles), schema-orphans (`/api/settings/categorization` Phase 29 no UI, `OrganizationSettings.tsx` no route), and missing-but-needed (account deletion lifecycle, data export, trusted contact, country / tax-year UI). All 12 fixed in this PR via 1 schema migration (additive), 3 new account-lifecycle endpoints, 4 new sub-pages, 7 modified pages, sidebar IA regrouped + warm-language pass (`Settings → My Settings`), full doc-sync. See active-workstream entry 0a for the full breakdown.
+
+**Earlier (2026-05-08):** Phase 42 PR6.5e Persistent reconciliation nudge SHIPPED (this PR). Per Reza directive 2026-05-08: *"a message on login: you have few unreconsiled transactions, fix them now?"* + Claude research showing universal pattern across YNAB / Mint / Pocketbook / Slack / Apple Mail = persistent count + top-of-feed strip, NOT modals. Three coordinated changes to PR6.5b's strip without touching its data layer: (1) strip moved ABOVE the TRAIL hero on Home (was below it, where users never scrolled to it); (2) cadence relaxed from once-per-UTC-day → per-session via `sessionStorage` so reconciliation surfaces every fresh login session; server `lastPromptShownAt` write is now advisory telemetry only; `promptOptedOut` global off-switch preserved; (3) new `hooks/usePendingReconciliationCount.ts` + Slack/Mail-style amber count badge on "My Accounts" sidebar entry, visible across every page (capped at "99+"). Strip copy leaned into "Fix now" framing — header reads *"You have X unreconciled transactions"* + amber CTA pill *"Fix now →"*. 5 new formatter tests; 220 cumulative bookkeeping green. tsc + lint:financial-surfaces clean.
 
 **Earlier (2026-05-07):** Phase 42 PR6.5c Review Queue card-stack SHIPPED (PR #710 merged). New `<ReviewQueueCards />` opt-in full-screen overlay reachable via "Quick review →" pill on Activity header. One transaction per card; ≥56pt chip targets per Apple HIG; anomaly-flagged FIRST queue order then chronological newest→oldest; Back / Skip / Transfer footer always reachable; empty state celebrates + exits. Reuses PR6.5's `useSwipeGesture` SSOT + composes existing `/api/unified-transactions/[id]` PATCH per CLAUDE.md §12.3 — no parallel categorise path. Pure `orderReviewQueue()` exported for tests; 7 ordering invariants pinned. Per Reza decision PR6.5b lesson: full-screen overlay is RIGHT here because the user *actively chose to enter* review mode — opposite of popup-on-arrival. 215 cumulative bookkeeping green. tsc + lint:financial-surfaces clean.
 
@@ -53,6 +55,36 @@
 ## 🟡 Active Workstreams
 
 > Sorted by priority. Top of list = work in flight right now.
+
+### 0a. Settings overhaul — trust-breaking fixes + missing controls
+
+- **Status:** 🟡 SHIPPING in this PR (`claude/review-monitrax-settings-LL4bQ`)
+- **Started:** 2026-05-08
+- **Owner:** Reza (direction) + Claude (code)
+- **Last touched:** 2026-05-08
+- **Why this matters:** A 2026-05-08 four-lens audit of consumer / admin / portal Settings surfaced 12 trust-breaking gaps. Several were UI lying to users — Delete Account button with no `onClick`, Appearance API silently dropping toggles, `/api/settings/status` hardcoding values, mock API Keys / Billing pages pretending to be real, dead Storage folder switches. Several were schema-orphans — `/api/settings/categorization` (Phase 29) had no UI; `/components/portal/settings/OrganizationSettings.tsx` was 333 lines of working component with zero importers. And several were missing-but-needed: account deletion lifecycle (CDR §3.2 right-to-erasure), data export (Privacy Act APP 12), trusted contact (Phase 32B advisor handover precondition), country / tax-year UI exposure (Phase 20 + Phase 41 sensitive). Behavioural-psychology lens: settings is the surface where users go when something feels wrong — every lie there compounds the original anxiety.
+- **Phases (this PR):**
+  - [x] Schema migration — `UserPreference` +4 appearance columns, `User` +5 trusted-contact + 2 deletion-lifecycle columns, `AuditAction` +5 enum values, partial index on `users.deletionScheduledFor`. Additive, §12.11-clean.
+  - [x] `/api/settings/status` reads real notification + profile state from `UserPreference` + `User`.
+  - [x] `/api/settings/appearance` persists theme / showCents / compactMode / financialYearStart / taxYear / country.
+  - [x] `/api/account/delete-request` GET / POST / DELETE — 30-day soft-delete grace, audit-trailed, cancellable.
+  - [x] `/api/account/export` GET — JSON document of every row the user owns (right to portability).
+  - [x] `/api/account/trusted-contact` GET / PUT — optional second-line contact, never auto-shared.
+  - [x] `/dashboard/settings/categorization` consumes the orphaned Phase 29 API.
+  - [x] `/dashboard/settings/connections` mounts Basiq disconnect on Settings (was buried in `/dashboard/accounts`).
+  - [x] `/dashboard/settings/trusted-contact` form.
+  - [x] `/portal/settings` mounts the orphaned `OrganizationSettings` component; sidebar feature-gate removed.
+  - [x] Delete Account button wired with banner state for pending deletions.
+  - [x] Privacy & CDR page gains "Download my data" card.
+  - [x] Appearance UI gains Country + Tax year fields + persistence.
+  - [x] API Keys + Billing pages replaced with honest "Coming Soon" placeholders.
+  - [x] Storage page dead `<Switch defaultChecked />` toggles replaced with honest "what we do today" list.
+  - [x] Settings IA — header renamed `My Settings`; sidebar regrouped into 5 mental-model groups (Me / My money data / Privacy & safety / My notifications / My plan).
+  - [x] Doc-sync — `06_UI_UX_FOUNDATION.md`, `03_DATA_MODEL.md`, `PHASE_19_DOCUMENT_MANAGEMENT.md`, `IMPLEMENTATION_PLAN.md`, `CHANGELOG_2026_05_08.md`.
+- **Risk:** Low. Migration is purely additive, defaults preserve existing behaviour. New routes don't touch CDR boundaries beyond the existing `withPermission`/`withActiveConsent` patterns. Visual surface unchanged on the in-place pages.
+- **Reversed-decision protection:** Mock API Keys + Billing pages were the worst offenders. They're now stripped to placeholders. If someone wants to re-build them as mock UI in the future, this entry says "no — that's why we deleted them last time".
+- **Closes tech-debt / opens:** Closes `🗑️ Dead Code` entries for the API Keys mock + Billing mock + categorisation-API-no-UI orphan + portal-settings-component orphan. Opens follow-up: (1) Cloud Scheduler job to actually hard-delete + anonymise users on `deletionScheduledFor`; (2) Phase 39 GlassHero pass on Settings; (3) Folder-organisation Storage settings when Phase 26 ships.
+- **Why-this-matters (psychology lens):** Reza's brief 2026-05-08: *"Yes fix them all and give me a PR url to merge"* — pragmatic, decisive. The audit identified 5 things the app was lying about and 4 things it didn't expose. Lying erodes trust faster than missing features; this PR closes the lies first.
 
 ### 0. Phase 14.6 — TRAIL-as-IA mobile + iPad navigation
 

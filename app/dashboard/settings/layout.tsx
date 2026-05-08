@@ -1,8 +1,23 @@
 'use client';
 
 /**
- * Phase 19.1: Settings Layout
- * Provides consistent navigation for all settings pages
+ * My Settings layout (Settings overhaul 2026-05-08)
+ *
+ * Renamed "Settings" → "My Settings" per CLAUDE.md §14 warm-language
+ * rule (My Wealth, My Guide, My Household — and now My Settings).
+ *
+ * Sidebar regrouped from one flat list into five mental-model groups:
+ *   - Me            — Profile, Appearance, Trusted contact
+ *   - My money data — Bank connections, Cloud storage, Categorisation, Shares
+ *   - Privacy & safety — Security, MFA, Privacy & CDR
+ *   - My notifications
+ *   - My plan       — API access, Billing
+ *
+ * Behavioural-psychology lens (Mani et al. 2013): grouping reduces the
+ * cognitive cost of finding the right control.
+ *
+ * Visual surface unchanged — same `<Card>` vocabulary, same active-state
+ * treatment. The Phase 39 GlassHero pass is queued separately.
  */
 
 import { usePathname } from 'next/navigation';
@@ -10,6 +25,7 @@ import Link from 'next/link';
 import {
   Settings,
   Shield,
+  ShieldCheck,
   Send,
   Cloud,
   User,
@@ -20,6 +36,9 @@ import {
   ArrowLeft,
   X,
   Lock,
+  HeartHandshake,
+  Sparkles,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -31,69 +50,114 @@ interface SettingsNavItem {
   description: string;
 }
 
-const settingsNavItems: SettingsNavItem[] = [
+interface SettingsNavGroup {
+  label: string;
+  items: SettingsNavItem[];
+}
+
+const settingsNavGroups: SettingsNavGroup[] = [
   {
-    name: 'General',
-    href: '/dashboard/settings',
-    icon: Settings,
-    description: 'Basic account settings',
+    label: 'Me',
+    items: [
+      {
+        name: 'Profile',
+        href: '/dashboard/settings/profile',
+        icon: User,
+        description: 'Your personal information',
+      },
+      {
+        name: 'Appearance',
+        href: '/dashboard/settings/appearance',
+        icon: Palette,
+        description: 'Theme, locale, currency, financial year',
+      },
+      {
+        name: 'Trusted contact',
+        href: '/dashboard/settings/trusted-contact',
+        icon: HeartHandshake,
+        description: 'Someone to loop in if you ever need help',
+      },
+    ],
   },
   {
-    name: 'Profile',
-    href: '/dashboard/settings/profile',
-    icon: User,
-    description: 'Your personal information',
+    label: 'My money data',
+    items: [
+      {
+        name: 'Bank connections',
+        href: '/dashboard/settings/connections',
+        icon: LinkIcon,
+        description: 'Banks Monitrax reads from via Open Banking',
+      },
+      {
+        name: 'Cloud storage',
+        href: '/dashboard/settings/storage',
+        icon: Cloud,
+        description: 'Where your documents live',
+      },
+      {
+        name: 'AI categorisation',
+        href: '/dashboard/settings/categorization',
+        icon: Sparkles,
+        description: 'How aggressive the auto-categorise is',
+      },
+      {
+        name: 'Shares',
+        href: '/dashboard/settings/shares',
+        icon: Send,
+        description: 'Active and revoked share links',
+      },
+    ],
   },
   {
-    name: 'Security',
-    href: '/dashboard/settings/security',
-    icon: Shield,
-    description: 'Password and authentication',
+    label: 'Privacy & safety',
+    items: [
+      {
+        name: 'Security',
+        href: '/dashboard/settings/security',
+        icon: Shield,
+        description: 'Password, sessions, sign-in providers',
+      },
+      {
+        name: 'Two-factor auth',
+        href: '/dashboard/settings/security-mfa',
+        icon: ShieldCheck,
+        description: 'Authenticator, SMS, backup codes',
+      },
+      {
+        name: 'Privacy & CDR',
+        href: '/dashboard/settings/privacy',
+        icon: Lock,
+        description: 'Consent, data export, right to erasure',
+      },
+    ],
   },
   {
-    name: 'Privacy & CDR',
-    href: '/dashboard/settings/privacy',
-    icon: Lock,
-    description: 'Consent management and data rights',
+    label: 'My notifications',
+    items: [
+      {
+        name: 'Notifications',
+        href: '/dashboard/settings/notifications',
+        icon: Bell,
+        description: 'Email and push',
+      },
+    ],
   },
   {
-    name: 'Cloud Storage',
-    href: '/dashboard/settings/storage',
-    icon: Cloud,
-    description: 'Connect Google Drive, iCloud',
-  },
-  {
-    // Phase 38 PR 3 — Manage Shares (accountant share-link revocation +
-    // view tracking). Sits next to Cloud Storage as a "data movement"
-    // grouping in the settings nav.
-    name: 'Shares',
-    href: '/dashboard/settings/shares',
-    icon: Send,
-    description: 'Revoke or check accountant share links',
-  },
-  {
-    name: 'Notifications',
-    href: '/dashboard/settings/notifications',
-    icon: Bell,
-    description: 'Email and push notifications',
-  },
-  {
-    name: 'Appearance',
-    href: '/dashboard/settings/appearance',
-    icon: Palette,
-    description: 'Theme and display preferences',
-  },
-  {
-    name: 'API Keys',
-    href: '/dashboard/settings/api-keys',
-    icon: Key,
-    description: 'Manage API access',
-  },
-  {
-    name: 'Billing',
-    href: '/dashboard/settings/billing',
-    icon: CreditCard,
-    description: 'Subscription and payments',
+    label: 'My plan',
+    items: [
+      {
+        name: 'Billing',
+        href: '/dashboard/settings/billing',
+        icon: CreditCard,
+        description: 'Subscription and payments',
+      },
+      {
+        name: 'API access',
+        href: '/dashboard/settings/api-keys',
+        icon: Key,
+        description: 'Programmatic data access',
+      },
+    ],
   },
 ];
 
@@ -118,10 +182,10 @@ export default function SettingsLayout({
             <div>
               <h1 className="text-3xl font-bold flex items-center gap-2">
                 <Settings className="h-8 w-8" />
-                Settings
+                My Settings
               </h1>
               <p className="text-muted-foreground mt-1">
-                Manage your account settings and preferences
+                Manage your account, your money data, and your privacy.
               </p>
             </div>
           </div>
@@ -136,39 +200,66 @@ export default function SettingsLayout({
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Settings Navigation Sidebar */}
-        <nav className="w-full lg:w-64 flex-shrink-0">
+        <nav className="w-full lg:w-64 flex-shrink-0 space-y-6">
+          {/* Overview link sits above the groups */}
           <div className="space-y-1">
-            {settingsNavItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== '/dashboard/settings' &&
-                  pathname.startsWith(item.href));
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <div className="flex-1">
-                    <div>{item.name}</div>
-                    {!isActive && (
-                      <div className="text-xs text-muted-foreground/70 hidden lg:block">
-                        {item.description}
-                      </div>
-                    )}
+            <Link
+              href="/dashboard/settings"
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                pathname === '/dashboard/settings'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Settings className="h-4 w-4" />
+              <div className="flex-1">
+                <div>Overview</div>
+                {pathname !== '/dashboard/settings' && (
+                  <div className="text-xs text-muted-foreground/70 hidden lg:block">
+                    Account snapshot
                   </div>
-                </Link>
-              );
-            })}
+                )}
+              </div>
+            </Link>
           </div>
+
+          {settingsNavGroups.map((group) => (
+            <div key={group.label} className="space-y-1">
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                {group.label}
+              </p>
+              {group.items.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  pathname.startsWith(item.href + '/');
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <div className="flex-1">
+                      <div>{item.name}</div>
+                      {!isActive && (
+                        <div className="text-xs text-muted-foreground/70 hidden lg:block">
+                          {item.description}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Settings Content */}

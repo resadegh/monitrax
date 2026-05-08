@@ -296,6 +296,20 @@ enum AuditAction {
   BILLING_INVOICE_PAID
   BILLING_INVOICE_FAILED
   BILLING_WEBHOOK_RECEIVED
+
+  // Settings overhaul (2026-05-08) — account self-service lifecycle.
+  // Right-to-deletion (Privacy Act APP 11.2 + CDR §3.2) is implemented
+  // as a 30-day soft-delete grace period; CDR data is purged on request,
+  // PII is anonymised on the scheduled date.
+  USER_DELETION_REQUESTED
+  USER_DELETION_CANCELLED
+  USER_DELETED
+  // Right-to-portability (Privacy Act APP 12). User downloads a JSON
+  // export of all their data.
+  DATA_EXPORT_REQUESTED
+  // Trusted-contact audit trail. Adding / changing a trusted contact
+  // is a high-trust operation surfaced to the user on their next login.
+  TRUSTED_CONTACT_UPDATED
 }
 
 enum AuditStatus {
@@ -491,6 +505,24 @@ model User {
   location String? // City/State
   timezone String? @default("Australia/Sydney")
   bio      String? // User bio/description
+
+  // Settings overhaul (2026-05-08) — Trusted contact (estate / handover).
+  // Surfaced through the user's own Settings; visible to a future advisor
+  // attached via Phase 32B with explicit consent. Never auto-shared.
+  trustedContactName         String?
+  trustedContactEmail        String?
+  trustedContactPhone        String?
+  trustedContactRelationship String?
+  trustedContactUpdatedAt    DateTime?
+
+  // Settings overhaul (2026-05-08) — Right-to-deletion soft-delete.
+  // When a user requests account deletion, deletionRequestedAt is set
+  // and deletionScheduledFor = now() + 30 days. The user can cancel
+  // (deletionRequestedAt = null) any time before the scheduled date.
+  // After the scheduled date, a Cloud Scheduler job hard-deletes the
+  // CDR data per CLAUDE.md §13.2 + anonymises the User row.
+  deletionRequestedAt  DateTime?
+  deletionScheduledFor DateTime?
 
   // Relationships
   properties         Property[]
@@ -692,6 +724,17 @@ model UserPreference {
   pushSpendingAlerts  Boolean @default(false)
   pushGoalUpdates     Boolean @default(false)
   pushBillReminders   Boolean @default(false)
+
+  // Settings overhaul (2026-05-08) — Appearance preferences that the
+  // /dashboard/settings/appearance UI exposed without ever persisting.
+  // Theme is stored server-side so the choice survives across devices;
+  // next-themes still owns the runtime application via cookie + DOM.
+  // financialYearStart is a "MM-DD" string so non-AU users can override
+  // the AU default when their country preference doesn't already imply it.
+  theme              String  @default("system") // 'light' | 'dark' | 'system'
+  showCents          Boolean @default(true)
+  compactMode        Boolean @default(false)
+  financialYearStart String  @default("07-01") // ISO MM-DD
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

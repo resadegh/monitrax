@@ -9,9 +9,6 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import {
   Cloud,
   HardDrive,
@@ -329,47 +326,45 @@ export default function StorageSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Folder Configuration */}
+      {/* Folder Organization — placeholder.
+          The previous implementation rendered three `<Switch defaultChecked />`
+          toggles with no `onCheckedChange` and no save call. Behaviour
+          they implied (FY grouping, category auto-organise, date-prefixed
+          filenames) is not built into the storage layer yet, so these
+          settings have nothing to drive. Rather than persist toggles
+          that no consumer reads, the section now states the current
+          behaviour honestly. Settings overhaul 2026-05-08. */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <FolderOpen className="h-5 w-5" />
-            Folder Organization
+            How your documents are organised
           </CardTitle>
           <CardDescription>
-            Configure how documents are organized in your storage
+            How Monitrax stores the files you upload.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Organize by Financial Year (Australian)</Label>
-              <p className="text-sm text-muted-foreground">
-                Group documents by Australian FY (July - June) for easy tax preparation
-              </p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Auto-organize by category</Label>
-              <p className="text-sm text-muted-foreground">
-                Automatically organize documents into category folders (Receipts, Contracts, etc.)
-              </p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Include dates in filenames</Label>
-              <p className="text-sm text-muted-foreground">
-                Prefix filenames with upload date (e.g., 2024-01-15_document.pdf)
-              </p>
-            </div>
-            <Switch defaultChecked />
-          </div>
+        <CardContent>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li>
+              <span className="font-medium text-foreground">By category</span>{' '}
+              — receipts, contracts, statements and tax documents are kept in
+              separate buckets so you can find them quickly.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">
+                Original filenames preserved
+              </span>{' '}
+              — we never rewrite your filenames behind your back.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">
+                Financial-year grouping
+              </span>{' '}
+              — coming with the Document Intelligence engine (Phase 26).
+              When it ships, this card will be replaced with real toggles.
+            </li>
+          </ul>
         </CardContent>
       </Card>
     </div>
