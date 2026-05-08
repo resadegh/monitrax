@@ -160,7 +160,74 @@ data is no more compliant for waiting another day.
 
 ---
 
-## 5. Job 3 — Stripe webhook reconciliation (FUTURE)
+## 5. Job 3 — Practice alert engine v1
+
+**Endpoint:** `POST https://monitrax.com.au/api/portal/practice/alerts/generate`
+**Built:** Production-readiness chunk 2 — 2026-05-10. See `app/api/portal/practice/alerts/generate/route.ts` + `lib/services/practiceAlertEngine.ts`. Closes Phase 32B PR3 item #9.
+
+### gcloud setup
+
+```bash
+gcloud scheduler jobs create http monitrax-practice-alert-engine \
+  --project=monitrax-479700 \
+  --location=australia-southeast1 \
+  --schedule="0 4 * * *" \
+  --time-zone="UTC" \
+  --uri="https://monitrax.com.au/api/portal/practice/alerts/generate" \
+  --http-method=POST \
+  --headers="Authorization=Bearer ${CRON_SECRET}" \
+  --attempt-deadline=300s \
+  --description="Daily Practice alert engine v1 — generates real alerts from per-client snapshot deltas. See docs/operational/runbooks/05_RETENTION_SCHEDULERS.md §5"
+```
+
+**Note:** scheduled at 04:00 UTC — one hour after the conversation
+sweep at 03:00 UTC, two hours after the CDR cron at 02:00 UTC. Same
+DB; sequential runs avoid CPU contention on warm-up.
+
+### What it does, step by step
+
+1. Verifies the `CRON_SECRET` Bearer token.
+2. For every `Organization` with at least one ACTIVE+GRANTED `OrganizationClient`:
+   - For each ACTIVE client:
+     - Fetches current snapshot via `getMasterFinancialSnapshot()` with the org's `viewerContext` (service-layer scope filter applies).
+     - Loads most-recent prior `PracticeClientHealthSnapshot` (yesterday's fingerprint).
+     - Loads ~30-day-old fingerprint (for `HEALTH_DROP`).
+     - Evaluates the 5 v1 triggers (`TRAIL_ADVANCED` / `HEALTH_DROP` / `CASHFLOW_NEGATIVE` / `EMERGENCY_FUND_LOW` / `LVR_REFINANCE_WINDOW`). Triggers fire only on TRANSITIONS — adviser inbox doesn't repeat the same alert daily.
+     - Idempotently creates `PracticeAlert` rows (skips dup OPEN per (client, triggerKind)).
+     - Auto-closes existing OPEN alerts whose underlying condition no longer holds.
+     - Persists today's fingerprint for tomorrow's delta.
+3. Returns aggregate counts per the `AggregateGenerationResult` shape.
+
+### Demo / first-run characteristics
+
+The engine produces **zero alerts on first run** for any client because
+delta detection requires at least one prior snapshot. That's expected:
+- Day 1: writes the first `PracticeClientHealthSnapshot` row per
+  active client.
+- Day 2 onward: compares to prior + emits real alerts on transitions.
+- Day 30 onward: `HEALTH_DROP` becomes evaluatable (needs 30-day
+  history).
+
+The dashboard's `LIGHTHOUSE_ALERTS` fixture continues to render until
+the engine produces real alerts — keeps the pitch demo intact during
+the warm-up window.
+
+### Manual trigger (dev / staging)
+
+To manually run the engine outside the daily cron schedule:
+
+```bash
+curl -X POST https://monitrax.com.au/api/portal/practice/alerts/generate \
+  -H "Authorization: Bearer ${CRON_SECRET}"
+```
+
+Useful for: warming up the snapshot history on a fresh deploy,
+debugging a specific org by running with an isolated dataset, or
+re-running after a broken cron tick.
+
+---
+
+## 6. Job 4 — Stripe webhook reconciliation (FUTURE)
 
 Reserved for the post-Stripe-live-mode hardening. Not yet built.
 When ready, add a third job here that calls a yet-to-be-built
@@ -169,7 +236,7 @@ endpoint reconciling local `StripeSubscription` against
 
 ---
 
-## 6. Reza's Tier-1 GCP-console todo (production hardening)
+## 7. Reza's Tier-1 GCP-console todo (production hardening)
 
 These are GCP-console actions that aren't in the code path. Track
 them off this runbook so they don't fall through the cracks.
@@ -223,7 +290,7 @@ them off this runbook so they don't fall through the cracks.
 
 ---
 
-## 7. When things go wrong
+## 8. When things go wrong
 
 ### Cloud Scheduler job is failing (non-200 response)
 
@@ -260,7 +327,7 @@ them off this runbook so they don't fall through the cracks.
 
 ---
 
-## 8. Compliance evidence
+## 9. Compliance evidence
 
 For Basiq accreditation submission, screenshot:
 - Cloud Scheduler → Jobs → both jobs showing `ENABLED`.

@@ -1595,6 +1595,8 @@ model Organization {
   // Phase 33g: Adviser feedback threads can carry org context (so Reza can
   // filter the inbox by org). Set on creation to the adviser's currentOrg.
   feedbackThreads FeedbackThread[]
+  // Production Readiness chunk 2 — real practice alert engine.
+  practiceAlerts PracticeAlert[]
 
   // Phase 32C PR4d: conversations owned by this org (one per accepted
   // request, plus org-attached client conversations from ClientLink).
@@ -3962,6 +3964,9 @@ model OrganizationClient {
   notes      ClientNote[]
   tasks      ClientTask[]
   accessLogs ClientAccessLog[]
+  // Production Readiness chunk 2 — real alert engine v1.
+  alerts     PracticeAlert[]
+  healthSnapshots PracticeClientHealthSnapshot[]
 
   @@unique([organizationId, userId])
   @@index([organizationId])
@@ -5807,4 +5812,126 @@ model CalcAuditFinding {
   @@index([detectedAt])
   @@index([resolution, severity])
   @@map("calc_audit_findings")
+}
+
+// =============================================================================
+// PRODUCTION READINESS — Real Practice Alert Engine v1
+// =============================================================================
+//
+// Replaces the `LIGHTHOUSE_ALERTS` demo fixture with real triggers
+// derived from per-client snapshot deltas. Closes Phase 32B PR3 item #9.
+//
+// Pipeline (daily Cloud Scheduler at 04:00 UTC):
+//   1. For each OrganizationClient with consentStatus=GRANTED:
+//      a. Fetch current MasterFinancialSnapshot via the canonical
+//         service (same engine consumers see, viewerContext-scoped).
+//      b. Compare to most-recent prior PracticeClientHealthSnapshot
+//         (yesterday's) and ~30-day-old snapshot (for HEALTH_DROP).
+//      c. Evaluate the 5 v1 triggers.
+//      d. Create OPEN PracticeAlert rows where triggered (idempotent —
+//         no duplicate OPEN alerts per (client, triggerKind)).
+//      e. Persist today's PracticeClientHealthSnapshot for tomorrow.
+//   2. Returns aggregate counts to the cron caller.
+//
+// Why two tables instead of one:
+//   - PracticeAlert is the **adviser-facing surface** (status workflow,
+//     headline copy, severity, ack/resolve lifecycle).
+//   - PracticeClientHealthSnapshot is the **internal delta-tracking
+//     ledger** (numeric fingerprint per day, retained for windowed
+//     comparisons). Separating keeps the alert table lean — a typical
+//     org has <10 OPEN alerts at any time but accumulates one snapshot
+//     row per active client per day.
+
+enum PracticeAlertTriggerKind {
+  TRAIL_ADVANCED        // TRAIL stage progressed forward (TRACK→REDUCE etc)
+  HEALTH_DROP           // Health score fell >10 in 30 days
+  CASHFLOW_NEGATIVE     // Cashflow turned negative (transition)
+  EMERGENCY_FUND_LOW    // Emergency fund dropped below 1 month
+  LVR_REFINANCE_WINDOW  // LVR crossed below 80% (refinance opportunity)
+}
+
+enum PracticeAlertSeverity {
+  CRITICAL    // Needs adviser attention
+  OPPORTUNITY // Adviser can act on something positive (refinance window)
+  MILESTONE   // Client achieved progression (TRAIL advance)
+}
+
+enum PracticeAlertStatus {
+  OPEN          // Default — visible in the Practice alert stream
+  ACKNOWLEDGED  // Adviser has seen it but hasn't actioned yet
+  RESOLVED      // Adviser marked done
+  AUTO_CLOSED   // Engine closed it because the underlying condition
+                // no longer holds (e.g. cashflow flipped back positive)
+}
+
+model PracticeAlert {
+  id                   String                   @id @default(uuid())
+
+  organizationId       String
+  organizationClientId String
+
+  triggerKind          PracticeAlertTriggerKind
+  severity             PracticeAlertSeverity
+  status               PracticeAlertStatus      @default(OPEN)
+
+  // Frozen narrative copy at detection time. Even if the underlying
+  // snapshot changes before the adviser views the alert, the message
+  // they see matches the moment the trigger fired — keeps the
+  // dashboard story coherent.
+  headline             String
+  body                 String                   @db.Text
+  /// Compact inline label e.g. "Health 42 ↓18 · cashflow -$340/mo"
+  context              String
+  primaryActionLabel   String
+
+  // Numeric snapshot of the trigger inputs at detection — used for
+  // audit + future debugging if the engine produces a wrong trigger.
+  // Json shape: { current: {...}, previous: {...}, delta: {...} }
+  // CDR-safe: aggregate numbers only, no transaction text or PII.
+  triggerSnapshot      Json?
+
+  detectedAt           DateTime                 @default(now())
+  acknowledgedAt       DateTime?
+  acknowledgedByMemberId String?
+  resolvedAt           DateTime?
+  resolvedByMemberId   String?
+  resolvedReason       String?
+
+  organization         Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationClient   OrganizationClient       @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  // Common adviser-side query: list OPEN alerts for an org, severity-sorted.
+  @@index([organizationId, status, severity])
+  // Per-client lookup for de-dup + drill-in.
+  @@index([organizationClientId, status])
+  // Engine idempotency — query "is there an OPEN alert for this
+  // (client, trigger) already?" before creating a new one.
+  @@index([organizationClientId, triggerKind, status])
+  @@map("practice_alerts")
+}
+
+model PracticeClientHealthSnapshot {
+  id                   String   @id @default(uuid())
+
+  organizationClientId String
+
+  capturedAt           DateTime @default(now())
+
+  // Metrics tracked for delta detection. These are the inputs to the
+  // 5 v1 triggers — when a new trigger lands, this list extends.
+  // All values are `Float` (or nullable) so missing data (e.g. no
+  // loans → no LVR) doesn't poison the delta math.
+  trailStage           String   // 'TRACK' | 'REDUCE' | 'ANCHOR' | 'INVEST' | 'LIVE'
+  healthScore          Int
+  monthlyCashflow      Float
+  monthlyIncome        Float
+  emergencyFundMonths  Float
+  averageLvr           Float?   // null when client has no loans
+
+  organizationClient   OrganizationClient @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  // Common engine query: "give me the most recent snapshot for this
+  // client". Sorted descending so the LIMIT 1 finds it first.
+  @@index([organizationClientId, capturedAt(sort: Desc)])
+  @@map("practice_client_health_snapshots")
 }

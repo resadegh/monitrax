@@ -21,6 +21,7 @@
  */
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { OrganizationType } from '@prisma/client';
 import { MessageSquarePlus } from 'lucide-react';
@@ -29,6 +30,13 @@ import {
   PracticeAlertStream,
   PracticeClientBookTable,
 } from '@/components/portal/practice';
+import { useAuth } from '@/lib/context/AuthContext';
+import type {
+  AlertSeverity,
+  AlertTriggerKind,
+  DemoAlert,
+  DemoClient,
+} from '@/lib/portal/practice';
 import {
   GlassHero,
   GlassHeroEyebrow,
@@ -51,6 +59,7 @@ import { useOrganization } from '@/lib/portal';
 export default function PortalDashboardPage() {
   const router = useRouter();
   const { currentOrg } = useOrganization();
+  const { token } = useAuth();
 
   // Profession resolution chain (unchanged from PR2):
   //   1. Organization.profession (canonical)
@@ -62,7 +71,107 @@ export default function PortalDashboardPage() {
     'FINANCIAL_ADVISOR';
 
   const config = getPracticeProfessionConfig(profession);
-  const kpis = computeKpis(LIGHTHOUSE_CLIENTS, LIGHTHOUSE_ALERTS);
+
+  // Production Readiness chunk 2 — Real Practice Alert Engine v1.
+  // Fetch real alerts for the current org. When the engine has run +
+  // produced alerts, those replace the LIGHTHOUSE_ALERTS fixture. Until
+  // the cron has run for the org (or for orgs without active clients),
+  // the fixture continues to render so the lighthouse pitch keeps
+  // working end-to-end.
+  const [realAlerts, setRealAlerts] = useState<DemoAlert[] | null>(null);
+  const [realAlertClients, setRealAlertClients] = useState<DemoClient[]>([]);
+
+  useEffect(() => {
+    if (!currentOrg?.id || !token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/portal/practice/alerts?organizationId=${encodeURIComponent(currentOrg.id)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          success?: boolean;
+          data?: {
+            items?: Array<{
+              id: string;
+              clientId: string;
+              triggerKind: AlertTriggerKind;
+              severity: AlertSeverity;
+              headline: string;
+              body: string;
+              context: string;
+              primaryActionLabel: string;
+              detectedAt: string;
+            }>;
+            clients?: Array<{
+              id: string;
+              name: string;
+              initials: string;
+              email: string;
+            }>;
+          };
+        };
+        if (cancelled) return;
+        if (!json.success || !json.data?.items?.length) {
+          // Engine hasn't fired for this org yet (or no triggers).
+          // Leave realAlerts as null so the LIGHTHOUSE_ALERTS fallback
+          // renders — keeps the pitch demo intact.
+          return;
+        }
+        setRealAlerts(json.data.items as DemoAlert[]);
+        // Hydrate the parallel client list so the AlertStream's
+        // initials/name lookup works for real userIds (which won't
+        // match the demo fixture's hand-coded IDs like
+        // 'demo-client-sarah-kim').
+        const apiClients: DemoClient[] = (json.data.clients ?? []).map((c) => ({
+          // Match the DemoClient shape for the fields PracticeAlertStream
+          // actually consumes (id / name / initials). The numeric
+          // metric fields aren't used by the alert stream — we leave
+          // them at safe defaults rather than fabricate values.
+          id: c.id,
+          name: c.name,
+          initials: c.initials,
+          email: c.email,
+          trailStage: 'TRACK',
+          trailDelta: null,
+          healthScore: 0,
+          healthDelta30d: 0,
+          netWorthAud: 0,
+          monthlyCashflowAud: 0,
+          monthlyIncomeAud: 0,
+          propertiesCount: 0,
+          loansCount: 0,
+          lastContactDays: 0,
+          lastSnapshotIso: new Date().toISOString(),
+        }));
+        setRealAlertClients(apiClients);
+      } catch {
+        // Silent — fallback to LIGHTHOUSE_ALERTS fixture renders.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentOrg?.id, token]);
+
+  // Decide which set the dashboard renders. Real engine output
+  // takes precedence; fixture is the demo fallback.
+  const alerts = realAlerts ?? LIGHTHOUSE_ALERTS;
+  const clientsForStream = useMemo(() => {
+    if (!realAlerts) return LIGHTHOUSE_CLIENTS;
+    // Real-alerts mode: merge API-supplied clients with the demo
+    // fixture so any real client referenced by an alert gets a name +
+    // initials, while the lighthouse fixture clients remain available
+    // for the book table below (which still reads from fixture in v1).
+    const byId = new Map<string, DemoClient>();
+    for (const c of LIGHTHOUSE_CLIENTS) byId.set(c.id, c);
+    for (const c of realAlertClients) byId.set(c.id, c);
+    return Array.from(byId.values());
+  }, [realAlerts, realAlertClients]);
+
+  const kpis = computeKpis(LIGHTHOUSE_CLIENTS, alerts);
 
   const orgName = currentOrg?.name?.split(' ')[0] ?? 'there';
 
@@ -180,8 +289,8 @@ export default function PortalDashboardPage() {
         </div>
 
         <PracticeAlertStream
-          alerts={LIGHTHOUSE_ALERTS}
-          clients={LIGHTHOUSE_CLIENTS}
+          alerts={alerts}
+          clients={clientsForStream}
           profession={config}
         />
 
