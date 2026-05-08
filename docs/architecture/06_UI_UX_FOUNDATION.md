@@ -318,7 +318,7 @@ Three tiers, not two. Tablet is its own first-class tier — iPad portrait
 
 | Tier | Tailwind | Pixel range | Primary nav | Sub-tab nav |
 |---|---|---|---|---|
-| **Phone** | `<md` | `<768px` | `<MobileTabBar />` (5-tab bottom bar) | `<SectionTabsRow />` (horizontal pill row at top of `<main>`) |
+| **Phone** | `<md` | `<768px` | `<MobileTabBar />` (5-tab bottom bar) | `<SectionTabsRow />` (iOS-style segmented control fixed below the brand header) |
 | **Tablet** | `md`–`lg` | `768`–`1023px` | Persistent left sidebar (same component as desktop) | Sidebar-accordion (parent expands when active) |
 | **Desktop** | `≥lg` | `≥1024px` | Persistent left sidebar | Sidebar-accordion |
 
@@ -331,33 +331,43 @@ at narrower content width.
 
 ```
 ┌──────────────────────────────────┐
-│  [avatar]   Monitrax    [⌕] [☼]   │  ← Mobile header (h-14, brand-primary)
+│  [avatar]   Monitrax    [⌕] [☼]   │  ← Mobile header (h-14, brand-primary, fixed top)
 ├──────────────────────────────────┤
-│  [Balances]  Activity  Structure  │  ← <SectionTabsRow /> (horizontal pills)
+│  ┌─Balances─┬─Activity─┬─Struct─┐ │  ← <SectionTabsRow /> (segmented control, fixed)
+│  └──────────┴──────────┴────────┘ │
+├──────────────────────────────────┤
 │                                  │
 │        Page content (main)        │
 │                                  │
 │        pb-24 to clear tab bar     │
 ├──────────────────────────────────┤
-│  🏠   👛   🎯   🏘   🧭            │  ← <MobileTabBar /> (5 tabs)
+│  🏠   👛   🎯   🏘   🧭            │  ← <MobileTabBar /> (5 tabs, fixed bottom)
 │ Home Track Reduce Invest Guide   │
 └──────────────────────────────────┘
 ```
 
-**Header (`md:hidden`).** Brand-primary background (deep navy), height
-56px (`h-14`), three-zone layout: avatar (left → opens MoreSheet) ·
-brand wordmark (centre, link to `/dashboard`) · search + theme (right).
-The hamburger pattern is permanently retired.
+**Header (`md:hidden`, `fixed top-0`, `z-40`).** Brand-primary background
+(deep navy), height 56px (`h-14`), three-zone layout: avatar (left →
+opens MoreSheet) · brand wordmark (centre, link to `/dashboard`) ·
+search + theme (right). The hamburger pattern is permanently retired.
 
-**Bottom tab bar (`md:hidden`, fixed).** Apple-glass surface — warm-ivory
-backdrop-blur, 1px ring, soft inner highlight, iOS safe-area-inset
-padding. Five tabs in a CSS grid (`grid-cols-5`). Active tab tinted with
-the TRAIL stage tone (`TRAIL_STAGE_TONES`). Tap targets ≥56px.
+**Sub-tab segmented control (`md:hidden`, `fixed top-14`, `z-30`).**
+iOS-style segmented control — single cohesive bar with equal-width
+segments, internal hairline dividers, and one corner radius — fixed
+just below the brand header so the two read as a single stacked
+header zone. Apple-glass background (`bg-background/85
+backdrop-blur-xl`). Renders only when the active TRAIL section has
+`children`. Each segment is a `<Link>` (URL-routed; deep-linkable).
+Active segment uses an elevated white-ish chip (`bg-background
+shadow-sm ring-1`) with stage-tone text (`TRAIL_STAGE_TONES`). An
+in-flow `h-14` spacer is rendered as a sibling so subsequent content
+sits below the fixed bar.
 
-**Sub-tab pill row (`md:hidden`, in-flow).** Renders at the top of
-`<main>` only when the active TRAIL section has children. Horizontal
-overflow scrolls (no scrollbar chrome). Each pill is a `<Link>` (URL-
-routed; deep-linkable). Active pill uses brand primary fill.
+**Bottom tab bar (`md:hidden`, `fixed bottom-0`, `z-30`).** Apple-glass
+surface — warm-ivory backdrop-blur, 1px ring, soft inner highlight,
+iOS safe-area-inset padding. Five tabs in a CSS grid (`grid-cols-5`).
+Active tab uses stage-tone text + a 3px-tall top accent stripe (Apple
+Wallet / Apple Music indicator pattern). Tap targets ≥56px.
 
 **More sheet (`md:hidden`, dialog).** Triggered by avatar button.
 Bottom-sheet chrome from §15.3 (rounded-top-28px, slide-in-from-bottom,
@@ -405,24 +415,31 @@ an existing tab.
    The only thing that changes per tier is nav chrome.
 3. **One-tap reach.** A phone user reaches any sub-tab in ≤2 taps from
    any starting page (1 tap for the bottom bar tab, 1 tap for the
-   sub-tab pill). The two-step hamburger-drawer pattern is banned.
+   sub-tab segment). The two-step hamburger-drawer pattern is banned.
 4. **`md:` is the desktop-sidebar gate.** Not `lg:`. iPad portrait
    (810px) gets the rail.
-5. **Tap targets.** Bottom tab buttons ≥56px. Sub-tab pills ≥40px.
+5. **Tap targets.** Bottom tab buttons ≥56px. Sub-tab segments ≥36px.
    FABs and modals ≥44px (Apple HIG).
-6. **Dialogs become bottom sheets** on phones — §15.3 chrome reused, no
+6. **Sub-tab navigation is a fixed segmented control, not scrolling
+   pills.** A header-style fixed bar at `top-14` reads as part of the
+   header zone; scrolling pills read as page content. Three-to-four
+   children fit cleanly at 100% width with equal-width segments — no
+   horizontal overflow. If a future section ever needs >4 sub-tabs,
+   reduce the section, don't reach for a scroll affordance.
+7. **Dialogs become bottom sheets** on phones — §15.3 chrome reused, no
    parallel implementations.
-7. **Bottom-fixed components must clear the tab bar.** FABs use
+8. **Bottom-fixed components must clear the tab bar.** FABs use
    `bottom-24` on phones (`md:bottom-8` on desktop). Sticky toolbars use
    `bottom-[64px]` on phones. iOS safe-area-inset is applied via
    `pb-[env(safe-area-inset-bottom)]` on the tab bar wrapper itself.
-8. **`prefers-reduced-motion` is honoured everywhere.** Mobile-tab
-   active scale, sub-tab pill press scale, sheet slide-in — all gated
-   by `motion-safe:` utilities.
-9. **Reviewers MUST reject** any mobile surface that re-rolls the
-   bottom-tab-bar, sub-tab-pill, or bottom-sheet pattern instead of
-   importing the canonical primitives from `components/shell/`. Same
-   enforcement spirit as §15.10 cross-surface alignment.
+9. **`prefers-reduced-motion` is honoured everywhere.** Mobile-tab
+   active scale, segmented control press scale, sheet slide-in — all
+   gated by `motion-safe:` utilities.
+10. **Reviewers MUST reject** any mobile surface that re-rolls the
+    bottom-tab-bar, sub-tab segmented control, or bottom-sheet pattern
+    instead of importing the canonical primitives from
+    `components/shell/`. Same enforcement spirit as §15.10
+    cross-surface alignment.
 
 ### **12.6 Tailwind Breakpoints (project-wide, unchanged)**
 
@@ -444,8 +461,9 @@ not introduce nav-altering breakpoints inside `sm:` or `lg:`.
 Not every section page has Phase 14.6 sub-tab routes yet. Some still
 use Radix `<Tabs>` (state-based, not URL-based). Migration is
 incremental — when touching a section page, prefer URL-routed sub-tabs
-so `<SectionTabsRow />` highlights the active pill correctly. Tracking
-list lives in `IMPLEMENTATION_PLAN.md` 🟡 Active Workstream "Phase 14.6".
+so `<SectionTabsRow />` highlights the active segment correctly.
+Tracking list lives in `IMPLEMENTATION_PLAN.md` 🟡 Active Workstream
+"Phase 14.6".
 
 ### **12.8 Acceptance Criteria for "Mobile-Ready"**
 
@@ -455,8 +473,8 @@ A surface is mobile-ready when:
 - All interactive controls meet the ≥44pt tap-target floor.
 - Any modal renders as a bottom sheet (not a centred 480px dialog) on
   `<sm:`.
-- Any sub-tab navigation reads from `<SectionTabsRow />` or composes
-  the same pill pattern (URL-routed, scrollable, deep-linkable).
+- Any sub-tab navigation reads from `<SectionTabsRow />` (URL-routed,
+  fixed segmented control). New surfaces never re-roll the pattern.
 - The page does not introduce a parallel implementation of any pattern
   documented in this §12 or §15.
 

@@ -69,7 +69,7 @@ export function MobileTabBar({ className }: MobileTabBarProps) {
           <MobileTabButton
             key={tab.key}
             tab={tab}
-            isActive={tab.key === activeTab.key}
+            isActive={!!activeTab && tab.key === activeTab.key}
           />
         ))}
       </ul>
@@ -87,8 +87,27 @@ function MobileTabButton({
   const Icon = tab.icon;
   const tone = tab.trailStage ? TRAIL_STAGE_TONES[tab.trailStage] : null;
 
+  // Active text colour: stage-tone for TRAIL tabs, brand-primary for Home.
+  const activeTextClass = tone?.activeText ?? 'text-primary';
+  // Top accent stripe colour (the visible "you're here" indicator).
+  const accentClass = tone?.accent ?? 'bg-primary';
+
   return (
-    <li>
+    <li className="relative">
+      {/* Top accent stripe — the unambiguous active indicator (iOS Wallet
+          / Apple Music style). 3px tall, ~28px wide, rounded, stage-tone
+          coloured. Only renders when active. */}
+      {isActive && (
+        <span
+          aria-hidden
+          className={cn(
+            'absolute top-0 left-1/2 -translate-x-1/2',
+            'h-[3px] w-7 rounded-full',
+            accentClass,
+            'motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200'
+          )}
+        />
+      )}
       <Link
         href={tab.href}
         aria-current={isActive ? 'page' : undefined}
@@ -101,26 +120,25 @@ function MobileTabButton({
           'motion-safe:active:scale-95 motion-safe:transition-transform',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-1',
           isActive
-            ? cn(
-                tone?.activeBg ?? 'bg-primary/10',
-                tone?.activeText ?? 'text-primary'
-              )
-            : 'text-muted-foreground hover:text-foreground'
+            ? activeTextClass
+            : 'text-muted-foreground/80 hover:text-foreground'
         )}
       >
         <Icon
           className={cn(
-            'h-5 w-5 shrink-0',
+            'h-[22px] w-[22px] shrink-0',
             'transition-transform duration-200',
-            // Subtle scale-up on active — feels tactile, never bouncy.
-            isActive && 'motion-safe:scale-110'
+            // Crisper bump on active — reads as "selected" at small sizes.
+            isActive
+              ? 'motion-safe:scale-110 stroke-[2.25px]'
+              : 'stroke-[1.75px]'
           )}
           aria-hidden
         />
         <span
           className={cn(
-            'text-[10px] font-medium leading-none tracking-wide',
-            isActive && 'font-semibold'
+            'text-[10px] leading-none tracking-wide',
+            isActive ? 'font-semibold' : 'font-medium'
           )}
         >
           {tab.label}
