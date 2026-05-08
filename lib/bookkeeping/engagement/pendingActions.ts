@@ -125,10 +125,12 @@ export async function buildPendingActions(
         loanId: null,
         isTransfer: { not: true },
         isInvestmentContribution: { not: true },
-        // Match Activity filter exactly — categorised rows
-        // disappear from both list AND count once user picks
-        // a category. Reza directive 2026-05-08.
-        OR: [{ categoryLevel1: null }, { categoryLevel1: '' }],
+        // Match Activity filter EXACTLY (SSOT — see
+        // app/api/unified-transactions/route.ts ~line 90). The
+        // 2026-05-08 v2 lock: "uncategorised" = "user hasn't
+        // reviewed yet" = userCorrectedCategory != true. Reflects
+        // AI-auto-classified-but-not-confirmed tx in the count.
+        userCorrectedCategory: { not: true },
       },
     }),
     prisma.unifiedTransaction.count({
