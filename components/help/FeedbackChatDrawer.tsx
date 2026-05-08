@@ -28,17 +28,75 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { usePathname } from 'next/navigation';
-import { X, Send, Sparkles } from 'lucide-react';
+import { X, Send, Sparkles, ArrowLeft, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 
 type SurfaceTag = 'BUG' | 'FEATURE' | 'UX' | 'PRAISE' | 'QUESTION' | 'COMPLIANCE';
 type Severity = 'LOW' | 'MEDIUM' | 'HIGH';
+type Status = 'OPEN' | 'IN_REVIEW' | 'PLANNED' | 'SHIPPED' | 'WONT_FIX' | 'DUPLICATE';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'monitrax' | 'ai';
   body: string;
   createdAt: string;
+}
+
+/**
+ * Phase 33g.3 (2026-05-12): Consumer drawer becomes a three-view state
+ * machine — `list` (the user's prior threads), `new` (compose a new thread),
+ * `thread` (read + reply on a specific thread). When the drawer opens, we
+ * fetch the user's existing threads via the existing `GET /api/portal/feedback`
+ * endpoint (already scopes to caller's own userId) and default to:
+ *   - `list` if any threads exist
+ *   - `new` otherwise (first-time + after-delete state)
+ */
+type DrawerView = 'list' | 'new' | 'thread';
+
+interface ThreadSummary {
+  id: string;
+  subject: string;
+  status: Status;
+  surfaceTag: SurfaceTag;
+  surfaceRoute: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messages: Array<{
+    id: string;
+    authorRole: 'ADVISER' | 'CONSUMER' | 'MONITRAX_ADMIN' | 'CLAUDE_AI';
+    body: string;
+    createdAt: string;
+  }>;
+}
+
+const STATUS_LABEL: Record<Status, string> = {
+  OPEN: 'Open',
+  IN_REVIEW: 'In review',
+  PLANNED: 'Planned',
+  SHIPPED: 'Shipped',
+  WONT_FIX: "Won't fix",
+  DUPLICATE: 'Duplicate',
+};
+
+const STATUS_TONE: Record<Status, string> = {
+  OPEN: 'bg-amber-50 text-amber-700 ring-amber-200/70',
+  IN_REVIEW: 'bg-sky-50 text-sky-700 ring-sky-200/70',
+  PLANNED: 'bg-violet-50 text-violet-700 ring-violet-200/70',
+  SHIPPED: 'bg-emerald-50 text-emerald-700 ring-emerald-200/70',
+  WONT_FIX: 'bg-slate-100 text-slate-600 ring-slate-300/70',
+  DUPLICATE: 'bg-slate-100 text-slate-600 ring-slate-300/70',
+};
+
+function relTime(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(ms / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 interface FeedbackChatDrawerProps {
@@ -55,9 +113,18 @@ const TAG_OPTIONS: Array<{ value: SurfaceTag; label: string }> = [
   { value: 'COMPLIANCE', label: 'Compliance / privacy concern' },
 ];
 
+function mapAuthorRole(role: ThreadSummary['messages'][number]['authorRole']): ChatMessage['role'] {
+  if (role === 'CLAUDE_AI') return 'ai';
+  if (role === 'MONITRAX_ADMIN') return 'monitrax';
+  return 'user'; // ADVISER + CONSUMER both render as the user's own message
+}
+
 export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
   const pathname = usePathname();
   const { token } = useAuth();
+  const [view, setView] = useState<DrawerView>('list');
+  const [threads, setThreads] = useState<ThreadSummary[]>([]);
+  const [threadsLoaded, setThreadsLoaded] = useState(false);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -72,6 +139,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
 
   const closeAndReset = useCallback(() => {
     onClose();
+    setView('list');
     setThreadId(null);
     setMessages([]);
     setDraft('');
@@ -80,6 +148,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
     setSeverity('MEDIUM');
     setError(null);
     setDone(false);
+    setThreadsLoaded(false);
   }, [onClose]);
 
   const headers = useMemo<Record<string, string>>(() => {
@@ -117,12 +186,79 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
       .catch(() => setAiEnabled(false));
   }, [open, aiEnabled, headers, token]);
 
+  // Fetch user's prior threads on first open. Sets default view: `list` if
+  // user has any threads; `new` otherwise. Re-fetches after a thread is
+  // created so the list updates without a full drawer reset.
+  const fetchThreads = useCallback(async (): Promise<ThreadSummary[]> => {
+    if (!token) return [];
+    try {
+      const res = await fetch('/api/portal/feedback', { headers, cache: 'no-store' });
+      if (!res.ok) return [];
+      const j = (await res.json()) as { data: { threads: ThreadSummary[] } };
+      const list = j.data.threads ?? [];
+      setThreads(list);
+      return list;
+    } catch {
+      return [];
+    }
+  }, [headers, token]);
+
+  useEffect(() => {
+    if (!open || threadsLoaded || !token) return;
+    void fetchThreads().then((list) => {
+      setThreadsLoaded(true);
+      setView(list.length > 0 ? 'list' : 'new');
+    });
+  }, [open, threadsLoaded, token, fetchThreads]);
+
   // Auto-scroll to bottom on new message
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length]);
+
+  // Open a specific thread from the list.
+  const openThread = (t: ThreadSummary) => {
+    setThreadId(t.id);
+    setSubject(t.subject);
+    setSurfaceTag(t.surfaceTag);
+    setMessages(t.messages.map((m) => ({
+      id: m.id,
+      role: mapAuthorRole(m.authorRole),
+      body: m.body,
+      createdAt: m.createdAt,
+    })));
+    setDone(false);
+    setError(null);
+    setView('thread');
+  };
+
+  // Back to the list view from inside a thread or from new-thread.
+  const backToList = () => {
+    setThreadId(null);
+    setMessages([]);
+    setDraft('');
+    setSubject('');
+    setSurfaceTag('FEATURE');
+    setSeverity('MEDIUM');
+    setError(null);
+    setDone(false);
+    setView('list');
+    void fetchThreads();
+  };
+
+  const startNewThread = () => {
+    setThreadId(null);
+    setMessages([]);
+    setDraft('');
+    setSubject('');
+    setSurfaceTag('FEATURE');
+    setSeverity('MEDIUM');
+    setError(null);
+    setDone(false);
+    setView('new');
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -161,6 +297,13 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
           },
         ]);
         setDraft('');
+        // Phase 33g.3: switch to thread view so the user sees the chat
+        // unfold (was: stayed on `new` view which awkwardly kept the
+        // metadata pickers visible after submit).
+        setView('thread');
+        // Refresh the user's thread list silently so when they hit
+        // "Back to threads" later, the new thread is included.
+        void fetchThreads();
         // Poll for AI reply if enabled.
         if (aiEnabled) {
           void pollForAiReply(newThreadId);
@@ -284,22 +427,49 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
 
         {/* Header */}
         <header className="flex items-start justify-between gap-3 px-5 sm:px-6 pt-4 pb-3 border-b border-slate-200/70">
-          <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-700">
-              Send feedback
-            </p>
-            <h2 className="mt-0.5 text-[17px] font-semibold tracking-tight text-slate-900 truncate">
-              {threadId ? subject || 'Your feedback' : "What's on your mind?"}
-            </h2>
-            {!threadId && (
-              <p className="mt-0.5 text-[11px] text-slate-500">
-                {aiEnabled === null
-                  ? '…'
-                  : aiEnabled
-                    ? 'AI will reply with clarifying questions before passing it to Reza.'
-                    : "We'll reply within 48 hours, every time."}
-              </p>
+          <div className="min-w-0 flex items-start gap-2">
+            {(view === 'thread' || (view === 'new' && threads.length > 0)) && (
+              <button
+                type="button"
+                onClick={backToList}
+                aria-label="Back to your threads"
+                className="
+                  shrink-0 inline-flex items-center justify-center
+                  h-7 w-7 rounded-full -mt-0.5
+                  text-slate-500 hover:text-slate-900 hover:bg-slate-100
+                  transition-colors
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+                "
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
             )}
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-700">
+                {view === 'list' ? 'Your feedback' : 'Send feedback'}
+              </p>
+              <h2 className="mt-0.5 text-[17px] font-semibold tracking-tight text-slate-900 truncate">
+                {view === 'list'
+                  ? 'Your previous threads'
+                  : view === 'thread'
+                    ? subject || 'Your feedback'
+                    : "What's on your mind?"}
+              </h2>
+              {view === 'new' && (
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  {aiEnabled === null
+                    ? '…'
+                    : aiEnabled
+                      ? 'AI will reply with clarifying questions before passing it to Reza.'
+                      : "We'll reply within 48 hours, every time."}
+                </p>
+              )}
+              {view === 'list' && (
+                <p className="mt-0.5 text-[11px] text-slate-500">
+                  Pick a thread to continue, or start a new one.
+                </p>
+              )}
+            </div>
           </div>
           <button
             type="button"
@@ -319,7 +489,74 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
 
         {/* Body */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-3">
-          {!threadId && (
+          {/* LIST VIEW — user's prior threads */}
+          {view === 'list' && (
+            <>
+              {threads.length === 0 ? (
+                <div className="rounded-2xl bg-white/70 ring-1 ring-slate-900/[0.06] px-4 py-5 text-sm text-slate-500">
+                  You haven't sent any feedback yet. Tap "+ New" below to start.
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {threads.map((t) => {
+                    const last = t.messages[t.messages.length - 1];
+                    const lastIsAi = last?.authorRole === 'CLAUDE_AI';
+                    const lastIsAdmin = last?.authorRole === 'MONITRAX_ADMIN';
+                    return (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => openThread(t)}
+                          className="
+                            w-full text-left rounded-2xl bg-white/85 ring-1 ring-slate-900/[0.06] px-4 py-3
+                            transition-[transform,box-shadow] duration-200 ease-out
+                            hover:-translate-y-0.5 hover:shadow-[0_4px_14px_-6px_rgba(11,18,32,0.18)]
+                            motion-reduce:hover:translate-y-0 motion-reduce:hover:shadow-none
+                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+                          "
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-[13px] font-semibold text-slate-900 leading-snug line-clamp-2">
+                              {t.subject}
+                            </p>
+                            <span className={`shrink-0 inline-flex items-center rounded-full ring-1 ring-inset px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] ${STATUS_TONE[t.status]}`}>
+                              {STATUS_LABEL[t.status]}
+                            </span>
+                          </div>
+                          {last && (
+                            <p className="mt-1 text-[11px] text-slate-500 line-clamp-1">
+                              {lastIsAi ? '✨ Monitrax AI: ' : lastIsAdmin ? 'Monitrax: ' : 'You: '}
+                              {last.body}
+                            </p>
+                          )}
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.08em] text-slate-400">
+                            {t.surfaceTag} · {relTime(t.updatedAt)}
+                          </p>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <button
+                type="button"
+                onClick={startNewThread}
+                className="
+                  w-full inline-flex items-center justify-center gap-1.5
+                  rounded-full bg-slate-900 text-white
+                  px-4 py-2 text-sm font-medium
+                  hover:bg-slate-800 transition-colors
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+                "
+              >
+                <Plus className="h-4 w-4" />
+                New thread
+              </button>
+            </>
+          )}
+
+          {/* NEW VIEW — pre-thread metadata pickers + form */}
+          {view === 'new' && (
             <>
               {/* Pre-thread metadata pickers — collapse once thread is started */}
               <div className="space-y-3">
@@ -388,8 +625,8 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
             </>
           )}
 
-          {/* Conversation */}
-          {messages.map((m) => (
+          {/* THREAD VIEW — conversation only */}
+          {view === 'thread' && messages.map((m) => (
             <div key={m.id}>
               {m.role === 'user' && (
                 <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-slate-900 text-white px-4 py-2.5 shadow-[0_4px_14px_-6px_rgba(11,18,32,0.18)]">
@@ -415,7 +652,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
             </div>
           ))}
 
-          {threadId && submitting && aiEnabled && (
+          {view === 'thread' && submitting && aiEnabled && (
             <div className="mr-auto max-w-[60%] rounded-2xl rounded-bl-sm bg-emerald-50/60 ring-1 ring-emerald-200/40 px-4 py-2.5">
               <p className="text-xs text-emerald-700 inline-flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3 animate-pulse" /> Monitrax AI is typing…
@@ -423,7 +660,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
             </div>
           )}
 
-          {done && !aiEnabled && (
+          {view === 'thread' && done && !aiEnabled && (
             <div className="rounded-2xl bg-emerald-50/60 ring-1 ring-emerald-200/60 px-4 py-3 text-sm text-emerald-800">
               Thanks — your feedback is in. Reza aims to reply within 48 hours.
               You can close this drawer or keep adding detail below.
@@ -437,7 +674,8 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
           )}
         </div>
 
-        {/* Composer */}
+        {/* Composer — hidden on the list view (no draft to submit there) */}
+        {view !== 'list' && (
         <form onSubmit={handleSubmit} className="border-t border-slate-200/70 bg-white/60 px-4 sm:px-5 py-3">
           <div className="flex items-end gap-2">
             <textarea
@@ -477,6 +715,7 @@ export function FeedbackChatDrawer({ open, onClose }: FeedbackChatDrawerProps) {
             ⌘/Ctrl + Enter to send
           </p>
         </form>
+        )}
       </aside>
     </>
   );
