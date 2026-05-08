@@ -2732,3 +2732,50 @@ This may not have been the root crash trigger but is a real correctness bug — 
 ### PR
 - Branch: `claude/hotfix-activity-page-crash`
 - Status: pending push (URGENT — prod crash)
+
+---
+
+## Session: fix-uncategorised-semantic-final
+
+### Changes Made
+
+- **Type**: Hotfix (semantic regression — Reza-reported "all transactions filtered out")
+- **Scope**: `/api/unified-transactions` GET filter + badge aggregator
+- **Description**: After PR #721 deployed, the "Showing uncategorised first" list went empty even though the user had ~109 transactions and many uncategorised. Root cause: I'd been zigzagging on the "uncategorised" definition over PR #714 → #715 → #719 → #721 and ended on the wrong one.
+
+### Final lock (please do not change again without explicit user sign-off)
+
+**"Uncategorised" = `userCorrectedCategory != true`** (i.e., user hasn't reviewed the tx yet).
+
+Why this is correct:
+- The internal AI categoriser sets `categoryLevel1` on every imported tx → `categoryLevel1 IS NULL OR ''` excludes those rows even though the user hasn't seen them.
+- The PATCH endpoint sets `userCorrectedCategory = true` when the user picks a category via the swipe picker (`app/api/unified-transactions/[id]/route.ts:~120`).
+- So: AI-auto-classified-but-not-reviewed → `userCorrectedCategory = false` → shows in list ✅. User reviewed → `userCorrectedCategory = true` → hidden ✅.
+
+### History (so future sessions don't re-zigzag)
+
+| PR | Filter | Outcome |
+|---|---|---|
+| Pre-PR #714 | Link-status only (`incomeId/expenseId/loanId null + !isTransfer + !isInvestmentContribution`) | Categorised tx via picker stayed visible — Reza complaint |
+| PR #714 | + `userCorrectedCategory != true` (badge only, NOT list) | Badge worked, but list still wrong |
+| PR #715 | Aligned badge to link-status (no `userCorrectedCategory`) | Badge inflated — counted everything regardless of review |
+| PR #719 | + `categoryLevel1 IS NULL OR ''` (both list AND badge) | List + count over-filtered AI-classified tx → **0 visible** |
+| PR #721 | Same as #719 plus AND-array structure (the OR overwrite bug fix) | Still 0 visible |
+| **This PR (lock)** | Link-status + **`userCorrectedCategory != true`** | Correct semantic — AI-auto rows show, user-reviewed rows hidden |
+
+### Reviewer rule
+
+The "uncategorised" SSOT is now `userCorrectedCategory != true` AND link-status. Both `app/api/unified-transactions/route.ts` and `lib/bookkeeping/engagement/pendingActions.ts` use it identically. **Do not change either without changing both, and do not change at all without an explicit user-confirmed reason.**
+
+### Files Modified
+- `app/api/unified-transactions/route.ts` — uncategorized filter uses `userCorrectedCategory != true`.
+- `lib/bookkeeping/engagement/pendingActions.ts` — aggregator mirrors.
+- `docs/changelog/CHANGELOG_2026_05_07.md` — this entry.
+
+### Build Status
+- [x] tsc clean
+- [x] vitest pendingActions 12/12 green
+
+### PR
+- Branch: `claude/fix-uncategorised-semantic-final`
+- Status: pending push (URGENT — restores activity list)

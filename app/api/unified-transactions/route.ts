@@ -94,15 +94,21 @@ export const GET = withPermission('transaction.read', async (request, auth) => {
         where.loanId = null;
         where.isTransfer = { not: true }; // false or null
         where.isInvestmentContribution = { not: true }; // false or null
-        // 2026-05-08 hotfix — earlier this assigned to `where.OR`
-        // directly, which collided with the `search` OR clause
-        // below when both query params were present (the second
-        // assignment silently won, dropping the categoryLevel1
-        // filter). Wrap in AND so multiple OR clauses can coexist.
-        where.AND = [
-          ...((where.AND as Array<Record<string, unknown>> | undefined) ?? []),
-          { OR: [{ categoryLevel1: null }, { categoryLevel1: '' }] },
-        ];
+        // 2026-05-08 v2 — final correct semantic. "Uncategorised" =
+        // "user hasn't reviewed it yet" = `userCorrectedCategory !=
+        // true`. When the user PATCHes a category via the swipe
+        // picker, the [id] route sets `userCorrectedCategory = true`
+        // (see unified-transactions/[id]/route.ts:~120). So:
+        //   - AI auto-classified tx → userCorrectedCategory = false → shown
+        //   - User-confirmed via picker → userCorrectedCategory = true → hidden
+        //
+        // Earlier iterations of this filter zigzagged between
+        // (a) `userCorrectedCategory = false` (PR #714 — too few),
+        // (b) link-status only (PR #715 — too many),
+        // (c) `categoryLevel1 IS NULL OR ''` (PR #719 — too few again
+        //     because AI sets categoryLevel1 on every imported tx).
+        // (a) is correct; locking it here.
+        where.userCorrectedCategory = { not: true };
       }
 
       if (startDate || endDate) {
