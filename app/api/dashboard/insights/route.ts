@@ -19,6 +19,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { getExpenseDataMaturity } from '@/lib/dashboard/expenseDataMaturity';
 import { quickHealthCheck, scoreToRiskBand, FinancialHealthInput, PropertyData, LoanData, AccountData, InvestmentData, IncomeData, ExpenseData } from '@/lib/health';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
@@ -102,7 +103,14 @@ interface DashboardInsights {
     keptMargin: number;        // kept ÷ earned × 100 (%, 0 when no income)
     freeToday: number;         // liquid cash today — "Free today" line
     freeDays: number;          // freeToday ÷ daily expense burn (0 when expenses are 0)
-    enoughHistory: boolean;    // false-gates the per-day display when transaction history is too thin
+    /**
+     * False-gates the per-day display when expense data is too thin
+     * to back a runway-in-days claim honestly. Phase 43.4 upgraded
+     * this from `monthlyExpenses > 0` to a two-mode check: ≥90 days
+     * of UnifiedTransaction history OR ≥3 recurring Expense entries
+     * with ≥1 essential flag set. See `lib/dashboard/expenseDataMaturity.ts`.
+     */
+    enoughHistory: boolean;
     // Money Story Bar segments (Phase 43 visualisation). All three are
     // monthly $-amounts; the component renders proportions. Fields chosen
     // so the bar is honest about the full Earned-dollar journey:
@@ -118,6 +126,12 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
       // Get canonical Phase-28 snapshot (single source of truth)
       const snapshot = await getMasterFinancialSnapshot(userId);
+
+      // Phase 43.4 — two-mode expense-data maturity gate. Replaces the
+      // cheap `monthlyExpenses > 0` check with ≥90-day UnifiedTransaction
+      // history OR ≥3 recurring expenses with ≥1 essential. Drives the
+      // `moneyStory.enoughHistory` flag on the response below.
+      const expenseMaturity = await getExpenseDataMaturity(userId);
 
       // Get health score from Financial Health Engine (same as sidebar) - Blueprint §5.1
       // This ensures Dashboard and Sidebar show the same health score
@@ -353,7 +367,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
           keptMargin: snapshot.quickMetrics.keptMargin,
           freeToday: snapshot.quickMetrics.liquidCash,
           freeDays: snapshot.quickMetrics.freeCashDays,
-          enoughHistory: snapshot.quickMetrics.monthlyExpenses > 0,
+          enoughHistory: expenseMaturity.isMature,
           taxWithheld: snapshot.cashflow.monthlyPaygWithholding,
           surplus: snapshot.quickMetrics.monthlyCashflow,
         },

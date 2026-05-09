@@ -79,33 +79,34 @@
 - **Risk:** Each chunk is bounded (1-5 days). Heavy-touch areas (Stripe, alert engine) ship to staging-equivalent (Vercel preview against `monitrax-db-dev`) before any prod deploy. CDR sweepers are guard-railed by where-clauses that can only delete already-expired data — §12.11 destructive-write checklist N/A by structural argument.
 - **Wall-clock estimate:** ~3 weeks of engineering, mostly in parallel with the 6-week external lead time.
 
-### 0b. Phase 43.3 — Margin Trend Lens (Stark Naked follow-on #3)
+### 0b. Phase 43.4 — Tighter `enoughHistory` Gate (Stark Naked follow-on #4 — final)
 
-- **Status:** 🟡 SHIPPING in this PR (`claude/phase-43-3-margin-trend-MG8mr`)
-- **Started:** 2026-05-09 (immediately after PR #739 merged)
+- **Status:** 🟡 SHIPPING in this PR (`claude/phase-43-4-enough-history-gate-MG8mr`)
+- **Started:** 2026-05-09 (immediately after PR #740 merged)
 - **Owner:** Reza (direction) + Claude (code + docs)
 - **Last touched:** 2026-05-09
-- **Why this matters:** Reza directive 2026-05-09 *"continue"* after PR #739 merged. Third of four queued Stark-Naked-Numbers follow-ons. Andrew, Principle 2 — *"the direction of your GP margin matters more than the absolute"*. A 28% margin trending down is worse than a 22% margin trending up. The book argues this because compound effects are slope-driven: small consistent improvements compound dramatically; large absolute numbers without direction stagnate. **Personal-finance translation:** the existing `/dashboard/budget-analysis` page is an AI one-shot estimate — useful for *planning*, useless for *progress*. The user has no way to answer *"am I actually getting better at this over time?"* anywhere on the dashboard today. The Margin Trend lens does, in one big number + one curve. Bandura self-efficacy operating on a Stark-Naked metric.
+- **Why this matters:** Reza directive 2026-05-09 *"continue"* after PR #740 merged. **Final** of four Stark-Naked-Numbers follow-ons; closes the four promised in `PHASE_43_MONEY_STORY.md` §8. Phase 43 shipped the *"47 days of life"* runway display with a deliberately crude false-precision guardrail (`monthlyExpenses > 0`). The original architect-mode synthesis flagged the gap: a user with 3 weeks of bank data who hasn't yet hit their annual home-insurance bill gets `monthlyExpenses` undercounted, and the day claim overstates runway. Phase 43.4 closes that gap with a two-mode honest check.
 - **Phases (this PR):**
-  - [x] **New thin endpoint** `/api/dashboard/margin-trend/route.ts` — queries `prisma.unifiedTransaction` directly (the master snapshot's frequency-based aggregation can't answer "what was March 2026's margin?"; UnifiedTransaction is the only honest source for actual historicals). Walks last 6 calendar months, buckets by UTC year-month, computes `monthlyIncome` / `monthlyExpense` / `netCashflow` / `savingsRate` per month, returns trend direction via 3-vs-3 sliding-window ±2pp threshold + delta-from-last-month. `enoughHistory` self-hide gate at < 3 months with income.
-  - [x] **No new fields on `quickMetrics`** — D-43.3-2 (trend is a *time series*, not a point-in-time number; quickMetrics is for current state).
-  - [x] **No new calc engine in `lib/calculations/`** — D-43.3-3 (premature abstraction; promote into `lib/calculations/marginTrend.ts` only on second consumer).
-  - [x] **Build `components/budget/MarginTrendLens.tsx`** — pure presentational, typography-led card (same family as `HiddenWealthLens` + `SpendingParetoLens`). **Pure-SVG sparkline, no chart library** (~60 lines of pathbuilding; bundle-hygiene win — Recharts/Chart.js would add 200KB+). Trend palette: emerald (up — Bandura victory tone), amber (down — **never red**, loss-aversion-safe), slate (flat). Last-point dot anchors the eye to "you are here". Reduced-motion-safe path-draw + area-fade + dot-pop animations.
-  - [x] **Wire into `/dashboard/budget-analysis/page.tsx`** — one fire-and-forget fetch added; lens renders at top of `space-y-6` container above the existing AI-estimate / scenario sections.
-  - [x] **Behavioural-psychology rules registered** in `06_UI_UX_FOUNDATION.md`: direction-over-absolute framing (Andrew); loss aversion — no red anywhere even on down-trends (Kahneman & Tversky); self-efficacy — sparkline + dot reinforce capability (Bandura); locus-of-control closing copy — never prescriptive (Rotter, Bandura); narrative-fallacy resistance — up-trend copy is *measured* not celebratory (Kahneman, small-sample warnings); dual-axis honesty (savings-rate points + net cashflow dollars give two concrete handles for the same direction).
+  - [x] **New helper** `lib/dashboard/expenseDataMaturity.ts` (~80 LOC) — `getExpenseDataMaturity(userId)` returns `{isMature, reason}`. Two parallel Prisma reads (oldest-transaction-date + recurring-expense aggregate count); one conditional follow-up read for essential count. Pure read query.
+  - [x] **Two-mode logic:** (a) **Bank-imported users** — oldest UnifiedTransaction ≥ 90 days ago (one full quarterly cycle, annual bills should have appeared at least once); (b) **Manual-entry users** — ≥ 3 recurring `Expense` rows AND ≥ 1 flagged `isEssential` (user has done meaningful classification). Either mode satisfies. Recognises that monitrax has both usage modes — a transaction-only gate would unfairly hide the runway display from manual-entry users with stable data.
+  - [x] **Wire into `/api/dashboard/insights`** — call helper before building the response; replace `enoughHistory: snapshot.quickMetrics.monthlyExpenses > 0` with `enoughHistory: expenseMaturity.isMature`.
+  - [x] **Zero client-side change.** `MoneyStoryHero.tsx` already reads `enoughHistory` from props and gates the day display on it; only the SOURCE of the boolean changes. Consumer contract untouched.
+  - [x] **Zero new fields on `quickMetrics`** — D-43.4-4 (promote-on-second-use). Maturity is consumed by exactly one surface today.
+  - [x] **Helper lives in `lib/dashboard/`**, not `lib/calculations/` — D-43.4-2. This is a presentation-layer guard (does the user have enough data to back a UI claim?), not a canonical financial calculation.
   - [x] **Doc-sync (CLAUDE.md §16):**
-    - `docs/blueprint/PHASE_43_3_MARGIN_TREND.md` (new — strategic positioning, computation, 8 architectural decisions, data flow, visualisation with trend palettes table, behavioural-psychology rules, acceptance, deferred follow-ons).
-    - `docs/blueprint/MASTER_BLUEPRINT.md` §4 (Phase 43.2 row → ✅ Complete with PR #739; Phase 43.3 row added 🟡 SHIPPING).
-    - `docs/architecture/06_UI_UX_FOUNDATION.md` (registered `MarginTrendLens` as a canonical typography-led analytical card pattern; same family as predecessors; pure-SVG sparkline rule registered).
+    - `docs/blueprint/PHASE_43_4_ENOUGH_HISTORY_GATE.md` (new — concise; Phase 43.4 is the smallest of the four follow-ons).
+    - `docs/blueprint/MASTER_BLUEPRINT.md` §4 (Phase 43.3 row → ✅ Complete with PR #740; Phase 43.4 row added 🟡 SHIPPING).
     - `docs/changelog/CHANGELOG_2026_05_09.md` (new session entry appended).
-- **Risk:** Low. Additive only. No schema migration. New endpoint queries UnifiedTransaction directly with restrictive `where` (userId-scoped, last 6 months, !isTransfer, !isInvestmentContribution). Lens self-hides on `enoughHistory === false`. No CDR posture change. No `quickMetrics` change.
+    - `06_UI_UX_FOUNDATION.md` — no update needed; the visible behaviour change is captured in `PHASE_43_MONEY_STORY.md` §5a where the `enoughHistory` rule is documented (the helper backing it is internal).
+- **Risk:** Low. Additive only. No schema migration. Helper is a pure read query with restrictive `where` (userId-scoped). The behaviour change is *more conservative* — some users who currently see "X days of life" will fall back to "Truly liquid right now" until they accumulate 90 days of transaction history or classify their recurring expenses. No user-visible regression on the warm side.
+- **Behavioural impact (the one new false-precision case caught):** user with 3 weeks of BASIQ data + no manual classification today shows "47 days of life"; after this PR, falls back to "Truly liquid right now". The guarded case is small but real — that user was the one most likely to make a wrong decision off the day count.
 - **Closes / opens:**
-  - Closes: Third of four follow-ons promised in PHASE_43_MONEY_STORY.md §8.
-  - Opens (still queued, NOT in this PR):
-    - **Phase 43.4 — Tighter `enoughHistory` gate** for the Money Story Hero (≥90-day check via `linkageHealthService`). **Final Stark-Naked follow-on** — closes the four.
-    - **Promote computation into `lib/calculations/marginTrend.ts`** — gated on second consumer.
-    - **Quarterly / annual trend window switcher** — out of scope; 6 months is honest at this granularity.
-    - **SurfaceDescriptor registration** for all four Stark-Naked lenses once Phase 41i.6a registry foundation ships.
+  - **Closes: ALL FOUR follow-ons promised in `PHASE_43_MONEY_STORY.md` §8.** Stark-Naked-Numbers translation stream complete: 43 → 43.1 → 43.2 → 43.3 → 43.4.
+  - Opens nothing in this stream.
+  - Side-stream items still queued:
+    - **Promote `marginTrend` computation into `lib/calculations/`** — gated on second consumer (D-43.3-3).
+    - **Phase 43.2.1 — Merchant-level Pareto variant** — only if signal demands; v1 is by-category.
+    - **SurfaceDescriptor registration** for all four Stark-Naked lenses + the MoneyStoryHero once Phase 41i.6a registry foundation ships.
 
 ### 0c. Settings overhaul (consumer / admin / portal)
 
@@ -674,6 +675,8 @@ Bank-import codepaths (`components/bank/ImportWizard`, `components/bank/Transact
 ## ✅ Recently Completed (rolling 30 days)
 
 ### 2026-05-07
+- **Phase 43.3 — Margin Trend Lens SHIPPED (PR [#740](https://github.com/resadegh/monitrax/pull/740) merged 2026-05-09).** Third of four Stark-Naked-Numbers follow-ons. Translates Andrew's Principle 2 (*"the direction of your GP margin matters more than the absolute"*) to a 6-month savings-rate sparkline + delta-from-last-month + sliding-window trend direction on `/dashboard/budget-analysis`. **Pure-SVG sparkline, no chart library** (~60 LOC pathbuilding; saves 200KB+ vs Recharts/Chart.js). Trend palette: emerald (up) / amber (down — never red, loss-aversion-safe) / slate (flat). Direction-over-absolute closing copy. Reads `prisma.unifiedTransaction` directly — only honest source for actual historicals (master snapshot is point-in-time). Sliding 3-vs-3 ±2pp threshold separates trend states. Self-hides at < 3 months with income. Zero new calc engines, zero `quickMetrics` changes, zero chart-library imports. Pure-SVG-sparkline rule registered in `06_UI_UX_FOUNDATION.md` §15.10 with reviewer-rejection clause.
+
 - **Phase 43.2 — Spending Pareto Lens SHIPPED (PR [#739](https://github.com/resadegh/monitrax/pull/739) merged 2026-05-09).** Second of four Stark-Naked-Numbers follow-ons. Translates Andrew's *"fire your worst 20% of customers"* (Principle 3) inverted for personal finance: surfaces the *vital few* spending categories driving ~80% of monthly outgoings on `/dashboard/expenses`. Cognitive-ease win — collapses 30 lines into ~4 numbered focus items with inline mini-bars (slate-500/80, scaled by `pct ÷ maxPct`). Locus-of-control closing copy: *"the highest-leverage spending review you can do"*. Typography-led card (same family as `HiddenWealthLens`); **no red anywhere** even at 50% concentration; `MAX_VITAL_FEW = 8` false-precision guardrail. New thin endpoint `/api/dashboard/spending-pareto`; zero new calc engines; no `quickMetrics` changes. Two follow-ons remaining: Margin Trend (this PR) + ≥90-day `enoughHistory` gate.
 
 - **Phase 43.1 — Hidden Wealth Lens SHIPPED (PR [#738](https://github.com/resadegh/monitrax/pull/738) merged 2026-05-09).** First of four Stark-Naked-Numbers follow-ons. Translates Andrew's *"the balance sheet is where all the cash is hiding"* into a 3-bucket accessibility view of Total Assets on `/dashboard/balances`: **Liquid Today** (cash + offsets) → **Accessible** (investments, days, CGT applies) → **Locked Long-Term** (property equity + super + personal assets). Typography-led card (no glass tile — page already has its own minimalist hero); emerald → sky → slate palette; **no red anywhere** (Kahneman loss aversion); emerald reserved for Liquid as the Bandura victory tone. New thin endpoint `/api/dashboard/hidden-wealth`; zero new calc engines; no `quickMetrics` fields added. One follow-up commit (`81a5bec`) corrected `AssetSummary.personalAssets` field name caught by the Vercel `next build` tsc step.
