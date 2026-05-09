@@ -296,3 +296,96 @@ N/A — additive only. No Prisma `update` / `upsert` / `delete` / `updateMany` /
 ### PR
 - Branch: `claude/monitrax-architecture-analysis-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/monitrax-architecture-analysis-MG8mr — Phase 43 design refinement (visualisation + SSOT alignment)
+
+### Changes Made
+- **Type:** Refinement (Phase 43 hero — second pass).
+- **Scope:** Three things in one focused commit: (1) fixed stage→atmosphere drift against the canonical `TRAIL_STAGE_TONES` SSOT, (2) added the Money Story Bar visualisation to the hero, (3) made the entire hero tappable with stage-appropriate drill-down per design Principle 3.2.
+- **Description:** Reza directive 2026-05-09 *"make sure the design is aligned with design document, clean modern and apple like"* + *"Make the money story visual as well. Consider human behaviour psychology on visual presentation of the money story."* Surfaced a critical drift against `TRAIL_STAGE_TONES` (T=sky, R=amber, A=indigo, I=emerald, L=violet) — initial hero had T/R swapped and A/I/L wrong. Fixed in this commit. Added a 3-segment Money Story Bar (Tax · Spent · Saved) below the headline copy as the behavioural-psychology-informed visualisation.
+
+### SSOT alignment fix
+- `MoneyStoryHero` stage→atmosphere mapping rewired against `TRAIL_STAGE_TONES` (`lib/navigation/trailNav.tsx`):
+  - **T (Track)** — `sky` (was `amber`). Rationale: trust + clarity + awareness.
+  - **R (Reduce)** — `amber` (was `sky`). Rationale: action + energy.
+  - **A (Anchor)** — `indigo` (was `emerald`). Rationale: depth + stability. **Required adding `indigo` to `GlassHero`'s atmosphere set** — additive shell-layer extension; benefits future heroes.
+  - **I (Invest)** — `emerald` (was `violet`). Rationale: growth + prosperity.
+  - **L (Live)** — `violet` (was `emerald`). Rationale: aspiration + freedom.
+- Headline gradient classes per stage rewritten so they harmonise with the canonical `bgTint` colour vocabulary.
+- 06_UI_UX_FOUNDATION.md §15.10 — reviewer rule added: "Reviewers MUST reject any change that drifts the hero's stage colours away from the SSOT."
+
+### Visualisation — the Money Story Bar
+A 3-segment proportional bar between the secondary copy and the KPI cells, splitting Earned into **Tax · Spent · Saved**.
+
+**Behavioural-psychology rationale (the lens that drove every design choice):**
+- **System 1 vs System 2 (Kahneman)** — when financial stress depletes System 2 cognition (Mani et al. 2013, 13 IQ points), abstract numbers fail. The bar is the same data as "31% kept" expressed *spatially* — System-1 fast/intuitive parsing.
+- **Loss aversion (Kahneman & Tversky)** — losses feel ~2× as strong as gains. Red on a "Spent" segment triggers panic, not action. **No red anywhere on the bar**: Tax = `slate-400`, Spent = `slate-300`. The user sees their spending without feeling shamed.
+- **Self-efficacy (Bandura)** — visible progress reinforces capability. **Emerald is the only victory colour in the bar** — reserved exclusively for "Saved". Even a 5% saved segment reads as a small win.
+- **Anchoring (Tversky & Kahneman)** — the bar appears immediately under the prominent headline number, anchoring the user's perception of where their money goes correctly before they read the supporting cells.
+- **Concreteness (Heath & Heath)** — "31%" is abstract; a third-of-a-bar in emerald is concrete. Memorable, actionable, emotionally resonant.
+
+**Design rules (NON-NEGOTIABLE — registered in `06_UI_UX_FOUNDATION.md` §15.10):**
+- Three segments only — Andrew's brevity rule.
+- No red anywhere — loss-aversion-safe palette by construction.
+- Emerald reserved for Saved — never used on Tax or Spent.
+- Self-hides when `earned ≤ 0` — a fully-grey bar is misinformation.
+- Reduced-motion-safe — left-anchored `scaleX` entry animation suppressed under `prefers-reduced-motion`.
+- No legend, no axis — the proportions ARE the legend; tiny dotted labels under the bar carry the meaning.
+
+### Drill-down — Principle 3.2 ("Everything is a Drill-Down")
+The entire hero is now a `<Link>` routing per stage:
+- **T (Track)** → `/dashboard/balances` ("See your full picture")
+- **R (Reduce)** → `/dashboard/budget-analysis` ("See where it goes")
+- **A (Anchor)** → `/dashboard/safety-net` ("See your runway")
+- **I (Invest)** → `/dashboard/cfo` ("See your next move")
+- **L (Live)** → `/dashboard/cfo` ("See your story")
+- The drill-down label sits in the eyebrow row with an `ArrowUpRight` glyph — visible interactivity cue.
+- `motion-safe:hover:-translate-y-0.5` on the wrapper gives the Apple-style 1px hover lift.
+- `focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-2` for keyboard accessibility.
+
+### Architectural integrity (still SSOT clean)
+- **Zero new calc engines.** The new `taxWithheld` and `surplus` fields on the `moneyStory` block are read-through — `taxWithheld` from `cashflow.monthlyPaygWithholding` (already canonically computed by `cashflowOrchestrator`), `surplus` from `quickMetrics.monthlyCashflow` (already exposed). No duplicate aggregation.
+- **Zero new endpoints, zero new fetches.** Same `/api/dashboard/insights` response, two additional fields on the `moneyStory` block.
+- **`indigo` atmosphere** added to `GlassHero`'s atmosphere set — additive shell-layer change, follows the same mesh / glow / border recipe as the existing six.
+
+### Files Modified
+- `components/shell/GlassHero.tsx` — `GlassHeroAtmosphere` extended with `indigo`; new `ATMOSPHERES.indigo` spec tuned to match `TRAIL_STAGE_TONES.A`.
+- `components/dashboard/MoneyStoryHero.tsx` — full rewrite: SSOT colour alignment, drill-down `<Link>` wrapper, `MoneyStoryBar` sub-component with motion-safe segment reveal + non-judgemental palette, two new props (`taxWithheld`, `surplus`).
+- `app/api/dashboard/insights/route.ts` — `moneyStory` block extended with `taxWithheld` + `surplus` (pure passthrough from canonical snapshot).
+- `app/dashboard/page.tsx` — local `DashboardInsights` interface mirrors the new fields; props wired into the hero.
+
+### Doc-sync (CLAUDE.md §16)
+- `docs/blueprint/PHASE_43_MONEY_STORY.md` — §5 rewritten with SSOT-aligned stage table + drill-down behaviour; new §5a "Visualisation — the Money Story Bar" with full behavioural-psychology rationale (Kahneman, Bandura, Tversky, Heath & Heath cited).
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — `indigo` atmosphere added to `GlassHero` registration; `MoneyStoryHero` composition rules updated for SSOT colour pinning + Money Story Bar contract + drill-down wrapper; reviewer rules added.
+- `docs/blueprint/TRAIL_FRAMEWORK.md` §5 — 3-line scoreboard pattern primitive note expanded with the Money Story Bar visualisation contract.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (§16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (Money Story Bar visualisation registered; `indigo` atmosphere added)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (SSOT colour-pinning rule for the hero registered in `06_UI_UX_FOUNDATION.md`)
+- [ ] strategic decision
+
+Docs updated in this PR (refinement):
+- `docs/blueprint/PHASE_43_MONEY_STORY.md` — §5 + §5a updated
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — atmosphere set + composition rules
+- `docs/blueprint/TRAIL_FRAMEWORK.md` §5 — visualisation contract added
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — additive only. No Prisma operations of any kind.
+
+### Build Status
+- [x] TypeScript compilation passes (`npx tsc --noEmit`)
+
+### PR
+- Branch: `claude/monitrax-architecture-analysis-MG8mr`
+- Status: refinement push pending

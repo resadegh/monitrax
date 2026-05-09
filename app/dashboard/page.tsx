@@ -115,10 +115,10 @@ interface DashboardInsights {
     daysInMonth: number;
     dailyBudget: number;
   };
-  // Phase 43 — Money Story 3-line scoreboard. Mirrored from
-  // /api/dashboard/insights. Optional so the dashboard renders during
-  // older cached responses without the block; the hero self-hides
-  // when missing.
+  // Phase 43 — Money Story 3-line scoreboard + Money Story Bar
+  // segments. Mirrored from /api/dashboard/insights. Optional so the
+  // dashboard renders during older cached responses without the block;
+  // the hero self-hides when missing.
   moneyStory?: {
     earned: number;
     kept: number;
@@ -126,6 +126,8 @@ interface DashboardInsights {
     freeToday: number;
     freeDays: number;
     enoughHistory: boolean;
+    taxWithheld: number;
+    surplus: number;
   };
 }
 
@@ -622,6 +624,8 @@ export default function DashboardPage() {
               keptMargin={insights.moneyStory.keptMargin}
               freeToday={insights.moneyStory.freeToday}
               freeDays={insights.moneyStory.freeDays}
+              taxWithheld={insights.moneyStory.taxWithheld}
+              surplus={insights.moneyStory.surplus}
               enoughHistory={insights.moneyStory.enoughHistory}
               trailStage={determineTrailStage({
                 hasAccounts: (snapshot.assets?.accounts?.totalValue ?? 0) > 0,

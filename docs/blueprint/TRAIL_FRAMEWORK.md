@@ -376,7 +376,18 @@ copy quietly recognises without manipulation.
 
 **SSOT contract.** The pattern is a *presentation* primitive, not a
 calc engine. Any surface that wants the scoreboard reads from
-`quickMetrics` — never re-derives. CLAUDE.md §6.1 + §12.2.
+`quickMetrics` — never re-derives. Stage colours pinned to
+`TRAIL_STAGE_TONES` in `lib/navigation/trailNav.tsx`. CLAUDE.md §6.1
++ §12.2 + §16.
+
+**The Money Story Bar visualisation.** Below the 3 lines, the pattern
+includes a 3-segment proportional bar (Tax · Spent · Saved) that
+splits the user's gross income spatially. Behavioural-psychology
+rationale documented in `PHASE_43_MONEY_STORY.md` §5a — System-1 spatial
+encoding when stress depletes System 2 (Mani et al. 2013), loss-aversion
+handled by neutral slate (never red) for "Spent", emerald reserved as
+the Bandura victory tone for "Saved". The bar is the "scoreboard"
+literalised — Andrew's brevity discipline made visual.
 
 **Where to use it.**
 - ✅ `/dashboard` Home — the canonical orientation hero (Phase 43, shipped).

@@ -92,9 +92,10 @@ interface DashboardInsights {
     daysInMonth: number;
     dailyBudget: number;
   };
-  // Phase 43 — Money Story 3-line scoreboard (Earned / Kept / Free today).
-  // Pure read-through from `snapshot.quickMetrics`. No new computation here;
-  // see lib/services/masterFinancialService.ts for the canonical derivation.
+  // Phase 43 — Money Story 3-line scoreboard (Earned / Kept / Free today)
+  // + the Money Story Bar visualisation segments (Tax / Spent / Saved).
+  // Pure read-through from `snapshot.quickMetrics` + `snapshot.cashflow`;
+  // no new computation here.
   moneyStory: {
     earned: number;            // monthly gross income (pre-tax) — "Earned" line
     kept: number;              // monthlyNetIncome − essentialExpenses — "Kept" line
@@ -102,6 +103,12 @@ interface DashboardInsights {
     freeToday: number;         // liquid cash today — "Free today" line
     freeDays: number;          // freeToday ÷ daily expense burn (0 when expenses are 0)
     enoughHistory: boolean;    // false-gates the per-day display when transaction history is too thin
+    // Money Story Bar segments (Phase 43 visualisation). All three are
+    // monthly $-amounts; the component renders proportions. Fields chosen
+    // so the bar is honest about the full Earned-dollar journey:
+    //   Earned = taxWithheld + (everything else outgoing) + surplus
+    taxWithheld: number;       // PAYG-equivalent gone before the user sees it
+    surplus: number;           // monthlyCashflow — true monthly surplus (the "Saved" segment)
   };
 }
 
@@ -336,9 +343,10 @@ export const GET = withPermission('report.read', async (request, auth) => {
           dailyBudget,
         },
         // Phase 43 — Money Story. Pure passthrough from canonical
-        // quickMetrics. `enoughHistory` gates the per-day precision in the
-        // hero: a user with no recorded expenses gets the dollar amount
-        // only, never a misleading "0 days of life" framing.
+        // quickMetrics + cashflow. `enoughHistory` gates the per-day
+        // precision in the hero: a user with no recorded expenses gets
+        // the dollar amount only, never a misleading "0 days of life".
+        // taxWithheld + surplus power the Money Story Bar visualisation.
         moneyStory: {
           earned: snapshot.quickMetrics.monthlyGrossIncome,
           kept: snapshot.quickMetrics.keptAfterEssentials,
@@ -346,6 +354,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
           freeToday: snapshot.quickMetrics.liquidCash,
           freeDays: snapshot.quickMetrics.freeCashDays,
           enoughHistory: snapshot.quickMetrics.monthlyExpenses > 0,
+          taxWithheld: snapshot.cashflow.monthlyPaygWithholding,
+          surplus: snapshot.quickMetrics.monthlyCashflow,
         },
       };
 

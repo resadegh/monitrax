@@ -30,7 +30,14 @@ import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { appleEase, breathingGlow, useReducedMotionSafe } from './motion';
 
-export type GlassHeroAtmosphere = 'sky' | 'emerald' | 'amber' | 'rose' | 'violet' | 'slate';
+export type GlassHeroAtmosphere =
+  | 'sky'
+  | 'emerald'
+  | 'amber'
+  | 'rose'
+  | 'violet'
+  | 'indigo'
+  | 'slate';
 
 interface AtmosphereSpec {
   border: string;
@@ -68,6 +75,17 @@ const ATMOSPHERES: Record<GlassHeroAtmosphere, AtmosphereSpec> = {
     mesh:
       'radial-gradient(900px 420px at 12% -10%, rgba(139,92,246,0.18), transparent 65%), radial-gradient(800px 380px at 92% 110%, rgba(124,58,237,0.10), transparent 60%), radial-gradient(700px 320px at 50% 50%, rgba(15,23,42,0.06), transparent 65%)',
     glow: 'rgba(139,92,246,0.40)',
+  },
+  // Phase 43 (2026-05-09) — added so the Anchor stage (TRAIL_STAGE_TONES.A
+  // → indigo per `lib/navigation/trailNav.tsx`) has a first-class
+  // atmosphere instead of falling back to violet/slate. Same mesh
+  // recipe as the others; indigo tones tuned to match the canonical
+  // SSOT (text-indigo-600 / bg-indigo-500).
+  indigo: {
+    border: 'border-indigo-300/30 dark:border-indigo-400/15',
+    mesh:
+      'radial-gradient(900px 420px at 12% -10%, rgba(99,102,241,0.18), transparent 65%), radial-gradient(800px 380px at 92% 110%, rgba(67,56,202,0.10), transparent 60%), radial-gradient(700px 320px at 50% 50%, rgba(15,23,42,0.06), transparent 65%)',
+    glow: 'rgba(99,102,241,0.40)',
   },
   slate: {
     border: 'border-slate-300/40 dark:border-slate-400/15',

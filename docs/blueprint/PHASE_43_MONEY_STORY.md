@@ -74,15 +74,70 @@ No new endpoint. No new calculation. No duplicate aggregation.
 
 ## 5. Stage-emphasis behaviour
 
-| TRAIL stage | Atmosphere | Headline (gradient) | Secondary copy (warm) |
-|---|---|---|---|
-| **T (Track)** | `amber` | **Earned** | "Most people never see this number written down. You now do." |
-| **R (Reduce)** | `sky` | **Kept** | "31% kept this month. The AU household average is around 24%." (or "above the AU household average — quietly excellent." when ≥ 24%) |
-| **A (Anchor)** | `emerald` | **Free today** | "47 days of runway — every week added is the safety net widening." (varies by `freeDays`) |
-| **I (Invest)** | `violet` | **Free today** | "Your foundation's solid — what's next is making the surplus work." |
-| **L (Live)** | `emerald` | **Free today** | "The whole story working as designed. This is what TRAIL stage 5 reads like." |
+Atmospheres + gradients are pinned to the canonical `TRAIL_STAGE_TONES`
+SSOT in `lib/navigation/trailNav.tsx`. **Reviewers MUST reject any change
+that drifts the hero's stage colours from the SSOT** — the surface lives
+beneath the TRAIL banner, and divergent tones break the of-a-piece feel.
 
-The 24% AU-household-savings-rate figure is used as a comparative-not-judgemental normalising frame (RBA / ABS national-accounts proxy). When the user is below it, the copy never shames; when above, the copy quietly recognises without manipulation. This is the warm-words rule (CLAUDE.md §14.3) operating on a Stark-Naked metric.
+| TRAIL stage | Atmosphere (SSOT) | Headline (gradient) | Drill-down on tap | Secondary copy (warm) |
+|---|---|---|---|---|
+| **T (Track)** | `sky` | **Earned** (sky → indigo) | `/dashboard/balances` → "See your full picture" | "Most people never see this number written down. You now do." |
+| **R (Reduce)** | `amber` | **Kept** (amber → orange) | `/dashboard/budget-analysis` → "See where it goes" | "31% kept this month. The AU household average is around 24%." (or "above the AU household average — quietly excellent." when ≥ 24%) |
+| **A (Anchor)** | `indigo` *(added to GlassHero in Phase 43)* | **Free today** (indigo → violet) | `/dashboard/safety-net` → "See your runway" | "47 days of runway — every week added is the safety net widening." (varies by `freeDays`) |
+| **I (Invest)** | `emerald` | **Free today** (emerald → teal) | `/dashboard/cfo` → "See your next move" | "Your foundation's solid — what's next is making the surplus work." |
+| **L (Live)** | `violet` | **Free today** (violet → fuchsia) | `/dashboard/cfo` → "See your story" | "The whole story working as designed. This is what TRAIL stage 5 reads like." |
+
+The 24% AU-household-savings-rate figure is a comparative-not-judgemental
+normalising frame (RBA / ABS national-accounts proxy). When the user is
+below it, the copy never shames; when above, the copy quietly recognises
+without manipulation. Warm-words rule (CLAUDE.md §14.3) operating on a
+Stark-Naked metric.
+
+**Drill-down behaviour (Principle 3.2 — "Everything is a Drill-Down"):**
+the entire hero is wrapped in a `<Link>` that routes to the
+stage-appropriate detail page on tap. The drill-down label appears in
+the eyebrow row (with an `ArrowUpRight` glyph) so the user always sees
+"this is interactive". Hover lifts the card by 1px (`-translate-y-0.5`)
+under `motion-safe`. Focus-visible exposes a subtle 2px ring.
+
+## 5a. Visualisation — the Money Story Bar
+
+A 3-segment proportional bar rendered between the secondary copy and
+the KPI cells. It splits **Earned** into **Tax · Spent · Saved** by
+proportional width.
+
+```
+[———— Tax 24% ————][———————— Spent 64% ————————][—— Saved 12% ——]
+   slate-400              slate-300                  emerald-500
+```
+
+**Behavioural-psychology rationale (the lens that drove this):**
+
+| Principle | What it asks | How the bar answers |
+|---|---|---|
+| **System 1 vs System 2 (Kahneman)** | When stress depletes effortful cognition (Mani et al. 2013 — financial stress costs 13 IQ points), abstract numbers become harder to parse. Visuals engage System 1 — fast, intuitive, low-effort. | The bar is the same data as the Kept-percentage number, expressed spatially. The user "sees" the breakdown without having to compute it. |
+| **Loss aversion (Kahneman & Tversky)** | Losses feel ~2× as strong as equivalent gains. Red on a "Spent" segment triggers panic, not action. | "Spent" is **slate-300**, the most neutral colour in the palette. **No red anywhere** in the bar. The user sees their spending without feeling shamed. |
+| **Self-efficacy (Bandura)** | Visible progress reinforces capability. Users who see themselves succeeding at small steps believe they can succeed at larger ones. | "Saved" is the **only emerald segment in the bar** — the visual victory tone is reserved for what the user kept. Even a 5% saved segment reads as a small win. |
+| **Anchoring (Tversky & Kahneman)** | The first piece of information seen biases all subsequent judgement. | The bar appears immediately under the prominent headline number, anchoring the user's perception of where their money goes correctly — before they read the supporting cells. |
+| **Concreteness (Heath & Heath, *Made to Stick*)** | Concrete representations are more memorable, more actionable, and more emotionally resonant than abstract ones. | "31%" is abstract. A visible third-of-a-bar in emerald is concrete. The user can tell at a glance whether this month was a win. |
+
+**Design rules (NON-NEGOTIABLE):**
+
+- **Three segments only.** Tax · Spent · Saved. Never more. Andrew's brevity rule.
+- **No red anywhere.** Loss aversion is built into the colour choice.
+- **Emerald is reserved for Saved.** Never used on Tax or Spent — it's the victory tone.
+- **Self-hides when `earned ≤ 0`.** A fully-grey bar communicates nothing useful and risks misinformation.
+- **Negative-cashflow case** (more spent than kept): the Saved segment shrinks to 0; the bar shows "all spent, nothing saved" without alarm colour. Copy in the Kept secondary line ("more's going out than coming in") carries the framing — the bar carries the picture.
+- **Reduced-motion-safe.** The 0.7s left-anchored scaleX entry animation is suppressed under `prefers-reduced-motion`.
+- **No legend, no axis.** The proportional widths and the tiny dotted labels under the bar ARE the legend. Andrew's "scoreboard, not chart" discipline.
+
+**Where the segments come from (no new calc engine):**
+
+| Segment | Source | Computation |
+|---|---|---|
+| Tax | `cashflow.monthlyPaygWithholding` *(already in canonical snapshot; exposed via `moneyStory.taxWithheld` on the dashboard insights response)* | `min(taxWithheld, earned) / earned` |
+| Saved | `quickMetrics.monthlyCashflow` *(already in canonical snapshot; exposed via `moneyStory.surplus`)* | `clamp(surplus / earned, 0, 1 − taxPct)` |
+| Spent | derived in component | `1 − taxPct − savedPct` |
 
 ---
 
