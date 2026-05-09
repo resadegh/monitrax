@@ -517,3 +517,71 @@ N/A — additive only. No Prisma operations of any kind. No schema migration.
 ### PR
 - Branch: `claude/phase-43-2-spending-pareto-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-43-3-margin-trend-MG8mr (Phase 43.3 — Margin Trend Lens SHIPPING)
+
+### Changes Made
+- **Type:** Feature (Phase 43.3 — third deferred follow-on from Phase 43; first Phase 43.1 / PR #738 + second Phase 43.2 / PR #739 already shipped + merged today).
+- **Scope:** New typography-led analytical card on `/dashboard/budget-analysis` surfacing monthly savings-rate trend over the last 6 months as a pure-SVG sparkline + delta-from-last-month + sliding-window trend direction. One new thin endpoint, zero new calc engines, zero `quickMetrics` changes, zero chart-library imports.
+- **Description:** Reza directive 2026-05-09 *"continue"* after PR #739 merged. Andrew (Stark Naked Numbers, Principle 2): *"the direction of your GP margin matters more than the absolute."* Personal-finance translation: the existing budget-analysis page is an AI-generated one-shot estimate — useful for *planning*, useless for *progress*. The user has no way to answer *"am I actually getting better at this over time?"* anywhere on the dashboard. The Margin Trend lens does, in one big number + one curve. Bandura self-efficacy operating on a Stark-Naked metric.
+
+### Architectural integrity
+- **Read `prisma.unifiedTransaction` directly.** The master snapshot's frequency-based aggregation cannot answer "what was March 2026's margin?" — it would extrapolate current rates backwards. UnifiedTransaction is the only honest source for actual historicals.
+- **No new field on `quickMetrics`** (D-43.3-2). Trend is a *time series*, not a point-in-time number; quickMetrics is the SSOT for current state.
+- **No new calc engine in `lib/calculations/`** (D-43.3-3). The bucketing + trend-direction logic lives in the route. v1 has one consumer; promote into `lib/calculations/marginTrend.ts` only on second consumer (premature abstraction is more expensive than copy-paste-then-promote).
+- **Pure-SVG sparkline, no chart library.** ~60 lines of pathbuilding. Recharts / Chart.js / D3 would add 200KB+ of bundle for the same visual. `<NetWorthTrend>` precedent (`components/dashboard/NetWorthTrend.tsx`) set the same rule — registered formally in `06_UI_UX_FOUNDATION.md`.
+
+### Computation
+- For each of the last 6 calendar months (UTC, current inclusive): `monthlyIncome = sum(IN where !isTransfer && !isInvestmentContribution)`; same for `OUT` → `monthlyExpense`; `net = income − expense`; `savingsRate = (net / income) × 100` (0 when income=0).
+- Trend direction (sliding window): avg(last 3 months) vs avg(prior 3 months) → ±2pp threshold separates `up` / `flat` / `down`. More stable than month-on-month deltas which swing on a single big bill.
+- Self-hide: `enoughHistory = monthsWithIncome >= 3`.
+
+### Behavioural-psychology rules (registered in `06_UI_UX_FOUNDATION.md`)
+- **Direction-over-absolute framing** (Andrew). Closing copy reframes single-month snapshots against the slope.
+- **Loss aversion** (Kahneman & Tversky). Down trend = **amber**, never red. Loss-aversion-safe palette.
+- **Self-efficacy** (Bandura). Visible progress on the sparkline + dot at "you are here" reinforces capability.
+- **Locus of control** (Rotter, Bandura). Closing copy never prescriptive — *"the direction is what to watch"*, never *"reduce X by Y%"*.
+- **Narrative-fallacy resistance** (Kahneman). Up-trend copy is *measured* — *"compounds dramatically over decades"* is true; *"you're crushing it!"* would be false-confidence on small samples.
+- **Concreteness** (Heath & Heath). Dual-axis honesty — savings-rate points + net cashflow dollars give two concrete handles for the same direction.
+
+### Files Created
+- `app/api/dashboard/margin-trend/route.ts` — thin endpoint (~190 LOC; `withPermission('report.read')`). Walks last 6 calendar months, buckets by UTC year-month, computes sliding-window trend, returns `{months, current, previous, savingsRateDelta, netCashflowDelta, trend, enoughHistory, monthsWithIncome}`.
+- `components/budget/MarginTrendLens.tsx` — pure presentational component (~280 LOC). Headline + trend pill + delta strip + pure-SVG sparkline (line + faint area fill + last-point dot, all motion-safe) + tick labels + direction-over-absolute closing copy.
+- `docs/blueprint/PHASE_43_3_MARGIN_TREND.md` — full Phase doc (strategic positioning, computation, 8 architectural decisions, data flow, visualisation with trend-palettes table, behavioural-psychology rules with citations, acceptance, deferred follow-ons).
+
+### Files Modified
+- `app/dashboard/budget-analysis/page.tsx` — imports lens + endpoint type; new `marginTrend` state + `useEffect` fetch (cancellable); lens renders at top of `space-y-6` container above the existing AI-estimate / scenario sections.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43.2 moved to ✅ Recently Completed (PR #739, merged 2026-05-09); §0b replaced with new Phase 43.3 active workstream entry.
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43.2 row updated to ✅ Complete with PR #739 link; Phase 43.3 row added as 🟡 SHIPPING.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — registered `MarginTrendLens` as a canonical typography-led analytical card pattern; pure-SVG-sparkline-no-chart-library rule registered with reviewer rejection clause.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (canonical Margin-Trend analytical card pattern + pure-SVG-sparkline rule registered)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Phase 43.2 marked complete with PR #739; Phase 43.3 third follow-on activated)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_43_3_MARGIN_TREND.md` — NEW Phase doc
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43.2 → ✅ Complete + Phase 43.3 row 🟡 SHIPPING
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — `MarginTrendLens` canonical analytical card registered + pure-SVG-sparkline rule
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43.2 → Recently Completed; §0b → Phase 43.3 active workstream
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — additive only. No Prisma writes (read-only `findMany`). No schema migration.
+
+### Build Status
+- [x] TypeScript compilation passes (`npx tsc --noEmit`)
+
+### PR
+- Branch: `claude/phase-43-3-margin-trend-MG8mr`
+- Status: pending push + open

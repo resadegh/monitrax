@@ -953,6 +953,71 @@ enforced by code review.
 
 Spec: `docs/blueprint/PHASE_43_2_SPENDING_PARETO.md`.
 
+### Canonical analytical card — `MarginTrendLens` (Phase 43.3, 2026-05-09)
+
+`components/budget/MarginTrendLens.tsx` is the canonical
+**savings-rate trend card** on `/dashboard/budget-analysis`. Surfaces
+the user's monthly net-cashflow + savings-rate trend over the last 6
+months as a pure-SVG sparkline + delta-from-last-month — Andrew's
+*"the direction of your GP margin matters more than the absolute"*
+(Stark Naked Numbers, Principle 2) translated to personal finance.
+
+**Composition rules (NON-NEGOTIABLE):**
+- **Same family as `HiddenWealthLens` + `SpendingParetoLens`** —
+  typography-led, subtle border + faint background, no glass tile.
+  Reviewers MUST reject any change that introduces a glass card here
+  without first updating this section.
+- **The component is pure presentational.** Takes 8 props (`months`,
+  `current`, `previous`, `savingsRateDelta`, `netCashflowDelta`,
+  `trend`, `enoughHistory`, `monthsWithIncome`); JSX out.
+  **Computes nothing** — the trend direction, sliding-window math,
+  and delta calculations all happen in
+  `/api/dashboard/margin-trend`, which queries
+  `prisma.unifiedTransaction` directly. Lens does pathbuilding only.
+- **Pure-SVG sparkline, no chart library.** ~60 lines of pathbuilding
+  (`buildSparkPath`) emit a line `<path>` + a faint area-fill
+  `<path>` + a last-point `<circle>`. Recharts / Chart.js / D3
+  would add 200KB+ of bundle for the same visual; the existing
+  `<NetWorthTrend>` precedent (`components/dashboard/NetWorthTrend.tsx`)
+  set the same rule. Reviewers MUST reject any chart-library import
+  for sparklines on Monitrax surfaces.
+- **Self-hides when `enoughHistory === false`.** The route gates this
+  at `monthsWithIncome >= 3` — drawing trend lines on 1–2 months is
+  dishonest. Same family of false-precision guardrails as
+  `HiddenWealthLens` (`totalAssets ≤ 0`) and `SpendingParetoLens`
+  (`vitalFew.length === 0`).
+- **No red anywhere.** Down trend is **amber**, never `red-*`.
+  Kahneman & Tversky loss aversion: red on a trend that swings
+  5pp month-on-month is panic-inducing for an honest fluctuation.
+- **Trend palette discipline.** Emerald (up — Bandura victory tone),
+  amber (down — loss-aversion-safe), slate (flat — neutral). Same
+  family as the rest of the Stark-Naked-Numbers stack. Reviewers
+  MUST reject any change that introduces red, or that uses emerald
+  for non-positive trend states.
+- **Reduced-motion-safe** — path-draw + area-fade + last-point-pop
+  animations all suppress under `prefers-reduced-motion`; the line
+  still renders.
+
+**Behavioural-psychology contract** (full citations in
+`PHASE_43_3_MARGIN_TREND.md` §5):
+- Direction-over-absolute framing (Andrew, Stark Naked Numbers).
+- Loss aversion (Kahneman & Tversky) — no red.
+- Self-efficacy (Bandura) — sparkline + dot reinforce capability.
+- Locus of control (Rotter, Bandura) — closing copy never
+  prescriptive; the user is the actor.
+- Narrative-fallacy resistance (Kahneman) — up-trend copy is
+  *measured*, never celebratory.
+- Concreteness (Heath & Heath) — dual-axis honesty (savings-rate
+  points + net cashflow dollars).
+
+**SurfaceDescriptor (Phase 41i.6 pending):** when the
+`lib/calc-audit/surfaces/` registry ships, register a descriptor
+mapping each rendered savings-rate trace + headline value to its
+`prisma.unifiedTransaction` query path. Until then enforced by code
+review.
+
+Spec: `docs/blueprint/PHASE_43_3_MARGIN_TREND.md`.
+
 ## **15.9 Accessibility checklist (B2B2C surfaces)**
 
 Every interactive component in the B2B2C surface meets:
