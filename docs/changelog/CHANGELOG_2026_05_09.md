@@ -585,3 +585,66 @@ N/A — additive only. No Prisma writes (read-only `findMany`). No schema migrat
 ### PR
 - Branch: `claude/phase-43-3-margin-trend-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-43-4-enough-history-gate-MG8mr (Phase 43.4 — Tighter enoughHistory Gate SHIPPING — Stark Naked stream COMPLETE)
+
+### Changes Made
+- **Type:** Feature (Phase 43.4 — fourth and **final** deferred follow-on from Phase 43; closes the four follow-ons promised in `PHASE_43_MONEY_STORY.md` §8).
+- **Scope:** Replaces the cheap `monthlyExpenses > 0` gate on the Money Story Hero's day-count display with a two-mode honest check. Pure read-query addition. No new calc engines, zero `quickMetrics` changes, zero client-side change.
+- **Description:** Reza directive 2026-05-09 *"continue"* after PR #740 merged. Phase 43 originally shipped *"47 days of life"* with a deliberately crude false-precision guardrail (`monthlyExpenses > 0`). The architect-mode synthesis flagged the gap: a user with 3 weeks of bank data who hasn't yet hit their annual home-insurance bill gets `monthlyExpenses` undercounted, day claim overstates runway. Phase 43.4 closes that gap.
+
+### Two-mode logic
+- **Bank-imported users:** Oldest UnifiedTransaction ≥ 90 days ago — one full quarterly cycle, annual bills should have appeared at least once.
+- **Manual-entry users:** ≥ 3 recurring `Expense` rows AND ≥ 1 flagged `isEssential` — user has done meaningful classification.
+- Either mode satisfies. Recognises that monitrax has both usage modes. Transaction-only gate (the original spec) would unfairly hide the runway display from manual-entry users with stable data.
+
+### Files Created
+- `lib/dashboard/expenseDataMaturity.ts` — `getExpenseDataMaturity(userId)` returning `{isMature, reason: 'bank_history'|'manual_classification'|'none'}`. Pure read-query, two parallel Prisma calls + one conditional follow-up. Lives in `lib/dashboard/` because it's a presentation-layer guard, not a canonical financial calculation (D-43.4-2).
+- `docs/blueprint/PHASE_43_4_ENOUGH_HISTORY_GATE.md` — concise Phase doc (43.4 is the smallest of the four follow-ons; brief Phase doc is fine).
+
+### Files Modified
+- `app/api/dashboard/insights/route.ts` — imports new helper; calls it before building the response; replaces `enoughHistory: snapshot.quickMetrics.monthlyExpenses > 0` with `enoughHistory: expenseMaturity.isMature`. JSDoc on the `enoughHistory` field updated to cite the new gate.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43.3 moved to ✅ Recently Completed (PR #740, merged 2026-05-09); §0b replaced with new Phase 43.4 active workstream entry.
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43.3 row updated to ✅ Complete with PR #740 link; Phase 43.4 row added as 🟡 SHIPPING with "Stark-Naked-Numbers translation stream complete" tag.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### What this protects
+| User profile | Before 43.4 | After 43.4 |
+|---|---|---|
+| New user, $0 expenses defined | Day count hidden ✅ | Same |
+| User with $4,000/mo manually defined (3 recurring + 1 essential) | "47 days of life" ✅ | Same — manual_classification path satisfies |
+| User with 3 weeks of BASIQ data, no manual classification | "47 days of life" ⚠️ (annual bills not yet captured — overstates runway) | "Truly liquid right now" ✅ — neither mode satisfies, fallback display |
+| User with 4 months of BASIQ data | "47 days of life" ✅ | Same — bank_history path satisfies |
+| User who linked BASIQ today + 2 manual recurring expenses (none essential) | "47 days" ⚠️ | "Truly liquid right now" ✅ |
+
+The guarded case is small but real — that user was the one most likely to make a wrong decision off the day count.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern (no client-side change — same boolean, different source)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Phase 43.3 marked complete with PR #740; Phase 43.4 — final follow-on — activated; **Stark-Naked-Numbers translation stream complete with this PR**)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_43_4_ENOUGH_HISTORY_GATE.md` — NEW Phase doc
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43.3 → ✅ Complete + Phase 43.4 row 🟡 SHIPPING
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43.3 → Recently Completed; §0b → Phase 43.4 active workstream
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — additive only. Helper is pure read-query (Prisma `findFirst` + `aggregate` + `count`). No writes of any kind. No schema migration.
+
+### Build Status
+- [x] TypeScript compilation passes (`npx tsc --noEmit`)
+
+### PR
+- Branch: `claude/phase-43-4-enough-history-gate-MG8mr`
+- Status: pending push + open
