@@ -58,6 +58,8 @@ import {
 } from '@/components/loans/LoanDetailDialog';
 import { AddSourcePicker } from '@/components/ui/AddSourcePicker';
 import { TransactionImportDialog } from '@/components/bank/TransactionImportDialog';
+import { HiddenWealthLens } from '@/components/balances/HiddenWealthLens';
+import type { HiddenWealthResponse } from '@/app/api/dashboard/hidden-wealth/route';
 import { useBasiqConnect } from '@/hooks/useBasiqConnect';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
@@ -209,6 +211,13 @@ function BalancesPageContent() {
   // and forcing a second click.
   const [detailAccount, setDetailAccount] = useState<AccountRow | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // Phase 43.1 — Hidden Wealth lens. Single read-through fetch from
+  // /api/dashboard/hidden-wealth (thin wrapper around the canonical
+  // master snapshot). The lens self-hides when total assets are 0.
+  const [hiddenWealth, setHiddenWealth] = useState<HiddenWealthResponse | null>(
+    null,
+  );
 
   // Phase 1b: account create/edit form is now hosted inline. Opening
   // the form with `editingAccount = null` runs in create mode (e.g.
@@ -537,12 +546,22 @@ function BalancesPageContent() {
     const connectionsPromise = fetch('/api/basiq/connections', { headers })
       .then((r) => (r.ok ? r.json() : { connections: [] }))
       .catch(() => ({ connections: [] }));
+    // Phase 43.1 — Hidden Wealth bucket totals. Fire-and-forget; if the
+    // request fails the lens self-hides via null state (the rest of
+    // the page is unaffected).
+    const hiddenWealthPromise = fetch('/api/dashboard/hidden-wealth', {
+      headers,
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
 
-    const [accResult, loanResult, connResult] = await Promise.allSettled([
-      accountsPromise,
-      loansPromise,
-      connectionsPromise,
-    ]);
+    const [accResult, loanResult, connResult, hwResult] =
+      await Promise.allSettled([
+        accountsPromise,
+        loansPromise,
+        connectionsPromise,
+        hiddenWealthPromise,
+      ]);
 
     if (cancelledRef.current) return;
 
@@ -571,6 +590,10 @@ function BalancesPageContent() {
     if (connResult.status === 'fulfilled') {
       const r = connResult.value;
       setConnections(r.connections ?? r.data ?? []);
+    }
+
+    if (hwResult.status === 'fulfilled' && hwResult.value?.success) {
+      setHiddenWealth(hwResult.value.data as HiddenWealthResponse);
     }
 
     setLoading(false);
@@ -706,6 +729,25 @@ function BalancesPageContent() {
             </div>
           )}
         </header>
+
+        {/* Phase 43.1 — Hidden Wealth lens. Bridge between the Net
+            Position hero (single number) and the Cash/Credit/Debt
+            sections (detail). Splits total assets by accessibility
+            (Liquid Today · Accessible · Locked) so the user sees the
+            gap between "wealth on paper" and "cash this week".
+            Self-hides when total assets ≤ 0 OR the fetch failed. */}
+        {hiddenWealth && hiddenWealth.totalAssets > 0 && (
+          <div className="mb-8 sm:mb-10">
+            <HiddenWealthLens
+              liquidToday={hiddenWealth.liquidToday}
+              accessible={hiddenWealth.accessible}
+              lockedLongTerm={hiddenWealth.lockedLongTerm}
+              netWorth={hiddenWealth.netWorth}
+              totalAssets={hiddenWealth.totalAssets}
+              breakdown={hiddenWealth.breakdown}
+            />
+          </div>
+        )}
 
         {/* CONTENT ------------------------------------------------------ */}
         {loading ? (

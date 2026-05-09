@@ -847,6 +847,57 @@ Spec: `docs/blueprint/PHASE_43_MONEY_STORY.md`. TRAIL framework
 context: `docs/blueprint/TRAIL_FRAMEWORK.md` §5 ("The 3-line scoreboard
 pattern").
 
+### Canonical analytical card — `HiddenWealthLens` (Phase 43.1, 2026-05-09)
+
+`components/balances/HiddenWealthLens.tsx` is the canonical
+**typography-led analytical card** on `/dashboard/balances`. Translates
+Andrew's *"the balance sheet is where all the cash is hiding"* into a
+three-bucket accessibility view of Total Assets:
+
+- **Liquid Today** — cash + offsets (24-hour access)
+- **Accessible** — shares / ETFs / managed funds (~days, CGT applies)
+- **Locked Long-Term** — property equity + super + personal assets
+
+**Composition rules (NON-NEGOTIABLE):**
+- **Typography-led, not a glass card.** The page already has a
+  minimalist Net Position hero; introducing `<GlassHero>` would clash
+  visually. Subtle border + faint background only
+  (`rounded-3xl border border-foreground/[0.06] bg-foreground/[0.015]`).
+- **The component is pure presentational.** 6 props in (`liquidToday`,
+  `accessible`, `lockedLongTerm`, `netWorth`, `totalAssets`,
+  `breakdown?`); JSX out. **Computes nothing.** Bucket percentages,
+  rounding, and copy variants are derived inside the render — but
+  every $-amount must come from `/api/dashboard/hidden-wealth`, which
+  is a thin wrapper around `getMasterFinancialSnapshot()`.
+- **No fields added to `quickMetrics`** (D-43.1-2 — promote-on-second-
+  use, not on speculation). The bucket terminology is presentation-
+  layer specific; coupling the calc layer to a UI taxonomy would
+  invert the architecture.
+- **Self-hides when `totalAssets ≤ 0`.** A fully-grey bar would
+  misinform.
+- **3-segment proportional bar palette: emerald → sky → slate.**
+  Emerald reserved for Liquid as the Bandura victory tone (reaching
+  cash *is* the small win). Sky for Accessible (calm, can-act). Slate
+  for Locked (neutral foundation). **No red anywhere** — loss aversion
+  is built into the colour choice.
+- **Emerald-reservation rule scope clarification:** the rule registered
+  in `PHASE_43_MONEY_STORY.md` §5a ("emerald reserved for Saved") is
+  scoped to the Money Story Bar component. `HiddenWealthLens` and
+  `MoneyStoryHero` never co-render (different pages); emerald can
+  carry "victory/access" semantics on this surface without conflict.
+  Reviewers MUST reject any change that introduces red on either bar.
+- **Reduced-motion-safe** segment-fill animation (left-anchored
+  `scaleX` 0.7s `appleEase`, suppressed under `prefers-reduced-motion`).
+
+**SurfaceDescriptor (Phase 41i.6 pending):** when the
+`lib/calc-audit/surfaces/` registry ships, register a descriptor
+mapping each rendered $-amount to its source path
+(`quickMetrics.liquidCash`, `investments.totalValue`,
+`propertyPortfolioEquity`, `netWorth.assets.superannuation`,
+`netWorth.assets.assets`). Until then enforced by code review.
+
+Spec: `docs/blueprint/PHASE_43_1_HIDDEN_WEALTH.md`.
+
 ## **15.9 Accessibility checklist (B2B2C surfaces)**
 
 Every interactive component in the B2B2C surface meets:
