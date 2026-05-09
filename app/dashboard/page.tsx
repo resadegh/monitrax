@@ -62,6 +62,8 @@ import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '
 import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
 import { DailyPulseCard } from '@/components/bookkeeping/DailyPulseCard';
 import { PendingActionsPrompt } from '@/components/bookkeeping/PendingActionsPrompt';
+import { MoneyStoryHero } from '@/components/dashboard/MoneyStoryHero';
+import { determineTrailStage } from '@/lib/cfo/trailStage';
 
 interface DashboardInsights {
   healthScore: {
@@ -112,6 +114,20 @@ interface DashboardInsights {
     remaining: number;
     daysInMonth: number;
     dailyBudget: number;
+  };
+  // Phase 43 — Money Story 3-line scoreboard + Money Story Bar
+  // segments. Mirrored from /api/dashboard/insights. Optional so the
+  // dashboard renders during older cached responses without the block;
+  // the hero self-hides when missing.
+  moneyStory?: {
+    earned: number;
+    kept: number;
+    keptMargin: number;
+    freeToday: number;
+    freeDays: number;
+    enoughHistory: boolean;
+    taxWithheld: number;
+    surplus: number;
   };
 }
 
@@ -595,6 +611,32 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* Phase 43 — Money Story (Personal P&L scoreboard).
+              The orientation hero: 3 lines (Earned → Kept → Free today)
+              that map to TRAIL T → R → A. Stage emphasis rotates inside
+              the component. Self-gates when the insights endpoint hasn't
+              attached the moneyStory block (older cached responses).
+              All five values come from canonical quickMetrics (SSOT). */}
+          {insights?.moneyStory && (
+            <MoneyStoryHero
+              earned={insights.moneyStory.earned}
+              kept={insights.moneyStory.kept}
+              keptMargin={insights.moneyStory.keptMargin}
+              freeToday={insights.moneyStory.freeToday}
+              freeDays={insights.moneyStory.freeDays}
+              taxWithheld={insights.moneyStory.taxWithheld}
+              surplus={insights.moneyStory.surplus}
+              enoughHistory={insights.moneyStory.enoughHistory}
+              trailStage={determineTrailStage({
+                hasAccounts: (snapshot.assets?.accounts?.totalValue ?? 0) > 0,
+                monthlyCashflow: snapshot.cashflow.monthlyNetCashflow,
+                emergencyFundMonths: insights.emergencyFund.monthsCovered,
+                hasInvestments: (snapshot.investments?.totalValue ?? 0) > 0,
+                healthScore: insights.healthScore.score,
+              })}
+            />
+          )}
+
           {/* Phase 3: Linkage Health & Quick Actions Bar */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">

@@ -343,6 +343,61 @@ including My Safety Net as a top-level rail entry. The TRAIL framework
 is not changed — its rendering adapts to the surface, and on every
 surface the full T-R-A-I-L is reachable in one tap.
 
+### The 3-line scoreboard pattern — Earned · Kept · Free today (Phase 43)
+
+> Added 2026-05-09 as a TRAIL T → R → A presentation primitive.
+> Implemented at `components/dashboard/MoneyStoryHero.tsx`.
+> Full spec: `docs/blueprint/PHASE_43_MONEY_STORY.md`.
+
+A canonical Monitrax pattern for translating Jason Andrew's "Stark
+Naked Numbers" hierarchy (*Revenue is vanity, Profit is sanity, Cash is
+reality*) into the TRAIL idiom. Three lines, in fixed hierarchy:
+
+| Line | Stark Naked equivalent | Monitrax canonical source | TRAIL stage |
+|---|---|---|---|
+| **Earned** | Revenue (vanity) | `quickMetrics.monthlyGrossIncome` | T (Track) |
+| **Kept** | Gross / Net Profit (sanity) | `quickMetrics.keptAfterEssentials` (= net income − essential expenses) | R (Reduce) |
+| **Free today** | Cash (reality) | `quickMetrics.liquidCash` displayed in days via `quickMetrics.freeCashDays` | A (Anchor) |
+
+**Stage-emphasis behaviour.** The pattern is stage-aware, not stage-
+gated: which line gets the prominent gradient headline rotates with
+the user's TRAIL stage (T → Earned, R → Kept, A/I/L → Free today). All
+three values always render. This is the same *guided, not gated*
+philosophy that governs the rest of TRAIL navigation.
+
+**Tone discipline.** Andrew's words *vanity / sanity / reality* are
+deliberately NOT used as line labels. The hierarchy is borrowed; the
+brutality is left at the door. Copy follows the warm-words rule (§4)
+— normalising, never shaming. The 24% AU-household-savings-rate figure
+appears as a comparative-not-judgemental frame ("the AU household
+average is around 24%"), never as a judgement ("you're below
+average"). When a user is below it, the copy reframes; when above, the
+copy quietly recognises without manipulation.
+
+**SSOT contract.** The pattern is a *presentation* primitive, not a
+calc engine. Any surface that wants the scoreboard reads from
+`quickMetrics` — never re-derives. Stage colours pinned to
+`TRAIL_STAGE_TONES` in `lib/navigation/trailNav.tsx`. CLAUDE.md §6.1
++ §12.2 + §16.
+
+**The Money Story Bar visualisation.** Below the 3 lines, the pattern
+includes a 3-segment proportional bar (Tax · Spent · Saved) that
+splits the user's gross income spatially. Behavioural-psychology
+rationale documented in `PHASE_43_MONEY_STORY.md` §5a — System-1 spatial
+encoding when stress depletes System 2 (Mani et al. 2013), loss-aversion
+handled by neutral slate (never red) for "Spent", emerald reserved as
+the Bandura victory tone for "Saved". The bar is the "scoreboard"
+literalised — Andrew's brevity discipline made visual.
+
+**Where to use it.**
+- ✅ `/dashboard` Home — the canonical orientation hero (Phase 43, shipped).
+- 📋 Adviser drill-in (Phase 32B) — same component, props swapped via `voiceContext`. Copy flips to "Client money story" via the existing scope mechanism.
+- 📋 The PDF report cover (Phase 17) — when shipped, the report opens with the same 3 lines so the printed artefact matches the in-app hero.
+
+**Where NOT to use it.**
+- ❌ Detail pages — those answer one stage at a time. The 3-line pattern is *cross-stage orientation*; once the user is on `/dashboard/budget-analysis`, they're already in Reduce mode and the hero would be redundant.
+- ❌ Without `quickMetrics` available — there is no "estimate it from props" version. If the canonical block isn't present, the surface should hide the hero, not approximate.
+
 ---
 
 ## 6. Barefoot Investor Guide Integration

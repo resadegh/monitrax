@@ -741,8 +741,11 @@ Canonical reusable primitives at `components/shell/`:
 - `GlassHero` + `GlassHeroEyebrow` / `GlassHeroHeadline` /
   `GlassHeroKpiCell` — `rounded-[28px]` glass surface with
   configurable atmosphere (`sky` | `emerald` | `amber` | `rose` |
-  `slate`), breathing-glow, gradient-text headline, KPI cells. Honours
-  `prefers-reduced-motion` from day one.
+  `violet` | `indigo` *(added Phase 43, 2026-05-09 — for the Anchor
+  TRAIL stage; tones tuned to match `TRAIL_STAGE_TONES.A`
+  in `lib/navigation/trailNav.tsx`)* | `slate`), breathing-glow,
+  gradient-text headline, KPI cells. Honours `prefers-reduced-motion`
+  from day one.
 - `MetricTile` + `MetricTileHeadline` — `rounded-[22px]` atmospheric
   tile with tone families (`sky` | `emerald` | `amber` | `rose` |
   `violet` | `slate`), filled-silhouette glyph watermark slot, springy
@@ -779,6 +782,70 @@ Canonical reusable primitives at `components/shell/`:
 Reviewers MUST reject any PR that re-implements `appleEase` or
 re-rolls the rounded-22px / rounded-28px glass tile pattern locally
 instead of importing from `components/shell/`.
+
+### Canonical hero — `MoneyStoryHero` (Phase 43, 2026-05-09)
+
+`components/dashboard/MoneyStoryHero.tsx` is the canonical
+**orientation hero** on `/dashboard` Home — a 3-line personal-P&L
+scoreboard (Earned · Kept · Free today) translated from Jason Andrew's
+Stark Naked Numbers hierarchy into TRAIL T → R → A.
+
+**Composition rules (NON-NEGOTIABLE):**
+- Composes `<GlassHero atmosphere="…">` + `<GlassHeroEyebrow>` +
+  `<GlassHeroHeadline>` + `<GlassHeroKpiCell>` from
+  `components/shell/`. **No local re-implementation** of the
+  rounded-28px glass surface, the mesh atmosphere, the breathing
+  glow, or `appleEase` — all of those come from the shell layer
+  (§15.10 above).
+- The component is **pure presentational**. It takes 8 props (`earned`,
+  `kept`, `keptMargin`, `freeToday`, `freeDays`, `taxWithheld`,
+  `surplus`, `enoughHistory`, `trailStage?`) and renders. **It computes
+  nothing.** Any derived number must be added to
+  `MasterFinancialSnapshot.quickMetrics` first, then read through
+  (CLAUDE.md §6.1, §12.2 SSOT).
+- **Stage colours pinned to `TRAIL_STAGE_TONES`** in
+  `lib/navigation/trailNav.tsx` (T=sky, R=amber, A=indigo, I=emerald,
+  L=violet). The atmosphere prop AND the headline gradient AND the
+  drill-down destination all rotate with `trailStage`. All three
+  scoreboard lines always render (guided, not gated, CLAUDE.md §14.3).
+  Reviewers MUST reject any change that drifts the hero's stage
+  colours away from the SSOT.
+- **The Money Story Bar** (3-segment proportional visualisation —
+  Tax · Spent · Saved) renders between the headline copy and the KPI
+  cells. Behavioural-psychology contract (loss-aversion-safe slate
+  palette, emerald reserved for Saved as the Bandura victory tone,
+  System-1 spatial encoding) is documented in
+  `PHASE_43_MONEY_STORY.md` §5a. Reviewers MUST reject any change that
+  introduces red on the bar, more than three segments, or repurposes
+  the emerald victory tone.
+- **Drill-down (Principle 3.2)**: the entire hero is wrapped in a
+  `<Link>` routing to a stage-appropriate detail page (T →
+  `/dashboard/balances`, R → `/dashboard/budget-analysis`, A →
+  `/dashboard/safety-net`, I/L → `/dashboard/cfo`). The drill-down
+  label appears in the eyebrow row with an `ArrowUpRight` glyph so the
+  surface always reads as interactive.
+- **`enoughHistory` gate**: when `monthlyExpenses === 0`, replace the
+  per-day display ("47 days of life") with "Truly liquid right now".
+  False precision is worse than missing precision.
+
+**Tone discipline:** Andrew's words *vanity / sanity / reality* are
+deliberately NOT used as line labels. The hierarchy is borrowed; the
+brutality is left at the door. The 24% AU-household-savings-rate
+comparator is normalising-not-judgemental copy. Reviewers MUST reject
+any change that adopts the book's brutal voice — the math is sharp,
+the language is kind.
+
+**SurfaceDescriptor (Phase 41i.6 pending):** when the
+`lib/calc-audit/surfaces/` registry ships (Phase 41i.6a), the hero
+MUST register a descriptor mapping its 5 rendered fields to their
+`quickMetrics` source paths. Until then the contract is enforced by
+code review — see `docs/blueprint/PHASE_43_MONEY_STORY.md` §6 for the
+exact shape. **Reviewers MUST reject** any PR that adds inline math to
+`MoneyStoryHero` instead of routing through `quickMetrics`.
+
+Spec: `docs/blueprint/PHASE_43_MONEY_STORY.md`. TRAIL framework
+context: `docs/blueprint/TRAIL_FRAMEWORK.md` §5 ("The 3-line scoreboard
+pattern").
 
 ## **15.9 Accessibility checklist (B2B2C surfaces)**
 
