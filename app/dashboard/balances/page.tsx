@@ -407,41 +407,6 @@ function BalancesPageContent() {
     setLoanDetailOpen(true);
   };
 
-  // Phase 36 Phase 2d/2e — `?id=` cross-module-nav handler.
-  // GRDCS `getEntityHref('account', id)` and `getEntityHref('loan', id)`
-  // produce `/dashboard/balances?id=<entityId>` (since the routeMap
-  // basePath was flipped in this same PR). When that URL lands here,
-  // we look up the entity in the loaded list and auto-open the
-  // appropriate inline detail dialog. Guarded against re-fire on data
-  // refresh by `idHandledRef`.
-  const idHandledRef = useRef(false);
-  useEffect(() => {
-    if (idHandledRef.current) return;
-    if (accounts.length === 0 && loans.length === 0) return;
-    const id = searchParams?.get('id');
-    if (!id) return;
-    const account = accounts.find((a) => a.id === id);
-    if (account) {
-      idHandledRef.current = true;
-      openAccountDetail(account);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('id');
-      url.searchParams.delete('tab');
-      router.replace(url.pathname + url.search + url.hash, { scroll: false });
-      return;
-    }
-    const loan = loans.find((l) => l.id === id);
-    if (loan) {
-      idHandledRef.current = true;
-      openLoanDetail(loan);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('id');
-      url.searchParams.delete('tab');
-      router.replace(url.pathname + url.search + url.hash, { scroll: false });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accounts, loans]);
-
   // Phase 36 Phase 2a: open LoanFormDialog in edit mode for a loan
   // already in state. Map LoanRow → LoanFormValues (decimal rate
   // preserved). Properties + assets lookups are loaded lazily; if the
@@ -676,6 +641,44 @@ function BalancesPageContent() {
       cancelledRef.current = true;
     };
   }, [reloadData]);
+
+  // Phase 36 Phase 2d/2e — `?id=` cross-module-nav handler.
+  // GRDCS `getEntityHref('account', id)` and `getEntityHref('loan', id)`
+  // produce `/dashboard/balances?id=<entityId>` (since the routeMap
+  // basePath was flipped in this same PR). When that URL lands here,
+  // we look up the entity in the loaded list and auto-open the
+  // appropriate inline detail dialog. Guarded against re-fire on data
+  // refresh by `idHandledRef`. Lives after the data-loading effect
+  // so `accounts` and `loans` are guaranteed to be in lexical scope
+  // (TDZ correctness) and effect ordering is honest about its
+  // dependency on loaded state.
+  const idHandledRef = useRef(false);
+  useEffect(() => {
+    if (idHandledRef.current) return;
+    if (accounts.length === 0 && loans.length === 0) return;
+    const id = searchParams?.get('id');
+    if (!id) return;
+    const account = accounts.find((a) => a.id === id);
+    if (account) {
+      idHandledRef.current = true;
+      openAccountDetail(account);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('id');
+      url.searchParams.delete('tab');
+      router.replace(url.pathname + url.search + url.hash, { scroll: false });
+      return;
+    }
+    const loan = loans.find((l) => l.id === id);
+    if (loan) {
+      idHandledRef.current = true;
+      openLoanDetail(loan);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('id');
+      url.searchParams.delete('tab');
+      router.replace(url.pathname + url.search + url.hash, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts, loans]);
 
   // --- Totals --------------------------------------------------------------
 
