@@ -27,7 +27,7 @@ In SME context Andrew means: profit reports lie because cash is trapped in recei
 |---|---|---|---|
 | **Liquid today** | `quickMetrics.liquidCash` (cash + offsets) | 24 hours | "Can I pay for this hot-water-system replacement before the weekend?" |
 | **Accessible** | `investments.totalValue` (shares / ETFs / managed funds) | ~days, subject to CGT + market timing | "Could I free up $30k for a deposit this fortnight if I had to?" |
-| **Locked long-term** | `propertyPortfolioEquity + netWorth.assets.superannuation + netWorth.assets.assets` | Years (property sale or preservation age) | "How much of my wealth is actually 'on paper' rather than 'on tap'?" |
+| **Locked long-term** | `propertyPortfolioEquity + netWorth.assets.superannuation + netWorth.assets.personalAssets` | Years (property sale or preservation age) | "How much of my wealth is actually 'on paper' rather than 'on tap'?" |
 
 These three sum to **Total Assets** (not Net Worth — liabilities are shown separately as page context, never subtracted from any bucket).
 
@@ -45,7 +45,7 @@ These three sum to **Total Assets** (not Net Worth — liabilities are shown sep
 
 | # | Decision | Rationale |
 |---|---|---|
-| **D-43.1-1** | **Zero new calc engines.** Every value is read-through from existing snapshot fields (`quickMetrics.liquidCash`, `investments.totalValue`, `propertyPortfolioEquity`, `netWorth.assets.superannuation`, `netWorth.assets.assets`). | CLAUDE.md §6.1 + §12.2 SSOT. |
+| **D-43.1-1** | **Zero new calc engines.** Every value is read-through from existing snapshot fields (`quickMetrics.liquidCash`, `investments.totalValue`, `propertyPortfolioEquity`, `netWorth.assets.superannuation`, `netWorth.assets.personalAssets`). | CLAUDE.md §6.1 + §12.2 SSOT. |
 | **D-43.1-2** | **No new fields on `quickMetrics`.** The bucketing is presentation-layer terminology specific to this lens. Coupling the calc layer to a UI taxonomy would invert the architecture. The lens-specific endpoint (D-43.1-3) does the bucketing. | If a second surface needs the same buckets in the future, *then* promote to `quickMetrics`. Don't pre-promote on speculation. |
 | **D-43.1-3** | **New thin endpoint `/api/dashboard/hidden-wealth`.** Returns only the 3 bucket totals + the breakdown the lens renders. ~80 lines of route code, calls `getMasterFinancialSnapshot()`, returns. | Avoids loading the full master snapshot (~80 fields) on a page that only needs 5 of them. Keeps `/dashboard/balances` fetch budget contained — adds 1 small fetch, doesn't blow up payload size. |
 | **D-43.1-4** | **Typography-led, not a glass card.** The existing `/dashboard/balances` hero is minimalist typography; introducing `<GlassHero>` would clash visually. Subtle border + faint background only. | Apple/Linear/Stripe restraint. The page already has its visual hero (Net Position) — the lens is a supporting analytical card, not a hero. |
@@ -64,7 +64,7 @@ masterFinancialService.getMasterFinancialSnapshot()
     ├── investments.totalValue              → accessible
     ├── propertyPortfolioEquity             ─┐
     ├── netWorth.assets.superannuation      ─┼─ summed → lockedLongTerm
-    └── netWorth.assets.assets              ─┘
+    └── netWorth.assets.personalAssets              ─┘
             │
             ▼
 GET /api/dashboard/hidden-wealth     ── thin wrapper, withPermission('report.read')

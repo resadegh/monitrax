@@ -894,7 +894,7 @@ three-bucket accessibility view of Total Assets:
 mapping each rendered $-amount to its source path
 (`quickMetrics.liquidCash`, `investments.totalValue`,
 `propertyPortfolioEquity`, `netWorth.assets.superannuation`,
-`netWorth.assets.assets`). Until then enforced by code review.
+`netWorth.assets.personalAssets`). Until then enforced by code review.
 
 Spec: `docs/blueprint/PHASE_43_1_HIDDEN_WEALTH.md`.
 

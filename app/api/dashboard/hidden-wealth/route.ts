@@ -52,7 +52,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
     const accessible = snapshot.investments.totalValue;
     const propertyEquity = snapshot.propertyPortfolioEquity;
     const superannuation = snapshot.netWorth.assets.superannuation;
-    const personalAssets = snapshot.netWorth.assets.assets;
+    const personalAssets = snapshot.netWorth.assets.personalAssets;
     const lockedLongTerm = propertyEquity + superannuation + personalAssets;
 
     const response: HiddenWealthResponse = {

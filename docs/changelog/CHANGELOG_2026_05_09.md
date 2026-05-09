@@ -400,7 +400,7 @@ N/A — additive only. No Prisma operations of any kind.
 - **Description:** Reza directive 2026-05-09 *"continue"* after PR #737 merged. Andrew (Stark Naked Numbers): *"the balance sheet is where all the cash is hiding."* Personal-finance translation: the user with $500k net worth and $2k accessible — the rule, not the exception, for the AU property-investor segment Monitrax targets. The existing `/dashboard/balances` hero shows Net Position / Cash / Credit / Debt — none of which answer *"how much can I actually spend before payday if my hot-water system dies?"* This lens does, honestly and without alarm.
 
 ### Architectural integrity (CLAUDE.md §6.1 + §12.2 SSOT)
-- **Zero new calc engines.** Every value reads through existing snapshot fields (`quickMetrics.liquidCash`, `investments.totalValue`, `propertyPortfolioEquity`, `netWorth.assets.superannuation`, `netWorth.assets.assets`).
+- **Zero new calc engines.** Every value reads through existing snapshot fields (`quickMetrics.liquidCash`, `investments.totalValue`, `propertyPortfolioEquity`, `netWorth.assets.superannuation`, `netWorth.assets.personalAssets`).
 - **Zero new fields on `quickMetrics`** (D-43.1-2 promote-on-second-use). The bucket terminology is presentation-layer specific; coupling calc layer to UI taxonomy would invert the architecture.
 - **Zero re-implemented design primitives.** Lens uses `appleEase` + `useReducedMotionSafe` from `components/shell/`. No glass tile (page already has its own minimalist hero — typography-led card was the right restraint).
 
