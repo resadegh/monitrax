@@ -450,3 +450,70 @@ N/A — additive only. No Prisma operations of any kind. No schema migration.
 ### PR
 - Branch: `claude/phase-43-1-hidden-wealth-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-43-2-spending-pareto-MG8mr (Phase 43.2 — Spending Pareto Lens SHIPPING)
+
+### Changes Made
+- **Type:** Feature (Phase 43.2 — second deferred follow-on from Phase 43; first follow-on Phase 43.1 / PR #738 also shipped + merged today).
+- **Scope:** New typography-led analytical card on `/dashboard/expenses` surfacing the *vital few* spending categories driving ~80% of monthly outgoings. One new thin endpoint, zero new calc engines, zero `quickMetrics` changes.
+- **Description:** Reza directive 2026-05-09 *"continue with build"* after PR #738 merged. Andrew's controversial *"fire your worst 20% of customers"* (Stark Naked Numbers, Principle 3) inverted for personal finance: instead of cutting 20% of spending categories, **focus your attention on the 20% that drive 80%**. The existing `/dashboard/expenses` page is a complete list of every line — useful for the data, useless for the *decision*. The Pareto lens collapses 30 lines into ~4 numbered focus items: *here's where your attention earns the most return*. Mani et al. 2013 cognitive-load research is the reason this matters — stress depletes 13 IQ points, so "where do I start?" closes the page without action.
+
+### Architectural integrity (CLAUDE.md §6.1 + §12.2 SSOT)
+- **Zero new calc engines.** Pareto cut reads `snapshot.expenses.monthly.byCategory` (already canonically computed by `aggregateExpensesByCategory` in `expenseAggregator.ts`). Sort + cumulative-percentage walk happens in the route.
+- **Zero new fields on `quickMetrics`** (D-43.2-2 promote-on-second-use).
+- **Zero re-implemented design primitives.** Lens uses `appleEase` + `useReducedMotionSafe` from `components/shell/`. Same family as `HiddenWealthLens` — typography-led card, subtle border + faint background, no glass tile.
+
+### Pareto cut algorithm
+- Sort `expenses.monthly.byCategory` by `amount` descending
+- Walk the list accumulating `cumulativePct`
+- Cut at `cumulativePct ≥ 80%` OR `MAX_VITAL_FEW = 8`, whichever first
+- Empty state when `totalMonthlySpend ≤ 0` → lens self-hides
+
+### Behavioural-psychology rules (registered in `06_UI_UX_FOUNDATION.md`)
+- **Cognitive ease** (Kahneman) — 4 numbered lines vs 30; sequenceable + concrete.
+- **No red anywhere**, even at 50% concentration (Kahneman & Tversky loss aversion). Pareto framing is focus, not failure.
+- **Locus-of-control closing copy** (Bandura) — *"the highest-leverage spending review you can do"*. The user is the actor.
+- **Concreteness** (Heath & Heath) — numbered list + dollars + percentages, three concrete handles per row.
+- **Pareto framing as opportunity not verdict** — even at 95% concentration, copy stays neutral.
+
+### Files Created
+- `app/api/dashboard/spending-pareto/route.ts` — thin endpoint (~110 LOC; `withPermission('report.read')`). Returns `{vitalFew, vitalFewTotal, vitalFewPct, trivialMany*, totalMonthlySpend, totalCategoryCount}`.
+- `components/expenses/SpendingParetoLens.tsx` — pure presentational component (~180 LOC). Numbered vital-few list with inline mini-bars (slate-500/80, scaled by `pct ÷ maxPct`), trivial-many footer with neutral framing, locus-of-control closing copy.
+- `docs/blueprint/PHASE_43_2_SPENDING_PARETO.md` — full Phase doc (strategic positioning, Pareto-cut algorithm with guardrails, 7 architectural decisions, data-flow diagram, visualisation with mini-bar scaling rule, behavioural-psychology rules with citations, acceptance criteria, deferred follow-ons).
+
+### Files Modified
+- `app/dashboard/expenses/page.tsx` — imports lens + endpoint type; new `pareto` state + `loadPareto()` fire-and-forget loader; lens renders between `<PageHeader>` and search/filter.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43.1 moved to ✅ Recently Completed (PR #738, merged 2026-05-09); §0b replaced with new Phase 43.2 active workstream entry.
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43.1 row updated to ✅ Complete with PR #738 link; Phase 43.2 row added as 🟡 SHIPPING.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — registered `SpendingParetoLens` as a canonical typography-led analytical card pattern in the `HiddenWealthLens` family.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (canonical Pareto-cut analytical card pattern registered)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Phase 43.1 marked complete with PR #738; Phase 43.2 second follow-on activated)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_43_2_SPENDING_PARETO.md` — NEW Phase doc
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43.1 → ✅ Complete + Phase 43.2 row 🟡 SHIPPING
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — `SpendingParetoLens` canonical analytical card registered
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43.1 → Recently Completed; §0b → Phase 43.2 active workstream
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — additive only. No Prisma operations of any kind. No schema migration.
+
+### Build Status
+- [x] TypeScript compilation passes (`npx tsc --noEmit`)
+
+### PR
+- Branch: `claude/phase-43-2-spending-pareto-MG8mr`
+- Status: pending push + open

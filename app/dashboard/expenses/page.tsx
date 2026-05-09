@@ -22,6 +22,8 @@ import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { DocumentCategory, LinkedEntityType } from '@/lib/documents/types';
 import { ExpenseWizard } from '@/components/ExpenseWizard';
+import { SpendingParetoLens } from '@/components/expenses/SpendingParetoLens';
+import type { SpendingParetoResponse } from '@/app/api/dashboard/spending-pareto/route';
 import { useDocumentUpload, useDocumentReader } from '@/hooks/useDocumentUpload';
 import {
   getExpenseCategoryOptions,
@@ -238,6 +240,11 @@ function ExpensesPageContent() {
     }
   };
 
+  // Phase 43.2 — Spending Pareto state. Single read-through fetch from
+  // /api/dashboard/spending-pareto (thin wrapper around the canonical
+  // master snapshot). Lens self-hides when there's no spending data.
+  const [pareto, setPareto] = useState<SpendingParetoResponse | null>(null);
+
   useEffect(() => {
     if (token) {
       loadExpenses();
@@ -245,8 +252,25 @@ function ExpensesPageContent() {
       loadLoans();
       loadInvestmentAccounts();
       loadAssets();
+      loadPareto();
     }
   }, [token]);
+
+  // Fire-and-forget — failed fetch leaves the lens hidden, rest of
+  // page unaffected. Same fault-tolerant pattern as Phase 43.1.
+  const loadPareto = async () => {
+    try {
+      const response = await fetch('/api/dashboard/spending-pareto', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result?.success) setPareto(result.data as SpendingParetoResponse);
+      }
+    } catch (error) {
+      console.error('Error loading spending pareto:', error);
+    }
+  };
 
   const loadExpenses = async () => {
     try {
@@ -794,6 +818,27 @@ function ExpensesPageContent() {
           </div>
         }
       />
+
+      {/* Phase 43.2 — Spending Pareto lens. Sits below the page header
+          and above the search / filter / outgoings sections. Surfaces
+          the *vital few* categories that drive ~80% of monthly spend
+          (Andrew, Stark Naked Numbers — Pareto inverted for personal
+          finance). Self-hides when there's no spending data or the
+          fetch failed. */}
+      {pareto && pareto.vitalFew.length > 0 && (
+        <div className="mb-6">
+          <SpendingParetoLens
+            vitalFew={pareto.vitalFew}
+            vitalFewTotal={pareto.vitalFewTotal}
+            vitalFewPct={pareto.vitalFewPct}
+            trivialManyCount={pareto.trivialManyCount}
+            trivialManyAmount={pareto.trivialManyAmount}
+            trivialManyPct={pareto.trivialManyPct}
+            totalMonthlySpend={pareto.totalMonthlySpend}
+            totalCategoryCount={pareto.totalCategoryCount}
+          />
+        </div>
+      )}
 
       {/* Search and Filter */}
       {expenses.length > 0 && (

@@ -898,6 +898,61 @@ mapping each rendered $-amount to its source path
 
 Spec: `docs/blueprint/PHASE_43_1_HIDDEN_WEALTH.md`.
 
+### Canonical analytical card — `SpendingParetoLens` (Phase 43.2, 2026-05-09)
+
+`components/expenses/SpendingParetoLens.tsx` is the canonical
+**Pareto-cut focus list** on `/dashboard/expenses`. Surfaces the
+*vital few* spending categories driving ~80% of monthly outgoings —
+Andrew's *"fire your worst 20% of customers"* (Stark Naked Numbers)
+inverted for personal finance.
+
+**Composition rules (NON-NEGOTIABLE):**
+- **Same family as `HiddenWealthLens`** — typography-led, subtle
+  border + faint background, no glass tile. Sits below `<PageHeader>`
+  on `/dashboard/expenses`. Reviewers MUST reject any change that
+  introduces a glass card here without first updating this section.
+- **The component is pure presentational.** Takes 8 props (`vitalFew`,
+  `vitalFewTotal`, `vitalFewPct`, `trivialMany*`, `totalMonthlySpend`,
+  `totalCategoryCount`); JSX out. **Computes nothing** — the Pareto
+  cut happens in `/api/dashboard/spending-pareto`, which reads
+  `snapshot.expenses.monthly.byCategory`.
+- **`MAX_VITAL_FEW = 8` guardrail in the route, not the component.**
+  If 80% is spread across 30+ categories, the user doesn't have a
+  Pareto problem to focus on; the lens caps the displayed list at 8
+  even if cumulative hasn't hit 80% yet.
+- **Inline mini-bars per row, not a chart.** Width is
+  `pct ÷ maxPct × 100` so the #1 category fills 100% of its row's
+  bar; everything scales proportionally. Single colour
+  (`bg-slate-500/80`); no segmentation, no axis, no legend.
+- **No red anywhere, even at 50% concentration.** Even a category at
+  50% of monthly spend renders in slate. The Pareto framing is
+  *focus*, not *failure* (Kahneman & Tversky loss aversion).
+- **Locus-of-control closing copy** — *"the highest-leverage spending
+  review you can do"*. The user is the actor, the lens just points
+  at the leverage. Never prescriptive ("you should cut X").
+- **Self-hides when `vitalFew.length === 0`** — empty state is
+  silence, not a placeholder.
+- **Reduced-motion-safe** mini-bar reveal animation.
+
+**Behavioural-psychology contract** (full citations in
+`PHASE_43_2_SPENDING_PARETO.md` §5):
+- Cognitive ease (4 lines vs 30 — Kahneman, *Thinking Fast and Slow*).
+- No red anywhere — Pareto as opportunity, not verdict (Kahneman &
+  Tversky).
+- Locus-of-control framing (Bandura self-efficacy + Rotter).
+- Concreteness (numbered list + dollars + percentages — Heath & Heath).
+- Pareto framing as opportunity not verdict — even at 95%
+  concentration, copy stays neutral.
+
+**SurfaceDescriptor (Phase 41i.6 pending):** when the
+`lib/calc-audit/surfaces/` registry ships, register a descriptor
+mapping each rendered $-amount to its source path
+(`snapshot.expenses.monthly.byCategory[i].amount` /
+`snapshot.expenses.monthly.byCategory[i].category`). Until then
+enforced by code review.
+
+Spec: `docs/blueprint/PHASE_43_2_SPENDING_PARETO.md`.
+
 ## **15.9 Accessibility checklist (B2B2C surfaces)**
 
 Every interactive component in the B2B2C surface meets:
