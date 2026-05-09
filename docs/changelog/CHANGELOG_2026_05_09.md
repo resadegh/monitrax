@@ -389,3 +389,64 @@ N/A — additive only. No Prisma operations of any kind.
 ### PR
 - Branch: `claude/monitrax-architecture-analysis-MG8mr`
 - Status: refinement push pending
+
+---
+
+## Session: claude/phase-43-1-hidden-wealth-MG8mr (Phase 43.1 — Hidden Wealth Lens SHIPPING)
+
+### Changes Made
+- **Type:** Feature (Phase 43.1 — first deferred follow-on from Phase 43 / PR #737, now merged).
+- **Scope:** New typography-led analytical card on `/dashboard/balances` splitting Total Assets by accessibility into 3 buckets (Liquid Today · Accessible · Locked Long-Term). One new thin endpoint, zero new calc engines, zero `quickMetrics` changes, zero new design primitives.
+- **Description:** Reza directive 2026-05-09 *"continue"* after PR #737 merged. Andrew (Stark Naked Numbers): *"the balance sheet is where all the cash is hiding."* Personal-finance translation: the user with $500k net worth and $2k accessible — the rule, not the exception, for the AU property-investor segment Monitrax targets. The existing `/dashboard/balances` hero shows Net Position / Cash / Credit / Debt — none of which answer *"how much can I actually spend before payday if my hot-water system dies?"* This lens does, honestly and without alarm.
+
+### Architectural integrity (CLAUDE.md §6.1 + §12.2 SSOT)
+- **Zero new calc engines.** Every value reads through existing snapshot fields (`quickMetrics.liquidCash`, `investments.totalValue`, `propertyPortfolioEquity`, `netWorth.assets.superannuation`, `netWorth.assets.personalAssets`).
+- **Zero new fields on `quickMetrics`** (D-43.1-2 promote-on-second-use). The bucket terminology is presentation-layer specific; coupling calc layer to UI taxonomy would invert the architecture.
+- **Zero re-implemented design primitives.** Lens uses `appleEase` + `useReducedMotionSafe` from `components/shell/`. No glass tile (page already has its own minimalist hero — typography-led card was the right restraint).
+
+### Behavioural-psychology rules (registered in `06_UI_UX_FOUNDATION.md`)
+- No red anywhere (Kahneman & Tversky loss aversion).
+- Emerald reserved for Liquid as the Bandura victory tone — reaching cash *is* the small win.
+- Comparative-not-judgemental copy ("That is wealth — but not cash" never "you're cash-poor"; 0% Accessible reframed as "the next TRAIL stage" not absence).
+- Reduced-motion-safe segment-fill animation.
+- Self-hides when totalAssets ≤ 0 (false precision is worse than missing precision).
+
+### Files Created
+- `app/api/dashboard/hidden-wealth/route.ts` — thin endpoint (`withPermission('report.read')`, ~80 LOC). Returns `{liquidToday, accessible, lockedLongTerm, totalAssets, netWorth, breakdown}`.
+- `components/balances/HiddenWealthLens.tsx` — pure presentational component (~210 LOC). 3-segment proportional bar + 3 detail rows + optional Inside-Locked drill-down rows. Emerald → sky → slate palette.
+- `docs/blueprint/PHASE_43_1_HIDDEN_WEALTH.md` — full Phase doc (strategic positioning, 3-bucket taxonomy with rationale, 7 architectural decisions, data-flow diagram, visualisation, behavioural-psychology rules with citations, acceptance criteria, deferred follow-ons).
+
+### Files Modified
+- `app/dashboard/balances/page.tsx` — imports lens + endpoint type; new `hiddenWealth` state; one fetch added to existing `Promise.allSettled` batch (fire-and-forget — failed fetch leaves the lens hidden, rest of page unaffected); lens renders between Net Position hero and Cash section.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43 moved to ✅ Recently Completed (PR #737, merged 2026-05-09); §0b replaced with new Phase 43.1 active workstream entry.
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43 row updated to ✅ Complete with PR #737 link; Phase 43.1 row added as 🟡 SHIPPING.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — registered `HiddenWealthLens` as the canonical typography-led analytical card pattern + clarified emerald-reservation rule scope (the §5a rule scopes to MoneyStoryBar; HiddenWealthLens uses emerald for Liquid as a different victory semantics on a different surface).
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new canonical typography-led analytical card pattern registered)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Phase 43 marked complete with PR #737; Phase 43.1 first follow-on activated)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_43_1_HIDDEN_WEALTH.md` — NEW Phase doc
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43 row → ✅ Complete + Phase 43.1 row 🟡 SHIPPING
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — `HiddenWealthLens` canonical analytical card registered
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43 → Recently Completed; §0b → Phase 43.1 active workstream
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — additive only. No Prisma operations of any kind. No schema migration.
+
+### Build Status
+- [x] TypeScript compilation passes (`npx tsc --noEmit`)
+
+### PR
+- Branch: `claude/phase-43-1-hidden-wealth-MG8mr`
+- Status: pending push + open
