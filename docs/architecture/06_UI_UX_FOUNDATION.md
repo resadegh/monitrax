@@ -780,6 +780,52 @@ Reviewers MUST reject any PR that re-implements `appleEase` or
 re-rolls the rounded-22px / rounded-28px glass tile pattern locally
 instead of importing from `components/shell/`.
 
+### Canonical hero — `MoneyStoryHero` (Phase 43, 2026-05-09)
+
+`components/dashboard/MoneyStoryHero.tsx` is the canonical
+**orientation hero** on `/dashboard` Home — a 3-line personal-P&L
+scoreboard (Earned · Kept · Free today) translated from Jason Andrew's
+Stark Naked Numbers hierarchy into TRAIL T → R → A.
+
+**Composition rules (NON-NEGOTIABLE):**
+- Composes `<GlassHero atmosphere="…">` + `<GlassHeroEyebrow>` +
+  `<GlassHeroHeadline>` + `<GlassHeroKpiCell>` from
+  `components/shell/`. **No local re-implementation** of the
+  rounded-28px glass surface, the mesh atmosphere, the breathing
+  glow, or `appleEase` — all of those come from the shell layer
+  (§15.10 above).
+- The component is **pure presentational**. It takes 6 props (`earned`,
+  `kept`, `keptMargin`, `freeToday`, `freeDays`, `enoughHistory`,
+  `trailStage?`) and renders. **It computes nothing.** Any derived
+  number must be added to `MasterFinancialSnapshot.quickMetrics`
+  first, then read through (CLAUDE.md §6.1, §12.2 SSOT).
+- Stage-rotated emphasis: which line gets the prominent gradient
+  headline rotates with `trailStage`. All three lines always
+  render (guided, not gated, CLAUDE.md §14.3). Atmosphere also
+  rotates: T → amber, R → sky, A/L → emerald, I → violet.
+- **`enoughHistory` gate**: when `monthlyExpenses === 0`, replace the
+  per-day display ("47 days of life") with "Truly liquid right now".
+  False precision is worse than missing precision.
+
+**Tone discipline:** Andrew's words *vanity / sanity / reality* are
+deliberately NOT used as line labels. The hierarchy is borrowed; the
+brutality is left at the door. The 24% AU-household-savings-rate
+comparator is normalising-not-judgemental copy. Reviewers MUST reject
+any change that adopts the book's brutal voice — the math is sharp,
+the language is kind.
+
+**SurfaceDescriptor (Phase 41i.6 pending):** when the
+`lib/calc-audit/surfaces/` registry ships (Phase 41i.6a), the hero
+MUST register a descriptor mapping its 5 rendered fields to their
+`quickMetrics` source paths. Until then the contract is enforced by
+code review — see `docs/blueprint/PHASE_43_MONEY_STORY.md` §6 for the
+exact shape. **Reviewers MUST reject** any PR that adds inline math to
+`MoneyStoryHero` instead of routing through `quickMetrics`.
+
+Spec: `docs/blueprint/PHASE_43_MONEY_STORY.md`. TRAIL framework
+context: `docs/blueprint/TRAIL_FRAMEWORK.md` §5 ("The 3-line scoreboard
+pattern").
+
 ## **15.9 Accessibility checklist (B2B2C surfaces)**
 
 Every interactive component in the B2B2C surface meets:

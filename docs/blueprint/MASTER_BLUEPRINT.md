@@ -226,6 +226,7 @@ Every API response follows a standardised format:
 | **19.1** | DMS Expansion | 🔄 In Progress | Receipt upload for expenses complete (2025-12-01) |
 | **21** | Asset Management Engine | 🔄 In Progress | Core features complete (2025-12-04), portfolio integration pending |
 | **23** | Investment Capital Gains | 🔄 In Progress | Schema and API complete (2025-12-04), UI pending |
+| **43** | Your Money Story (Personal P&L scoreboard) | 🟡 SHIPPING (May 2026) | The Stark-Naked-Numbers translation. Single hero on `/dashboard` Home: **Earned → Kept → Free today**, mapping to TRAIL T → R → A. Stage-rotated emphasis. No new calc engine, no new endpoint, no new fetch — composes existing `quickMetrics` + `components/shell/` primitives. Reza brief 2026-05-09 (Stark Naked Numbers analysis session). See `docs/blueprint/PHASE_43_MONEY_STORY.md`. Follow-ons queued in `IMPLEMENTATION_PLAN.md`: Hidden Wealth lens on Balances, Spending Pareto on Expenses, Margin Trend on Budget Analysis. |
 
 ### Planned Phases
 

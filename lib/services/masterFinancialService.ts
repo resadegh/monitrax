@@ -284,8 +284,15 @@ export interface MasterFinancialSnapshot {
   healthScore: HealthScoreMetrics;
 
   // Quick access metrics (commonly used)
+  //
+  // Phase 43 (Money Story) added the four `*` fields below. They are NOT a
+  // new calc engine — every value is read from the already-computed
+  // `cashflow`, `expenses`, and `liquidCash` blocks above. Exposing them on
+  // quickMetrics is the SSOT contract: any surface that wants the 3-line
+  // personal-P&L scoreboard reads from here, never re-derives.
   quickMetrics: {
-    monthlyIncome: number;
+    monthlyIncome: number;            // monthly NET income (after PAYG)
+    monthlyGrossIncome: number;       // *Phase 43 — monthly GROSS income (pre-tax) for the "Earned" line
     monthlyExpenses: number;
     monthlyCashflow: number;
     monthlyLoanRepayments: number;
@@ -294,6 +301,9 @@ export interface MasterFinancialSnapshot {
     netWorthValue: number;
     savingsRate: number;
     liquidCash: number;
+    keptAfterEssentials: number;      // *Phase 43 — monthlyNetIncome − essential-monthly-expenses ("Kept" line)
+    keptMargin: number;               // *Phase 43 — keptAfterEssentials / monthlyGrossIncome × 100 (%, 0 when no income)
+    freeCashDays: number;             // *Phase 43 — liquidCash ÷ daily expense burn ("Free today" expressed in days; 0 when expenses are 0)
   };
 
   // Phase 32B PR3 — viewer context (only present when fetched through the
@@ -1424,10 +1434,14 @@ function applyScopeFilter(
     filtered.quickMetrics = {
       ...filtered.quickMetrics,
       monthlyIncome: 0,
+      monthlyGrossIncome: 0,
       monthlyExpenses: 0,
       monthlyCashflow: 0,
       liquidCash: 0,
       savingsRate: 0,
+      keptAfterEssentials: 0,
+      keptMargin: 0,
+      freeCashDays: 0,
     };
   }
 
@@ -1701,6 +1715,7 @@ async function computeMasterFinancialSnapshot(
 
     quickMetrics: {
       monthlyIncome: monthlyIncome.all.netTotal,
+      monthlyGrossIncome: cashflow.monthlyGrossIncome,
       monthlyExpenses: monthlyExpenses.all.total,
       monthlyCashflow: cashflow.monthlyCashflow,
       monthlyLoanRepayments: debtSummary.totalRepayments,
@@ -1709,6 +1724,20 @@ async function computeMasterFinancialSnapshot(
       netWorthValue: netWorth.netWorth,
       savingsRate: cashflow.savingsRate,
       liquidCash,
+      // Phase 43 — Money Story. All three values derived from numbers already
+      // computed above. No new engine, no duplicate aggregation.
+      keptAfterEssentials:
+        monthlyIncome.all.netTotal - monthlyExpenses.essential.total,
+      keptMargin:
+        cashflow.monthlyGrossIncome > 0
+          ? ((monthlyIncome.all.netTotal - monthlyExpenses.essential.total) /
+              cashflow.monthlyGrossIncome) *
+            100
+          : 0,
+      freeCashDays:
+        monthlyExpenses.all.total > 0
+          ? liquidCash / (monthlyExpenses.all.total / 30)
+          : 0,
     },
   };
 }

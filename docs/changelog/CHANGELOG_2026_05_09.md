@@ -226,3 +226,73 @@ N/A — doc-only PR; no Prisma operations of any kind.
 - Branch: `claude/phase-42-bookkeeping-completion-spec`
 - Status: pending push + open
 
+
+
+---
+
+## Session: claude/monitrax-architecture-analysis-MG8mr (Phase 43 — Your Money Story SHIPPING)
+
+### Changes Made
+- **Type:** Feature (Phase 43 — translates Jason Andrew's "Stark Naked Numbers" hierarchy into a TRAIL-aligned Personal P&L hero on `/dashboard` Home).
+- **Scope:** New presentational hero composed from `components/shell/` primitives + 4 derived values added to `MasterFinancialSnapshot.quickMetrics` (zero new calc engines) + a `moneyStory` block on the existing `/api/dashboard/insights` response (zero new endpoints, zero new fetches on Home).
+- **Description:** Reza brief 2026-05-09 — *"read Stark Naked Numbers and provide a comprehensive analysis on Monitrax architecture and design and methodology and how they can align."* Architect-mode synthesis (this session) identified the One Next Best Action: a 3-line scoreboard hero (**Earned → Kept → Free today**) mapping to TRAIL T → R → A. Andrew's brevity rule and Monitrax's cognitive-load rule (Mani et al. 2013) are the same rule pointed at different targets — the hero is the surface where the two traditions meet. Math is sharp; language is kind.
+
+### Architectural integrity (Reza directive 2026-05-09: *"don't duplicate functions and stick to claude.md design principles. SSOT and single calc engines"*)
+- **Zero new calc engines.** All four derived values (`monthlyGrossIncome`, `keptAfterEssentials`, `keptMargin`, `freeCashDays`) are read-through from numbers already computed by `cashflowOrchestrator`, `incomeAggregator`, and `expenseAggregator`. Exposed on `quickMetrics` as the SSOT contract (CLAUDE.md §6.1, §12.2).
+- **Zero new HTTP fetches on Home.** `/api/dashboard/insights` already calls `getMasterFinancialSnapshot()`; the four values are exposed via a new `moneyStory` block on its existing response. No third HTTP call (CLAUDE.md §12.10).
+- **Zero re-implemented design primitives.** Hero composes `<GlassHero>` + `<GlassHeroEyebrow>` + `<GlassHeroHeadline>` + `<GlassHeroKpiCell>` from `components/shell/`. `appleEase`, the rounded-28px glass surface, the mesh atmosphere, and the breathing glow all come from the shell layer (CLAUDE.md §16, `06_UI_UX_FOUNDATION.md` §15.10).
+- **Hero is purely presentational.** 6 props in, JSX out. Computes nothing.
+
+### Files Created
+- `components/dashboard/MoneyStoryHero.tsx` — pure presentational hero, ~150 LOC, stage-rotated emphasis (T → amber/Earned, R → sky/Kept, A → emerald/Free, I → violet, L → emerald), warm-language secondary copy, `enoughHistory` gate against false-precision day counts.
+- `docs/blueprint/PHASE_43_MONEY_STORY.md` — full Phase doc (strategic positioning + Stark Naked translation table + 6 architectural decisions + data flow diagram + stage-emphasis behaviour + acceptance criteria + deferred follow-ons + references).
+
+### Files Modified
+- `lib/services/masterFinancialService.ts` — `MasterFinancialSnapshot.quickMetrics` extended with four additive fields (`monthlyGrossIncome`, `keptAfterEssentials`, `keptMargin`, `freeCashDays`); populated at the synthesis point and in both empty/blank fallback branches. JSDoc on the type explains they are NOT a new engine.
+- `app/api/dashboard/insights/route.ts` — `DashboardInsights` type extended with optional `moneyStory` block; populated as a pure passthrough from canonical `quickMetrics` at the response-build point.
+- `app/dashboard/page.tsx` — imports `MoneyStoryHero` + `determineTrailStage`, mirrors the optional `moneyStory` shape on the local `DashboardInsights` interface, renders the hero at the top of the loaded-state branch (self-hides when the block is absent on older cached responses).
+- `docs/IMPLEMENTATION_PLAN.md` — new active workstream entry (§0b. Phase 43) covering scope, decisions, risks, reversed-decision protection (Andrew's brutal voice deliberately not adopted), and deferred follow-ons.
+- `docs/blueprint/MASTER_BLUEPRINT.md` — Phase 43 added to the In Progress table.
+- `docs/blueprint/TRAIL_FRAMEWORK.md` — new "3-line scoreboard pattern" subsection in §5: when to use it, when not to, tone discipline (warm copy never adopts the book's brutal voice).
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — registered `MoneyStoryHero` as the canonical Home orientation hero with composition + tone rules and a code-review enforcement clause forbidding inline math.
+
+### Stark Naked Numbers translation summary
+| Book line | Personal-finance equivalent | Snapshot source | TRAIL stage |
+|---|---|---|---|
+| Revenue (vanity) | **Earned** | `quickMetrics.monthlyGrossIncome` | T |
+| Profit (sanity) | **Kept** (= net income − essentials) | `quickMetrics.keptAfterEssentials` | R |
+| Cash (reality) | **Free today** (in days of life) | `quickMetrics.liquidCash` + `freeCashDays` | A |
+
+Andrew's words *vanity / sanity / reality* are deliberately NOT used as line labels. The hierarchy is borrowed; the brutality is left at the door.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new canonical hero registered)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (new SSOT contract for Personal P&L scoreboard primitive)
+- [x] strategic decision (Stark Naked Numbers analysis → Phase 43 scope decision: ship the hero, defer the supporting three)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_43_MONEY_STORY.md` — NEW Phase doc
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — added Phase 43 In-Progress row
+- `docs/blueprint/TRAIL_FRAMEWORK.md` §5 — added "3-line scoreboard pattern" subsection
+- `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 — registered `MoneyStoryHero` canonical hero
+- `docs/IMPLEMENTATION_PLAN.md` §0b — new active workstream entry
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — additive only. No Prisma `update` / `upsert` / `delete` / `updateMany` / `deleteMany` operations introduced. No raw SQL. No schema migration.
+
+### Build Status
+- [x] TypeScript compilation passes
+- [x] `npm run build` passes
+
+### PR
+- Branch: `claude/monitrax-architecture-analysis-MG8mr`
+- Status: pending push + open

@@ -92,6 +92,17 @@ interface DashboardInsights {
     daysInMonth: number;
     dailyBudget: number;
   };
+  // Phase 43 — Money Story 3-line scoreboard (Earned / Kept / Free today).
+  // Pure read-through from `snapshot.quickMetrics`. No new computation here;
+  // see lib/services/masterFinancialService.ts for the canonical derivation.
+  moneyStory: {
+    earned: number;            // monthly gross income (pre-tax) — "Earned" line
+    kept: number;              // monthlyNetIncome − essentialExpenses — "Kept" line
+    keptMargin: number;        // kept ÷ earned × 100 (%, 0 when no income)
+    freeToday: number;         // liquid cash today — "Free today" line
+    freeDays: number;          // freeToday ÷ daily expense burn (0 when expenses are 0)
+    enoughHistory: boolean;    // false-gates the per-day display when transaction history is too thin
+  };
 }
 
 export const GET = withPermission('report.read', async (request, auth) => {
@@ -323,6 +334,18 @@ export const GET = withPermission('report.read', async (request, auth) => {
           remaining: monthlyRemaining,
           daysInMonth,
           dailyBudget,
+        },
+        // Phase 43 — Money Story. Pure passthrough from canonical
+        // quickMetrics. `enoughHistory` gates the per-day precision in the
+        // hero: a user with no recorded expenses gets the dollar amount
+        // only, never a misleading "0 days of life" framing.
+        moneyStory: {
+          earned: snapshot.quickMetrics.monthlyGrossIncome,
+          kept: snapshot.quickMetrics.keptAfterEssentials,
+          keptMargin: snapshot.quickMetrics.keptMargin,
+          freeToday: snapshot.quickMetrics.liquidCash,
+          freeDays: snapshot.quickMetrics.freeCashDays,
+          enoughHistory: snapshot.quickMetrics.monthlyExpenses > 0,
         },
       };
 

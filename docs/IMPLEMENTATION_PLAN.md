@@ -79,7 +79,39 @@
 - **Risk:** Each chunk is bounded (1-5 days). Heavy-touch areas (Stripe, alert engine) ship to staging-equivalent (Vercel preview against `monitrax-db-dev`) before any prod deploy. CDR sweepers are guard-railed by where-clauses that can only delete already-expired data — §12.11 destructive-write checklist N/A by structural argument.
 - **Wall-clock estimate:** ~3 weeks of engineering, mostly in parallel with the 6-week external lead time.
 
+### 0b. Phase 43 — Your Money Story (Personal P&L scoreboard)
 
+- **Status:** 🟡 SHIPPING in this PR (`claude/monitrax-architecture-analysis-MG8mr`)
+- **Started:** 2026-05-09
+- **Owner:** Reza (direction) + Claude (code + docs)
+- **Last touched:** 2026-05-09
+- **Why this matters:** Reza brief 2026-05-09 — *"read Stark Naked Numbers and provide a comprehensive analysis on Monitrax architecture and design and methodology and how they can align."* The architect-mode synthesis (this session) translated Jason Andrew's central thesis (*"Revenue is vanity, Profit is sanity, Cash is reality"*) into a personal-finance 3-line scoreboard hero on `/dashboard` Home: **Earned → Kept → Free today**, mapping to TRAIL T → R → A. Andrew's brevity rule is the same rule Mani et al. 2013 cognitive-load research demands — the book's hierarchy validates the architecture Monitrax already has, and the hero is the surface where the two traditions become legible to the user. The math is sharp; the language is kind.
+- **Phases (this PR):**
+  - [x] Add 4 derived values to `MasterFinancialSnapshot.quickMetrics` (`monthlyGrossIncome`, `keptAfterEssentials`, `keptMargin`, `freeCashDays`). All four read-through values already computed by existing engines — **zero new calc engine, zero duplicate aggregation** (CLAUDE.md §6.1, §12.2 SSOT).
+  - [x] Extend `/api/dashboard/insights` response with a `moneyStory` block — pure passthrough from canonical quickMetrics. **No new endpoint, no third HTTP call** on Home (CLAUDE.md §12.10).
+  - [x] Build `components/dashboard/MoneyStoryHero.tsx` — pure presentational, composes `<GlassHero>` + `<GlassHeroEyebrow>` + `<GlassHeroHeadline>` + `<GlassHeroKpiCell>` from `components/shell/`. **No local re-implementation of `appleEase` / rounded-28px glass / mesh atmosphere** (CLAUDE.md §16, `06_UI_UX_FOUNDATION.md` §15.10).
+  - [x] Wire hero into `/app/dashboard/page.tsx` as the orientation tile at the top of the loaded-state branch.
+  - [x] Stage-rotated emphasis: T → Earned (amber), R → Kept (sky), A/I/L → Free today (emerald / violet / emerald). All three lines always render (guided, not gated, CLAUDE.md §14.3).
+  - [x] False-precision guardrail — `enoughHistory` gate replaces "0 days of life" with "Truly liquid right now" when expenses aren't recorded yet.
+  - [x] Doc-sync (CLAUDE.md §16):
+    - `docs/blueprint/PHASE_43_MONEY_STORY.md` (new — scope, decisions, acceptance, deferred follow-ons).
+    - `docs/blueprint/MASTER_BLUEPRINT.md` §4 (added Phase 43 row).
+    - `docs/blueprint/TRAIL_FRAMEWORK.md` §6 (new — 3-line scoreboard pattern as a TRAIL T→R→A primitive).
+    - `docs/architecture/06_UI_UX_FOUNDATION.md` §15.10 (registered `MoneyStoryHero` as the canonical Home orientation hero).
+    - `docs/changelog/CHANGELOG_2026_05_09.md` (new — session entry).
+- **Risk:** Low. Additive only. No schema migration. No new endpoint. No CDR / auth surface change. Older cached `/api/dashboard/insights` responses without the `moneyStory` block degrade cleanly — hero self-hides. The 24% AU-household-savings-rate comparator is a normalising frame, not a recommendation, and never shames the user.
+- **Reversed-decision protection:** Andrew's words *vanity / sanity / reality* are deliberately NOT used as line labels — the hierarchy is borrowed, the brutality is left at the door. This is captured in `↩️ Reversed Decisions` so future sessions don't "improve" the copy by adopting the book's tone.
+- **Closes / opens:**
+  - Closes: nothing (this is net-new).
+  - Opens follow-ons (queued, NOT in this PR):
+    - **Hidden Wealth lens** on `/dashboard/balances` — split Net Worth into Liquid Today / Accessible in 90 days / Locked Until Retirement (Andrew's "balance sheet is where the cash is hiding").
+    - **Spending Pareto** on `/dashboard/expenses` — top 20% of merchants by spend, warm framing not "fire your customers."
+    - **Margin Trend** on `/dashboard/budget-analysis` — savings-rate sparkline as first-class metric (Andrew's GP-margin direction-matters principle).
+    - **Surface descriptor registration** for the hero — gated on Phase 41i.6a (registry foundation) shipping. Contract documented in `PHASE_43_MONEY_STORY.md` §6.
+    - **Tighter `enoughHistory` gate** (≥90-day transaction history) — gated on `linkageHealthService` exposing history depth.
+- **Why-this-matters (psychology + designer lens):** The book's brevity rule and Monitrax's warm-words rule are the same rule pointed at different targets. The hero gives the user a 3-line orientation answer in the first second of opening the app — without adding a metric grid, without shaming, and without inventing data the snapshot doesn't already produce. The supporting three follow-ons can extend the pattern, but the hero alone is the load-bearing change.
+
+### 0c. Settings overhaul (consumer / admin / portal)
 
 - **Status:** 🟡 SHIPPING in this PR (`claude/review-monitrax-settings-LL4bQ`)
 - **Started:** 2026-05-08
