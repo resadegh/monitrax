@@ -26,6 +26,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { MarginTrendLens } from '@/components/budget/MarginTrendLens';
+import type { MarginTrendResponse } from '@/app/api/dashboard/margin-trend/route';
 
 interface VariableCategory {
   estimate: number;
@@ -104,6 +106,35 @@ export default function BudgetAnalysisPage() {
   const [selectedScenario, setSelectedScenario] = useState<'minimum' | 'recommended' | 'comfortable'>('recommended');
   const [adjustments, setAdjustments] = useState<Record<string, number>>({});
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  // Phase 43.3 — Margin Trend lens. Fire-and-forget fetch from
+  // /api/dashboard/margin-trend (queries unified_transactions). Lens
+  // self-hides when fewer than 3 months of income history exist.
+  const [marginTrend, setMarginTrend] = useState<MarginTrendResponse | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/dashboard/margin-trend', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const result = await res.json();
+        if (!cancelled && result?.success) {
+          setMarginTrend(result.data as MarginTrendResponse);
+        }
+      } catch {
+        // Silent fail — lens self-hides on null state.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   // formatCurrency imported from lib/utils/formatters
 
@@ -447,6 +478,23 @@ export default function BudgetAnalysisPage() {
       />
 
       <div className="space-y-6">
+        {/* Phase 43.3 — Margin Trend lens. Sits above the AI estimate
+            sections; answers "is my savings rate going up or down?"
+            using actual UnifiedTransaction history. Self-hides when
+            < 3 months of income data. */}
+        {marginTrend && marginTrend.enoughHistory && (
+          <MarginTrendLens
+            months={marginTrend.months}
+            current={marginTrend.current}
+            previous={marginTrend.previous}
+            savingsRateDelta={marginTrend.savingsRateDelta}
+            netCashflowDelta={marginTrend.netCashflowDelta}
+            trend={marginTrend.trend}
+            enoughHistory={marginTrend.enoughHistory}
+            monthsWithIncome={marginTrend.monthsWithIncome}
+          />
+        )}
+
         {/* Success/Error messages */}
         {error && (
           <div className="flex items-center gap-2 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg text-red-700 dark:text-red-300 text-sm">
