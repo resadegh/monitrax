@@ -648,3 +648,64 @@ N/A — additive only. Helper is pure read-query (Prisma `findFirst` + `aggregat
 ### PR
 - Branch: `claude/phase-43-4-enough-history-gate-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-36-2bd-balances-consolidation-MG8mr (Phase 36 Phase 2b/2d/2e + cross-doc sweep)
+
+### Changes Made
+- **Type:** Two-in-one — (1) Phase 36 Phase 2b/2d/2e: dead-route retirement + balances consolidation; (2) cross-doc sweep per Reza directive *"make sure all documents is up to date including design plan support bau help etc"*.
+- **Scope:** `/dashboard/accounts` and `/dashboard/loans` bare list pages retired with `redirect()`; sub-routes preserved; `?action=` and `?id=` handlers added on Balances; `routeMap.ts` flipped; 7 source-side hrefs flipped; full doc-sync sweep across IMPLEMENTATION_PLAN, MASTER_BLUEPRINT, PHASE_36, HELP_COVERAGE_MAP, 07_API_STANDARDS, operational/architecture/01_SYSTEM_OVERVIEW.
+
+### Code changes — Phase 36 Phase 2b/2d/2e
+- `app/dashboard/accounts/page.tsx` — replaced 737-line list page with 23-line redirect component (`redirect('/dashboard/balances')` from `next/navigation`).
+- `app/dashboard/loans/page.tsx` — replaced 661-line list page with 26-line redirect. Sub-routes `/dashboard/loans/[id]` (loan detail) and `/dashboard/loans/[id]/strategy` (debt-strategy planner) PRESERVED.
+- `app/dashboard/balances/page.tsx` — added `useSearchParams` import; new `?action=` handler (connect-basiq / add-account / add-loan); new `?id=` cross-module-nav handler (looks up entity in loaded list and auto-opens `<AccountDetailDialog>` or `<LoanDetailDialog>`, guarded by `idHandledRef`).
+- `lib/navigation/routeMap.ts` — `account.basePath` and `loan.basePath` flipped to `/dashboard/balances` (was `/dashboard/accounts` and `/dashboard/loans`). Closes the cross-module-nav regression that bare-redirect alone would have caused.
+- 7 source-side hrefs flipped to `/dashboard/balances?action=...`:
+  - `components/setup/SetupNextActionPanel.tsx` (×2)
+  - `components/dashboard/BasiqHeroCard.tsx` (×2)
+  - `components/dashboard/DashboardEmptyStateGrid.tsx` (×3)
+  - `components/LinkedDataPanel.tsx` (×2)
+  - `components/health/ModuleHealthBlock.tsx` (×1)
+  - `components/dashboard/EntityCashflowSummary.tsx` (×1)
+
+### Docs swept
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43.4 moved to ✅ Recently Completed (PR #741); §0b replaced with new Phase 36 Phase 2b/2d/2e active workstream entry covering both the build and the doc-sync sweep.
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43.4 → ✅ Complete (PR #741, "Stark-Naked-Numbers translation stream complete: PRs #737 → #741"); Phase 36 row updated with 2b/2d/2e closure status (only Phase 2c remaining).
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` — top-status block rewritten ("nearly complete — only Phase 2c remaining"); Phase 2a–2f checklist all flipped to ✅ except 2c (📋 remaining); new "Phase 2 — `routeMap.ts` flip" subsection added documenting the cross-module-nav fix.
+- `docs/blueprint/HELP_COVERAGE_MAP.md` — Consumer Surfaces table extended: `/dashboard/expenses` row added with Phase 43.2 lens annotation; `/dashboard/budget-analysis` flipped from `none` (legacy redirect target) to `article-shared` with Phase 43.3 lens annotation; `/dashboard` + `/dashboard/balances` rows annotated with their Phase 43 + 43.1 lenses; `/dashboard/accounts` + `/dashboard/loans` rows added as `redirect` class; new `redirect` entry added to the Classes legend.
+- `docs/architecture/07_API_STANDARDS.md` — new §11.5 "Dashboard derivation APIs (Phase 43 stream, 2026-05-09)" registers the four endpoints (`/api/dashboard/insights moneyStory block`, `/hidden-wealth`, `/spending-pareto`, `/margin-trend`) and the family rules (read-through, no calc engine, presentation-layer-only, double-defence self-hide gates).
+- `docs/operational/architecture/01_SYSTEM_OVERVIEW.md` — Dashboard Modules table updated: Loans/Accounts rows replaced with `Balances` (canonical accounts surface) + `Loans (detail)` row pointing at the preserved sub-routes; Expenses + Budget Analysis rows annotated with their Phase 43 lenses.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (no new primitive — but `?action=` and `?id=` deep-link contracts on Balances are new behaviours; documented in PHASE_36)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (operational/architecture/01_SYSTEM_OVERVIEW dashboard modules table updated; HELP_COVERAGE_MAP `redirect` class added)
+- [x] strategic decision (Phase 43.4 marked complete with PR #741; Phase 36 Phase 2b/2d/2e shipped; cross-doc sweep completed)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 43.4 → Recently Completed; §0b → Phase 36 Phase 2b/2d/2e active workstream
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 43.4 ✅ Complete + Phase 36 row updated
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` — Phase 2a–2f checklist + new routeMap-flip section
+- `docs/blueprint/HELP_COVERAGE_MAP.md` — Consumer Surfaces table + Classes legend
+- `docs/architecture/07_API_STANDARDS.md` §11.5 — new Dashboard derivation APIs section
+- `docs/operational/architecture/01_SYSTEM_OVERVIEW.md` — Dashboard Modules table
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — additive only. No Prisma writes (the `?id=` handler reads loaded state). No schema migration. No raw SQL.
+
+### Build Status
+- [x] TypeScript compilation passes (`npx tsc --noEmit`)
+- Financial-surfaces lint baseline: 0 entries on `app/dashboard/balances/page.tsx` — no sync needed.
+
+### PR
+- Branch: `claude/phase-36-2bd-balances-consolidation-MG8mr`
+- Status: pending push + open

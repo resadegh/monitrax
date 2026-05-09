@@ -1,7 +1,14 @@
 # Phase 36: My Accounts — UX Simplification
 
 > **TRAIL Stage:** Track
-> **Status:** 🔄 **Phase 36 Phase 2a SHIPPED** (PR #601, 2026-05-02 — inline `LoanDetailDialog` on Balances). Phase 36b (PR #552) extracted shared `AccountDetailDialog` + `AccountFormDialog` + `LoanFormDialog`. **Phase 2b (Connect Bank UI migration + Basiq `?action=` href flips) and Phase 2d (legacy route redirects `/dashboard/accounts` → `/dashboard/balances`) remain queued.** Phase 36 Phase 2c + 2e are no-ops (already complete).
+> **Status:** 🔄 **Phase 36 nearly complete** — only Phase 2c (Import Transactions UI migration) remains.
+>
+> **Shipped:**
+> - Phase 36b (PR #552) — extracted shared `AccountDetailDialog` + `AccountFormDialog` + `LoanFormDialog`
+> - Phase 2a (PR #601, 2026-05-02) — inline `LoanDetailDialog` on Balances
+> - **Phase 2b/2d/2e (THIS PR, 2026-05-09)** — `?action=` deep-link handler on Balances; `/dashboard/accounts` and `/dashboard/loans` bare list pages retired with `redirect()`; sub-routes `/dashboard/loans/[id]` + `/[id]/strategy` preserved; `routeMap.ts` flipped (`account` + `loan` basePaths now `/dashboard/balances`); `?id=` cross-module-nav handler added on Balances; 7 source-side hrefs flipped.
+>
+> **Remaining:** Phase 2c (Import Transactions UI migration) — gated on the Import-Transactions panel refactor; Phase 2f (sidebar legacy entries — none found, no work).
 > **Started:** 2026-04-18
 > **Last updated:** 2026-05-09 (doc-sync catch-up)
 > **Owner:** UX / Frontend
@@ -270,17 +277,50 @@ flip in the same PR that ships Phase 2b.
 
 #### Phase 2a–2e — Remaining work
 
-- 2a — Inline the `LoanDetailDialog` on `/dashboard/balances` (replaces
-  PR #550's `?focus=` redirect to `/dashboard/loans`).
-- 2b — Migrate `Connect Bank` (Basiq) toolbar action and disconnect/
-  sync UI to `/dashboard/balances`. Then flip the Basiq `?action=`
-  hrefs listed above.
-- 2c — Migrate `Import Transactions` toolbar action (with
-  `TransactionReviewPanel`) to `/dashboard/balances`.
-- 2d — Redirect `/dashboard/accounts` → `/dashboard/balances`.
-- 2e — Redirect `/dashboard/loans` → `/dashboard/balances`.
-- 2f — Sidebar: remove any legacy entries still pointing at the old
-  pages.
+- ✅ 2a — Inline the `LoanDetailDialog` on `/dashboard/balances` (replaces
+  PR #550's `?focus=` redirect to `/dashboard/loans`). **Shipped: PR #601.**
+- ✅ 2b — Migrate `Connect Bank` (Basiq) toolbar action and disconnect/
+  sync UI to `/dashboard/balances`. Flip Basiq `?action=` hrefs.
+  **Shipped: this PR (2026-05-09).** `useEffect` handler on Balances
+  reads `?action=connect-basiq | add-account | add-loan` and triggers
+  the right toolbar action; URL is cleaned after firing. 7 source-side
+  hrefs flipped (`SetupNextActionPanel`, `BasiqHeroCard`,
+  `DashboardEmptyStateGrid`, `LinkedDataPanel`, `ModuleHealthBlock`,
+  `EntityCashflowSummary`).
+- 📋 2c — Migrate `Import Transactions` toolbar action (with
+  `TransactionReviewPanel`) to `/dashboard/balances`. **Remaining work.**
+- ✅ 2d — Redirect `/dashboard/accounts` → `/dashboard/balances`.
+  **Shipped: this PR (2026-05-09).** 23-line redirect component using
+  `redirect('/dashboard/balances')` from `next/navigation`. No
+  sub-routes existed; account detail uses the inline dialog already.
+- ✅ 2e — Redirect `/dashboard/loans` → `/dashboard/balances`.
+  **Shipped: this PR (2026-05-09).** Sub-routes `/dashboard/loans/[id]`
+  (loan full-page detail) and `/dashboard/loans/[id]/strategy`
+  (debt-strategy planner) PRESERVED — only the bare list page redirects.
+- ✅ 2f — Sidebar: remove any legacy entries still pointing at the old
+  pages. **Shipped: this PR (2026-05-09).** Audit found no legacy
+  sidebar entries pointing at the dead routes — `lib/navigation/trailNav.tsx`
+  uses `/dashboard/balances` as the canonical nav target with
+  `/dashboard/accounts` + `/dashboard/loans` retained as `matchRoutes`
+  aliases (so old-URL traffic keeps the sidebar highlight correct on
+  the redirect target).
+
+#### Phase 2 — `routeMap.ts` flip (this PR, 2026-05-09)
+
+Closes the cross-module-nav regression that the bare-redirect alone
+would have introduced. GRDCS `getEntityHref('account', id)` and
+`getEntityHref('loan', id)` previously produced
+`/dashboard/accounts?id=...` and `/dashboard/loans?id=...`. With the
+list pages gone, those URLs would have lost the dialog params on
+redirect to `/dashboard/balances`.
+
+Fix: `lib/navigation/routeMap.ts` `account.basePath` and
+`loan.basePath` both flipped to `/dashboard/balances`. A `?id=`
+handler on Balances looks up the entity in the loaded list and
+auto-opens the appropriate inline detail dialog
+(`<AccountDetailDialog>` / `<LoanDetailDialog>`). Guarded against
+re-fire on data refresh by `idHandledRef`. URL is cleaned after
+firing.
 
 ## 9. Home TRAIL banner redesign (2026-05-01)
 

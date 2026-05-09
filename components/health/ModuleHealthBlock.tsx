@@ -67,7 +67,7 @@ const MODULE_CONFIG: Record<ModuleName, {
   loans: {
     label: 'Loans',
     icon: Banknote,
-    href: '/dashboard/loans',
+    href: '/dashboard/balances',
     color: 'text-purple-600 dark:text-purple-400',
   },
   accounts: {

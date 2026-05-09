@@ -14,16 +14,19 @@ This document is the **single source of truth** for what help content exists for
 | `article-shared` | One article maps to several routes via glob (`/foo/*`) | Same — `routeContext` is an array or glob |
 | `tooltip-only` | Field definition(s) only, no narrative article | `lib/help/tooltips.ts` dictionary entry + inline `<HelpTooltip term="..." />` next to the field |
 | `coming-soon` | Acknowledged; not yet authored. Drawer falls back to audience landing list. | Listed below; no file yet |
+| `redirect` | Route is alive but redirects to a canonical surface. Help drawer follows the redirect target's article. | Server `redirect()` page (e.g. `app/dashboard/accounts/page.tsx`) + matchRoutes alias in `lib/navigation/trailNav.tsx` |
 | `none` | No help needed (covered by another surface, or the surface IS help itself) | — |
 
 ## Consumer surfaces
 
 | Route | Class | Article slug / Tooltip | Notes |
 |---|---|---|---|
-| `/dashboard` | `article` | `consumer/your-monitrax-home` | Anchors the TRAIL framing |
+| `/dashboard` | `article` | `consumer/your-monitrax-home` | Anchors the TRAIL framing. **Phase 43 — hosts `<MoneyStoryHero>`** (3-line scoreboard + Money Story Bar visualisation; reads `moneyStory` block from `/api/dashboard/insights`). |
 | `/onboarding/*` | `article-shared` | `consumer/onboarding-walkthrough` | First-touch friction; stuck here = abandon |
-| `/dashboard/balances` | `article` | `consumer/managing-accounts-and-loans` | Bank-link confusion is common |
+| `/dashboard/balances` | `article` | `consumer/managing-accounts-and-loans` | Bank-link confusion is common. **Phase 43.1 — hosts `<HiddenWealthLens>`** (Liquid · Accessible · Locked Long-Term split; reads `/api/dashboard/hidden-wealth`). **Phase 36 Phase 2d/2e (2026-05-09) — canonical accounts surface**: list pages at `/dashboard/accounts` and `/dashboard/loans` redirect here. |
 | `/dashboard/balances/*` | `article-shared` | `consumer/managing-accounts-and-loans` | Same article covers sub-routes |
+| `/dashboard/expenses` | `article-shared` | `consumer/managing-accounts-and-loans` | **Phase 43.2 — hosts `<SpendingParetoLens>`** (vital-few categories driving 80% of monthly outgoings; reads `/api/dashboard/spending-pareto`). Article shared until a dedicated `consumer/spending-categories` lands. |
+| `/dashboard/budget-analysis` | `article-shared` | `consumer/reading-your-cashflow` | **Phase 43.3 — hosts `<MarginTrendLens>`** (6-month savings-rate sparkline + delta + sliding-window trend; reads `/api/dashboard/margin-trend`). Article shared with `/cashflow` until a dedicated `consumer/margin-trend` lands. **No longer a redirect target.** |
 | `/cashflow` | `article` | `consumer/reading-your-cashflow` | "Am I OK this month?" |
 | `/dashboard/cfo` | `article` | `consumer/ai-guide-and-actions` | AI advice + scenarios |
 | `/dashboard/tax` | `article` | `consumer/your-tax-position` | **complianceClass: afsl** — finance-sensitive |
@@ -44,7 +47,8 @@ This document is the **single source of truth** for what help content exists for
 | `/transactions` | `coming-soon` | — | Activity sub-route; Phase 36 |
 | `/recurring` | `coming-soon` | — | Recurring sub-route; Phase 36 |
 | `/dashboard/plan` | `coming-soon` | — | My Budget hub; Phase 37 |
-| `/dashboard/budget-analysis` | `none` | — | Legacy route; redirect target |
+| `/dashboard/accounts` | `redirect` | — | **Phase 36 Phase 2d (2026-05-09):** redirects to `/dashboard/balances`. matchRoutes alias keeps sidebar highlight correct for old-URL traffic. |
+| `/dashboard/loans` | `redirect` | — | **Phase 36 Phase 2e (2026-05-09):** bare list page redirects to `/dashboard/balances`. Sub-routes `/dashboard/loans/[id]` (loan full-page detail) and `/[id]/strategy` (debt-strategy planner) PRESERVED. |
 
 ## Portal surfaces (org-professional)
 

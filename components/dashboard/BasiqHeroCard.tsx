@@ -178,7 +178,7 @@ export function BasiqHeroCard({ className = '' }: BasiqHeroCardProps) {
           {/* CTAs */}
           <div className="mt-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <Link
-              href="/dashboard/accounts?action=connect-basiq"
+              href="/dashboard/balances?action=connect-basiq"
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(99,102,241,0.55)] transition-all hover:-translate-y-[1px] hover:shadow-[0_14px_36px_-12px_rgba(99,102,241,0.65)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
             >
               <Banknote className="h-4 w-4" aria-hidden="true" />
@@ -187,7 +187,7 @@ export function BasiqHeroCard({ className = '' }: BasiqHeroCardProps) {
             </Link>
 
             <Link
-              href="/dashboard/accounts?action=add"
+              href="/dashboard/balances?action=add-account"
               className="text-xs font-medium text-slate-600 underline-offset-2 transition-colors hover:text-slate-900 hover:underline focus:outline-none focus-visible:underline motion-reduce:transition-none dark:text-slate-400 dark:hover:text-slate-200"
             >
               or add accounts manually

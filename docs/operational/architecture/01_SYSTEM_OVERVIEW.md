@@ -199,10 +199,11 @@ The application has 17 dashboard sections:
 | Module | Path | Description |
 |--------|------|-------------|
 | Properties | `/dashboard/properties` | Investment and personal property tracking |
-| Loans | `/dashboard/loans` | Loan management with offset account linking |
-| Accounts | `/dashboard/accounts` | Bank accounts including Basiq-connected accounts |
+| Balances | `/dashboard/balances` | **Canonical accounts surface (Phase 36 + Phase 43.1, 2026-05-09)** — Cash / Credit / Debt sections, inline `<AccountDetailDialog>` + `<LoanDetailDialog>`, Connect Bank, Hidden Wealth Lens (3-bucket accessibility split). Replaces both legacy `/dashboard/accounts` and bare `/dashboard/loans` list pages. |
+| Loans (detail) | `/dashboard/loans/[id]` | Loan full-page detail + `/[id]/strategy` debt-strategy planner. **Bare `/dashboard/loans` redirects to `/dashboard/balances`** as of Phase 36 Phase 2e (2026-05-09). |
 | Income | `/dashboard/income` | All income sources with budget vs actual |
-| Expenses | `/dashboard/expenses` | Categorised expenses with receipt attachments |
+| Expenses | `/dashboard/expenses` | Categorised expenses with receipt attachments. **Phase 43.2 Spending Pareto Lens (2026-05-09)** — top-vital-few categories driving 80% of monthly spend. |
+| Budget Analysis | `/dashboard/budget-analysis` | AI-generated budget estimate. **Phase 43.3 Margin Trend Lens (2026-05-09)** — 6-month savings-rate sparkline + sliding-window trend direction. |
 | Investments | `/dashboard/investments` | Investment accounts and holdings |
 | Assets | `/dashboard/assets` | Vehicles, equipment, collectibles |
 | Tax | `/dashboard/tax` | ATO tax calculations and deductions |
