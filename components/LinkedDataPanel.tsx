@@ -74,7 +74,7 @@ const ENTITY_NAMES: Record<GRDCSEntityType, string> = {
 // Add link routes for each entity type
 const ADD_LINK_ROUTES: Record<GRDCSEntityType, string> = {
   property: '/dashboard/properties',
-  loan: '/dashboard/loans',
+  loan: '/dashboard/balances?action=add-loan',
   income: '/dashboard/income',
   expense: '/dashboard/expenses',
   // Phase 36: My Accounts now lives at /dashboard/balances; legacy
@@ -173,7 +173,7 @@ export function LinkedDataPanel({
           <div className="flex flex-wrap gap-2 justify-center">
             {entityType === 'property' && (
               <>
-                <Link href="/dashboard/loans">
+                <Link href="/dashboard/balances?action=add-loan">
                   <Button variant="outline" size="sm" className="gap-1">
                     <Plus className="h-3 w-3" />
                     Add Loan

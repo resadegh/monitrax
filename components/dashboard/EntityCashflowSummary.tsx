@@ -484,7 +484,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                         : loan.type
                     }
                     cashflow={-loan.netCashflowImpact}
-                    href={`/dashboard/loans`}
+                    href={`/dashboard/balances`}
                     details={
                       <>
                         <div className="flex justify-between">

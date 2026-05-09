@@ -132,8 +132,8 @@ const TILE_COPY = {
     description: 'Import accounts, balances, and transactions in 60 seconds.',
     unlocks: 'Unlocks live cashflow',
     whyThisMatters: 'So we can track your burn without manual entry',
-    cta: { label: 'Connect a bank', href: '/dashboard/accounts?action=connect-basiq' },
-    secondaryCta: { label: 'Add manually', href: '/dashboard/accounts?action=add' },
+    cta: { label: 'Connect a bank', href: '/dashboard/balances?action=connect-basiq' },
+    secondaryCta: { label: 'Add manually', href: '/dashboard/balances?action=add-account' },
   },
   income: {
     icon: Wallet,
@@ -165,7 +165,7 @@ const TILE_COPY = {
     description: 'Mortgages, car loans, HECS — see balance, rate, and repayment progress.',
     unlocks: 'Unlocks debt-quality scoring',
     whyThisMatters: 'So we can surface refinance opportunities and debt strategies',
-    cta: { label: 'Add a loan', href: '/dashboard/loans?action=add' },
+    cta: { label: 'Add a loan', href: '/dashboard/balances?action=add-loan' },
   },
 } as const;
 

@@ -23,7 +23,11 @@ export const ROUTE_MAP: Record<GRDCSEntityType, RouteConfig> = {
     defaultTab: 'details',
   },
   loan: {
-    basePath: '/dashboard/loans',
+    // Phase 36 Phase 2e (2026-05-09) — flipped from `/dashboard/loans`.
+    // Loans now open as inline `<LoanDetailDialog>` on Balances; the
+    // dialog reads `?id=...` on mount. Loan full-page detail at
+    // `/dashboard/loans/[id]` remains accessible directly.
+    basePath: '/dashboard/balances',
     dialogParam: 'id',
     defaultTab: 'overview',
   },
@@ -38,7 +42,10 @@ export const ROUTE_MAP: Record<GRDCSEntityType, RouteConfig> = {
     defaultTab: 'details',
   },
   account: {
-    basePath: '/dashboard/accounts',
+    // Phase 36 Phase 2d (2026-05-09) — flipped from `/dashboard/accounts`.
+    // Accounts now open as inline `<AccountDetailDialog>` on Balances;
+    // the dialog reads `?id=...` on mount.
+    basePath: '/dashboard/balances',
     dialogParam: 'id',
     defaultTab: 'details',
   },

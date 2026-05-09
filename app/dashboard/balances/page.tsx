@@ -15,7 +15,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -203,6 +203,7 @@ function relativeTime(iso?: string | null): string {
 function BalancesPageContent() {
   const { token } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { openLinkedEntity } = useCrossModuleNavigation();
 
   // Account-detail dialog state. Phase 1 of "make /dashboard/accounts
@@ -265,6 +266,40 @@ function BalancesPageContent() {
   // (consent URL, MOBILE_REQUIRED redirect, error copy) is byte-for-
   // byte identical.
   const { isConnecting, connectBank } = useBasiqConnect();
+
+  // Phase 36 Phase 2b/2d — `?action=` deep-link handler. Centralises
+  // the bookmarkable / shareable entry points that previously lived
+  // on `/dashboard/accounts?action=...` and `/dashboard/loans?action=...`.
+  // Source-side hrefs flipped to `/dashboard/balances?action=...` in
+  // the same PR. The handler is idempotent (cleans the URL after
+  // firing) so refresh or back-nav doesn't re-trigger.
+  useEffect(() => {
+    const action = searchParams?.get('action');
+    if (!action) return;
+    const stripActionParam = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('action');
+      router.replace(url.pathname + url.search + url.hash, { scroll: false });
+    };
+    switch (action) {
+      case 'connect-basiq':
+        void connectBank();
+        stripActionParam();
+        break;
+      case 'add-account':
+      case 'add':
+        setAccountPickerOpen(true);
+        stripActionParam();
+        break;
+      case 'add-loan':
+        setLoanPickerOpen(true);
+        stripActionParam();
+        break;
+      // Unknown actions are silently ignored — Phase 36 Phase 2c will
+      // wire `?action=import` when Import Transactions UI lands here.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openAccountDetail = (account: AccountRow) => {
     setDetailAccount(account);
@@ -606,6 +641,44 @@ function BalancesPageContent() {
       cancelledRef.current = true;
     };
   }, [reloadData]);
+
+  // Phase 36 Phase 2d/2e — `?id=` cross-module-nav handler.
+  // GRDCS `getEntityHref('account', id)` and `getEntityHref('loan', id)`
+  // produce `/dashboard/balances?id=<entityId>` (since the routeMap
+  // basePath was flipped in this same PR). When that URL lands here,
+  // we look up the entity in the loaded list and auto-open the
+  // appropriate inline detail dialog. Guarded against re-fire on data
+  // refresh by `idHandledRef`. Lives after the data-loading effect
+  // so `accounts` and `loans` are guaranteed to be in lexical scope
+  // (TDZ correctness) and effect ordering is honest about its
+  // dependency on loaded state.
+  const idHandledRef = useRef(false);
+  useEffect(() => {
+    if (idHandledRef.current) return;
+    if (accounts.length === 0 && loans.length === 0) return;
+    const id = searchParams?.get('id');
+    if (!id) return;
+    const account = accounts.find((a) => a.id === id);
+    if (account) {
+      idHandledRef.current = true;
+      openAccountDetail(account);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('id');
+      url.searchParams.delete('tab');
+      router.replace(url.pathname + url.search + url.hash, { scroll: false });
+      return;
+    }
+    const loan = loans.find((l) => l.id === id);
+    if (loan) {
+      idHandledRef.current = true;
+      openLoanDetail(loan);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('id');
+      url.searchParams.delete('tab');
+      router.replace(url.pathname + url.search + url.hash, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts, loans]);
 
   // --- Totals --------------------------------------------------------------
 

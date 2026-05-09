@@ -87,7 +87,7 @@ function deriveNextAction(
         label: 'Connect your bank',
         description:
           'Import accounts, balances, and 12 months of transactions in 60 seconds.',
-        href: '/dashboard/accounts?action=connect-basiq',
+        href: '/dashboard/balances?action=connect-basiq',
         icon: Banknote,
       },
     },
@@ -128,7 +128,7 @@ function deriveNextAction(
         label: 'Add a loan',
         description:
           'Track debt-quality scoring and spot refinance opportunities.',
-        href: '/dashboard/loans?action=add',
+        href: '/dashboard/balances?action=add-loan',
         icon: CreditCard,
       },
     },

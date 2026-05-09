@@ -373,6 +373,51 @@ System categories cannot be modified or deleted.
 
 ---
 
+### **11.5 Dashboard derivation APIs (Phase 43 stream, 2026-05-09)**
+
+A family of thin endpoints under `/api/dashboard/*` that derive
+presentation-layer projections from the canonical Master Financial
+Snapshot or directly from `prisma.unifiedTransaction`. **Each is a
+read-through wrapper — never a new calc engine** (CLAUDE.md §6.1 +
+§12.2 SSOT). Promote a derivation into `lib/calculations/` only on
+second consumer (the promote-on-second-use rule applied across all
+five Phase 43 surfaces).
+
+```
+/api/dashboard/insights         (extended with Phase 43 moneyStory block)
+/api/dashboard/hidden-wealth    (Phase 43.1)
+/api/dashboard/spending-pareto  (Phase 43.2)
+/api/dashboard/margin-trend     (Phase 43.3)
+```
+
+Family rules:
+
+- All `withPermission('report.read')` — no new permission scopes
+  introduced for the Phase 43 stream.
+- Standard envelope `{success, data, error}` — no deviation.
+- Each endpoint owns ONE presentation projection. No mixing surfaces
+  inside a single response.
+- Lens components consuming these endpoints are **pure presentational** —
+  they take the response shape as props, render JSX, compute nothing.
+- Self-hide gates live at the COMPONENT (e.g. lens hides when bucket
+  totals are 0) AND the ROUTE (e.g. `vitalFew: []` when
+  `totalMonthlySpend ≤ 0`); double-defence for false-precision
+  guardrails.
+
+The pattern is canonical for any future "lens" surface that derives a
+dashboard projection from already-canonical data: thin endpoint,
+read-through, no calc engine, no `quickMetrics` field, presentation-
+layer-only.
+
+See:
+- `docs/blueprint/PHASE_43_MONEY_STORY.md`
+- `docs/blueprint/PHASE_43_1_HIDDEN_WEALTH.md`
+- `docs/blueprint/PHASE_43_2_SPENDING_PARETO.md`
+- `docs/blueprint/PHASE_43_3_MARGIN_TREND.md`
+- `docs/blueprint/PHASE_43_4_ENOUGH_HISTORY_GATE.md`
+
+---
+
 # **12. Logging Rules**
 
 ### **12.1 API Log Format**
