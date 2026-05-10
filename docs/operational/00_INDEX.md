@@ -25,6 +25,9 @@
 | Security incident | [Incident Response Runbook](runbooks/01_INCIDENT_RESPONSE.md) |
 | Google Maps not loading / API not activated | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) |
 | Retention crons (CDR + conversation 7yr) — setup + troubleshooting | [Retention Schedulers](runbooks/05_RETENTION_SCHEDULERS.md) |
+| **Run the quarterly backup/restore drill** | [Backup & Restore Drill](runbooks/06_BACKUP_RESTORE_DRILL.md) (proves the backups actually restore — non-destructive, restores into a throwaway instance) |
+| **Run an incident-response tabletop exercise** | [IRP Tabletop Exercise Script](runbooks/07_IRP_TABLETOP_EXERCISE.md) (4 scenarios: CDR breach / DB unreachable / auth outage / runaway cost) |
+| **What are our SLOs? Which alerts enforce them?** | [Observability — SLOs & Alert Policies](runbooks/08_OBSERVABILITY_SLOS.md) (availability/latency/error-rate per route group + Cloud Monitoring alert specs A1–A9) |
 | Adviser feedback inbox triage / weekly synthesis | [Feedback Triage and Synthesis](feedback/01_TRIAGE_AND_SYNTHESIS.md) |
 | What does Monitrax pay for? Vendor inventory + spend control | [Cost Control — Vendor Inventory](cost-control/00_VENDOR_INVENTORY.md) |
 | How to set up budget alerts per vendor | [Cost Control — Budget Alerts Setup](cost-control/01_BUDGET_ALERTS_SETUP.md) |
@@ -92,6 +95,9 @@ Step-by-step procedures for incident response and common support scenarios.
 | 03 | [Health Checks](runbooks/03_HEALTH_CHECKS.md) | System health verification procedures |
 | 04 | [Google Maps Setup](runbooks/04_GOOGLE_MAPS_SETUP.md) | Enabling Maps APIs, verifying key scoping (frontend referrer + backend API restrictions), env vars, troubleshooting, cost monitoring, quarterly review checklist |
 | 05 | [Retention Schedulers](runbooks/05_RETENTION_SCHEDULERS.md) | GCP Cloud Scheduler config for the CDR consent-expiry cron (`monitrax-cdr-lifecycle`, daily 02:00 UTC) and the conversation 7-yr archive sweep (`monitrax-conversation-retention-sweep`, daily 03:00 UTC). Includes Reza's Tier-1 GCP-console TODOs (CMEK, Cloud Armor, SCC) for Basiq accreditation. |
+| 06 | [Backup & Restore Drill](runbooks/06_BACKUP_RESTORE_DRILL.md) | Quarterly exercise that *proves* the Cloud SQL backups restore — verify backups exist + healthy → restore the latest into a throwaway instance → verify schema/row-counts/integrity → tear down. Non-destructive (never touches prod). Annual extension: PITR clone + `pg_dump`→`pg_restore` round-trip. Drill Log + PASS/FAIL definition at the bottom. |
+| 07 | [IRP Tabletop Exercise Script](runbooks/07_IRP_TABLETOP_EXERCISE.md) | Annual incident-response tabletop. 4 realistic scenarios (CDR data breach / production DB unreachable / auth-provider outage / runaway cost), each walked through the IRP phases with `DECISION:` markers + "gaps this surfaces" + an After-Action Report template + Exercise Log. |
+| 08 | [Observability — SLOs & Alert Policies](runbooks/08_OBSERVABILITY_SLOS.md) | Application-level SLOs (availability 99.5%; p95/p99 latency + 5xx error-rate targets per route group) + Cloud Monitoring alert-policy specs A1–A9 (each with a runbook link) + synthetic-canary plan + Service Health dashboard tiles + review cadence + a "live vs spec-only" status table. Complements (does not duplicate) the DB-level monitoring in `database/03_MONITORING_AND_ALERTS.md`. |
 
 ### Feedback (Phase 33g)
 
@@ -121,8 +127,8 @@ Vendor inventory + spend caps. SSOT for "what does Monitrax pay for?"
 | Architecture (01-03) | 3 | Current |
 | Deployment (01-03) | 3 | Current |
 | Database (01-04) | 4 | Current |
-| Security (01-03) | 3 | Current |
-| Runbooks (01) | 1 | Current |
+| Security (01-04) | 4 | Current |
+| Runbooks (01-08) | 8 | Current |
 | Feedback (00-01) | 2 | Current |
 
 ---
@@ -139,4 +145,4 @@ Vendor inventory + spend caps. SSOT for "what does Monitrax pay for?"
 
 ---
 
-Last Updated: 2026-05-05 — added Feedback section (Phase 33g) covering daily triage + weekly Claude Code synthesis ritual.
+Last Updated: 2026-05-10 — added runbooks 06 (Backup & Restore Drill), 07 (IRP Tabletop Exercise Script), 08 (Observability — SLOs & Alert Policies) for the Phase 0 operational-readiness chunk.
