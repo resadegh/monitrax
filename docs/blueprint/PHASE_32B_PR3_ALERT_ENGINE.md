@@ -1,9 +1,11 @@
 # Phase 32B PR3 #9 — Real Alert Engine
 
-> **Status:** 🟡 **#9a SHIPPING** (`claude/phase-32b-real-alert-engine-MG8mr`) — schema + pure engine + tests + cron sweep. **#9b queued** — org-scoped `GET /api/portal/alerts` + Practice dashboard wiring + adviser dismiss action.
-> **Closes:** Phase 32B PR3 item #9 (the second-to-last PR3 item; item #10 — profession-aware scope presets — shipped in PR #743).
-> **Estimated effort:** #9a ~3 days (delivered) · #9b ~2 days (queued).
+> **Status:** ✅ **COMPLETE.** #9a (PR #745) — schema + pure engine + tests + cron sweep. #9b (this PR) — org-scoped `GET /api/portal/alerts` + `POST /api/portal/alerts/[id]/dismiss` + Practice dashboard wiring + dismiss affordance.
+> **Closes:** Phase 32B PR3 item #9 — the last PR3 item. (Item #10 — profession-aware scope presets — shipped in PR #743.)
+> **Effort:** #9a ~3 days · #9b ~1 day (delivered).
 > **Last updated:** 2026-05-09 — Reza + Claude.
+>
+> **Post-#9b polish (queued, not blocking):** recompute the hero KPI strip from real client+alert data (needs the real client-book wiring, not just alerts — the alert GET doesn't carry health scores etc.); admin "run sweep now" button (proxy the cron with admin auth, useful before the Cloud Scheduler job is live).
 
 ---
 
@@ -105,15 +107,16 @@ the admin UI in a future PR) works for testing / backfill.
 
 ---
 
-## 6. What's in #9b (queued — NOT this PR)
+## 6. #9b — wiring (✅ shipped)
 
-| Item | Detail |
-|---|---|
-| **`GET /api/portal/alerts`** | Org-scoped (`withPortalFeatureGate` / org-membership check), returns the org's `ACTIVE` `ClientAlert` rows joined to a thin client summary (initials / name / TRAIL stage). Severity-sorted. |
-| **`POST /api/portal/alerts/[id]/dismiss`** | Adviser dismiss action — sets `status = DISMISSED`, `dismissedAt`, `dismissedByMemberId`. Permission-gated to the seat that owns the client link. |
-| **Practice dashboard wiring** | `/portal/dashboard` fetches real alerts; passes them to `<PracticeAlertStream>` (mapping `ClientAlert` → the `DemoAlert` shape the component already renders); falls back to `LIGHTHOUSE_ALERTS` when the org has zero real clients (empty-state preview). Dismiss button wired to the new endpoint. |
-| **`computeKpis` real input** | The KPI strip (`computeKpis(LIGHTHOUSE_CLIENTS, LIGHTHOUSE_ALERTS)`) re-pointed at the real alert + client data when available. |
-| **Admin "run sweep now"** | A button on the admin portal to invoke the sweep on demand (useful for testing + backfill before the Cloud Scheduler job is live). Optional. |
+| Item | Status | Detail |
+|---|---|---|
+| **`GET /api/portal/alerts?organizationId=…`** | ✅ | `withPermission('org.read', …)` + inline active-membership check (mirrors `/api/portal/conversations`). Returns the org's `ACTIVE` `ClientAlert` rows projected to the `DemoAlert` shape (`{ id, clientId, triggerKind, severity, headline, body, context, primaryActionLabel, detectedAt }`) + a thin client-summary array (`{ id, initials, name }`); client names resolved with a single follow-up `prisma.user.findMany` (no `user` relation on `OrganizationClient`). `payload` column NOT returned (privacy — §13.3). `clientId == organizationClientId == clients[].id` so the component's lookup map works unchanged. |
+| **`POST /api/portal/alerts/[id]/dismiss`** | ✅ | `withPermission<RouteContext>('org.update', …)` + active-membership check against the alert's org. Sets `status = DISMISSED`, `dismissedAt = now`, `dismissedByMemberId = caller's OrganizationMember.id`. Idempotent on an already-DISMISSED row; 409 on a RESOLVED row. |
+| **`PracticeAlertStream` — `onDismiss?` + dismiss affordance** | ✅ | New optional `onDismiss?: (alertId) => void`; when present each alert row gets a "Dismiss" link under the primary-action button. `clients` prop narrowed `DemoClient[]` → `AlertClientSummary = Pick<DemoClient,'id'|'initials'|'name'>` (the stream never touches the financial fields). `AlertClientSummary` re-exported from the practice index. |
+| **Practice dashboard wiring** | ✅ | `/portal/dashboard` `useEffect` fetches `GET /api/portal/alerts` for the current org; `realAlerts === null` ⇒ fixture-preview mode (the `LIGHTHOUSE_ALERTS` fixture, kept as the empty-state placeholder); a non-empty real array ⇒ swaps to live data + passes `onDismiss` (optimistic-remove + refetch). |
+| **`computeKpis` real input** | 📋 post-#9b | The hero KPI strip stays on the fixture for #9b — recomputing it needs the real client book (health scores etc.), not just alerts. Lands with the client-book wiring. |
+| **Admin "run sweep now"** | 📋 post-#9b | Optional — a button to invoke the sweep on demand for testing/backfill before the Cloud Scheduler job is live. |
 
 ---
 
