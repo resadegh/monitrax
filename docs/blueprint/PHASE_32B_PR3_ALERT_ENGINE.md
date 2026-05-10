@@ -1,0 +1,136 @@
+# Phase 32B PR3 #9 — Real Alert Engine
+
+> **Status:** 🟡 **#9a SHIPPING** (`claude/phase-32b-real-alert-engine-MG8mr`) — schema + pure engine + tests + cron sweep. **#9b queued** — org-scoped `GET /api/portal/alerts` + Practice dashboard wiring + adviser dismiss action.
+> **Closes:** Phase 32B PR3 item #9 (the second-to-last PR3 item; item #10 — profession-aware scope presets — shipped in PR #743).
+> **Estimated effort:** #9a ~3 days (delivered) · #9b ~2 days (queued).
+> **Last updated:** 2026-05-09 — Reza + Claude.
+
+---
+
+## 1. What this replaces
+
+The Practice dashboard's "needs attention today" alert stream
+(`components/portal/practice/PracticeAlertStream.tsx`) currently renders
+`LIGHTHOUSE_ALERTS` — a hand-authored demo fixture in
+`lib/portal/practice/lighthouseDataset.ts`. Great for the lighthouse
+pitch; useless for a real adviser with real clients. PR #9 makes the
+alert stream compute from real client snapshot data.
+
+The fixture stays — it remains the storybook/E2E fixture and the
+empty-state preview an org sees before it has onboarded a real client
+(per the fixture's own header note).
+
+---
+
+## 2. Five v1 triggers
+
+| Trigger | Severity | Condition | Stateful? |
+|---|---|---|---|
+| `CASHFLOW_NEGATIVE` | critical | monthly net cashflow < 0 | no |
+| `EMERGENCY_FUND_LOW` | critical | emergency-fund coverage < 1 month | no |
+| `LVR_REFINANCE_WINDOW` | opportunity | 0 < portfolio LVR < 80% AND usable equity ≥ $20k | no |
+| `HEALTH_DROP` | critical | prior health score − current ≥ 10 points | **yes** — needs `ClientSnapshotMarker.lastHealthScore` |
+| `TRAIL_ADVANCED` | milestone | current TRAIL stage later than prior stage | **yes** — needs `ClientSnapshotMarker.lastTrailStage` |
+
+The two stateful triggers gracefully no-op when no prior marker exists
+(first-ever sweep for a client) — "advanced from nothing" / "dropped
+from nothing" aren't meaningful.
+
+All thresholds are constants in `lib/portal/alerts/alertEngine.ts`
+(`HEALTH_DROP_THRESHOLD = 10`, `LVR_REFINANCE_CEILING = 80`,
+`LVR_MIN_USABLE_EQUITY_AUD = 20_000`) — single source of truth.
+
+---
+
+## 3. Architecture (#9a — this PR)
+
+| Layer | What | File |
+|---|---|---|
+| **Schema** | `ClientAlert` model (one live row per `(organizationClientId, triggerKind)`; status `ACTIVE` / `DISMISSED` / `RESOLVED`; aggregate-only `payload` JSON) + `ClientSnapshotMarker` model (prior `lastHealthScore` / `lastTrailStage` for the delta triggers) + `ClientAlertStatus` enum + relations on `OrganizationClient`. Hand-written additive migration `20260513110000_phase_32b_pr3_alert_engine`. | `prisma/schema.prisma`, `prisma/migrations/.../migration.sql` |
+| **Pure engine** | `computeAlerts({ snapshot, prior?, enabledTriggers }) → ComputedAlert[]` — takes a minimal `AlertEngineSnapshot` projection (NOT the full `MasterFinancialSnapshot`, for decoupling + testability), the optional prior-sweep state, and the trigger kinds this org's profession surfaces. Plus `scopeAllowedTriggers(grantedScopes) → Set<AlertTriggerKind>` — gates the trigger set down to "what this client actually shared" (`FULL` → everything; `FINANCIAL`/`TRANSACTIONS` → cashflow/emergency/health/trail; `PROPERTIES`/`LOANS` → LVR). Pure — no DB, no fetch, no `Date.now()` side effects. | `lib/portal/alerts/alertEngine.ts` |
+| **Tests** | 20+ unit tests pinning each trigger condition, the thresholds, the stateful-graceful-no-op behaviour, the `enabledTriggers` gating, and the canonical kind-ordering. | `tests/portal/alerts/alertEngine.test.ts` |
+| **Cron runner** | `POST /api/portal/alerts/sweep` — `Authorization: Bearer <CRON_SECRET>` (timing-safe; unauthorised → `BLOCKED` audit row, mirroring the CDR/conversation crons). For each org → for each `ACTIVE` + `GRANTED` client → `getMasterFinancialSnapshot(clientUserId)` → project → `computeAlerts` with `enabledTriggers = professionTriggers ∩ scopeAllowedTriggers(client.accessScopes)` → persist (upsert ACTIVE rows; leave DISMISSED rows alone while the condition holds; flip ACTIVE/DISMISSED → RESOLVED when the condition clears, which re-arms; upsert the marker). Optional body `{ dryRun?, organizationId? }`. Returns 200 even when nothing changed. | `app/api/portal/alerts/sweep/route.ts` |
+
+### Why the cron uses the full snapshot, not a `viewerContext`
+
+`getMasterFinancialSnapshot(userId, viewerContext)` validates that the
+calling *seat* owns the client link — there is no "seat" in a cron
+sweep. So the sweep computes the **full** snapshot (no `viewerContext`)
+and applies the consent gate at the **trigger** level: it only runs a
+trigger if `scopeAllowedTriggers(client.accessScopes)` permits it, so
+the org never ends up with an alert (headline/body/context/payload)
+derived from data the client didn't share. The audit posture: the
+sweep is a system batch job, not an interactive professional drill-in,
+so it does not write `ClientAccessLog` rows — only the `BLOCKED`
+unauthorised-hit case writes an `AuditLog` row (same as the other crons).
+
+### Dismissal semantics
+
+- Sweep run: condition holds, row is `DISMISSED` → leave it (sticky — the adviser cleared it; don't re-surface while it's still true).
+- Sweep run: condition clears, row is `DISMISSED` or `ACTIVE` → flip to `RESOLVED` + set `resolvedAt`. This **re-arms** the trigger — the next time the condition holds, a fresh `ACTIVE` row is created.
+- The adviser-facing `GET` (in #9b) returns only `ACTIVE` rows, so `DISMISSED` / `RESOLVED` rows are invisible to the dashboard regardless.
+
+### Privacy (CLAUDE.md §13.3)
+
+`ClientAlert.payload` carries **aggregate context numbers only** —
+health delta, monthly cashflow, LVR, usable equity, stage letters. No
+raw CDR transactions, no per-account balances. The `body` / `context`
+strings are likewise aggregate-derived.
+
+---
+
+## 4. GCP Cloud Scheduler config (Reza-side console step)
+
+```
+Name:     monitrax-portal-alert-sweep
+Schedule: 0 4 * * *  (daily 04:00 UTC — after the CDR retention crons at 02:00 / 03:00)
+Target:   POST https://<domain>/api/portal/alerts/sweep
+Headers:  { "Authorization": "Bearer <CRON_SECRET>" }
+```
+
+Until the scheduler is wired, the engine + endpoint are dormant — no
+alerts are computed. Manual invocation (curl with the bearer token, or
+the admin UI in a future PR) works for testing / backfill.
+
+---
+
+## 5. Acceptance criteria (#9a)
+
+- [x] `ClientAlert` + `ClientSnapshotMarker` + `ClientAlertStatus` added to `schema.prisma` with a matching additive migration file (CLAUDE.md §12.12).
+- [x] `lib/portal/alerts/alertEngine.ts` — pure `computeAlerts` + `scopeAllowedTriggers`; all thresholds are constants in-file; full JSDoc.
+- [x] `tests/portal/alerts/alertEngine.test.ts` — every trigger condition + thresholds + stateful-no-op + gating + ordering pinned.
+- [x] `POST /api/portal/alerts/sweep` — `CRON_SECRET` auth (timing-safe), per-org per-client loop, scope-gated triggers, upsert/resolve/re-arm persistence, marker upsert, `dryRun` + `organizationId` body options.
+- [x] No raw CDR data in any persisted alert field (§13.3).
+- [x] Migration is purely additive — `CREATE TYPE` / `CREATE TABLE` / `CREATE INDEX` / `ADD CONSTRAINT` only; §12.11 destructive-write checklist N/A by structural argument.
+
+---
+
+## 6. What's in #9b (queued — NOT this PR)
+
+| Item | Detail |
+|---|---|
+| **`GET /api/portal/alerts`** | Org-scoped (`withPortalFeatureGate` / org-membership check), returns the org's `ACTIVE` `ClientAlert` rows joined to a thin client summary (initials / name / TRAIL stage). Severity-sorted. |
+| **`POST /api/portal/alerts/[id]/dismiss`** | Adviser dismiss action — sets `status = DISMISSED`, `dismissedAt`, `dismissedByMemberId`. Permission-gated to the seat that owns the client link. |
+| **Practice dashboard wiring** | `/portal/dashboard` fetches real alerts; passes them to `<PracticeAlertStream>` (mapping `ClientAlert` → the `DemoAlert` shape the component already renders); falls back to `LIGHTHOUSE_ALERTS` when the org has zero real clients (empty-state preview). Dismiss button wired to the new endpoint. |
+| **`computeKpis` real input** | The KPI strip (`computeKpis(LIGHTHOUSE_CLIENTS, LIGHTHOUSE_ALERTS)`) re-pointed at the real alert + client data when available. |
+| **Admin "run sweep now"** | A button on the admin portal to invoke the sweep on demand (useful for testing + backfill before the Cloud Scheduler job is live). Optional. |
+
+---
+
+## 7. Future (v2 — not scoped)
+
+- More triggers: `INCOME_DROPPED`, `PROPERTY_ADDED`, `TAX_POSITION_CHANGED`, `BAS_DUE` (the fixture already has the kinds; the engine doesn't compute them yet).
+- Per-org trigger configuration (an org turns specific triggers on/off, or tunes thresholds).
+- Per-client mute (suppress all alerts for a client temporarily).
+- Real-time alerting (webhook on snapshot change) instead of daily batch — only if signal demands it.
+
+---
+
+## 8. References
+
+- `lib/portal/practice/lighthouseDataset.ts` — the fixture this replaces (and which stays as the empty-state preview).
+- `lib/portal/practice/professionConfig.ts` — per-profession default trigger sets (`getPracticeProfessionConfig`).
+- `lib/cfo/trailStage.ts` — `determineTrailStage` (the cron uses it to derive the current TRAIL stage for the `TRAIL_ADVANCED` trigger).
+- `app/api/conversations/retention-sweep/route.ts` — the cron pattern this endpoint mirrors (`CRON_SECRET` + timing-safe + `BLOCKED` audit).
+- `docs/blueprint/PHASE_32_ENTERPRISE_PORTAL.md` — Phase 32 status table.
+- CLAUDE.md §13.3 (CDR data sanitisation), §13.4 (CRON_SECRET pattern), §12.11 (destructive-write checklist), §12.12 (schema-migration protocol), §16 (doc-sync).

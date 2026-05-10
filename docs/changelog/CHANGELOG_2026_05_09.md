@@ -806,3 +806,67 @@ N/A — additive only. New toolbar button + new switch case + one prop passed. T
 ### PR
 - Branch: `claude/phase-36-2c-import-transactions-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-32b-real-alert-engine-MG8mr (Phase 32B PR3 #9a — Real Alert Engine foundation)
+
+### Changes Made
+- **Type:** Feature (Phase 32B PR3 #9a — schema + pure engine + tests + cron sweep; #9b — org-scoped GET + Practice wiring — queued).
+- **Scope:** The Practice dashboard's "needs attention today" alert stream gains a real engine. This PR is the foundation: storage schema, the pure trigger engine, tests, and the daily cron sweep. The visible-to-adviser half (GET + dismiss + dashboard wiring) is #9b.
+- **Description:** Reza directive 2026-05-09 *"Continue"* (autonomous-queue item #3). The alert stream currently renders `LIGHTHOUSE_ALERTS` — a hand-authored demo fixture. PR #9 makes it compute from real client snapshot data. Split into two PRs for reviewability.
+
+### Schema (additive)
+- `prisma/schema.prisma`:
+  - New enum `ClientAlertStatus` (`ACTIVE` / `DISMISSED` / `RESOLVED`).
+  - New model `ClientAlert` — one live row per `(organizationClientId, triggerKind)`; `organizationId` denormalised for the org-scoped GET; `severity` (`critical`/`opportunity`/`milestone`); `headline`/`body`/`context`/`primaryActionLabel`; `payload` JSON (**aggregate context numbers only — no raw CDR data, §13.3**); `detectedAt`/`resolvedAt`/`dismissedAt`/`dismissedByMemberId`. Unique on `(organizationClientId, triggerKind)`; indexed on `(organizationId, status)`, `organizationClientId`, `status`, `triggerKind`. Cascade FK → `organization_clients`.
+  - New model `ClientSnapshotMarker` — prior-sweep state for the delta triggers; one row per client (`organizationClientId` unique FK, cascade); `lastHealthScore` (Int?), `lastTrailStage` (string?), `lastSweptAt`.
+  - Relations added on `OrganizationClient`: `alerts ClientAlert[]`, `alertMarker ClientSnapshotMarker?`.
+- `prisma/migrations/20260513110000_phase_32b_pr3_alert_engine/migration.sql` — hand-written (the dev DB isn't reachable from the build sandbox so `prisma migrate dev` couldn't generate it; the Vercel preview build's `prisma migrate deploy` against monitrax-db-dev is the validation per CLAUDE.md §12.12). Purely additive: `CREATE TYPE` × 1, `CREATE TABLE` × 2, `CREATE INDEX` × 6, `ADD CONSTRAINT` × 2. §12.11 destructive-write checklist N/A by structural argument.
+
+### Files Created
+- `lib/portal/alerts/alertEngine.ts` (~280 LOC) — the pure engine. `computeAlerts({ snapshot, prior?, enabledTriggers }) → ComputedAlert[]` taking a minimal `AlertEngineSnapshot` projection (not the full `MasterFinancialSnapshot` — decoupled + testable), the optional prior-sweep state, and the trigger kinds this org's profession surfaces. Plus `scopeAllowedTriggers(grantedScopes) → Set<AlertTriggerKind>` (consent gate: `FULL` → everything; `FINANCIAL`/`TRANSACTIONS` → cashflow/emergency/health/trail; `PROPERTIES`/`LOANS` → LVR). Five v1 triggers: `CASHFLOW_NEGATIVE` (critical, stateless) · `EMERGENCY_FUND_LOW` (critical, stateless) · `LVR_REFINANCE_WINDOW` (opportunity, stateless — 0 < LVR < 80% AND usable equity ≥ $20k) · `HEALTH_DROP` (critical, stateful — prior − current ≥ 10pts) · `TRAIL_ADVANCED` (milestone, stateful — current stage later than prior). Stateful triggers gracefully no-op without a prior marker. All thresholds are constants in-file (SSOT: `HEALTH_DROP_THRESHOLD = 10`, `LVR_REFINANCE_CEILING = 80`, `LVR_MIN_USABLE_EQUITY_AUD = 20_000`). Pure — no DB, no fetch, no `Date.now()` side effects.
+- `tests/portal/alerts/alertEngine.test.ts` (~190 LOC) — 20+ unit tests pinning each trigger condition, the thresholds (boundary cases), the stateful-graceful-no-op behaviour, the `enabledTriggers` gating, the canonical kind-ordering, and the healthy-baseline-fires-nothing invariant.
+- `app/api/portal/alerts/sweep/route.ts` (~290 LOC) — the cron runner. `Authorization: Bearer <CRON_SECRET>` (timing-safe; unauthorised → `UNAUTHORIZED_ACCESS` + `BLOCKED` audit row, mirroring the CDR/conversation crons). For each org → for each `ACTIVE` + `GRANTED` client → `getMasterFinancialSnapshot(clientUserId)` (full snapshot; consent gate applied at the trigger level via `scopeAllowedTriggers` since a cron has no "seat" to pass as `viewerContext`) → project into `AlertEngineSnapshot` + derive TRAIL stage via `determineTrailStage` → `computeAlerts` with `enabledTriggers = professionTriggers ∩ scopeAllowedTriggers` → persist (upsert ACTIVE rows; leave DISMISSED rows alone while the condition holds; flip ACTIVE/DISMISSED → RESOLVED when the condition clears, which re-arms; upsert the marker for next run's delta triggers). Optional body `{ dryRun?, organizationId? }`. Returns 200 even when nothing changed. `maxDuration = 300`.
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` — the workstream doc (5-trigger table, architecture, dismissal semantics, privacy, Cloud Scheduler config, #9b scope, v2 future, references).
+
+### Files Modified (doc-sync)
+- `docs/architecture/03_DATA_MODEL.md` §9.3 (new) — documents `client_alerts` + `client_snapshot_markers` (schema-change → §3.1 mapping).
+- `docs/blueprint/PHASE_32_ENTERPRISE_PORTAL.md` — new "Real alert engine (PR3 #9)" status row.
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 32B PR3 row updated with #10 ✅ + #9 🟡 notes.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 "Real alert engine v1" chunk → `[~]` partial with the #9a/#9b split; §0b → this active-workstream entry; PR #744 (Phase 36 Phase 2c) → Recently Completed.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern (no UI in #9a — that's #9b)
+- [ ] application config
+- [ ] GCP infrastructure (the Cloud Scheduler job is a Reza-side console step, documented but not wired in this PR)
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (new aggregate-only alert payloads; trigger-level consent gate; `CRON_SECRET` auth + `BLOCKED` audit on unauthorised hits — documented in `03_DATA_MODEL.md` §9.3 + `PHASE_32B_PR3_ALERT_ENGINE.md` §3)
+- [x] operational procedure (new cron endpoint + Cloud Scheduler config documented in `PHASE_32B_PR3_ALERT_ENGINE.md` §4)
+- [x] strategic decision (Phase 32B PR3 #9 split into #9a/#9b; PR #744 marked complete)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` — NEW workstream doc
+- `docs/architecture/03_DATA_MODEL.md` §9.3 — new alert-engine tables
+- `docs/blueprint/PHASE_32_ENTERPRISE_PORTAL.md` — PR3 #9 status row
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 32B PR3 row
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 chunk + §0b + Recently Completed
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A by structural argument. Migration is purely additive (`CREATE TYPE` / `CREATE TABLE` / `CREATE INDEX` / `ADD CONSTRAINT`). The cron's only `updateMany` calls flip the sweep's own `client_alerts` rows (`ACTIVE`/`DISMISSED` → `RESOLVED`) — scoped by `organizationClientId` + `id IN (...)` where-clauses to rows the sweep created; no user-entered data is overwritten, no rows deleted. `createAuditLog` is append-only.
+
+### Schema-migration checklist (CLAUDE.md §12.12)
+
+`prisma/schema.prisma` changed → matching migration file `prisma/migrations/20260513110000_phase_32b_pr3_alert_engine/migration.sql` present in the same PR ✓. Hand-written (dev DB not reachable from sandbox) — purely additive, no `DROP`/`ALTER...DROP`/`TRUNCATE`. Vercel preview build's `prisma migrate deploy` validates against monitrax-db-dev.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` is a no-op in this sandbox (no `node_modules`, no generated Prisma client) — the Vercel preview build is the canonical type + migration check. Code reviewed carefully against the schema; the cron's `createAuditLog` call matches the `{ action: 'UNAUTHORIZED_ACCESS', status: 'BLOCKED', entityType, ipAddress?, metadata }` shape used by `/api/conversations/retention-sweep`.
+
+### PR
+- Branch: `claude/phase-32b-real-alert-engine-MG8mr`
+- Status: pending push + open
