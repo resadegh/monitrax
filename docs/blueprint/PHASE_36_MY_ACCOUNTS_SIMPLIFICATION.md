@@ -1,14 +1,15 @@
 # Phase 36: My Accounts — UX Simplification
 
 > **TRAIL Stage:** Track
-> **Status:** 🔄 **Phase 36 nearly complete** — only Phase 2c (Import Transactions UI migration) remains.
+> **Status:** ✅ **Phase 36 COMPLETE** (2026-05-09). All sub-phases shipped.
 >
 > **Shipped:**
 > - Phase 36b (PR #552) — extracted shared `AccountDetailDialog` + `AccountFormDialog` + `LoanFormDialog`
 > - Phase 2a (PR #601, 2026-05-02) — inline `LoanDetailDialog` on Balances
-> - **Phase 2b/2d/2e (THIS PR, 2026-05-09)** — `?action=` deep-link handler on Balances; `/dashboard/accounts` and `/dashboard/loans` bare list pages retired with `redirect()`; sub-routes `/dashboard/loans/[id]` + `/[id]/strategy` preserved; `routeMap.ts` flipped (`account` + `loan` basePaths now `/dashboard/balances`); `?id=` cross-module-nav handler added on Balances; 7 source-side hrefs flipped.
+> - Phase 2b/2d/2e (PR #742, 2026-05-09) — `?action=` deep-link handler on Balances; `/dashboard/accounts` and `/dashboard/loans` bare list pages retired with `redirect()`; sub-routes `/dashboard/loans/[id]` + `/[id]/strategy` preserved; `routeMap.ts` flipped (`account` + `loan` basePaths now `/dashboard/balances`); `?id=` cross-module-nav handler added on Balances; 7 source-side hrefs flipped.
+> - **Phase 2c (THIS PR, 2026-05-09)** — `Import` toolbar button on Balances opening the page-level `TransactionImportDialog` (`ImportWizard` + `TransactionReviewPanel` already live inside it); `?action=import` deep link wired; `AccountDetailDialog`'s "Import Transactions" buttons now live (`onImportClick` closes detail + opens import).
 >
-> **Remaining:** Phase 2c (Import Transactions UI migration) — gated on the Import-Transactions panel refactor; Phase 2f (sidebar legacy entries — none found, no work).
+> **Remaining:** none. Phase 36 is complete.
 > **Started:** 2026-04-18
 > **Last updated:** 2026-05-09 (doc-sync catch-up)
 > **Owner:** UX / Frontend
@@ -287,8 +288,17 @@ flip in the same PR that ships Phase 2b.
   hrefs flipped (`SetupNextActionPanel`, `BasiqHeroCard`,
   `DashboardEmptyStateGrid`, `LinkedDataPanel`, `ModuleHealthBlock`,
   `EntityCashflowSummary`).
-- 📋 2c — Migrate `Import Transactions` toolbar action (with
-  `TransactionReviewPanel`) to `/dashboard/balances`. **Remaining work.**
+- ✅ 2c — Migrate `Import Transactions` toolbar action to
+  `/dashboard/balances`. **Shipped: 2026-05-09 (Phase 36 Phase 2c PR).**
+  An `Import` toolbar button (Upload icon) now sits next to Connect Bank
+  / + Account / + Loan; it opens the existing page-level
+  `TransactionImportDialog` (`ImportWizard` + `TransactionReviewPanel`
+  already live inside that dialog — no separate component migration was
+  needed). `?action=import` deep link wired in the `?action=` handler.
+  The `AccountDetailDialog`'s "Import Transactions" buttons (Transactions
+  tab + empty state) are now live too: `onImportClick` closes the detail
+  dialog and opens the import dialog. **Phase 36 fully closed** — no
+  remaining sub-phases.
 - ✅ 2d — Redirect `/dashboard/accounts` → `/dashboard/balances`.
   **Shipped: this PR (2026-05-09).** 23-line redirect component using
   `redirect('/dashboard/balances')` from `next/navigation`. No

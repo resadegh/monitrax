@@ -295,8 +295,12 @@ function BalancesPageContent() {
         setLoanPickerOpen(true);
         stripActionParam();
         break;
-      // Unknown actions are silently ignored — Phase 36 Phase 2c will
-      // wire `?action=import` when Import Transactions UI lands here.
+      case 'import':
+        // Phase 36 Phase 2c — Import Transactions deep link.
+        setImportOpen(true);
+        stripActionParam();
+        break;
+      // Unknown actions are silently ignored.
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -753,6 +757,24 @@ function BalancesPageContent() {
               >
                 <Plus className="w-4 h-4 mr-1.5" /> Loan
               </Button>
+              {/*
+               * Phase 36 Phase 2c — Import Transactions promoted to a
+               * top-level toolbar action (was reachable only from the
+               * account-source picker's Import tile + the account-detail
+               * dialog). Opens the TransactionImportDialog hosted below;
+               * the dialog handles file parse → review → commit internally
+               * (ImportWizard + TransactionReviewPanel live inside it — no
+               * separate migration needed). Placed last: less-common than
+               * Connect Bank / Add Account / Add Loan.
+               */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportOpen(true)}
+                className="hidden sm:inline-flex"
+              >
+                <Upload className="w-4 h-4 mr-1.5" /> Import
+              </Button>
             </div>
           </div>
 
@@ -901,10 +923,13 @@ function BalancesPageContent() {
        * (same id/name/type/currentBalance/transactions/_links/_meta
        * fields) — see the cast below.
        *
-       * Phase 1 hides the import button (`onImportClick` omitted): the
-       * Balances page doesn't host a TransactionImportDialog yet.
-       * Phase 2 will lift the import flow over from
-       * /dashboard/accounts as part of retiring that page.
+       * Phase 36 Phase 2c — the import button is now live: clicking
+       * "Import Transactions" inside the detail dialog closes the
+       * dialog and opens the page-level TransactionImportDialog (the
+       * import flow used to live only on the retired /dashboard/accounts
+       * page; it now lands here). The dialog's `accounts` prop carries
+       * the existing IMPORT-account list so the user can target an
+       * existing account or create a new one from the file.
        */}
       <AccountDetailDialog
         account={detailAccount as AccountDetail | null}
@@ -913,6 +938,10 @@ function BalancesPageContent() {
         onEdit={openAccountEdit}
         onDelete={handleDeleteAccount}
         onLinkedEntityNavigate={handleLinkedEntityNavigate}
+        onImportClick={() => {
+          setDetailOpen(false);
+          setImportOpen(true);
+        }}
       />
 
       {/*
