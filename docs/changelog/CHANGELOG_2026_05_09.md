@@ -918,3 +918,56 @@ N/A — no schema migration; no Prisma `delete`/`deleteMany`/`updateMany`/`upser
 ### PR
 - Branch: `claude/phase-32b-alert-engine-9b-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/email-in-hardening-MG8mr (Phase 0 — Email-in hardening for the SendGrid Inbound Parse webhook)
+
+### Changes Made
+- **Type:** Security hardening (Phase 0 production-readiness chunk). The SendGrid Inbound Parse webhook (`/api/conversations/inbound`) shipped in Phase 32C PR4d with zero verification — the original file's TODO listed the missing layers. This PR adds them.
+- **Scope:** New pure verification module + 20+ unit tests + the route refactored to use them. No schema migration. The hardening is additive — when the new env vars are unset the behaviour is exactly the old behaviour (with one always-on new gate: the rate limit).
+- **Description:** Reza directive 2026-05-09 *"continue"* (autonomous-queue item #4). Without verification, anyone who guessed the `monitrax+conv-<slug>@<inbound-domain>` address pattern could inject into an adviser↔client thread (the exact-email-match was the only gate, and a spoofed `From` header passes it if you also know the consumer's email). Production-readiness blocker for the email-into-conversation channel (part of the 7-year compliance archive, §13.5).
+
+### Files Created
+- `lib/email/inboundSecurity.ts` (~190 LOC) — pure verification primitives: `verifyInboundSecret` (timing-safe shared secret `INBOUND_EMAIL_SECRET`; missing-in-prod = misconfiguration → caller 503; missing-in-dev = allowed for local/demo), `verifyDkimSpf` (no-op unless `INBOUND_EMAIL_REQUIRE_DKIM_SPF=true`; then requires SPF=pass + a `pass` in the SendGrid `dkim` field — regex guards against substring false-positives like a "passport" domain), `isSenderAllowed` (exact match on the conversation's consumer participant OR domain in `INBOUND_EMAIL_ALLOWED_DOMAINS`), `checkInboundRateLimit` + `INBOUND_RATE_LIMIT_PER_HOUR = 20` + `INBOUND_RATE_LIMIT_WINDOW_MS`, plus `extractFromAddress` / `emailDomain` / `getAllowedInboundDomains`. No DB, no fetch — the route does the I/O and feeds the results in.
+- `tests/email/inboundSecurity.test.ts` (~150 LOC) — 20+ unit tests: dev-allows-no-secret, prod-rejects-no-secret, secret match/mismatch, strict-mode DKIM/SPF boundaries, the "passport" substring guard, from-address extraction (`Name <email>` + bare, lower-cased), `emailDomain` edge cases, allowlist parsing, `isSenderAllowed` exact-match + allowlist-domain + no-consumer-email, rate-limit boundary. Env-driven branches mutate `process.env` per-test (restored in `afterEach`).
+
+### Files Modified
+- `app/api/conversations/inbound/route.ts` — verification order, fail-closed, every reject → `BLOCKED` audit row (`auditReject(reason, extra?)` helper using `createAuditLog({ action: 'UNAUTHORIZED_ACCESS', status: 'BLOCKED', entityType: 'ConversationInboundEmail', metadata })`):
+  1. **Shared secret** — `?secret=` query param or `x-inbound-secret` header → `verifyInboundSecret`. Missing-in-prod → 503; mismatch → 401.
+  2. **DKIM/SPF strict** — reads the SendGrid `SPF`/`spf` + `dkim` form fields → `verifyDkimSpf`. When `INBOUND_EMAIL_REQUIRE_DKIM_SPF=true` and failing → 403 (`EMAIL_AUTH_FAILED`).
+  3. **Payload sanity** — existing checks (to/from/text present, ≤ 50KB, slug extractable, conversation exists).
+  4. **Sender allowlist** — replaces the inline exact-match with `isSenderAllowed(extractFromAddress(from), consumerEmail)` → 403 (`SENDER_MISMATCH`).
+  5. **Per-conversation rate limit** — counts `prisma.conversationMessage.count({ where: { conversationId, channel: 'EMAIL_IN', createdAt: { gte: oneHourAgo } } })` → `checkInboundRateLimit` → 429 (`RATE_LIMITED`).
+  File header JSDoc rewritten to describe the hardened flow + the prod env vars + the still-deferred items.
+- `docs/policy/MONITRAX_SECURITY_POLICIES.md` §15 (Firewall Protection) — new bullet describing the inbound-webhook hardening + the four env vars + the still-deferred list.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 "Email-in hardening" chunk → `[x]` with the 4 named items + the Reza-side env-config note; §0b replaced (Phase 32B PR3 #9b, merged via #746 → Recently Completed) with this active-workstream entry; PR #746 added to ✅ Recently Completed.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [x] application config (new env vars: `INBOUND_EMAIL_SECRET`, `INBOUND_EMAIL_REQUIRE_DKIM_SPF`, `INBOUND_EMAIL_ALLOWED_DOMAINS` — documented in the route header + `MONITRAX_SECURITY_POLICIES.md` §15 + `IMPLEMENTATION_PLAN.md`)
+- [ ] GCP infrastructure (SendGrid Inbound Parse destination-URL `?secret=` config is a Reza-side console step, documented but not wired)
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (inbound-webhook injection surface hardened with defence-in-depth: shared secret + DKIM/SPF strict + sender allowlist + per-conversation rate limit; every reject audited — `MONITRAX_SECURITY_POLICIES.md` §15)
+- [x] operational procedure (the new prod env vars + SendGrid Inbound Parse `?secret=` config — recorded in `MONITRAX_SECURITY_POLICIES.md` §15 + `IMPLEMENTATION_PLAN.md`)
+- [x] strategic decision (Phase 0 "Email-in hardening" chunk done; Phase 32B PR3 #9b — PR #746 — marked complete)
+
+Docs updated in this PR:
+- `docs/policy/MONITRAX_SECURITY_POLICIES.md` §15 — inbound-webhook hardening bullet
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 chunk + §0b + Recently Completed
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+- (No dedicated Phase doc for the email-in feature exists; the route header JSDoc + the security-policy bullet are the canonical record.)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — no schema migration; no Prisma `delete`/`deleteMany`/`updateMany`/`upsert`/`$executeRaw`. The route's only writes are the existing `postMessage` (a `create`) + `createAuditLog` (append-only). The new `prisma.conversationMessage.count` is read-only.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` is a no-op in this sandbox (no `node_modules`). Code reviewed against the schema + the existing patterns: `createAuditLog({ action: 'UNAUTHORIZED_ACCESS', status: 'BLOCKED', entityType, metadata })` matches `/api/conversations/retention-sweep`; `ConversationMessage` has `channel` (`MessageChannel`, `EMAIL_IN` is a valid value) + `createdAt` + an index on `(conversationId, createdAt)`; `import { prisma } from '@/lib/db'` matches `conversationService.ts`; `CONVERSATION_EMAIL_INBOUND` is a valid `AuditAction`. The Vercel preview build is the canonical type check. The 20+ vitest tests cover the pure verification logic.
+
+### PR
+- Branch: `claude/email-in-hardening-MG8mr`
+- Status: pending push + open
