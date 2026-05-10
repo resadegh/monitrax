@@ -571,6 +571,17 @@ The `getMasterFinancialSnapshot()` call from a professional path **must** pass `
 
 **Wiring shipped Phase 32B PR3 (2026-05-04).** The viewerContext path lives in `lib/services/masterFinancialService.ts` (`ViewerContext` interface + `assertValidViewerContext()` + `loadOrganizationClient()` + `applyScopeFilter()` + `logProDashboardView()`), the canonical entry point is `GET /api/portal/clients/[id]/snapshot`, and the per-view audit emits BOTH a top-level `AuditLog` row (`PRO_DASHBOARD_VIEW`, additive enum migration `20260504160000_add_pro_dashboard_view_action`) AND a `ClientAccessLog` row (per-view detail tied to the `OrganizationClient` row). The caller-asserted `accessScopes` array is treated as informational only — the actual filter applies the canonical DB-stored `OrganizationClient.accessScopes`, so a malicious caller cannot widen scope by lying. Drill-in surface lives at `/portal/clients/[id]/view` and renders the canonical consumer-dashboard primitives via `components/portal/clients/ClientCanonicalDashboard.tsx` + `AdviserOverlay.tsx`.
 
+### 9.3 Alert engine tables (Phase 32B PR3 #9a — 2026-05-09)
+
+Two additive tables back the Practice dashboard's "needs attention today" alert stream. Migration `20260513110000_phase_32b_pr3_alert_engine` (purely additive — `CREATE TYPE` / `CREATE TABLE` / `CREATE INDEX` / `ADD CONSTRAINT`; §12.11 N/A).
+
+| Table | Purpose | Key columns | Notes |
+|---|---|---|---|
+| `client_alerts` | One live alert row per `(organizationClientId, triggerKind)`. Computed daily by the sweep cron from each client's canonical snapshot. | `organizationId` (denormalised for the org-scoped GET), `organizationClientId` (FK → `organization_clients`, cascade), `triggerKind` (string — canonical union owned by `lib/portal/alerts/alertEngine.ts`), `severity` (`critical`/`opportunity`/`milestone`), `status` (`ClientAlertStatus`: `ACTIVE`/`DISMISSED`/`RESOLVED`), `headline`/`body`/`context`/`primaryActionLabel`, `payload` (JSONB — **aggregate context numbers only, no raw CDR data, §13.3**), `detectedAt`/`resolvedAt`/`dismissedAt`/`dismissedByMemberId`. Unique on `(organizationClientId, triggerKind)`. Indexed on `(organizationId, status)`, `organizationClientId`, `status`, `triggerKind`. | Lifecycle: sweep upserts ACTIVE rows when a trigger fires; leaves DISMISSED rows alone while the condition holds; flips ACTIVE/DISMISSED → RESOLVED when the condition clears (re-arms). The adviser-facing GET (PR #9b) returns only ACTIVE rows. |
+| `client_snapshot_markers` | Prior-sweep state for the delta-based triggers (HEALTH_DROP, TRAIL_ADVANCED). One row per client. | `organizationClientId` (unique FK → `organization_clients`, cascade), `lastHealthScore` (Int?), `lastTrailStage` (string? — `T`/`R`/`A`/`I`/`L`), `lastSweptAt`. | Aggregate scalars only (§13.3). Sweep reads it, computes deltas against the fresh snapshot, overwrites it. |
+
+The cron sweep (`POST /api/portal/alerts/sweep`) computes the **full** snapshot per client (no `viewerContext` — a cron has no "seat") and applies the consent gate at the **trigger** level (`scopeAllowedTriggers(client.accessScopes)`), so an org never ends up with an alert derived from data the client didn't share. No `ClientAccessLog` rows for the sweep (it's a system batch, not an interactive drill-in) — only the `BLOCKED` unauthorised-hit case writes an `AuditLog` row.
+
 ---
 
 # **10. Entity Layer (Phase 41 — `LegalEntity`)**

@@ -3821,6 +3821,16 @@ enum ClientTaskPriority {
   URGENT
 }
 
+// Phase 32B PR3 #9a — alert-engine lifecycle. ACTIVE while the
+// triggering condition still holds; auto-RESOLVED by the sweep when
+// the condition clears; DISMISSED when an adviser explicitly clears it
+// (sticky — does not re-fire while the condition persists).
+enum ClientAlertStatus {
+  ACTIVE
+  DISMISSED
+  RESOLVED
+}
+
 enum ApiKeyScope {
   READ_CLIENTS // List and view clients
   READ_FINANCIAL // Read financial data
@@ -3969,6 +3979,8 @@ model OrganizationClient {
   notes      ClientNote[]
   tasks      ClientTask[]
   accessLogs ClientAccessLog[]
+  alerts     ClientAlert[]
+  alertMarker ClientSnapshotMarker?
 
   @@unique([organizationId, userId])
   @@index([organizationId])
@@ -4152,6 +4164,83 @@ model ClientAccessLog {
   @@index([accessedAt])
   @@index([action])
   @@map("client_access_logs")
+}
+
+// =============================================================================
+// PHASE 32B PR3 #9a — REAL ALERT ENGINE
+// =============================================================================
+
+// ClientAlert — a "needs attention" signal surfaced on the Practice
+// dashboard's alert stream. Computed daily by the sweep cron
+// (`POST /api/portal/alerts/sweep`) from each client's canonical
+// financial snapshot. The pure trigger logic lives in
+// `lib/portal/alerts/alertEngine.ts`.
+//
+// Lifecycle: the sweep upserts ACTIVE rows when a trigger fires;
+// auto-flips them to RESOLVED when the condition clears; an adviser
+// can DISMISS a row (sticky — won't re-fire while the condition
+// persists). De-duplication is on `(organizationClientId, triggerKind)`
+// — one live row per client per trigger kind at a time. `payload` is
+// the snapshot of context numbers the UI renders (health delta,
+// cashflow, LVR, etc.) — no CDR-raw transaction data, no balances
+// beyond aggregates (CLAUDE.md §13.3).
+model ClientAlert {
+  id                   String   @id @default(uuid())
+  organizationId       String   // denormalised for the org-scoped GET (avoids a join)
+  organizationClientId String
+
+  triggerKind String            // 'CASHFLOW_NEGATIVE' | 'EMERGENCY_FUND_LOW' | 'LVR_REFINANCE_WINDOW' | 'HEALTH_DROP' | 'TRAIL_ADVANCED' | …  (canonical union owned by lib/portal/alerts/alertEngine.ts)
+  severity    String            // 'critical' | 'opportunity' | 'milestone'
+  status      ClientAlertStatus @default(ACTIVE)
+
+  headline          String
+  body              String  @db.Text
+  context           String  @db.Text  // one-line "Health 42 ↓18 · cashflow -$340/mo" style
+  primaryActionLabel String
+
+  // Aggregate-only context numbers the UI renders. JSON so the shape
+  // can grow per trigger kind without a migration. NEVER contains raw
+  // CDR transactions or per-account balances — aggregates only.
+  payload Json?
+
+  detectedAt   DateTime  @default(now())
+  resolvedAt   DateTime?
+  dismissedAt  DateTime?
+  dismissedByMemberId String?  // OrganizationMember.id
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationClient OrganizationClient @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationClientId, triggerKind])
+  @@index([organizationId, status])
+  @@index([organizationClientId])
+  @@index([status])
+  @@index([triggerKind])
+  @@map("client_alerts")
+}
+
+// ClientSnapshotMarker — the prior-state record the sweep uses for
+// delta-based triggers (HEALTH_DROP, TRAIL_ADVANCED). One row per
+// client; the sweep reads it, computes deltas against the fresh
+// snapshot, then overwrites it. Stateless triggers (CASHFLOW_NEGATIVE,
+// EMERGENCY_FUND_LOW, LVR_REFINANCE_WINDOW) don't need this — they read
+// the current snapshot only. Aggregate scalars only (CLAUDE.md §13.3).
+model ClientSnapshotMarker {
+  id                   String @id @default(uuid())
+  organizationClientId String @unique
+
+  lastHealthScore Int?     // healthScore.score at the last sweep
+  lastTrailStage  String?  // 'T' | 'R' | 'A' | 'I' | 'L' at the last sweep
+  lastSweptAt     DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationClient OrganizationClient @relation(fields: [organizationClientId], references: [id], onDelete: Cascade)
+
+  @@map("client_snapshot_markers")
 }
 
 // =============================================================================
