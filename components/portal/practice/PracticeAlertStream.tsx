@@ -19,11 +19,27 @@ import { PracticeGlassCard } from './PracticeGlassCard';
 import type { DemoAlert, DemoClient } from '@/lib/portal/practice';
 import type { PracticeProfessionConfig } from '@/lib/portal/practice';
 
+/**
+ * The alert stream only needs id / initials / name from a client — it
+ * never touches the financial fields. Narrowing the prop here means
+ * both the demo fixture (`DemoClient[]`, structurally a superset) and
+ * the lean summary the live `GET /api/portal/alerts` returns satisfy
+ * it without ceremony.
+ */
+export type AlertClientSummary = Pick<DemoClient, 'id' | 'initials' | 'name'>;
+
 interface PracticeAlertStreamProps {
   alerts: DemoAlert[];
-  clients: DemoClient[];
+  clients: AlertClientSummary[];
   profession: PracticeProfessionConfig;
   maxVisible?: number;
+  /**
+   * Phase 32B PR3 #9b — when present, each alert row gets a "Dismiss"
+   * affordance that calls this with the alert id. Omitted in fixture-
+   * preview mode (you can't dismiss a demo alert) — the dashboard wires
+   * it only when real alerts are loaded.
+   */
+  onDismiss?: (alertId: string) => void;
 }
 
 const SEVERITY_RANK: Record<DemoAlert['severity'], number> = {
@@ -52,6 +68,7 @@ export function PracticeAlertStream({
   clients,
   profession,
   maxVisible = 5,
+  onDismiss,
 }: PracticeAlertStreamProps) {
   const allowed = new Set(profession.alertTriggers);
   const filtered = alerts
@@ -125,13 +142,22 @@ export function PracticeAlertStream({
                         {alert.context}
                       </p>
                     </div>
-                    <div className="flex-shrink-0 hidden sm:flex items-center">
+                    <div className="flex-shrink-0 hidden sm:flex flex-col items-end gap-1.5">
                       <button
                         type="button"
-                        className="inline-flex items-center rounded-full bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors"
+                        className="inline-flex items-center rounded-full bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1"
                       >
                         {alert.primaryActionLabel}
                       </button>
+                      {onDismiss && (
+                        <button
+                          type="button"
+                          onClick={() => onDismiss(alert.id)}
+                          className="text-[11px] font-medium text-slate-500 hover:text-slate-800 transition-colors focus-visible:outline-none focus-visible:underline"
+                        >
+                          Dismiss
+                        </button>
+                      )}
                     </div>
                   </div>
                 </PracticeGlassCard>

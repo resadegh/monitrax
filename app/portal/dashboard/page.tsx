@@ -21,6 +21,7 @@
  */
 'use client';
 
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { OrganizationType } from '@prisma/client';
 import { MessageSquarePlus } from 'lucide-react';
@@ -28,6 +29,7 @@ import Link from 'next/link';
 import {
   PracticeAlertStream,
   PracticeClientBookTable,
+  type AlertClientSummary,
 } from '@/components/portal/practice';
 import {
   GlassHero,
@@ -45,12 +47,70 @@ import {
   LIGHTHOUSE_ALERTS,
   computeKpis,
   getPracticeProfessionConfig,
+  type DemoAlert,
 } from '@/lib/portal/practice';
 import { useOrganization } from '@/lib/portal';
 
 export default function PortalDashboardPage() {
   const router = useRouter();
   const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id;
+
+  // Phase 32B PR3 #9b — real alert stream. Fetch the org's ACTIVE
+  // client alerts; fall back to the LIGHTHOUSE fixture as the
+  // empty-state preview (an org that hasn't onboarded a real client,
+  // or before the sweep cron has run). `realAlerts === null` ⇒
+  // fixture mode; a non-null (possibly empty) array ⇒ real data.
+  const [realAlerts, setRealAlerts] = useState<DemoAlert[] | null>(null);
+  const [realClients, setRealClients] = useState<AlertClientSummary[]>([]);
+
+  const refetchAlerts = useCallback(async () => {
+    if (!orgId) return;
+    try {
+      const res = await fetch(`/api/portal/alerts?organizationId=${encodeURIComponent(orgId)}`);
+      if (!res.ok) return;
+      const j = (await res.json()) as {
+        success?: boolean;
+        data?: { alerts: DemoAlert[]; clients: AlertClientSummary[] };
+      };
+      if (!j?.success || !j.data) return;
+      // Only switch out of fixture mode when the org actually has
+      // alerts — an empty real array would replace the demo preview
+      // with a bare "all quiet" card, which is worse for an org still
+      // onboarding. (When a real org genuinely has zero alerts after
+      // its first sweep, the fixture preview is the honest "here's
+      // what this surface does" placeholder.)
+      if (j.data.alerts.length > 0) {
+        setRealAlerts(j.data.alerts);
+        setRealClients(j.data.clients);
+      }
+    } catch {
+      // Silent — keeps the fixture preview on any fetch failure.
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    void refetchAlerts();
+  }, [refetchAlerts]);
+
+  const handleDismissAlert = useCallback(
+    async (alertId: string) => {
+      // Optimistic — drop the row immediately, then reconcile.
+      setRealAlerts((prev) => (prev ? prev.filter((a) => a.id !== alertId) : prev));
+      try {
+        await fetch(`/api/portal/alerts/${encodeURIComponent(alertId)}/dismiss`, { method: 'POST' });
+      } finally {
+        void refetchAlerts();
+      }
+    },
+    [refetchAlerts],
+  );
+
+  const usingRealAlerts = realAlerts !== null;
+  const alertStreamAlerts = realAlerts ?? LIGHTHOUSE_ALERTS;
+  const alertStreamClients: AlertClientSummary[] = usingRealAlerts
+    ? realClients
+    : LIGHTHOUSE_CLIENTS;
 
   // Profession resolution chain (unchanged from PR2):
   //   1. Organization.profession (canonical)
@@ -180,9 +240,10 @@ export default function PortalDashboardPage() {
         </div>
 
         <PracticeAlertStream
-          alerts={LIGHTHOUSE_ALERTS}
-          clients={LIGHTHOUSE_CLIENTS}
+          alerts={alertStreamAlerts}
+          clients={alertStreamClients}
           profession={config}
+          onDismiss={usingRealAlerts ? handleDismissAlert : undefined}
         />
 
         <PracticeClientBookTable

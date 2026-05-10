@@ -870,3 +870,51 @@ N/A by structural argument. Migration is purely additive (`CREATE TYPE` / `CREAT
 ### PR
 - Branch: `claude/phase-32b-real-alert-engine-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-32b-alert-engine-9b-MG8mr (Phase 32B PR3 #9b — Real Alert Engine wiring; CLOSES PR3 + the Phase 0 alert chunk)
+
+### Changes Made
+- **Type:** Feature (Phase 32B PR3 #9b — the visible-to-adviser half: org-scoped GET + dismiss endpoint + Practice dashboard wiring). Closes Phase 32B PR3 item #9 — the last PR3 item.
+- **Scope:** Two API routes + one component prop + the Practice dashboard. The #9a foundation (schema + pure engine + tests + cron, PR #745) is now wired through to the UI. No schema migration.
+- **Description:** Reza directive 2026-05-09 *"continue"* (autonomous-queue follow-on). #9a shipped the engine but nothing the adviser sees. #9b makes `/portal/dashboard`'s alert stream read real `ClientAlert` rows, with a one-click dismiss.
+
+### Files Created
+- `app/api/portal/alerts/route.ts` (~140 LOC) — `GET /api/portal/alerts?organizationId=…`. `withPermission('org.read', …)` + inline active-membership check (mirrors `/api/portal/conversations`). Returns the org's `ACTIVE` `ClientAlert` rows projected to the `DemoAlert` shape (`{ id, clientId, triggerKind, severity, headline, body, context, primaryActionLabel, detectedAt }`) + a thin client-summary array (`{ id, initials, name }`); client names resolved with a single follow-up `prisma.user.findMany` (no `user` relation on `OrganizationClient` — it's a loose `userId` FK). Privacy (§13.3): only aggregate alert fields + display name + initials leave the endpoint; the `payload` column is NOT returned. `clientId == organizationClientId == clients[].id` so the component's `clientById` lookup works unchanged.
+- `app/api/portal/alerts/[id]/dismiss/route.ts` (~80 LOC) — `POST /api/portal/alerts/[id]/dismiss`. `withPermission<RouteContext>('org.update', …)` + active-membership check against the alert's org. Sets `status = DISMISSED`, `dismissedAt = now`, `dismissedByMemberId = caller's OrganizationMember.id`. Idempotent on an already-DISMISSED row; 409 on a RESOLVED row. The sweep then leaves the DISMISSED row alone while the condition holds (sticky) and flips it to RESOLVED — re-arming — once it clears.
+
+### Files Modified
+- `components/portal/practice/PracticeAlertStream.tsx` — new optional `onDismiss?: (alertId: string) => void` prop; when present each alert row gets a "Dismiss" link under the primary-action button (with focus-visible underline). `clients` prop narrowed `DemoClient[]` → `AlertClientSummary = Pick<DemoClient, 'id' | 'initials' | 'name'>` (the stream only reads id/initials/name; both the fixture and the lean live summary satisfy it). `AlertClientSummary` exported.
+- `components/portal/practice/index.ts` — re-exports `type AlertClientSummary`.
+- `app/portal/dashboard/page.tsx` — `'use client'` (already); added `useCallback`/`useEffect`/`useState`. `useEffect` fetches `GET /api/portal/alerts` for the current org → `realAlerts === null` ⇒ fixture-preview mode (the `LIGHTHOUSE_ALERTS` fixture, kept as the empty-state placeholder); a non-empty real array ⇒ swaps to live data + passes `onDismiss` (optimistic-remove + refetch). Falls back to the fixture preview on any fetch failure. Hero KPI strip + client-book table stay on the fixture for #9b (recomputing them needs the real client book, not just alerts — noted as post-#9b polish).
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (`onDismiss` affordance on `PracticeAlertStream` — small additive pattern, documented in `PHASE_32B_PR3_ALERT_ENGINE.md` §6)
+- [ ] application config
+- [ ] GCP infrastructure (Cloud Scheduler job already documented in #9a; still a Reza-side console step)
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture (new org-scoped GET — aggregate fields + display name only, no `payload`, membership-gated; dismiss is `org.update` + member-of-the-alert's-org — documented in `PHASE_32B_PR3_ALERT_ENGINE.md` §6 + `03_DATA_MODEL.md` §9.3)
+- [ ] operational procedure
+- [x] strategic decision (Phase 32B PR3 closed entirely; Phase 0 "Real alert engine v1" chunk done; PR #745 marked complete)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` — top-status → ✅ COMPLETE; §6 → "#9b — wiring (✅ shipped)" with the post-#9b polish items
+- `docs/blueprint/PHASE_32_ENTERPRISE_PORTAL.md` — "Real alert engine (PR3 #9)" row → ✅ Complete
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 32B PR3 row → PR3 #9 ✅; "Phase 32B PR3 complete (#1–#10)"
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 alert chunk → `[x]`; §0b → this workstream; PR #745 → Recently Completed
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — no schema migration; no Prisma `delete`/`deleteMany`/`updateMany`/`upsert`/`$executeRaw`. The dismiss route's single `prisma.clientAlert.update` targets the one row identified by `id` (membership-gated) and only sets `status`/`dismissedAt`/`dismissedByMemberId` — no user-entered data overwritten.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` is a no-op in this sandbox (no `node_modules`, no generated Prisma client). Code reviewed against the schema: `prisma.clientAlert` / `prisma.organizationMember` / `prisma.user` access; `OrganizationClient` has no `user` relation so the GET resolves names with a follow-up `prisma.user.findMany`; `User` has `name` (single field, not `firstName`/`lastName`) + `email`; `withPermission<RouteContext>('org.update', …)` pattern matches `app/api/portal/professional-requests/[id]/route.ts`. The Vercel preview build is the canonical type + migration check.
+
+### PR
+- Branch: `claude/phase-32b-alert-engine-9b-MG8mr`
+- Status: pending push + open
