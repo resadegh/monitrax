@@ -709,3 +709,53 @@ N/A — additive only. No Prisma writes (the `?id=` handler reads loaded state).
 ### PR
 - Branch: `claude/phase-36-2bd-balances-consolidation-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-32b-scope-presets-MG8mr (Phase 32B PR3 #10 — profession-aware consent scope presets)
+
+### Changes Made
+- **Type:** Feature (Phase 0 chunk — closes Phase 32B PR3 item #10).
+- **Scope:** New SSOT module for profession-aware consent scope presets + quick-pick chips in the adviser-side invite-a-client modal. Zero schema, zero new endpoint, zero CDR posture change.
+- **Description:** Reza directive 2026-05-09 *"ship the autonomous steps and give me pr url"* after PR #742 merged. When an adviser/broker/accountant invites a client, they request a `DataAccessScope` set. Free-form picking puts the "what does my profession need?" burden on every adviser, every time — friction at onboarding. Three presets encode the common answers.
+
+### Files Created
+- `lib/portal/scopePresets.ts` (~110 LOC) — `SCOPE_PRESETS` array + `getScopePreset(id)` + `matchScopePreset(selected)` reverse-lookup. Three presets:
+  - `LENDING` — `[LOANS, PROPERTIES, TRANSACTIONS]` — brokers assessing serviceability + existing debt
+  - `TAX` — `[TAX, TRANSACTIONS, DOCUMENTS]` — accountants preparing returns + substantiating deductions
+  - `ADVISORY` — `[FINANCIAL, INVESTMENTS, TAX, TRANSACTIONS, PROPERTIES, LOANS]` — "FULL minus DOCUMENTS" enumerated (the invite UI treats the `FULL` literal as mutually-exclusive, so the minus-one case can't be `['FULL']`). DOCUMENTS excluded because it can contain material outside the adviser's remit (wills, legal letters, medical docs). Full JSDoc explains both choices.
+
+### Files Modified
+- `components/portal/team/InviteModal.tsx` — imports the SSOT module; new `applyPreset(id)` handler + `activePreset` (recomputed each render via `matchScopePreset`); when `type === 'client'`, a row of 3 quick-pick chips renders above the existing scope checkboxes. Clicking a chip applies the preset; the active chip highlights (emerald); de-highlights automatically when the selection deviates. Chips: `aria-pressed` + `title` (the `forWhom` line) + focus-visible ring. Existing `handleScopeToggle` + `selectedScopes` state + submit path untouched.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 chunk checkbox flipped to `[x]`; Phase 32B PR3 #10 line (line 221) flipped to `[x] SHIPPED`; Phase 36 PR #742 moved to Recently Completed; §0b replaced with this active-workstream entry.
+- `docs/blueprint/PHASE_32_ENTERPRISE_PORTAL.md` — new "Consent scope presets (PR3 #10)" status row, dated 2026-05-09.
+
+### Spec-vs-implementation note
+The original spec (Phase 32B PR3 #10) named `ConsentRequest.tsx` as the implementation point. That component is the *consumer-side approve* UI — presets there don't fit (the consumer responds to a specific request, they don't compose one). The adviser-side *request* UI is `InviteModal.tsx` (where `selectedScopes` is chosen), so the presets ship there. Plan + Phase 32 doc updated to reflect this.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (3 preset chips above the scope-checkbox grid in InviteModal — small additive pattern, documented in PHASE_32 doc)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth (consent *request* picker UX improves; consent semantics unchanged — consumer still approves/rejects exactly as before)
+- [ ] deployment / build
+- [ ] security / CDR posture (no widening — presets request *fewer* scopes than a panicked adviser might check "everything")
+- [ ] operational procedure
+- [x] strategic decision (Phase 32B PR3 #10 closed; Phase 36 PR #742 marked complete)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — chunk + item #10 + §0b + Recently Completed
+- `docs/blueprint/PHASE_32_ENTERPRISE_PORTAL.md` — new status row
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — additive only. New module is pure data + two pure functions (no Prisma, no fetch). InviteModal change is presentation-only. No schema migration.
+
+### Build Status
+- [x] TypeScript compilation passes (`npx tsc --noEmit`)
+
+### PR
+- Branch: `claude/phase-32b-scope-presets-MG8mr`
+- Status: pending push + open
