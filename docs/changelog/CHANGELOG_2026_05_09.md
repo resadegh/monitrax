@@ -759,3 +759,50 @@ N/A — additive only. New module is pure data + two pure functions (no Prisma, 
 ### PR
 - Branch: `claude/phase-32b-scope-presets-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-36-2c-import-transactions-MG8mr (Phase 36 Phase 2c — Import Transactions UI migration; CLOSES PHASE 36)
+
+### Changes Made
+- **Type:** Feature (Phase 36 Phase 2c — last sub-phase; closes Phase 36 entirely).
+- **Scope:** Promotes the Import Transactions flow to a first-class `Import` toolbar action on `/dashboard/balances`; wires `?action=import` deep link; makes the `AccountDetailDialog`'s import buttons live. Zero new components, zero schema, zero new endpoint.
+- **Description:** Reza directive 2026-05-09 *"Continue"* (autonomous-queue item #2). The Import Transactions flow used to be reachable only from the now-retired `/dashboard/accounts` toolbar + the account-source picker's Import tile + a dead `onImportClick`-omitted button in the account-detail dialog. This PR makes it a proper toolbar action on Balances and lights up the detail-dialog buttons.
+
+### Files Modified
+- `app/dashboard/balances/page.tsx`:
+  - New `Import` toolbar button (Upload icon) next to Connect Bank / + Account / + Loan → `onClick={() => setImportOpen(true)}`. Opens the existing page-level `TransactionImportDialog` (already wired since Phase 1c; just had no direct entry). `ImportWizard` + `TransactionReviewPanel` already live inside that dialog — no standalone migration needed.
+  - `?action=import` case added to the `?action=` deep-link handler — completes the set (`connect-basiq` / `add-account` / `add-loan` / `import`). Idempotent (cleans URL after firing).
+  - `AccountDetailDialog` now receives `onImportClick={() => { setDetailOpen(false); setImportOpen(true); }}` — the "Import Transactions" buttons on the Transactions tab + empty state are now live (were dead with `onImportClick` omitted). The detail dialog closes first so the two modals don't stack.
+  - Stale "Phase 1 hides the import button … Phase 2 will lift the import flow over" comment block replaced with the live-state description.
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` — top-status → ✅ COMPLETE; "Shipped" block updated (2c entry added, 2b/2d/2e attributed to PR #742); §8 checklist 2c flipped to ✅; "Remaining: none".
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 36 row → ✅ Complete (May 2026) with all-sub-phases summary.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 chunk caveat removed ("closes Phase 36 entirely" instead of "Phase 36 Phase 2c remains"); §8 checklist 2a/2b/2c/2d/2e all flipped to `[x]` with PR attributions + "Phase 36 is COMPLETE" line; §0b replaced (scope-presets workstream → this Phase 36 2c workstream); PR #743 (scope presets) added to Recently Completed.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new toolbar button + live account-detail import button — small additive pattern)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Phase 36 closed entirely; PR #743 marked complete)
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_36_MY_ACCOUNTS_SIMPLIFICATION.md` — top-status + Shipped block + §8 checklist + "Remaining: none"
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 36 → ✅ Complete
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 chunk + §8 checklist + §0b + Recently Completed
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — additive only. New toolbar button + new switch case + one prop passed. The `TransactionImportDialog` it opens is the exact same dialog already rendered on the page — no change to the import/parse/commit flow. No schema migration. No Prisma writes.
+
+### Build Status
+- [x] TypeScript compilation passes (`npx tsc --noEmit`)
+
+### PR
+- Branch: `claude/phase-36-2c-import-transactions-MG8mr`
+- Status: pending push + open
