@@ -11,6 +11,12 @@ import { useState } from 'react';
 import { PortalButton, ButtonGroup } from '../ui/PortalButton';
 import { Input, Textarea, Select, FormGroup, Checkbox } from '../ui/PortalForm';
 import type { PortalUserRole, DataAccessScope } from '@prisma/client';
+import {
+  SCOPE_PRESETS,
+  getScopePreset,
+  matchScopePreset,
+  type ScopePresetId,
+} from '@/lib/portal/scopePresets';
 
 interface InviteModalProps {
   type: 'staff' | 'client';
@@ -58,6 +64,17 @@ export function InviteModal({ type, onSubmit, onClose, loading = false }: Invite
       return [...prev.filter((s) => s !== 'FULL'), scope];
     });
   };
+
+  // Phase 32B PR3 #10 — profession-aware scope presets. Clicking a
+  // preset applies its canonical scope set (SSOT: lib/portal/scopePresets.ts).
+  // The checkboxes below remain live for fine-tuning; the active-preset
+  // chip de-highlights automatically once the selection no longer
+  // matches any preset (computed via matchScopePreset on each render).
+  const applyPreset = (id: ScopePresetId) => {
+    const preset = getScopePreset(id);
+    if (preset) setSelectedScopes([...preset.scopes]);
+  };
+  const activePreset = matchScopePreset(selectedScopes);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,9 +159,33 @@ export function InviteModal({ type, onSubmit, onClose, loading = false }: Invite
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Requested Access Scopes
                 </label>
-                <p className="text-xs text-slate-500 mb-3">
-                  Select the data you'd like access to. The client will need to approve these.
+                <p className="text-xs text-slate-500 mb-2">
+                  Pick a preset for your profession, then fine-tune below. The client will need to approve these.
                 </p>
+                {/* Profession-aware presets (Phase 32B PR3 #10) */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {SCOPE_PRESETS.map((preset) => {
+                    const isActive = activePreset === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => applyPreset(preset.id)}
+                        title={preset.forWhom}
+                        aria-pressed={isActive}
+                        className={[
+                          'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1',
+                          isActive
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+                        ].join(' ')}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <div className="space-y-2 max-h-48 overflow-y-auto p-2 border border-slate-200 rounded-lg">
                   {scopeOptions.map((option) => (
                     <Checkbox

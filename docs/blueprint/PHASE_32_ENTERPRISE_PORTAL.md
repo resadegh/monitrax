@@ -25,6 +25,7 @@
 | **Anti-poaching guardrail** | ✅ `team:invite` + commercial actions (submit-listing / subscribe / cancel) PORTAL_OWNER-only; `PORTAL_SEAT_INVITED` audit log row on every invitation | 2026-05-04 |
 | **Leaky-funnel guardrail** | ✅ Org-attached users never see public marketplace surface (enforced at service boundary in `getCandidatesForUser` + `submitRequest`) | 2026-05-04 |
 | **Pitch fixture seed** | ✅ `prisma/seed-lighthouse.ts` + `npm run seed:lighthouse` — 3 archetypes (Sarah / David+Emma / Olivia) + Smithfield Wealth Advisers | 2026-05-09 |
+| **Consent scope presets** (PR3 #10) | ✅ Profession-aware presets (`LENDING` / `TAX` / `ADVISORY`) — SSOT at `lib/portal/scopePresets.ts`, quick-pick chips in `components/portal/team/InviteModal.tsx` (the adviser-side scope-picking surface — the original spec named `ConsentRequest.tsx` but that's the consumer *approve* UI; presets belong on the adviser *request* UI). Active chip de-highlights when the adviser deviates from a preset. Checkboxes remain for fine-tuning. | 2026-05-09 |
 
 ---
 
