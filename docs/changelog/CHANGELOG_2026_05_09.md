@@ -971,3 +971,53 @@ N/A — no schema migration; no Prisma `delete`/`deleteMany`/`updateMany`/`upser
 ### PR
 - Branch: `claude/email-in-hardening-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-0-operational-readiness-MG8mr (Phase 0 — operational-readiness runbooks: backup/restore drill + IRP tabletop + observability SLOs)
+
+### Changes Made
+- **Type:** Documentation (Phase 0 production-readiness chunk — doc-authoring portion). Doc-only PR; no code, no schema, no migration, no infra wiring.
+- **Scope:** Three new operational runbooks under `docs/operational/runbooks/` + index/plan/changelog sync. The runbooks are the spec/script the GCP-console execution (Reza-side) will be done against.
+- **Description:** Reza directive 2026-05-09 *"continue"* (autonomous-queue item #5 — the last engineering-side Phase 0 chunk). A backup that has never been restored is a hypothesis, not a safety net (cf. the 2026-04-15 R12 incident). An IRP that has never been walked is a document, not a capability. SLOs you haven't defined can't be managed. This PR delivers all three as runbooks/scripts/specs so a future operator at 2am isn't reverse-engineering the process.
+
+### Files Created
+- `docs/operational/runbooks/06_BACKUP_RESTORE_DRILL.md` — quarterly *non-destructive* Cloud SQL restore drill. Never touches `monitrax-db-prod`: Part A verify automated backups exist + config matches the doc + a recent `SUCCESSFUL` backup exists; Part B restore the latest backup into a throwaway `monitrax-db-prod-drill` instance (with a `clone` fallback if the instance doesn't exist yet); Part C verify (`_prisma_migrations` matches the newest `prisma/migrations/` folder, core-table row counts within ~5% of prod, an orphaned-rows referential-integrity spot-check); Part D tear down (DO NOT SKIP — a forgotten drill instance is a recurring bill + a second copy of CDR data outside the data map; also `shred` any annual-drill dump files). Annual extension (Part E): PITR clone to a timestamp + `pg_dump`→`pg_restore` round-trip into a local throwaway Postgres. Pre-drill checklist, Drill Log table with a template row, PASS/FAIL definition, "a failed drill is a P1-equivalent finding → open an IMPLEMENTATION_PLAN entry" rule, references table.
+- `docs/operational/runbooks/07_IRP_TABLETOP_EXERCISE.md` — annual incident-response tabletop (talk-through; nobody touches prod; rotate through the scenarios). §1 how-to-run. 4 scenarios, each with an "Inject" (what you'd actually see) → walk the 6 IRP phases out loud → 2-4 `DECISION:` markers → "gaps this commonly surfaces": (1) CDR data breach — CRITICAL, tests the NDB clock + Basiq notification + containment-under-pressure + the "serious harm" assessment; (2) production DB unreachable — HIGH (Availability), tests the IRP §10 auth-chain triage (match the error signature against §10.3), the `USE_CLOUD_SQL_CONNECTOR=false` rollback lever, the "is the data corrupt or just unreachable" decision tree, and the backup/restore path; (3) auth-provider outage — HIGH, tests vendor-dependency handling + "is it us (Firebase config broke in the last deploy) or them (GCP Identity Platform incident)" + the missing user-facing status channel; (4) runaway cost / connection exhaustion — MEDIUM→HIGH, tests cost-control wiring + killing leaked idle connections + the `lib/db.ts` singleton discipline + budget-alert-at-80% gap. §6 cross-scenario decision reference (severity / does-the-NDB-clock-start / who-to-notify / how-to-roll-back-a-deploy / how-to-roll-back-DB-auth / how-to-restore / incident-log template). §7 After-Action Report template. §8 Exercise Log. §9 references.
+- `docs/operational/runbooks/08_OBSERVABILITY_SLOS.md` — application-level observability (the DB-level monitoring stays in `database/03_MONITORING_AND_ALERTS.md`; not duplicated). §1 the three signal sources (Cloud Monitoring uptime checks + Cloud SQL metrics; Vercel Observability/Analytics; Cloud Logging via `createAuditLog`) and the honest gaps (per-route 5xx/latency currently rely on Vercel dashboards + canaries; a Vercel→Cloud Logging log drain would close it). §2 SLO definitions: availability **99.5%** rolling 30d (~3.6h error budget, with the "why not 99.9%" reasoning + the revisit trigger at ~50 paying users / a second on-call person); **p95/p99 latency targets per route group** (system/health · auth&session · core-financial-read · entity&ledger-CRUD · CDR/banking · AI-advisor · portal · conversations&docs · billing · cron — batch crons and document-upload routes exempt); **5xx error-rate targets per route group** (4xx excluded — a 401/403 is correct behaviour; a *spike* is alert A6). §3 Cloud Monitoring alert-policy specs **A1–A9** (A1 app-down/health-check · A2 health-latency · A3 dashboard-slow · A4 elevated-5xx · A5 Stripe-webhook-failing · A6 auth-failure/blocked-access spike · A7 cron-didn't-run/failed · A8 error-budget-burn · A9 budget-overrun) — each with severity, notification target, and a runbook link; plus a `gcloud alpha monitoring policies create` example and a note to use Cloud Monitoring's native SLO + burn-rate feature for A8. §4 synthetic-canary plan. §5 "Monitrax — Service Health" dashboard tile list. §6 review cadence. §7 "when an SLO is breached" discipline. §8 references. §9 **"live vs spec-only" status table** (what's wired vs what's a Reza-side console step — highest-leverage three flagged). §10 future improvements (Vercel log drain, Error Reporting, distributed tracing, RUM).
+
+### Files Modified
+- `docs/operational/00_INDEX.md` — 3 new Quick-Links rows (run the backup/restore drill / run an IRP tabletop / what are our SLOs); 3 new Runbooks-section rows (06/07/08 with descriptions); Document-Status counts updated (Runbooks 01-08, 8 files; Security 01-04, 4 files); Last-Updated line.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 chunk "Backup/restore drill + IRP tabletop + observability SLOs" → `[x]` with the Reza-side breakdown (create alert policies A1–A9 + notification channels; Vercel→Cloud Logging log drain; authenticated synthetic monitor; Service Health dashboard; run the first drill + first tabletop); §0b replaced (the email-in-hardening workstream — PR #747, now merged — moved to Recently Completed) with this active-workstream entry; PR #747 added to ✅ Recently Completed; top "Last updated" line refreshed.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.) — *spec'd, not wired: the alert policies + log drain + synthetic monitor are Reza-side console steps tracked in `08_OBSERVABILITY_SLOS.md` §9*
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (three new runbooks: backup/restore drill, IRP tabletop exercise script, observability SLO + alert-policy specs)
+- [x] strategic decision (Phase 0 "Backup/restore drill + IRP tabletop + observability SLOs" chunk's doc-authoring portion done — the last engineering-side Phase 0 production-readiness item)
+
+Docs updated in this PR:
+- `docs/operational/runbooks/06_BACKUP_RESTORE_DRILL.md` — new (quarterly non-destructive restore drill)
+- `docs/operational/runbooks/07_IRP_TABLETOP_EXERCISE.md` — new (annual tabletop, 4 scenarios)
+- `docs/operational/runbooks/08_OBSERVABILITY_SLOS.md` — new (app-level SLOs + Cloud Monitoring alert specs A1–A9)
+- `docs/operational/00_INDEX.md` — Quick Links + Runbooks section + Document Status + Last-Updated
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 chunk + §0b + Recently Completed + top header line
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — doc-only PR. No code, no schema migration, no Prisma writes. The procedures the runbooks describe are non-destructive (the backup drill restores into a throwaway instance and explicitly forbids touching `monitrax-db-prod`; the tabletop is a talk-through).
+
+### Build Status
+- [✓] Doc-only PR — no build surface. No `.ts`/`.tsx`/`prisma` files touched.
+
+### PR
+- Branch: `claude/phase-0-operational-readiness-MG8mr`
+- Status: pending push + open
