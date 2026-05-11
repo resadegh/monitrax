@@ -1081,3 +1081,65 @@ User confirmation: NOT REQUIRED — this PR adds no new destructive write; it re
 ### PR
 - Branch: `claude/phase-32b-pr3-post9b-polish-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-32b-pr3-post9b-real-kpis-MG8mr (Phase 32B PR3 — post-#9b polish, part 2: hero KPI strip + client book on real data)
+
+### Changes Made
+- **Type:** Feature + small schema change. Phase 32B PR3 post-#9b polish item ② — the autonomous-queue "continue" item.
+- **Scope:** Make the Practice dashboard show **either** the org's real book **or** the `LIGHTHOUSE` demo preview — never a half-and-half. After #9b the alert *stream* read real data but the hero KPI *strip* (active clients / need-attention / TRAIL advanced / avg health) was still on the fixture, so the dashboard was half-real / half-demo. This PR adds the aggregate endpoint + the master switch + the schema needed for the "change since last sweep" delta.
+- **Motivation:** A half-real / half-demo dashboard erodes adviser trust the moment they notice. The fix: a single `hasRealClients` switch — true once the alert sweep (cron or the PR #749 admin button) has computed a health score for ≥1 active client — that flips the *whole* dashboard from preview → real.
+
+### Files Created
+- `app/api/portal/clients/route.ts` (~165 LOC) — `GET ?organizationId=…`, `withPermission('org.read', …)` + inline active-`OrganizationMember` check (mirrors `/api/portal/alerts`). Returns `{ hasRealClients, lastSweptAt, kpis: { activeClients, needsAttention, trailAdvancedThisWeek, averageHealth, averageHealthDelta }, clients: [{ id, name, initials, trailStage, healthScore, healthDelta, activeAlertCount }] }`. Built from `prisma.organizationClient.findMany({ where: { organizationId, status: 'ACTIVE' }, select: { id, userId, alertMarker } })` + `prisma.clientAlert.findMany({ where: { organizationClientId: { in }, status: 'ACTIVE' } })` (bucketed in JS for `activeAlertCount` per client, `needsAttention` = distinct clients with a `critical|opportunity` alert, `trailAdvancedThisWeek` = count of `TRAIL_ADVANCED` alerts in the last 7 days) + `prisma.user.findMany` for display names (no `user` relation on `OrganizationClient`). `averageHealth` = mean of `marker.lastHealthScore`; `averageHealthDelta` = mean of `(lastHealthScore − previousHealthScore)` over clients that have both. `hasRealClients = (≥1 active client has a marker with a non-null `lastHealthScore`)`. `id` = `organizationClientId` so it joins cleanly with `/api/portal/alerts`. **No live `getMasterFinancialSnapshot()` per client** — purely the rows the sweep already maintains. Privacy (§13.3): aggregate scalars (0–100 health score, TRAIL-stage letter→label, alert count) + display name/initials only — no balances, no CDR data.
+- `prisma/migrations/20260514100000_phase_32b_pr3_marker_prev/migration.sql` — `ALTER TABLE "client_snapshot_markers" ADD COLUMN "previousHealthScore" INTEGER; ADD COLUMN "previousTrailStage" TEXT;` (additive — nullable, no backfill; §12.11 destructive-write checklist N/A).
+
+### Files Modified
+- `prisma/schema.prisma` — `ClientSnapshotMarker` gains `previousHealthScore Int?` + `previousTrailStage String?` (with a doc-comment explaining the roll-forward).
+- `lib/portal/alerts/sweepRunner.ts` — the marker upsert's `update` branch now sets `previousHealthScore: client.alertMarker?.lastHealthScore ?? null, previousTrailStage: client.alertMarker?.lastTrailStage ?? null` *before* writing the new `last*` values (roll-forward: `previous := last`, then `last := current`). The `create` branch leaves `previous*` defaulting to null. Header doc-comment updated. (No other behaviour change — still byte-for-byte the #9a sweep otherwise.)
+- `app/portal/dashboard/page.tsx` — fetches `GET /api/portal/clients` + `GET /api/portal/alerts` on mount (both kept fresh on dismiss). `usingRealData = clientSummary?.hasRealClients === true` is the master switch: when real → hero KPIs from `clientSummary.kpis`; the alert stream shows the real ACTIVE alerts (even if empty → genuine "all quiet" empty state, not the demo); the per-client summaries for the stream come from `clientSummary.clients` (falls back to the `/api/portal/alerts` `clients` array on a race); the fixture `PracticeClientBookTable` (which has the demo's financial columns — net worth / cashflow / LVR) is **replaced** by a slim card ("Your client book — N active · M need attention · last refreshed … → Open the full client book" → `/portal/clients`). When not real → everything is the `LIGHTHOUSE` fixture preview, byte-for-byte the #9b behaviour. The `Avg client health` KPI cell's sub flips "vs 30d" → "vs last sweep" in real mode, shows "stable" (neutral tone) when the delta is 0 (e.g. before the second sweep). `usingRealAlerts` renamed `usingRealData`, `realClients` renamed `realAlertClients`; new `clientSummary` state + `refetchClientSummary` callback + a few inline interfaces (`RealKpis`/`RealClientSummary`/`ClientSummaryResponse`).
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` — §6b "part 2" added (the marker schema change, the `GET /api/portal/clients` endpoint, the dashboard real-vs-preview master switch, the "part 3" follow-up note); §6 table row "computeKpis real input" flipped 📋→✅; header status line updated (① ✅ PR #749, ② ✅, ③ 📋); §8 references add `app/api/portal/clients/route.ts` + the migration.
+- `docs/architecture/03_DATA_MODEL.md` §9.3 — `client_snapshot_markers` row gains the `previous*` columns + the roll-forward description + the migration name; a new paragraph documents `GET /api/portal/clients` (aggregate-only, the master switch, the privacy posture); the sweep-paragraph notes the admin-manual path shares `runPortalAlertSweep`.
+- `docs/architecture/07_API_STANDARDS.md` §15 — new sub-section "Org-scoped *aggregate* portal endpoints (`?organizationId=`)" — explains that `/api/portal/alerts` + `/api/portal/clients` use `withPermission('org.read')` + a membership check (NOT `verifyAdviserClientAccess`, which gates a single client's *data* on per-client GRANTED consent), because they return aggregates already produced under the consent gate, with no balances/CDR data; reviewer rule appended.
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 32B PR3 row gains the post-#9b-polish summary (parts 1 & 2 ✅, part 3 queued).
+- `docs/IMPLEMENTATION_PLAN.md` — the "Real alert engine v1" chunk's post-#9b note updated (① ✅ PR #749, ② ✅ this PR, ③ 📋 queued); §0b replaced (PR #749 → Recently Completed) with this active-workstream entry; PR #749 added to ✅ Recently Completed; top header refreshed.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern (the slim client-book card is plain Tailwind matching the surrounding aesthetic — no new design primitive / token / shared component)
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture (no posture change — the new endpoint returns aggregates already produced under the existing consent gate; documented in `03_DATA_MODEL.md` + `07_API_STANDARDS.md` for clarity, not because the posture moved)
+- [x] operational procedure — no; **data model change** (the `client_snapshot_markers` columns) + **API contract** (new `GET /api/portal/clients`) — see below
+- [ ] strategic decision
+
+Docs updated in this PR (data-model + API-contract changes per CLAUDE.md §3.1):
+- `prisma/schema.prisma` + `prisma/migrations/20260514100000_phase_32b_pr3_marker_prev/migration.sql` (§12.12 — matching migration in the same PR)
+- `docs/architecture/03_DATA_MODEL.md` §9.3 — the marker columns + the new endpoint
+- `docs/architecture/07_API_STANDARDS.md` §15 — the org-scoped aggregate-endpoint pattern
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` §6b part 2 — the feature
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — phase status row
+- `docs/IMPLEMENTATION_PLAN.md` — chunk note + §0b + Recently Completed + top header
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Migration: `20260514100000_phase_32b_pr3_marker_prev/migration.sql` — `ALTER TABLE ... ADD COLUMN ... INTEGER` ×2 (nullable, no default-backfill, no `DROP`/`ALTER ... DROP`/`TRUNCATE`). Purely additive → §12.11 N/A.
+
+Prisma writes touched in this PR:
+- `lib/portal/alerts/sweepRunner.ts` — the existing `prisma.clientSnapshotMarker.upsert({ where: { organizationClientId: <this client> }, ... })` now also writes the two new `previous*` columns on the `update` branch. Same `where` scope as before (the single marker row for the client being processed); the new columns are sweep-authored aggregate scalars (no user-entered data); this table is written exclusively by the sweep. No new `delete`/`deleteMany`/`updateMany`. Same structural argument as #9a.
+- `app/api/portal/clients/route.ts` — read-only (`findMany` ×3). No writes.
+
+User confirmation: NOT REQUIRED — additive nullable columns + an extension of a sweep-owned upsert; no destructive write.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` is a no-op in this sandbox (no `node_modules`; the Prisma client isn't regenerated, so the new `previous*` fields aren't visible to a local typecheck anyway). On Vercel: `vercel-build` runs `prisma migrate deploy` (applies `20260514100000_phase_32b_pr3_marker_prev` — preview against `monitrax-db-dev`, prod against `monitrax-db-prod`) → `prisma generate` (client now knows `previousHealthScore`/`previousTrailStage`) → `next build` (typechecks the code that references them) — so the ordering is correct. Code reviewed against existing patterns: `withPermission('org.read', async (request, auth) => {...})` + `prisma.organizationMember.findFirst({ where: { organizationId, userId, isActive: true } })` matches `/api/portal/alerts/route.ts`; `select: { id, userId, alertMarker }` on `OrganizationClient` matches the sweep route; `GlassHeroKpiCell tone="neutral"` is already used on `/portal/dashboard`; `PracticeAlertStream`'s `clients: AlertClientSummary[]` accepts the richer `RealClientSummary[]` (structural — has `id`/`name`/`initials`). The Vercel preview build is the canonical type + migration check.
+
+### PR
+- Branch: `claude/phase-32b-pr3-post9b-real-kpis-MG8mr`
+- Status: pending push + open

@@ -26,9 +26,12 @@
  *        - flip ACTIVE/DISMISSED rows whose condition has cleared to
  *          RESOLVED (re-arms: the next time the condition holds, a
  *          fresh ACTIVE row is created);
- *        - upsert the `ClientSnapshotMarker` (`lastHealthScore` /
- *          `lastTrailStage` / `lastSweptAt`) — the baseline the delta
- *          triggers (HEALTH_DROP / TRAIL_ADVANCED) read next run.
+ *        - upsert the `ClientSnapshotMarker` — `lastHealthScore` /
+ *          `lastTrailStage` are the baseline the delta triggers
+ *          (HEALTH_DROP / TRAIL_ADVANCED) read next run; the values it
+ *          had going in roll into `previousHealthScore` /
+ *          `previousTrailStage` so the Practice hero KPI strip can show
+ *          a "change since last sweep" delta without a history table.
  *
  * `dryRun` computes everything and writes nothing (admin preview).
  * `organizationId` limits the sweep to one org (testing / backfill).
@@ -244,8 +247,12 @@ export async function runPortalAlertSweep(
             result.alertsResolved += r.count;
           }
 
-          // Upsert the marker for next run's delta triggers
-          // (HEALTH_DROP / TRAIL_ADVANCED read these as the baseline).
+          // Upsert the marker. `last*` is the baseline next run's delta
+          // triggers (HEALTH_DROP / TRAIL_ADVANCED) read; the values it
+          // had going in are rolled into `previous*` so the Practice hero
+          // can show a "change since last sweep" delta. Roll-forward:
+          // previous := last (from `client.alertMarker`), then
+          // last := current.
           await prisma.clientSnapshotMarker.upsert({
             where: { organizationClientId: client.id },
             create: {
@@ -255,6 +262,8 @@ export async function runPortalAlertSweep(
               lastSweptAt: new Date(),
             },
             update: {
+              previousHealthScore: client.alertMarker?.lastHealthScore ?? null,
+              previousTrailStage: client.alertMarker?.lastTrailStage ?? null,
               lastHealthScore: engineSnapshot.healthScore,
               lastTrailStage: engineSnapshot.trailStage,
               lastSweptAt: new Date(),

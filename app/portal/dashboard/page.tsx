@@ -51,18 +51,45 @@ import {
 } from '@/lib/portal/practice';
 import { useOrganization } from '@/lib/portal';
 
+interface RealKpis {
+  activeClients: number;
+  needsAttention: number;
+  trailAdvancedThisWeek: number;
+  averageHealth: number;
+  averageHealthDelta: number;
+}
+interface RealClientSummary {
+  id: string;
+  name: string;
+  initials: string;
+  trailStage: string | null;
+  healthScore: number | null;
+  healthDelta: number | null;
+  activeAlertCount: number;
+}
+interface ClientSummaryResponse {
+  hasRealClients: boolean;
+  lastSweptAt: string | null;
+  kpis: RealKpis;
+  clients: RealClientSummary[];
+}
+
 export default function PortalDashboardPage() {
   const router = useRouter();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id;
 
-  // Phase 32B PR3 #9b — real alert stream. Fetch the org's ACTIVE
-  // client alerts; fall back to the LIGHTHOUSE fixture as the
-  // empty-state preview (an org that hasn't onboarded a real client,
-  // or before the sweep cron has run). `realAlerts === null` ⇒
-  // fixture mode; a non-null (possibly empty) array ⇒ real data.
+  // Phase 32B PR3 #9b + post-#9b polish part 2 — the Practice dashboard
+  // shows EITHER your real book OR the LIGHTHOUSE demo preview, never a
+  // half-and-half. The master switch is `GET /api/portal/clients`'s
+  // `hasRealClients` (true once the alert sweep has computed a health
+  // score for at least one of the org's active clients — run it via
+  // /admin/scheduler before the Cloud Scheduler job is wired). When real:
+  // hero KPIs, the alert stream (even if empty → genuine "all quiet"),
+  // and the client book all come from real data. When not: the fixture.
+  const [clientSummary, setClientSummary] = useState<ClientSummaryResponse | null>(null);
   const [realAlerts, setRealAlerts] = useState<DemoAlert[] | null>(null);
-  const [realClients, setRealClients] = useState<AlertClientSummary[]>([]);
+  const [realAlertClients, setRealAlertClients] = useState<AlertClientSummary[]>([]);
 
   const refetchAlerts = useCallback(async () => {
     if (!orgId) return;
@@ -74,42 +101,52 @@ export default function PortalDashboardPage() {
         data?: { alerts: DemoAlert[]; clients: AlertClientSummary[] };
       };
       if (!j?.success || !j.data) return;
-      // Only switch out of fixture mode when the org actually has
-      // alerts — an empty real array would replace the demo preview
-      // with a bare "all quiet" card, which is worse for an org still
-      // onboarding. (When a real org genuinely has zero alerts after
-      // its first sweep, the fixture preview is the honest "here's
-      // what this surface does" placeholder.)
-      if (j.data.alerts.length > 0) {
-        setRealAlerts(j.data.alerts);
-        setRealClients(j.data.clients);
-      }
+      setRealAlerts(j.data.alerts);
+      setRealAlertClients(j.data.clients);
     } catch {
-      // Silent — keeps the fixture preview on any fetch failure.
+      // Silent — keeps whatever's there on a fetch failure.
+    }
+  }, [orgId]);
+
+  const refetchClientSummary = useCallback(async () => {
+    if (!orgId) return;
+    try {
+      const res = await fetch(`/api/portal/clients?organizationId=${encodeURIComponent(orgId)}`);
+      if (!res.ok) return;
+      const j = (await res.json()) as { success?: boolean; data?: ClientSummaryResponse };
+      if (j?.success && j.data) setClientSummary(j.data);
+    } catch {
+      // Silent — keeps the fixture preview on a fetch failure.
     }
   }, [orgId]);
 
   useEffect(() => {
+    void refetchClientSummary();
     void refetchAlerts();
-  }, [refetchAlerts]);
+  }, [refetchClientSummary, refetchAlerts]);
 
   const handleDismissAlert = useCallback(
     async (alertId: string) => {
-      // Optimistic — drop the row immediately, then reconcile.
+      // Optimistic — drop the row immediately, then reconcile both.
       setRealAlerts((prev) => (prev ? prev.filter((a) => a.id !== alertId) : prev));
       try {
         await fetch(`/api/portal/alerts/${encodeURIComponent(alertId)}/dismiss`, { method: 'POST' });
       } finally {
         void refetchAlerts();
+        void refetchClientSummary();
       }
     },
-    [refetchAlerts],
+    [refetchAlerts, refetchClientSummary],
   );
 
-  const usingRealAlerts = realAlerts !== null;
-  const alertStreamAlerts = realAlerts ?? LIGHTHOUSE_ALERTS;
-  const alertStreamClients: AlertClientSummary[] = usingRealAlerts
-    ? realClients
+  const usingRealData = clientSummary?.hasRealClients === true;
+  const alertStreamAlerts: DemoAlert[] = usingRealData ? (realAlerts ?? []) : LIGHTHOUSE_ALERTS;
+  // In real mode the alert stream's per-client summaries come from the
+  // /clients response (covers clients with no active alert too); when an
+  // alert references a client not in that list (race during onboarding),
+  // the stream falls back to the alert payload's own clientId.
+  const alertStreamClients: AlertClientSummary[] = usingRealData
+    ? (clientSummary?.clients ?? realAlertClients)
     : LIGHTHOUSE_CLIENTS;
 
   // Profession resolution chain (unchanged from PR2):
@@ -122,7 +159,9 @@ export default function PortalDashboardPage() {
     'FINANCIAL_ADVISOR';
 
   const config = getPracticeProfessionConfig(profession);
-  const kpis = computeKpis(LIGHTHOUSE_CLIENTS, LIGHTHOUSE_ALERTS);
+  const kpis: RealKpis = usingRealData && clientSummary
+    ? clientSummary.kpis
+    : computeKpis(LIGHTHOUSE_CLIENTS, LIGHTHOUSE_ALERTS);
 
   const orgName = currentOrg?.name?.split(' ')[0] ?? 'there';
 
@@ -133,10 +172,15 @@ export default function PortalDashboardPage() {
     return 'Good evening';
   })();
 
+  const deltaWindowLabel = usingRealData ? 'vs last sweep' : 'vs 30d';
   const healthDeltaSub =
-    kpis.averageHealthDelta >= 0
-      ? `↑ ${kpis.averageHealthDelta.toFixed(1)} vs 30d`
-      : `↓ ${Math.abs(kpis.averageHealthDelta).toFixed(1)} vs 30d`;
+    kpis.averageHealthDelta > 0
+      ? `↑ ${kpis.averageHealthDelta.toFixed(1)} ${deltaWindowLabel}`
+      : kpis.averageHealthDelta < 0
+        ? `↓ ${Math.abs(kpis.averageHealthDelta).toFixed(1)} ${deltaWindowLabel}`
+        : 'stable';
+  const healthDeltaTone: 'positive' | 'attention' | 'neutral' =
+    kpis.averageHealthDelta > 0 ? 'positive' : kpis.averageHealthDelta < 0 ? 'attention' : 'neutral';
 
   return (
     <div className="min-h-screen">
@@ -185,7 +229,7 @@ export default function PortalDashboardPage() {
               <GlassHeroKpiCell
                 label="Avg client health"
                 value={`${kpis.averageHealth}`}
-                tone={kpis.averageHealthDelta >= 0 ? 'positive' : 'attention'}
+                tone={healthDeltaTone}
                 sub={healthDeltaSub}
               />
             </dl>
@@ -243,13 +287,39 @@ export default function PortalDashboardPage() {
           alerts={alertStreamAlerts}
           clients={alertStreamClients}
           profession={config}
-          onDismiss={usingRealAlerts ? handleDismissAlert : undefined}
+          onDismiss={usingRealData ? handleDismissAlert : undefined}
         />
 
-        <PracticeClientBookTable
-          clients={LIGHTHOUSE_CLIENTS}
-          profession={config}
-        />
+        {/* Client book — the fixture table is the demo preview; in real
+            mode the full book lives at /portal/clients (the "Active
+            clients" tile above links there). The real-data version of
+            this table — health / TRAIL stage / last contact + a drill-in,
+            without the demo's financial columns — is a follow-up
+            (see PHASE_32B_PR3_ALERT_ENGINE.md §6b "part 3"). */}
+        {usingRealData ? (
+          <div className="rounded-2xl border border-slate-200/70 bg-white/70 backdrop-blur-sm px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Your client book</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {kpis.activeClients} active {kpis.activeClients === 1 ? 'client' : 'clients'}
+                  {kpis.needsAttention > 0 ? ` · ${kpis.needsAttention} need attention` : ' · all clear'}
+                  {clientSummary?.lastSweptAt
+                    ? ` · last refreshed ${new Date(clientSummary.lastSweptAt).toLocaleDateString('en-AU')}`
+                    : ''}
+                </p>
+              </div>
+              <Link
+                href="/portal/clients"
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-sky-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+              >
+                Open the full client book →
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <PracticeClientBookTable clients={LIGHTHOUSE_CLIENTS} profession={config} />
+        )}
 
         <footer className="pt-6 pb-2 border-t border-slate-200/60">
           <p className="text-[11px] text-slate-500 leading-relaxed max-w-3xl">

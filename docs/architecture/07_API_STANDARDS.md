@@ -553,6 +553,31 @@ source-of-truth is the database, never URL params or headers.
 **Reviewers reject any new portal client-data endpoint that doesn't
 route through this helper.**
 
+### Org-scoped *aggregate* portal endpoints (`?organizationId=`) — `withPermission('org.read')` + membership check
+
+A small family of portal endpoints answers an **org-level, aggregate-only**
+question rather than returning a single client's data:
+`GET /api/portal/alerts?organizationId=…` (the org's ACTIVE alert rows)
+and `GET /api/portal/clients?organizationId=…` (the org's client-book
+KPI summary — `activeClients` / `needsAttention` / `trailAdvancedThisWeek`
+/ `averageHealth` / `averageHealthDelta`, plus a thin per-client array of
+aggregate scalars: health score, TRAIL-stage letter, active-alert count).
+
+These do **not** route through `verifyAdviserClientAccess` (that helper
+gates a single client's *data* on per-client GRANTED consent). Instead:
+`withPermission('org.read', …)` + an inline active-`OrganizationMember`
+check against the requested org (→ 403 if the caller isn't a member).
+The data they return is already consent-gated upstream — the alert/marker
+rows are written by the sweep, which applies `scopeAllowedTriggers` per
+client — so re-checking per-client consent here would be redundant. They
+return **no balances and no CDR data** (CLAUDE.md §13.3): only the
+aggregate scalars + the client's display name/initials.
+
+Reviewers: a new org-scoped aggregate endpoint may use this pattern only
+if it returns aggregates already produced under the consent gate; anything
+that would expose a single client's underlying data must use
+`verifyAdviserClientAccess` instead.
+
 ## **15.4 Webhook idempotency**
 
 Both signed-payload webhooks (`/api/stripe/webhooks` and
