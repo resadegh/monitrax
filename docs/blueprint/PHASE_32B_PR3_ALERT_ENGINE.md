@@ -3,9 +3,9 @@
 > **Status:** ✅ **COMPLETE.** #9a (PR #745) — schema + pure engine + tests + cron sweep. #9b (this PR) — org-scoped `GET /api/portal/alerts` + `POST /api/portal/alerts/[id]/dismiss` + Practice dashboard wiring + dismiss affordance.
 > **Closes:** Phase 32B PR3 item #9 — the last PR3 item. (Item #10 — profession-aware scope presets — shipped in PR #743.)
 > **Effort:** #9a ~3 days · #9b ~1 day (delivered).
-> **Last updated:** 2026-05-09 — Reza + Claude.
+> **Last updated:** 2026-05-10 — Reza + Claude (post-#9b polish part 1: admin "run sweep now" shipped — see §6b).
 >
-> **Post-#9b polish (queued, not blocking):** recompute the hero KPI strip from real client+alert data (needs the real client-book wiring, not just alerts — the alert GET doesn't carry health scores etc.); admin "run sweep now" button (proxy the cron with admin auth, useful before the Cloud Scheduler job is live).
+> **Post-#9b polish:** ① admin "run sweep now" button — **✅ shipped** (see §6b). ② recompute the hero KPI strip from real client+alert data — **📋 still queued, not blocking** (needs a `GET /api/portal/clients` endpoint carrying per-client aggregates — health score + TRAIL stage + active-alert count — *plus* a real product decision about what the Practice client-book table shows for an org with a sparse sweep history, since the table's financial columns can't be filled from the alert/marker rows alone).
 
 ---
 
@@ -115,8 +115,23 @@ the admin UI in a future PR) works for testing / backfill.
 | **`POST /api/portal/alerts/[id]/dismiss`** | ✅ | `withPermission<RouteContext>('org.update', …)` + active-membership check against the alert's org. Sets `status = DISMISSED`, `dismissedAt = now`, `dismissedByMemberId = caller's OrganizationMember.id`. Idempotent on an already-DISMISSED row; 409 on a RESOLVED row. |
 | **`PracticeAlertStream` — `onDismiss?` + dismiss affordance** | ✅ | New optional `onDismiss?: (alertId) => void`; when present each alert row gets a "Dismiss" link under the primary-action button. `clients` prop narrowed `DemoClient[]` → `AlertClientSummary = Pick<DemoClient,'id'|'initials'|'name'>` (the stream never touches the financial fields). `AlertClientSummary` re-exported from the practice index. |
 | **Practice dashboard wiring** | ✅ | `/portal/dashboard` `useEffect` fetches `GET /api/portal/alerts` for the current org; `realAlerts === null` ⇒ fixture-preview mode (the `LIGHTHOUSE_ALERTS` fixture, kept as the empty-state placeholder); a non-empty real array ⇒ swaps to live data + passes `onDismiss` (optimistic-remove + refetch). |
-| **`computeKpis` real input** | 📋 post-#9b | The hero KPI strip stays on the fixture for #9b — recomputing it needs the real client book (health scores etc.), not just alerts. Lands with the client-book wiring. |
-| **Admin "run sweep now"** | 📋 post-#9b | Optional — a button to invoke the sweep on demand for testing/backfill before the Cloud Scheduler job is live. |
+| **`computeKpis` real input** | 📋 post-#9b | The hero KPI strip stays on the fixture for #9b — recomputing it needs the real client book (health scores etc.), not just alerts. Lands with the client-book wiring (see §6b). |
+| **Admin "run sweep now"** | ✅ shipped | See §6b. |
+
+---
+
+## 6b. Post-#9b polish — part 1: admin "run sweep now" (✅ shipped)
+
+The Cloud Scheduler job (`monitrax-portal-alert-sweep`, `0 4 * * *` UTC) is a Reza-side console step; until it's wired, the engine never runs and the Practice dashboard shows the fixture preview. This makes the sweep invokable on demand from the admin portal — also useful for a one-off recompute after onboarding a new client, or a dry-run preview without touching any rows.
+
+| Item | Status | Detail |
+|---|---|---|
+| **`lib/portal/alerts/sweepRunner.ts`** | ✅ | The sweep core extracted out of the cron route into `runPortalAlertSweep({ dryRun?, organizationId? }): Promise<PortalAlertSweepResult>`. One implementation; the cron route and the admin route are now thin auth wrappers around it (CLAUDE.md §12.2 SSOT). Behaviour unchanged from #9a. |
+| **`POST /api/portal/alerts/sweep`** (refactored) | ✅ | Now just: CRON_SECRET timing-safe auth + `BLOCKED`-audit-on-fail + parse `{dryRun,organizationId}` body → `runPortalAlertSweep(...)` → return the result. |
+| **`POST /api/admin/portal-alert-sweep`** | ✅ | New. `verifyAdminGCPAuth` + `role === 'SUPER_ADMIN'` (mirrors `/api/admin/run-seed`). Body `{ dryRun?, organizationId? }` → `runPortalAlertSweep(...)`. Writes an `AuditLog` row (`action: 'UPDATE'`, `entityType: 'PortalAlertSweep'`, `metadata: { trigger: 'admin-manual', adminEmail, dryRun, counts… }`) on success and on failure. Returns `{ ...PortalAlertSweepResult, runBy }`. `maxDuration = 300`. |
+| **Admin UI** | ✅ | New "Portal alert sweep" `AdminCard` on `/admin/scheduler` (below the Cloud Scheduler jobs table; rendered independently of the GCP-Scheduler-API availability since it calls our endpoint directly). Has a **"Dry run"** checkbox (default on — safest first action), a **"Preview sweep" / "Run sweep now"** button (label flips with the checkbox), an amber "writes ClientAlert rows for all orgs" hint when dry-run is off, and a result panel showing the counts (orgs / clients processed / skipped / alerts created·updated·resolved / errors) + duration + run-by + the first 10 per-client errors if any. |
+
+> **Still queued (post-#9b part 2):** the hero KPI strip + client-book table on real data. This needs a new `GET /api/portal/clients` endpoint returning per-client aggregates (health score + TRAIL stage + active-alert count — read cheaply from `OrganizationClient` + `ClientSnapshotMarker` + `ClientAlert`, no live snapshot) **and** a product decision: the `PracticeClientBookTable` shows financial columns (net worth, cashflow, LVR…) that can't be filled from the alert/marker rows, so for real orgs the client-book either needs a leaner shape (health / stage / last-contact + a "view client →" link) or the endpoint has to compute fuller per-client snapshots (slower; re-exposes financial aggregates on the practice landing → `ClientAccessLog` rows per client, CDR-sensitive). Worth an architect-mode pass before building.
 
 ---
 
@@ -133,7 +148,9 @@ the admin UI in a future PR) works for testing / backfill.
 
 - `lib/portal/practice/lighthouseDataset.ts` — the fixture this replaces (and which stays as the empty-state preview).
 - `lib/portal/practice/professionConfig.ts` — per-profession default trigger sets (`getPracticeProfessionConfig`).
-- `lib/cfo/trailStage.ts` — `determineTrailStage` (the cron uses it to derive the current TRAIL stage for the `TRAIL_ADVANCED` trigger).
-- `app/api/conversations/retention-sweep/route.ts` — the cron pattern this endpoint mirrors (`CRON_SECRET` + timing-safe + `BLOCKED` audit).
+- `lib/cfo/trailStage.ts` — `determineTrailStage` (the sweep uses it to derive the current TRAIL stage for the `TRAIL_ADVANCED` trigger).
+- `lib/portal/alerts/sweepRunner.ts` — the shared sweep core (`runPortalAlertSweep`) the cron route and the admin route both call.
+- `app/api/conversations/retention-sweep/route.ts` — the cron pattern the cron endpoint mirrors (`CRON_SECRET` + timing-safe + `BLOCKED` audit).
+- `app/api/admin/run-seed/route.ts` — the admin-auth pattern `POST /api/admin/portal-alert-sweep` mirrors (`verifyAdminGCPAuth` + `role === 'SUPER_ADMIN'`).
 - `docs/blueprint/PHASE_32_ENTERPRISE_PORTAL.md` — Phase 32 status table.
 - CLAUDE.md §13.3 (CDR data sanitisation), §13.4 (CRON_SECRET pattern), §12.11 (destructive-write checklist), §12.12 (schema-migration protocol), §16 (doc-sync).
