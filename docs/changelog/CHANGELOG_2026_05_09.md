@@ -1021,3 +1021,63 @@ N/A — doc-only PR. No code, no schema migration, no Prisma writes. The procedu
 ### PR
 - Branch: `claude/phase-0-operational-readiness-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-32b-pr3-post9b-polish-MG8mr (Phase 32B PR3 — post-#9b polish, part 1: admin "run sweep now")
+
+### Changes Made
+- **Type:** Refactor + feature (admin tooling). Phase 32B PR3 post-#9b polish item ① — the autonomous-queue "continue" item from `PHASE_32B_PR3_ALERT_ENGINE.md`.
+- **Scope:** Extract the portal alert-sweep core out of the cron route into a shared function; add a SUPER_ADMIN-only "run sweep now" endpoint + an admin-UI button so the engine can be exercised before the GCP Cloud Scheduler job is wired.
+- **Root cause / motivation:** The portal alert engine (#9a/#9b, PRs #745/#746) is fully built but dormant until `monitrax-portal-alert-sweep` (`0 4 * * *` UTC) is created in GCP Cloud Scheduler — a Reza-side console step. There was no way to trigger the sweep otherwise (testing, backfill, post-onboarding recompute, or just demoing the alert stream against a seeded org). Also: the sweep logic lived inside the cron route — a duplicated-logic seam waiting to happen the moment a second caller appeared.
+- **Solution:** `runPortalAlertSweep({ dryRun?, organizationId? })` is now the single implementation (`lib/portal/alerts/sweepRunner.ts`); the cron route and the new admin route are thin auth wrappers around it (CLAUDE.md §12.2 SSOT). The admin route is gated `SUPER_ADMIN` and writes an `AuditLog` row on every invocation. The admin UI defaults to dry-run.
+
+### Files Created
+- `lib/portal/alerts/sweepRunner.ts` (~290 LOC) — `runPortalAlertSweep(opts): Promise<PortalAlertSweepResult>` + the `projectSnapshot` helper, moved verbatim from the cron route. Per `Organization` (optionally one) → per `OrganizationClient` (`status = ACTIVE`, `consentStatus = GRANTED`) → `getMasterFinancialSnapshot(client.userId)` → `projectSnapshot` (cast to `AlertEngineSnapshot` + `determineTrailStage`) → `computeAlerts({ snapshot, prior, enabledTriggers })` with `enabledTriggers = professionTriggers ∩ scopeAllowedTriggers(client.accessScopes)` → persist: upsert ACTIVE `ClientAlert` rows (leave DISMISSED alone — sticky), `updateMany(→RESOLVED)` rows whose trigger cleared, upsert `ClientSnapshotMarker`. `dryRun` computes everything and writes nothing. Behaviour is byte-for-byte the same as #9a (PR #745).
+- `app/api/admin/portal-alert-sweep/route.ts` (~110 LOC) — `POST`, `verifyAdminGCPAuth` + `role === 'SUPER_ADMIN'` (mirrors `/api/admin/run-seed`; 503 when the admin portal isn't enabled, 401 on bad session, 403 on wrong role). Body `{ dryRun?, organizationId? }` → `runPortalAlertSweep(...)`. Writes an `AuditLog` row (`action: 'UPDATE'`, `status: 'SUCCESS'|'FAILURE'`, `entityType: 'PortalAlertSweep'`, `metadata: { trigger: 'admin-manual', adminEmail, dryRun, organizationId, orgsProcessed, clientsProcessed, alertsCreated/Updated/Resolved, errorCount }`) on success and on failure. Returns `{ ...PortalAlertSweepResult, runBy }`. `maxDuration = 300`, `dynamic = 'force-dynamic'`.
+
+### Files Modified
+- `app/api/portal/alerts/sweep/route.ts` — refactored to a thin wrapper: CRON_SECRET timing-safe auth (unchanged) + `BLOCKED`-audit-on-fail (unchanged) + parse `{dryRun,organizationId}` body → `runPortalAlertSweep(...)` → `NextResponse.json(result)`. `dynamic`/`maxDuration` preserved. Header JSDoc rewritten to point at the shared runner + the admin endpoint. The `SweepResult`/`SweepBody` interfaces + `projectSnapshot` + the per-org/per-client loop all moved to `sweepRunner.ts`.
+- `app/admin/scheduler/page.tsx` — new "Portal alert sweep" `AdminCard` below the Cloud Scheduler jobs table (rendered outside the data-load block — it calls our app endpoint, not the GCP Scheduler API, so it works even when the GCP API isn't configured). Has: a **"Dry run (compute only — write nothing)"** checkbox (default ON); a **"Preview sweep" / "Run sweep now"** button (label flips with the checkbox; `isLoading` while running); an amber "Writes ClientAlert rows for all orgs." hint when dry-run is off; a result panel — an `AdminBadge` (neutral "Dry run" / success "Applied") + duration + run-by + a counts grid (orgs / clients processed / skipped / alerts created·updated·resolved / errors) + the first 10 per-client errors if any. Uses `safeAdminFetch('/api/admin/portal-alert-sweep', { method: 'POST', body: JSON.stringify({ dryRun }) })`. New state: `sweepDryRun` / `sweepRunning` / `sweepResult` / `sweepError` + a `handleRunSweep` handler + a `PortalAlertSweepResult` interface.
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` — new §6b "Post-#9b polish — part 1: admin run sweep now (✅ shipped)" with the item table; §6 table row "Admin run sweep now" flipped 📋→✅ (and "computeKpis real input" note points at §6b); header status line updated (post-#9b polish ① ✅ / ② 📋, with the ② blocker — the client-book's financial columns — spelled out); §8 references add `sweepRunner.ts` + `run-seed/route.ts` as the admin-auth pattern.
+- `docs/IMPLEMENTATION_PLAN.md` — the Phase 0 "Real alert engine v1" chunk's post-#9b note split (admin button ✅ this PR; hero KPI 📋 still queued, with the architect-mode-pass note); §0b replaced (operational-readiness workstream — PR #748, now merged → Recently Completed) with this active-workstream entry; PR #748 added to ✅ Recently Completed; top "Last updated" line refreshed.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (new admin-portal tooling: a manual "run portal alert sweep" trigger with dry-run, audit-logged; the cron route refactored to share its core)
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` — §6b new + §6 table + header status + §8 references
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 chunk note split + §0b + Recently Completed (PR #748) + top header
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+- (`docs/architecture/07_API_STANDARDS.md` NOT touched — the new admin endpoint follows the existing admin-route convention; no new API standard introduced. No schema change → no `03_DATA_MODEL.md` / migration. No new design primitive → no `06_UI_UX_FOUNDATION.md` (the admin UI reuses `AdminCard`/`AdminButton`/`AdminBadge`).)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows (all inside `runPortalAlertSweep`, **moved verbatim from #9a's cron route — behaviour unchanged**):
+- `lib/portal/alerts/sweepRunner.ts` — `prisma.clientAlert.update(...)` (refresh an existing ACTIVE/DISMISSED-but-recomputed alert row for *this* `organizationClientId`+`triggerKind`)
+- `lib/portal/alerts/sweepRunner.ts` — `prisma.clientAlert.updateMany({ where: { organizationClientId: <this client>, status: { in: ['ACTIVE','DISMISSED'] }, triggerKind: { notIn: <still-computed> } }, data: { status: 'RESOLVED', resolvedAt } })` — and the `enabledTriggers.length === 0` variant (`updateMany` over the same single-client scope)
+- `lib/portal/alerts/sweepRunner.ts` — `prisma.clientSnapshotMarker.upsert({ where: { organizationClientId: <this client> }, ... })`
+
+For each:
+1. **`where` clause matches:** only rows for the single `organizationClient` currently being processed (and, for the `clientAlert.update`, the exact `triggerKind`). No cross-client scope.
+2. **Columns overwritten / rows deleted:** `clientAlert` — `severity`/`headline`/`body`/`context`/`primaryActionLabel`/`payload`/`status`/`resolvedAt`/`detectedAt`, all engine-derived aggregate fields the sweep itself authored (no user-entered data; CDR §13.3 — payload is aggregates only). `clientSnapshotMarker` — `lastHealthScore`/`lastTrailStage`/`lastSweptAt`, sweep-authored. No `delete`/`deleteMany`.
+3. **Guard ensuring this only mutates rows I created:** these tables (`client_alerts`, `client_snapshot_markers`) are written *exclusively* by the sweep — there is no other writer. The `where` is the synthetic key the sweep created the row with (`organizationClientId` + `triggerKind`). This is the same structural argument signed off for #9a (PR #745). The dry-run path writes nothing at all.
+
+User confirmation: NOT REQUIRED — this PR adds no new destructive write; it relocates #9a's (already-reviewed) sweep writes into a shared function, and adds a dry-run-default front door to invoke them.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` is a no-op in this sandbox (no `node_modules`). Code reviewed against existing patterns: `verifyAdminGCPAuth` + `ADMIN_ERROR_CODES` + `authResult.context.role !== 'SUPER_ADMIN'` matches `/api/admin/run-seed/route.ts`; `safeAdminFetch(url, { method, body })` matches the `/admin/scheduler` page's existing `handleAction`; `AdminCard`/`AdminCardHeader`/`AdminButton`/`AdminBadge` match their existing usages on that page; `createAuditLog({ userId, action: 'UPDATE', status, entityType, metadata })` matches `/api/admin/gcp/scheduler/route.ts`; `import prisma from '@/lib/db'` (default) matches the original cron route; `runPortalAlertSweep`'s body is the cron route's body verbatim (no logic change). The Vercel preview build is the canonical type check.
+
+### PR
+- Branch: `claude/phase-32b-pr3-post9b-polish-MG8mr`
+- Status: pending push + open
