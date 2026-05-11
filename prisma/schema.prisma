@@ -4235,6 +4235,13 @@ model ClientSnapshotMarker {
   lastTrailStage  String?  // 'T' | 'R' | 'A' | 'I' | 'L' at the last sweep
   lastSweptAt     DateTime @default(now())
 
+  // Snapshot of the *previous* sweep — lets readers (the Practice hero
+  // KPI strip) show a "change since last sweep" delta without a history
+  // table. Rolled forward by the sweep: previous := last, then
+  // last := current. Null until the second sweep for a given client.
+  previousHealthScore Int?
+  previousTrailStage  String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
