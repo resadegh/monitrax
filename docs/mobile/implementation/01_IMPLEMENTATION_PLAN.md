@@ -12,9 +12,9 @@
 | Sprint | Weeks | Focus | Key Milestone |
 |--------|-------|-------|---------------|
 | **0** | 1–2 | Foundation | Expo project boots, Firebase Auth works, shared code extracted |
-| **1** | 3–5 | Daily Pulse | Home screen live with real data from mobile snapshot API |
-| **2** | 6–8 | Transactions | Transaction feed with swipe-categorise and quick-add |
-| **3** | 9–10 | Notifications | Push notifications delivered, cashflow forecast screen |
+| **1** | 3–5 | Daily Pulse + Scanner | Home screen with real data; receipt scanner as top-level action |
+| **2** | 6–8 | Triage + Transactions | Transaction Triage Mode (card-stack swipe); feed; quick-add; delta sync |
+| **3** | 9–10 | Notifications + Basiq | Push notifications (14 types); Basiq reconnection flow; cashflow forecast |
 | **4** | 11–12 | Intelligence | Insights hub, health detail, AI chat |
 | **5** | 13–14 | Polish | Offline hardening, CDR verification, performance tuning |
 | **6** | 15–16 | Ship | TestFlight, App Store submission, documentation |
@@ -76,78 +76,88 @@
 
 ---
 
-## SPRINT 1 — DAILY PULSE (Weeks 3–5)
+## SPRINT 1 — DAILY PULSE + SCANNER (Weeks 3–5)
 
-**Goal:** Home screen showing real financial data from the mobile snapshot API.
+**Goal:** Home screen showing real financial data; receipt scanner as top-level action.
 
 ### Backend Tasks
 
 | # | Task | Priority | Acceptance Criteria |
 |---|------|----------|-------------------|
-| B1.1 | Build `GET /api/v1/mobile/snapshot` endpoint | P0 | Returns `MobileSnapshot` shape (<50kb) from `getMasterFinancialSnapshot()` |
+| B1.1 | Build `GET /api/v1/mobile/snapshot` endpoint | P0 | Returns `MobileSnapshot` shape (<50kb) including `moneyLeftUntilPayday` |
 | B1.2 | Build `GET /api/v1/mobile/accounts` endpoint | P1 | Returns account balances summary (<15kb) |
 | B1.3 | Build `GET /api/v1/mobile/categories` endpoint | P1 | Returns category list for pickers (<10kb) |
-| B1.4 | Add spending velocity calculation (today vs daily average) | P1 | `spending.todayTotal` and `spending.dailyAverage` populated from `UnifiedTransaction` |
+| B1.4 | Add spending velocity + payday calculation | P0 | `spending.todayTotal`, `spending.dailyAverage`, and `moneyLeftUntilPayday` (next SALARY Income date minus projected expenses) |
+| B1.5 | Build `POST /api/v1/mobile/document/upload` (multipart) | P0 | Receipt photo uploaded to GCS; Gemini OCR triggered; extracted fields returned |
 
 ### Mobile Tasks
 
 | # | Task | Priority | Acceptance Criteria |
 |---|------|----------|-------------------|
-| M1.1 | Build Daily Pulse home screen with all widgets | P0 | Net worth, health ring, cashflow, spending, accounts, insights all render |
-| M1.2 | Implement biometric unlock flow (Face ID / Fingerprint) | P0 | App prompts biometric on open; falls back to Firebase login |
-| M1.3 | Build SQLite cache layer for snapshot data | P0 | Snapshot cached; loads from cache when offline |
-| M1.4 | Implement pull-to-refresh on home screen | P0 | Pull down triggers `/api/v1/mobile/snapshot` refetch |
-| M1.5 | Build health score ring component (animated 0–100) | P0 | Ring animates to score; colour matches grade |
-| M1.6 | Build account balances horizontal scroll cards | P1 | Accounts scroll horizontally; show name, balance, last synced |
-| M1.7 | Build insight card component with severity colours | P1 | Cards show severity badge, title, description, CTA |
-| M1.8 | Build "Last updated X ago" offline indicator | P1 | Shows time since last successful sync |
-| M1.9 | Implement dark mode support | P2 | Respects system theme; manual toggle in settings |
-| M1.10 | Build quick action FAB (Add Expense, Add Income) | P2 | Floating button opens action sheet |
+| M1.1 | Build Daily Pulse home screen with all widgets | P0 | Net worth, health ring, cashflow, spending, money-left-until-payday, accounts, insights all render |
+| M1.2 | Build "Money Left Until Payday" widget | P0 | Shows "$X left for Y days" with colour gradient (green → amber → red) |
+| M1.3 | Implement biometric unlock flow (Face ID / Fingerprint) | P0 | App prompts biometric on open; falls back to Firebase login |
+| M1.4 | Build SQLite cache layer for snapshot data | P0 | Snapshot cached; loads from cache when offline |
+| M1.5 | Build receipt scanner screen (camera → upload → OCR → auto-fill) | P0 | Camera opens; photo captures; fields auto-filled from OCR; expense saved |
+| M1.6 | Build scanner FAB (persistent floating action button) | P0 | Camera icon FAB visible on all screens; tap opens scanner |
+| M1.7 | Implement pull-to-refresh on home screen | P0 | Pull down triggers `/api/v1/mobile/snapshot` refetch |
+| M1.8 | Build health score ring component (animated 0–100) | P1 | Ring animates to score; colour matches grade |
+| M1.9 | Build account balances horizontal scroll cards | P1 | Accounts scroll horizontally; show name, balance, last synced |
+| M1.10 | Build insight card component with severity colours | P1 | Cards show severity badge, title, description, CTA |
+| M1.11 | Build "Last updated X ago" offline indicator | P1 | Shows time since last successful sync |
+| M1.12 | Implement dark mode support | P2 | Respects system theme; manual toggle in settings |
 
 ### Sprint 1 Exit Criteria
 
 - [ ] Daily Pulse shows real data from production API
+- [ ] "Money Left Until Payday" widget shows correct calculation
 - [ ] Biometric unlock works on iOS (Face ID) and Android (Fingerprint)
+- [ ] Receipt scanner: camera → snap → OCR auto-fills amount + merchant + date
+- [ ] Scanner FAB visible on all screens
 - [ ] Cached data displays when phone is in airplane mode
 - [ ] Health score ring renders with correct colour and animation
 - [ ] Pull-to-refresh updates all widgets
-- [ ] Account balances scroll horizontally with correct data
 
 ---
 
-## SPRINT 2 — TRANSACTIONS (Weeks 6–8)
+## SPRINT 2 — TRIAGE MODE + TRANSACTIONS (Weeks 6–8)
 
-**Goal:** Transaction feed with swipe-to-categorise and quick-add expense/income.
+**Goal:** Transaction Triage Mode (card-stack swipe); transaction feed; quick-add; delta sync.
 
 ### Backend Tasks
 
 | # | Task | Priority | Acceptance Criteria |
 |---|------|----------|-------------------|
 | B2.1 | Build `GET /api/v1/mobile/transactions` with delta sync | P0 | Returns transactions since `?since=` timestamp; max 100 per page |
-| B2.2 | Build `PATCH /api/v1/mobile/transaction/{id}/categorize` | P0 | Updates category; creates MerchantMapping for AI learning |
-| B2.3 | Build `POST /api/v1/mobile/expense` | P0 | Creates expense with Zod validation; returns created entity |
-| B2.4 | Build `POST /api/v1/mobile/income` | P0 | Creates income with Zod validation; returns created entity |
-| B2.5 | Build `POST /api/v1/mobile/sync` endpoint | P0 | Accepts pending writes; returns resolved IDs + delta data |
+| B2.2 | Build `GET /api/v1/mobile/transactions/triage` | P0 | Returns uncategorised transactions (`category IS NULL OR categoryConfidence < 0.5`) sorted by recency; includes AI suggestion + confidence |
+| B2.3 | Build `PATCH /api/v1/mobile/transaction/{id}/categorize` | P0 | Updates category; creates `MerchantMapping` for AI learning |
+| B2.4 | Build `PATCH /api/v1/mobile/transaction/{id}/flag` | P1 | Flags transaction as duplicate/excluded/unrecognised |
+| B2.5 | Build `POST /api/v1/mobile/expense` | P0 | Creates expense with Zod validation; returns created entity |
+| B2.6 | Build `POST /api/v1/mobile/income` | P0 | Creates income with Zod validation; returns created entity |
+| B2.7 | Build `POST /api/v1/mobile/sync` endpoint | P0 | Accepts pending writes; returns resolved IDs + delta data |
 
 ### Mobile Tasks
 
 | # | Task | Priority | Acceptance Criteria |
 |---|------|----------|-------------------|
-| M2.1 | Build transaction feed screen with FlashList | P0 | Smooth scroll at 10,000+ items; date grouping (Today, Yesterday, etc.) |
-| M2.2 | Implement swipe-right-to-categorise gesture | P0 | Swipe reveals category picker; selection updates transaction |
-| M2.3 | Build category picker bottom sheet | P0 | Shows system + custom categories; recent picks at top |
-| M2.4 | Build quick-add expense screen | P0 | Amount keypad auto-focused; saves via API or pending_writes |
-| M2.5 | Build quick-add income screen | P0 | Same pattern as expense; type picker (Salary/Rent/etc.) |
-| M2.6 | Build delta sync engine with NetInfo listener | P0 | Syncs on app open, connectivity change, and 30-min interval |
-| M2.7 | Implement offline pending_writes queue | P0 | Offline-created items stored in SQLite; synced when online |
-| M2.8 | Build transaction search/filter bar | P1 | Filter by merchant, category, amount, direction |
-| M2.9 | Implement haptic feedback (save success, categorise) | P2 | Correct haptic type per action (see Blueprint §13.3) |
-| M2.10 | Build swipe-left-to-flag gesture | P2 | Flags transaction as duplicate/excluded |
+| M2.1 | **Build Transaction Triage Mode (card-stack)** | P0 | Tinder-style card stack of uncategorised transactions; swipe right=accept, left=flag, up=investigate |
+| M2.2 | Build triage card component (merchant, amount, AI suggestion, confidence) | P0 | Card shows all context needed to categorise in 1.5 seconds |
+| M2.3 | Build category picker bottom sheet (for overriding AI suggestion) | P0 | Shows system + custom categories; recent picks at top |
+| M2.4 | Build triage queue badge on Transactions tab | P0 | "12 to triage" badge; empty state: "All sorted!" with celebration haptic |
+| M2.5 | Build transaction feed screen with FlashList | P0 | Smooth scroll at 10,000+ items; date grouping (Today, Yesterday, etc.) |
+| M2.6 | Build quick-add expense screen | P0 | Amount keypad auto-focused; saves via API or pending_writes |
+| M2.7 | Build quick-add income screen | P0 | Same pattern as expense; type picker (Salary/Rent/etc.) |
+| M2.8 | Build delta sync engine with NetInfo listener | P0 | Syncs on app open, connectivity change, and 30-min interval |
+| M2.9 | Implement offline pending_writes queue | P0 | Offline-created items stored in SQLite; synced when online |
+| M2.10 | Build transaction search/filter bar | P1 | Filter by merchant, category, amount, direction |
+| M2.11 | Implement haptic feedback (save success, categorise, triage complete) | P1 | Correct haptic type per action (see Blueprint §13.3) |
 
 ### Sprint 2 Exit Criteria
 
+- [ ] Transaction Triage Mode: swipe right categorises, feeds MerchantMapping learning
+- [ ] Triage queue badge shows correct count; empty state celebrates completion
+- [ ] User can triage 30 transactions in under 60 seconds (timed test)
 - [ ] Transaction feed shows real Basiq + manual transactions
-- [ ] Swipe-to-categorise updates category on server and in local cache
 - [ ] Quick-add expense creates expense visible on web dashboard
 - [ ] Offline-created expense syncs when connectivity returns
 - [ ] Delta sync fetches only new/modified transactions since last sync
@@ -155,9 +165,9 @@
 
 ---
 
-## SPRINT 3 — NOTIFICATIONS (Weeks 9–10)
+## SPRINT 3 — NOTIFICATIONS + BASIQ RECONNECT (Weeks 9–10)
 
-**Goal:** Push notifications delivered for all types; cashflow forecast screen live.
+**Goal:** Push notifications (14 types) delivered; Basiq reconnection via in-app browser; cashflow forecast screen.
 
 ### Backend Tasks
 
@@ -165,12 +175,16 @@
 |---|------|----------|-------------------|
 | B3.1 | Deploy GCP Cloud Function `monitrax-push-notifications` | P0 | Function deployed; accepts trigger, sends FCM message |
 | B3.2 | Build `GET /api/v1/mobile/cashflow-forecast` endpoint | P0 | Returns 7/14/30-day forecast (<10kb) |
-| B3.3 | Implement daily digest Cloud Scheduler trigger (07:00 local) | P0 | Cloud Scheduler fires; Cloud Function builds and sends digest |
-| B3.4 | Implement overspending alert trigger from TIE | P0 | When daily spend >150% average, FCM message sent |
-| B3.5 | Implement upcoming payment trigger (2 days before due) | P1 | RecurringPayment due dates checked; reminders sent |
-| B3.6 | Implement cashflow risk trigger from Insights Engine | P1 | Negative forecast within 7 days triggers FCM |
-| B3.7 | Implement Basiq connection status change trigger | P1 | Connection status → RECONNECT/ERROR triggers FCM |
-| B3.8 | Apply `sanitizeCdrMetadata()` to all notification payloads | P0 | No CDR data in notification title/body |
+| B3.3 | Build `POST /api/v1/mobile/basiq/reconnect` endpoint | P0 | Returns Basiq consent URL for in-app browser OAuth; handles callback deep link |
+| B3.4 | Implement real-time transaction push trigger | P0 | On Basiq sync: for each new transaction, send FCM if user opted in |
+| B3.5 | Implement daily digest Cloud Scheduler trigger (07:00 local) | P0 | Cloud Scheduler fires; Cloud Function builds and sends digest |
+| B3.6 | Implement overspending alert trigger from TIE | P0 | When daily spend >150% average, FCM message sent |
+| B3.7 | Implement Basiq reconnection trigger (webhook) | P0 | Connection status → RECONNECT/ERROR triggers critical FCM with reconnect deep link |
+| B3.8 | Implement upcoming payment trigger (2 days before due) | P1 | RecurringPayment due dates checked; reminders sent |
+| B3.9 | Implement cashflow risk trigger from Insights Engine | P1 | Negative forecast within 7 days triggers FCM |
+| B3.10 | Implement anomaly detection trigger from TIE behavioural engine | P1 | Duplicates, timing anomalies, new merchants trigger FCM |
+| B3.11 | Implement triage reminder trigger | P2 | When uncategorised queue >10 items, send low-priority reminder |
+| B3.12 | Apply `sanitizeCdrMetadata()` to all notification payloads | P0 | No CDR data in notification title/body |
 
 ### Mobile Tasks
 
@@ -179,20 +193,24 @@
 | M3.1 | Implement FCM token registration on login | P0 | Token registered via `POST /api/v1/mobile/device/register` |
 | M3.2 | Build notification permission request flow | P0 | iOS/Android permission prompt; graceful degradation if denied |
 | M3.3 | Build notification tap handler (deep link routing) | P0 | Tapping notification opens correct screen with context |
-| M3.4 | Build cashflow mini-dashboard screen | P0 | 14-day forecast chart, upcoming charges, high/low alerts |
-| M3.5 | Build notification preferences screen | P1 | Toggle each notification type; set quiet hours; set digest time |
-| M3.6 | Build forecast area chart component | P1 | Confidence band shading; 14-day x-axis |
-| M3.7 | Build upcoming recurring charges list | P1 | Next 7 days of known payments with amounts |
-| M3.8 | Store notification preferences via `POST /api/v1/mobile/settings/notifications` | P2 | Preferences persisted server-side |
+| M3.4 | **Build Basiq reconnection flow** | P0 | Push "tap to reconnect" → opens in-app browser (`expo-web-browser`) with OAuth URL → deep link back → connection restored |
+| M3.5 | Build cashflow mini-dashboard screen | P0 | 14-day forecast chart, upcoming charges, high/low alerts |
+| M3.6 | Build notification preferences screen | P1 | Toggle each of 14 notification types; set quiet hours; set digest time; opt-in for real-time transaction push |
+| M3.7 | Build forecast area chart component | P1 | Confidence band shading; 14-day x-axis |
+| M3.8 | Build upcoming recurring charges list | P1 | Next 7 days of known payments with amounts |
+| M3.9 | Store notification preferences via `POST /api/v1/mobile/settings/notifications` | P2 | Preferences persisted server-side in `UserPreference` |
 
 ### Sprint 3 Exit Criteria
 
+- [ ] Real-time transaction push arrives within 60s of Basiq sync
 - [ ] Daily digest notification arrives at configured time
 - [ ] Overspending alert fires when daily spend exceeds threshold
+- [ ] Basiq reconnection: push received → tap → OAuth → connection restored
+- [ ] Anomaly detection push fires for duplicates/timing anomalies
 - [ ] Tapping any notification opens the correct screen
 - [ ] No CDR data visible in notifications on lock screen
 - [ ] Cashflow forecast chart renders with real data
-- [ ] Upcoming recurring charges list shows next 7 days
+- [ ] Notification preferences screen toggles all 14 types
 
 ---
 
