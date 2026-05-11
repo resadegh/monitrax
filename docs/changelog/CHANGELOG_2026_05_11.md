@@ -61,3 +61,58 @@ Docs updated:
 
 ### PR
 - Branch: `claude/phase-33g2-polish-Q6tyx`
+
+---
+
+## Session: claude/monotrax-marketing-strategy-gSktV (GTM Automation playbook — B2B-led launch plan)
+
+### Changes Made
+- **Type:** Strategy + planning doc (no code, no schema, no infra)
+- **Scope:** Go-to-market — full executable playbook for taking Monitrax from pre-revenue to first paying customers via a B2B-led wedge (mortgage-broker pilots + paid Financial Health Review service), with consumer subscriptions parked behind the Basiq economics gate.
+- **Why:** Reza asked for a no-fluff GTM strategy + the workflows / tools / automation processes to minimise founder involvement and maximise return. Architect-mode multi-lens synthesis (financial / growth-marketing / behavioural / architect / security/compliance) produced a B2B-first 90-day playbook + a 6-phase execution plan with step-by-step actions, "done when" criteria, and a "tell Claude to execute step X.Y" protocol.
+
+### Files Created
+- `docs/marketing/GTM_EXECUTION_PLAN.md` — the executable playbook. Phases 0–6 (Pre-flight → Foundations → Outbound pipeline → Review service → Broker onboarding → Basiq decision gate → Consumer scale). Each step has Goal / Time / Prerequisites / Action / Done-when / Gotcha. Includes status tracker (unchecked boxes per step), tool + monthly cost summary (~$800–1,200/mo pre-Basiq, ~$2,800–3,200/mo post-Basiq), 5 Open Questions Q-GTM-1..5 surfaced for Reza, and the "how to ask Claude to execute a step" protocol.
+
+### Files Modified
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - Header `**Last updated:**` line refreshed to 2026-05-11 with GTM context; prior 2026-05-10 entry preserved as `**Earlier (2026-05-10):**`.
+  - New active workstream `0d. GTM Automation — B2B-led launch playbook (executable plan)` added between `0c. Settings overhaul` and `0. Phase 14.6`. Covers status, owner, why-it-matters, the Basiq gate ($3–5k MRR + $15k cash on hand before kicking off Basiq onboarding), all 6 phases with checkboxes, success metrics, tool stack + burn, open questions, risks, 4-lens why-it-matters.
+  - Open Questions table: added Q-GTM-1 (Review price), Q-GTM-2 (sending domain), Q-GTM-3 (first aggregator), Q-GTM-4 (VA hire timing), Q-GTM-5 (AFSL boundary approach).
+  - "Open as of …" tail line updated from 2026-05-07 to 2026-05-11 with the 5 new GTM questions surfaced.
+  - Reversed Decisions table: new 2026-05-11 entry capturing the **rejection of consumer-first GTM as the primary 90-day motion** (three structural reasons — Basiq economics + pre-Basiq product gap + consumer fintech CAC payback — and the lesson "do not re-attempt without explicit user sign-off").
+- `docs/changelog/CHANGELOG_2026_05_11.md` — this session block.
+
+### Build status
+- N/A — doc-only PR. No code, no schema, no Vercel build surface.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture (the AFSL boundary is referenced and tracked as Q-GTM-5 + Step 0.1 of the plan, but no posture change in this PR — that lands when Step 0.1 is executed)
+- [ ] operational procedure
+- [x] strategic decision — new workstream added; 5 Open Questions surfaced; consumer-first GTM rejection logged in Reversed Decisions
+
+Docs updated in this PR:
+- `docs/marketing/GTM_EXECUTION_PLAN.md` — new file, the canonical playbook
+- `docs/IMPLEMENTATION_PLAN.md` — new workstream `0d`, 5 new Open Questions, new Reversed Decisions entry
+- `docs/changelog/CHANGELOG_2026_05_11.md` — this entry
+
+### Testing
+- [x] Read-through review of the plan for internal consistency (phase ordering, gate conditions, cost math)
+- [x] Cross-reference Basiq gate logic with CLAUDE.md §13 (CDR compliance) — manual-entry / CSV-import path is structurally CDR-clean (no CDR data in scope until Basiq is live)
+- [x] AFSL boundary flagged as Step 0.1 + Q-GTM-5 — not deferred, not hand-waved
+
+### Risks / considerations
+- The plan deliberately does NOT start product work for the broker product (refinance-trigger engine, co-branded referral link, multi-tenancy) until Phase 4. Spec-only at that stage; build only on the first signed pilot. This is the right sequencing to avoid building speculative product.
+- Open Questions Q-GTM-1..5 are blocking for Phase 2 of the plan, NOT for shipping this PR. The PR is the plan, not the execution.
+- Consumer-first GTM is now in Reversed Decisions — any future session proposing "let's just do SEO + paid ads from day one" needs to be pointed back at the 2026-05-11 lesson before relitigating.
+
+### PR
+- Branch: `claude/monotrax-marketing-strategy-gSktV`
+- Awaiting PR creation per Reza directive.
