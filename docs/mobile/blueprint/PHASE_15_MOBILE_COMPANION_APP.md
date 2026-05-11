@@ -1,8 +1,8 @@
 # PHASE 15 — MOBILE COMPANION APP
 
-**Version:** 2.0
+**Version:** 2.1
 **Created:** 2025-10-15
-**Updated:** 2026-04-11
+**Updated:** 2026-05-11
 **Status:** Approved — Ready for Implementation
 **Depends On:** Phase 08 (GRDCS), Phase 09 (Health + Navigation), Phase 10 (Auth & Security), Phase 13 (Transactional Intelligence), Phase 14 (Cashflow Optimisation), Phase 24 (Basiq Open Banking), Phase 35 (CDR Data Lifecycle)
 **Feeds Into:** Phase 17 (Personal CFO Engine), Phase 32 (Enterprise Portal)
@@ -55,29 +55,45 @@ Phase 14.5 (COMPLETE) already delivers a responsive mobile web experience with c
 
 1. **Deliver daily financial awareness in under 30 seconds**
    - A single "Daily Pulse" screen showing net worth, cashflow position, health score, and top insights
+   - "Money left until payday" widget — the single most anxiety-reducing number for most users
    - User can absorb their full financial state at a glance
 
-2. **Enable real-time transaction management on the go**
-   - Bank transaction feed powered by Phase 13 (Transactional Intelligence) and Phase 24 (Basiq)
-   - Swipe-to-categorise gestures for rapid triage
-   - AI-assisted categorisation via Gemini (reusing existing `lib/tie/categorisation.ts`)
+2. **Make transaction triage faster on mobile than desktop**
+   - Dedicated "Triage Mode" — a Tinder-like card-stack of uncategorised transactions
+   - Swipe right = accept category, swipe left = flag/exclude, swipe up = "I don't recognise this"
+   - Each correction feeds `MerchantMapping` for AI learning (reusing `lib/tie/categorisation.ts`)
+   - This solves the biggest friction point: the AI categorisation fallback was removed (2026-05-09) and ~50 hardcoded regex rules leave most small/local merchants uncategorised, creating a manual correction queue with no bulk UI on desktop
 
-3. **Push critical financial alerts to the user's pocket**
+3. **Replace the 9-step desktop receipt flow with a 3-step camera flow**
+   - Receipt/document scan is a **top-level action** (FAB or tab), not buried in a form
+   - Camera → snap → Gemini OCR auto-fills amount, merchant, date, category → save
+   - Desktop flow: receive receipt → photograph → transfer to computer → locate file → open Monitrax → navigate → open form → upload → wait for OCR → review → save (9 steps, 5+ minutes)
+   - Mobile flow: open app → tap scan → point camera → review auto-fill → save (5 steps, 30 seconds)
+   - Reuses existing `lib/documents/intelligence/DocumentIntelligenceEngine.ts` (Vision API + pattern analysers)
+
+4. **Push critical financial alerts to the user's pocket**
+   - **Real-time transaction push**: "You just spent $82.50 at Woolworths" (opt-in) — creates spending awareness at moment of purchase
    - Overspending warnings, upcoming payments, cashflow risk, bank sync issues
+   - Anomaly detection from `lib/tie/behavioural.ts` (price increases, duplicates, timing anomalies, new merchants) — currently computed silently with no way to reach the user
    - Morning Daily Digest and weekly summary
    - This is the **killer feature** that justifies a native app
 
-4. **Support quick financial data entry**
+5. **Fix the broken Basiq reconnection flow**
+   - Desktop reconnection is broken on mobile browsers (`window.open()` popup blocked)
+   - Current failure mode: connection goes stale silently → no notification → data stops syncing → user discovers days later in a buried settings page → no "Reconnect" button exists
+   - Mobile app: push notification on `RECONNECT`/`ERROR` status → tap → in-app browser OAuth flow → deep link back → connection restored
+   - This alone justifies the native app for any Basiq-connected user
+
+6. **Support quick financial data entry**
    - Quick-add expense and income from anywhere
-   - Receipt photo capture with Gemini OCR auto-extraction (reusing `lib/documents/intelligence/`)
    - Entries sync to the web app instantly
 
-5. **Integrate with the existing backend using optimised endpoints**
+7. **Integrate with the existing backend using optimised endpoints**
    - Lean mobile-specific API projections of `getMasterFinancialSnapshot()`
    - Delta sync to reduce bandwidth by 70%+
    - Max payload <200kb, latency <150ms
 
-6. **Maintain full CDR compliance on mobile**
+8. **Maintain full CDR compliance on mobile**
    - Encrypted local storage for CDR data
    - Consent-gated access via existing `withActiveConsent()` guard
    - CDR data wiped from device on consent revocation
@@ -94,7 +110,7 @@ Phase 14.5 (COMPLETE) already delivers a responsive mobile web experience with c
 | CGT calculations and tax engine | Complex multi-factor analysis |
 | Report generation and export | Desktop workflow |
 | Admin portal and enterprise portal | Administrative functions |
-| Basiq bank connection initial setup | One-time complex OAuth flow; web-only |
+| Basiq bank connection **initial** setup | One-time complex OAuth flow; web-only (reconnection IS in scope — see §4.4) |
 | Debt planner simulations | Requires interactive charts and comparison tables |
 | Document Intelligence review (OCR confidence scores, form auto-fill) | Needs large screen for extraction review |
 
@@ -186,6 +202,7 @@ The primary screen. Displays everything a user needs in a single glanceable view
 | **Health Score** (0-100 ring) | `lib/health/aggregateEngine.ts` | Animated ring with grade (A-F) and colour |
 | **Cashflow Position** | `getMasterFinancialSnapshot().cashflow` | Monthly surplus/deficit with sparkline |
 | **Spending Velocity** | `UnifiedTransaction` aggregate today vs daily average | "You've spent $X today" with comparison bar |
+| **Money Left Until Payday** | Next `Income` (type=SALARY) date minus projected expenses | "$1,240 left for 8 days" — the single most anxiety-reducing number (Mani et al. 2013: financial stress costs 13 IQ points; this widget directly reduces that cognitive tax) |
 | **Account Balances** (horizontal scroll) | `Account[]` with `balance` field | Compact cards per account; last synced timestamp |
 | **Top 3 Insights** | `lib/intelligence/insightsEngine.ts` — Critical and High only | Severity badge + 1-line summary + CTA |
 | **Quick Actions** (FAB or bottom row) | Static | "Add Expense", "Add Income", "Scan Receipt" |
@@ -197,7 +214,125 @@ The primary screen. Displays everything a user needs in a single glanceable view
 - Tap insight → opens Insight detail with recommended action
 - Offline: shows cached data with "Last updated X ago" indicator
 
-### 4.2 Transaction Feed
+### 4.2 Transaction Triage Mode — "Swipe to Sort Your Money"
+
+**The single biggest mobile-over-desktop advantage.** The AI categorisation fallback was removed (2026-05-09) and ~50 hardcoded regex rules in `lib/tie/categorisation.ts` leave most small/local/new merchants in "Uncategorised". On desktop there is no bulk recategorisation UI — the user must click into each transaction individually. On mobile, gesture-based card triage is 5x faster.
+
+**Design:** Tinder-style card stack. One uncategorised transaction per card. User processes the queue.
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│  ← Flag        $82.50    Accept →   │
+│                                     │
+│        WOOLWORTHS METRO 0432        │
+│        2 hours ago · ANZ Everyday   │
+│                                     │
+│        AI suggests: 🛒 Groceries    │
+│        Confidence: 85%              │
+│                                     │
+│  ↑ "I don't recognise this"         │
+│                                     │
+└─────────────────────────────────────┘
+    ○ ○ ○ ○ ● ○ ○   (7 remaining)
+```
+
+**Gestures:**
+
+| Gesture | Action | Outcome |
+|---------|--------|---------|
+| **Swipe right** | Accept AI-suggested category (or tap to pick different) | Transaction categorised; `MerchantMapping` created for future auto-categorisation |
+| **Swipe left** | Flag as duplicate / split / exclude | Transaction flagged; removed from queue |
+| **Swipe up** | "I don't recognise this" | Triggers AI investigation via Gemini; push notification with explanation when ready |
+| **Tap card** | Expand detail | Shows full merchant info, account, date, linked entity |
+| **Tap category badge** | Change category | Opens category picker sheet; user correction feeds learning loop |
+
+**Queue logic:**
+- Source: all `UnifiedTransaction` records where `category IS NULL` or `categoryConfidence < 0.5`
+- Sorted by: most recent first (user cares most about new transactions)
+- Badge on Transactions tab shows queue count: "12 to triage"
+- Empty state: "All sorted! You're on top of your spending." with celebration haptic
+
+**Why this is mobile-first:**
+- Desktop: click row → dialog opens → click category dropdown → select → close dialog → scroll to next. ~8 seconds per transaction.
+- Mobile: swipe right on card → next card auto-appears. ~1.5 seconds per transaction.
+- A user can triage 30 transactions in 45 seconds while waiting for coffee.
+
+---
+
+### 4.3 Receipt & Document Scanner — Top-Level Action
+
+**This replaces the 9-step desktop upload flow with a 3-step camera flow.**
+
+Desktop flow today: receive paper receipt → photograph with phone → transfer to computer → locate file on computer → open Monitrax → navigate to expenses → open form → click upload → find file → wait for OCR → review auto-fill → save. **9 steps, 5+ minutes.**
+
+Mobile flow: tap scan button → point camera → snap → review auto-fill → save. **5 steps, 30 seconds.**
+
+**UI position:** Persistent FAB (floating action button) or centre tab in bottom bar — NOT buried inside a form.
+
+```
+┌─────────────────────────────────────┐
+│          📷 Scan Receipt            │
+│                                     │
+│     ┌───────────────────────┐       │
+│     │                       │       │
+│     │    Camera viewfinder  │       │
+│     │                       │       │
+│     │    [ Auto-detect      │       │
+│     │      document edges ] │       │
+│     └───────────────────────┘       │
+│                                     │
+│          [  Capture  ]              │
+│                                     │
+│   Recent: 📄 Woolworths  📄 Coles  │
+└─────────────────────────────────────┘
+```
+
+**After capture:**
+1. Photo uploaded to GCS via `POST /api/v1/mobile/document/upload`
+2. `DocumentIntelligenceEngine` runs Vision API OCR + Tier 1 pattern analysers
+3. Auto-fills: amount, merchant/vendor, date, suggested category
+4. Low-confidence fields highlighted amber (from `lowConfidenceFields` list)
+5. User reviews, adjusts, saves → Expense entity created + document linked
+
+**Document types supported by existing engine:**
+- Receipts (Tier 1 pattern analyser)
+- Invoices (Tier 1 pattern analyser)
+- Utility bills (Tier 1, reuses receipt analyser)
+- Rate notices (Tier 1)
+- Bank statements (Tier 1)
+- Loan contracts, insurance policies, valuations (Tier 3 AI)
+
+**Why mobile-first:** The camera IS the input device. Desktop has no camera. The `LOCAL_DRIVE` storage provider silently skips OCR on desktop (`"Cannot analyze LOCAL_DRIVE documents server-side"`). Mobile always uploads to GCS, so OCR always runs.
+
+---
+
+### 4.4 Basiq Bank Reconnection
+
+**Fixes a broken flow.** The web app's `useBasiqConnect.ts` calls `window.open(consentUrl, '_blank', 'width=600,height=700')` — a fixed-size popup that mobile browsers block. When a connection enters `RECONNECT` status, the user has no way to fix it on mobile.
+
+**Current failure mode (desktop):**
+1. Connection goes stale (Basiq webhook sets status to `RECONNECT`)
+2. No notification — data silently stops syncing
+3. User discovers days later in buried `/dashboard/settings/connections`
+4. Amber badge visible but no "Reconnect" button — only "Disconnect"
+5. User must disconnect → navigate to Balances → "Connect Bank" → popup OAuth
+
+**Mobile solution:**
+1. Push notification: "Your ANZ connection needs attention. Tap to reconnect."
+2. User taps → app opens in-app browser (`expo-web-browser`) with Basiq consent URL
+3. User completes bank auth in native browser flow (no popup)
+4. Basiq redirects back → deep link returns to app
+5. Connection status → `ACTIVE`; sync resumes; success toast
+
+**Implementation:**
+- Webhook handler sets `RECONNECT` status → triggers FCM push via Cloud Function
+- Mobile app registers deep link handler for Basiq OAuth callback
+- `POST /api/v1/mobile/basiq/reconnect` endpoint initiates the flow
+
+---
+
+### 4.5 Transaction Feed
 
 Powered by Phase 13 (TIE) and Phase 24 (Basiq).
 
@@ -220,7 +355,7 @@ Powered by Phase 13 (TIE) and Phase 24 (Basiq).
 - Delta sync: only fetch transactions since `lastSyncTimestamp`
 - Initial load: max 100 transactions; infinite scroll paginates further
 
-### 4.3 Cashflow Mini-Dashboard
+### 4.6 Cashflow Mini-Dashboard
 
 Compact view of Phase 14 cashflow data.
 
@@ -237,7 +372,7 @@ Compact view of Phase 14 cashflow data.
 - Tap recurring charge → Transaction detail
 - Tap forecast → "Continue on Desktop" deep link to full cashflow intelligence page
 
-### 4.4 Insights & Alerts Hub
+### 4.7 Insights & Alerts Hub
 
 Real-time delivery of financial intelligence.
 
@@ -264,7 +399,7 @@ Real-time delivery of financial intelligence.
 - "Fix Now" → opens relevant quick action or deep links to web
 - Save for later / snooze
 
-### 4.5 Quick-Add Expense
+### 4.8 Quick-Add Expense
 
 Minimal-friction expense entry.
 
@@ -287,13 +422,13 @@ Notes            → Optional text
 - Saved via `POST /api/mobile/expense`
 - Success: haptic feedback + toast + auto-dismiss
 
-### 4.6 Quick-Add Income
+### 4.9 Quick-Add Income
 
 Same pattern as §4.5 but for income entries.
 
 **Fields:** Amount*, Name/Source, Type (Salary/Rent/Investment/Other), Frequency, Date, Property link (optional for rental), Notes.
 
-### 4.7 Financial Health Score Detail
+### 4.10 Financial Health Score Detail
 
 Drill-down from the Daily Pulse health ring.
 
@@ -305,7 +440,7 @@ Drill-down from the Daily Pulse health ring.
 - Top 3 improvement actions (from `lib/health/riskModelling.ts`)
 - "View Full Report on Desktop" deep link
 
-### 4.8 Biometric Authentication
+### 4.11 Biometric Authentication
 
 - **Face ID** (iOS) / **Fingerprint** (Android) for app unlock
 - Firebase refresh token stored in device Keychain (iOS) / Keystore (Android) via Expo SecureStore
@@ -320,10 +455,11 @@ Drill-down from the Daily Pulse health ring.
 
 | Feature | Description | Depends On |
 |---------|-------------|------------|
-| **Budget vs Actual** | Weekly spending vs budget tracking with progress bars per category | Phase 28 (Budget Analysis) |
+| **Budget Setup & Review** | Interactive budget setup from AI-generated scenarios; monthly check-in prompt; inline adjustment per category (tap progress bar to change target) | Phase 28 (Budget Analysis) |
+| **Leak Alert Snooze/Dismiss** | "I know about this, stop showing for 30 days" — prevents notification fatigue from `leakDetector.ts` which currently has no dismiss mechanism | Phase 31 (Cashflow Intelligence) |
+| **Impulse Spending Cooldown** | Opt-in: "You've bought coffee 3 times today ($14.70). That's $320/month." — 24-hour awareness nudge for flagged impulse patterns | Phase 13 (TIE behavioural) |
 | **Property Quick View** | Read-only property card: LVR, equity, rental yield, linked loan | Phase 8 (GRDCS) |
 | **Loan Payment Tracker** | Upcoming repayments, offset balance, days to next payment | Phase 2 (Loans) |
-| **Document Capture** | Photo upload → Gemini OCR → auto-categorise and link to entity | Phase 25-26 (Document Intelligence) |
 | **AI Chat** | Quick financial questions via Gemini; context-aware from snapshot | Phase 27 (Gemini AI) |
 | **Entity Read-Only View** | Tap any entity from insight/transaction → view detail card (no edit) | Phase 8 (GRDCS) |
 | **Notification Preferences** | Configure which alert types to receive; quiet hours | Phase 15 notification system |
@@ -761,16 +897,20 @@ Basiq Webhook ───────┘
 
 | Type | Trigger | Schedule | Priority | Content Example |
 |------|---------|----------|----------|-----------------|
+| **Real-time Transaction** | Basiq sync / TIE | On each new transaction (opt-in) | Normal | "You just spent $82.50 at Woolworths." — creates spending awareness at the moment of purchase; biggest behaviour change driver (behaviour psychologist lens) |
 | **Daily Digest** | Cloud Scheduler | 07:00 local | Normal | "Good morning. Net worth: $1.2M (+0.3%). 2 insights need attention." |
 | **Weekly Summary** | Cloud Scheduler | Sunday 09:00 local | Low | "This week: spent $1,240 (12% under budget). Health score: 78 (+2)." |
 | **Overspending Alert** | Real-time (TIE) | When daily spend >150% of average | High | "You've spent $380 today — 2.1x your daily average." |
 | **Upcoming Payment** | Cloud Scheduler | 2 days before due | Normal | "Home loan repayment of $2,340 due on Friday." |
 | **Cashflow Risk** | Insights Engine | When forecast shows negative in ≤7 days | High | "Projected shortfall of $420 in 5 days. Review cashflow." |
-| **Bank Sync Issue** | Basiq webhook | On connection status change | High | "ANZ connection needs re-authentication. Tap to fix." |
+| **Bank Reconnection** | Basiq webhook | On connection status → `RECONNECT`/`ERROR` | Critical | "Your ANZ connection needs attention. Tap to reconnect." — opens in-app browser OAuth flow (see §4.4) |
 | **Health Score Drop** | Insights Engine | When score drops >10 points | Normal | "Financial health dropped to 62 (was 74). 3 new risks detected." |
 | **AI Insight** | Insights Engine | On new Critical/High insight | High | "Your offset account could save $2,400/year. Tap for details." |
 | **Rate Change** | Insights Engine | On interest rate change detected | High | "Variable rate on Investment Loan changed to 6.24% (+0.25%)." |
 | **Subscription Alert** | TIE recurring detector | On price increase detected | Normal | "Netflix increased from $16.99 to $22.99/month." |
+| **Anomaly Detected** | TIE behavioural engine | On duplicate, timing anomaly, or new merchant | High | "Unusual: $450 at 2:47 AM from a merchant you've never used." — surfaces `lib/tie/behavioural.ts` anomaly detection which currently runs silently |
+| **Triage Reminder** | App-local | When uncategorised queue >10 items | Low | "You have 14 transactions to triage. Takes about 20 seconds." |
+| **Monthly Budget Check-in** | Cloud Scheduler | 1st of month, 09:00 local | Normal | "March budget starts fresh. Last month you were 12% under. Keep it up!" |
 
 ### 9.3 Notification Payload Structure
 
