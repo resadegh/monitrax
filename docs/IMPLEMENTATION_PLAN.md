@@ -156,12 +156,12 @@
   - Founder time: ≤2 hours/day on calls + decisions + Review QA; everything else machine/VA
   - 90-day cumulative revenue target: AU$8–15k + first broker MRR
 - **Tool stack + monthly burn:** n8n self-host + Anthropic API + Apollo + Instantly/Smartlead + Airtable + Cal.com + Loops + Stripe + PostHog + Sentry + Senja + Documenso + Loom + Typefully + outbound domain + part-time VA. **Pre-Basiq:** ~AU$800–1,200/mo. **Post-Basiq:** ~AU$2,800–3,200/mo. Full breakdown in `GTM_EXECUTION_PLAN.md` Tools section.
-- **Open Questions surfaced (need Reza decisions before Phase 2 launches):**
-  - Q-GTM-1: Review price for first 5 friendlies — $197 / $247 / $297?
-  - Q-GTM-2: Outbound sending domain name?
-  - Q-GTM-3: First aggregator to focus on (Connective / AFG / Loan Market)?
-  - Q-GTM-4: VA: hire now (parallel) or wait until first Review sells?
-  - Q-GTM-5: AFSL boundary — DIY scope doc + lawyer review, or engage an AFSL holder for the Review service from day one?
+- **Open Questions:**
+  - ✅ Q-GTM-1 DECIDED 2026-05-11 — Review price for first 5 friendlies = **$197** (public price TBD post Reviews #3–5; recommended ladder $197→$297→$397)
+  - ✅ Q-GTM-2 DECIDED 2026-05-11 — Outbound sending domain = **`try-monitrax.com`** via **Smartlead** (DFY managed inbox, `reza@try-monitrax.com`); step-by-step setup guide delivered to Reza this session
+  - Q-GTM-3 (open, before Step 2.2): First aggregator — Claude rec: Finsure first, Connective second
+  - Q-GTM-4 (open, before Step 3.7): VA hire timing — Claude rec: hire mid-Phase 2, small scope, expand into Review intake from Review #2–3
+  - Q-GTM-5 (open, before Step 3.1): AFSL boundary — Claude rec: DIY + AU fintech-lawyer review for v1 (factual-only), queue AFSL-holder partnership for the advice-session upsell
 - **Risk / considerations:**
   - **AFSL line (Security/Compliance lens):** the Review must stay strictly factual / general-information — no personal recommendations. ASIC enforcement on unlicensed personal advice is active. Doc + lawyer review BEFORE selling to non-friendlies (Step 0.1).
   - **Spam Act 2003 (Security lens):** cold B2B outbound is fine done right, illegal/blacklisted done sloppily — separate sending domain, low daily volume, real unsubscribe, B2B-relevant offer. Step 1.3 enforces this.
@@ -659,13 +659,13 @@ Bank-import codepaths (`components/bank/ImportWizard`, `components/bank/Transact
 
 | ~~Q-41F-1~~ | ~~41f.5 Monitrax Express vs Phase 42 reconciliation~~ | | ✅ **DECIDED 2026-05-07 — by Claude judgement under Reza directive "continue with phase 41 remaining tasks".** Phase 42 (PR #695 design doc + PR #696 + PR #698 PR1/PR2 already merged into main) **supersedes / subsumes** the 41f.5 Monitrax Express scope. Rationale: (a) Phase 42 is broader (full consumer-bookkeeping module, ~6 weeks) where 41f.5 was a 5-day lite tier; (b) 41f.5 + Phase 42 would have created two parallel codebases for the same domain — direct CLAUDE.md §12.2 violation; (c) Phase 42 is already in flight, so no work is lost. **Action:** 41f.5 spec doc `PHASE_41F_5_MONITRAX_EXPRESS.md` archived; 41f.5 row removed from Phase 41f workstream sub-PR list; Phase 41f core CLOSED at 41f.4. **Closes Q-41F-1.** |
 
-| Q-GTM-1 | **Review price for first 5 friendlies — $197 / $247 / $297?** | Anchors the price ladder and the perceived value of the Review. Too low signals "this isn't real"; too high adds friction before social proof exists. | Needs Reza decision before Step 3.2. |
-| Q-GTM-2 | **Outbound sending domain name?** | Cold mail must NEVER go from `monitrax.com.au` — a blacklist torches the primary domain. Need a sibling domain (e.g. `try-monitrax.com`, `monitrax-pro.com`) to warm for 2–3 weeks before launch. | Needs Reza decision before Step 1.3 — domain has to be bought + warmed in parallel with everything else. |
+| ~~Q-GTM-1~~ | ~~Review price for first 5 friendlies — $197 / $247 / $297?~~ | | ✅ **DECIDED 2026-05-11 — Reza: $197 for the first 5 friendlies.** (Claude flagged: $197 anchors the public price too — recommend a ladder $197 founding → $297 standard → $397 with-adviser-session, public price to be re-decided once Reviews #3–5 are delivered and conversion is observed. Not blocking.) **Closes Q-GTM-1.** Reflected in `GTM_EXECUTION_PLAN.md` Step 3.2. |
+| ~~Q-GTM-2~~ | ~~Outbound sending domain name?~~ | | ✅ **DECIDED 2026-05-11 — Reza: separate sending domain, `try-monitrax.com` (fallbacks `monitrax-pro.com` → `getmonitrax.com` → `hellomonitrax.com`).** Reza initially questioned whether a separate domain was needed (proposed `admin@monitrax.com.au`); Claude made the deliverability case — cold outreach generates spam-complaint signals tracked per sending domain; a burn would route the primary domain's product email + CDR consent confirmations to spam, with weeks-to-months recovery, right at launch — and Reza agreed ("fair call, let's go"). Tool: **Smartlead** ($39/mo, DFY managed inbox, n8n-friendly API; Instantly noted as the friendlier-UI alternative). One mailbox (`reza@try-monitrax.com`) sufficient at 30–50/day. **Closes Q-GTM-2.** Step-by-step setup guide delivered to Reza this session; reflected in `GTM_EXECUTION_PLAN.md` Step 1.3. |
 | Q-GTM-3 | **First aggregator to focus on (Connective / AFG / Loan Market / Mortgage Choice / Finsure)?** | Targeting one aggregator's network at a time produces tighter messaging + word-of-mouth inside that group. Spraying across all five dilutes the personalisation advantage. | Needs Reza decision before Step 2.2. |
 | Q-GTM-4 | **VA hire timing — parallel with Phase 2, or wait until first Review sells?** | Hiring early = trained + ready when volume hits; hiring late = no payroll burn while validating. Tradeoff is ~$300–500/mo for 6–8 weeks vs being the bottleneck the moment Reviews start landing. | Needs Reza decision before Step 3.7. Default recommendation: hire early. |
 | Q-GTM-5 | **AFSL boundary — DIY scope doc + lawyer review, or engage an AFSL holder for the Review service from day one?** | DIY + lawyer review = ~$1–3k one-time + stay strictly factual / general-information. Engaging an AFSL holder = ~15–25% revenue share but unlocks personal-recommendation language. The Review product is genuinely better with personal recommendations; the regulatory risk on DIY is real. | Needs Reza decision before Step 3.1. Default recommendation: DIY + lawyer review for v1 (factual-only Review), revisit if customer feedback says "I needed someone to tell me what to actually do". |
 
-**Open as of 2026-05-11:** Q-GTM-1, Q-GTM-2, Q-GTM-3, Q-GTM-4, Q-GTM-5 — all need Reza decisions before Phase 2 of `GTM_EXECUTION_PLAN.md` launches. Q-PRA-1 closed by single-voice decision; Q-FB-1 + Q-HELP-1 + Q-41F-1 closed by Claude judgement under Reza directives.
+**Open as of 2026-05-11:** Q-GTM-3 (first aggregator), Q-GTM-4 (VA hire timing), Q-GTM-5 (AFSL boundary) — needed before Phase 2 / Phase 3 of `GTM_EXECUTION_PLAN.md`. Q-GTM-1 (Review price = $197) + Q-GTM-2 (separate sending domain `try-monitrax.com` via Smartlead) DECIDED 2026-05-11. Q-PRA-1 closed by single-voice decision; Q-FB-1 + Q-HELP-1 + Q-41F-1 closed by Claude judgement under Reza directives.
 
 ---
 

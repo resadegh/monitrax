@@ -113,6 +113,13 @@ Docs updated in this PR:
 - Open Questions Q-GTM-1..5 are blocking for Phase 2 of the plan, NOT for shipping this PR. The PR is the plan, not the execution.
 - Consumer-first GTM is now in Reversed Decisions — any future session proposing "let's just do SEO + paid ads from day one" needs to be pointed back at the 2026-05-11 lesson before relitigating.
 
+### Update (same session, 2026-05-11) — GTM decisions logged + Step 1.3 guide
+- **Q-GTM-1 DECIDED — $197** for the first 5 friendly Reviews (Reza's call; Claude flagged the public price needs a $297 intermediate rung — recorded as non-blocking, public price TBD after Reviews #3–5).
+- **Q-GTM-2 DECIDED — separate sending domain `try-monitrax.com` via Smartlead** (DFY managed inbox `reza@try-monitrax.com`). Reza initially questioned the need for a separate domain (proposed `admin@monitrax.com.au`); Claude made the deliverability case (cold-outreach spam signals are tracked per sending domain; a burn routes the primary domain's product + CDR-consent email to spam with weeks-to-months recovery, right at launch); Reza agreed.
+- Delivered Reza a full step-by-step Step 1.3 setup guide (GoDaddy domain purchase + redirect → Smartlead DFY mailbox → GoDaddy DNS records SPF/DKIM/DMARC/tracking → warmup toggle → 2–3 week passive warm), with Claude on standby for the GoDaddy DNS field-mapping (GoDaddy's host-field auto-append behaviour is the common trip-up).
+- Docs updated: `IMPLEMENTATION_PLAN.md` (Q-GTM-1 + Q-GTM-2 marked ✅ DECIDED in Open Questions; workstream 0d open-questions list refreshed; "Open as of" tail line updated to leave only Q-GTM-3/4/5 open); `GTM_EXECUTION_PLAN.md` (Step 1.3 rewritten as the concrete Smartlead/GoDaddy guide; Step 3.2 price decision recorded; Open Questions table updated with decisions + Claude recommendations for the three still open).
+- Still open: Q-GTM-3 (first aggregator — rec Finsure), Q-GTM-4 (VA hire timing — rec mid-Phase 2 small scope), Q-GTM-5 (AFSL boundary — rec DIY + lawyer review for v1).
+
 ### PR
 - Branch: `claude/monotrax-marketing-strategy-gSktV`
 - Awaiting PR creation per Reza directive.

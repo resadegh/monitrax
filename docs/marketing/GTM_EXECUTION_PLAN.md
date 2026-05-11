@@ -78,12 +78,19 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 - **Done when:** Schema exists, API key copied to n8n credentials.
 - **Gotcha:** Don't over-engineer. Five columns per table > fifty. You can always add fields.
 
-### Step 1.3 — Register + warm a separate sending domain
-- **Goal:** A dedicated outbound domain (e.g. `try-monitrax.com` or `monitrax-pro.com`) — never use your primary `monitrax.com.au` for cold mail.
-- **Time:** 30 min setup, then **2–3 weeks of warming** running in parallel with everything else.
-- **Action:** Buy domain → set up DNS (MX, SPF, DKIM, DMARC) → connect to Instantly/Smartlead → enable auto-warmup at 5–10 sends/day ramping to 30–50/day over 2–3 weeks.
-- **Done when:** Domain SPF/DKIM/DMARC validates green, warmup running, deliverability score climbing.
-- **Gotcha:** Send ZERO cold mail from this domain during warmup. One cold blast pre-warmup torches the whole effort. Block out the 2–3 weeks on the calendar.
+### Step 1.3 — Register + warm a separate sending domain ✅ DECIDED, guide delivered 2026-05-11
+- **Decision (Q-GTM-2, Reza 2026-05-11):** dedicated outbound domain **`try-monitrax.com`** (fallbacks `monitrax-pro.com` → `getmonitrax.com` → `hellomonitrax.com`). Tool: **Smartlead** ($39/mo, DFY managed inbox). One mailbox: `reza@try-monitrax.com`. Never use `monitrax.com.au` for the automated sequences.
+- **Goal:** Domain registered (GoDaddy — same registrar as the main domain), mailbox provisioned via Smartlead DFY, DNS authenticated (SPF/DKIM/DMARC/tracking all green), warmup running.
+- **Time:** ~45 min of clicks spread over a day or two (DNS propagation waits), then **2–3 weeks of passive warming** running in parallel with Steps 1.1 + 1.6.
+- **Action (full step-by-step delivered to Reza 2026-05-11):**
+  1. **GoDaddy:** buy `try-monitrax.com`, decline all upsells, set a 301 forward → `https://monitrax.com.au`.
+  2. **Smartlead:** sign up (entry plan) → Email Accounts → Add → "done-for-you / managed inbox" → domain `try-monitrax.com` → mailbox `reza@try-monitrax.com` → Smartlead generates DNS records.
+  3. **GoDaddy DNS:** paste Smartlead's SPF (TXT `@`), DKIM (CNAME/TXT), tracking CNAME, plus DMARC (TXT `_dmarc` → `v=DMARC1; p=none; rua=mailto:reza@monitrax.com.au`). Touch NOTHING on `monitrax.com.au`. (If Smartlead offers a "delegate subdomain via NS" option, take it — even less work.)
+  4. **Smartlead:** click "verify DNS" (wait ~30 min for propagation) → all green → toggle **Warmup ON** (start 5–10/day, ramp +2–5/day, target 40–50/day, ~30% reply rate — accept defaults).
+  5. **Walk away for 2–3 weeks.** Send ZERO real cold mail from this domain during warmup.
+  - Alternative if Reza wants full mailbox control instead of DFY: Google Workspace (~AU$8.40/mo) on the domain → connect via OAuth in Smartlead. More setup; only worth it for infra ownership.
+- **Done when:** Smartlead shows the mailbox green/verified AND 2–3 weeks elapsed AND warmup deliverability score climbing toward 90%+.
+- **Gotcha:** Send ZERO cold mail from this domain during warmup. One cold blast pre-warmup torches the whole effort. Block out the 2–3 weeks on the calendar. GoDaddy auto-appends the domain to the DNS "Host" field — if Smartlead says `smartlead._domainkey.try-monitrax.com`, GoDaddy usually wants just `smartlead._domainkey`. Screenshot to Claude if unsure.
 
 ### Step 1.4 — Sign up for the core SaaS
 - **Goal:** All accounts created, billing on a single card, credentials in n8n.
@@ -184,7 +191,8 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 - **Time:** 20 min.
 - **Action:** Stripe → Payment Links → create "Financial Health Review — AU$X" → enable receipts + invoice → success URL = intake form. Webhook to n8n on `checkout.session.completed`.
 - **Done when:** Test purchase fires the webhook + creates an Airtable `Reviews` row + sends the intake email.
-- **Gotcha:** Start at $197 for the first 5 friendly Reviews to lower friction; raise to $297 / $397 as testimonials stack. Don't anchor too low.
+- **Decision (Q-GTM-1, Reza 2026-05-11):** **$197 for the first 5 friendly Reviews.** Public price to be re-decided after Reviews #3–5 are delivered and conversion is observed — Claude's recommended ladder: $197 founding → $297 standard → $397 with-adviser-session.
+- **Gotcha:** $197 is a low anchor — a $197 → $397 public jump is hard to justify, so plan the $297 intermediate step. Don't go below $197 for anyone — sub-$200 in personal finance reads as a lead magnet, not a product.
 
 ### Step 3.3 — Intake flow + Monitrax provisioning
 - **Goal:** Customer pays → automatically gets a Monitrax account + a checklist email.
@@ -308,13 +316,13 @@ When Phase 5 closes, ask Claude to flesh this section into a Phase 6 plan with t
 
 ## Open questions to resolve before Phase 2 launch
 
-| # | Question | Owner | Decision needed by |
+| # | Question | Owner | Status |
 |---|---|---|---|
-| Q-GTM-1 | Review price for first 5 friendlies — $197 / $247 / $297? | Reza | Before Step 3.2 |
-| Q-GTM-2 | Outbound sending domain name? | Reza | Before Step 1.3 |
-| Q-GTM-3 | First aggregator to focus on (Connective / AFG / Loan Market)? | Reza | Before Step 2.2 |
-| Q-GTM-4 | VA: hire now (parallel with Phase 2) or wait until first Review sells? | Reza | Before Step 3.7 |
-| Q-GTM-5 | AFSL boundary — DIY scope doc + lawyer review, or engage an AFSL holder for the Review service from day one? | Reza | Before Step 3.1 |
+| Q-GTM-1 | Review price for first 5 friendlies | Reza | ✅ **DECIDED 2026-05-11 — $197** (public price TBD after Reviews #3–5; recommended ladder $197→$297→$397) |
+| Q-GTM-2 | Outbound sending domain name | Reza | ✅ **DECIDED 2026-05-11 — `try-monitrax.com` via Smartlead** (fallbacks `monitrax-pro.com` / `getmonitrax.com` / `hellomonitrax.com`) |
+| Q-GTM-3 | First aggregator to focus on (Connective / AFG / Loan Market / Mortgage Choice / Finsure)? | Reza | Open — needed before Step 2.2. Claude recommendation: **Finsure** first, Connective second. Avoid AFG / Mortgage Choice for outbound. |
+| Q-GTM-4 | VA: hire now (parallel with Phase 2) or wait until first Review sells? | Reza | Open — needed before Step 3.7. Claude recommendation: hire mid-Phase 2 (~week 2–3), small scope (CRM hygiene + lead QA + inbox triage), expand into Review intake from Review #2–3. |
+| Q-GTM-5 | AFSL boundary — DIY scope doc + lawyer review, or engage an AFSL holder? | Reza | Open — needed before Step 3.1. Claude recommendation: **DIY + AU fintech-lawyer review** for v1 (factual-only Review), queue "partner with an AFSL holder for a Review + advice-session upsell" as the trigger if customer feedback demands personal recommendations. |
 
 ---
 
