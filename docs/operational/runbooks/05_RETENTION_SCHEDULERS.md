@@ -24,11 +24,19 @@
 | `monitrax-conversation-retention-sweep` | `POST /api/conversations/retention-sweep` | `0 3 * * *` (03:00) | 7-yr conversation message purge — see §4 |
 | `monitrax-portal-alert-sweep` | `POST /api/portal/alerts/sweep` | `0 4 * * *` (04:00) | Recompute the Practice "needs attention" alert stream — **not** a retention obligation; documented in `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md`. Listed here because it shares the Cloud Scheduler console + the same `CRON_SECRET` + the same region/timezone. |
 
-> **Verify:** open Cloud Scheduler → Jobs and confirm all three exist
-> and are `ENABLED`. (As of 2026-05-12 the console showed
-> `monitrax-cdr-lifecycle` + `monitrax-portal-alert-sweep`; if
-> `monitrax-conversation-retention-sweep` is missing, create it per §4 —
-> the conversation 7-yr purge isn't enforced until it exists.)
+> **Status (2026-05-12 — confirmed in the console):** `monitrax-cdr-lifecycle`
+> ✅ and `monitrax-portal-alert-sweep` ✅ both exist, are `ENABLED`, and
+> their last Force-run returned **200**. `monitrax-conversation-retention-sweep`
+> ⬜ was **not** in the jobs list — **still needs to be created** (per §4
+> below; the conversation 7-yr purge isn't enforced until it exists).
+>
+> **Use the `www.` domain in the target URL.** Monitrax's canonical domain
+> is **`www.monitrax.com.au`** — the apex `monitrax.com.au` 30x-redirects
+> to it, and Cloud Scheduler downgrades a `POST` to a `GET` across that
+> redirect → the route returns HTTP 405. The `monitrax-portal-alert-sweep`
+> job hit exactly this (was `https://monitrax.com.au/...`, got 405; fixed
+> by switching to `https://www.monitrax.com.au/...`). All target URLs in
+> this file use the `www.` form for that reason.
 
 ---
 
@@ -62,13 +70,13 @@ ready to run.
 | `CRON_SECRET` env var set on Vercel (production scope) | Vercel → Project → Settings → Environment Variables → search `CRON_SECRET`. Should be a 32+ char random string. Generate via `openssl rand -hex 32` if not yet set. |
 | Service account with `Cloud Scheduler Admin` role | Use the same `vercel-monitrax-db@…` SA from WIF if convenient, or create `monitrax-cron@…`. |
 | Cloud Scheduler API enabled in `monitrax-479700` GCP project | `gcloud services enable cloudscheduler.googleapis.com --project=monitrax-479700` |
-| Production domain — `https://monitrax.com.au` resolving to Vercel | Confirm via `curl -I https://monitrax.com.au` (200 OK) |
+| Production domain — `https://www.monitrax.com.au` resolving to Vercel | Confirm via `curl -I https://www.monitrax.com.au` (200 OK, **no** `location:` redirect header). `www.` is canonical; the apex `monitrax.com.au` redirects to it — always use the `www.` form in Cloud Scheduler target URLs (see the note at the top of this file). |
 
 ---
 
 ## 3. Job 1 — CDR consent-expiry sweep
 
-**Endpoint:** `POST https://monitrax.com.au/api/cdr/lifecycle`
+**Endpoint:** `POST https://www.monitrax.com.au/api/cdr/lifecycle`
 **Built:** Phase 35 (already deployed). See `app/api/cdr/lifecycle/route.ts`.
 
 ### gcloud setup
@@ -79,7 +87,7 @@ gcloud scheduler jobs create http monitrax-cdr-lifecycle \
   --location=australia-southeast1 \
   --schedule="0 2 * * *" \
   --time-zone="Australia/Sydney" \
-  --uri="https://monitrax.com.au/api/cdr/lifecycle" \
+  --uri="https://www.monitrax.com.au/api/cdr/lifecycle" \
   --http-method=POST \
   --headers="Authorization=Bearer ${CRON_SECRET}" \
   --attempt-deadline=300s \
@@ -97,7 +105,7 @@ GCP Console → Cloud Scheduler → Create Job
 | Frequency | `0 2 * * *` |
 | Timezone | `Australia/Sydney` |
 | Target type | HTTP |
-| URL | `https://monitrax.com.au/api/cdr/lifecycle` |
+| URL | `https://www.monitrax.com.au/api/cdr/lifecycle` |
 | HTTP method | POST |
 | Auth header — Header name | `Authorization` |
 | Auth header — Value | `Bearer <CRON_SECRET>` (paste the actual value) |
@@ -133,7 +141,7 @@ Then check:
 
 ## 4. Job 2 — Conversation retention sweep
 
-**Endpoint:** `POST https://monitrax.com.au/api/conversations/retention-sweep`
+**Endpoint:** `POST https://www.monitrax.com.au/api/conversations/retention-sweep`
 **Built:** Production-readiness workstream 2026-05-09. See `app/api/conversations/retention-sweep/route.ts` + `lib/services/conversationRetentionService.ts`.
 
 ### gcloud setup
@@ -144,7 +152,7 @@ gcloud scheduler jobs create http monitrax-conversation-retention-sweep \
   --location=australia-southeast1 \
   --schedule="0 3 * * *" \
   --time-zone="Australia/Sydney" \
-  --uri="https://monitrax.com.au/api/conversations/retention-sweep" \
+  --uri="https://www.monitrax.com.au/api/conversations/retention-sweep" \
   --http-method=POST \
   --headers="Authorization=Bearer ${CRON_SECRET}" \
   --attempt-deadline=300s \
