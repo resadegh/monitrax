@@ -1254,3 +1254,46 @@ Other CLAUDE.md §3.1 considerations:
 ### PR
 - Branch: `claude/fix-basiq-connection-schema-drift-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/docs-ops-progress-tracking-MG8mr (Ops progress + tracking — doc-only)
+
+### Changes Made
+- **Type:** Documentation (progress/state tracking — no code, no schema, no infra wiring). Reza directive 2026-05-12: skip email-in activation for now; document all progress + the outstanding activities so we don't lose track.
+- **Context:** PR #753 (the `basiq_connections` drift fix) merged → both Cloud Scheduler crons (`monitrax-cdr-lifecycle`, `monitrax-portal-alert-sweep`) now Force-run **200**. (Recap of the debugging session: the portal job's failure was HTTP 405 — it pointed at the apex `monitrax.com.au`, which 30x-redirects to `www.monitrax.com.au`, and Cloud Scheduler downgrades a POST to a GET across that redirect → the POST-only route returns 405 → fixed by switching the job's URL to `https://www.monitrax.com.au/...`. The CDR job's failure was HTTP 500 — `prisma.basiqConnection.findMany()` in `checkConsentExpiry()` referenced `basiq_connections.consentExpiresAt`, a column `schema.prisma` declares but prod's table never got (pre-migration `db push` drift) → fixed by PR #753's corrective migration. The `CRON_SECRET` was a red herring — it's configured in Vercel and matches; it just needs rotating because it got pasted into chat during the debugging.)
+
+### Files Modified
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - **New `📋 Reza-side operational checklist — current state` table** (21 rows) under the Phase 0 "Production Readiness" workstream — the GCP-console / Vercel / external activities that aren't in the code path, with a state column (✅ done / 🟡 in-progress / ⬜ not-started / ⏸ deferred / 🚧 blocked-on-external): Cloud Scheduler jobs ×3 (cdr ✅, portal ✅, conversation-retention ⬜), email-in activation ⏸, observability (A1+A9 confirm ⬜, Vercel log drain ⬜, synthetic monitor ⬜, A2–A8 + channels + dashboard ⬜), backup/restore drill ⬜, IRP tabletop ⬜, prod schema-drift audit ⬜ (Tech Debt #18), CRON_SECRET rotation ⬜, Gemini-key restriction ⬜, CMEK 🟡 / Cloud Armor ⬜ / SCC ⬜ (Reza Tier-1), pen test / cyber insurance / Stripe live-mode 🚧, Anthropic key ⏸, WIF Phase 11/12 🚧.
+  - The "Email-in hardening" Phase 0 chunk updated — `⏸ Activation DEFERRED (Reza decision 2026-05-12)`: the hardening code (PR #747) is shipped & dormant; activate when a real client wants to reply by email; lists exactly what activation requires (SendGrid account + MX subdomain DNS + the env vars + the SendGrid destination URL with `?secret=…`); notes the outbound=Resend / inbound-parse-expects-SendGrid tension (Tech Debt #16).
+  - Recently Completed bullet + top "Last updated" line.
+- `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md`:
+  - The top status note rewritten — "all three exist" → a real status: `monitrax-cdr-lifecycle` ✅ + `monitrax-portal-alert-sweep` ✅ (both last Force-ran 200), `monitrax-conversation-retention-sweep` ⬜ **not yet created** (per §4; the 7-yr purge isn't enforced until it exists).
+  - New "**Use the `www.` domain in the target URL**" note — the apex `monitrax.com.au` 30x-redirects to `www.monitrax.com.au` and Cloud Scheduler downgrades POST→GET across the redirect → HTTP 405 (which is exactly what bit the portal job). All target URLs in the file flipped `https://monitrax.com.au/api/...` → `https://www.monitrax.com.au/api/...` (the §3 + §4 gcloud examples + console-setup tables).
+  - The §2 prereq row updated — "Production domain — `https://www.monitrax.com.au` resolving to Vercel ... `www.` is canonical; the apex redirects to it — always use the `www.` form in Cloud Scheduler target URLs".
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (`05_RETENTION_SCHEDULERS.md` — the Cloud Scheduler job status note + the `www.`-domain rule + all target URLs corrected; the new Reza-side operational checklist in `IMPLEMENTATION_PLAN.md`)
+- [x] strategic decision (Reza decision 2026-05-12: defer email-in activation — recorded in the Phase 0 "Email-in hardening" chunk + the checklist)
+
+Docs updated in this PR: `docs/IMPLEMENTATION_PLAN.md` (Reza-side checklist + Email-in chunk + Recently Completed + top header), `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md` (status note + `www.` rule + URLs + prereq), `docs/changelog/CHANGELOG_2026_05_09.md` (this entry). No schema, no migration, no API contract, no design primitive, no code logic.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — doc-only PR.
+
+### Build Status
+- [✓] Doc-only — no build surface.
+
+### PR
+- Branch: `claude/docs-ops-progress-tracking-MG8mr`
+- Status: pending push + open
