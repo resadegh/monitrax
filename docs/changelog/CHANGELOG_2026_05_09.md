@@ -1197,3 +1197,60 @@ N/A — doc-only PR. No Prisma writes, no migration.
 
 ### Follow-up commit on this PR — `fix(build): exclude mobile-app/ from the Next.js typecheck`
 The Vercel build for this PR (and `main`, and any other open PR) was failing in the "Linting and checking validity of types" step: `./mobile-app/app/(tabs)/_layout.tsx:1:22 Type error: Cannot find module 'expo-router'`. Cause: the `mobile-app/` Expo scaffold (added to `main` in `feat(mobile): add mobile companion app scaffold under mobile-app/` + the follow-up) has its **own** `tsconfig.json` (extends `expo/tsconfig.base`) and `package.json` (Expo deps), but the **root** `tsconfig.json`'s `"include": ["**/*.ts", "**/*.tsx", …]` was picking up the mobile-app `.tsx` files and `next build`'s typecheck choked on the un-installed `expo-router` types. Fix: add `"mobile-app"` to the root `tsconfig.json` `exclude` array — the Next.js app's typecheck now skips the mobile app entirely (the mobile app is typechecked via its own tsconfig + Expo's build pipeline). One line, no behaviour change. (This was a pre-existing break on `main` — not introduced by this PR — but it has to be fixed for this PR's preview to go green, so it ships here.)
+
+---
+
+## Session: claude/fix-basiq-connection-schema-drift-MG8mr (fix(db) — corrective migration for `basiq_connections` pre-migration schema drift)
+
+### Changes Made
+- **Type:** Database migration (bug fix — production schema drift).
+- **Root cause:** The `monitrax-cdr-lifecycle` Cloud Scheduler job (`POST /api/cdr/lifecycle`) returned HTTP 500 on every run. Diagnosed live with Reza via `curl -i -X POST https://www.monitrax.com.au/api/cdr/lifecycle -H "Authorization: Bearer <CRON_SECRET>"` — the route's error body: `{"success":false,"error":{"code":"SERVER_ERROR","message":"Invalid \`prisma.basiqConnection.findMany()\` invocation: The column \`basiq_connections.consentExpiresAt\` does not exist in the current database."}}`. `BasiqConnection` in `prisma/schema.prisma` declares `consentExpiresAt DateTime?` + `consentScope String?` + `@@index([consentExpiresAt])` (the "Fix: G19" CDR-consent-tracking columns), but these were added during the pre-migration `prisma db push` era — there is **no migration file** that touches `basiq_connections` (`grep -rln basiq_connections prisma/migrations/` → nothing). So the dev DB got the columns via `db push`, the generated Prisma client expects them, but the production `basiq_connections` table never got them. `checkConsentExpiry()` does `prisma.basiqConnection.findMany()` with no `select` → `SELECT *` → references the non-existent column → 500.
+- **Solution:** Fix-forward corrective migration — bring prod's table in line with `schema.prisma`. No `schema.prisma` change (it already declares the columns).
+
+### Files Created
+- `prisma/migrations/20260514130000_fix_basiq_connection_consent_columns/migration.sql`:
+  ```sql
+  ALTER TABLE "basiq_connections" ADD COLUMN IF NOT EXISTS "consentExpiresAt" TIMESTAMP(3);
+  ALTER TABLE "basiq_connections" ADD COLUMN IF NOT EXISTS "consentScope" TEXT;
+  CREATE INDEX IF NOT EXISTS "basiq_connections_consentExpiresAt_idx" ON "basiq_connections"("consentExpiresAt");
+  ```
+  `IF NOT EXISTS` makes it idempotent — on the dev DB (which already has these columns from the historical `db push`) it's a no-op; on prod it adds them. `vercel-build` runs `prisma migrate deploy` against `monitrax-db-dev` on the PR preview and against `monitrax-db-prod` on the `main` deploy, so the migration applies to prod the moment this merges. Purely additive (two nullable columns + a non-unique index) — CLAUDE.md §12.11 destructive-write checklist N/A by structural argument. The migration file's header comment is the canonical record of why it exists.
+
+### Files Modified
+- `docs/operational/database/04_PRISMA_MIGRATION_BASELINE.md` — new §12 "Residual pre-migration drift — fix forward, don't re-baseline": explains the drift class (schema column with no migration → dev has it via `db push`, prod doesn't, baseline doesn't notice, first `SELECT *` in prod crashes), records this `basiq_connections` instance + the corrective migration, and gives the `npx prisma migrate diff --from-url <prod-url> --to-schema-datamodel prisma/schema.prisma --script` command to find any remaining drift (review → wrap in `IF NOT EXISTS` → corrective migration; never apply directly via psql).
+- `docs/IMPLEMENTATION_PLAN.md` — Tech Debt #18 added (audit prod schema vs `schema.prisma` for other pre-migration-era drift — recommended before the Basiq accreditation submission); a Recently Completed bullet; top "Last updated" line.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Schema migration (CLAUDE.md §12.12)
+This PR adds a migration but does **not** modify `prisma/schema.prisma` — the schema already declares `BasiqConnection.consentExpiresAt` / `consentScope` / the index; the migration just makes the production DB match. So §12.12's "every `schema.prisma` change needs a matching migration" is satisfied trivially (no schema change), and conversely this is a "schema-without-a-migration → add the missing migration" fix-up — exactly the corrective case §12.12 anticipates. Not `db push`, not `db execute`, not a direct psql `ALTER` — a proper migration folder that the deploy pipeline applies and `_prisma_migrations` records.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+Migration is `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` ×2 (nullable, no default-backfill) + `CREATE INDEX IF NOT EXISTS ...` — no `DROP`, no `ALTER ... DROP`, no `TRUNCATE`, no `ADD COLUMN NOT NULL` without a backfilled default, no Prisma `update`/`delete`/`updateMany`/`deleteMany`/`$executeRaw`. Purely additive → §12.11 N/A. User confirmation: NOT REQUIRED.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — borderline: the broken column was on a CDR table (`basiq_connections`) and the broken endpoint is the CDR consent-expiry sweep, but the *posture* doesn't change — this restores intended behaviour (the CDR data lifecycle cron can now actually run). Noted in `04_PRISMA_MIGRATION_BASELINE.md` §12 for clarity.
+- [x] operational procedure — yes: `04_PRISMA_MIGRATION_BASELINE.md` §12 (new "residual pre-migration drift" section + the `prisma migrate diff` recipe); the migration file itself
+- [ ] strategic decision
+
+Other CLAUDE.md §3.1 considerations:
+- **Schema migration** → `prisma/migrations/20260514130000_fix_basiq_connection_consent_columns/migration.sql` (§12.12). No `schema.prisma` change → no `03_DATA_MODEL.md` change needed (the data-model doc already describes `basiq_connections` per the schema, which the schema and now prod agree with). No Phase doc applies (this isn't a phase deliverable — it's a drift fix-up).
+
+### Build Status
+- [⚠] Local `tsc --noEmit` / `prisma generate` are no-ops in this sandbox (no `node_modules`; Prisma CLI version mismatch). The migration SQL is plain DDL with `IF NOT EXISTS` guards. On Vercel: `vercel-build` runs `prisma migrate deploy` (preview → `monitrax-db-dev` where the columns already exist → the `IF NOT EXISTS` makes it a no-op; prod → `monitrax-db-prod` → the columns get added) → `prisma generate` (client already matches the schema) → `next build`. The Vercel preview build is the canonical check that the migration applies cleanly.
+
+### Verify (Reza, after this merges + deploys)
+1. `curl -i -X POST https://www.monitrax.com.au/api/cdr/lifecycle -H "Authorization: Bearer <CRON_SECRET>"` → should now be `200 {"success":true,...}` (not the 500). If it's a *different* 500 message → another drifted table; paste it.
+2. Re-run the `monitrax-cdr-lifecycle` Cloud Scheduler job (Force run) → should be 200.
+3. Re-run `monitrax-portal-alert-sweep` (now pointed at `https://www.monitrax.com.au/...`) → should be 200.
+4. (Recommended before the Basiq submission) run the `prisma migrate diff` command from `04_PRISMA_MIGRATION_BASELINE.md` §12 to catch any remaining drift.
+
+### PR
+- Branch: `claude/fix-basiq-connection-schema-drift-MG8mr`
+- Status: pending push + open
