@@ -69,7 +69,7 @@ Monitrax operates as a **CDR Representative** accredited through Basiq. This mea
 ### Stage 4: Consent Expired / Revoked
 
 **Automated handling** (via `monitrax-cdr-lifecycle` Cloud Scheduler job):
-1. Job runs daily at 02:00 UTC
+1. Job runs daily at 02:00 Australia/Sydney (AEST/AEDT)
 2. Finds all expired consents
 3. Triggers `checkConsentExpiry()` → `deleteCDRData()`
 4. Deletes: BasiqConnection, Account records (with basiqAccountId), UnifiedTransaction (source=BANK), RecurringPayment (Basiq-sourced)

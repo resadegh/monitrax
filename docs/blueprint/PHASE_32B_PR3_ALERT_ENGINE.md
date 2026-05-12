@@ -85,9 +85,11 @@ strings are likewise aggregate-derived.
 
 ```
 Name:     monitrax-portal-alert-sweep
-Schedule: 0 4 * * *  (daily 04:00 UTC — after the CDR retention crons at 02:00 / 03:00)
-Target:   POST https://<domain>/api/portal/alerts/sweep
+Region:   australia-southeast1
+Schedule: 0 4 * * *   (timezone Australia/Sydney — daily 04:00 Sydney; after the CDR retention crons at 02:00 / 03:00)
+Target:   POST https://monitrax.com.au/api/portal/alerts/sweep
 Headers:  { "Authorization": "Bearer <CRON_SECRET>" }
+Body:     {}
 ```
 
 Until the scheduler is wired, the engine + endpoint are dormant — no
@@ -124,7 +126,7 @@ the admin UI in a future PR) works for testing / backfill.
 
 ### part 1: admin "run sweep now" (✅ shipped)
 
-The Cloud Scheduler job (`monitrax-portal-alert-sweep`, `0 4 * * *` UTC) is a Reza-side console step; until it's wired, the engine never runs and the Practice dashboard shows the fixture preview. This makes the sweep invokable on demand from the admin portal — also useful for a one-off recompute after onboarding a new client, or a dry-run preview without touching any rows.
+The Cloud Scheduler job (`monitrax-portal-alert-sweep`, `0 4 * * *` Australia/Sydney) is a Reza-side console step; until it's wired, the engine never runs and the Practice dashboard shows the fixture preview. This makes the sweep invokable on demand from the admin portal — also useful for a one-off recompute after onboarding a new client, or a dry-run preview without touching any rows.
 
 | Item | Status | Detail |
 |---|---|---|

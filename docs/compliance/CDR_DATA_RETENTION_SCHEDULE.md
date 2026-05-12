@@ -63,13 +63,13 @@ CDR data retention is governed entirely by user consent:
 | Consent State | Data Action | Timeline |
 |---------------|------------|----------|
 | **ACTIVE** | Data retained and accessible | Ongoing |
-| **EXPIRED** | Data deleted automatically | Within 24 hours of expiry (daily check at 02:00 UTC) |
+| **EXPIRED** | Data deleted automatically | Within 24 hours of expiry (daily check at 02:00 Australia/Sydney (AEST/AEDT)) |
 | **REVOKED** | Data deleted immediately | Immediate upon user action |
 | **User requests deletion** | Data deleted immediately | Immediate upon user action |
 
 ### Consent Expiry Check
 
-- **Frequency:** Daily at 02:00 UTC via GCP Cloud Scheduler
+- **Frequency:** Daily at 02:00 Australia/Sydney (AEST/AEDT) via GCP Cloud Scheduler
 - **Endpoint:** `POST /api/cdr/lifecycle`
 - **Service:** `checkConsentExpiry()` in `lib/services/cdrDataLifecycle.ts`
 

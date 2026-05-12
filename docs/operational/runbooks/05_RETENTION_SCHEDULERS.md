@@ -1,14 +1,34 @@
 # Retention Schedulers — GCP Cloud Scheduler Setup
 
-> **Operational runbook for the two cron jobs that enforce
-> Monitrax's data-retention obligations.** Both endpoints are built
-> and accept `CRON_SECRET`-authenticated calls today; both crons
+> **Operational runbook for the cron jobs that enforce
+> Monitrax's data-retention obligations.** The endpoints are built
+> and accept `CRON_SECRET`-authenticated calls today; the crons
 > need to be **created in GCP Cloud Scheduler** for the obligations
 > to be enforced.
 
 **Owner:** Director (Reza)
-**Last reviewed:** 2026-05-09
+**Last reviewed:** 2026-05-12
 **Source of truth:** this file. CLAUDE.md §13.5, §13.6 + `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md` reference back here.
+
+> **Timezone (2026-05-12 — Reza decision):** all Monitrax Cloud
+> Scheduler jobs run in the **`australia-southeast1`** region with the
+> **`Australia/Sydney`** timezone (AEST UTC+10 / AEDT UTC+11). Every
+> schedule in this file is **Sydney local time** unless explicitly
+> stated otherwise. (Cloud SQL backup / maintenance windows are a
+> separate thing and remain UTC — see `database/01_CLOUD_SQL_OPERATIONS.md`
+> + `02_BACKUP_AND_RESTORE.md`.)
+
+| Job | Endpoint | Schedule (Australia/Sydney) | Purpose |
+|---|---|---|---|
+| `monitrax-cdr-lifecycle` | `POST /api/cdr/lifecycle` | `0 2 * * *` (02:00) | CDR consent-expiry sweep — see §3 |
+| `monitrax-conversation-retention-sweep` | `POST /api/conversations/retention-sweep` | `0 3 * * *` (03:00) | 7-yr conversation message purge — see §4 |
+| `monitrax-portal-alert-sweep` | `POST /api/portal/alerts/sweep` | `0 4 * * *` (04:00) | Recompute the Practice "needs attention" alert stream — **not** a retention obligation; documented in `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md`. Listed here because it shares the Cloud Scheduler console + the same `CRON_SECRET` + the same region/timezone. |
+
+> **Verify:** open Cloud Scheduler → Jobs and confirm all three exist
+> and are `ENABLED`. (As of 2026-05-12 the console showed
+> `monitrax-cdr-lifecycle` + `monitrax-portal-alert-sweep`; if
+> `monitrax-conversation-retention-sweep` is missing, create it per §4 —
+> the conversation 7-yr purge isn't enforced until it exists.)
 
 ---
 
@@ -58,7 +78,7 @@ gcloud scheduler jobs create http monitrax-cdr-lifecycle \
   --project=monitrax-479700 \
   --location=australia-southeast1 \
   --schedule="0 2 * * *" \
-  --time-zone="UTC" \
+  --time-zone="Australia/Sydney" \
   --uri="https://monitrax.com.au/api/cdr/lifecycle" \
   --http-method=POST \
   --headers="Authorization=Bearer ${CRON_SECRET}" \
@@ -75,7 +95,7 @@ GCP Console → Cloud Scheduler → Create Job
 | Name | `monitrax-cdr-lifecycle` |
 | Region | `australia-southeast1` |
 | Frequency | `0 2 * * *` |
-| Timezone | `UTC` |
+| Timezone | `Australia/Sydney` |
 | Target type | HTTP |
 | URL | `https://monitrax.com.au/api/cdr/lifecycle` |
 | HTTP method | POST |
@@ -98,7 +118,7 @@ GCP Console → Cloud Scheduler → Create Job
 ### Verification (post-create)
 
 ```bash
-# Trigger an immediate run (without waiting for 02:00 UTC):
+# Trigger an immediate run (without waiting for 02:00 Australia/Sydney (AEST/AEDT)):
 gcloud scheduler jobs run monitrax-cdr-lifecycle \
   --project=monitrax-479700 \
   --location=australia-southeast1
@@ -123,7 +143,7 @@ gcloud scheduler jobs create http monitrax-conversation-retention-sweep \
   --project=monitrax-479700 \
   --location=australia-southeast1 \
   --schedule="0 3 * * *" \
-  --time-zone="UTC" \
+  --time-zone="Australia/Sydney" \
   --uri="https://monitrax.com.au/api/conversations/retention-sweep" \
   --http-method=POST \
   --headers="Authorization=Bearer ${CRON_SECRET}" \
@@ -131,8 +151,8 @@ gcloud scheduler jobs create http monitrax-conversation-retention-sweep \
   --description="Daily 7-yr conversation message archive sweep. AFSL Corp Act §912F. See docs/operational/runbooks/05_RETENTION_SCHEDULERS.md"
 ```
 
-**Note:** scheduled at 03:00 UTC — one hour after the CDR cron at
-02:00 UTC. They share the database; sequential runs avoid
+**Note:** scheduled at 03:00 Australia/Sydney (AEST/AEDT) — one hour after the CDR cron at
+02:00 Australia/Sydney (AEST/AEDT). They share the database; sequential runs avoid
 DB-CPU contention on warm-up.
 
 ### What it does, step by step

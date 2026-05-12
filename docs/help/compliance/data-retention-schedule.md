@@ -81,7 +81,7 @@ There is no engineering process by which a Monitrax engineer can recover deleted
 
 | Enforcement | Frequency | Owner |
 |---|---|---|
-| Consent expiry sweep (`checkConsentExpiry()`) | Daily, 02:00 UTC, GCP Cloud Scheduler → `POST /api/cdr/lifecycle` | Director |
+| Consent expiry sweep (`checkConsentExpiry()`) | Daily, 02:00 Australia/Sydney (AEST/AEDT), GCP Cloud Scheduler → `POST /api/cdr/lifecycle` | Director |
 | Stale Cloud Storage object purge | 30 days post-account-closure (Cloud Storage lifecycle rule) | Director |
 | Postgres hot-audit-log truncation | Quarterly (manual until automated retention policy lands per Basiq §2.7 PARTIAL row) | Director |
 | Long-term audit log retention (Cloud Logging) | Continuous; 365-day standard / 7-year for `CDR_DATA_*` and admin events | Director |

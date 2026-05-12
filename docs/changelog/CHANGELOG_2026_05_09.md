@@ -1143,3 +1143,54 @@ User confirmation: NOT REQUIRED — additive nullable columns + an extension of 
 ### PR
 - Branch: `claude/phase-32b-pr3-post9b-real-kpis-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/docs-cron-timezone-aest-MG8mr (Docs — align all Cloud Scheduler timezone references to Australia/Sydney)
+
+### Changes Made
+- **Type:** Documentation (doc-only — no code logic change; only JSDoc comments + Markdown docs touched).
+- **Scope:** Reza created `monitrax-portal-alert-sweep` in GCP Cloud Scheduler (region `australia-southeast1`, schedule `0 4 * * *`, timezone `Australia/Sydney`) and confirmed (from the console screenshot) that the existing `monitrax-cdr-lifecycle` is also on `australia-southeast1` + `Australia/Sydney`. Reza directive 2026-05-12: *"update documents to fix all to AEST in future."* The docs + route-JSDocs said "02:00 / 03:00 / 04:00 UTC" for the cron schedules — corrected to `Australia/Sydney` throughout.
+- **What changed:**
+  - `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md` — new canonical note: *"all Monitrax Cloud Scheduler jobs run in the `australia-southeast1` region with the `Australia/Sydney` timezone (AEST UTC+10 / AEDT UTC+11); every schedule in this file is Sydney local time"* + a 3-job table (`monitrax-cdr-lifecycle` 02:00 / `monitrax-conversation-retention-sweep` 03:00 / `monitrax-portal-alert-sweep` 04:00, all Sydney) + a "verify all three exist, create the conversation one if missing" note + `--time-zone="Australia/Sydney"` in both gcloud examples + `| Timezone | Australia/Sydney |` in the console-setup table. "02:00/03:00 UTC" → "02:00/03:00 Australia/Sydney" in the prose. `Last reviewed` → 2026-05-12.
+  - `docs/operational/00_INDEX.md` — the Retention-Schedulers row's "daily 02:00 UTC / daily 03:00 UTC" → "Australia/Sydney".
+  - `docs/operational/admin/03_GCP_SERVICE_OPERATIONS.md` — cron-table row "daily 02:00 UTC" → "Australia/Sydney".
+  - `docs/operational/admin/05_CDR_COMPLIANCE_PROCEDURES.md` — "Job runs daily at 02:00 UTC" → "Australia/Sydney".
+  - `docs/operational/calc-audit/cloud-scheduler-setup.md` — also fixed a self-contradiction: the gcloud example already used `--time-zone="Australia/Sydney"` but the schedule was `0 17 * * *` with a "= 03:00 AEST" rationale that only holds in UTC. Schedule → `0 3 * * *`; rationale rewritten + a "if an older instance used `0 17 * * * UTC`, run this `update`" note.
+  - CDR compliance/policy docs — "daily 02:00 UTC" → "Australia/Sydney" in `docs/compliance/CDR_DATA_RETENTION_SCHEDULE.md`, `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md`, `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`, `docs/compliance/CDR_SYSTEM_ARCHITECTURE.md`, `docs/compliance/CDR_IMPLEMENTATION_PLAN.md`, `docs/compliance/CDR_SPREADSHEET_ANSWERS_AND_GAPS.md`, `docs/policy/MONITRAX_SECURITY_POLICIES.md`, `docs/help/compliance/data-retention-schedule.md`.
+  - Phase docs — `docs/blueprint/PHASE_35_CDR_DATA_LIFECYCLE.md`, `docs/blueprint/PHASE_E_GCP_SERVICE_ENABLEMENT.md` (also dropped the now-wrong `/ 12:00 AEST` suffix + flipped `Timezone: UTC` → `Australia/Sydney`), `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` (the `0 4 * * * UTC` mentions + the Cloud Scheduler config block — now `Region: australia-southeast1` / `timezone Australia/Sydney` / `Body: {}`).
+  - Route JSDocs — `app/api/cdr/lifecycle/route.ts`, `app/api/conversations/retention-sweep/route.ts`, `app/api/portal/alerts/sweep/route.ts`, `lib/portal/alerts/sweepRunner.ts`, `app/api/admin/portal-alert-sweep/route.ts` — "02:00 / 03:00 / 04:00 UTC" → "Australia/Sydney" in the header comments.
+  - `docs/IMPLEMENTATION_PLAN.md` — the forward-looking Reza-side "wire the `monitrax-portal-alert-sweep` job (`0 4 * * *` …)" instructions now say "in the `Australia/Sydney` timezone"; the `[x]` "Compliance bedrock" chunk's prose updated; top "Last updated" line + a Recently Completed bullet added (with the Reza-side flags below).
+  - `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+- **Not changed (deliberately):**
+  - Cloud SQL backup window (`04:00 UTC`, `database/02_BACKUP_AND_RESTORE.md`) + maintenance window (`Sunday 03:00 UTC`, `database/01_CLOUD_SQL_OPERATIONS.md`) — these are genuinely UTC (Cloud SQL config), not cron schedules.
+  - Changelog files + the archived "Recently Completed" entries in `IMPLEMENTATION_PLAN.md` — historical records of what shipped at the time; not rewritten.
+
+### Flagged to Reza in this PR (from the 2026-05-12 Cloud Scheduler console screenshot)
+1. **`monitrax-cdr-lifecycle`'s last run FAILED** (12 May, 02:00:02). Diagnose via the job's **Logs** tab (it shows the HTTP status). Top suspects, in order: (a) the target URL has a `www.` prefix — `https://www.monitrax.com.au/api/cdr/lifecycle` — while the working pattern (and the new portal-alert-sweep job) uses the apex `https://monitrax.com.au/...`; a `www.`→apex redirect on a POST can fail. (b) the `Authorization: Bearer <CRON_SECRET>` header doesn't match the current Vercel `CRON_SECRET` (stale value, or a missing/extra `Bearer ` prefix → 401). (c) the endpoint itself errored (500) — check Vercel function logs for `/api/cdr/lifecycle` at the run timestamp.
+2. **`monitrax-conversation-retention-sweep` was not visible in the jobs list** — verify it exists; if not, create it per `05_RETENTION_SCHEDULERS.md` §4 (the 7-yr conversation purge isn't enforced until it does).
+3. **`CRON_SECRET` was pasted into chat** — rotate it (generate a new value, update `CRON_SECRET` in Vercel + redeploy, then update the `Authorization: Bearer …` header on all three Cloud Scheduler jobs).
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.) — no; the timezone change is to the Cloud Scheduler *jobs* (Reza-side), already done — this PR only aligns the *docs* to it
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (the canonical "all Cloud Scheduler jobs use australia-southeast1 + Australia/Sydney" statement + the 3-job table + the gcloud examples in `05_RETENTION_SCHEDULERS.md`; the calc-audit setup-doc self-contradiction fix)
+- [ ] strategic decision — borderline; the timezone-standardisation is a Reza decision, captured here + in `05_RETENTION_SCHEDULERS.md`'s note + `IMPLEMENTATION_PLAN.md`'s header
+
+Docs updated in this PR: see "What changed" above (the full list). No code logic, no schema, no migration, no new API contract, no new design primitive.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — doc-only PR. No Prisma writes, no migration.
+
+### Build Status
+- [✓] Doc + JSDoc-comment-only changes. No `.ts`/`.tsx` *logic* changed; the only `.ts` edits are header-comment text in 5 route/lib files. No build surface.
+
+### PR
+- Branch: `claude/docs-cron-timezone-aest-MG8mr`
+- Status: pending push + open

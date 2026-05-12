@@ -328,7 +328,7 @@ export const GET = withPermission('entity.read', async (request, auth) => { ... 
 ### Step D.4 — GCP Cloud Scheduler — Consent Expiry Job ✅
 
 **Endpoint:** `POST /api/cdr/lifecycle` (CRON_SECRET auth)
-**Schedule:** Daily at 02:00 UTC
+**Schedule:** Daily at 02:00 Australia/Sydney (AEST/AEDT)
 **User action required:** Configure Cloud Scheduler in GCP Console
 **Basiq:** §5.5
 
