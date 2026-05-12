@@ -14,8 +14,9 @@
 
 | Tool | Category | Purpose | Plan | List price | ≈ AUD/mo | Status | Notes |
 |---|---|---|---|---|---|---|---|
-| **`try-monitrax.com`** (GoDaddy) | Domain | Dedicated cold-outbound sending domain (keeps `monitrax.com.au` deliverability clean) | Registration | ~US$12–20/yr | ~$2/mo | 🟢 Active | Purchased 2026-05-12. "Keep Separate" from main domain in GoDaddy (clean DNS zone for email records). Q-GTM-2. |
-| **Smartlead** | Cold outbound | Cold-email sequencing, inbox rotation, auto-warmup, DFY managed inbox `reza@try-monitrax.com` | Basic / LITE | US$39/mo | ~$60/mo | 🟡 Planned | Signing up now. Alternative: Instantly (US$37–97/mo, friendlier UI). Q-GTM-2. |
+| **`try-monitrax.com`** (GoDaddy) | Domain | Dedicated cold-outbound sending domain (keeps `monitrax.com.au` deliverability clean) | Registration | ~US$12–20/yr | ~$2/mo | 🟢 Active | Purchased 2026-05-12. "Keep Separate" from main domain in GoDaddy. DNS configured 2026-05-12: MX→Google, SPF (GoDaddy managed-SPF chaining to `_spf.google.com`), DKIM (`google._domainkey`), DMARC (`p=quarantine`), Google site-verification. Q-GTM-2. |
+| **Google Workspace** (on `try-monitrax.com`) | Mailbox | Hosts the sending mailbox `reza@try-monitrax.com` (real-name sender, on the brand-linked domain we own); connected to Smartlead for sequencing + warmup | Business Starter | ~AU$8.40/user/mo (14-day trial) | ~$8.40/mo | 🟢 Active | Set up 2026-05-12. Chosen over Smartlead's "Fresh Mailboxes" DFY bulk-purchase (which would have registered a *new* Smartlead-owned domain + cost ~$30–40/mo for a 10-mailbox pack — wrong tool: we already own `try-monitrax.com` and want to control the domain). One mailbox sufficient at 30–50/day; add a 2nd only if sustained volume rises. |
+| **Smartlead** | Cold outbound | Cold-email sequencing, inbox warmup, reply tracking, deliverability layer. **Connects** the Google Workspace mailbox above via OAuth — does NOT provide the mailbox | Basic / LITE | US$39/mo | ~$60/mo | 🟡 Signing up | Account created 2026-05-12; mailbox connect + warmup ON pending (after DNS settles ~24h + DKIM confirmed in Google Admin). Alternative: Instantly (US$37–97/mo, friendlier UI). Q-GTM-2. |
 | **n8n** | Orchestration | The automation spine — all GTM workflows (lead enrichment, personalisation, reply routing, daily digest, lifecycle, reporting) | Self-hosted (Community) | $0 (software) | $0 | 🟡 Planned | Step 1.1. Runs on the VPS below. No-VPS alternative: n8n Cloud ~US$20/mo. |
 | **VPS** (Hetzner CX11 or DigitalOcean) | Infra | Hosts self-hosted n8n + Caddy (HTTPS) | Smallest tier | ~US$6–12/mo | ~$10–18/mo | 🟡 Planned | Step 1.1. Nightly snapshot backup. Skip if using n8n Cloud instead. |
 | **Anthropic API (Claude)** | AI | Outreach personalisation (Sonnet), reply classification (Sonnet), Review report drafting (Opus), support triage (Sonnet), daily-digest summarisation (Sonnet) | Pay-as-you-go | Usage-based | ~$50–150/mo (est) | 🟡 Planned | Step 1.5. Use prompt caching aggressively (static system prompts + templates) — cuts cost ~10×. Cost scales with outbound volume + Reviews delivered. |
@@ -38,10 +39,10 @@
 
 | Phase | Recurring monthly (≈ AUD) | One-off (≈ AUD) | Notes |
 |---|---|---|---|
-| **Pre-Basiq, lean (free tiers + VA)** | **~$550–900/mo** | ~$2k (AFSL lawyer review, Step 0.1/Q-GTM-5 — optional, recommended) | Smartlead ~$60 + VPS ~$15 + Claude ~$50–150 + Apollo ~$75 + VA ~$300–500; everything else on free tiers; Stripe is per-transaction only |
-| **Pre-Basiq, fuller (paid tiers as volume grows)** | **~$900–1,300/mo** | as above | Add Loops paid, Senja paid, Cal.com Pro, Documenso cloud, Airtable paid as needed |
+| **Pre-Basiq, lean (free tiers + VA)** | **~$560–910/mo** | ~$2k (AFSL lawyer review, Step 0.1/Q-GTM-5 — optional, recommended) | Smartlead ~$60 + Google Workspace ~$8.40 + VPS ~$15 + Claude ~$50–150 + Apollo ~$75 + VA ~$300–500; everything else on free tiers; Stripe is per-transaction only |
+| **Pre-Basiq, fuller (paid tiers as volume grows)** | **~$910–1,310/mo** | as above | Add Loops paid, Senja paid, Cal.com Pro, Documenso cloud, Airtable paid as needed |
 | **Post-Basiq (when triggered — Phase 5 gate)** | **+$2,000/mo** (Basiq minimum) | +~$10,000 (Basiq initial fee) | Only triggered when ≥AU$3–5k committed broker MRR + ≥AU$15k cash on hand. See IMPLEMENTATION_PLAN workstream 0d. |
-| **Post-Basiq, total** | **~$2,900–3,300/mo** | — | |
+| **Post-Basiq, total** | **~$2,910–3,310/mo** | — | |
 
 **Annual domain costs (small, listed for completeness):** `try-monitrax.com` ~US$12–20/yr · `monitrax.com.au` (existing) ~A$20–30/yr.
 
@@ -55,7 +56,7 @@
 | 2026-05-11 | Orchestration = **n8n, self-hosted** | Power (branching, code nodes, AI nodes) + near-zero cost (free software, ~US$6–12/mo VPS). Reza already runs a Next.js/GCP stack so a VPS is no friction. | n8n Cloud (~US$20/mo, no-VPS option). Make (middle ground, hosted-only). Zapier (easiest but expensive at scale + weak logic — relegated to "glue for the long tail" only). |
 | 2026-05-11 | Separate sending domain `try-monitrax.com`, NOT `admin@monitrax.com.au` | Cold-outreach spam signals tracked per sending domain; a burn routes the primary domain's product email + CDR-consent confirmations to spam with weeks-to-months recovery, right at launch. ~US$15/yr insurance against that. Universal B2B practice. | Subdomain `outreach.monitrax.com.au` — only partial isolation (Gmail still weighs the org root domain); fallback only if a second registrable domain were off the table. |
 | 2026-05-11 | Analytics = **PostHog** (over Plausible + a separate product-analytics tool) | One tool covers funnel + session replay + feature flags + web analytics, 1M events/mo free | Plausible (web-only, privacy-friendly) + a separate product tool — two bills for what PostHog does in one |
-| 2026-05-12 | (placeholder for next tool decision) | | |
+| 2026-05-12 | Sending mailbox = **Google Workspace on `try-monitrax.com`** (BYO mailbox, connected to Smartlead via OAuth), NOT Smartlead's "Fresh Mailboxes" DFY bulk-purchase | Smartlead's DFY flow registers a *new Smartlead-owned domain* and sells mailboxes in 10/20/50/100 packs (~US$3–4/mailbox/mo) — wrong tool for a solo founder who already owns `try-monitrax.com` and wants to control the domain. Google Workspace Business Starter is ~AU$8.40/mo, the mailbox + domain are yours unconditionally, and Smartlead still does all the sequencing/warmup via OAuth connection. Slightly more setup (~20 min: Workspace signup + domain verification + DKIM auth) but the right architecture. | Smartlead "Fresh Mailboxes" DFY (new domain, 10-mailbox minimum effectively, ~$30–40/mo, domain lives in Smartlead's account). Smartlead "Pre-Warmed Mailboxes" (generic non-brand domain + made-up sender identity — rejected, undercuts trust for a financial-product pitch). |
 
 ---
 

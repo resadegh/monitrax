@@ -78,19 +78,20 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 - **Done when:** Schema exists, API key copied to n8n credentials.
 - **Gotcha:** Don't over-engineer. Five columns per table > fifty. You can always add fields.
 
-### Step 1.3 — Register + warm a separate sending domain ✅ DECIDED, guide delivered 2026-05-11
-- **Decision (Q-GTM-2, Reza 2026-05-11):** dedicated outbound domain **`try-monitrax.com`** (fallbacks `monitrax-pro.com` → `getmonitrax.com` → `hellomonitrax.com`). Tool: **Smartlead** ($39/mo, DFY managed inbox). One mailbox: `reza@try-monitrax.com`. Never use `monitrax.com.au` for the automated sequences.
-- **Goal:** Domain registered (GoDaddy — same registrar as the main domain), mailbox provisioned via Smartlead DFY, DNS authenticated (SPF/DKIM/DMARC/tracking all green), warmup running.
-- **Time:** ~45 min of clicks spread over a day or two (DNS propagation waits), then **2–3 weeks of passive warming** running in parallel with Steps 1.1 + 1.6.
-- **Action (full step-by-step delivered to Reza 2026-05-11):**
-  1. **GoDaddy:** buy `try-monitrax.com`, decline all upsells, set a 301 forward → `https://monitrax.com.au`.
-  2. **Smartlead:** sign up (entry plan) → Email Accounts → Add → "done-for-you / managed inbox" → domain `try-monitrax.com` → mailbox `reza@try-monitrax.com` → Smartlead generates DNS records.
-  3. **GoDaddy DNS:** paste Smartlead's SPF (TXT `@`), DKIM (CNAME/TXT), tracking CNAME, plus DMARC (TXT `_dmarc` → `v=DMARC1; p=none; rua=mailto:reza@monitrax.com.au`). Touch NOTHING on `monitrax.com.au`. (If Smartlead offers a "delegate subdomain via NS" option, take it — even less work.)
-  4. **Smartlead:** click "verify DNS" (wait ~30 min for propagation) → all green → toggle **Warmup ON** (start 5–10/day, ramp +2–5/day, target 40–50/day, ~30% reply rate — accept defaults).
-  5. **Walk away for 2–3 weeks.** Send ZERO real cold mail from this domain during warmup.
-  - Alternative if Reza wants full mailbox control instead of DFY: Google Workspace (~AU$8.40/mo) on the domain → connect via OAuth in Smartlead. More setup; only worth it for infra ownership.
-- **Done when:** Smartlead shows the mailbox green/verified AND 2–3 weeks elapsed AND warmup deliverability score climbing toward 90%+.
-- **Gotcha:** Send ZERO cold mail from this domain during warmup. One cold blast pre-warmup torches the whole effort. Block out the 2–3 weeks on the calendar. GoDaddy auto-appends the domain to the DNS "Host" field — if Smartlead says `smartlead._domainkey.try-monitrax.com`, GoDaddy usually wants just `smartlead._domainkey`. Screenshot to Claude if unsure.
+### Step 1.3 — Set up the separate sending domain + mailbox 🟡 IN PROGRESS (2026-05-12)
+- **Decision (Q-GTM-2, Reza 2026-05-11/12):** dedicated outbound domain **`try-monitrax.com`** (purchased on GoDaddy 2026-05-12, "Keep Separate" from main domain). Mailbox = **Google Workspace Business Starter** on that domain → `reza@try-monitrax.com` (real-name sender). **Smartlead** ($39/mo) does the sequencing + warmup, connecting the Workspace mailbox via OAuth — it does NOT provide the mailbox. (Smartlead's own "Fresh/Pre-Warmed Mailboxes" DFY flow was rejected — it registers a *new Smartlead-owned domain* and sells mailboxes in 10/20/50/100 packs; wrong tool when we already own `try-monitrax.com`. See `GTM_TOOL_STACK.md` Decision Log 2026-05-12.) Never use `monitrax.com.au` for the automated sequences.
+- **Goal:** Domain registered, Google Workspace mailbox live with MX/SPF/DKIM/DMARC all green, mailbox connected to Smartlead, warmup running.
+- **Time:** ~1h of clicks spread over a day (DNS propagation + ~24h Gmail-routing wait), then **2–3 weeks of passive warming** in parallel with Steps 1.1 + 1.6.
+- **Progress / actual steps taken:**
+  1. ✅ **GoDaddy:** `try-monitrax.com` purchased; "Keep Separate" chosen (clean DNS zone).
+  2. ✅ **Google Workspace:** signed up (Business Starter, 14-day trial), "I have a domain" → `try-monitrax.com`, created user `reza@try-monitrax.com`.
+  3. ✅ **Domain verification:** done via GoDaddy auto-connect (Google added the `google-site-verification` TXT).
+  4. ✅ **Gmail activation:** MX records → Google added automatically via GoDaddy (`aspmx.l.google.com` family). "Gmail is now ready" (Gmail routing may take up to 24h).
+  5. ✅ **Authenticate outgoing emails (DKIM):** done — `google._domainkey` TXT record added. GoDaddy also auto-added SPF (`v=spf1 include:dc-aa8e722993._spfm.try-monitrax.com ~all` on `@`, chaining to `_spf.google.com`) and DMARC (`v=DMARC1; p=quarantine; …` on `_dmarc`). DNS audited 2026-05-12 — correct, nothing to change. (Optional: change DMARC `rua` to `reza@monitrax.com.au` to receive the reports.)
+  6. ⏳ **Pending (after ~24h DNS settle + DKIM confirmed in Google Admin → Apps → Gmail → Authenticate email):** open Gmail as `reza@try-monitrax.com` → send + reply test → Smartlead → Email Accounts → "Connect Your Email Account" → Connect Mailbox → Google → OAuth `reza@try-monitrax.com` → Warmup ON (defaults: 5–10/day ramping to ~40–50, ~30% reply).
+  7. ⏳ **Then walk away 2–3 weeks.** Send ZERO real cold mail during warmup.
+- **Done when:** Smartlead shows the mailbox connected + warmup running AND 2–3 weeks elapsed AND warmup deliverability score climbing toward 90%+.
+- **Gotcha:** Send ZERO cold mail during warmup — one cold blast pre-warmup torches it. Block the 2–3 weeks on the calendar. Don't touch `monitrax.com.au` DNS — all changes are on `try-monitrax.com` only.
 
 ### Step 1.4 — Sign up for the core SaaS
 - **Goal:** All accounts created, billing on a single card, credentials in n8n.
@@ -334,11 +335,11 @@ Headline numbers (see the register for the per-tool breakdown):
 
 | | Recurring (≈ AUD/mo) | One-off (≈ AUD) |
 |---|---|---|
-| **Pre-Basiq, lean** (free tiers + VA) | **~$550–900/mo** | ~$2k AFSL lawyer review (optional, recommended) |
+| **Pre-Basiq, lean** (free tiers + VA) | **~$560–910/mo** | ~$2k AFSL lawyer review (optional, recommended) |
 | **Pre-Basiq, fuller** (paid tiers as volume grows) | **~$900–1,300/mo** | as above |
 | **Post-Basiq** (when the Phase 5 gate is met) | **~$2,900–3,300/mo** | +~$10k Basiq initial fee |
 
-Stack at a glance: `try-monitrax.com` domain (GoDaddy) · Smartlead (cold outbound) · n8n self-hosted on a VPS (orchestration) · Anthropic API / Claude · Apollo (lead data) · Airtable (CRM) · Cal.com (booking) · Loops (lifecycle email) · Stripe (payments) · PostHog (analytics) · Sentry (errors) · Senja (testimonials) · Documenso (e-sign) · Loom (demos) · Typefully (social) · part-time VA. Decision rationale for the key picks (Smartlead vs Instantly, n8n vs Make/Zapier, separate domain vs primary) is in the register's Decision Log.
+Stack at a glance: `try-monitrax.com` domain (GoDaddy) · Google Workspace mailbox `reza@try-monitrax.com` · Smartlead (cold-outbound sequencing + warmup; connects the Workspace mailbox) · n8n self-hosted on a VPS (orchestration) · Anthropic API / Claude · Apollo (lead data) · Airtable (CRM) · Cal.com (booking) · Loops (lifecycle email) · Stripe (payments) · PostHog (analytics) · Sentry (errors) · Senja (testimonials) · Documenso (e-sign) · Loom (demos) · Typefully (social) · part-time VA. Decision rationale for the key picks (Smartlead vs Instantly, n8n vs Make/Zapier, separate domain vs primary, Google Workspace vs Smartlead DFY mailbox) is in the register's Decision Log.
 
 ---
 
