@@ -131,6 +131,12 @@ Docs updated in this PR:
 - `try-monitrax.com` set up end-to-end via GoDaddy↔Google auto-connect: domain verified (`google-site-verification` TXT), Gmail MX → Google, DKIM (`google._domainkey`), SPF (GoDaddy managed-SPF chaining to `_spf.google.com`), DMARC (`p=quarantine`). DNS audited 2026-05-12 — correct. Pending (Reza-side): ~24h DNS settle → confirm DKIM "on" in Google Admin → open Gmail test → Smartlead "Connect Your Email Account" (Google OAuth) → Warmup ON → 2–3 week warm. Then `"execute step 1.1"` (n8n) in parallel.
 - Docs updated: `GTM_TOOL_STACK.md` (new Google Workspace row; Smartlead row reworded "connects the mailbox, doesn't provide it"; `try-monitrax.com` row updated with the DNS state; cost summary +~$8.40/mo; Decision Log entry for the Google-Workspace-vs-Smartlead-DFY call). `GTM_EXECUTION_PLAN.md` (Step 1.3 rewritten with the actual steps taken + progress markers; headline cost + stack-at-a-glance updated). `IMPLEMENTATION_PLAN.md` workstream 0d (Q-GTM-2 line + tool-stack line + burn figures updated).
 
+### Update 4 (2026-05-12) — Step 1.3 COMPLETE (warmup running)
+- `reza@try-monitrax.com` connected to Smartlead via Google OAuth ("connected successfully"). Smartlead Warm Up tab configured + **ENABLED**: target 30 warm-up emails/day, Daily Rampup ON (+1/day, climbs from ~2 to 30 over ~4wk), Randomise 3–30, Reply Rate 35%, Daily Target for Replies to Inbound = 30. (Optional, not yet done: Custom Warmup Identifier Tag + Gmail filter to keep the inbox clean.)
+- **Step 1.3 done** — sending domain + mailbox + warmup all set. The 2–3 week passive warm is now running (≈ early June 2026); zero real cold mail from this mailbox until then. Reza to check the Warm Up tab weekly (deliverability score should climb toward 90%+).
+- Docs updated: `GTM_EXECUTION_PLAN.md` (Step 1.3 → ✅ DONE with the full record of what was done; status tracker 1.3 ticked), `GTM_TOOL_STACK.md` (Smartlead row → 🟢 Active with warmup config), `IMPLEMENTATION_PLAN.md` workstream 0d (Q-GTM-2 line → Step 1.3 DONE).
+- **Next:** Step 1.1 (stand up n8n) — runs in parallel with the warm so no time is lost.
+
 ### PR
 - Branch: `claude/monotrax-marketing-strategy-gSktV`
 - Awaiting PR creation per Reza directive.

@@ -78,20 +78,20 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 - **Done when:** Schema exists, API key copied to n8n credentials.
 - **Gotcha:** Don't over-engineer. Five columns per table > fifty. You can always add fields.
 
-### Step 1.3 — Set up the separate sending domain + mailbox 🟡 IN PROGRESS (2026-05-12)
+### Step 1.3 — Set up the separate sending domain + mailbox ✅ DONE (2026-05-12) — warmup running, 2–3 wk timer ticking
 - **Decision (Q-GTM-2, Reza 2026-05-11/12):** dedicated outbound domain **`try-monitrax.com`** (purchased on GoDaddy 2026-05-12, "Keep Separate" from main domain). Mailbox = **Google Workspace Business Starter** on that domain → `reza@try-monitrax.com` (real-name sender). **Smartlead** ($39/mo) does the sequencing + warmup, connecting the Workspace mailbox via OAuth — it does NOT provide the mailbox. (Smartlead's own "Fresh/Pre-Warmed Mailboxes" DFY flow was rejected — it registers a *new Smartlead-owned domain* and sells mailboxes in 10/20/50/100 packs; wrong tool when we already own `try-monitrax.com`. See `GTM_TOOL_STACK.md` Decision Log 2026-05-12.) Never use `monitrax.com.au` for the automated sequences.
-- **Goal:** Domain registered, Google Workspace mailbox live with MX/SPF/DKIM/DMARC all green, mailbox connected to Smartlead, warmup running.
-- **Time:** ~1h of clicks spread over a day (DNS propagation + ~24h Gmail-routing wait), then **2–3 weeks of passive warming** in parallel with Steps 1.1 + 1.6.
-- **Progress / actual steps taken:**
-  1. ✅ **GoDaddy:** `try-monitrax.com` purchased; "Keep Separate" chosen (clean DNS zone).
-  2. ✅ **Google Workspace:** signed up (Business Starter, 14-day trial), "I have a domain" → `try-monitrax.com`, created user `reza@try-monitrax.com`.
-  3. ✅ **Domain verification:** done via GoDaddy auto-connect (Google added the `google-site-verification` TXT).
-  4. ✅ **Gmail activation:** MX records → Google added automatically via GoDaddy (`aspmx.l.google.com` family). "Gmail is now ready" (Gmail routing may take up to 24h).
-  5. ✅ **Authenticate outgoing emails (DKIM):** done — `google._domainkey` TXT record added. GoDaddy also auto-added SPF (`v=spf1 include:dc-aa8e722993._spfm.try-monitrax.com ~all` on `@`, chaining to `_spf.google.com`) and DMARC (`v=DMARC1; p=quarantine; …` on `_dmarc`). DNS audited 2026-05-12 — correct, nothing to change. (Optional: change DMARC `rua` to `reza@monitrax.com.au` to receive the reports.)
-  6. ⏳ **Pending (after ~24h DNS settle + DKIM confirmed in Google Admin → Apps → Gmail → Authenticate email):** open Gmail as `reza@try-monitrax.com` → send + reply test → Smartlead → Email Accounts → "Connect Your Email Account" → Connect Mailbox → Google → OAuth `reza@try-monitrax.com` → Warmup ON (defaults: 5–10/day ramping to ~40–50, ~30% reply).
-  7. ⏳ **Then walk away 2–3 weeks.** Send ZERO real cold mail during warmup.
-- **Done when:** Smartlead shows the mailbox connected + warmup running AND 2–3 weeks elapsed AND warmup deliverability score climbing toward 90%+.
-- **Gotcha:** Send ZERO cold mail during warmup — one cold blast pre-warmup torches it. Block the 2–3 weeks on the calendar. Don't touch `monitrax.com.au` DNS — all changes are on `try-monitrax.com` only.
+- **Goal:** Domain registered, Google Workspace mailbox live with MX/SPF/DKIM/DMARC all green, mailbox connected to Smartlead, warmup running. ✅ ALL DONE.
+- **What was done (2026-05-12):**
+  1. ✅ GoDaddy: `try-monitrax.com` purchased; "Keep Separate" chosen (clean DNS zone).
+  2. ✅ Google Workspace: Business Starter (14-day trial), domain `try-monitrax.com`, user `reza@try-monitrax.com` ("Reza Sadegh").
+  3. ✅ Domain verified via GoDaddy auto-connect (`google-site-verification` TXT).
+  4. ✅ Gmail activated — MX → Google added automatically via GoDaddy. (Gmail routing may take up to 24h to fully flip.)
+  5. ✅ "Authenticate outgoing emails" (DKIM) — `google._domainkey` TXT added. GoDaddy also auto-added SPF (`v=spf1 include:dc-aa8e722993._spfm.try-monitrax.com ~all` on `@`, chaining to `_spf.google.com`) + DMARC (`v=DMARC1; p=quarantine; …` on `_dmarc`). DNS audited 2026-05-12 — correct. (Optional, not done: change DMARC `rua` to `reza@monitrax.com.au` to receive the reports.)
+  6. ✅ Smartlead → Email Accounts → "Connect Your Email Account" → Connect Mailbox → Google → OAuth `reza@try-monitrax.com` → "connected successfully".
+  7. ✅ Smartlead Warm Up tab: Total warm-up emails/day = **30**, Daily Rampup ON (+1/day → climbs from ~2 to 30 over ~4 wks), Randomise 3–30, Reply Rate 35%, Daily Target for Replies to Inbound = 30. **Warmup ENABLED.** (Optional, not yet done: set Custom Warmup Identifier Tag + a Gmail filter to keep the inbox clean.)
+  8. ⏳ **In progress now: the 2–3 week passive warm.** Send ZERO real cold mail from this mailbox until warm completes. Check the Warm Up tab weekly — deliverability score should climb toward 90%+.
+- **Done when:** warmup running ✅ — fully "done" once the 2–3 weeks elapse and the score is healthy (≈ first week of June 2026).
+- **Gotcha:** Send ZERO cold mail during warmup — one cold blast pre-warmup torches it. Don't create campaigns yet. Don't touch `monitrax.com.au` DNS.
 
 ### Step 1.4 — Sign up for the core SaaS
 - **Goal:** All accounts created, billing on a single card, credentials in n8n.
@@ -366,7 +366,7 @@ I'll never silently change the plan. Every change comes back to you as a one-lin
 ### Phase 1
 - [ ] 1.1 n8n live
 - [ ] 1.2 Airtable CRM
-- [ ] 1.3 Sending domain warming
+- [x] 1.3 Sending domain + mailbox set up; **warmup running 2026-05-12** (fully done once 2–3wk warm completes ≈ early June)
 - [ ] 1.4 SaaS accounts
 - [ ] 1.5 Claude prompts library
 - [ ] 1.6 Founder Daily Digest
