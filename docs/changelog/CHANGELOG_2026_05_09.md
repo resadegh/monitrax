@@ -1194,3 +1194,6 @@ N/A — doc-only PR. No Prisma writes, no migration.
 ### PR
 - Branch: `claude/docs-cron-timezone-aest-MG8mr`
 - Status: pending push + open
+
+### Follow-up commit on this PR — `fix(build): exclude mobile-app/ from the Next.js typecheck`
+The Vercel build for this PR (and `main`, and any other open PR) was failing in the "Linting and checking validity of types" step: `./mobile-app/app/(tabs)/_layout.tsx:1:22 Type error: Cannot find module 'expo-router'`. Cause: the `mobile-app/` Expo scaffold (added to `main` in `feat(mobile): add mobile companion app scaffold under mobile-app/` + the follow-up) has its **own** `tsconfig.json` (extends `expo/tsconfig.base`) and `package.json` (Expo deps), but the **root** `tsconfig.json`'s `"include": ["**/*.ts", "**/*.tsx", …]` was picking up the mobile-app `.tsx` files and `next build`'s typecheck choked on the un-installed `expo-router` types. Fix: add `"mobile-app"` to the root `tsconfig.json` `exclude` array — the Next.js app's typecheck now skips the mobile app entirely (the mobile app is typechecked via its own tsconfig + Expo's build pipeline). One line, no behaviour change. (This was a pre-existing break on `main` — not introduced by this PR — but it has to be fixed for this PR's preview to go green, so it ships here.)
