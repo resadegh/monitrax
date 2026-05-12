@@ -326,30 +326,19 @@ When Phase 5 closes, ask Claude to flesh this section into a Phase 6 plan with t
 
 ---
 
-## Tools + monthly cost summary
+## Tools + cost
 
-| Tool | Purpose | Monthly cost (approx, AUD) |
+> **The full, living tool stack + cost register is `docs/marketing/GTM_TOOL_STACK.md`** — that's the single source of truth. Update it (not this section) when a tool is added, dropped, or repriced.
+
+Headline numbers (see the register for the per-tool breakdown):
+
+| | Recurring (≈ AUD/mo) | One-off (≈ AUD) |
 |---|---|---|
-| Hetzner/DO VPS | n8n hosting | ~$10 |
-| n8n | Orchestration | $0 (self-hosted) |
-| Anthropic API | Claude (Sonnet bulk + Opus Reviews) | ~$50–150 usage-based |
-| Apollo.io | Lead data | ~$75 |
-| Instantly or Smartlead | Cold outbound + warmup | ~$60–150 |
-| Airtable | CRM | $0 (free tier sufficient initially) |
-| Cal.com | Booking | $0–25 |
-| Loops | Lifecycle email | $0–50 |
-| Stripe | Payments | Per-transaction only |
-| PostHog | Product + web analytics | $0 (free tier huge) |
-| Sentry | Error tracking | $0 (free tier) |
-| Senja | Testimonials | $0 (free tier) |
-| Documenso | E-signature | $0 (self-host) or ~$15 |
-| Loom | Async demos | $0–15 |
-| Typefully | Social scheduling | $0–15 |
-| Domain (outbound) | Separate sending domain | ~$2 |
-| VA | ~10–15 hrs/week @ $5–8/hr | ~$300–500 |
-| **Total pre-Basiq** | | **~$800–1,200/mo** |
-| Basiq (when triggered) | $10k initial + $2k/mo | +$2,000/mo |
-| **Total post-Basiq** | | **~$2,800–3,200/mo** |
+| **Pre-Basiq, lean** (free tiers + VA) | **~$550–900/mo** | ~$2k AFSL lawyer review (optional, recommended) |
+| **Pre-Basiq, fuller** (paid tiers as volume grows) | **~$900–1,300/mo** | as above |
+| **Post-Basiq** (when the Phase 5 gate is met) | **~$2,900–3,300/mo** | +~$10k Basiq initial fee |
+
+Stack at a glance: `try-monitrax.com` domain (GoDaddy) · Smartlead (cold outbound) · n8n self-hosted on a VPS (orchestration) · Anthropic API / Claude · Apollo (lead data) · Airtable (CRM) · Cal.com (booking) · Loops (lifecycle email) · Stripe (payments) · PostHog (analytics) · Sentry (errors) · Senja (testimonials) · Documenso (e-sign) · Loom (demos) · Typefully (social) · part-time VA. Decision rationale for the key picks (Smartlead vs Instantly, n8n vs Make/Zapier, separate domain vs primary) is in the register's Decision Log.
 
 ---
 

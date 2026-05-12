@@ -120,6 +120,12 @@ Docs updated in this PR:
 - Docs updated: `IMPLEMENTATION_PLAN.md` (Q-GTM-1 + Q-GTM-2 marked ✅ DECIDED in Open Questions; workstream 0d open-questions list refreshed; "Open as of" tail line updated to leave only Q-GTM-3/4/5 open); `GTM_EXECUTION_PLAN.md` (Step 1.3 rewritten as the concrete Smartlead/GoDaddy guide; Step 3.2 price decision recorded; Open Questions table updated with decisions + Claude recommendations for the three still open).
 - Still open: Q-GTM-3 (first aggregator — rec Finsure), Q-GTM-4 (VA hire timing — rec mid-Phase 2 small scope), Q-GTM-5 (AFSL boundary — rec DIY + lawyer review for v1).
 
+### Update 2 (2026-05-12) — `try-monitrax.com` purchased + cost register created
+- Reza purchased **`try-monitrax.com`** on GoDaddy; advised to choose **"Keep Separate"** (not GoDaddy's "Connect"/Domain-Connect) so the DNS zone stays clean for the Smartlead email records. GoDaddy step done; next is Smartlead signup → DFY managed inbox `reza@try-monitrax.com` → GoDaddy DNS (SPF/DKIM/DMARC/tracking) → warmup toggle.
+- Reza asked whether Smartlead / n8n are the right picks → Claude confirmed both with brief rationale (Smartlead: best price+API for solo-scale cold outbound, Instantly the friendlier-UI alternative; n8n self-hosted: power+near-zero cost, n8n Cloud the no-VPS alternative). Rationale recorded in the new cost register's Decision Log.
+- **New file `docs/marketing/GTM_TOOL_STACK.md`** — living tool stack + cost register (SSOT for GTM tooling costs). Per-tool table (purpose / plan / list price / ≈AUD/mo / status / notes), cost summary (pre-Basiq lean ~$550–900/mo · fuller ~$900–1,300/mo · post-Basiq ~$2,900–3,300/mo + ~$10k Basiq initial), tool-choice decision log, "related non-GTM costs" pointers (Vercel/GCP/Basiq tracked elsewhere), and a "how to keep this current" block.
+- `GTM_EXECUTION_PLAN.md` — inline Tools table replaced with a pointer to `GTM_TOOL_STACK.md` + headline cost numbers (the register is now the SSOT). `IMPLEMENTATION_PLAN.md` workstream 0d — canonical-docs line + tool-stack line + Q-GTM-2 line updated to reference the register and record the domain purchase.
+
 ### PR
 - Branch: `claude/monotrax-marketing-strategy-gSktV`
 - Awaiting PR creation per Reza directive.
