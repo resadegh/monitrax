@@ -158,7 +158,7 @@ Step 4: Monitrax stores & uses CDR data
                       ▼                ▼                ▼
                  CDR data         checkConsentExpiry()  deleteCDRData()
                  stored in        runs daily at         hard-deletes all
-                 Cloud SQL        02:00 UTC via         Basiq accounts,
+                 Cloud SQL        02:00 Australia/Sydney (AEST/AEDT) via         Basiq accounts,
                  (Sydney)         Cloud Scheduler       transactions,
                                                         connections
                                   handleConsentRevocation()
@@ -253,7 +253,7 @@ Step 4: Monitrax stores & uses CDR data
 | CDR metadata sanitization | `lib/security/cdrAuditCompliance.ts` → `sanitizeCdrMetadata()` | Strip PII from audit logs |
 | Basiq API integration | `lib/basiq.ts` | Connect, sync, fetch CDR data |
 | Consent verification | `lib/services/cdrDataLifecycle.ts` → `hasActiveCDRConsent()` | Check active consent before data access |
-| Automated consent check | `app/api/cdr/lifecycle/route.ts` | Cloud Scheduler endpoint (daily 02:00 UTC) |
+| Automated consent check | `app/api/cdr/lifecycle/route.ts` | Cloud Scheduler endpoint (daily 02:00 Australia/Sydney (AEST/AEDT)) |
 
 ---
 

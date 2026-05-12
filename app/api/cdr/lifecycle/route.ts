@@ -5,7 +5,7 @@
  * POST /api/cdr/lifecycle — Run consent expiry check and CDR data cleanup
  * GET  /api/cdr/lifecycle — Get CDR data summary for authenticated user
  *
- * POST is designed to be called by GCP Cloud Scheduler daily at 02:00 UTC.
+ * POST is designed to be called by GCP Cloud Scheduler daily at 02:00 Australia/Sydney (AEST/AEDT).
  * Authenticated via CRON_SECRET environment variable (not user auth).
  *
  * GET is authenticated via standard user auth for consent management UI.
@@ -27,7 +27,7 @@ import { enforceAuditLogRetention, runAnomalyDetection } from '@/lib/security/cd
  *
  * Auth: CRON_SECRET header (for GCP Cloud Scheduler).
  * GCP Cloud Scheduler config:
- *   Schedule: 0 2 * * * (daily at 02:00 UTC)
+ *   Schedule: 0 2 * * * (daily at 02:00 Australia/Sydney (AEST/AEDT))
  *   HTTP Target: POST https://<domain>/api/cdr/lifecycle
  *   Headers: { "Authorization": "Bearer <CRON_SECRET>" }
  */

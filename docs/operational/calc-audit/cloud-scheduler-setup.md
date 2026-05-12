@@ -50,7 +50,7 @@ Save the output as `CALC_AUDIT_SCHEDULER_SHARED_SECRET` in Vercel's production e
 gcloud scheduler jobs create http calc-audit-l2-anomaly-scan \
   --project=<PROJECT_ID> \
   --location=australia-southeast1 \
-  --schedule="0 17 * * *" \
+  --schedule="0 3 * * *" \
   --time-zone="Australia/Sydney" \
   --uri="https://app.monitrax.com.au/api/admin/calc-audit/anomaly-scan" \
   --http-method=POST \
@@ -62,7 +62,7 @@ gcloud scheduler jobs create http calc-audit-l2-anomaly-scan \
   --max-backoff=600s
 ```
 
-**Schedule rationale**: `0 17 * * *` UTC = **03:00 AEST daily** (low traffic; before AU business hours). Adjust the cron + timezone for the deployment region.
+**Schedule rationale**: `0 3 * * *` in `Australia/Sydney` = **03:00 Sydney daily** (low traffic; before AU business hours). All Monitrax Cloud Scheduler jobs use the `australia-southeast1` region + the `Australia/Sydney` timezone (see `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md` — Reza decision 2026-05-12). If an older instance of this job was created with `0 17 * * * UTC`, fix it: `gcloud scheduler jobs update http calc-audit-l2-anomaly-scan --location=australia-southeast1 --schedule="0 3 * * *" --time-zone="Australia/Sydney"`.
 
 ---
 

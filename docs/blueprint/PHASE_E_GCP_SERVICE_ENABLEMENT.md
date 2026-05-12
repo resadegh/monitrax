@@ -345,8 +345,8 @@ For the Basiq compliance response, document:
    ```
    Name: cdr-consent-expiry-check
    Region: australia-southeast1
-   Frequency: 0 2 * * * (daily at 02:00 UTC / 12:00 AEST)
-   Timezone: UTC
+   Frequency: 0 2 * * * (daily 02:00 Sydney time)
+   Timezone: Australia/Sydney
    ```
 
 4. Configure target:

@@ -3,8 +3,8 @@
  *
  * Cron-only endpoint that sweeps `ConversationMessage` rows past their
  * 7-year retention window (`retentionUntil < now()`). Designed to be
- * called by GCP Cloud Scheduler daily at 03:00 UTC — one hour after
- * the CDR retention cron at 02:00 UTC so they don't fight for DB CPU
+ * called by GCP Cloud Scheduler daily at 03:00 Australia/Sydney (AEST/AEDT) — one hour after
+ * the CDR retention cron at 02:00 Australia/Sydney (AEST/AEDT) so they don't fight for DB CPU
  * on warm-up.
  *
  * Auth: `Authorization: Bearer <CRON_SECRET>` header — same shared
@@ -27,7 +27,7 @@
  *
  * GCP Cloud Scheduler config:
  *   Name:     monitrax-conversation-retention-sweep
- *   Schedule: 0 3 * * * (daily 03:00 UTC)
+ *   Schedule: 0 3 * * * (daily 03:00 Australia/Sydney (AEST/AEDT))
  *   Target:   POST https://<domain>/api/conversations/retention-sweep
  *   Headers:  { "Authorization": "Bearer <CRON_SECRET>" }
  *   See `docs/operational/runbooks/RETENTION_SCHEDULERS.md` for the

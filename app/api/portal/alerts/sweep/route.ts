@@ -4,7 +4,7 @@
  * Cron-only endpoint that recomputes the Practice "needs attention
  * today" alert stream for every organisation's active clients.
  * Designed to be called by GCP Cloud Scheduler daily — pick an off-peak
- * slot that doesn't fight the CDR retention crons (02:00 / 03:00 UTC).
+ * slot that doesn't fight the CDR retention crons (02:00 / 03:00 Australia/Sydney (AEST/AEDT)).
  *
  * The actual work lives in `lib/portal/alerts/sweepRunner.ts`
  * (`runPortalAlertSweep`) so the cron path and the admin "run sweep
@@ -28,7 +28,7 @@
  *
  * GCP Cloud Scheduler config:
  *   Name:     monitrax-portal-alert-sweep
- *   Schedule: 0 4 * * * (daily 04:00 UTC — after the retention crons)
+ *   Schedule: 0 4 * * * (daily 04:00 Australia/Sydney (AEST/AEDT) — after the retention crons)
  *   Target:   POST https://<domain>/api/portal/alerts/sweep
  *   Headers:  { "Authorization": "Bearer <CRON_SECRET>" }
  *

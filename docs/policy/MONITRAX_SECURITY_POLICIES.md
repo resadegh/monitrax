@@ -508,7 +508,7 @@ This policy governs the handling of Consumer Data Right (CDR) data received from
 
 - **Lifecycle service:** `lib/services/cdrDataLifecycle.ts` — `deleteCDRData()`, `checkConsentExpiry()`, `handleConsentRevocation()`, `anonymizeCDRData()`, `hasActiveCDRConsent()`.
 - **Guards:** `withActiveConsent()` verifies permission + MFA + active consent before CDR data access.
-- **Automated checks:** `POST /api/cdr/lifecycle` endpoint for GCP Cloud Scheduler (daily 02:00 UTC).
+- **Automated checks:** `POST /api/cdr/lifecycle` endpoint for GCP Cloud Scheduler (daily 02:00 Australia/Sydney (AEST/AEDT)).
 - **Audit:** CDR_DATA_DELETED, CDR_CONSENT_EXPIRED, CDR_CONSENT_REVOKED, CDR_DATA_ANONYMIZED events logged.
 - **Full policy:** `docs/compliance/CDR_DATA_RETENTION_SCHEDULE.md`, `docs/operational/security/03_CDR_COMPLIANCE.md`.
 
