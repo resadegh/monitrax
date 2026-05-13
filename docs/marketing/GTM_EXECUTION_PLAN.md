@@ -306,12 +306,17 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 
 Brief notes — full plan to be written when Phase 5 triggers.
 
-- **Activation:** Free tier with auto bank feeds + the "see your full picture in 60 seconds" first win.
-- **Acquisition:** SEO content engine (Claude-drafted, monthly batch approval), one creator partnership (Equity Mates / Aussie FIRE / Glen James orbit), founding-member annual pricing for the waitlist (~$79/yr first cohort, then $9/mo).
+- **Monetisation model (DECIDED 2026-05-12):** revenue priority = (1) adviser/broker B2B subs (the engine, live now), (2) D2C premium subs (this phase), (3) marketplace lead fees, (4) tasteful disclosed affiliate. **No display advertising** (trust-killer + advice-conflict — see `IMPLEMENTATION_PLAN.md` workstream 0e + Q-GTM-6). Affiliate only for products that pass the financial-adviser test, always disclosed, never inside the Guide's recommendation flow.
+- **Freemium infrastructure:** the entitlements engine + admin controls + feature-tier tagging + cost-centre metering (AI / storage / Basiq feeds) get built **dormant** *before* this phase (workstream 0e — `lib/auth/entitlements.ts`, `checkEntitlement()`, a global "enforcement OFF" switch, default-to-PREMIUM) so Reza can review it; the **customer-facing** pricing page + Stripe consumer checkout + paywall/quota UI + "Upgrade" CTAs are built **in this phase**, at/near Basiq go-live, when prices + the free/paid split are final. Marketing site: Org/adviser pricing page now; consumer pricing page in this phase.
+- **Free/Premium split (shape — finalise in this phase):** FREE = manual entry, basic net worth + budget, TRAIL journey, Guide top-3 (rule-based), small AI quota (~10 msgs/mo lite model), small storage cap (~100MB/~25 docs), 1–2 bank accounts. PREMIUM (~AU$9–14/mo or ~$79–129/yr TBD) = unlimited feeds + AI (Opus, fair-use) + storage, advanced scenarios, full Tax, full Properties/Investments, deeper Guide, Ask-a-Professional, priority support.
+- **Activation:** Free tier with auto bank feeds + the "see your full picture in 60 seconds" first win (TRAIL Track stage). Don't paywall the first win — gate depth + the cost centres only.
+- **Acquisition:** SEO content engine (Claude-drafted, monthly batch approval), one creator partnership (Equity Mates / Aussie FIRE / Glen James orbit), founding-member annual pricing for the waitlist.
 - **Retention:** Lifecycle loops F1–F4 from the automation stack (already built by then).
-- **Affiliate:** AU finance affiliate stack (Up Bank, brokers via your own pilots, ETF providers) — every active user has affiliate revenue potential.
+- **Affiliate:** tasteful, disclosed only — never a pillar.
 
-When Phase 5 closes, ask Claude to flesh this section into a Phase 6 plan with the same step-by-step structure.
+When Phase 5 closes, ask Claude to flesh this section into a Phase 6 plan with the same step-by-step structure (and a `docs/blueprint/PHASE_*_CONSUMER_FREEMIUM.md` for the freemium-infra build).
+
+> **Note — Friendlies private beta (near-term, NOT part of Phase 6):** onboarding 5–10 friendlies on the demo-ready app for feedback is a separate near-term workstream (`IMPLEMENTATION_PLAN.md` 0f) that runs in parallel with the early GTM build + Reza's Basiq onboarding. It does *not* depend on the freemium infra (no gating exists today, so comping = "they sign up and get the app as-is"). Sequence: after GTM Step 1.1 (n8n) + 1.6 (Founder Daily Digest).
 
 ---
 
@@ -324,6 +329,8 @@ When Phase 5 closes, ask Claude to flesh this section into a Phase 6 plan with t
 | Q-GTM-3 | First aggregator to focus on (Connective / AFG / Loan Market / Mortgage Choice / Finsure)? | Reza | Open — needed before Step 2.2. Claude recommendation: **Finsure** first, Connective second. Avoid AFG / Mortgage Choice for outbound. |
 | Q-GTM-4 | VA: hire now (parallel with Phase 2) or wait until first Review sells? | Reza | Open — needed before Step 3.7. Claude recommendation: hire mid-Phase 2 (~week 2–3), small scope (CRM hygiene + lead QA + inbox triage), expand into Review intake from Review #2–3. |
 | Q-GTM-5 | AFSL boundary — DIY scope doc + lawyer review, or engage an AFSL holder? | Reza | Open — needed before Step 3.1. Claude recommendation: **DIY + AU fintech-lawyer review** for v1 (factual-only Review), queue "partner with an AFSL holder for a Review + advice-session upsell" as the trigger if customer feedback demands personal recommendations. |
+| Q-GTM-6 | Advertising as a consumer revenue lever? | Reza | ✅ **DECIDED 2026-05-12 — NO display ads.** Tasteful disclosed affiliate only (products that pass the financial-adviser test, never in the Guide flow, always disclosed); a minor stream, not a pillar. Revenue priority: B2B subs → D2C premium subs → marketplace lead fees → affiliate. See `IMPLEMENTATION_PLAN.md` workstream 0e. |
+| Q-GTM-7 | Friendlies private-beta cohort — who, exactly? | Reza | Open — pick 5–10 across TRAIL stages; 6-month comp time-box. Not blocking the build; blocking the invite email (workstream 0f). |
 
 ---
 
