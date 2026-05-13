@@ -64,15 +64,16 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 
 ## Phase 1 — Foundations (Week 1, ~12 hours)
 
-### Step 1.1 — Stand up n8n 🟡 IN PROGRESS (2026-05-13)
-- **Goal:** Self-hosted n8n running on a Hetzner VPS, accessible at `https://n8n.try-monitrax.com`, with HTTPS auto-provisioned by Caddy. Docker Compose stack: n8n + Postgres (n8n's own data) + Caddy. `unattended-upgrades` enabled for security patches. Hetzner-managed daily backups on.
-- **Time:** ~1 hour (Part A provision + Part B DNS done; Part C install pending).
-- **Progress (2026-05-13):**
-  - [x] **Part A — Provisioned:** Hetzner Cloud server `n8n-1` created in `monitrax-ops` project. **CPX22** (x86 AMD, 3 vCPU / 4 GB / 80 GB SSD / 20 TB traffic, Nuremberg eu-central, Ubuntu 24.04). SSH key `reza-macbook` (ed25519, default for project). Backups enabled. Public IPv4 + IPv6.
-  - [ ] **Part B — DNS:** add A record at GoDaddy → `n8n.try-monitrax.com` → server IPv4. TTL 1 hour. (One step from Reza; A record on a subdomain has zero effect on the existing email setup.)
-  - [ ] **Part C — Install:** SSH in, install Docker + Docker Compose, drop in the `docker-compose.yml` (n8n + Postgres + Caddy), bring up, set the n8n owner account, configure `unattended-upgrades` + ufw firewall. Claude provides the exact command block.
-- **Done when:** logging into `https://n8n.try-monitrax.com` (TLS green via Let's Encrypt) gets to the n8n UI and a Hello World workflow runs.
-- **Gotcha:** raw VPS IP intentionally NOT in repo — DNS hostname (`n8n.try-monitrax.com`) is the canonical reference. SSH key-only access; root password disabled in Part C. CDR posture confirmed: n8n is GTM-ops only — never pulls CDR data, so the German server location is compliant (CLAUDE.md §13.6 boundary preserved). The VPS will also host Documenso (Step 4.3) and any other small GTM services later — 4 GB RAM + 80 GB SSD has headroom for that.
+### Step 1.1 — Stand up n8n ✅ DONE (2026-05-13)
+- **Goal:** Self-hosted n8n running on a Hetzner VPS, accessible at `https://n8n.monitrax.com.au`, with HTTPS auto-provisioned by Caddy. Docker Compose stack: n8n + Postgres (n8n's own data) + Caddy. `unattended-upgrades` enabled for security patches. Hetzner-managed daily backups on. **ACHIEVED.**
+- **What was done (2026-05-13):**
+  - [x] **Part A — VPS provisioned:** Hetzner Cloud server `n8n-1` in `monitrax-ops` project. **CPX22** (3 vCPU / 4 GB / 80 GB SSD / 20 TB / AMD x86), Nuremberg eu-central, Ubuntu 24.04. SSH key `reza-macbook` (ed25519, default for project). Backups on. Public IPv4 + IPv6.
+  - [x] **Part B — DNS:** A record at GoDaddy → `n8n.monitrax.com.au` → server IPv4 (1h TTL). On the main brand domain, not on `try-monitrax.com` — see migration note below.
+  - [x] **Part C — Install + harden:** SSH'd in, ran the install block: Docker + Compose plugin installed, `/opt/n8n` directory created, `docker-compose.yml` written (n8n + Postgres + Caddy services), `Caddyfile` written, `.env` written with 32-byte n8n encryption key + 24-byte Postgres password, stack brought up, UFW firewall (allow 22/80/443 only), `unattended-upgrades` enabled, fail2ban running, SSH hardened (PasswordAuthentication no, PermitRootLogin prohibit-password). Postgres healthy, n8n + Caddy running.
+  - [x] **Owner account:** created at the n8n UI; password stored in Reza's password manager. Free-license-key email registered to `admin@monitrax.com.au` (unlocks Folders, Execution search/tagging, Advanced debugging — paste the key in Settings → Usage when it arrives).
+  - [x] **URL migration: `n8n.try-monitrax.com` → `n8n.monitrax.com.au`** (mid-session correction). Reason: Chrome Safe Browsing flagged the `try-monitrax.com` subdomain ("Dangerous site" — new-domain heuristic). Architectural correction: `try-monitrax.com` is the **email-only** domain (cold-outbound sending via Smartlead), `monitrax.com.au` is the brand + tools domain. n8n is an internal tool, belongs on the brand domain. `sed` swap of Caddyfile + docker-compose hostname references + container restart; Caddy auto-fetched fresh Let's Encrypt cert. Cold-email setup on `try-monitrax.com` untouched.
+- **Done when:** ✅ `https://n8n.monitrax.com.au` loads cleanly (TLS green, no Chrome warning), owner account works, all 3 containers Up.
+- **Gotcha:** raw VPS IP intentionally NOT in repo — DNS hostname is the canonical reference. SSH key-only access (no password login). CDR posture confirmed: n8n is GTM-ops only — never pulls CDR data, so the German server location is compliant (CLAUDE.md §13.6 boundary preserved). The VPS will also host Documenso (Step 4.3) and any other small GTM services later — 4 GB RAM + 80 GB SSD has headroom for that.
 
 ### Step 1.2 — Set up Airtable CRM
 - **Goal:** A single Airtable base ("Monitrax CRM") with the schema all later workflows will read/write.
@@ -374,7 +375,7 @@ I'll never silently change the plan. Every change comes back to you as a one-lin
 - [ ] 0.2 Success metrics locked
 
 ### Phase 1
-- [ ] 1.1 n8n live
+- [x] 1.1 n8n live at `https://n8n.monitrax.com.au` (Hetzner CPX22, Nuremberg, 2026-05-13)
 - [ ] 1.2 Airtable CRM
 - [x] 1.3 Sending domain + mailbox set up; **warmup running 2026-05-12** (fully done once 2–3wk warm completes ≈ early June)
 - [ ] 1.4 SaaS accounts
