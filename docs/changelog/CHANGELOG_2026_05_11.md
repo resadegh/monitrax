@@ -144,6 +144,12 @@ Docs updated in this PR:
 - Docs updated: `IMPLEMENTATION_PLAN.md` (header refreshed; workstreams 0e + 0f added; Q-GTM-6 closed + Q-GTM-7 added in Open Questions; "Open as of" line updated). `GTM_EXECUTION_PLAN.md` (Phase 6 expanded with the monetisation model + build/design/defer split + free/premium shape + a friendlies-beta cross-reference note; Open Questions table updated with Q-GTM-6/Q-GTM-7).
 - **Next operational step:** GTM Step 1.1 — stand up n8n. Then 1.6 (Founder Daily Digest) → friendlies beta → GTM Phase 2.
 
+### Update 6 (2026-05-13) — GTM Step 1.1 Part A done — Hetzner VPS provisioned
+- **Server `n8n-1` provisioned** on Hetzner Cloud (project `monitrax-ops`): **CPX22** (x86 AMD, 3 vCPU / 4 GB RAM / 80 GB SSD / 20 TB traffic), **Nuremberg** (eu-central), **Ubuntu 24.04 LTS**, SSH key `reza-macbook` (ed25519, set as project default), Hetzner-managed daily backups ON, public IPv4 + IPv6. Cost ~€7.55/mo + backups + IPv4 ≈ ~AU$14–15/mo all-in (within the prior $10–18/mo VPS budget band).
+- **CDR check (logged):** confirmed Hetzner Germany is compliant — n8n is GTM-ops only and never pulls CDR data per CLAUDE.md §13.6, so the server's location is out of scope for CDR. Raw VPS IP intentionally NOT in repo — DNS hostname (`n8n.try-monitrax.com`) is the canonical reference.
+- **Pending:** Part B (Reza adds DNS A record `n8n.try-monitrax.com` → server IPv4 at GoDaddy) → Part C (Claude provides the SSH-paste command block: Docker + Docker Compose + n8n/Postgres/Caddy stack + `unattended-upgrades` + ufw + SSH hardening). Step 1.1 done when `https://n8n.try-monitrax.com` lands on the n8n UI with TLS green.
+- Docs updated: `GTM_TOOL_STACK.md` (new `VPS — Hetzner Cloud n8n-1` row 🟢 Active with CPX22 specifics; n8n row → "server provisioned, install pending"; Decision Log entry for the CPX22-vs-CX22-vs-CCX choice + the DO-Sydney alternative). `GTM_EXECUTION_PLAN.md` (Step 1.1 rewritten with Parts A/B/C progress markers, Part A ticked). `IMPLEMENTATION_PLAN.md` workstream 0d tool-stack line (Hetzner VPS added).
+
 ### PR
 - Branch: `claude/monotrax-marketing-strategy-gSktV`
 - Awaiting PR creation per Reza directive.

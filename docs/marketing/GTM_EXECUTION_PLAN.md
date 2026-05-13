@@ -64,12 +64,15 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 
 ## Phase 1 — Foundations (Week 1, ~12 hours)
 
-### Step 1.1 — Stand up n8n
-- **Goal:** Self-hosted n8n running on a cheap VPS, accessible at `n8n.<yourdomain>`, with HTTPS.
-- **Time:** 1 hour.
-- **Action:** Spin up a $6/mo Hetzner CX11 (or $5 DigitalOcean droplet), install n8n via Docker Compose, put Caddy in front for auto-HTTPS, set basic auth + a strong password.
-- **Done when:** You can log into n8n and run a Hello World workflow.
-- **Gotcha:** Self-host = you back it up. Set a nightly snapshot on the VPS.
+### Step 1.1 — Stand up n8n 🟡 IN PROGRESS (2026-05-13)
+- **Goal:** Self-hosted n8n running on a Hetzner VPS, accessible at `https://n8n.try-monitrax.com`, with HTTPS auto-provisioned by Caddy. Docker Compose stack: n8n + Postgres (n8n's own data) + Caddy. `unattended-upgrades` enabled for security patches. Hetzner-managed daily backups on.
+- **Time:** ~1 hour (Part A provision + Part B DNS done; Part C install pending).
+- **Progress (2026-05-13):**
+  - [x] **Part A — Provisioned:** Hetzner Cloud server `n8n-1` created in `monitrax-ops` project. **CPX22** (x86 AMD, 3 vCPU / 4 GB / 80 GB SSD / 20 TB traffic, Nuremberg eu-central, Ubuntu 24.04). SSH key `reza-macbook` (ed25519, default for project). Backups enabled. Public IPv4 + IPv6.
+  - [ ] **Part B — DNS:** add A record at GoDaddy → `n8n.try-monitrax.com` → server IPv4. TTL 1 hour. (One step from Reza; A record on a subdomain has zero effect on the existing email setup.)
+  - [ ] **Part C — Install:** SSH in, install Docker + Docker Compose, drop in the `docker-compose.yml` (n8n + Postgres + Caddy), bring up, set the n8n owner account, configure `unattended-upgrades` + ufw firewall. Claude provides the exact command block.
+- **Done when:** logging into `https://n8n.try-monitrax.com` (TLS green via Let's Encrypt) gets to the n8n UI and a Hello World workflow runs.
+- **Gotcha:** raw VPS IP intentionally NOT in repo — DNS hostname (`n8n.try-monitrax.com`) is the canonical reference. SSH key-only access; root password disabled in Part C. CDR posture confirmed: n8n is GTM-ops only — never pulls CDR data, so the German server location is compliant (CLAUDE.md §13.6 boundary preserved). The VPS will also host Documenso (Step 4.3) and any other small GTM services later — 4 GB RAM + 80 GB SSD has headroom for that.
 
 ### Step 1.2 — Set up Airtable CRM
 - **Goal:** A single Airtable base ("Monitrax CRM") with the schema all later workflows will read/write.
