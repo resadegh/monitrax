@@ -476,7 +476,23 @@ forward by migration `20260514130000_fix_basiq_connection_consent_columns`
 dev, adds the columns on prod).
 
 **To find any remaining drift** (recommended once, ideally before the
-Basiq accreditation submission):
+Basiq accreditation submission) — two ways:
+
+**(a) Server-side, no local setup — `GET /api/admin/schema-drift`** (SUPER_ADMIN).
+The running Vercel function already has prod DB access (WIF), so it can run
+the audit for you. Hit `https://www.monitrax.com.au/api/admin/schema-drift`
+as a SUPER_ADMIN (or from `/admin/...`) → JSON report: `missingTables`,
+`tablesWithMissingColumns` (each with a `suggestedAddColumnSql` hint),
+`tablesWithExtraColumns`, `missingEnums` / `enumsWithMissingValues`,
+`orphanTables`, and a `summary` with `hasDrift`. **Read-only** — it runs
+only `SELECT`s against `information_schema` / `pg_catalog`; it applies
+nothing. Scope: column / table / enum-value level (catches the
+`SELECT *`-crashes-on-a-missing-column class — the high-risk drift). It
+does NOT check column types / nullability / defaults / indexes — for
+that, use (b).
+
+**(b) Locally, the full `prisma migrate diff`** (covers types/nullability/
+indexes too — needs the repo + prod DB access):
 
 ```bash
 npx prisma migrate diff \
@@ -486,13 +502,19 @@ npx prisma migrate diff \
 ```
 
 `/tmp/prod_drift.sql` is the SQL that would bring prod in line with
-`schema.prisma`. Review it: if it's all additive (`ADD COLUMN` /
-`CREATE INDEX`), turn it into a corrective migration (wrap each statement
-in `IF NOT EXISTS` so it's also a no-op on dev). If it contains `DROP` /
+`schema.prisma`.
+
+**Either way, the fix is the same:** review the output — if it's all
+additive (`ADD COLUMN` / `CREATE INDEX` / `ALTER TYPE ... ADD VALUE`),
+turn it into a corrective migration (wrap each statement in
+`IF NOT EXISTS` so it's also a no-op on dev). If it contains `DROP` /
 `ALTER ... DROP` — **stop and fill in the §12.11 destructive-write
-checklist before doing anything.** Never apply the drift SQL directly via
-psql (CLAUDE.md §12.12 bans direct `ALTER TABLE` on prod) — always go
-through a migration so `_prisma_migrations` stays accurate.
+checklist before doing anything** (a `DROP` usually means prod has
+*extra* stuff `schema.prisma` doesn't know about — the right fix is
+often to add it *to* the schema, not drop it from prod). Never apply
+the drift SQL directly via psql (CLAUDE.md §12.12 bans direct
+`ALTER TABLE` on prod) — always go through a migration so
+`_prisma_migrations` stays accurate.
 
 ---
 

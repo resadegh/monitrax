@@ -1297,3 +1297,50 @@ N/A — doc-only PR.
 ### PR
 - Branch: `claude/docs-ops-progress-tracking-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/admin-schema-drift-check-MG8mr (feat(admin) — GET /api/admin/schema-drift, server-side prod schema-drift audit)
+
+### Changes Made
+- **Type:** Feature (admin tooling) — a server-side runner for the "audit prod for more pre-migration drift" task (checklist row 11 / Tech Debt #18).
+- **Why:** Reza asked Claude to "run the drift audit yourself". Claude can't reach `monitrax-db-prod` from the sandbox (no `node_modules`, Prisma CLI version mismatch, no prod credentials/network). So instead Claude built the tool: an endpoint that runs the audit server-side, where the Vercel function already has prod DB access via WIF — so Reza can run it with one click instead of setting up a local Prisma environment against prod. (We just fixed one such drift — `basiq_connections` missing `consentExpiresAt`/`consentScope` — there are likely more lurking; this surfaces them all at once.)
+
+### Files Created
+- `app/api/admin/schema-drift/route.ts` (~250 LOC) — `GET`, `verifyAdminGCPAuth` + `role === 'SUPER_ADMIN'` (mirrors `/api/admin/run-seed`). **Read-only** — runs only `SELECT`s against `information_schema.tables` / `information_schema.columns` / `pg_type`+`pg_enum` over the live WIF connection (`prisma.$queryRawUnsafe` with static SQL — no user input, no injection surface); applies nothing, touches no data. Reads `Prisma.dmmf.datamodel.{models,enums}` (the data-model meta-format baked into the generated client) for "what `schema.prisma` declares", then diffs:
+  - `missingTables` — model `@@map` tables that don't exist in prod
+  - `tablesWithMissingColumns` — per table: columns the DMMF declares that prod lacks, each with `prismaField` / `prismaType` / `isList` / `isRequired` + a `suggestedAddColumnSql` *hint* (e.g. `ALTER TABLE "basiq_connections" ADD COLUMN IF NOT EXISTS "consentExpiresAt" TIMESTAMP(3);` — a hint for writing the corrective migration, NOT something the endpoint applies)
+  - `tablesWithExtraColumns` — columns in prod with no DMMF field (less urgent; usually means "add to the schema", not "drop from prod")
+  - `missingEnums` / `enumsWithMissingValues` — enum types / enum values the DMMF declares that prod's enum types lack
+  - `orphanTables` — prod tables that map to no model (`_prisma_migrations` is whitelisted)
+  - `summary` with `hasDrift` + counts; `runBy`; a `note` explaining the scope (column/table/enum-value level — catches the `SELECT *`-crashes-on-a-missing-column class; does NOT check types/nullability/defaults/indexes — for that, the local `prisma migrate diff`)
+  Returns no data — only schema metadata (table/column/enum names). CDR §13.3 N/A by structure. `Prisma.dmmf` not in the bundle ⇒ returns a clear `DMMF_UNAVAILABLE` 500 pointing at the local `prisma migrate diff` fallback (defensive — `Prisma.dmmf` should be present for Prisma 5.22's generated client). `maxDuration = 60`, `dynamic = 'force-dynamic'`.
+
+### Files Modified
+- `docs/operational/database/04_PRISMA_MIGRATION_BASELINE.md` §12 — "to find any remaining drift" now lists two ways: **(a)** `GET /api/admin/schema-drift` (SUPER_ADMIN, server-side, no local setup, column/table/enum-value level) + **(b)** the local `npx prisma migrate diff` (also checks types/nullability/indexes). "Either way the fix is the same" — review → if additive, corrective migration with `IF NOT EXISTS`; if `DROP`, §12.11 checklist first; never a direct `ALTER` on prod (§12.12).
+- `docs/IMPLEMENTATION_PLAN.md` — checklist row 11 updated (the endpoint is now the "easiest" path); Tech Debt #18 updated; a Recently Completed bullet; top "Last updated" line.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — no posture change; the endpoint returns only schema metadata (no data, no CDR content), is SUPER_ADMIN-gated, and is read-only
+- [x] operational procedure (a new server-side way to run the prod schema-drift audit — documented in `04_PRISMA_MIGRATION_BASELINE.md` §12 + the Reza-side checklist)
+- [ ] strategic decision
+
+Other §3.1 considerations: this is a new API route but it follows the existing admin-route convention (`verifyAdminGCPAuth` + `SUPER_ADMIN` check) — no new API *standard* introduced, so `07_API_STANDARDS.md` not touched. No schema change → no `03_DATA_MODEL.md` / migration. No new design primitive.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — the endpoint runs only `SELECT`s. No Prisma `update`/`delete`/`updateMany`/`deleteMany`/`upsert`/`$executeRaw`, no migration.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` / `prisma generate` are no-ops in this sandbox. Code reviewed against existing patterns: `verifyAdminGCPAuth` + `ADMIN_ERROR_CODES` + `authResult.context.role !== 'SUPER_ADMIN'` matches `/api/admin/run-seed/route.ts`; `import prisma from '@/lib/db'` (default) matches the cron/admin routes; `prisma.$queryRawUnsafe<T[]>('static sql')` is the standard read-only raw-query form. The one external assumption: `Prisma.dmmf` is available on the generated client at runtime — true for Prisma 5.x (it was restricted in 6+; project is on 5.22.0); guarded with a clear `DMMF_UNAVAILABLE` fallback if not. The Vercel preview build is the canonical type check.
+
+### PR
+- Branch: `claude/admin-schema-drift-check-MG8mr`
+- Status: pending push + open
