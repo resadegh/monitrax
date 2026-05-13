@@ -50,6 +50,42 @@ interface PortalAlertSweepResult {
   runBy?: string;
 }
 
+// Shape of the `data` payload from GET /api/admin/schema-drift.
+interface SchemaDriftReport {
+  generatedAt?: string;
+  note?: string;
+  summary?: {
+    modelsChecked?: number;
+    enumsChecked?: number;
+    missingTables?: number;
+    tablesWithMissingColumns?: number;
+    totalMissingColumns?: number;
+    tablesWithExtraColumns?: number;
+    missingEnums?: number;
+    enumsWithMissingValues?: number;
+    orphanTables?: number;
+    hasDrift?: boolean;
+  };
+  missingTables?: { model: string; table: string }[];
+  tablesWithMissingColumns?: {
+    table: string;
+    model: string;
+    missingColumns: {
+      column: string;
+      prismaField: string;
+      prismaType: string;
+      isList: boolean;
+      isRequired: boolean;
+      suggestedAddColumnSql: string;
+    }[];
+  }[];
+  tablesWithExtraColumns?: { table: string; model: string; extraColumns: string[] }[];
+  missingEnums?: { prismaEnum: string; enum: string; values: string[] }[];
+  enumsWithMissingValues?: { enum: string; prismaEnum: string; missingValues: string[] }[];
+  orphanTables?: string[];
+  runBy?: string;
+}
+
 export default function SchedulerPage() {
   const [data, setData] = useState<SchedulerData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,6 +97,26 @@ export default function SchedulerPage() {
   const [sweepRunning, setSweepRunning] = useState(false);
   const [sweepResult, setSweepResult] = useState<PortalAlertSweepResult | null>(null);
   const [sweepError, setSweepError] = useState<string | null>(null);
+
+  // Schema-drift check — read-only audit of prod vs schema.prisma.
+  const [driftRunning, setDriftRunning] = useState(false);
+  const [driftReport, setDriftReport] = useState<SchemaDriftReport | null>(null);
+  const [driftError, setDriftError] = useState<string | null>(null);
+
+  const handleRunDriftCheck = async () => {
+    setDriftRunning(true);
+    setDriftError(null);
+    setDriftReport(null);
+    const result = await safeAdminFetch<{ success?: boolean; data?: SchemaDriftReport; error?: { message?: string } }>(
+      '/api/admin/schema-drift',
+    );
+    if (result.ok && result.data?.data) {
+      setDriftReport(result.data.data);
+    } else {
+      setDriftError(result.data?.error?.message || result.error || 'Failed to run schema-drift check');
+    }
+    setDriftRunning(false);
+  };
 
   const handleRunSweep = async () => {
     setSweepRunning(true);
@@ -216,6 +272,132 @@ export default function SchedulerPage() {
                 ))}
                 {sweepResult.errors.length > 10 && <li>…and {sweepResult.errors.length - 10} more</li>}
               </ul>
+            )}
+          </div>
+        )}
+      </AdminCard>
+
+      {/* Schema-drift check — read-only audit of the production DB vs
+          schema.prisma. Catches pre-migration `db push`-era drift
+          (tables/columns/enum-values the schema declares that prod
+          lacks — the basiq_connections.consentExpiresAt class). The fix
+          for any drift is a corrective migration in code, never a direct
+          ALTER on prod (CLAUDE.md §12.12). See
+          docs/operational/database/04_PRISMA_MIGRATION_BASELINE.md §12. */}
+      <AdminCard className="mb-4">
+        <AdminCardHeader
+          title="Schema-drift check (prod)"
+          description="Read-only — compares the production database's structure against schema.prisma. Catches columns/tables/enum-values the schema declares that prod doesn't have (the pre-migration db-push-era drift; same class as the basiq_connections fix). Touches no data, applies nothing. The fix for any drift is a corrective migration shipped via PR — never a direct ALTER on prod."
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <AdminButton onClick={handleRunDriftCheck} isLoading={driftRunning} disabled={driftRunning}>
+            Run check
+          </AdminButton>
+          <span className="text-xs text-gray-500">
+            Column/table/enum-value level. For types/nullability/indexes too, use `prisma migrate diff` locally (04_PRISMA_MIGRATION_BASELINE.md §12).
+          </span>
+        </div>
+
+        {driftError && (
+          <div className="mt-3 text-sm text-red-600 dark:text-red-400">{driftError}</div>
+        )}
+
+        {driftReport && (
+          <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <AdminBadge variant={driftReport.summary?.hasDrift ? 'warning' : 'success'} size="sm">
+                {driftReport.summary?.hasDrift ? 'Drift found' : 'No drift'}
+              </AdminBadge>
+              {driftReport.generatedAt && (
+                <span className="text-xs text-gray-500">{new Date(driftReport.generatedAt).toLocaleString('en-AU')}</span>
+              )}
+              {driftReport.runBy && (
+                <span className="text-xs text-gray-500">· run by {driftReport.runBy}</span>
+              )}
+            </div>
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1 mb-3">
+              <div><dt className="text-xs text-gray-500">Models checked</dt><dd className="font-medium">{driftReport.summary?.modelsChecked ?? '—'}</dd></div>
+              <div><dt className="text-xs text-gray-500">Enums checked</dt><dd className="font-medium">{driftReport.summary?.enumsChecked ?? '—'}</dd></div>
+              <div><dt className="text-xs text-gray-500">Missing tables</dt><dd className={`font-medium ${(driftReport.summary?.missingTables ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>{driftReport.summary?.missingTables ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Missing columns</dt><dd className={`font-medium ${(driftReport.summary?.totalMissingColumns ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>{driftReport.summary?.totalMissingColumns ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Missing enums</dt><dd className={`font-medium ${(driftReport.summary?.missingEnums ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>{driftReport.summary?.missingEnums ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Enums w/ missing values</dt><dd className={`font-medium ${(driftReport.summary?.enumsWithMissingValues ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>{driftReport.summary?.enumsWithMissingValues ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Tables w/ extra cols</dt><dd className="font-medium">{driftReport.summary?.tablesWithExtraColumns ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Orphan tables</dt><dd className="font-medium">{driftReport.summary?.orphanTables ?? 0}</dd></div>
+            </dl>
+
+            {driftReport.summary?.hasDrift ? (
+              <>
+                {driftReport.missingTables && driftReport.missingTables.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Missing tables</p>
+                    <ul className="list-disc list-inside text-xs">
+                      {driftReport.missingTables.map((t) => (
+                        <li key={t.table}><code>{t.table}</code> (model <code>{t.model}</code>)</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {driftReport.tablesWithMissingColumns && driftReport.tablesWithMissingColumns.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Missing columns (with suggested ADD COLUMN SQL)</p>
+                    {driftReport.tablesWithMissingColumns.map((t) => (
+                      <div key={t.table} className="mt-1">
+                        <p className="text-xs"><code>{t.table}</code>:</p>
+                        <ul className="list-disc list-inside text-xs">
+                          {t.missingColumns.map((c) => (
+                            <li key={c.column}>
+                              <code>{c.column}</code> ({c.prismaType}{c.isList ? '[]' : ''}{c.isRequired ? ', required' : ''}) — <code className="text-[11px]">{c.suggestedAddColumnSql}</code>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {driftReport.missingEnums && driftReport.missingEnums.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Missing enum types</p>
+                    <ul className="list-disc list-inside text-xs">
+                      {driftReport.missingEnums.map((e) => (
+                        <li key={e.enum}><code>{e.enum}</code> — values: {e.values.join(', ')}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {driftReport.enumsWithMissingValues && driftReport.enumsWithMissingValues.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Enums with missing values</p>
+                    <ul className="list-disc list-inside text-xs">
+                      {driftReport.enumsWithMissingValues.map((e) => (
+                        <li key={e.enum}><code>{e.enum}</code> — missing: {e.missingValues.join(', ')}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-2">
+                  Copy the missing-columns / enums above and send them to Claude → corrective migration PR. Do <strong>not</strong> run the SQL directly on prod (CLAUDE.md §12.12).
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-gray-500">Production matches schema.prisma at the column/table/enum-value level. (For types/nullability/indexes, the full check is the local `prisma migrate diff`.)</p>
+            )}
+
+            {driftReport.tablesWithExtraColumns && driftReport.tablesWithExtraColumns.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-semibold text-gray-500">Extra columns in prod (no schema field — usually means &ldquo;add to the schema&rdquo;, not &ldquo;drop&rdquo;)</p>
+                <ul className="list-disc list-inside text-xs text-gray-500">
+                  {driftReport.tablesWithExtraColumns.map((t) => (
+                    <li key={t.table}><code>{t.table}</code>: {t.extraColumns.join(', ')}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {driftReport.orphanTables && driftReport.orphanTables.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-semibold text-gray-500">Orphan tables (no Prisma model maps to them)</p>
+                <p className="text-xs text-gray-500">{driftReport.orphanTables.join(', ')}</p>
+              </div>
             )}
           </div>
         )}

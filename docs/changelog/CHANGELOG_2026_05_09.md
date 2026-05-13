@@ -1344,3 +1344,43 @@ N/A — the endpoint runs only `SELECT`s. No Prisma `update`/`delete`/`updateMan
 ### PR
 - Branch: `claude/admin-schema-drift-check-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/admin-schema-drift-ui-MG8mr (incident 2026-05-13 write-up + schema-drift check moved into the admin UI)
+
+### Changes Made
+- **Type:** Incident documentation + small admin-UI addition. Two things, bundled (the incident happened *while* setting up the schema-drift UI).
+- **(1) Incident 2026-05-13 — full DB outage (~12:43–13:00 AEST), resolved by a redeploy.** `/api/health` returned `503 database:disconnected`; admin login (and everything else hitting the DB) 500'd with `ssl/tls alert bad certificate ... SSL alert number 42` / `ERR_SSL_SSL/TLS_ALERT_BAD_CERTIFICATE` — the WIF/Cloud SQL Connector's TLS handshake was being rejected by the instance across all DB requests. Nothing was changed Reza-side (no flag/IAM/env change); the crons ran 200 ~18h earlier → root cause assumed to be a GCP-side Cloud SQL maintenance event (restart / minor-version upgrade / cert rotation) that left function instances with a stale cached CA. **Fix:** a single Vercel redeploy of the current Production deployment (forces every function instance cold → fresh Connector init → fresh CA + ephemeral-cert fetch from the SQL Admin API). Restored within one redeploy; no rollback to legacy auth needed. **No code change** — the app correctly detected + reported the handshake failure (the error message literally diagnoses it). **A1-alert follow-up flagged:** the A1 uptime alert should have emailed during the 15-min 503 window — Reza to verify it did; if not, the uptime check / notification channel needs a fix.
+- **(2) Schema-drift check moved into the admin UI.** PR #755 added `GET /api/admin/schema-drift`, but the endpoint is token-gated (the admin session token is attached as a header by `safeAdminFetch`) — so a plain browser navigation to it returns `{"error":{"code":"SESSION_INVALID","message":"No authentication token provided"}}`. This adds a **"Schema-drift check (prod)"** `AdminCard` to `/admin/scheduler` (alongside the "Portal alert sweep" card from PR #749) so it can actually be run from the admin portal.
+
+### Files Modified
+- `docs/policy/INCIDENT_RESPONSE_PLAN.md` §10.3 — new **pattern #6** row: "Stale cached CA after a GCP-side Cloud SQL event — same `bad certificate` signature as #2, but nothing changed on our side and a redeploy fixes it." Distinguish from #2 by: nothing changed Reza-side + it worked recently + a plain redeploy fixes it. Remediation: redeploy the current Production deployment; if that doesn't work in ~3 min, fall back to #2's checks (flag / SA roles / connection name) and then the legacy-auth rollback (`USE_CLOUD_SQL_CONNECTOR=false` + redeploy, §10.4 step 2). Records the 2026-05-13 observation.
+- `app/admin/scheduler/page.tsx` — new "Schema-drift check (prod)" `AdminCard` (below "Portal alert sweep"): `Run check` button → `safeAdminFetch<{success,data,error}>('/api/admin/schema-drift')` (session attached) → renders a `Drift found` / `No drift` badge, a summary grid (models/enums checked; missing tables/columns/enums; extra columns; orphan tables), and — when drift is found — the missing tables, the missing columns (each with its Prisma type + the `suggestedAddColumnSql` hint), missing enum types, and enums with missing values; plus extra-columns / orphan-tables for context, and a "do NOT run the SQL directly on prod (§12.12)" note. New `SchemaDriftReport` interface + `driftRunning`/`driftReport`/`driftError` state + a `handleRunDriftCheck` handler.
+- `docs/operational/database/04_PRISMA_MIGRATION_BASELINE.md` §12 — option (a) ("server-side, no local setup") updated: the **easiest** way is the `/admin/scheduler` → "Schema-drift check (prod)" card → Run check (a raw browser nav to `/api/admin/schema-drift` returns `SESSION_INVALID`).
+- `docs/IMPLEMENTATION_PLAN.md` — a 🔴 Incident entry + a "schema-drift card" entry in Recently Completed; checklist row 11 updated (the card is the "easiest" path); checklist row 5 updated (A1/A7/A9 created → verify A1 actually notified during the 2026-05-13 outage); top "Last updated" line.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern (the card is plain Tailwind matching the existing `/admin/scheduler` cards — no new primitive)
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure — **new failure mode encountered** (IRP §10.3 pattern #6 — Connector handshake rejection fixed by a redeploy) + new admin-portal tooling (the schema-drift card on `/admin/scheduler`)
+- [ ] strategic decision
+
+Docs updated: `docs/policy/INCIDENT_RESPONSE_PLAN.md` §10.3 (new pattern #6); `docs/operational/database/04_PRISMA_MIGRATION_BASELINE.md` §12; `docs/IMPLEMENTATION_PLAN.md` (incident + card entries, checklist rows 5 & 11, top header); `docs/changelog/CHANGELOG_2026_05_09.md` (this entry). No schema, no migration, no API contract, no design primitive, no code logic beyond the admin-page UI.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — the `/admin/scheduler` page only calls `GET /api/admin/schema-drift` (read-only) + the existing GCP-Scheduler endpoints. No Prisma writes, no migration.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` is a no-op in this sandbox. Reviewed against existing patterns: `safeAdminFetch<T>('/api/admin/...')` + `result.ok` / `result.data` / `result.error` matches the existing `handleAction` / `handleRunSweep` on the same page; `AdminCard` / `AdminCardHeader` / `AdminButton` / `AdminBadge` match their existing usages; the `{ success, data, error }` wrapper is handled (the endpoint returns that shape, unlike `/api/admin/portal-alert-sweep` which returns the result unwrapped — handled per-endpoint). The Vercel preview build is the canonical type check.
+
+### PR
+- Branch: `claude/admin-schema-drift-ui-MG8mr`
+- Status: pending push + open

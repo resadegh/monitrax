@@ -480,8 +480,13 @@ Basiq accreditation submission) — two ways:
 
 **(a) Server-side, no local setup — `GET /api/admin/schema-drift`** (SUPER_ADMIN).
 The running Vercel function already has prod DB access (WIF), so it can run
-the audit for you. Hit `https://www.monitrax.com.au/api/admin/schema-drift`
-as a SUPER_ADMIN (or from `/admin/...`) → JSON report: `missingTables`,
+the audit for you. **Easiest:** in the admin portal go to **`/admin/scheduler`** →
+the **"Schema-drift check (prod)"** card → **Run check** (this calls the
+endpoint *with* your admin session attached — a plain browser navigation to
+`/api/admin/schema-drift` won't work; the endpoint is token-gated, not
+cookie-gated, so a raw nav returns `SESSION_INVALID`). The card renders the
+report; copy the missing-columns/enums to Claude → corrective migration PR.
+The endpoint returns: `missingTables`,
 `tablesWithMissingColumns` (each with a `suggestedAddColumnSql` hint),
 `tablesWithExtraColumns`, `missingEnums` / `enumsWithMissingValues`,
 `orphanTables`, and a `summary` with `hasDrift`. **Read-only** — it runs
