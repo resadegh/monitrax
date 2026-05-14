@@ -111,7 +111,7 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 - **Done when:** You can call Claude from n8n and get a response.
 - **Gotcha:** Use **Sonnet for volume** (personalisation, classification, support), **Opus only for the few high-stakes Reviews**. Use prompt caching aggressively — system prompts + report templates are static across thousands of calls; caching cuts costs ~10×.
 
-### Step 1.6 — Build the Founder Daily Digest (the killer workflow) — 🟡 BUILT (2026-05-14), awaiting first live cron run
+### Step 1.6 — Build the Founder Daily Digest (the killer workflow) — 🟢 LIVE (2026-05-14), cron active, first execution successful
 - **Goal:** One email in `admin@monitrax.com.au` inbox each morning at 7am Sydney with: replies needing Reza, workflow health, awaiting-data placeholders, top-3 actions for today, one pattern observed. Grows into the fuller brief (pipeline, revenue, errors, bookings, support) as data sources come online.
 - **Time:** ~3 hours target — actual ~4 hours including OAuth setup friction.
 - **What was built (2026-05-14):**
@@ -133,10 +133,15 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
   - **Google Cloud OAuth client** for the Gmail credentials: project `monitrax-479700`, OAuth client `n8n - Monitrax Gmail OAuth`, type Web application, redirect URI `https://n8n.monitrax.com.au/rest/oauth2-credential/callback`, JavaScript origins empty. OAuth consent screen: External, app name `Monitrax`, publishing status **Testing**, test users `admin@monitrax.com.au` + `reza@try-monitrax.com`. Single OAuth client serves both Gmail credentials.
   - **Prompt sign-off:** preview output reviewed via Opus 4.7 simulation (Chat-Claude couldn't call the real Sonnet endpoint mid-session — no API key in its environment); the prompt design — 5-section structure, fallback tag, "ONE PATTERN under 20 words" constraint — judged shipping-ready as-is. Iterate from real production output, not synthetic.
 - **Operational runbook:** `docs/operational/runbooks/09_GTM_FOUNDER_DAILY_DIGEST.md` — covers daily checks, credential rotation, adding a new data source, common failure modes, the Reza-side knobs (activate/pause cron, edit prompt, change recipient).
-- **Still to do before declaring ✅ DONE:**
-  - First **real end-to-end `execute_workflow` run** lands in `admin@monitrax.com.au` inbox (sign-off gate: review the actual email body, not a synthetic preview)
-  - Reza **manually activates the cron** in the n8n UI (the workflow is currently inactive — toggle is off until first real-test passes)
-  - Three useful digests received without touching it (per the original "Done when" criterion)
+- **Activation milestones (2026-05-14, evening):**
+  - ✅ First real `execute_workflow` run landed in `admin@monitrax.com.au` Sent folder (Gmail's default self-send behaviour — hidden from Inbox by default). Body checked through the four lenses; quality judged shipping-ready. Two minor prompt-improvement candidates noted for later: (a) self-referential workflow ID — Claude told Reza to "fix the failing workflow" not knowing that workflow IS the digest itself; (b) UTC→Sydney timezone interpretation in ONE PATTERN. Both deferred — iterate from real production output, not pre-tuning.
+  - ✅ **Cron PUBLISHED 2026-05-14** via the n8n "Publish" button (n8n 2.20.x calls activation "Publish"; same thing as the older "Activate" toggle). First scheduled run: 06:45 Sydney 2026-05-15.
+  - ⏳ **Three useful digests received without touching it** (the original "Done when" criterion) — measure from morning of 2026-05-15 onward.
+  - **Reza-side knob:** Gmail filter set up at `admin@monitrax.com.au` to surface self-sent `Monitrax Daily` emails into Primary inbox + star them (Gmail otherwise hides self-sends from Inbox).
+  - **Operational hygiene from the n8n Production Checklist popup:**
+    - ✅ MCP access enabled
+    - ✅ Error notifications configured — workflow-failure emails go to `admin@monitrax.com.au` (so a 6:45am cron failure surfaces within minutes instead of being noticed days later)
+    - Skipped: "Track time saved" (vanity metric, no operational value)
 - **Out of scope (deferred, tracked in stickies on the n8n canvas):**
   - Wire Airtable Activities (blocked on Step 1.2 — CRM build)
   - Wire Stripe Charges (blocked on first payment infra going live)
