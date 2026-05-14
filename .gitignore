@@ -29,6 +29,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# claude code local settings (contains secrets, never commit)
+.claude/settings.local.json
+
 # vercel
 .vercel
 

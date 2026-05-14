@@ -28,6 +28,7 @@
 | **Run the quarterly backup/restore drill** | [Backup & Restore Drill](runbooks/06_BACKUP_RESTORE_DRILL.md) (proves the backups actually restore — non-destructive, restores into a throwaway instance) |
 | **Run an incident-response tabletop exercise** | [IRP Tabletop Exercise Script](runbooks/07_IRP_TABLETOP_EXERCISE.md) (4 scenarios: CDR breach / DB unreachable / auth outage / runaway cost) |
 | **What are our SLOs? Which alerts enforce them?** | [Observability — SLOs & Alert Policies](runbooks/08_OBSERVABILITY_SLOS.md) (availability/latency/error-rate per route group + Cloud Monitoring alert specs A1–A9) |
+| **No Founder Daily Digest email this morning?** | [GTM Founder Daily Digest](runbooks/09_GTM_FOUNDER_DAILY_DIGEST.md) (n8n workflow operator reference — credentials, cron, prompt, common failure modes) |
 | Adviser feedback inbox triage / weekly synthesis | [Feedback Triage and Synthesis](feedback/01_TRIAGE_AND_SYNTHESIS.md) |
 | What does Monitrax pay for? Vendor inventory + spend control | [Cost Control — Vendor Inventory](cost-control/00_VENDOR_INVENTORY.md) |
 | How to set up budget alerts per vendor | [Cost Control — Budget Alerts Setup](cost-control/01_BUDGET_ALERTS_SETUP.md) |
