@@ -1,10 +1,10 @@
 # Runbook — GTM Founder Daily Digest workflow
 
 > **Audience:** Reza (operator) + future BAU support
-> **Last Updated:** 2026-05-14
+> **Last Updated:** 2026-05-14 (evening — cron live)
 > **Owning workstream:** `IMPLEMENTATION_PLAN.md` §0d (GTM Automation)
 > **Spec doc:** `docs/marketing/GTM_EXECUTION_PLAN.md` Step 1.6
-> **Status:** 🟡 Built, awaiting first live cron run
+> **Status:** 🟢 Live — cron published, error notifications wired, first manual execution successful 2026-05-14. First scheduled run: 2026-05-15 06:45 Sydney. Confirmed ✅ DONE when 3 useful digests received without intervention.
 
 ---
 
@@ -67,7 +67,9 @@ Plus 5 disabled `[STUB]` branches (Airtable / Stripe / Sentry / Cal.com / Smartl
 ## Daily / weekly operator checks
 
 ### Daily (passive — only if no digest arrived)
-- **No 07:00 email in `admin@monitrax.com.au`?** Go to `https://n8n.monitrax.com.au/workflow/jQWmSbqEvY3vkAy2/executions`. Look for the run at ~06:45 Sydney. If it errored, click in — n8n shows the failing node + the error. Common causes below.
+- **No 07:00 email in `admin@monitrax.com.au` Primary inbox?** Two-stage check:
+  1. **Has n8n's error-notification email already arrived?** If error notifications are wired (set up via the n8n Production Checklist on 2026-05-14), a failed cron run sends Reza a heads-up within minutes. If you got that email, go straight to the failing-node diagnosis in "Common failure modes" below.
+  2. **No error email either?** Go to `https://n8n.monitrax.com.au/workflow/jQWmSbqEvY3vkAy2/executions`. Look for the run at ~06:45 Sydney. If it errored, click in — n8n shows the failing node + the error. If the run *succeeded* but no email is in Primary inbox, check **Gmail's All Mail and Sent folders** — Gmail by default hides self-sent mail from Inbox; the `Monitrax Daily` Gmail filter (set up 2026-05-14) should override this, but verify the filter is still in place.
 
 ### Weekly
 - **Open `https://n8n.monitrax.com.au/home/executions`**, filter to this workflow, scan the last 7 days. All green? Continue. Any red? Click the failing one, follow the "Common failure modes" section below.
@@ -165,7 +167,7 @@ Each `[STUB]` node has a sticky note above it with the exact wiring steps. Gener
 
 | Knob | Where | When to use |
 |---|---|---|
-| **Activate / pause the cron** | Workflow toggle, top-right of editor | Pause when on holiday, when warmup is paused, or during a noisy debug session |
+| **Publish / Unpublish the workflow** | "Publish" dropdown, top-right of editor (kb: `⇧ P`). On n8n 2.20.x this replaces the older Active/Inactive toggle — Publish = activate, Unpublish = pause. | Pause when on holiday, when warmup is paused, or during a noisy debug session. Workflow state is preserved across unpublish/republish — no rebuild needed. |
 | **Edit the system prompt** | Claude - Compose Digest node → `options.system` field | Tone tweaks, section reorder, fallback-line wording |
 | **Change recipient** | Gmail Send node → "To" field | Forwarding to a VA, redirecting during incident |
 | **Change cron time** | Schedule Trigger node → `triggerAtHour` / `triggerAtMinute` | Different morning preference |
