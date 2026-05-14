@@ -1021,3 +1021,326 @@ N/A — doc-only PR. No code, no schema migration, no Prisma writes. The procedu
 ### PR
 - Branch: `claude/phase-0-operational-readiness-MG8mr`
 - Status: pending push + open
+
+---
+
+## Session: claude/phase-32b-pr3-post9b-polish-MG8mr (Phase 32B PR3 — post-#9b polish, part 1: admin "run sweep now")
+
+### Changes Made
+- **Type:** Refactor + feature (admin tooling). Phase 32B PR3 post-#9b polish item ① — the autonomous-queue "continue" item from `PHASE_32B_PR3_ALERT_ENGINE.md`.
+- **Scope:** Extract the portal alert-sweep core out of the cron route into a shared function; add a SUPER_ADMIN-only "run sweep now" endpoint + an admin-UI button so the engine can be exercised before the GCP Cloud Scheduler job is wired.
+- **Root cause / motivation:** The portal alert engine (#9a/#9b, PRs #745/#746) is fully built but dormant until `monitrax-portal-alert-sweep` (`0 4 * * *` UTC) is created in GCP Cloud Scheduler — a Reza-side console step. There was no way to trigger the sweep otherwise (testing, backfill, post-onboarding recompute, or just demoing the alert stream against a seeded org). Also: the sweep logic lived inside the cron route — a duplicated-logic seam waiting to happen the moment a second caller appeared.
+- **Solution:** `runPortalAlertSweep({ dryRun?, organizationId? })` is now the single implementation (`lib/portal/alerts/sweepRunner.ts`); the cron route and the new admin route are thin auth wrappers around it (CLAUDE.md §12.2 SSOT). The admin route is gated `SUPER_ADMIN` and writes an `AuditLog` row on every invocation. The admin UI defaults to dry-run.
+
+### Files Created
+- `lib/portal/alerts/sweepRunner.ts` (~290 LOC) — `runPortalAlertSweep(opts): Promise<PortalAlertSweepResult>` + the `projectSnapshot` helper, moved verbatim from the cron route. Per `Organization` (optionally one) → per `OrganizationClient` (`status = ACTIVE`, `consentStatus = GRANTED`) → `getMasterFinancialSnapshot(client.userId)` → `projectSnapshot` (cast to `AlertEngineSnapshot` + `determineTrailStage`) → `computeAlerts({ snapshot, prior, enabledTriggers })` with `enabledTriggers = professionTriggers ∩ scopeAllowedTriggers(client.accessScopes)` → persist: upsert ACTIVE `ClientAlert` rows (leave DISMISSED alone — sticky), `updateMany(→RESOLVED)` rows whose trigger cleared, upsert `ClientSnapshotMarker`. `dryRun` computes everything and writes nothing. Behaviour is byte-for-byte the same as #9a (PR #745).
+- `app/api/admin/portal-alert-sweep/route.ts` (~110 LOC) — `POST`, `verifyAdminGCPAuth` + `role === 'SUPER_ADMIN'` (mirrors `/api/admin/run-seed`; 503 when the admin portal isn't enabled, 401 on bad session, 403 on wrong role). Body `{ dryRun?, organizationId? }` → `runPortalAlertSweep(...)`. Writes an `AuditLog` row (`action: 'UPDATE'`, `status: 'SUCCESS'|'FAILURE'`, `entityType: 'PortalAlertSweep'`, `metadata: { trigger: 'admin-manual', adminEmail, dryRun, organizationId, orgsProcessed, clientsProcessed, alertsCreated/Updated/Resolved, errorCount }`) on success and on failure. Returns `{ ...PortalAlertSweepResult, runBy }`. `maxDuration = 300`, `dynamic = 'force-dynamic'`.
+
+### Files Modified
+- `app/api/portal/alerts/sweep/route.ts` — refactored to a thin wrapper: CRON_SECRET timing-safe auth (unchanged) + `BLOCKED`-audit-on-fail (unchanged) + parse `{dryRun,organizationId}` body → `runPortalAlertSweep(...)` → `NextResponse.json(result)`. `dynamic`/`maxDuration` preserved. Header JSDoc rewritten to point at the shared runner + the admin endpoint. The `SweepResult`/`SweepBody` interfaces + `projectSnapshot` + the per-org/per-client loop all moved to `sweepRunner.ts`.
+- `app/admin/scheduler/page.tsx` — new "Portal alert sweep" `AdminCard` below the Cloud Scheduler jobs table (rendered outside the data-load block — it calls our app endpoint, not the GCP Scheduler API, so it works even when the GCP API isn't configured). Has: a **"Dry run (compute only — write nothing)"** checkbox (default ON); a **"Preview sweep" / "Run sweep now"** button (label flips with the checkbox; `isLoading` while running); an amber "Writes ClientAlert rows for all orgs." hint when dry-run is off; a result panel — an `AdminBadge` (neutral "Dry run" / success "Applied") + duration + run-by + a counts grid (orgs / clients processed / skipped / alerts created·updated·resolved / errors) + the first 10 per-client errors if any. Uses `safeAdminFetch('/api/admin/portal-alert-sweep', { method: 'POST', body: JSON.stringify({ dryRun }) })`. New state: `sweepDryRun` / `sweepRunning` / `sweepResult` / `sweepError` + a `handleRunSweep` handler + a `PortalAlertSweepResult` interface.
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` — new §6b "Post-#9b polish — part 1: admin run sweep now (✅ shipped)" with the item table; §6 table row "Admin run sweep now" flipped 📋→✅ (and "computeKpis real input" note points at §6b); header status line updated (post-#9b polish ① ✅ / ② 📋, with the ② blocker — the client-book's financial columns — spelled out); §8 references add `sweepRunner.ts` + `run-seed/route.ts` as the admin-auth pattern.
+- `docs/IMPLEMENTATION_PLAN.md` — the Phase 0 "Real alert engine v1" chunk's post-#9b note split (admin button ✅ this PR; hero KPI 📋 still queued, with the architect-mode-pass note); §0b replaced (operational-readiness workstream — PR #748, now merged → Recently Completed) with this active-workstream entry; PR #748 added to ✅ Recently Completed; top "Last updated" line refreshed.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (new admin-portal tooling: a manual "run portal alert sweep" trigger with dry-run, audit-logged; the cron route refactored to share its core)
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` — §6b new + §6 table + header status + §8 references
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 0 chunk note split + §0b + Recently Completed (PR #748) + top header
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+- (`docs/architecture/07_API_STANDARDS.md` NOT touched — the new admin endpoint follows the existing admin-route convention; no new API standard introduced. No schema change → no `03_DATA_MODEL.md` / migration. No new design primitive → no `06_UI_UX_FOUNDATION.md` (the admin UI reuses `AdminCard`/`AdminButton`/`AdminBadge`).)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows (all inside `runPortalAlertSweep`, **moved verbatim from #9a's cron route — behaviour unchanged**):
+- `lib/portal/alerts/sweepRunner.ts` — `prisma.clientAlert.update(...)` (refresh an existing ACTIVE/DISMISSED-but-recomputed alert row for *this* `organizationClientId`+`triggerKind`)
+- `lib/portal/alerts/sweepRunner.ts` — `prisma.clientAlert.updateMany({ where: { organizationClientId: <this client>, status: { in: ['ACTIVE','DISMISSED'] }, triggerKind: { notIn: <still-computed> } }, data: { status: 'RESOLVED', resolvedAt } })` — and the `enabledTriggers.length === 0` variant (`updateMany` over the same single-client scope)
+- `lib/portal/alerts/sweepRunner.ts` — `prisma.clientSnapshotMarker.upsert({ where: { organizationClientId: <this client> }, ... })`
+
+For each:
+1. **`where` clause matches:** only rows for the single `organizationClient` currently being processed (and, for the `clientAlert.update`, the exact `triggerKind`). No cross-client scope.
+2. **Columns overwritten / rows deleted:** `clientAlert` — `severity`/`headline`/`body`/`context`/`primaryActionLabel`/`payload`/`status`/`resolvedAt`/`detectedAt`, all engine-derived aggregate fields the sweep itself authored (no user-entered data; CDR §13.3 — payload is aggregates only). `clientSnapshotMarker` — `lastHealthScore`/`lastTrailStage`/`lastSweptAt`, sweep-authored. No `delete`/`deleteMany`.
+3. **Guard ensuring this only mutates rows I created:** these tables (`client_alerts`, `client_snapshot_markers`) are written *exclusively* by the sweep — there is no other writer. The `where` is the synthetic key the sweep created the row with (`organizationClientId` + `triggerKind`). This is the same structural argument signed off for #9a (PR #745). The dry-run path writes nothing at all.
+
+User confirmation: NOT REQUIRED — this PR adds no new destructive write; it relocates #9a's (already-reviewed) sweep writes into a shared function, and adds a dry-run-default front door to invoke them.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` is a no-op in this sandbox (no `node_modules`). Code reviewed against existing patterns: `verifyAdminGCPAuth` + `ADMIN_ERROR_CODES` + `authResult.context.role !== 'SUPER_ADMIN'` matches `/api/admin/run-seed/route.ts`; `safeAdminFetch(url, { method, body })` matches the `/admin/scheduler` page's existing `handleAction`; `AdminCard`/`AdminCardHeader`/`AdminButton`/`AdminBadge` match their existing usages on that page; `createAuditLog({ userId, action: 'UPDATE', status, entityType, metadata })` matches `/api/admin/gcp/scheduler/route.ts`; `import prisma from '@/lib/db'` (default) matches the original cron route; `runPortalAlertSweep`'s body is the cron route's body verbatim (no logic change). The Vercel preview build is the canonical type check.
+
+### PR
+- Branch: `claude/phase-32b-pr3-post9b-polish-MG8mr`
+- Status: pending push + open
+
+---
+
+## Session: claude/phase-32b-pr3-post9b-real-kpis-MG8mr (Phase 32B PR3 — post-#9b polish, part 2: hero KPI strip + client book on real data)
+
+### Changes Made
+- **Type:** Feature + small schema change. Phase 32B PR3 post-#9b polish item ② — the autonomous-queue "continue" item.
+- **Scope:** Make the Practice dashboard show **either** the org's real book **or** the `LIGHTHOUSE` demo preview — never a half-and-half. After #9b the alert *stream* read real data but the hero KPI *strip* (active clients / need-attention / TRAIL advanced / avg health) was still on the fixture, so the dashboard was half-real / half-demo. This PR adds the aggregate endpoint + the master switch + the schema needed for the "change since last sweep" delta.
+- **Motivation:** A half-real / half-demo dashboard erodes adviser trust the moment they notice. The fix: a single `hasRealClients` switch — true once the alert sweep (cron or the PR #749 admin button) has computed a health score for ≥1 active client — that flips the *whole* dashboard from preview → real.
+
+### Files Created
+- `app/api/portal/clients/route.ts` (~165 LOC) — `GET ?organizationId=…`, `withPermission('org.read', …)` + inline active-`OrganizationMember` check (mirrors `/api/portal/alerts`). Returns `{ hasRealClients, lastSweptAt, kpis: { activeClients, needsAttention, trailAdvancedThisWeek, averageHealth, averageHealthDelta }, clients: [{ id, name, initials, trailStage, healthScore, healthDelta, activeAlertCount }] }`. Built from `prisma.organizationClient.findMany({ where: { organizationId, status: 'ACTIVE' }, select: { id, userId, alertMarker } })` + `prisma.clientAlert.findMany({ where: { organizationClientId: { in }, status: 'ACTIVE' } })` (bucketed in JS for `activeAlertCount` per client, `needsAttention` = distinct clients with a `critical|opportunity` alert, `trailAdvancedThisWeek` = count of `TRAIL_ADVANCED` alerts in the last 7 days) + `prisma.user.findMany` for display names (no `user` relation on `OrganizationClient`). `averageHealth` = mean of `marker.lastHealthScore`; `averageHealthDelta` = mean of `(lastHealthScore − previousHealthScore)` over clients that have both. `hasRealClients = (≥1 active client has a marker with a non-null `lastHealthScore`)`. `id` = `organizationClientId` so it joins cleanly with `/api/portal/alerts`. **No live `getMasterFinancialSnapshot()` per client** — purely the rows the sweep already maintains. Privacy (§13.3): aggregate scalars (0–100 health score, TRAIL-stage letter→label, alert count) + display name/initials only — no balances, no CDR data.
+- `prisma/migrations/20260514100000_phase_32b_pr3_marker_prev/migration.sql` — `ALTER TABLE "client_snapshot_markers" ADD COLUMN "previousHealthScore" INTEGER; ADD COLUMN "previousTrailStage" TEXT;` (additive — nullable, no backfill; §12.11 destructive-write checklist N/A).
+
+### Files Modified
+- `prisma/schema.prisma` — `ClientSnapshotMarker` gains `previousHealthScore Int?` + `previousTrailStage String?` (with a doc-comment explaining the roll-forward).
+- `lib/portal/alerts/sweepRunner.ts` — the marker upsert's `update` branch now sets `previousHealthScore: client.alertMarker?.lastHealthScore ?? null, previousTrailStage: client.alertMarker?.lastTrailStage ?? null` *before* writing the new `last*` values (roll-forward: `previous := last`, then `last := current`). The `create` branch leaves `previous*` defaulting to null. Header doc-comment updated. (No other behaviour change — still byte-for-byte the #9a sweep otherwise.)
+- `app/portal/dashboard/page.tsx` — fetches `GET /api/portal/clients` + `GET /api/portal/alerts` on mount (both kept fresh on dismiss). `usingRealData = clientSummary?.hasRealClients === true` is the master switch: when real → hero KPIs from `clientSummary.kpis`; the alert stream shows the real ACTIVE alerts (even if empty → genuine "all quiet" empty state, not the demo); the per-client summaries for the stream come from `clientSummary.clients` (falls back to the `/api/portal/alerts` `clients` array on a race); the fixture `PracticeClientBookTable` (which has the demo's financial columns — net worth / cashflow / LVR) is **replaced** by a slim card ("Your client book — N active · M need attention · last refreshed … → Open the full client book" → `/portal/clients`). When not real → everything is the `LIGHTHOUSE` fixture preview, byte-for-byte the #9b behaviour. The `Avg client health` KPI cell's sub flips "vs 30d" → "vs last sweep" in real mode, shows "stable" (neutral tone) when the delta is 0 (e.g. before the second sweep). `usingRealAlerts` renamed `usingRealData`, `realClients` renamed `realAlertClients`; new `clientSummary` state + `refetchClientSummary` callback + a few inline interfaces (`RealKpis`/`RealClientSummary`/`ClientSummaryResponse`).
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` — §6b "part 2" added (the marker schema change, the `GET /api/portal/clients` endpoint, the dashboard real-vs-preview master switch, the "part 3" follow-up note); §6 table row "computeKpis real input" flipped 📋→✅; header status line updated (① ✅ PR #749, ② ✅, ③ 📋); §8 references add `app/api/portal/clients/route.ts` + the migration.
+- `docs/architecture/03_DATA_MODEL.md` §9.3 — `client_snapshot_markers` row gains the `previous*` columns + the roll-forward description + the migration name; a new paragraph documents `GET /api/portal/clients` (aggregate-only, the master switch, the privacy posture); the sweep-paragraph notes the admin-manual path shares `runPortalAlertSweep`.
+- `docs/architecture/07_API_STANDARDS.md` §15 — new sub-section "Org-scoped *aggregate* portal endpoints (`?organizationId=`)" — explains that `/api/portal/alerts` + `/api/portal/clients` use `withPermission('org.read')` + a membership check (NOT `verifyAdviserClientAccess`, which gates a single client's *data* on per-client GRANTED consent), because they return aggregates already produced under the consent gate, with no balances/CDR data; reviewer rule appended.
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — Phase 32B PR3 row gains the post-#9b-polish summary (parts 1 & 2 ✅, part 3 queued).
+- `docs/IMPLEMENTATION_PLAN.md` — the "Real alert engine v1" chunk's post-#9b note updated (① ✅ PR #749, ② ✅ this PR, ③ 📋 queued); §0b replaced (PR #749 → Recently Completed) with this active-workstream entry; PR #749 added to ✅ Recently Completed; top header refreshed.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern (the slim client-book card is plain Tailwind matching the surrounding aesthetic — no new design primitive / token / shared component)
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture (no posture change — the new endpoint returns aggregates already produced under the existing consent gate; documented in `03_DATA_MODEL.md` + `07_API_STANDARDS.md` for clarity, not because the posture moved)
+- [x] operational procedure — no; **data model change** (the `client_snapshot_markers` columns) + **API contract** (new `GET /api/portal/clients`) — see below
+- [ ] strategic decision
+
+Docs updated in this PR (data-model + API-contract changes per CLAUDE.md §3.1):
+- `prisma/schema.prisma` + `prisma/migrations/20260514100000_phase_32b_pr3_marker_prev/migration.sql` (§12.12 — matching migration in the same PR)
+- `docs/architecture/03_DATA_MODEL.md` §9.3 — the marker columns + the new endpoint
+- `docs/architecture/07_API_STANDARDS.md` §15 — the org-scoped aggregate-endpoint pattern
+- `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` §6b part 2 — the feature
+- `docs/blueprint/MASTER_BLUEPRINT.md` §4 — phase status row
+- `docs/IMPLEMENTATION_PLAN.md` — chunk note + §0b + Recently Completed + top header
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Migration: `20260514100000_phase_32b_pr3_marker_prev/migration.sql` — `ALTER TABLE ... ADD COLUMN ... INTEGER` ×2 (nullable, no default-backfill, no `DROP`/`ALTER ... DROP`/`TRUNCATE`). Purely additive → §12.11 N/A.
+
+Prisma writes touched in this PR:
+- `lib/portal/alerts/sweepRunner.ts` — the existing `prisma.clientSnapshotMarker.upsert({ where: { organizationClientId: <this client> }, ... })` now also writes the two new `previous*` columns on the `update` branch. Same `where` scope as before (the single marker row for the client being processed); the new columns are sweep-authored aggregate scalars (no user-entered data); this table is written exclusively by the sweep. No new `delete`/`deleteMany`/`updateMany`. Same structural argument as #9a.
+- `app/api/portal/clients/route.ts` — read-only (`findMany` ×3). No writes.
+
+User confirmation: NOT REQUIRED — additive nullable columns + an extension of a sweep-owned upsert; no destructive write.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` is a no-op in this sandbox (no `node_modules`; the Prisma client isn't regenerated, so the new `previous*` fields aren't visible to a local typecheck anyway). On Vercel: `vercel-build` runs `prisma migrate deploy` (applies `20260514100000_phase_32b_pr3_marker_prev` — preview against `monitrax-db-dev`, prod against `monitrax-db-prod`) → `prisma generate` (client now knows `previousHealthScore`/`previousTrailStage`) → `next build` (typechecks the code that references them) — so the ordering is correct. Code reviewed against existing patterns: `withPermission('org.read', async (request, auth) => {...})` + `prisma.organizationMember.findFirst({ where: { organizationId, userId, isActive: true } })` matches `/api/portal/alerts/route.ts`; `select: { id, userId, alertMarker }` on `OrganizationClient` matches the sweep route; `GlassHeroKpiCell tone="neutral"` is already used on `/portal/dashboard`; `PracticeAlertStream`'s `clients: AlertClientSummary[]` accepts the richer `RealClientSummary[]` (structural — has `id`/`name`/`initials`). The Vercel preview build is the canonical type + migration check.
+
+### PR
+- Branch: `claude/phase-32b-pr3-post9b-real-kpis-MG8mr`
+- Status: pending push + open
+
+---
+
+## Session: claude/docs-cron-timezone-aest-MG8mr (Docs — align all Cloud Scheduler timezone references to Australia/Sydney)
+
+### Changes Made
+- **Type:** Documentation (doc-only — no code logic change; only JSDoc comments + Markdown docs touched).
+- **Scope:** Reza created `monitrax-portal-alert-sweep` in GCP Cloud Scheduler (region `australia-southeast1`, schedule `0 4 * * *`, timezone `Australia/Sydney`) and confirmed (from the console screenshot) that the existing `monitrax-cdr-lifecycle` is also on `australia-southeast1` + `Australia/Sydney`. Reza directive 2026-05-12: *"update documents to fix all to AEST in future."* The docs + route-JSDocs said "02:00 / 03:00 / 04:00 UTC" for the cron schedules — corrected to `Australia/Sydney` throughout.
+- **What changed:**
+  - `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md` — new canonical note: *"all Monitrax Cloud Scheduler jobs run in the `australia-southeast1` region with the `Australia/Sydney` timezone (AEST UTC+10 / AEDT UTC+11); every schedule in this file is Sydney local time"* + a 3-job table (`monitrax-cdr-lifecycle` 02:00 / `monitrax-conversation-retention-sweep` 03:00 / `monitrax-portal-alert-sweep` 04:00, all Sydney) + a "verify all three exist, create the conversation one if missing" note + `--time-zone="Australia/Sydney"` in both gcloud examples + `| Timezone | Australia/Sydney |` in the console-setup table. "02:00/03:00 UTC" → "02:00/03:00 Australia/Sydney" in the prose. `Last reviewed` → 2026-05-12.
+  - `docs/operational/00_INDEX.md` — the Retention-Schedulers row's "daily 02:00 UTC / daily 03:00 UTC" → "Australia/Sydney".
+  - `docs/operational/admin/03_GCP_SERVICE_OPERATIONS.md` — cron-table row "daily 02:00 UTC" → "Australia/Sydney".
+  - `docs/operational/admin/05_CDR_COMPLIANCE_PROCEDURES.md` — "Job runs daily at 02:00 UTC" → "Australia/Sydney".
+  - `docs/operational/calc-audit/cloud-scheduler-setup.md` — also fixed a self-contradiction: the gcloud example already used `--time-zone="Australia/Sydney"` but the schedule was `0 17 * * *` with a "= 03:00 AEST" rationale that only holds in UTC. Schedule → `0 3 * * *`; rationale rewritten + a "if an older instance used `0 17 * * * UTC`, run this `update`" note.
+  - CDR compliance/policy docs — "daily 02:00 UTC" → "Australia/Sydney" in `docs/compliance/CDR_DATA_RETENTION_SCHEDULE.md`, `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md`, `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`, `docs/compliance/CDR_SYSTEM_ARCHITECTURE.md`, `docs/compliance/CDR_IMPLEMENTATION_PLAN.md`, `docs/compliance/CDR_SPREADSHEET_ANSWERS_AND_GAPS.md`, `docs/policy/MONITRAX_SECURITY_POLICIES.md`, `docs/help/compliance/data-retention-schedule.md`.
+  - Phase docs — `docs/blueprint/PHASE_35_CDR_DATA_LIFECYCLE.md`, `docs/blueprint/PHASE_E_GCP_SERVICE_ENABLEMENT.md` (also dropped the now-wrong `/ 12:00 AEST` suffix + flipped `Timezone: UTC` → `Australia/Sydney`), `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md` (the `0 4 * * * UTC` mentions + the Cloud Scheduler config block — now `Region: australia-southeast1` / `timezone Australia/Sydney` / `Body: {}`).
+  - Route JSDocs — `app/api/cdr/lifecycle/route.ts`, `app/api/conversations/retention-sweep/route.ts`, `app/api/portal/alerts/sweep/route.ts`, `lib/portal/alerts/sweepRunner.ts`, `app/api/admin/portal-alert-sweep/route.ts` — "02:00 / 03:00 / 04:00 UTC" → "Australia/Sydney" in the header comments.
+  - `docs/IMPLEMENTATION_PLAN.md` — the forward-looking Reza-side "wire the `monitrax-portal-alert-sweep` job (`0 4 * * *` …)" instructions now say "in the `Australia/Sydney` timezone"; the `[x]` "Compliance bedrock" chunk's prose updated; top "Last updated" line + a Recently Completed bullet added (with the Reza-side flags below).
+  - `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+- **Not changed (deliberately):**
+  - Cloud SQL backup window (`04:00 UTC`, `database/02_BACKUP_AND_RESTORE.md`) + maintenance window (`Sunday 03:00 UTC`, `database/01_CLOUD_SQL_OPERATIONS.md`) — these are genuinely UTC (Cloud SQL config), not cron schedules.
+  - Changelog files + the archived "Recently Completed" entries in `IMPLEMENTATION_PLAN.md` — historical records of what shipped at the time; not rewritten.
+
+### Flagged to Reza in this PR (from the 2026-05-12 Cloud Scheduler console screenshot)
+1. **`monitrax-cdr-lifecycle`'s last run FAILED** (12 May, 02:00:02). Diagnose via the job's **Logs** tab (it shows the HTTP status). Top suspects, in order: (a) the target URL has a `www.` prefix — `https://www.monitrax.com.au/api/cdr/lifecycle` — while the working pattern (and the new portal-alert-sweep job) uses the apex `https://monitrax.com.au/...`; a `www.`→apex redirect on a POST can fail. (b) the `Authorization: Bearer <CRON_SECRET>` header doesn't match the current Vercel `CRON_SECRET` (stale value, or a missing/extra `Bearer ` prefix → 401). (c) the endpoint itself errored (500) — check Vercel function logs for `/api/cdr/lifecycle` at the run timestamp.
+2. **`monitrax-conversation-retention-sweep` was not visible in the jobs list** — verify it exists; if not, create it per `05_RETENTION_SCHEDULERS.md` §4 (the 7-yr conversation purge isn't enforced until it does).
+3. **`CRON_SECRET` was pasted into chat** — rotate it (generate a new value, update `CRON_SECRET` in Vercel + redeploy, then update the `Authorization: Bearer …` header on all three Cloud Scheduler jobs).
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.) — no; the timezone change is to the Cloud Scheduler *jobs* (Reza-side), already done — this PR only aligns the *docs* to it
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (the canonical "all Cloud Scheduler jobs use australia-southeast1 + Australia/Sydney" statement + the 3-job table + the gcloud examples in `05_RETENTION_SCHEDULERS.md`; the calc-audit setup-doc self-contradiction fix)
+- [ ] strategic decision — borderline; the timezone-standardisation is a Reza decision, captured here + in `05_RETENTION_SCHEDULERS.md`'s note + `IMPLEMENTATION_PLAN.md`'s header
+
+Docs updated in this PR: see "What changed" above (the full list). No code logic, no schema, no migration, no new API contract, no new design primitive.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — doc-only PR. No Prisma writes, no migration.
+
+### Build Status
+- [✓] Doc + JSDoc-comment-only changes. No `.ts`/`.tsx` *logic* changed; the only `.ts` edits are header-comment text in 5 route/lib files. No build surface.
+
+### PR
+- Branch: `claude/docs-cron-timezone-aest-MG8mr`
+- Status: pending push + open
+
+### Follow-up commit on this PR — `fix(build): exclude mobile-app/ from the Next.js typecheck`
+The Vercel build for this PR (and `main`, and any other open PR) was failing in the "Linting and checking validity of types" step: `./mobile-app/app/(tabs)/_layout.tsx:1:22 Type error: Cannot find module 'expo-router'`. Cause: the `mobile-app/` Expo scaffold (added to `main` in `feat(mobile): add mobile companion app scaffold under mobile-app/` + the follow-up) has its **own** `tsconfig.json` (extends `expo/tsconfig.base`) and `package.json` (Expo deps), but the **root** `tsconfig.json`'s `"include": ["**/*.ts", "**/*.tsx", …]` was picking up the mobile-app `.tsx` files and `next build`'s typecheck choked on the un-installed `expo-router` types. Fix: add `"mobile-app"` to the root `tsconfig.json` `exclude` array — the Next.js app's typecheck now skips the mobile app entirely (the mobile app is typechecked via its own tsconfig + Expo's build pipeline). One line, no behaviour change. (This was a pre-existing break on `main` — not introduced by this PR — but it has to be fixed for this PR's preview to go green, so it ships here.)
+
+---
+
+## Session: claude/fix-basiq-connection-schema-drift-MG8mr (fix(db) — corrective migration for `basiq_connections` pre-migration schema drift)
+
+### Changes Made
+- **Type:** Database migration (bug fix — production schema drift).
+- **Root cause:** The `monitrax-cdr-lifecycle` Cloud Scheduler job (`POST /api/cdr/lifecycle`) returned HTTP 500 on every run. Diagnosed live with Reza via `curl -i -X POST https://www.monitrax.com.au/api/cdr/lifecycle -H "Authorization: Bearer <CRON_SECRET>"` — the route's error body: `{"success":false,"error":{"code":"SERVER_ERROR","message":"Invalid \`prisma.basiqConnection.findMany()\` invocation: The column \`basiq_connections.consentExpiresAt\` does not exist in the current database."}}`. `BasiqConnection` in `prisma/schema.prisma` declares `consentExpiresAt DateTime?` + `consentScope String?` + `@@index([consentExpiresAt])` (the "Fix: G19" CDR-consent-tracking columns), but these were added during the pre-migration `prisma db push` era — there is **no migration file** that touches `basiq_connections` (`grep -rln basiq_connections prisma/migrations/` → nothing). So the dev DB got the columns via `db push`, the generated Prisma client expects them, but the production `basiq_connections` table never got them. `checkConsentExpiry()` does `prisma.basiqConnection.findMany()` with no `select` → `SELECT *` → references the non-existent column → 500.
+- **Solution:** Fix-forward corrective migration — bring prod's table in line with `schema.prisma`. No `schema.prisma` change (it already declares the columns).
+
+### Files Created
+- `prisma/migrations/20260514130000_fix_basiq_connection_consent_columns/migration.sql`:
+  ```sql
+  ALTER TABLE "basiq_connections" ADD COLUMN IF NOT EXISTS "consentExpiresAt" TIMESTAMP(3);
+  ALTER TABLE "basiq_connections" ADD COLUMN IF NOT EXISTS "consentScope" TEXT;
+  CREATE INDEX IF NOT EXISTS "basiq_connections_consentExpiresAt_idx" ON "basiq_connections"("consentExpiresAt");
+  ```
+  `IF NOT EXISTS` makes it idempotent — on the dev DB (which already has these columns from the historical `db push`) it's a no-op; on prod it adds them. `vercel-build` runs `prisma migrate deploy` against `monitrax-db-dev` on the PR preview and against `monitrax-db-prod` on the `main` deploy, so the migration applies to prod the moment this merges. Purely additive (two nullable columns + a non-unique index) — CLAUDE.md §12.11 destructive-write checklist N/A by structural argument. The migration file's header comment is the canonical record of why it exists.
+
+### Files Modified
+- `docs/operational/database/04_PRISMA_MIGRATION_BASELINE.md` — new §12 "Residual pre-migration drift — fix forward, don't re-baseline": explains the drift class (schema column with no migration → dev has it via `db push`, prod doesn't, baseline doesn't notice, first `SELECT *` in prod crashes), records this `basiq_connections` instance + the corrective migration, and gives the `npx prisma migrate diff --from-url <prod-url> --to-schema-datamodel prisma/schema.prisma --script` command to find any remaining drift (review → wrap in `IF NOT EXISTS` → corrective migration; never apply directly via psql).
+- `docs/IMPLEMENTATION_PLAN.md` — Tech Debt #18 added (audit prod schema vs `schema.prisma` for other pre-migration-era drift — recommended before the Basiq accreditation submission); a Recently Completed bullet; top "Last updated" line.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Schema migration (CLAUDE.md §12.12)
+This PR adds a migration but does **not** modify `prisma/schema.prisma` — the schema already declares `BasiqConnection.consentExpiresAt` / `consentScope` / the index; the migration just makes the production DB match. So §12.12's "every `schema.prisma` change needs a matching migration" is satisfied trivially (no schema change), and conversely this is a "schema-without-a-migration → add the missing migration" fix-up — exactly the corrective case §12.12 anticipates. Not `db push`, not `db execute`, not a direct psql `ALTER` — a proper migration folder that the deploy pipeline applies and `_prisma_migrations` records.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+Migration is `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` ×2 (nullable, no default-backfill) + `CREATE INDEX IF NOT EXISTS ...` — no `DROP`, no `ALTER ... DROP`, no `TRUNCATE`, no `ADD COLUMN NOT NULL` without a backfilled default, no Prisma `update`/`delete`/`updateMany`/`deleteMany`/`$executeRaw`. Purely additive → §12.11 N/A. User confirmation: NOT REQUIRED.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — borderline: the broken column was on a CDR table (`basiq_connections`) and the broken endpoint is the CDR consent-expiry sweep, but the *posture* doesn't change — this restores intended behaviour (the CDR data lifecycle cron can now actually run). Noted in `04_PRISMA_MIGRATION_BASELINE.md` §12 for clarity.
+- [x] operational procedure — yes: `04_PRISMA_MIGRATION_BASELINE.md` §12 (new "residual pre-migration drift" section + the `prisma migrate diff` recipe); the migration file itself
+- [ ] strategic decision
+
+Other CLAUDE.md §3.1 considerations:
+- **Schema migration** → `prisma/migrations/20260514130000_fix_basiq_connection_consent_columns/migration.sql` (§12.12). No `schema.prisma` change → no `03_DATA_MODEL.md` change needed (the data-model doc already describes `basiq_connections` per the schema, which the schema and now prod agree with). No Phase doc applies (this isn't a phase deliverable — it's a drift fix-up).
+
+### Build Status
+- [⚠] Local `tsc --noEmit` / `prisma generate` are no-ops in this sandbox (no `node_modules`; Prisma CLI version mismatch). The migration SQL is plain DDL with `IF NOT EXISTS` guards. On Vercel: `vercel-build` runs `prisma migrate deploy` (preview → `monitrax-db-dev` where the columns already exist → the `IF NOT EXISTS` makes it a no-op; prod → `monitrax-db-prod` → the columns get added) → `prisma generate` (client already matches the schema) → `next build`. The Vercel preview build is the canonical check that the migration applies cleanly.
+
+### Verify (Reza, after this merges + deploys)
+1. `curl -i -X POST https://www.monitrax.com.au/api/cdr/lifecycle -H "Authorization: Bearer <CRON_SECRET>"` → should now be `200 {"success":true,...}` (not the 500). If it's a *different* 500 message → another drifted table; paste it.
+2. Re-run the `monitrax-cdr-lifecycle` Cloud Scheduler job (Force run) → should be 200.
+3. Re-run `monitrax-portal-alert-sweep` (now pointed at `https://www.monitrax.com.au/...`) → should be 200.
+4. (Recommended before the Basiq submission) run the `prisma migrate diff` command from `04_PRISMA_MIGRATION_BASELINE.md` §12 to catch any remaining drift.
+
+### PR
+- Branch: `claude/fix-basiq-connection-schema-drift-MG8mr`
+- Status: pending push + open
+
+---
+
+## Session: claude/docs-ops-progress-tracking-MG8mr (Ops progress + tracking — doc-only)
+
+### Changes Made
+- **Type:** Documentation (progress/state tracking — no code, no schema, no infra wiring). Reza directive 2026-05-12: skip email-in activation for now; document all progress + the outstanding activities so we don't lose track.
+- **Context:** PR #753 (the `basiq_connections` drift fix) merged → both Cloud Scheduler crons (`monitrax-cdr-lifecycle`, `monitrax-portal-alert-sweep`) now Force-run **200**. (Recap of the debugging session: the portal job's failure was HTTP 405 — it pointed at the apex `monitrax.com.au`, which 30x-redirects to `www.monitrax.com.au`, and Cloud Scheduler downgrades a POST to a GET across that redirect → the POST-only route returns 405 → fixed by switching the job's URL to `https://www.monitrax.com.au/...`. The CDR job's failure was HTTP 500 — `prisma.basiqConnection.findMany()` in `checkConsentExpiry()` referenced `basiq_connections.consentExpiresAt`, a column `schema.prisma` declares but prod's table never got (pre-migration `db push` drift) → fixed by PR #753's corrective migration. The `CRON_SECRET` was a red herring — it's configured in Vercel and matches; it just needs rotating because it got pasted into chat during the debugging.)
+
+### Files Modified
+- `docs/IMPLEMENTATION_PLAN.md`:
+  - **New `📋 Reza-side operational checklist — current state` table** (21 rows) under the Phase 0 "Production Readiness" workstream — the GCP-console / Vercel / external activities that aren't in the code path, with a state column (✅ done / 🟡 in-progress / ⬜ not-started / ⏸ deferred / 🚧 blocked-on-external): Cloud Scheduler jobs ×3 (cdr ✅, portal ✅, conversation-retention ⬜), email-in activation ⏸, observability (A1+A9 confirm ⬜, Vercel log drain ⬜, synthetic monitor ⬜, A2–A8 + channels + dashboard ⬜), backup/restore drill ⬜, IRP tabletop ⬜, prod schema-drift audit ⬜ (Tech Debt #18), CRON_SECRET rotation ⬜, Gemini-key restriction ⬜, CMEK 🟡 / Cloud Armor ⬜ / SCC ⬜ (Reza Tier-1), pen test / cyber insurance / Stripe live-mode 🚧, Anthropic key ⏸, WIF Phase 11/12 🚧.
+  - The "Email-in hardening" Phase 0 chunk updated — `⏸ Activation DEFERRED (Reza decision 2026-05-12)`: the hardening code (PR #747) is shipped & dormant; activate when a real client wants to reply by email; lists exactly what activation requires (SendGrid account + MX subdomain DNS + the env vars + the SendGrid destination URL with `?secret=…`); notes the outbound=Resend / inbound-parse-expects-SendGrid tension (Tech Debt #16).
+  - Recently Completed bullet + top "Last updated" line.
+- `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md`:
+  - The top status note rewritten — "all three exist" → a real status: `monitrax-cdr-lifecycle` ✅ + `monitrax-portal-alert-sweep` ✅ (both last Force-ran 200), `monitrax-conversation-retention-sweep` ⬜ **not yet created** (per §4; the 7-yr purge isn't enforced until it exists).
+  - New "**Use the `www.` domain in the target URL**" note — the apex `monitrax.com.au` 30x-redirects to `www.monitrax.com.au` and Cloud Scheduler downgrades POST→GET across the redirect → HTTP 405 (which is exactly what bit the portal job). All target URLs in the file flipped `https://monitrax.com.au/api/...` → `https://www.monitrax.com.au/api/...` (the §3 + §4 gcloud examples + console-setup tables).
+  - The §2 prereq row updated — "Production domain — `https://www.monitrax.com.au` resolving to Vercel ... `www.` is canonical; the apex redirects to it — always use the `www.` form in Cloud Scheduler target URLs".
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (`05_RETENTION_SCHEDULERS.md` — the Cloud Scheduler job status note + the `www.`-domain rule + all target URLs corrected; the new Reza-side operational checklist in `IMPLEMENTATION_PLAN.md`)
+- [x] strategic decision (Reza decision 2026-05-12: defer email-in activation — recorded in the Phase 0 "Email-in hardening" chunk + the checklist)
+
+Docs updated in this PR: `docs/IMPLEMENTATION_PLAN.md` (Reza-side checklist + Email-in chunk + Recently Completed + top header), `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md` (status note + `www.` rule + URLs + prereq), `docs/changelog/CHANGELOG_2026_05_09.md` (this entry). No schema, no migration, no API contract, no design primitive, no code logic.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — doc-only PR.
+
+### Build Status
+- [✓] Doc-only — no build surface.
+
+### PR
+- Branch: `claude/docs-ops-progress-tracking-MG8mr`
+- Status: pending push + open
+
+---
+
+## Session: claude/admin-schema-drift-check-MG8mr (feat(admin) — GET /api/admin/schema-drift, server-side prod schema-drift audit)
+
+### Changes Made
+- **Type:** Feature (admin tooling) — a server-side runner for the "audit prod for more pre-migration drift" task (checklist row 11 / Tech Debt #18).
+- **Why:** Reza asked Claude to "run the drift audit yourself". Claude can't reach `monitrax-db-prod` from the sandbox (no `node_modules`, Prisma CLI version mismatch, no prod credentials/network). So instead Claude built the tool: an endpoint that runs the audit server-side, where the Vercel function already has prod DB access via WIF — so Reza can run it with one click instead of setting up a local Prisma environment against prod. (We just fixed one such drift — `basiq_connections` missing `consentExpiresAt`/`consentScope` — there are likely more lurking; this surfaces them all at once.)
+
+### Files Created
+- `app/api/admin/schema-drift/route.ts` (~250 LOC) — `GET`, `verifyAdminGCPAuth` + `role === 'SUPER_ADMIN'` (mirrors `/api/admin/run-seed`). **Read-only** — runs only `SELECT`s against `information_schema.tables` / `information_schema.columns` / `pg_type`+`pg_enum` over the live WIF connection (`prisma.$queryRawUnsafe` with static SQL — no user input, no injection surface); applies nothing, touches no data. Reads `Prisma.dmmf.datamodel.{models,enums}` (the data-model meta-format baked into the generated client) for "what `schema.prisma` declares", then diffs:
+  - `missingTables` — model `@@map` tables that don't exist in prod
+  - `tablesWithMissingColumns` — per table: columns the DMMF declares that prod lacks, each with `prismaField` / `prismaType` / `isList` / `isRequired` + a `suggestedAddColumnSql` *hint* (e.g. `ALTER TABLE "basiq_connections" ADD COLUMN IF NOT EXISTS "consentExpiresAt" TIMESTAMP(3);` — a hint for writing the corrective migration, NOT something the endpoint applies)
+  - `tablesWithExtraColumns` — columns in prod with no DMMF field (less urgent; usually means "add to the schema", not "drop from prod")
+  - `missingEnums` / `enumsWithMissingValues` — enum types / enum values the DMMF declares that prod's enum types lack
+  - `orphanTables` — prod tables that map to no model (`_prisma_migrations` is whitelisted)
+  - `summary` with `hasDrift` + counts; `runBy`; a `note` explaining the scope (column/table/enum-value level — catches the `SELECT *`-crashes-on-a-missing-column class; does NOT check types/nullability/defaults/indexes — for that, the local `prisma migrate diff`)
+  Returns no data — only schema metadata (table/column/enum names). CDR §13.3 N/A by structure. `Prisma.dmmf` not in the bundle ⇒ returns a clear `DMMF_UNAVAILABLE` 500 pointing at the local `prisma migrate diff` fallback (defensive — `Prisma.dmmf` should be present for Prisma 5.22's generated client). `maxDuration = 60`, `dynamic = 'force-dynamic'`.
+
+### Files Modified
+- `docs/operational/database/04_PRISMA_MIGRATION_BASELINE.md` §12 — "to find any remaining drift" now lists two ways: **(a)** `GET /api/admin/schema-drift` (SUPER_ADMIN, server-side, no local setup, column/table/enum-value level) + **(b)** the local `npx prisma migrate diff` (also checks types/nullability/indexes). "Either way the fix is the same" — review → if additive, corrective migration with `IF NOT EXISTS`; if `DROP`, §12.11 checklist first; never a direct `ALTER` on prod (§12.12).
+- `docs/IMPLEMENTATION_PLAN.md` — checklist row 11 updated (the endpoint is now the "easiest" path); Tech Debt #18 updated; a Recently Completed bullet; top "Last updated" line.
+- `docs/changelog/CHANGELOG_2026_05_09.md` — this entry.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — no posture change; the endpoint returns only schema metadata (no data, no CDR content), is SUPER_ADMIN-gated, and is read-only
+- [x] operational procedure (a new server-side way to run the prod schema-drift audit — documented in `04_PRISMA_MIGRATION_BASELINE.md` §12 + the Reza-side checklist)
+- [ ] strategic decision
+
+Other §3.1 considerations: this is a new API route but it follows the existing admin-route convention (`verifyAdminGCPAuth` + `SUPER_ADMIN` check) — no new API *standard* introduced, so `07_API_STANDARDS.md` not touched. No schema change → no `03_DATA_MODEL.md` / migration. No new design primitive.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — the endpoint runs only `SELECT`s. No Prisma `update`/`delete`/`updateMany`/`deleteMany`/`upsert`/`$executeRaw`, no migration.
+
+### Build Status
+- [⚠] Local `tsc --noEmit` / `prisma generate` are no-ops in this sandbox. Code reviewed against existing patterns: `verifyAdminGCPAuth` + `ADMIN_ERROR_CODES` + `authResult.context.role !== 'SUPER_ADMIN'` matches `/api/admin/run-seed/route.ts`; `import prisma from '@/lib/db'` (default) matches the cron/admin routes; `prisma.$queryRawUnsafe<T[]>('static sql')` is the standard read-only raw-query form. The one external assumption: `Prisma.dmmf` is available on the generated client at runtime — true for Prisma 5.x (it was restricted in 6+; project is on 5.22.0); guarded with a clear `DMMF_UNAVAILABLE` fallback if not. The Vercel preview build is the canonical type check.
+
+### PR
+- Branch: `claude/admin-schema-drift-check-MG8mr`
+- Status: pending push + open

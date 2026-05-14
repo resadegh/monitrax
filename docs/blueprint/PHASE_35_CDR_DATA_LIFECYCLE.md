@@ -110,7 +110,7 @@ To enable automated consent expiry checks:
 ```
 # GCP Cloud Scheduler Job
 Name: cdr-consent-expiry-check
-Schedule: 0 2 * * * (daily at 02:00 UTC)
+Schedule: 0 2 * * * (daily at 02:00 Australia/Sydney (AEST/AEDT))
 Target type: HTTP
 URL: https://<domain>/api/cdr/lifecycle
 HTTP method: POST

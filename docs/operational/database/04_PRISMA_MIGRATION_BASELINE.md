@@ -453,6 +453,71 @@ unblocked and can ship.
 
 ---
 
+## 12. Residual pre-migration drift — fix forward, don't re-baseline
+
+Baselining (§4–§5) records "these migration folders are applied" but
+does **not** reconcile what the columns/tables actually are. So if a
+column was added to `schema.prisma` during the `db push` era *without*
+a migration file, the dev DB has it (it was `db push`'d) but the prod
+DB may not — and the baseline doesn't notice. The Prisma client is
+generated from `schema.prisma`, so it expects the column; the first
+query that does `SELECT *` on the drifted table in prod then fails with
+`The column <table>.<col> does not exist in the current database`.
+
+**Known instance (fixed 2026-05-12):** `BasiqConnection.consentExpiresAt`
++ `consentScope` (the "Fix: G19" CDR-consent-tracking columns) + the
+`consentExpiresAt` index were in `schema.prisma` with no migration — so
+prod's `basiq_connections` table lacked them, and
+`prisma.basiqConnection.findMany()` in `checkConsentExpiry()` (the
+`/api/cdr/lifecycle` cron) returned HTTP 500 on every run, which is why
+the `monitrax-cdr-lifecycle` Cloud Scheduler job kept failing. Fixed
+forward by migration `20260514130000_fix_basiq_connection_consent_columns`
+(`ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` — idempotent: a no-op on
+dev, adds the columns on prod).
+
+**To find any remaining drift** (recommended once, ideally before the
+Basiq accreditation submission) — two ways:
+
+**(a) Server-side, no local setup — `GET /api/admin/schema-drift`** (SUPER_ADMIN).
+The running Vercel function already has prod DB access (WIF), so it can run
+the audit for you. Hit `https://www.monitrax.com.au/api/admin/schema-drift`
+as a SUPER_ADMIN (or from `/admin/...`) → JSON report: `missingTables`,
+`tablesWithMissingColumns` (each with a `suggestedAddColumnSql` hint),
+`tablesWithExtraColumns`, `missingEnums` / `enumsWithMissingValues`,
+`orphanTables`, and a `summary` with `hasDrift`. **Read-only** — it runs
+only `SELECT`s against `information_schema` / `pg_catalog`; it applies
+nothing. Scope: column / table / enum-value level (catches the
+`SELECT *`-crashes-on-a-missing-column class — the high-risk drift). It
+does NOT check column types / nullability / defaults / indexes — for
+that, use (b).
+
+**(b) Locally, the full `prisma migrate diff`** (covers types/nullability/
+indexes too — needs the repo + prod DB access):
+
+```bash
+npx prisma migrate diff \
+  --from-url "<prod_connection_string>" \
+  --to-schema-datamodel prisma/schema.prisma \
+  --script > /tmp/prod_drift.sql
+```
+
+`/tmp/prod_drift.sql` is the SQL that would bring prod in line with
+`schema.prisma`.
+
+**Either way, the fix is the same:** review the output — if it's all
+additive (`ADD COLUMN` / `CREATE INDEX` / `ALTER TYPE ... ADD VALUE`),
+turn it into a corrective migration (wrap each statement in
+`IF NOT EXISTS` so it's also a no-op on dev). If it contains `DROP` /
+`ALTER ... DROP` — **stop and fill in the §12.11 destructive-write
+checklist before doing anything** (a `DROP` usually means prod has
+*extra* stuff `schema.prisma` doesn't know about — the right fix is
+often to add it *to* the schema, not drop it from prod). Never apply
+the drift SQL directly via psql (CLAUDE.md §12.12 bans direct
+`ALTER TABLE` on prod) — always go through a migration so
+`_prisma_migrations` stays accurate.
+
+---
+
 *This runbook is intentionally detailed. Execute it once, tick the
 boxes, and never run it again — future databases get Prisma
 migration tracking from day one via PR #3's pipeline.*

@@ -277,7 +277,7 @@
 | G26 | **`deleteCDRData()` doesn't delete RecurringPayment** | `lib/services/cdrDataLifecycle.ts` | Recurring payments derived from BANK-sourced transactions survive CDR data deletion. CDR-derived data. | Add `RecurringPayment` deletion where source is BANK transactions |
 | G27 | **CRON_SECRET uses timing-unsafe comparison** | `app/api/cdr/lifecycle/route.ts` | `token !== cronSecret` vulnerable to timing attacks. | Use `crypto.timingSafeEqual()` |
 | G28 | **DELETE connection soft-disables instead of hard-delete** | `app/api/basiq/connections/[id]/route.ts` | Connection record persists with status DISABLED. CDR rules require hard deletion. | Hard-delete `BasiqConnection` record after Basiq API call |
-| G29 | **GCP Cloud Scheduler not configured** | GCP Console | `checkConsentExpiry()` endpoint exists but never called. Expired consents won't trigger deletion. | Configure Cloud Scheduler: daily 02:00 UTC, `POST /api/cdr/lifecycle`, `CRON_SECRET` auth |
+| G29 | **GCP Cloud Scheduler not configured** | GCP Console | `checkConsentExpiry()` endpoint exists but never called. Expired consents won't trigger deletion. | Configure Cloud Scheduler: daily 02:00 Australia/Sydney (AEST/AEDT), `POST /api/cdr/lifecycle`, `CRON_SECRET` auth |
 
 #### LOW
 
@@ -332,7 +332,7 @@
 |---|-----|--------|-------|--------------------|
 | G1 | Vulnerability scan | Run OWASP ZAP or commission external pen test | Director | Check: vulnerability scan report file exists in Evidence folder |
 | G2 | Insurance certificates | Contact broker for cyber liability + PI insurance | Director | Check: insurance certificate files exist in Evidence folder |
-| G29 | GCP Cloud Scheduler not configured | GCP Console → Cloud Scheduler → Create job: daily 02:00 UTC, POST /api/cdr/lifecycle, Bearer CRON_SECRET | Director | Check: `gcloud scheduler jobs list --project=monitrax-prod` shows CDR lifecycle job |
+| G29 | GCP Cloud Scheduler not configured | GCP Console → Cloud Scheduler → Create job: daily 02:00 Australia/Sydney (AEST/AEDT), POST /api/cdr/lifecycle, Bearer CRON_SECRET | Director | Check: `gcloud scheduler jobs list --project=monitrax-prod` shows CDR lifecycle job |
 | G35 | Admin dashboard NO auth | Add `verifyAdminAuth()` to `app/api/admin/dashboard/route.ts` | Developer | Check: `grep -c "verifyAdminAuth\|withPermission" app/api/admin/dashboard/route.ts` returns ≥1 |
 
 ### Priority 1 — Must Complete Before Go-Live (CDR Data Flows)

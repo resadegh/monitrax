@@ -1,14 +1,42 @@
 # Retention Schedulers — GCP Cloud Scheduler Setup
 
-> **Operational runbook for the two cron jobs that enforce
-> Monitrax's data-retention obligations.** Both endpoints are built
-> and accept `CRON_SECRET`-authenticated calls today; both crons
+> **Operational runbook for the cron jobs that enforce
+> Monitrax's data-retention obligations.** The endpoints are built
+> and accept `CRON_SECRET`-authenticated calls today; the crons
 > need to be **created in GCP Cloud Scheduler** for the obligations
 > to be enforced.
 
 **Owner:** Director (Reza)
-**Last reviewed:** 2026-05-09
+**Last reviewed:** 2026-05-12
 **Source of truth:** this file. CLAUDE.md §13.5, §13.6 + `docs/policy/CDR_DATA_RETENTION_SCHEDULE.md` reference back here.
+
+> **Timezone (2026-05-12 — Reza decision):** all Monitrax Cloud
+> Scheduler jobs run in the **`australia-southeast1`** region with the
+> **`Australia/Sydney`** timezone (AEST UTC+10 / AEDT UTC+11). Every
+> schedule in this file is **Sydney local time** unless explicitly
+> stated otherwise. (Cloud SQL backup / maintenance windows are a
+> separate thing and remain UTC — see `database/01_CLOUD_SQL_OPERATIONS.md`
+> + `02_BACKUP_AND_RESTORE.md`.)
+
+| Job | Endpoint | Schedule (Australia/Sydney) | Purpose |
+|---|---|---|---|
+| `monitrax-cdr-lifecycle` | `POST /api/cdr/lifecycle` | `0 2 * * *` (02:00) | CDR consent-expiry sweep — see §3 |
+| `monitrax-conversation-retention-sweep` | `POST /api/conversations/retention-sweep` | `0 3 * * *` (03:00) | 7-yr conversation message purge — see §4 |
+| `monitrax-portal-alert-sweep` | `POST /api/portal/alerts/sweep` | `0 4 * * *` (04:00) | Recompute the Practice "needs attention" alert stream — **not** a retention obligation; documented in `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md`. Listed here because it shares the Cloud Scheduler console + the same `CRON_SECRET` + the same region/timezone. |
+
+> **Status (2026-05-12 — confirmed in the console):** `monitrax-cdr-lifecycle`
+> ✅ and `monitrax-portal-alert-sweep` ✅ both exist, are `ENABLED`, and
+> their last Force-run returned **200**. `monitrax-conversation-retention-sweep`
+> ⬜ was **not** in the jobs list — **still needs to be created** (per §4
+> below; the conversation 7-yr purge isn't enforced until it exists).
+>
+> **Use the `www.` domain in the target URL.** Monitrax's canonical domain
+> is **`www.monitrax.com.au`** — the apex `monitrax.com.au` 30x-redirects
+> to it, and Cloud Scheduler downgrades a `POST` to a `GET` across that
+> redirect → the route returns HTTP 405. The `monitrax-portal-alert-sweep`
+> job hit exactly this (was `https://monitrax.com.au/...`, got 405; fixed
+> by switching to `https://www.monitrax.com.au/...`). All target URLs in
+> this file use the `www.` form for that reason.
 
 ---
 
@@ -42,13 +70,13 @@ ready to run.
 | `CRON_SECRET` env var set on Vercel (production scope) | Vercel → Project → Settings → Environment Variables → search `CRON_SECRET`. Should be a 32+ char random string. Generate via `openssl rand -hex 32` if not yet set. |
 | Service account with `Cloud Scheduler Admin` role | Use the same `vercel-monitrax-db@…` SA from WIF if convenient, or create `monitrax-cron@…`. |
 | Cloud Scheduler API enabled in `monitrax-479700` GCP project | `gcloud services enable cloudscheduler.googleapis.com --project=monitrax-479700` |
-| Production domain — `https://monitrax.com.au` resolving to Vercel | Confirm via `curl -I https://monitrax.com.au` (200 OK) |
+| Production domain — `https://www.monitrax.com.au` resolving to Vercel | Confirm via `curl -I https://www.monitrax.com.au` (200 OK, **no** `location:` redirect header). `www.` is canonical; the apex `monitrax.com.au` redirects to it — always use the `www.` form in Cloud Scheduler target URLs (see the note at the top of this file). |
 
 ---
 
 ## 3. Job 1 — CDR consent-expiry sweep
 
-**Endpoint:** `POST https://monitrax.com.au/api/cdr/lifecycle`
+**Endpoint:** `POST https://www.monitrax.com.au/api/cdr/lifecycle`
 **Built:** Phase 35 (already deployed). See `app/api/cdr/lifecycle/route.ts`.
 
 ### gcloud setup
@@ -58,8 +86,8 @@ gcloud scheduler jobs create http monitrax-cdr-lifecycle \
   --project=monitrax-479700 \
   --location=australia-southeast1 \
   --schedule="0 2 * * *" \
-  --time-zone="UTC" \
-  --uri="https://monitrax.com.au/api/cdr/lifecycle" \
+  --time-zone="Australia/Sydney" \
+  --uri="https://www.monitrax.com.au/api/cdr/lifecycle" \
   --http-method=POST \
   --headers="Authorization=Bearer ${CRON_SECRET}" \
   --attempt-deadline=300s \
@@ -75,9 +103,9 @@ GCP Console → Cloud Scheduler → Create Job
 | Name | `monitrax-cdr-lifecycle` |
 | Region | `australia-southeast1` |
 | Frequency | `0 2 * * *` |
-| Timezone | `UTC` |
+| Timezone | `Australia/Sydney` |
 | Target type | HTTP |
-| URL | `https://monitrax.com.au/api/cdr/lifecycle` |
+| URL | `https://www.monitrax.com.au/api/cdr/lifecycle` |
 | HTTP method | POST |
 | Auth header — Header name | `Authorization` |
 | Auth header — Value | `Bearer <CRON_SECRET>` (paste the actual value) |
@@ -98,7 +126,7 @@ GCP Console → Cloud Scheduler → Create Job
 ### Verification (post-create)
 
 ```bash
-# Trigger an immediate run (without waiting for 02:00 UTC):
+# Trigger an immediate run (without waiting for 02:00 Australia/Sydney (AEST/AEDT)):
 gcloud scheduler jobs run monitrax-cdr-lifecycle \
   --project=monitrax-479700 \
   --location=australia-southeast1
@@ -113,7 +141,7 @@ Then check:
 
 ## 4. Job 2 — Conversation retention sweep
 
-**Endpoint:** `POST https://monitrax.com.au/api/conversations/retention-sweep`
+**Endpoint:** `POST https://www.monitrax.com.au/api/conversations/retention-sweep`
 **Built:** Production-readiness workstream 2026-05-09. See `app/api/conversations/retention-sweep/route.ts` + `lib/services/conversationRetentionService.ts`.
 
 ### gcloud setup
@@ -123,16 +151,16 @@ gcloud scheduler jobs create http monitrax-conversation-retention-sweep \
   --project=monitrax-479700 \
   --location=australia-southeast1 \
   --schedule="0 3 * * *" \
-  --time-zone="UTC" \
-  --uri="https://monitrax.com.au/api/conversations/retention-sweep" \
+  --time-zone="Australia/Sydney" \
+  --uri="https://www.monitrax.com.au/api/conversations/retention-sweep" \
   --http-method=POST \
   --headers="Authorization=Bearer ${CRON_SECRET}" \
   --attempt-deadline=300s \
   --description="Daily 7-yr conversation message archive sweep. AFSL Corp Act §912F. See docs/operational/runbooks/05_RETENTION_SCHEDULERS.md"
 ```
 
-**Note:** scheduled at 03:00 UTC — one hour after the CDR cron at
-02:00 UTC. They share the database; sequential runs avoid
+**Note:** scheduled at 03:00 Australia/Sydney (AEST/AEDT) — one hour after the CDR cron at
+02:00 Australia/Sydney (AEST/AEDT). They share the database; sequential runs avoid
 DB-CPU contention on warm-up.
 
 ### What it does, step by step

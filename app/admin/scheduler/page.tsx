@@ -36,11 +36,47 @@ interface SchedulerData {
   consoleUrl: string;
 }
 
+interface PortalAlertSweepResult {
+  success?: boolean;
+  orgsProcessed?: number;
+  clientsProcessed?: number;
+  clientsSkipped?: number;
+  alertsCreated?: number;
+  alertsUpdated?: number;
+  alertsResolved?: number;
+  durationMs?: number;
+  dryRun?: boolean;
+  errors?: { organizationClientId: string; message: string }[];
+  runBy?: string;
+}
+
 export default function SchedulerPage() {
   const [data, setData] = useState<SchedulerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Portal alert sweep — manual trigger (Phase 32B PR3 post-#9b polish).
+  const [sweepDryRun, setSweepDryRun] = useState(true);
+  const [sweepRunning, setSweepRunning] = useState(false);
+  const [sweepResult, setSweepResult] = useState<PortalAlertSweepResult | null>(null);
+  const [sweepError, setSweepError] = useState<string | null>(null);
+
+  const handleRunSweep = async () => {
+    setSweepRunning(true);
+    setSweepError(null);
+    setSweepResult(null);
+    const result = await safeAdminFetch<PortalAlertSweepResult>('/api/admin/portal-alert-sweep', {
+      method: 'POST',
+      body: JSON.stringify({ dryRun: sweepDryRun }),
+    });
+    if (result.ok && result.data) {
+      setSweepResult(result.data);
+    } else {
+      setSweepError(result.error || 'Failed to run portal alert sweep');
+    }
+    setSweepRunning(false);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -116,6 +152,74 @@ export default function SchedulerPage() {
           </div>
         </AdminCard>
       )}
+
+      {/* Portal alert sweep — runs the same recompute as the
+          `monitrax-portal-alert-sweep` Cloud Scheduler job, on demand.
+          Works independently of the GCP Scheduler API (this calls the
+          app endpoint directly), so it's outside the data-load block. */}
+      <AdminCard className="mb-4">
+        <AdminCardHeader
+          title="Portal alert sweep"
+          description="Recompute every org's Practice 'needs attention' alert stream from each active client's current snapshot. Same work as the daily Cloud Scheduler job (monitrax-portal-alert-sweep, 0 4 * * * UTC) — use this before the scheduler job is wired, or after onboarding a new client."
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 select-none">
+            <input
+              type="checkbox"
+              checked={sweepDryRun}
+              onChange={(e) => setSweepDryRun(e.target.checked)}
+              disabled={sweepRunning}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            Dry run (compute only — write nothing)
+          </label>
+          <AdminButton onClick={handleRunSweep} isLoading={sweepRunning} disabled={sweepRunning}>
+            {sweepDryRun ? 'Preview sweep' : 'Run sweep now'}
+          </AdminButton>
+          {!sweepDryRun && (
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              Writes ClientAlert rows for all orgs.
+            </span>
+          )}
+        </div>
+
+        {sweepError && (
+          <div className="mt-3 text-sm text-red-600 dark:text-red-400">{sweepError}</div>
+        )}
+
+        {sweepResult && (
+          <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <AdminBadge variant={sweepResult.dryRun ? 'neutral' : 'success'} size="sm">
+                {sweepResult.dryRun ? 'Dry run' : 'Applied'}
+              </AdminBadge>
+              {typeof sweepResult.durationMs === 'number' && (
+                <span className="text-xs text-gray-500">{sweepResult.durationMs} ms</span>
+              )}
+              {sweepResult.runBy && (
+                <span className="text-xs text-gray-500">· run by {sweepResult.runBy}</span>
+              )}
+            </div>
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1">
+              <div><dt className="text-xs text-gray-500">Orgs</dt><dd className="font-medium">{sweepResult.orgsProcessed ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Clients processed</dt><dd className="font-medium">{sweepResult.clientsProcessed ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Clients skipped</dt><dd className="font-medium">{sweepResult.clientsSkipped ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Alerts created</dt><dd className="font-medium">{sweepResult.alertsCreated ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Alerts updated</dt><dd className="font-medium">{sweepResult.alertsUpdated ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Alerts resolved</dt><dd className="font-medium">{sweepResult.alertsResolved ?? 0}</dd></div>
+              <div><dt className="text-xs text-gray-500">Errors</dt><dd className={`font-medium ${(sweepResult.errors?.length ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>{sweepResult.errors?.length ?? 0}</dd></div>
+            </dl>
+            {sweepResult.errors && sweepResult.errors.length > 0 && (
+              <ul className="mt-2 list-disc list-inside text-xs text-amber-600 dark:text-amber-400 space-y-0.5">
+                {sweepResult.errors.slice(0, 10).map((e, i) => (
+                  <li key={i}>{e.organizationClientId}: {e.message}</li>
+                ))}
+                {sweepResult.errors.length > 10 && <li>…and {sweepResult.errors.length - 10} more</li>}
+              </ul>
+            )}
+          </div>
+        )}
+      </AdminCard>
 
       {loading ? (
         <div className="flex items-center justify-center py-12">

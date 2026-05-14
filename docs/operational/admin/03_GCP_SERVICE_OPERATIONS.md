@@ -228,7 +228,7 @@ Standard tier (free) includes:
 
 | Job | Schedule | Endpoint | Purpose |
 |-----|----------|----------|---------|
-| `monitrax-cdr-lifecycle` | `0 2 * * *` (daily 02:00 UTC) | `POST /api/cdr/lifecycle` | CDR consent expiry check + data cleanup |
+| `monitrax-cdr-lifecycle` | `0 2 * * *` (daily 02:00 Australia/Sydney (AEST/AEDT)) | `POST /api/cdr/lifecycle` | CDR consent expiry check + data cleanup |
 
 #### Admin Portal Actions
 
