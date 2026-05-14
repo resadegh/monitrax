@@ -111,12 +111,47 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 - **Done when:** You can call Claude from n8n and get a response.
 - **Gotcha:** Use **Sonnet for volume** (personalisation, classification, support), **Opus only for the few high-stakes Reviews**. Use prompt caching aggressively — system prompts + report templates are static across thousands of calls; caching cuts costs ~10×.
 
-### Step 1.6 — Build the Founder Daily Digest (the killer workflow)
-- **Goal:** One email in your inbox each morning at 7am with: replies needing you, today's calls + briefs, pipeline changes, revenue yesterday, errors, support escalations, content awaiting approval.
-- **Time:** 3 hours.
-- **Action:** n8n cron @ 6:45am → parallel branches pull from (Airtable Activities, Stripe charges, Sentry errors, Cal.com today's bookings, Loops events, Instantly reply log) → Claude summarises into one prioritised brief → Gmail send to you.
-- **Done when:** You receive a useful digest three mornings in a row without touching it.
-- **Gotcha:** **Build this first** — it's what actually buys back your time. Everything else above is just data sources for this.
+### Step 1.6 — Build the Founder Daily Digest (the killer workflow) — 🟡 BUILT (2026-05-14), awaiting first live cron run
+- **Goal:** One email in `admin@monitrax.com.au` inbox each morning at 7am Sydney with: replies needing Reza, workflow health, awaiting-data placeholders, top-3 actions for today, one pattern observed. Grows into the fuller brief (pipeline, revenue, errors, bookings, support) as data sources come online.
+- **Time:** ~3 hours target — actual ~4 hours including OAuth setup friction.
+- **What was built (2026-05-14):**
+  - **Workflow:** `Founder Daily Digest v1` at `https://n8n.monitrax.com.au/workflow/jQWmSbqEvY3vkAy2` — 18 nodes. Built via the Anthropic n8n connector (Claude Desktop Chat mode, MCP).
+  - **Architecture:**
+    - **Cron trigger:** Daily @ 06:45 Sydney TZ (workflow timezone explicitly set to `Australia/Sydney` — critical, otherwise fires at 06:45 UTC = 16:45 Sydney).
+    - **Two active data branches** running in parallel: (a) Gmail Unread on `reza@try-monitrax.com` (the Smartlead warmup mailbox) with a Gmail-side noise filter `is:unread newer_than:1d -category:promotions -category:social -category:updates -from:noreply -from:no-reply -from:notifications` and `simple: true` (metadata only — from/subject/date/labels, no body); (b) HTTP GET against n8n's own `/api/v1/executions?status=error&limit=50` for self-monitoring.
+    - **Merge:** `append` mode, 2 inputs — synchronisation barrier before Compose Context.
+    - **Compose Digest Context:** Set node, `executeOnce: true`, stringifies upstream node outputs into one prompt-friendly context object (`today`, `inbox_replies_json`, `n8n_errors_json`, `pending_sources`).
+    - **Claude summariser:** Anthropic node, **`claude-sonnet-4-6`** (downgraded from Opus 4.7 — Sonnet is the right tool for daily structured summarisation; Opus is overkill and ~5× cost), `temperature: 0.4`, `maxTokens: 1500`, plain-text output. System prompt enforces a 5-section structure (INBOX REPLIES NEEDING REZA / WORKFLOW HEALTH / AWAITING DATA / TOP 3 ACTIONS TODAY / ONE PATTERN), warm-words rule, "no AI tics, no motivational-poster mode", explicit "(fallback - low inbox signal)" tag when inbox is thin. Editable in-place on the Claude node — no code round-trip.
+    - **Extract Digest Body:** Set node with defensive fallback chain (`$json.response || $json.content?.[0]?.text || $json.text || $json.message || JSON.stringify($json)`) — handles Anthropic node version variance.
+    - **Gmail Send:** to `admin@monitrax.com.au`, from `admin@monitrax.com.au` (self-send), subject `Monitrax Daily - {{ Sydney-formatted date }}`, plain text. **Recipient change 2026-05-14:** initial plan was `reza@monitrax.com.au` but that mailbox doesn't exist in the Workspace (`admin@` is the only one); send-to-self is the simplest fix.
+    - **Five disabled stub branches** for future data sources, each tagged `[STUB]` with sticky-note wiring instructions: Airtable Activities, Stripe Charges, Sentry Issues, Cal.com Today Bookings, Smartlead Replies (NOT Instantly — Smartlead won Q-GTM-2).
+  - **Credentials wired in n8n (4 total):**
+    - `Gmail - try-monitrax mailbox (read)` — Gmail OAuth2, authorised as `reza@try-monitrax.com`
+    - `Gmail - monitrax.com.au (send)` — Gmail OAuth2, authorised as `admin@monitrax.com.au` (name retained from original SDK code even though account is `admin@`, to avoid SDK-rebuild)
+    - `Anthropic API - Monitrax` — Anthropic API, key from `console.anthropic.com` (existing `reza-onboarding-api-key`, ~AU$7.50 credit on hand)
+    - `n8n API - X-N8N-API-KEY header` — Header Auth, header `X-N8N-API-KEY`, value = n8n internal API key (`digest-self-monitor`, rotated 2026-05-14 after the key was exposed in a chat paste during the "Code session takeover" attempt — see Gotcha below)
+  - **Google Cloud OAuth client** for the Gmail credentials: project `monitrax-479700`, OAuth client `n8n - Monitrax Gmail OAuth`, type Web application, redirect URI `https://n8n.monitrax.com.au/rest/oauth2-credential/callback`, JavaScript origins empty. OAuth consent screen: External, app name `Monitrax`, publishing status **Testing**, test users `admin@monitrax.com.au` + `reza@try-monitrax.com`. Single OAuth client serves both Gmail credentials.
+  - **Prompt sign-off:** preview output reviewed via Opus 4.7 simulation (Chat-Claude couldn't call the real Sonnet endpoint mid-session — no API key in its environment); the prompt design — 5-section structure, fallback tag, "ONE PATTERN under 20 words" constraint — judged shipping-ready as-is. Iterate from real production output, not synthetic.
+- **Operational runbook:** `docs/operational/runbooks/09_GTM_FOUNDER_DAILY_DIGEST.md` — covers daily checks, credential rotation, adding a new data source, common failure modes, the Reza-side knobs (activate/pause cron, edit prompt, change recipient).
+- **Still to do before declaring ✅ DONE:**
+  - First **real end-to-end `execute_workflow` run** lands in `admin@monitrax.com.au` inbox (sign-off gate: review the actual email body, not a synthetic preview)
+  - Reza **manually activates the cron** in the n8n UI (the workflow is currently inactive — toggle is off until first real-test passes)
+  - Three useful digests received without touching it (per the original "Done when" criterion)
+- **Out of scope (deferred, tracked in stickies on the n8n canvas):**
+  - Wire Airtable Activities (blocked on Step 1.2 — CRM build)
+  - Wire Stripe Charges (blocked on first payment infra going live)
+  - Wire Sentry Issues (blocked on adopting Sentry; GCP Error Reporting is the existing fallback per CLAUDE.md §12.7)
+  - Wire Cal.com Bookings (blocked on Step 2.6)
+  - Wire Smartlead Replies (blocked on Smartlead webhook setup; original SDK code references "Instantly" — adjust accordingly)
+  - Switch Gmail node `simple: false` + include email snippets in the prompt (only do this if subject-only signal proves insufficient after a week of production runs)
+- **Gotchas (the painful ones we hit):**
+  - **n8n auto-assigns credentials by type, not name.** When two Gmail OAuth2 credentials exist, n8n grabs the first one created for both nodes — meaning the Send node initially pointed at the *read* mailbox. Fix: manually pick the right credential on each node's dropdown, then save. Easy to miss; check both Gmail nodes for absence of the red "!" warning before activating.
+  - **Self-hosted n8n Gmail OAuth needs your own Google Cloud OAuth client** (Client ID + Secret). n8n Cloud has a shared one; self-hosted doesn't. ~15 min extra setup the first time — `console.cloud.google.com` → enable Gmail API → Credentials → OAuth client ID → Web application → paste n8n's redirect URI → copy ID + Secret into n8n.
+  - **OAuth consent screen test users.** With the app in Testing mode, **only emails in the Test users list can authorise**. Most common silent OAuth failure: forgot to add the second mailbox as a test user. Add both before authorising either credential.
+  - **Workflow timezone is not the instance timezone.** Set it explicitly via Workflow Settings → Timezone → `Australia/Sydney`. Cron uses workflow TZ. Forgetting this = digest fires at 4:45pm Sydney every day instead of 6:45am.
+  - **Don't activate the cron straight after `validate + create`.** Activate ONLY after the first real `execute_workflow` produces an email you'd be happy receiving tomorrow at 7am. The temptation to flip the toggle "while you're in there" is real and costly.
+  - **n8n API keys are sensitive.** A key with full-instance scope was exposed in a chat paste during 2026-05-14 (an attempt to give Claude Code direct API access — failed anyway because the Code sandbox blocks `n8n.monitrax.com.au`, 403 Host not in allowlist). The key was rotated within minutes. **Lesson: never paste an n8n API key into a chat surface; if it leaks, rotate immediately.** Future direct-API access has to go via a dedicated service-account key with read-only scope.
+- **Build this first** — it's what actually buys back your time. Everything else above is just data sources for this.
 
 ---
 
