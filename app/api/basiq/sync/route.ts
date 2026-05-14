@@ -19,9 +19,13 @@ import {
   type BasiqAccount,
   type BasiqTransaction,
 } from '@/lib/basiq';
+import { basiqRouteGuard } from '@/lib/featureFlags/basiqRouteGuard';
 
 // CDR consent verification: syncing CDR data requires active consent (Phase 35 — Basiq §5.5)
 export const POST = withActiveConsent('account.write', async (request, auth) => {
+  // Defense-in-depth — admin BASIQ_INTEGRATION flag check.
+  const blocked = await basiqRouteGuard();
+  if (blocked) return blocked;
   try {
     const userId = auth.userId;
     const body = await request.json().catch(() => ({}));

@@ -53,6 +53,7 @@ import {
 } from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { AccountsDataSourceTiles } from './AccountsDataSourceTiles';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 import {
   Dialog,
   DialogContent,
@@ -286,6 +287,8 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [basiqLoading, setBasiqLoading] = useState(false);
   const [basiqError, setBasiqError] = useState<string | null>(null);
+  // Admin toggle — hides the "Connect your bank" tile when off.
+  const basiqEnabled = useBasiqEnabled();
 
   // ---- Basiq tier ---------------------------------------------------
   // POST /api/basiq/connect → returns { consentUrl }. We save the draft
@@ -411,6 +414,9 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
       <AccountsDataSourceTiles
         basiqLoading={basiqLoading}
         importOpen={importDialogOpen}
+        // Pass the admin-flag value so the picker hides its Basiq tile
+        // when the BASIQ_INTEGRATION switch is OFF.
+        basiqEnabled={basiqEnabled}
         onPickBasiq={handlePickBasiq}
         onPickImport={handlePickImport}
         onPickManual={handlePickManual}
