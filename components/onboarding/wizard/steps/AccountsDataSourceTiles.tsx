@@ -33,6 +33,14 @@ interface AccountsDataSourceTilesProps {
   basiqLoading?: boolean;
   /** Disable Import tile while the import dialog is open. */
   importOpen?: boolean;
+  /**
+   * BASIQ_INTEGRATION admin flag. When `false`, the entire tier-1
+   * "Connect your bank" tile + the "or" divider are hidden — leaves
+   * Import + Manual as the only paths during the pre-accreditation
+   * window. Default `false` so callers that haven't wired the flag
+   * stay safe.
+   */
+  basiqEnabled?: boolean;
   /** Triggered when the user picks the Basiq tile. */
   onPickBasiq: () => void;
   /** Triggered when the user picks the Import tile. */
@@ -44,13 +52,17 @@ interface AccountsDataSourceTilesProps {
 export function AccountsDataSourceTiles({
   basiqLoading,
   importOpen,
+  basiqEnabled = false,
   onPickBasiq,
   onPickImport,
   onPickManual,
 }: AccountsDataSourceTilesProps) {
   return (
     <div className="space-y-3">
-      {/* Tier 1 — Basiq (Recommended) */}
+      {/* Tier 1 — Basiq (Recommended) — hidden when BASIQ_INTEGRATION
+          admin flag is OFF (pre-accreditation window). */}
+      {basiqEnabled && (
+      <>
       <button
         type="button"
         onClick={onPickBasiq}
@@ -101,6 +113,8 @@ export function AccountsDataSourceTiles({
           </span>
         </div>
       </div>
+      </>
+      )}
 
       {/* Tier 2 — Import file */}
       <button

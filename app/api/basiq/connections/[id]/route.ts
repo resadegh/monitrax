@@ -10,11 +10,14 @@ import { NextResponse } from 'next/server';
 import { withMFARequired, withActiveConsent } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { deleteConnection as deleteBasiqConnection } from '@/lib/basiq';
+import { basiqRouteGuard } from '@/lib/featureFlags/basiqRouteGuard';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 // CDR consent verification: reading CDR data requires active consent (Phase 35 — Basiq §5.5)
 export const GET = withActiveConsent<RouteContext>('account.read', async (request, auth, context) => {
+  const blocked = await basiqRouteGuard();
+  if (blocked) return blocked;
   try {
     const userId = auth.userId;
     const { id } = await context!.params;
@@ -69,6 +72,8 @@ export const GET = withActiveConsent<RouteContext>('account.read', async (reques
 });
 
 export const DELETE = withMFARequired<RouteContext>('account.delete', async (request, auth, context) => {
+  const blocked = await basiqRouteGuard();
+  if (blocked) return blocked;
   try {
     const userId = auth.userId;
     const { id } = await context!.params;

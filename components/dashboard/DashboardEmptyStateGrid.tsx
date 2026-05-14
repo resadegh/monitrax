@@ -78,6 +78,7 @@ import {
   type UseSetupStateModuleKey,
   type UseSetupStateModuleProgress,
 } from '@/hooks/useSetupState';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
 // =============================================================================
 // PLACEHOLDER ILLUSTRATION
@@ -210,15 +211,28 @@ export function AccountsEmptyState({
   confidenceState,
 }: ConcreteTileProps = {}) {
   const t = TILE_COPY.accounts;
+  const basiqEnabled = useBasiqEnabled();
+  // When Basiq is OFF, hide the Connect-Bank CTA + reword copy so the
+  // tile guides the user to the file-import / manual-add path that
+  // IS available. Tile still renders — we want to capture accounts;
+  // we just can't offer the 60-second bank-connect path right now.
+  const title = basiqEnabled ? t.title : 'Add your accounts';
+  const description = basiqEnabled
+    ? t.description
+    : 'Add accounts and balances manually or import from a CSV export.';
+  const cta = basiqEnabled
+    ? t.cta
+    : { label: 'Add account', href: '/dashboard/balances?action=add-account' };
+  const secondaryCta = basiqEnabled ? t.secondaryCta : undefined;
   return (
     <EmptyStateTile
       illustration={<PlaceholderIllustration icon={t.icon} />}
-      title={t.title}
-      description={t.description}
+      title={title}
+      description={description}
       unlocks={t.unlocks}
       whyThisMatters={t.whyThisMatters}
-      cta={t.cta}
-      secondaryCta={t.secondaryCta}
+      cta={cta}
+      secondaryCta={secondaryCta}
       compact={compact}
       priority={priority}
       confidenceState={confidenceState}

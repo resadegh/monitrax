@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useUISyncEngine } from '@/hooks/useUISyncEngine';
 import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
+import { BasiqGateProvider } from '@/lib/featureFlags/BasiqGateContext';
 import { FinancialHealthMiniWidget } from '@/components/health/FinancialHealthMiniWidget';
 import AiChatButton from '@/components/AiChatButton';
 import { HelpDrawerButton } from '@/components/help/HelpDrawerButton';
@@ -368,6 +369,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
+    <BasiqGateProvider>
     <div className="min-h-screen bg-background">
       {/* Phase 9.5 - Global Warning Ribbon */}
       {syncState.warningRibbon.show && (
@@ -753,5 +755,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onAutoSave={handleWizardAutoSave}
       />
     </div>
+    </BasiqGateProvider>
   );
 }

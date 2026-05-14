@@ -55,6 +55,7 @@ import {
   useSetupState,
   type UseSetupStateModuleProgress,
 } from '@/hooks/useSetupState';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
 // =============================================================================
 // ACTION DERIVATION
@@ -73,7 +74,8 @@ interface NextAction {
  * Returns `null` when all modules are Verified (i.e. setup is done).
  */
 function deriveNextAction(
-  modules: UseSetupStateModuleProgress[]
+  modules: UseSetupStateModuleProgress[],
+  basiqEnabled: boolean,
 ): NextAction | null {
   // Priority chain — first Missing module wins.
   const missingPriority: Array<{
@@ -82,14 +84,27 @@ function deriveNextAction(
   }> = [
     {
       module: 'accounts',
-      action: {
-        id: 'connect-bank',
-        label: 'Connect your bank',
-        description:
-          'Import accounts, balances, and 12 months of transactions in 60 seconds.',
-        href: '/dashboard/balances?action=connect-basiq',
-        icon: Banknote,
-      },
+      // BASIQ_INTEGRATION OFF: swap "Connect your bank" for the
+      // manual-add path so the panel still guides setup. ON: original
+      // bank-connect copy. Single touch point — every other surface
+      // that mentions bank connect is also gated on the same flag.
+      action: basiqEnabled
+        ? {
+            id: 'connect-bank',
+            label: 'Connect your bank',
+            description:
+              'Import accounts, balances, and 12 months of transactions in 60 seconds.',
+            href: '/dashboard/balances?action=connect-basiq',
+            icon: Banknote,
+          }
+        : {
+            id: 'add-accounts-manually',
+            label: 'Add your accounts',
+            description:
+              'Add accounts and balances manually, or import from a CSV export.',
+            href: '/dashboard/balances?action=add-account',
+            icon: Banknote,
+          },
     },
     {
       module: 'income',
@@ -179,6 +194,7 @@ export function SetupNextActionPanel({
   className = '',
 }: SetupNextActionPanelProps) {
   const { moduleProgress, isLoading, error } = useSetupState();
+  const basiqEnabled = useBasiqEnabled();
 
   // Fail silently — optional chrome, never make the page worse.
   if (error) return null;
@@ -187,7 +203,7 @@ export function SetupNextActionPanel({
   if (isLoading && !moduleProgress) return null;
   if (!moduleProgress) return null;
 
-  const action = deriveNextAction(moduleProgress);
+  const action = deriveNextAction(moduleProgress, basiqEnabled);
 
   // All done → celebratory pill instead of the full panel.
   if (!action) {

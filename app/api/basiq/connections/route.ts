@@ -10,9 +10,13 @@ import { NextResponse } from 'next/server';
 import { withActiveConsent } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getConnections } from '@/lib/basiq';
+import { basiqRouteGuard } from '@/lib/featureFlags/basiqRouteGuard';
 
 // CDR consent verification: reading CDR data requires active consent (Phase 35 — Basiq §5.5)
 export const GET = withActiveConsent('account.read', async (request, auth) => {
+  // Defense-in-depth — admin BASIQ_INTEGRATION flag check.
+  const blocked = await basiqRouteGuard();
+  if (blocked) return blocked;
   try {
     const userId = auth.userId;
 

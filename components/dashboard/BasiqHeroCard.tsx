@@ -85,6 +85,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useSetupState } from '@/hooks/useSetupState';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
 // =============================================================================
 // PROPS
@@ -105,6 +106,12 @@ export interface BasiqHeroCardProps {
 
 export function BasiqHeroCard({ className = '' }: BasiqHeroCardProps) {
   const { tasks, isLoading, error } = useSetupState();
+  const basiqEnabled = useBasiqEnabled();
+
+  // Master switch — when the BASIQ_INTEGRATION admin flag is OFF, the
+  // entire bank-connect hero is hidden. Gate rendered before any
+  // other branch so this short-circuits cleanly.
+  if (!basiqEnabled) return null;
 
   // Fail silently on error — the dashboard should never be made
   // worse by an optional hero card that can't load its state.

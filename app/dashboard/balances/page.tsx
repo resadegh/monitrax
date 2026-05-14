@@ -61,6 +61,7 @@ import { TransactionImportDialog } from '@/components/bank/TransactionImportDial
 import { HiddenWealthLens } from '@/components/balances/HiddenWealthLens';
 import type { HiddenWealthResponse } from '@/app/api/dashboard/hidden-wealth/route';
 import { useBasiqConnect } from '@/hooks/useBasiqConnect';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 
@@ -266,6 +267,10 @@ function BalancesPageContent() {
   // (consent URL, MOBILE_REQUIRED redirect, error copy) is byte-for-
   // byte identical.
   const { isConnecting, connectBank } = useBasiqConnect();
+  // BASIQ_INTEGRATION admin toggle. When OFF, hide every Connect-Bank
+  // affordance on this page (toolbar button + ?action=connect-basiq
+  // query handler + empty-state suggestion).
+  const basiqEnabled = useBasiqEnabled();
 
   // Phase 36 Phase 2b/2d — `?action=` deep-link handler. Centralises
   // the bookmarkable / shareable entry points that previously lived
@@ -283,6 +288,14 @@ function BalancesPageContent() {
     };
     switch (action) {
       case 'connect-basiq':
+        // BASIQ_INTEGRATION OFF — ignore the query param entirely.
+        // Strip it so a stray link can't keep re-triggering on
+        // refresh. The button that produces this href is also gated,
+        // so this guard handles pre-existing deep-links / bookmarks.
+        if (!basiqEnabled) {
+          stripActionParam();
+          break;
+        }
         void connectBank();
         stripActionParam();
         break;
@@ -727,20 +740,22 @@ function BalancesPageContent() {
                * this single action seeds both Cash and Debt sections).
                * Recommended path — placed first.
                */}
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => void connectBank()}
-                disabled={isConnecting}
-                className="hidden sm:inline-flex bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
-              >
-                {isConnecting ? (
-                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                ) : (
-                  <Landmark className="w-4 h-4 mr-1.5" />
-                )}
-                Connect Bank
-              </Button>
+              {basiqEnabled && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => void connectBank()}
+                  disabled={isConnecting}
+                  className="hidden sm:inline-flex bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+                >
+                  {isConnecting ? (
+                    <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                  ) : (
+                    <Landmark className="w-4 h-4 mr-1.5" />
+                  )}
+                  Connect Bank
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"

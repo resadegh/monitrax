@@ -34,6 +34,7 @@ import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { deleteCDRData } from '@/lib/services/cdrDataLifecycle';
 import { log } from '@/lib/utils/logger';
+import { basiqRouteGuard } from '@/lib/featureFlags/basiqRouteGuard';
 
 interface BasiqEvent {
   type: string;
@@ -73,6 +74,11 @@ function verifyWebhookSignature(body: string, signatureHeader: string | null): b
 }
 
 export async function POST(request: NextRequest) {
+  // Defense-in-depth — admin BASIQ_INTEGRATION flag check. When OFF
+  // we don't expect any legit webhook traffic; respond 503 so any
+  // received delivery is rejected cleanly + Basiq stops retrying.
+  const blocked = await basiqRouteGuard();
+  if (blocked) return blocked;
   try {
     // 1. Read the raw body (required for HMAC verification)
     const rawBody = await request.text();

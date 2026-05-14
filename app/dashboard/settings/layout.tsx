@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
 interface SettingsNavItem {
   name: string;
@@ -167,6 +168,18 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const basiqEnabled = useBasiqEnabled();
+
+  // Hide the Bank-connections nav entry when BASIQ_INTEGRATION is OFF.
+  // The page itself also renders a "not available yet" notice (see
+  // /dashboard/settings/connections/page.tsx) — this just removes the
+  // navigation pathway so users don't see a dead nav link.
+  const visibleGroups = settingsNavGroups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) =>
+      basiqEnabled ? true : item.href !== '/dashboard/settings/connections',
+    ),
+  }));
 
   return (
     <div className="container mx-auto py-8 max-w-6xl">
@@ -224,7 +237,7 @@ export default function SettingsLayout({
             </Link>
           </div>
 
-          {settingsNavGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.label} className="space-y-1">
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
                 {group.label}

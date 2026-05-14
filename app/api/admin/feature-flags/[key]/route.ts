@@ -13,6 +13,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import {
+  BASIQ_FLAG_KEY,
+  invalidateBasiqGateCache,
+} from '@/lib/featureFlags/basiqGate';
 import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { hasPermission } from '@/lib/admin/permissions';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
@@ -155,6 +159,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       },
     });
+
+    // Production Readiness — flush the in-process cache for any flag
+    // with a side-channel reader. Currently only BASIQ_INTEGRATION,
+    // but the pattern extends as more flags get cached helpers.
+    if (updatedFlag.key === BASIQ_FLAG_KEY) {
+      invalidateBasiqGateCache();
+    }
 
     return NextResponse.json(updatedFlag);
   } catch (error) {

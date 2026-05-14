@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 import {
   Building2,
   Link as LinkIcon,
@@ -49,6 +50,7 @@ interface BasiqConnection {
 
 export default function ConnectionsSettingsPage() {
   const { token } = useAuth();
+  const basiqEnabled = useBasiqEnabled();
   const [connections, setConnections] = useState<BasiqConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -143,6 +145,31 @@ export default function ConnectionsSettingsPage() {
     const v = map[status] || map.PENDING;
     return <Badge className={v.cls}>{v.label}</Badge>;
   };
+
+  // BASIQ_INTEGRATION OFF — the whole page is moot. There can't be
+  // any active bank connections to manage because Connect-Bank is
+  // hidden everywhere else. Render a single calm "not available right
+  // now" card instead of an empty connections list.
+  if (!basiqEnabled) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LinkIcon className="h-5 w-5" />
+              Bank connections
+            </CardTitle>
+            <CardDescription>
+              Bank connections via Open Banking aren&apos;t available yet.
+              We&apos;ll let you know when they go live. In the meantime,
+              you can add accounts manually or via a transaction-file
+              import on the Balances page.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

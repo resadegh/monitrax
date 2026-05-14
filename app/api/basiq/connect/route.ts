@@ -8,10 +8,15 @@
 
 import { NextResponse } from 'next/server';
 import { withMFARequired } from '@/lib/auth/guards';
+import { basiqRouteGuard } from '@/lib/featureFlags/basiqRouteGuard';
 import { prisma } from '@/lib/db';
 import { getOrCreateBasiqUser, createConsentLink } from '@/lib/basiq';
 
 export const POST = withMFARequired('account.write', async (request, auth) => {
+  // Defense-in-depth — server refuses Basiq calls when the admin
+  // BASIQ_INTEGRATION flag is OFF, even if a stale UI / curl gets here.
+  const blocked = await basiqRouteGuard();
+  if (blocked) return blocked;
   try {
     const userId = auth.userId;
 
