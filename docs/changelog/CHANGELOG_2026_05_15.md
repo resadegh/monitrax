@@ -85,3 +85,68 @@ Branch: `claude/gtm-step-1-2-airtable-crm`
 1. Saturday + Sunday: cron runs automatically; observe 2 more mornings → Step 1.6 ✅ DONE
 2. Optional now: Step 0.1 (AFSL boundary doc) — 30 min draft + park for lawyer
 3. Optional weekend prep: Step 2.1 (lock broker ICP) + Step 2.2 (Apollo lead-list scope) — both pure-thinking work, no tools needed
+
+---
+
+## Session 3: GTM Step 0.1 — AFSL boundary doc DRAFT shipped
+
+Branch: `claude/gtm-step-0-1-afsl-boundary`
+
+### Scope
+- **Type:** Compliance / operational documentation
+- **Scope:** GTM Phase 0 prerequisite — defines the legal boundary for the paid Financial Health Review service
+- **CDR scope:** Out of scope — this document defines what the Review can/can't SAY, not how data flows. CDR rules (Part 13) still apply orthogonally to any data the Review uses.
+
+### What was done
+
+**Document drafted:** `docs/marketing/gtm/REVIEW_SCOPE_AND_BOUNDARIES.md` — 11 sections, ~400 lines.
+
+Coverage:
+1. The legal premise in one paragraph (Corporations Act §766B; the general advice / personal advice / personal advice's "reasonable person" test trap)
+2. What the Review IS — factual analysis, benchmark comparison, gap identification, TRAIL-stage observation, generic class-level information, questions for customer to consider, pointer to licensed advice
+3. What the Review IS NOT — no specific product recommendations, no personal investment / tax / insurance / property / debt / estate / legal advice, no predictive product-performance claims, no language implying personal advice
+4. DO say / DON'T say cheat-sheet — 9 financial topics, side-by-side patterns
+5. Verbatim top + bottom disclaimer blocks + customer acknowledgment for the intake form
+6. Operator (Reza or VA) pre-delivery checklist — 11 boxes, gates every Review
+7. Escalation guidance — when to remove a statement, when to ask a lawyer, when NOT to ship
+8. What changes when the AFSL-partner upsell goes live (nothing in this doc; the partnership is a separate service)
+9. Primary-source references — Corporations Act §766B, ASIC RG 244 / 175 / 36, MoneySmart, TPB, Barefoot Investor as tone model
+10. Status / ownership / annual review cadence
+11. Explicit "this document is NOT legal advice" disclaimer about itself
+
+### Validity matrix
+- ✅ **Reviews #1–5 to friendlies** — OK to ship against this draft (they sign §5.3 acknowledgment, understand it's friend-rate + draft-policy)
+- 🚫 **Reviews to non-friendly strangers** — NOT VALID until lawyer review (Q-GTM-5 must close)
+
+### Reza-side lawyer review action item
+- Budget: ~AU$2–5k one-off
+- Candidate firms: Sophie Grace (fintech specialist), Holding Redlich, Gilbert + Tobin's fintech team
+- Brief: (a) review this document; (b) review one sample Review draft; (c) sign off on disclaimer wording; (d) recommend structural changes
+- Ongoing: ~AU$500–1k/yr re-review when framework changes
+
+### Architectural decisions
+1. **Conservative-side framing throughout.** Default to factual statements + benchmark references + "speak to a licensed adviser" pointers, never personal recommendations. The lawyer's job is to confirm or tighten, never to loosen.
+2. **TRAIL framework as the educational scaffold.** TRAIL is a non-product, non-personal-recommendation framework — using it as the Review's structural backbone keeps the doc cleanly on the general-information side.
+3. **Disclaimers verbatim, never paraphrased.** §5.1 + §5.2 give exact wording. Operators don't get to rewrite the legal-safety-net text.
+4. **Doc is referenced by downstream Step 3 sub-steps** (intake form, Claude-drafted report system prompt, QA + deliver checklist) so they inherit the boundary discipline by reference rather than re-defining it.
+
+### Files modified in this PR
+- `docs/marketing/gtm/REVIEW_SCOPE_AND_BOUNDARIES.md` — **new file** (~400 lines)
+- `docs/marketing/GTM_EXECUTION_PLAN.md` — Step 0.1 expanded to full 🟡 DRAFT SHIPPED entry with validity matrix + lawyer-review action item
+- `docs/IMPLEMENTATION_PLAN.md` — header refreshed for evening doc-PR
+- This file — Session 3 entry
+
+### Build status
+- Doc-only. No app code, no schema, no migration.
+
+### Painful lessons memorialised
+1. **The "reasonable person" test is the trap.** Even when you think you're giving general advice, if a reasonable person would expect you to have considered the customer's specific circumstances (and the Review literally has their data!), the statement may be construed as personal advice. Hence the discipline: state facts, point at education, NEVER prescribe.
+2. **Specific product names are the bright line.** ING, AustralianSuper, VAS, your-bank-by-name — the moment any of these appear in a Review, you've crossed into personal advice. Class-level mentions ("high-interest savings accounts", "diversified Australian equity ETFs") are fine.
+3. **Personal tax advice requires SEPARATE registration (TPB) — AFSL doesn't cover it.** Even with an AFSL, telling a customer to claim a specific deduction or salary-sacrifice $X is tax agent territory.
+4. **The Barefoot Investor model is the tone reference.** Scott Pape operates at massive scale in this exact safe zone — principle-driven, never named-product (except his disclosed ones), always points readers at licensed advisers for personal decisions. Read his disclaimers + follow the model.
+
+### Next Steps after parking
+1. Reza reads `REVIEW_SCOPE_AND_BOUNDARIES.md` end-to-end (twice, per the original spec)
+2. Reza schedules an initial chat with an AU fintech lawyer (low priority — only blocks Review #6+ to strangers, ~weeks away)
+3. Saturday + Sunday: digest cron runs on autopilot
+4. Monday: Step 1.6 → ✅ DONE in a small follow-up commit; choose next active work (Step 2.1 broker ICP, or revisit lawyer scheduling)
