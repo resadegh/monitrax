@@ -8,19 +8,22 @@
  * for a Cloud SQL Proxy on the operator's machine — auth flows through
  * the existing Vercel runtime (WIF + Cloud SQL Connector).
  *
- * Two actions:
+ * Three actions:
  *   1. Lighthouse — creates Smithfield Wealth Advisers + 3 archetype
  *      consumers (idempotent; --reset deletes + re-seeds).
  *   2. Portal Access — grants admin@monitrax.com.au PORTAL_OWNER on
  *      the Smithfield org so the Org Portal /portal/signin succeeds.
+ *   3. Feature Flags — creates the platform-canonical GlobalFeatureFlag
+ *      rows (currently `BASIQ_INTEGRATION`, defaults OFF). Idempotent;
+ *      NEVER overwrites the operator's toggle state on re-run.
  *
- * Both seeds are idempotent and safe to re-run.
+ * All seeds are idempotent and safe to re-run.
  */
 
 import { useState } from 'react';
 import { AdminCard, AdminCardHeader } from '@/components/admin/ui/AdminCard';
 
-type Action = 'lighthouse' | 'portal-access';
+type Action = 'lighthouse' | 'portal-access' | 'feature-flags';
 
 export default function AdminRunSeedPage() {
   const [running, setRunning] = useState<Action | null>(null);
@@ -125,6 +128,28 @@ export default function AdminRunSeedPage() {
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {running === 'portal-access' ? 'Running…' : 'Run Portal Access Seed'}
+          </button>
+        </div>
+      </AdminCard>
+
+      <AdminCard>
+        <AdminCardHeader
+          title="Feature Flags"
+          description="Creates the platform-canonical GlobalFeatureFlag rows (currently BASIQ_INTEGRATION, defaults OFF). Idempotent — never overwrites your toggle state on re-run. After this seed, the flag appears in /admin/feature-flags ready to flip."
+        />
+        <div className="space-y-3 p-4">
+          <p className="text-xs text-gray-500">
+            Run this once after the BASIQ toggle ships so the row exists in
+            the GlobalFeatureFlag table. Subsequent runs only refresh the
+            row&apos;s name + description — your enabled / rollout settings
+            are preserved.
+          </p>
+          <button
+            onClick={() => run('feature-flags')}
+            disabled={running !== null}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {running === 'feature-flags' ? 'Running…' : 'Run Feature Flag Seed'}
           </button>
         </div>
       </AdminCard>
