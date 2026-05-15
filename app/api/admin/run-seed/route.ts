@@ -5,18 +5,19 @@
  * live database via the existing Vercel runtime auth (WIF + Cloud SQL
  * Connector). Avoids needing a Cloud SQL Proxy on the operator's machine.
  *
- * Body: { action: 'lighthouse' | 'portal-access', reset?: boolean,
- *         extraEmails?: string[] }
+ * Body: { action: 'lighthouse' | 'portal-access' | 'feature-flags',
+ *         reset?: boolean, extraEmails?: string[] }
  *
  * Returns: { success, output, error? }
  *
  * Why this endpoint exists:
- *   The lighthouse demo data and portal access grant for
- *   admin@monitrax.com.au need to land in production. The local CLI path
- *   (`npm run seed:lighthouse`) requires a Cloud SQL Proxy + IAM
- *   credentials on the operator's machine. This route piggybacks on the
- *   already-authenticated Vercel runtime to do the same work in a click,
- *   gated behind a SUPER_ADMIN admin auth check.
+ *   The lighthouse demo data, portal access grant for
+ *   admin@monitrax.com.au, and platform-canonical feature-flag rows
+ *   (e.g. BASIQ_INTEGRATION) need to land in production. The local CLI
+ *   path (`npm run seed:*`) requires a Cloud SQL Proxy + IAM credentials
+ *   on the operator's machine. This route piggybacks on the already-
+ *   authenticated Vercel runtime to do the same work in a click, gated
+ *   behind a SUPER_ADMIN admin auth check.
  */
 
 import { NextResponse } from 'next/server';
@@ -24,17 +25,26 @@ import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
 import { runLighthouseSeed } from '@/prisma/seed-lighthouse';
 import { runPortalAccessSeed } from '@/prisma/seed-portal-test-access';
+import { runFeatureFlagSeed } from '@/prisma/seed-feature-flags';
 
 // Vercel function timeout — seeds touch ~hundreds of rows; lighthouse with
 // --reset can take 60-120s. 300s is the Vercel Pro hard cap.
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
+type SeedAction = 'lighthouse' | 'portal-access' | 'feature-flags';
+
 interface RunSeedBody {
-  action?: 'lighthouse' | 'portal-access';
+  action?: SeedAction;
   reset?: boolean;
   extraEmails?: string[];
 }
+
+const VALID_ACTIONS: ReadonlyArray<SeedAction> = [
+  'lighthouse',
+  'portal-access',
+  'feature-flags',
+];
 
 export async function POST(request: Request) {
   const authResult = await verifyAdminGCPAuth(request);
@@ -73,12 +83,12 @@ export async function POST(request: Request) {
   }
 
   const action = body.action;
-  if (action !== 'lighthouse' && action !== 'portal-access') {
+  if (!action || !VALID_ACTIONS.includes(action)) {
     return NextResponse.json(
       {
         error: {
           code: 'INVALID_ACTION',
-          message: "action must be 'lighthouse' or 'portal-access'.",
+          message: `action must be one of: ${VALID_ACTIONS.join(', ')}.`,
         },
       },
       { status: 400 },
@@ -101,8 +111,13 @@ export async function POST(request: Request) {
   try {
     if (action === 'lighthouse') {
       await runLighthouseSeed({ reset: !!body.reset });
-    } else {
+    } else if (action === 'portal-access') {
       await runPortalAccessSeed(body.extraEmails ?? []);
+    } else if (action === 'feature-flags') {
+      // Idempotent — upserts the canonical platform-wide flag rows
+      // (currently just BASIQ_INTEGRATION). Defaults `enabled=false`
+      // and NEVER overwrites the operator's toggle on re-run.
+      await runFeatureFlagSeed();
     }
     return NextResponse.json({
       success: true,
